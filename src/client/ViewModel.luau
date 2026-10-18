@@ -168,6 +168,13 @@ State.on("swing", function()
 	swingStart = os.clock()
 	punchSide = -punchSide
 end)
+-- Hit-stop: the swing freezes for a few frames on contact, which sells the weight of the blow.
+local frozenUntil = 0
+State.on("hitstop", function(duration: number)
+	local now = os.clock()
+	frozenUntil = now + duration
+	swingStart += duration -- resume exactly where it stopped
+end)
 
 -- A jab: pull back a touch, snap forward and in toward the middle of the view, hold, come back.
 -- `side` mirrors it for the left hand.
@@ -279,7 +286,12 @@ RunService.RenderStepped:Connect(function()
 	local auto = id == "PushMower" or id == "LaserMower" or id == "WeedWhacker"
 	local buzz = if auto then CFrame.new((math.random() - 0.5) * 0.03, (math.random() - 0.5) * 0.03, 0) else CFrame.new()
 
-	local st = (t - swingStart) / SWING_TIME
+	-- during a hit-stop, hold the pose the swing had when it froze
+	-- (swingStart was pushed back by the freeze, so frozenUntil - swingStart is the pose it froze at)
+	local st = (math.min(t, frozenUntil) - swingStart) / SWING_TIME
+	if t >= frozenUntil then
+		st = (t - swingStart) / SWING_TIME
+	end
 	local swing = if st >= 0 and st <= 1 and not auto then swingOffset(st) else CFrame.new()
 
 	local rightCf, leftCf

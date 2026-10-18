@@ -170,6 +170,130 @@ def spark():
     save("spark", np.clip(star + np.exp(-(r / 0.12) ** 2), 0, 1), n=128)
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# flipbooks: 16 frames in a 4x4 grid (1024 x 1024, 256 per frame), read left to right, top to bottom.
+# In Roblox: FlipbookLayout = Grid4x4, FlipbookMode = OneShot (the frames play once over each particle's life).
+# ---------------------------------------------------------------------------------------------------------------
+def value_noise(x, y, scale, seed):
+    """Smooth 2D value noise in [0, 1]."""
+    rng = np.random.default_rng(seed)
+    n = int(scale) + 3
+    g = rng.random((n, n))
+    gx = (x + 1) / 2 * scale; gy = (y + 1) / 2 * scale
+    x0 = np.floor(gx).astype(int); y0 = np.floor(gy).astype(int)
+    fx = gx - x0; fy = gy - y0
+    fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy)
+    def at(i, j):
+        return g[np.clip(j, 0, n - 1), np.clip(i, 0, n - 1)]
+    a = at(x0, y0) * (1 - fx) + at(x0 + 1, y0) * fx
+    b = at(x0, y0 + 1) * (1 - fx) + at(x0 + 1, y0 + 1) * fx
+    return a * (1 - fy) + b * fy
+
+
+def save_flipbook(name, frame_fn, frames=16, cell=256):
+    sheet = Image.new("RGBA", (cell * 4, cell * 4), (0, 0, 0, 0))
+    for i in range(frames):
+        t = i / (frames - 1)
+        alpha, shade = frame_fn(t)
+        a = np.clip(alpha, 0, 1)
+        rgb = np.ones(a.shape) if shade is None else np.clip(shade, 0, 1)
+        img = np.dstack([rgb, rgb, rgb, a])
+        im = Image.fromarray((img * 255).astype(np.uint8), "RGBA").resize((cell, cell), Image.LANCZOS)
+        sheet.paste(im, ((i % 4) * cell, (i // 4) * cell))
+    os.makedirs(OUT, exist_ok=True)
+    sheet.save(os.path.join(OUT, name + ".png"))
+    print("wrote", name, "(flipbook)")
+
+
+def smoothstep(a, b, v):
+    k = np.clip((v - a) / (b - a), 0, 1)
+    return k * k * (3 - 2 * k)
+
+
+def poof():
+    """Cartoon smoke puff: a cluster of round lobes that swells fast, then breaks up and dissolves.
+    Two-tone toon shading: the lit part is the same lobes nudged toward the light (top-left), so every lobe
+    gets a clean shadow crescent on its bottom-right, like stylized game smoke."""
+    x, y = grid(256)
+    rng = np.random.default_rng(11)
+    lobes = []
+    for k in range(9):
+        a = k / 9 * 2 * math.pi + rng.uniform(-0.3, 0.3)
+        d = 0.0 if k == 0 else rng.uniform(0.3, 0.46)
+        lobes.append((math.cos(a) * d, math.sin(a) * d, rng.uniform(0.26, 0.36) if k else 0.46))
+    noise = value_noise(x, y, 6, 3) * 0.6 + value_noise(x, y, 15, 4) * 0.4
+
+    def union(grow, dx, dy, shrink, lift):
+        cov = np.zeros(x.shape)
+        for cx, cy, r in lobes:
+            dist = np.hypot(x - cx * grow - dx, y - cy * grow - lift - dy) - (r * grow - shrink)
+            cov = np.maximum(cov, edge(dist, 0.012))
+        return cov
+
+    def frame(t):
+        grow = 0.3 + 0.62 * (1 - (1 - min(1, t * 1.5)) ** 3)
+        lift = 0.06 * t
+        cover = union(grow, 0, 0, 0, lift)
+        lit = union(grow, -0.07 * grow, 0.07 * grow, 0.03 * grow, lift)
+        shade = 0.72 + 0.28 * lit
+        thr = smoothstep(0.3, 1.0, t) * 1.05
+        keep = edge(thr - noise, 0.03) if t > 0.25 else 1.0
+        alpha = cover * keep * (1 - smoothstep(0.86, 1.0, t))
+        return alpha, shade
+    save_flipbook("poof", frame)
+
+
+def impact():
+    """Hit burst: a small hot core, a ring that races out and thins, and 8 long sharp spikes (comic style)
+    that shoot out past the ring and taper away."""
+    x, y = grid(256)
+    r = np.hypot(x, y); th = np.arctan2(y, x)
+    spikes = []
+    rng = np.random.default_rng(5)
+    for k in range(8):
+        spikes.append((k / 8 * 2 * math.pi + rng.uniform(-0.15, 0.15), rng.uniform(0.8, 1.0)))
+
+    def frame(t):
+        e = 1 - (1 - t) ** 2.2
+        core = edge(r - 0.2 * (1 - t) ** 2, 0.015) * (t < 0.45)
+        R = 0.18 + 0.62 * e
+        w = 0.07 * (1 - t) ** 1.5 + 0.004
+        ring = edge(np.abs(r - R) - w, 0.012)
+        rays = np.zeros(x.shape)
+        for a, ln in spikes:
+            da = np.angle(np.exp(1j * (th - a)))
+            if t > 0.6:
+                continue  # the spikes are the first instant; the ring carries the rest
+            r0 = R + w * 0.5 if t > 0.12 else 0.05
+            r1 = min(0.99, R + (0.2 + 0.18 * ln) * (1 - t * 0.6))
+            u = np.clip((r - r0) / (r1 - r0), 0, 1)
+            half = (0.09 * (1 - t / 0.6) ** 1.3 + 0.004) * (1 - u) ** 0.8  # width at the base, sharp tip
+            d = np.abs(da) * r - half
+            inside = edge(d, 0.01) * (r > r0) * (r < r1)
+            rays = np.maximum(rays, inside)
+        alpha = np.clip(core + ring + rays, 0, 1) * (1 - smoothstep(0.82, 1.0, t))
+        return alpha, None
+    save_flipbook("impact", frame)
+
+
+def claw():
+    """Three parallel swipe streaks with a soft glow (the trailer's white claw/blade streaks)."""
+    x, y = grid(512)
+    total = np.zeros(x.shape); shade = np.ones(x.shape) * 0.85
+    for k, off in enumerate((-0.2, 0.0, 0.2)):
+        r = np.hypot(x - 0.1 + off * 0.3, y + 0.7 + off)
+        th = np.arctan2(y + 0.7 + off, x - 0.1 + off * 0.3)
+        t = np.clip((th - math.radians(40)) / math.radians(95), 0, 1)
+        along = np.where((th > math.radians(40)) & (th < math.radians(135)), np.sin(math.pi * t) ** 0.9, 0)
+        c = 1.05
+        width = 0.045 * along
+        core = edge(np.abs(r - c) - width, 0.008) * (along > 0.03)
+        glowv = np.exp(-((r - c) / 0.07) ** 2) * along * 0.45
+        total = np.maximum(total, np.clip(core + glowv, 0, 1))
+        shade = np.where(core > 0.5, 1.0, shade)
+    save("claw", total, shade, n=512)
+
+
 if __name__ == "__main__":
-    for f in (glow, flare, burst, splinter, blade, smoke, ring, slash, spark):
+    for f in (glow, flare, burst, splinter, blade, smoke, ring, slash, spark, poof, impact, claw):
         f()

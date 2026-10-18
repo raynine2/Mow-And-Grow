@@ -259,7 +259,7 @@ handlers.cut = function(d)
 	local color = m.color or d.color
 	local mine = d.by == player.UserId
 	-- the clump comes apart: splinters, blade bits, tumbling clippings, dust, a ground ring
-	HitFx.cut(d.pos, color, mine, if m.id ~= "None" then m.color else nil)
+	HitFx.play("cut", d.pos, color, mine, nil, Config.ZONES[d.z] and Config.ZONES[d.z].style)
 	if mine then
 		(Fx :: any).hideHp()
 		State.emit("bundleGained", d.pos, d.mut)
@@ -311,9 +311,18 @@ handlers.chip = function(d)
 	if d.label then
 		Fx.hpBar(d.pos, d.label, d.hp, d.max)
 	end
-	-- flash + flare, splinters, blade bits, tumbling clippings, dust, a wobble and a camera kick
-	HitFx.hit(d.pos, d.color, heldToolId() == "Hands")
-	Sound.play("chip", 0.15)
+	-- your swing already drew this hit the moment it landed (HitFx prediction); auto tools and extra targets
+	-- of a wide swing are drawn now
+	if not HitFx.wasPredicted(d.pos) then
+		local id = heldToolId()
+		local auto = false
+		for _, t in Config.TOOLS do
+			if t.id == id and t.kind == "auto" then
+				auto = true
+			end
+		end
+		HitFx.play(if auto then "auto" elseif id == "Hands" then "punch" else "hit", d.pos, d.color, true)
+	end
 end
 
 handlers.topOff = function(d)
@@ -341,7 +350,7 @@ handlers.reveal = function(d)
 	if not near(d.pos, 160) or not m.color then
 		return
 	end
-	HitFx.reveal(d.pos, m.color)
+	HitFx.play("reveal", d.pos, m.color, true)
 	Fx.floatText(d.pos + Vector3.new(0, 2, 0), m.id:upper() .. "!", m.color, 1.25)
 	Sound.play("reveal")
 end
@@ -462,7 +471,9 @@ local SLASH_COLOR = {
 	MegaScythe = Color3.fromRGB(200, 150, 255),
 }
 State.on("swing", function()
-	local color = SLASH_COLOR[heldToolId() or ""]
+	local id = heldToolId()
+	HitFx.swing(id)
+	local color = SLASH_COLOR[id or ""]
 	if color then
 		task.delay(0.08, HitFx.slash, color)
 	end

@@ -3,8 +3,11 @@
 return {
 	blade = "rbxassetid://109967103413538",
 	burst = "rbxassetid://76926918127262",
+	claw = "rbxassetid://132296196895033",
 	flare = "rbxassetid://104954625098154",
 	glow = "rbxassetid://108494962291607",
+	impact = "rbxassetid://87756083003180",
+	poof = "rbxassetid://90247103946845",
 	ring = "rbxassetid://89007417158215",
 	slash = "rbxassetid://77563780612703",
 	smoke = "rbxassetid://73873790487818",

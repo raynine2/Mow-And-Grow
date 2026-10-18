@@ -163,9 +163,28 @@ local TWO_HANDED = { PushMower = true, LaserMower = true, WeedWhacker = true, Me
 
 local swingStart = -10
 local SWING_TIME = 0.32
+local punchSide = 1 -- bare hands alternate: 1 = right, -1 = left
 State.on("swing", function()
 	swingStart = os.clock()
+	punchSide = -punchSide
 end)
+
+-- A jab: pull back a touch, snap forward and in toward the middle of the view, hold, come back.
+-- `side` mirrors it for the left hand.
+local function punchOffset(t: number, side: number): CFrame
+	local wind = CFrame.new(0.12 * side, -0.12, 0.4) * CFrame.Angles(math.rad(-14), 0, 0)
+	local strike = CFrame.new(-0.6 * side, 0.4, -1.8) * CFrame.Angles(math.rad(10), math.rad(12 * side), math.rad(-8 * side))
+	if t < 0.16 then
+		return CFrame.new():Lerp(wind, t / 0.16)
+	elseif t < 0.36 then
+		local k = (t - 0.16) / 0.2
+		return wind:Lerp(strike, 1 - (1 - k) * (1 - k))
+	elseif t < 0.48 then
+		return strike
+	end
+	local k = (t - 0.48) / 0.52
+	return strike:Lerp(CFrame.new(), k * k * (3 - 2 * k))
+end
 
 local function equippedId(): string?
 	local char = player.Character
@@ -270,9 +289,13 @@ RunService.RenderStepped:Connect(function()
 	elseif twoHanded then
 		rightCf = base * REST_R * swing * buzz
 		leftCf = rightCf * CFrame.new(-1.3, -0.2, 0.9)
+	elseif id == "Hands" then
+		-- bare hands: left and right jabs in turn, the other fist stays up like a boxer
+		local jab = if st >= 0 and st <= 1 then punchOffset(st, punchSide) else CFrame.new()
+		rightCf = base * REST_R * (if punchSide == 1 then jab else CFrame.new())
+		leftCf = base * REST_L * (if punchSide == -1 then jab else CFrame.new())
 	else
 		rightCf = base * REST_R * swing
-		-- bare hands punch with the right; the left stays up like a boxer
 		leftCf = base * REST_L
 	end
 	if os.clock() - lastHandLook > 1 and not (handR and handL) then
@@ -317,24 +340,5 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 end)
-
-function ViewModel.slashStreak()
-	-- a quick white arc in front of the camera when a swing lands (claw/blade streak in the trailer)
-	local cam = workspace.CurrentCamera
-	if not cam or not inFirstPerson() then
-		return
-	end
-	for i = 0, 2 do
-		local p = part(workspace.CurrentCamera, Vector3.new(0.08, 0.08, 3.4), Color3.new(1, 1, 1), Enum.Material.Neon)
-		p.Transparency = 0.2
-		p.CFrame = cam.CFrame * CFrame.new(0.6 - i * 0.35, -0.2 - i * 0.25, -4) * CFrame.Angles(0, math.rad(70), math.rad(-35))
-		task.delay(0.08, function()
-			p.Transparency = 0.6
-		end)
-		task.delay(0.14, function()
-			p:Destroy()
-		end)
-	end
-end
 
 return ViewModel

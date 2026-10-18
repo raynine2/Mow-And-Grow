@@ -12,7 +12,7 @@ local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
-local ViewModel = require(script.Parent.ViewModel)
+local HitFx = require(script.Parent.HitFx)
 
 local Fx = {}
 local player = Players.LocalPlayer
@@ -21,6 +21,13 @@ local C = UI.colors
 local folder = Instance.new("Folder")
 folder.Name = "ClientFx"
 folder.Parent = workspace
+
+-- The id of the tool in this player's hand ("Hands" for bare hands).
+local function heldToolId(): string?
+	local char = player.Character
+	local tool = char and char:FindFirstChildOfClass("Tool")
+	return tool and tool:GetAttribute("ToolId") :: string?
+end
 
 local function myRoot(): BasePart?
 	local char = player.Character
@@ -250,11 +257,11 @@ handlers.cut = function(d)
 	end
 	local m = Config.mutation(d.mut or "None")
 	local color = m.color or d.color
-	-- clippings: thin blades that fly and land
-	Fx.arc(d.pos + Vector3.new(0, 1.2, 0), { count = if m.id == "None" then 7 else 14, color = color, size = Vector3.new(0.25, 1.1, 0.25), height = 4, spread = 4, life = 0.7, neon = m.id == "Galaxy" or m.id == "Toxic" })
-	if d.by == player.UserId then
+	local mine = d.by == player.UserId
+	-- the clump comes apart: splinters, blade bits, tumbling clippings, dust, a ground ring
+	HitFx.cut(d.pos, color, mine, if m.id ~= "None" then m.color else nil)
+	if mine then
 		(Fx :: any).hideHp()
-		Fx.impact(d.pos + Vector3.new(0, 1.4, 0))
 		State.emit("bundleGained", d.pos, d.mut)
 		local now = os.clock()
 		if now - lastCutSound > 0.07 then
@@ -304,9 +311,8 @@ handlers.chip = function(d)
 	if d.label then
 		Fx.hpBar(d.pos, d.label, d.hp, d.max)
 	end
-	-- flat clippings (like the trailer's wood chips) + flash + puff
-	Fx.arc(d.pos + Vector3.new(0, 1.5, 0), { count = 4, color = UI.shade(d.color, 1.3), size = Vector3.new(0.5, 0.08, 0.3), height = 3, spread = 3, life = 0.5 })
-	Fx.impact(d.pos + Vector3.new(0, 1.6, 0))
+	-- flash + flare, splinters, blade bits, tumbling clippings, dust, a wobble and a camera kick
+	HitFx.hit(d.pos, d.color, heldToolId() == "Hands")
 	Sound.play("chip", 0.15)
 end
 
@@ -335,8 +341,7 @@ handlers.reveal = function(d)
 	if not near(d.pos, 160) or not m.color then
 		return
 	end
-	Fx.arc(d.pos + Vector3.new(0, 1.5, 0), { count = 16, color = m.color, size = Vector3.new(0.6, 0.6, 0.6), height = 7, spread = 6, life = 0.9, neon = true })
-	Fx.ring(d.pos, 9, m.color, 0.55)
+	HitFx.reveal(d.pos, m.color)
 	Fx.floatText(d.pos + Vector3.new(0, 2, 0), m.id:upper() .. "!", m.color, 1.25)
 	Sound.play("reveal")
 end
@@ -450,8 +455,17 @@ handlers.mowerReady = function(d)
 	Sound.play("purchase")
 end
 
+-- blade tools draw a crescent swipe across the view; bare hands punch (ViewModel animates it)
+local SLASH_COLOR = {
+	Scissors = Color3.new(1, 1, 1),
+	Sickle = Color3.fromRGB(225, 235, 255),
+	MegaScythe = Color3.fromRGB(200, 150, 255),
+}
 State.on("swing", function()
-	task.delay(0.12, ViewModel.slashStreak)
+	local color = SLASH_COLOR[heldToolId() or ""]
+	if color then
+		task.delay(0.08, HitFx.slash, color)
+	end
 	Sound.play("whoosh", 0.15)
 end)
 

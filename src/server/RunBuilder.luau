@@ -6,12 +6,13 @@ local Format = require(ReplicatedStorage.MowALawn.Format)
 local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 local Environment = require(script.Parent.Environment)
+local Ground = require(script.Parent.Ground)
 
 local RunBuilder = {}
 
 local HALF_WIDTH = 50 -- the map is 100 studs wide
 local HUB_START = -80
-local FLOOR_Y = 0.3 -- top of the hub's dirt yard
+local FLOOR_Y = 0 -- top of the ground (Terrain)
 
 local function fieldLength(): number
 	return Config.GRID.rows * Config.GRID.tile
@@ -176,8 +177,11 @@ end
 local function hub(world: Instance, info)
 	local m = PropKit.folder("Hub", world)
 	-- ground: soft grass with a dirt yard around the cabin and the machines
-	PropKit.brick(m, Vector3.new(100, 2, 100), CFrame.new(0, -1, HUB_START + 50), PropKit.GRASS_GREEN, "HubGround", Enum.Material.Grass)
-	PropKit.brick(m, Vector3.new(96, FLOOR_Y, 60), CFrame.new(0, FLOOR_Y / 2, -48), Color3.fromRGB(166, 124, 82), "Yard", Enum.Material.Ground)
+	-- grass with a dirt yard around the cabin and the machines, and a worn path out to the first field
+	Ground.fill(0, HUB_START + 50, 100, 100, Enum.Material.Grass)
+	Ground.patch(0, -48, 92, 56, Enum.Material.Ground, 3)
+	Ground.path(Vector3.new(0, 0, -30), Vector3.new(0, 0, 26), 10, Enum.Material.Ground, 4)
+	Ground.patch(-8, -36, 16, 16, Enum.Material.Mud, 6) -- trodden mud at the sell pad
 	Environment.spawn(m, CFrame.lookAt(Vector3.new(0, 0.8, -68), Vector3.new(0, 0.8, 0)))
 	toolShop(m, info)
 	-- fences along the hub's sides
@@ -229,23 +233,19 @@ local ZONE_TREES = {
 	Color3.fromRGB(28, 92, 34),
 }
 
--- Meadow colours under each zone's grass (wheat and swamp zones use their own ground from Config).
-local ZONE_GROUND = {
-	lawn = Color3.fromRGB(92, 168, 56),
-	golf = Color3.fromRGB(104, 186, 66),
-	jungle = Color3.fromRGB(60, 132, 46),
-}
 
 local function zone(world: Instance, z: number, info)
 	local def = Config.ZONES[z]
 	local m = PropKit.folder("Zone" .. z, world)
 	local zs = Config.zoneStartZ(z)
 	local groundLen = Config.ZONE_SPACING
-	-- ground runs from just before the gate to the next zone's gate
-	local groundMat = ({ lawn = Enum.Material.Grass, golf = Enum.Material.Grass, wheat = Enum.Material.Ground, reeds = Enum.Material.Mud, jungle = Enum.Material.Grass })[def.style] or Enum.Material.Grass
-	-- one lush meadow under the whole zone (like the trailer's forest floor); the clumps stand right on it
-	local groundColor = ZONE_GROUND[def.style] or def.ground
-	PropKit.brick(m, Vector3.new(HALF_WIDTH * 2, 2, groundLen), CFrame.new(0, -1, zs - 10 + groundLen / 2), groundColor, "ZoneGround", groundMat)
+	-- the zone's ground (Terrain, from just before its gate to the next one): a lush meadow, golden-soil wheat
+	-- field, muddy swamp or leafy jungle floor under the clumps
+	local terrainMat = ({ lawn = Enum.Material.Grass, golf = Enum.Material.Grass, wheat = Enum.Material.Ground, reeds = Enum.Material.Mud, jungle = Enum.Material.LeafyGrass })[def.style] or Enum.Material.Grass
+	Ground.fill(0, zs - 10 + groundLen / 2, HALF_WIDTH * 2 + 220, groundLen, Enum.Material.Grass)
+	if terrainMat ~= Enum.Material.Grass then
+		Ground.patch(0, zs + Config.GRID.rows * Config.GRID.tile / 2, HALF_WIDTH * 2 - 4, Config.GRID.rows * Config.GRID.tile + 10, terrainMat, z)
+	end
 
 	-- zone sign (a plank board on two posts, turned toward the road)
 	local signAt = CFrame.new(-36, 0, zs - 6) * CFrame.Angles(0, math.rad(-150), 0)
@@ -298,14 +298,17 @@ local function zone(world: Instance, z: number, info)
 	local leaf = ZONE_TREES[z]
 	PropKit.forest(m, fieldHalf + 10, 130, zs - 6, zs + Config.ZONE_SPACING - 14, { seed = z * 101, leaf = leaf, scale = scale, detailDist = 62 })
 	PropKit.forest(m, -130, -(fieldHalf + 10), zs - 6, zs + Config.ZONE_SPACING - 14, { seed = z * 211, leaf = leaf, scale = scale, detailDist = 62 })
-	PropKit.brick(m, Vector3.new(110, 2, groundLen), CFrame.new(-HALF_WIDTH - 55, -1.05, zs - 10 + groundLen / 2), groundColor, "OuterGround", groundMat)
-	PropKit.brick(m, Vector3.new(110, 2, groundLen), CFrame.new(HALF_WIDTH + 55, -1.05, zs - 10 + groundLen / 2), groundColor, "OuterGround", groundMat)
+	-- rolling hills beyond the side forests
+	local hillRng = Random.new(z * 17)
+	for side = -1, 1, 2 do
+		Ground.hill(side * hillRng:NextNumber(175, 210), zs + hillRng:NextNumber(10, 100), hillRng:NextNumber(50, 75), hillRng:NextNumber(14, 26))
+	end
 
 	-- small theme props
 	if z == 2 then
 		local flag = PropKit.brick(m, Vector3.new(0.5, 9, 0.5), CFrame.new(46, 4.5, zs + 30), Color3.fromRGB(255, 255, 255), "FlagPole")
 		PropKit.brick(m, Vector3.new(0.2, 2.4, 3.4), CFrame.new(46, 7.8, zs + 31.7), Color3.fromRGB(255, 70, 70), "Flag")
-		PropKit.brick(m, Vector3.new(5, 0.3, 14), CFrame.new(46.5, 0.15, zs + 55), Color3.fromRGB(240, 220, 160), "SandTrap")
+		Ground.patch(46.5, zs + 55, 6, 16, Enum.Material.Sand, 9) -- a sand trap
 		flag.Name = "FlagPole"
 	elseif z == 3 then
 		for i = 0, 3 do
@@ -313,9 +316,7 @@ local function zone(world: Instance, z: number, info)
 		end
 	elseif z == 4 then
 		for side = -1, 1, 2 do
-			local pool = PropKit.brick(m, Vector3.new(6, 0.3, 70), CFrame.new(side * 46, 0.15, zs + 48), Color3.fromRGB(60, 160, 200), "SwampWater")
-			pool.Material = Enum.Material.Glass
-			pool.Transparency = 0.25
+			Ground.water(side * 46.5, zs + 48, 6, 72, 3) -- real water channels along the swamp's edges
 		end
 	elseif z == 5 then
 		for _, x in { -47, 47 } do
@@ -352,9 +353,13 @@ function RunBuilder.build()
 	PropKit.forest(world, -130, 130, HUB_START - 70, HUB_START - 10, { seed = 7, detailDist = 70 })
 	PropKit.forest(world, 52, 130, HUB_START, 18, { seed = 8, detailDist = 62 })
 	PropKit.forest(world, -130, -52, HUB_START, 18, { seed = 9, detailDist = 62 })
-	PropKit.brick(world, Vector3.new(300, 2, 120), CFrame.new(0, -1.05, HUB_START - 40), PropKit.GRASS_GREEN, "OuterGrass", Enum.Material.Grass)
-	PropKit.brick(world, Vector3.new(110, 2, 100), CFrame.new(-105, -1.05, HUB_START + 50), PropKit.GRASS_GREEN, "OuterGrass", Enum.Material.Grass)
-	PropKit.brick(world, Vector3.new(110, 2, 100), CFrame.new(105, -1.05, HUB_START + 50), PropKit.GRASS_GREEN, "OuterGrass", Enum.Material.Grass)
+	-- grass all around the hub too, with hills behind it
+	Ground.fill(0, HUB_START - 40, 320, 130, Enum.Material.Grass)
+	Ground.fill(-110, HUB_START + 50, 120, 100, Enum.Material.Grass)
+	Ground.fill(110, HUB_START + 50, 120, 100, Enum.Material.Grass)
+	for i = -2, 2 do
+		Ground.hill(i * 70, HUB_START - 150, 70, 20 + (i % 2) * 8)
+	end
 	return info
 end
 

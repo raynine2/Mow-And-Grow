@@ -60,9 +60,9 @@ def make_material(name, kind, fixed=None):
     if fixed is not None:
         rgb = n.new("ShaderNodeRGB"); rgb.outputs[0].default_value = tuple(fixed) + (1,)
         col = rgb.outputs[0]
-    if kind in ("Grass", "Ground", "Mud", "Pebble", "Sand", "Slate", "Fabric", "Snow"):
+    if kind in ("Grass", "LeafyGrass", "Ground", "Mud", "Pebble", "Sand", "Slate", "Fabric", "Snow"):
         noise = n.new("ShaderNodeTexNoise")
-        noise.inputs["Scale"].default_value = {"Grass": 18, "Pebble": 30, "Fabric": 40}.get(kind, 12)
+        noise.inputs["Scale"].default_value = {"Grass": 18, "LeafyGrass": 14, "Pebble": 30, "Fabric": 40}.get(kind, 12)
         noise.inputs["Detail"].default_value = 8
         ramp = n.new("ShaderNodeMath"); ramp.operation = "MULTIPLY_ADD"
         ramp.inputs[1].default_value = {"Grass": 0.55, "Pebble": 0.5}.get(kind, 0.35)

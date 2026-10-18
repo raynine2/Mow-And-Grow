@@ -5,6 +5,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local Look = require(ReplicatedStorage.MowALawn.Look)
 
+local Ground = require(script.Parent.Ground)
+
 local Environment = {}
 
 local function ensure(parent: Instance, className: string, name: string): Instance
@@ -66,6 +68,7 @@ end
 
 function Environment.apply()
 	lighting()
+	Ground.reset() -- the ground is Terrain; builders fill it after this
 
 	-- The default Baseplate place has a grey baseplate and spawn; our maps replace them at runtime only
 	-- (the place file keeps them).

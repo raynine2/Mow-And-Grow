@@ -187,6 +187,46 @@ end
 local workspace = service("Workspace")
 workspace.Name = "Workspace"
 
+-- Terrain stand-in: every fill becomes a part (later fills sit a hair higher so they show on top, the way a
+-- fill replaces the material underneath), so the preview shows the ground.
+local terrainColors = {}
+local fills = 0
+local terrainFolder = newInstance("Folder")
+terrainFolder.Name = "TerrainPreview"
+terrainFolder.Parent = workspace
+local function terrainPart(shape, size, cf, material)
+	fills += 1
+	local p = newInstance("Part")
+	p.Name = "Terrain"
+	p.Shape = roblox.Enum.PartType[shape]
+	p.Size = size
+	p.CFrame = cf + roblox.Vector3.new(0, fills * 0.003, 0)
+	p.Material = if material.Name == "Water" then roblox.Enum.Material.Glass else material
+	p.Color = terrainColors[material.Name] or roblox.Color3.fromRGB(100, 170, 60)
+	if material.Name == "Water" then
+		p.Color = roblox.Color3.fromRGB(46, 120, 110)
+		p.Transparency = 0.25
+	end
+	p.Parent = terrainFolder
+end
+local terrain = newInstance("Terrain")
+terrain.Name = "Terrain"
+rawset(terrain, "_terrain", true)
+terrain.Parent = workspace
+methods.Clear = function() end
+methods.SetMaterialColor = function(_, material, color)
+	terrainColors[material.Name] = color
+end
+methods.FillBlock = function(_, cf, size, material)
+	terrainPart("Block", size, cf, material)
+end
+methods.FillCylinder = function(_, cf, height, radius, material)
+	terrainPart("Cylinder", roblox.Vector3.new(height, radius * 2, radius * 2), cf * roblox.CFrame.Angles(0, 0, math.rad(90)), material)
+end
+methods.FillBall = function(_, center, radius, material)
+	terrainPart("Ball", roblox.Vector3.new(radius * 2, radius * 2, radius * 2), roblox.CFrame.new(center), material)
+end
+
 local sources: { [any]: string } = {}
 local function moduleFolder(parent, name, dir)
 	local folder = newInstance("Folder")

@@ -7,19 +7,33 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 local Environment = require(script.Parent.Environment)
+local Ground = require(script.Parent.Ground)
 
 local LobbyBuilder = {}
 
-local DIRT = Color3.fromRGB(166, 124, 82)
 local CREAM = Color3.fromRGB(255, 240, 200)
 local GOLD = Color3.fromRGB(255, 214, 60)
 local CYAN = Color3.fromRGB(40, 230, 255)
-local FLOOR_Y = 0.3 -- top of the dirt
+local FLOOR_Y = 0 -- top of the ground (Terrain)
 local EDGE = 66 -- the fence around the clearing
 
 local function ground(world: Instance)
-	PropKit.brick(world, Vector3.new(420, 2, 420), CFrame.new(0, -1, 0), PropKit.GRASS_GREEN, "Grass", Enum.Material.Grass)
-	PropKit.brick(world, Vector3.new(EDGE * 2 + 4, FLOOR_Y, EDGE * 2 + 4), CFrame.new(0, FLOOR_Y / 2, 0), DIRT, "Dirt", Enum.Material.Ground)
+	-- grassy terrain with animated blades, a dirt clearing with a ragged edge, worn paths to the buildings
+	Ground.fill(0, 0, 440, 440, Enum.Material.Grass)
+	Ground.patch(0, 0, EDGE * 2 - 6, EDGE * 2 - 6, Enum.Material.Ground, 5)
+	for _, x in { -18, 0, 18 } do
+		Ground.patch(x, 30, 16, 26, Enum.Material.Mud, 30 + x) -- trodden mud in front of the party booths
+	end
+	-- a few grassy islands left in the dirt, like the reference clearing
+	local rng = Random.new(8)
+	for i, spot in { { -24, -56 }, { 26, -54 }, { -54, -58 }, { 56, -46 }, { -20, 54 } } do
+		Ground.patch(spot[1], spot[2], rng:NextNumber(7, 11), rng:NextNumber(6, 10), Enum.Material.Grass, i * 13)
+	end
+	-- rolling hills between the forest and the mountains
+	for i = 0, 11 do
+		local t = i / 12 * math.pi * 2 + 0.2
+		Ground.hill(math.cos(t) * 245, math.sin(t) * 245, rng:NextNumber(45, 70), rng:NextNumber(12, 24))
+	end
 	-- keep players in
 	for _, side in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
 		local pos = Vector3.new(side[1] * 100, 20, side[2] * 100)

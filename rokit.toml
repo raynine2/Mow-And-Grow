@@ -1,0 +1,5 @@
+# Tools managed by Rokit (https://github.com/rojo-rbx/rokit). Run `rokit install` once to get them.
+
+[tools]
+rojo = "rojo-rbx/rojo@7.7.1"
+lune = "lune-org/lune@0.8.9"

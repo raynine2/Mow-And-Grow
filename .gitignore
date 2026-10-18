@@ -1,0 +1,7 @@
+# Build output
+*.rbxlx.lock
+*.rbxl.lock
+build/
+# Obsidian app state (notes themselves are tracked)
+vault/.obsidian/workspace*.json
+vault/.obsidian/cache

@@ -1,0 +1,9 @@
+# Keep line endings the same on every computer, so Windows never shows "changes" that are only line endings
+# (those phantom changes are what made git refuse to pull and ask for a stash).
+* text=auto eol=lf
+*.rbxl binary
+*.rbxlx text eol=lf
+*.rbxm binary
+*.png binary
+*.jpg binary
+*.webp binary

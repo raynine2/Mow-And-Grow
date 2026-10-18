@@ -1,9 +1,11 @@
-"""Golden Zero-Turn (ride-on mower): a sleek, shiny gold zero-turn. Low frame, big rear drive tyres under gold
-fenders, little front caster wheels on swivel forks, a very wide gold deck with black hazard stripes and side chute,
-a high-back black seat between gold side pods, two lap-bar steering levers, a black engine with a gold cover and twin
-chrome exhausts at the back, headlights in the front footplate.
+"""Golden Zero-Turn (ride-on mower): a low, shiny gold zero-turn. Big lugged rear drive tyres under gold fenders,
+little front caster wheels on chrome swivel forks, an open diamond-plate footboard with a gold nose and two
+headlights, a high-back black seat between gold side pods with two chrome lap-bar steering levers (no steering wheel),
+a black engine with a gold cover and twin chrome exhausts at the back, and a very wide gold deck out front with black
+hazard stripes, a side chute and anti-scalp rollers.
 
-Front +Y, wheels on z = 0; the seat cushion top is flat at z = 3 around (0, -1). About 6.4 wide x 8.6 long x 5 tall."""
+Front +Y, wheels on z = 0; the seat cushion top is flat at z = 3 around (0, -1). About 6.6 wide (7 with the chute) x
+9.3 long x 5 tall."""
 import math
 import bmesh
 from mathutils import Matrix, Vector
@@ -33,7 +35,7 @@ def wheel(lib, name, loc, r, w, tyre, hub, verts=14, hub_scale=0.55, lugs=0):
     x, y, z = loc
     s = 1 if x >= 0 else -1
     lib.cyl(name, r, w, loc, rot=(0, 90, 0), mat=tyre, verts=verts, bevel=min(0.12, r * 0.12))
-    lib.cyl(name + "_hub", r * hub_scale, w + 0.1, loc, rot=(0, 90, 0), mat=hub, verts=10, bevel=0.05)
+    lib.cyl(name + "_hub", r * hub_scale, w + 0.1, loc, rot=(0, 90, 0), mat=hub, verts=10)
     lib.cyl(name + "_cap", r * 0.2, w + 0.3, loc, rot=(0, 90, 0), mat=tyre, verts=6)
     for k in range(lugs):
         a = 360.0 * k / lugs
@@ -113,62 +115,72 @@ def fender(lib, name, x, cy, cz, r, width, mat, arc=(5, 50, 100, 150, 178)):
 
 
 # ---- model ------------------------------------------------------------------------------------------------------
-
-
-# ---- model ------------------------------------------------------------------------------------------------------
 def build(lib):
-    gold = lib.material("Metal", (246, 192, 52))
+    gold = lib.material("Metal", (255, 200, 40))   # Config colour of the Golden Zero-Turn
     black = lib.material("SmoothPlastic", (30, 30, 36))
     tyre = lib.material("Plastic", (40, 40, 44))
     chrome = lib.material("Metal", (212, 216, 224))
     plate = lib.material("DiamondPlate", (96, 98, 106))
     lamp = lib.material("Neon", (255, 248, 220))
 
-    # drive wheels at the back, caster wheels on swivel forks at the front
+    # big drive wheels at the back under gold fenders, small caster wheels on swivel forks at the front
     for x in (-1, 1):
-        wheel(lib, "rear%d" % (x > 0), (x * 2.35, -2.4, 1.45), 1.45, 1.2, tyre, gold, verts=16, lugs=10)
-        fender(lib, "fender%d" % (x > 0), x * 2.35, -2.4, 1.45, 1.7, 1.35, gold, arc=(0, 45, 90, 135, 175))
-        lib.cyl("caster%d" % (x > 0), 0.6, 0.55, (x * 2.05, 3.15, 0.6), rot=(0, 90, 0), mat=tyre, verts=12, bevel=0.07)
-        lib.cyl("caster_hub%d" % (x > 0), 0.3, 0.62, (x * 2.05, 3.15, 0.6), rot=(0, 90, 0), mat=chrome, verts=8)
-        for s in (-1, 1):
-            lib.box("fork%d%d" % (x > 0, s > 0), (0.12, 0.35, 0.9), (x * 2.05 + s * 0.36, 3.0, 0.95), rot=(-15, 0, 0), mat=chrome)
-        lib.box("fork_top%d" % (x > 0), (0.9, 0.4, 0.18), (x * 2.05, 2.85, 1.42), mat=chrome, bevel=0.04)
-        lib.cyl("swivel%d" % (x > 0), 0.16, 0.5, (x * 2.05, 2.85, 1.65), mat=chrome, verts=8)
-        # side frame rail from the casters back to the drive wheels
-        beam(lib, "rail%d" % (x > 0), (x * 1.8, 2.9, 1.8), (x * 1.55, -1.2, 1.6), (0.4, 0.5), black, bevel=0.08)
-        beam(lib, "rail_front%d" % (x > 0), (x * 1.8, 2.9, 1.8), (x * 2.05, 2.85, 1.72), (0.4, 0.4), black, bevel=0.06)
+        s = x > 0
+        wheel(lib, "rear%d" % s, (x * 2.35, -2.3, 1.5), 1.5, 1.25, tyre, gold, verts=16, lugs=8)
+        fender(lib, "fender%d" % s, x * 2.35, -2.3, 1.5, 1.75, 1.4, gold, arc=(8, 50, 95, 140, 178))
+        cx, cy = x * 2.0, 1.85
+        lib.cyl("caster%d" % s, 0.58, 0.55, (cx, cy, 0.58), rot=(0, 90, 0), mat=tyre, verts=12, bevel=0.07)
+        lib.cyl("caster_hub%d" % s, 0.3, 0.62, (cx, cy, 0.58), rot=(0, 90, 0), mat=chrome, verts=8)
+        for k in (-1, 1):
+            lib.box("fork%d%d" % (s, k > 0), (0.12, 0.35, 0.95), (cx + k * 0.36, cy - 0.12, 0.92), rot=(-14, 0, 0), mat=chrome)
+        lib.box("fork_top%d" % s, (0.9, 0.42, 0.18), (cx, cy - 0.25, 1.42), mat=chrome)
+        lib.cyl("swivel%d" % s, 0.2, 0.35, (cx, cy - 0.25, 1.62), mat=black, verts=8)
+        # frame rails: drive axle forward to the caster mounts
+        beam(lib, "rail%d" % s, (x * 1.45, -2.2, 1.55), (x * 1.6, 1.6, 1.6), (0.4, 0.5), black, bevel=0.08)
+        beam(lib, "rail_out%d" % s, (x * 1.6, 1.6, 1.6), (cx, cy - 0.25, 1.62), (0.42, 0.42), black, bevel=0.07)
+    lib.box("front_bar", (4.3, 0.45, 0.45), (0, 1.6, 1.62), mat=black, bevel=0.08)
+    lib.box("axle", (3.4, 0.45, 0.45), (0, -2.3, 1.5), mat=black)
 
-    # wide deck slung between the wheels
-    lib.box("deck", (6.2, 2.5, 0.6), (0, 0.65, 0.65), mat=gold, bevel=0.2, taper=(0.94, 0.88))
-    lib.box("deck_top", (4.2, 1.7, 0.3), (0, 0.6, 1.05), mat=gold, bevel=0.12, taper=(0.9, 0.85))
-    lib.box("deck_rim", (6.4, 2.7, 0.2), (0, 0.65, 0.32), mat=black, bevel=0.06)
-    hazard(lib, "deck_stripe", (2.9, 2.02, 0.42), (-1, 0, 0), (0, 0, 1), 5.8, 0.32, 0.04, (black, gold))
-    lib.box("chute", (0.9, 1.2, 0.5), (3.4, 0.4, 0.62), rot=(0, -12, -10), mat=black, bevel=0.1, taper=(0.75, 0.8))
+    # low diamond-plate footboard between the rails, gold nose with headlights
+    lib.box("footboard", (2.9, 1.9, 0.2), (0, 0.55, 1.62), rot=(8, 0, 0), mat=plate, bevel=0.04)
+    lib.box("nose", (3.5, 0.6, 0.75), (0, 1.95, 1.85), mat=gold, bevel=0.18, taper=(0.92, 0.85))
+    lib.box("nose_stripe", (0.6, 0.62, 0.08), (0, 1.95, 2.22), mat=black, bevel=0.02)
     for x in (-1, 1):
-        lib.cyl("spindle%d" % (x > 0), 0.3, 0.2, (x * 1.6, 0.6, 1.25), mat=chrome, verts=8)
+        lib.box("lamp_box%d" % (x > 0), (0.7, 0.2, 0.4), (x * 1.0, 2.24, 1.85), mat=black, bevel=0.05)
+        lib.box("lamp%d" % (x > 0), (0.52, 0.1, 0.26), (x * 1.0, 2.32, 1.85), mat=lamp)
 
-    # front footplate with headlights, centre tunnel to the seat
-    lib.box("footplate", (2.9, 1.5, 0.25), (0, 2.25, 1.75), rot=(14, 0, 0), mat=plate, bevel=0.05)
-    lib.box("nose", (3.3, 0.55, 0.7), (0, 3.15, 1.75), mat=gold, bevel=0.16, taper=(0.92, 0.8))
+    # wide deck out front on two push arms, hazard stripes along the nose, side chute, anti-scalp rollers
     for x in (-1, 1):
-        lib.box("lamp%d" % (x > 0), (0.55, 0.1, 0.28), (x * 0.95, 3.44, 1.78), mat=lamp, bevel=0.03)
-    lib.box("tunnel", (1.6, 2.4, 0.7), (0, 0.35, 1.75), mat=black, bevel=0.12)
+        beam(lib, "deck_arm%d" % (x > 0), (x * 1.2, 1.7, 1.35), (x * 1.5, 2.9, 0.95), (0.28, 0.28), black, bevel=0.05)
+    lib.box("deck", (6.2, 2.2, 0.6), (0, 3.65, 0.62), mat=gold, bevel=0.2, taper=(0.95, 0.88))
+    lib.box("deck_dome", (4.0, 1.4, 0.32), (0, 3.6, 1.05), mat=gold, bevel=0.13, taper=(0.85, 0.8))
+    lib.box("deck_rim", (6.4, 2.4, 0.18), (0, 3.65, 0.3), mat=black, bevel=0.05)
+    hazard(lib, "deck_stripe", (2.85, 4.79, 0.42), (-1, 0, 0), (0, 0, 1), 5.7, 0.3, 0.04, (black, gold))
+    for x in (-1.3, 0, 1.3):
+        lib.cyl("spindle%d" % int(x * 10), 0.28, 0.2, (x, 3.6, 1.28), mat=chrome, verts=8)
+    lib.box("chute", (0.9, 1.2, 0.5), (3.25, 3.5, 0.62), rot=(0, -12, -10), mat=black, bevel=0.1, taper=(0.75, 0.8))
+    for x in (-1, 1):
+        lib.cyl("roller%d" % (x > 0), 0.22, 0.3, (x * 2.75, 4.75, 0.24), rot=(0, 90, 0), mat=tyre, verts=8)
 
-    # seat between two gold side pods (fuel tanks), lap bars in front of the hands
-    lib.box("seat_base", (3.0, 2.4, 0.9), (0, -1.15, 2.0), mat=gold, bevel=0.22, taper=(0.95, 0.95))
+    # seat on a gold body between gold side pods, lap-bar steering levers
+    lib.box("seat_base", (3.0, 2.6, 1.0), (0, -1.2, 2.05), mat=gold, bevel=0.22, taper=(0.95, 0.95))
+    lib.box("seat_trim", (3.06, 2.66, 0.12), (0, -1.2, 1.62), mat=black, bevel=0.04)
     seat(lib, black, black, black, y=-1.0, top=3.0, width=2.0, depth=1.8)
-    lib.box("headrest", (1.4, 0.36, 0.55), (0, -2.35, 4.95), rot=(-10, 0, 0), mat=black, bevel=0.14)
+    beam(lib, "headrest", (0, -2.18, 4.4), (0, -2.28, 5.0), (1.3, 0.4), black, bevel=0.14)
     for x in (-1, 1):
-        lib.box("pod%d" % (x > 0), (0.85, 2.0, 0.9), (x * 1.55, -0.9, 2.75), mat=gold, bevel=0.22, taper=(0.85, 0.9))
-        lib.cyl("pod_cap%d" % (x > 0), 0.2, 0.15, (x * 1.55, -0.6, 3.25), mat=chrome, verts=8)
-        beam(lib, "lever%d" % (x > 0), (x * 1.5, -0.25, 3.0), (x * 1.5, 0.35, 4.05), (0.18, 0.18), chrome, bevel=0.03)
-        beam(lib, "lever_bend%d" % (x > 0), (x * 1.5, 0.35, 4.05), (x * 0.95, 0.5, 4.1), (0.18, 0.18), chrome, bevel=0.03)
-        beam(lib, "lever_grip%d" % (x > 0), (x * 0.95, 0.5, 4.1), (x * 0.25, 0.5, 4.1), (0.3, 0.3), black, bevel=0.08)
+        s = x > 0
+        lib.box("pod%d" % s, (0.85, 2.1, 0.95), (x * 1.6, -0.95, 2.8), mat=gold, bevel=0.22, taper=(0.85, 0.9))
+        lib.box("pod_stripe%d" % s, (0.87, 0.3, 0.97), (x * 1.6, -0.3, 2.8), mat=black, bevel=0.05, taper=(0.85, 0.9))
+        lib.cyl("pod_cap%d" % s, 0.2, 0.15, (x * 1.6, -1.4, 3.32), mat=chrome, verts=8)
+        beam(lib, "lever%d" % s, (x * 1.55, -0.1, 3.05), (x * 1.55, 0.45, 4.05), (0.18, 0.18), chrome, bevel=0)
+        beam(lib, "lever_bend%d" % s, (x * 1.55, 0.45, 4.05), (x * 1.0, 0.6, 4.1), (0.18, 0.18), chrome, bevel=0)
+        beam(lib, "lever_grip%d" % s, (x * 1.0, 0.6, 4.1), (x * 0.3, 0.6, 4.1), (0.3, 0.3), black, bevel=0.08)
 
-    # engine behind the seat, gold cover, twin chrome exhausts
-    lib.box("engine", (2.4, 1.5, 1.4), (0, -3.0, 2.35), mat=black, bevel=0.16)
-    lib.box("engine_cover", (2.2, 1.3, 0.4), (0, -3.05, 3.2), mat=gold, bevel=0.14, taper=(0.85, 0.8))
-    lib.cyl("air_filter", 0.42, 0.35, (0, -3.05, 3.55), mat=black, verts=10, bevel=0.06)
+    # engine behind the seat with a gold cover, air filter, twin chrome exhausts, rear bumper
+    lib.box("engine", (2.5, 1.5, 1.4), (0, -3.05, 2.35), mat=black, bevel=0.16)
+    lib.box("engine_cover", (2.3, 1.35, 0.42), (0, -3.1, 3.2), mat=gold, bevel=0.14, taper=(0.85, 0.8))
+    lib.cyl("air_filter", 0.42, 0.35, (0, -3.1, 3.55), mat=black, verts=10)
     for x in (-1, 1):
-        lib.cyl("exhaust%d" % (x > 0), 0.17, 0.9, (x * 0.6, -3.85, 2.0), rot=(90, 0, 0), mat=chrome, verts=8, bevel=0.03)
-    lib.box("bumper", (3.0, 0.3, 0.4), (0, -3.9, 1.45), mat=black, bevel=0.08)
+        lib.cyl("exhaust%d" % (x > 0), 0.17, 0.9, (x * 0.65, -3.9, 2.05), rot=(90, 0, 0), mat=chrome, verts=8)
+    lib.box("bumper", (3.2, 0.3, 0.4), (0, -3.95, 1.45), mat=black, bevel=0.08)
+    hazard(lib, "bumper_stripe", (-1.5, -4.1, 1.3), (1, 0, 0), (0, 0, 1), 3.0, 0.3, 0.04, (gold, black), width=0.4)

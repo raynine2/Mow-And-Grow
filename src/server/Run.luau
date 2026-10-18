@@ -360,8 +360,12 @@ local function setupPlayer(player: Player, data)
 	if data.run.zone < zone then
 		data.run.zone = zone
 	end
-	-- runs are played in first person, like the Chop A Forest trailer (the client draws the hands + tool)
-	player.CameraMode = Enum.CameraMode.LockFirstPerson
+	-- runs start in first person like the Chop A Forest trailer, but aren't locked there: the client
+	-- (CameraView) lets you press V or scroll out to free the mouse, and Shift toggles shift lock
+	player.CameraMode = Enum.CameraMode.Classic
+	player.DevEnableMouseLock = true
+	player.CameraMinZoomDistance = 0.5
+	player.CameraMaxZoomDistance = 30
 	PlayerData.changed(player)
 	local function onCharacter(char: Model)
 		char:WaitForChild("HumanoidRootPart", 10)

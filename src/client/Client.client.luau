@@ -11,5 +11,6 @@ require(modules:WaitForChild("Fx"))
 require(modules:WaitForChild("Input"))
 require(modules:WaitForChild("Guide"))
 require(modules:WaitForChild("Ambient"))
+require(modules:WaitForChild("CameraView"))
 
 State.fire("Ready")

@@ -61,7 +61,9 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- Zones: one road, cleared in order. Clear every patch to wake the boss; beat the boss to open the next zone.
 -------------------------------------------------------------------------------------------------------------
-Config.GRID = { cols = 10, rows = 12, tile = 6 } -- patches per zone = cols * rows
+-- patches per zone = cols * rows. Each patch has a `tile`-sized cell but is nudged inside it, so a zone reads as
+-- a meadow of scattered clumps (like the trailer's forest of trees), not a grid.
+Config.GRID = { cols = 10, rows = 12, tile = 8, jitter = 0.36 }
 Config.ZONE_SPACING = 120 -- studs from one zone's start to the next
 Config.FIRST_ZONE_Z = 30
 Config.BASE_CARRY = 5

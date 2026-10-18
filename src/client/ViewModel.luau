@@ -128,6 +128,32 @@ local function modelFor(id: string?): Model?
 	return heldModel
 end
 
+-- Blender gardening-glove hands (hand_right / hand_left), when uploaded, replace the brick arms. Their origin is
+-- the grip in the fist, the same spot as the brick glove's centre. The server loads models after the client
+-- starts, so keep looking until they're there.
+local function handModel(name: string): Model?
+	local folder = ReplicatedStorage:FindFirstChild("MowALawnModels")
+	local template = folder and folder:FindFirstChild(name)
+	if not (template and template:IsA("Model")) then
+		return nil
+	end
+	local m = template:Clone()
+	for _, p in m:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.Anchored = true
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+			p.CastShadow = false
+		end
+	end
+	m.Parent = root
+	return m
+end
+local handR: Model? = nil
+local handL: Model? = nil
+local lastHandLook = 0
+
 -- where the hands rest, relative to the camera
 local REST_R = CFrame.new(1.55, -1.45, -2.4) * CFrame.Angles(math.rad(8), math.rad(8), 0)
 local REST_L = CFrame.new(-1.6, -1.6, -2.6) * CFrame.Angles(math.rad(5), math.rad(-8), 0)
@@ -172,6 +198,22 @@ local function place(pieces: { Piece }, base: CFrame)
 	end
 end
 
+local function placeHand(model: Model?, pieces: { Piece }, cf: CFrame)
+	if not model then
+		place(pieces, cf)
+		return
+	end
+	for _, pc in pieces do
+		pc.part.Transparency = 1
+	end
+	model:PivotTo(cf)
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.Transparency = 0
+		end
+	end
+end
+
 -- swing curve: wind up, chop down and across, recover
 local function swingOffset(t: number): CFrame
 	if t < 0.25 then
@@ -193,6 +235,14 @@ RunService.RenderStepped:Connect(function()
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not cam or not hum or hum.Health <= 0 or hum.SeatPart or not inFirstPerson() then
 		hideAll()
+		-- third person: show the real tool in the character's hand again
+		if char then
+			for _, d in char:GetDescendants() do
+				if d:IsA("BasePart") and d.LocalTransparencyModifier ~= 0 and d:FindFirstAncestorOfClass("Tool") then
+					d.LocalTransparencyModifier = 0
+				end
+			end
+		end
 		return
 	end
 	if root.Parent ~= cam then
@@ -225,8 +275,13 @@ RunService.RenderStepped:Connect(function()
 		-- bare hands punch with the right; the left stays up like a boxer
 		leftCf = base * REST_L
 	end
-	place(rightArm, rightCf)
-	place(leftArm, leftCf)
+	if os.clock() - lastHandLook > 1 and not (handR and handL) then
+		lastHandLook = os.clock()
+		handR = handR or handModel("hand_right")
+		handL = handL or handModel("hand_left")
+	end
+	placeHand(handR, rightArm, rightCf)
+	placeHand(handL, leftArm, leftCf)
 
 	local held = modelFor(id)
 	if held then

@@ -357,6 +357,13 @@ local function inWorkspace(i)
 	return false
 end
 local models = 0
+local byName = {}
+for _, m in placedModels do local n = rawget(m, "_glb").name byName[n] = (byName[n] or 0) + 1 end
+if process.env.DEBUG_MODELS then
+	for k, v in byName do
+		print(k, v)
+	end
+end
 for _, m in placedModels do
 	if inWorkspace(m) then
 		local g = rawget(m, "_glb")

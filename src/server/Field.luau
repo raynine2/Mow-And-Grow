@@ -1,7 +1,8 @@
 -- Grass patches: spawning, cutting, hidden mutations, zone clear.
--- A patch is a studded turf brick with a few grass stalks on top (lawn tufts, golf grass, wheat with heads,
--- reeds with cattails, jungle bushes). Stalks shrink as the patch takes damage; at 0 HP the patch becomes
--- short stubble and gives a bundle.
+-- A patch is a big clump of grass standing on the meadow (the Blender tuft_<style> model, or brick blades until
+-- it's uploaded), scattered like the trees in the Chop A Forest trailer. It shrinks as it takes damage; at 0 HP
+-- it becomes short stubble (tuft_<style>_cut, like a stump) and gives a bundle. An invisible "Spot" part marks
+-- each patch for effects and the mutation glow.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local Net = require(script.Parent.Net)
@@ -13,7 +14,8 @@ local Field = {}
 
 type Stalk = { stem: Part, head: Part?, cap: Part?, baseH: number, headH: number, x: number, z: number, yaw: number, lean: number }
 type Patch = {
-	part: Part, -- the turf brick (position used for effects)
+	part: Part, -- invisible spot at the clump's foot (position used for effects)
+	spot: CFrame, -- where the clump stands (on the ground, turned)
 	stalks: { Stalk },
 	model: Model?, -- the Blender tuft, when uploaded (used instead of stalks)
 	modelScale: number,
@@ -34,8 +36,8 @@ Field.unlocked = 1 -- zones above this can't be cut yet (gate closed)
 
 local folder: Folder? = nil
 local rng = Random.new()
-local TURF_H = 0.4
-local TURF_TOP = 0.3 + TURF_H
+local TURF_TOP = 0.02 -- the clumps stand on the zone's ground (top at y = 0)
+local CLUMP_RADIUS = 2.4 -- how far a clump reaches out from its centre (for hit tests)
 
 -- Hooks the run sets up.
 Field.onCut = nil :: ((Player, Patch) -> boolean)? -- return false to refuse (bag full)
@@ -106,8 +108,15 @@ local function stubble(p: Patch)
 		p.model = nil
 	end
 	local turf = p.part
-	turf.Color = PropKit.shade(Config.ZONES[p.z].grass[2], 0.72)
-	turf.Material = Enum.Material.Plastic
+	-- what's left, like a tree stump: the Blender stubble, or a low cut disc
+	local cutName = "tuft_" .. Config.ZONES[p.z].style .. "_cut"
+	if not Models.place(cutName, turf.Parent :: Instance, p.spot, p.modelScale, true) then
+		local disc = PropKit.cylinder(turf.Parent :: Instance, 1.6, 0.4, p.spot * CFrame.new(0, 0.2, 0), PropKit.shade(Config.ZONES[p.z].grass[2], 0.8))
+		disc.Name = "Stubble"
+		disc.CanCollide = false
+		disc.CanQuery = false
+		disc.Material = Enum.Material.Grass
+	end
 	local glow = turf:FindFirstChild("MutationGlow")
 	if glow then
 		glow:Destroy()
@@ -121,17 +130,16 @@ end
 local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: number, alreadyCut: boolean): Patch
 	local def = Config.ZONES[z]
 	local style = STYLES[def.style] or STYLES.lawn
-	local t = Config.GRID.tile
 	local pos = RunBuilder.patchPosition(z, col, row)
 	local colorA = def.grass[1]
 	local colorB = def.grass[2]
 	local model = Instance.new("Model")
 	model.Name = "Patch"
-	-- turf tiles touch, so the field reads as one lawn
-	local turf = brick(model, Vector3.new(t, TURF_H, t), CFrame.new(pos.X, 0.3 + TURF_H / 2, pos.Z), PropKit.shade(colorB, 0.82), "Turf", Enum.Material.Grass)
-	turf.CanQuery = true
+	local turf = brick(model, Vector3.new(3, 1, 3), CFrame.new(pos.X, 0.5, pos.Z), colorB, "Spot")
+	turf.Transparency = 1
 	local p: Patch = {
 		part = turf,
+		spot = CFrame.new(pos.X, TURF_TOP, pos.Z) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0),
 		stalks = {},
 		z = z,
 		col = col,
@@ -146,8 +154,8 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 	}
 	local tuftName = "tuft_" .. def.style
 	if not alreadyCut and Models.has(tuftName) then
-		p.modelScale = rng:NextNumber(0.9, 1.1)
-		p.model = Models.place(tuftName, model, CFrame.new(pos.X, TURF_TOP - 0.05, pos.Z) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0), p.modelScale)
+		p.modelScale = rng:NextNumber(0.88, 1.12)
+		p.model = Models.place(tuftName, model, p.spot, p.modelScale, true)
 	end
 	if not alreadyCut and not p.model then
 		-- a tuft: blades fanned out around the middle of the tile, alternating two greens with lighter tips
@@ -179,7 +187,7 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 			end
 			table.insert(p.stalks, stalk)
 		end
-	else
+	elseif alreadyCut then
 		stubble(p)
 	end
 	model.Parent = zoneFolder
@@ -214,10 +222,11 @@ local function query(pos: Vector3, radius: number): { Patch }
 		local zs = Config.zoneStartZ(z)
 		local zoneEnd = zs + Config.GRID.rows * t
 		if pos.Z + radius >= zs and pos.Z - radius <= zoneEnd and patches[z] then
-			local c0 = math.max(1, math.floor((pos.X - radius + half) / t) + 1)
-			local c1 = math.min(Config.GRID.cols, math.floor((pos.X + radius + half) / t) + 1)
-			local r0 = math.max(1, math.floor((pos.Z - radius - zs) / t) + 1)
-			local r1 = math.min(Config.GRID.rows, math.floor((pos.Z + radius - zs) / t) + 1)
+			-- one extra cell each way: patches are nudged inside their cells
+			local c0 = math.max(1, math.floor((pos.X - radius + half) / t))
+			local c1 = math.min(Config.GRID.cols, math.floor((pos.X + radius + half) / t) + 2)
+			local r0 = math.max(1, math.floor((pos.Z - radius - zs) / t))
+			local r1 = math.min(Config.GRID.rows, math.floor((pos.Z + radius - zs) / t) + 2)
 			for row = r0, r1 do
 				for col = c0, c1 do
 					local p = patches[z][index(col, row)]
@@ -225,7 +234,7 @@ local function query(pos: Vector3, radius: number): { Patch }
 						local pp = RunBuilder.patchPosition(z, col, row)
 						local dx, dz = pp.X - pos.X, pp.Z - pos.Z
 						-- count a patch if any part of it is inside the circle
-						local d = math.sqrt(dx * dx + dz * dz) - t * 0.5
+						local d = math.sqrt(dx * dx + dz * dz) - CLUMP_RADIUS
 						if d <= radius then
 							table.insert(found, { p = p, d = d })
 						end

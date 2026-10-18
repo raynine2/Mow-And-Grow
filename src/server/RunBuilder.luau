@@ -229,18 +229,23 @@ local ZONE_TREES = {
 	Color3.fromRGB(28, 92, 34),
 }
 
+-- Meadow colours under each zone's grass (wheat and swamp zones use their own ground from Config).
+local ZONE_GROUND = {
+	lawn = Color3.fromRGB(92, 168, 56),
+	golf = Color3.fromRGB(104, 186, 66),
+	jungle = Color3.fromRGB(60, 132, 46),
+}
+
 local function zone(world: Instance, z: number, info)
 	local def = Config.ZONES[z]
 	local m = PropKit.folder("Zone" .. z, world)
 	local zs = Config.zoneStartZ(z)
-	local len = fieldLength()
 	local groundLen = Config.ZONE_SPACING
 	-- ground runs from just before the gate to the next zone's gate
 	local groundMat = ({ lawn = Enum.Material.Grass, golf = Enum.Material.Grass, wheat = Enum.Material.Ground, reeds = Enum.Material.Mud, jungle = Enum.Material.Grass })[def.style] or Enum.Material.Grass
-	local groundColor = if groundMat == Enum.Material.Grass then PropKit.shade(def.grass[2], 0.95) else def.ground
+	-- one lush meadow under the whole zone (like the trailer's forest floor); the clumps stand right on it
+	local groundColor = ZONE_GROUND[def.style] or def.ground
 	PropKit.brick(m, Vector3.new(HALF_WIDTH * 2, 2, groundLen), CFrame.new(0, -1, zs - 10 + groundLen / 2), groundColor, "ZoneGround", groundMat)
-	-- a thin soil bed under the grass patches (shows where the field is once it's mown)
-	PropKit.brick(m, Vector3.new(Config.GRID.cols * Config.GRID.tile + 1, 0.3, len + 1), CFrame.new(0, 0.15, zs + len / 2), PropKit.shade(groundColor, 0.8), "Soil", groundMat)
 
 	-- zone sign (a plank board on two posts, turned toward the road)
 	local signAt = CFrame.new(-36, 0, zs - 6) * CFrame.Angles(0, math.rad(-150), 0)
@@ -298,22 +303,22 @@ local function zone(world: Instance, z: number, info)
 
 	-- small theme props
 	if z == 2 then
-		local flag = PropKit.brick(m, Vector3.new(0.5, 9, 0.5), CFrame.new(38, 4.5, zs + 30), Color3.fromRGB(255, 255, 255), "FlagPole")
-		PropKit.brick(m, Vector3.new(0.2, 2.4, 3.4), CFrame.new(38, 7.8, zs + 31.7), Color3.fromRGB(255, 70, 70), "Flag")
-		PropKit.brick(m, Vector3.new(10, 0.4, 14), CFrame.new(38, 0.2, zs + 55), Color3.fromRGB(240, 220, 160), "SandTrap")
+		local flag = PropKit.brick(m, Vector3.new(0.5, 9, 0.5), CFrame.new(46, 4.5, zs + 30), Color3.fromRGB(255, 255, 255), "FlagPole")
+		PropKit.brick(m, Vector3.new(0.2, 2.4, 3.4), CFrame.new(46, 7.8, zs + 31.7), Color3.fromRGB(255, 70, 70), "Flag")
+		PropKit.brick(m, Vector3.new(5, 0.3, 14), CFrame.new(46.5, 0.15, zs + 55), Color3.fromRGB(240, 220, 160), "SandTrap")
 		flag.Name = "FlagPole"
 	elseif z == 3 then
 		for i = 0, 3 do
-			PropKit.brick(m, Vector3.new(5, 4, 4), CFrame.new(-38, 2, zs + 10 + i * 14), Color3.fromRGB(235, 190, 70), "HayBale")
+			PropKit.brick(m, Vector3.new(4, 3.6, 4), CFrame.new(-46.5, 1.8, zs + 10 + i * 22), Color3.fromRGB(235, 190, 70), "HayBale")
 		end
 	elseif z == 4 then
 		for side = -1, 1, 2 do
-			local pool = PropKit.brick(m, Vector3.new(10, 0.6, 50), CFrame.new(side * 38, 0.3, zs + 36), Color3.fromRGB(60, 160, 200), "SwampWater")
+			local pool = PropKit.brick(m, Vector3.new(6, 0.3, 70), CFrame.new(side * 46, 0.15, zs + 48), Color3.fromRGB(60, 160, 200), "SwampWater")
 			pool.Material = Enum.Material.Glass
 			pool.Transparency = 0.25
 		end
 	elseif z == 5 then
-		for _, x in { -44, 44 } do
+		for _, x in { -47, 47 } do
 			PropKit.forestTree(m, Vector3.new(x, 0, zs + 40), 1.9, { leaf = Color3.fromRGB(20, 95, 38) })
 		end
 	end
@@ -354,11 +359,25 @@ function RunBuilder.build()
 end
 
 -- Centre of patch (col, row) of a zone, at ground level.
+-- Each patch sits in its own cell, nudged by a fixed per-patch amount (the same patch always lands on the same
+-- spot, so saved runs and hit tests agree).
+local patchCache: { [number]: Vector3 } = {}
 function RunBuilder.patchPosition(z: number, col: number, row: number): Vector3
+	local key = (z * 1000 + row) * 1000 + col
+	local cached = patchCache[key]
+	if cached then
+		return cached
+	end
 	local t = Config.GRID.tile
-	local x = -Config.GRID.cols * t / 2 + (col - 0.5) * t
-	local zz = Config.zoneStartZ(z) + (row - 0.5) * t
-	return Vector3.new(x, 0.3, zz)
+	local j = (Config.GRID.jitter or 0) * t
+	local rng = Random.new(z * 100003 + row * 1009 + col * 31)
+	-- every other row shifted by a quarter cell, so the rows don't line up
+	local stagger = if row % 2 == 0 then t * 0.25 else -t * 0.25
+	local x = -Config.GRID.cols * t / 2 + (col - 0.5) * t + stagger + rng:NextNumber(-j, j)
+	local zz = Config.zoneStartZ(z) + (row - 0.5) * t + rng:NextNumber(-j, j)
+	local pos = Vector3.new(x, 0, zz)
+	patchCache[key] = pos
+	return pos
 end
 
 function RunBuilder.zoneCentre(z: number): Vector3

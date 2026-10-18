@@ -13,6 +13,7 @@ local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local HitFx = require(script.Parent.HitFx)
+local FxIds = require(ReplicatedStorage.MowALawn:WaitForChild("FxIds")) :: { [string]: string }
 local SellFx = require(script.Parent.SellFx)
 
 local Fx = {}
@@ -433,9 +434,76 @@ handlers.reward = function(d)
 	State.emit("flyCoins", 10)
 end
 
+-- The log gate rumbles and sinks into the ground, dust bursting along its foot (the server hides it after).
+local function sinkGate(z: number)
+	local world = workspace:FindFirstChild("World")
+	local zoneFolder = world and world:FindFirstChild("Zone" .. z)
+	local gate = zoneFolder and zoneFolder:FindFirstChild("Gate" .. z)
+	if not gate then
+		return
+	end
+	local parts = {}
+	local gz = 0
+	for _, p in gate:GetDescendants() do
+		if p:IsA("BasePart") and (p.Transparency < 1 or p:FindFirstChildOfClass("SurfaceGui")) then
+			table.insert(parts, { part = p, cf = p.CFrame })
+			gz = p.Position.Z
+		end
+	end
+	if #parts == 0 then
+		return
+	end
+	local function dust(x: number)
+		local a = Instance.new("Attachment")
+		a.Parent = workspace.Terrain
+		a.Position = Vector3.new(x, 0.8, gz)
+		local e = Instance.new("ParticleEmitter")
+		e.Enabled = false
+		e.Texture = FxIds.poof or "rbxasset://textures/particles/smoke_main.dds"
+		if FxIds.poof then
+			e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+			e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+		end
+		e.Color = ColorSequence.new(Color3.fromRGB(225, 205, 170))
+		e.LightInfluence = 0.4
+		e.Size = NumberSequence.new(2.5, 5)
+		e.Transparency = NumberSequence.new(0.1, 0.4)
+		e.Lifetime = NumberRange.new(0.7, 1)
+		e.Speed = NumberRange.new(3, 7)
+		e.SpreadAngle = Vector2.new(60, 60)
+		e.Rotation = NumberRange.new(0, 360)
+		e.Parent = a
+		e:Emit(2)
+		Debris:AddItem(a, 1.5)
+	end
+	Fx.shake(2.5, 2.2)
+	Sound.playAt("slam", 0.45)
+	local start = os.clock()
+	local nextDust = 0
+	local conn: RBXScriptConnection
+	conn = RunService.RenderStepped:Connect(function()
+		local t = math.min(1, (os.clock() - start) / 2.3)
+		local sink = 14 * t * t * (3 - 2 * t)
+		local k = (1 - t) * 0.25
+		for _, e in parts do
+			if e.part.Parent then
+				e.part.CFrame = e.cf * CFrame.new((math.random() - 0.5) * k, -sink, (math.random() - 0.5) * k)
+			end
+		end
+		if os.clock() > nextDust and t < 0.85 then
+			nextDust = os.clock() + 0.12
+			dust(math.random(-46, 46))
+		end
+		if t >= 1 then
+			conn:Disconnect()
+		end
+	end)
+end
+
 handlers.zoneOpen = function(d)
 	Fx.banner(("ZONE %d: %s"):format(d.zone, d.name:upper()), C.yellow, 2.6, "The gate is open!")
 	Sound.play("purchase")
+	sinkGate(d.zone)
 end
 
 handlers.runComplete = function(d)

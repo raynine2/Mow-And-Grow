@@ -53,25 +53,39 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- zones
 -------------------------------------------------------------------------------------------------------------
-local function openGate(z: number)
+-- `hideAfter`: seconds to leave the gate visible (clients play it sinking into the ground), else at once.
+local function openGate(z: number, hideAfter: number?)
 	local gate = info.gates[z]
-	if gate then
+	if not gate or gate:GetAttribute("Open") then
+		return
+	end
+	gate:SetAttribute("Open", true)
+	for _, p in gate:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.CanCollide = false -- the way is open right away
+		end
+	end
+	local function hide()
 		for _, p in gate:GetDescendants() do
 			if p:IsA("BasePart") then
-				p.CanCollide = false
 				p.Transparency = 1
 			elseif p:IsA("SurfaceGui") then
 				p.Enabled = false
 			end
 		end
 	end
+	if hideAfter then
+		task.delay(hideAfter, hide)
+	else
+		hide()
+	end
 end
 
-local function unlock(z: number)
+local function unlock(z: number, gateShow: number?)
 	zone = z
 	Field.unlock(z)
 	for i = 2, z do
-		openGate(i)
+		openGate(i, if i == z then gateShow else nil)
 	end
 	for _, p in Players:GetPlayers() do
 		local data = PlayerData.get(p)
@@ -137,7 +151,8 @@ local function onBossDefeated(z: number, _damageBy: { [Player]: number })
 	if z >= #Config.ZONES then
 		task.spawn(completeRun)
 	else
-		unlock(z + 1)
+		-- the gate sinks into the ground when the banner shows (3 s after the boss falls, for ~2.5 s)
+		unlock(z + 1, 6)
 		task.delay(3, function()
 			Net.all("Fx", "zoneOpen", { zone = z + 1, name = Config.ZONES[z + 1].name })
 		end)

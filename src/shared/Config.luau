@@ -108,6 +108,118 @@ function Config.zoneStartZ(zone: number): number
 end
 
 -------------------------------------------------------------------------------------------------------------
+-- World look: lighting and post-processing (shared/Look applies it). `base` is the lobby and the hub; the
+-- server sets it at start. In a run the client (client/ZoneMood) blends toward each zone's mood as you walk,
+-- so a mood only lists what it changes. Colours are Color3, the rest numbers; everything here can be blended.
+-------------------------------------------------------------------------------------------------------------
+Config.LOOK = {
+	-- set once by the server (not blended): an afternoon sun for long, soft shadows; built-in clouds
+	clockTime = 15.2,
+	latitude = 38,
+	shadowSoftness = 0.25,
+	envDiffuse = 0.75,
+	envSpecular = 0.35,
+	sunSize = 16, -- Sky.SunAngularSize (bigger, warmer sun for the glare)
+	bloomSize = 26,
+	bloomThreshold = 1.4, -- only HDR-bright things bloom (sun, neon, glare)
+	dof = { focus = 60, radius = 70, far = 0.1 }, -- very soft blur far away only
+	clouds = { cover = 0.55, density = 0.6, color = Color3.fromRGB(255, 255, 255) },
+	wind = Vector3.new(4, 0, 3), -- workspace.GlobalWind: drifts the clouds and the floating pollen
+	base = {
+		brightness = 2.7,
+		exposure = 0.05,
+		ambient = Color3.fromRGB(118, 112, 128),
+		outdoorAmbient = Color3.fromRGB(168, 162, 170),
+		colorShiftTop = Color3.fromRGB(255, 244, 222),
+		saturation = 0.24,
+		contrast = 0.1,
+		ccBrightness = 0.015,
+		tint = Color3.fromRGB(255, 251, 242),
+		atmoDensity = 0.27,
+		atmoOffset = 0.2,
+		atmoColor = Color3.fromRGB(205, 225, 245),
+		atmoDecay = Color3.fromRGB(130, 170, 215),
+		atmoGlare = 0.3,
+		atmoHaze = 1.1,
+		bloomIntensity = 0.55,
+		raysIntensity = 0.05,
+		raysSpread = 0.55,
+	},
+	moods = {
+		-- fresh green-gold
+		lawn = {
+			tint = Color3.fromRGB(252, 255, 236),
+			saturation = 0.28,
+			atmoColor = Color3.fromRGB(212, 232, 214),
+			atmoDecay = Color3.fromRGB(140, 185, 165),
+			colorShiftTop = Color3.fromRGB(255, 246, 215),
+		},
+		-- bright and clean: clearer air, crisp contrast
+		golf = {
+			tint = Color3.fromRGB(248, 252, 255),
+			contrast = 0.13,
+			ccBrightness = 0.03,
+			atmoDensity = 0.22,
+			atmoHaze = 0.6,
+			atmoGlare = 0.15,
+			atmoColor = Color3.fromRGB(215, 232, 255),
+			bloomIntensity = 0.5,
+		},
+		-- warm golden afternoon
+		wheat = {
+			tint = Color3.fromRGB(255, 236, 205),
+			saturation = 0.3,
+			colorShiftTop = Color3.fromRGB(255, 212, 150),
+			outdoorAmbient = Color3.fromRGB(185, 165, 145),
+			atmoDensity = 0.3,
+			atmoColor = Color3.fromRGB(255, 226, 182),
+			atmoDecay = Color3.fromRGB(225, 165, 110),
+			atmoGlare = 0.65,
+			atmoHaze = 1.7,
+			bloomIntensity = 0.7,
+			raysIntensity = 0.1,
+		},
+		-- misty teal swamp
+		reeds = {
+			tint = Color3.fromRGB(222, 245, 242),
+			saturation = 0.1,
+			contrast = 0.05,
+			ccBrightness = 0,
+			ambient = Color3.fromRGB(105, 128, 128),
+			outdoorAmbient = Color3.fromRGB(145, 168, 165),
+			colorShiftTop = Color3.fromRGB(225, 245, 240),
+			atmoDensity = 0.44,
+			atmoOffset = 0.06,
+			atmoColor = Color3.fromRGB(172, 214, 208),
+			atmoDecay = Color3.fromRGB(90, 140, 140),
+			atmoGlare = 0.1,
+			atmoHaze = 2.6,
+			raysIntensity = 0.03,
+		},
+		-- deep green, humid haze, god-rays through the canopy
+		jungle = {
+			brightness = 2.5,
+			tint = Color3.fromRGB(228, 255, 226),
+			saturation = 0.32,
+			contrast = 0.15,
+			ccBrightness = -0.02,
+			ambient = Color3.fromRGB(95, 125, 95),
+			outdoorAmbient = Color3.fromRGB(140, 170, 135),
+			colorShiftTop = Color3.fromRGB(240, 255, 210),
+			atmoDensity = 0.42,
+			atmoOffset = 0.1,
+			atmoColor = Color3.fromRGB(175, 212, 165),
+			atmoDecay = Color3.fromRGB(60, 112, 72),
+			atmoGlare = 0.45,
+			atmoHaze = 2.2,
+			bloomIntensity = 0.65,
+			raysIntensity = 0.2,
+			raysSpread = 0.8,
+		},
+	} :: { [string]: { [string]: any } },
+}
+
+-------------------------------------------------------------------------------------------------------------
 -- Quests: the onboarding chain shown top-left during a run (like Chop A Forest's "QUEST 3/8").
 -- event = what counts: cut (patches), sell (bundles sold), tool (best tool index reached), carry (backpack
 -- levels), zone (zones cleared), boss (bosses beaten), mower (a ride-on mower bought or spawned).

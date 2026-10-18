@@ -1,40 +1,71 @@
 -- Bright, sunny, saturated look for both modes, and a clean Workspace to build in.
 local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.MowALawn.Config)
+local Look = require(ReplicatedStorage.MowALawn.Look)
 
 local Environment = {}
 
-function Environment.apply()
-	Lighting.ClockTime = 14
-	Lighting.Brightness = 2.4
-	Lighting.Ambient = Color3.fromRGB(120, 115, 130)
-	Lighting.OutdoorAmbient = Color3.fromRGB(165, 160, 170)
-	Lighting.EnvironmentDiffuseScale = 0.6
-	Lighting.EnvironmentSpecularScale = 0.3
-	Lighting.GlobalShadows = true
-	Lighting.ShadowSoftness = 0.3
-
-	local function ensure(className: string, name: string)
-		local inst = Lighting:FindFirstChild(name)
-		if not inst then
-			inst = Instance.new(className)
-			inst.Name = name
-			inst.Parent = Lighting
-		end
-		return inst
+local function ensure(parent: Instance, className: string, name: string): Instance
+	local inst = parent:FindFirstChild(name)
+	if not inst then
+		inst = Instance.new(className)
+		inst.Name = name
+		inst.Parent = parent
 	end
-	local cc = ensure("ColorCorrectionEffect", "MowALawnColor") :: ColorCorrectionEffect
-	cc.Saturation = 0.18
-	cc.Contrast = 0.06
-	cc.Brightness = 0.02
-	local atmo = ensure("Atmosphere", "MowALawnAtmosphere") :: Atmosphere
-	atmo.Density = 0.18
-	atmo.Haze = 0
-	atmo.Color = Color3.fromRGB(200, 225, 255)
-	atmo.Decay = Color3.fromRGB(150, 190, 255)
-	local bloom = ensure("BloomEffect", "MowALawnBloom") :: BloomEffect
-	bloom.Intensity = 0.4
-	bloom.Size = 20
-	bloom.Threshold = 1.6
+	return inst :: Instance
+end
+
+-- Lighting and post-processing from Config.LOOK: a warm afternoon sun with long soft shadows, haze toward the
+-- horizon, gentle bloom on bright things only, a touch more colour, faint sun rays, a soft far blur, and
+-- Roblox's built-in clouds. Built-in features only (no image assets). The client blends zone moods on top.
+local function lighting()
+	local look = Config.LOOK
+	Lighting.ClockTime = look.clockTime
+	Lighting.GeographicLatitude = look.latitude
+	Lighting.EnvironmentDiffuseScale = look.envDiffuse
+	Lighting.EnvironmentSpecularScale = look.envSpecular
+	Lighting.GlobalShadows = true
+	Lighting.ShadowSoftness = look.shadowSoftness
+
+	ensure(Lighting, "ColorCorrectionEffect", Look.NAMES.color)
+	ensure(Lighting, "Atmosphere", Look.NAMES.atmosphere)
+	local bloom = ensure(Lighting, "BloomEffect", Look.NAMES.bloom) :: BloomEffect
+	bloom.Size = look.bloomSize
+	bloom.Threshold = look.bloomThreshold
+	ensure(Lighting, "SunRaysEffect", Look.NAMES.rays)
+	local dof = ensure(Lighting, "DepthOfFieldEffect", Look.NAMES.depth) :: DepthOfFieldEffect
+	dof.FocusDistance = look.dof.focus
+	dof.InFocusRadius = look.dof.radius
+	dof.FarIntensity = look.dof.far
+	dof.NearIntensity = 0
+	Look.apply(Look.mood(nil))
+
+	-- a Sky only if the place has none (a hand-made sky is kept); the default skybox with a bigger sun
+	local sky = Lighting:FindFirstChildOfClass("Sky")
+	if not sky then
+		sky = Instance.new("Sky")
+		sky.Name = "MowALawnSky"
+		sky.Parent = Lighting
+	end
+	if sky and sky.Name == "MowALawnSky" then
+		sky.SunAngularSize = look.sunSize
+	end
+	workspace.GlobalWind = look.wind
+	local terrain = workspace:FindFirstChildOfClass("Terrain")
+	if terrain then
+		local clouds = terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+		clouds.Cover = look.clouds.cover
+		clouds.Density = look.clouds.density
+		clouds.Color = look.clouds.color
+		clouds.Enabled = true
+		clouds.Parent = terrain
+	end
+end
+
+function Environment.apply()
+	lighting()
 
 	-- The default Baseplate place has a grey baseplate and spawn; our maps replace them at runtime only
 	-- (the place file keeps them).

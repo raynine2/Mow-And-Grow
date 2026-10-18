@@ -6,7 +6,7 @@ import bmesh
 sys.path.insert(0, os.path.dirname(__file__))
 import _yardkit as kit  # noqa: E402
 
-PREVIEW = dict(dist=70, height=16, target_z=6, yaw=20)
+PREVIEW = dict(dist=52, height=14, target_z=6, yaw=18)
 
 
 def stake(lib, name, x, y, r, h, tip, mat, segs=10):
@@ -44,7 +44,7 @@ def build(lib):
     for k, z in enumerate((3.2, 8.2)):
         kit.log(lib, "beam%d" % k, (-W / 2 - 0.3, r + 0.35, z), (W / 2 + 0.3, r + 0.35, z), 0.55, beam, verts=12)
     # hanging sign in the middle: two ropes from the top beam down to a plank board
-    sz, sw, sh = 5.6, 16.0, 4.0
+    sz, sw, sh = 5.3, 16.0, 4.2
     sy = r + 1.15
     kit.plank_board(lib, "sign", sw, sh, 0.4, (0, sy, sz), (0, 0, 0), board, board, rows=3, bevel=0.06)
     for sx in (-1, 1):

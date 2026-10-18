@@ -21,7 +21,7 @@ def build(lib):
     lib.box("frame_t", (w + t, d, t), (0, 0.05, bz + h / 2), mat=frame, bevel=0.06)
     lib.box("frame_b", (w + t, d, t), (0, 0.05, bz - h / 2), mat=frame, bevel=0.06)
     for sx in (-1, 1):
-        lib.box("frame_s%d" % sx, (t, d, h + t), (sx * w / 2, 0.05, bz), mat=frame, bevel=0.06)
+        lib.box("frame_s%d" % sx, (t, d * 0.96, h - t), (sx * w / 2, 0.05, bz), mat=frame, bevel=0.06)
         # nail heads in the corners
         lib.cyl("nail%d" % sx, 0.12, 0.1, (sx * (w / 2 - 0.45), 0.2, bz - h / 2 + 0.55), rot=(90, 0, 0), mat=dark, verts=8)
     # two pegs the tool rests on

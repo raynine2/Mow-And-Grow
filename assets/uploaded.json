@@ -1,0 +1,102 @@
+{
+ "birch": {
+  "id": 137059544305598,
+  "sha": "969b00ed09b560adf9ff48359524dac9ed31132a983e49730c2b958ba97072ca"
+ },
+ "bundle": {
+  "id": 120400267835993,
+  "sha": "829d0dcbbcab6f5098d2e0efe8163631fef09838c32a17591969b584078aa5a2"
+ },
+ "bush": {
+  "id": 135309585338277,
+  "sha": "0c7861c29814737d2607d47a6ae9300210d729c9426cb0d1764b3f7eb5acdcf4"
+ },
+ "fence": {
+  "id": 130577621347383,
+  "sha": "36d7747eba07b4c59b37dc0d1e9452322eafdc839b370bef9c432a8b6b89533b"
+ },
+ "gas_pump": {
+  "id": 134477077344859,
+  "sha": "e2e679409c074099084bcf71ad5c773c9a3ac3e9a22812af2e687c0615878082"
+ },
+ "gate": {
+  "id": 123236402297271,
+  "sha": "6038a99931d6f22b0aeb213fee50c459f6833369447a9ddda17a80a97b26722e"
+ },
+ "lantern_post": {
+  "id": 110195712139288,
+  "sha": "b5602beb6f39667f4538bc13ff8a320a87cbdc6fb5dcf9ee7eb824167a6190be"
+ },
+ "leaderboard": {
+  "id": 132491396223330,
+  "sha": "739e6c40989b63b638d4b1c5bf7a6114fe3af35ac881eeabd6fb423e111c8ba6"
+ },
+ "log": {
+  "id": 104055212410755,
+  "sha": "e3c1c044d9bea70d6f08bf17ce07e31df5c10fef9517029bae3b22a285334e8d"
+ },
+ "log_cabin": {
+  "id": 129304547210509,
+  "sha": "529d4eab0c4e3c3a4a7900d43855349b6279a6039589199dafbcb80aba5da50f"
+ },
+ "mower_rusty": {
+  "id": 129516427340153,
+  "sha": "44b553fc345224e73c250b0dca46affa41ad45edc22d3f15b77abb7823073837"
+ },
+ "oak": {
+  "id": 74772318566895,
+  "sha": "f2f96d85ea2f0bf9572ca7fe0cfdccd340409250c260fbae7977396386d58998"
+ },
+ "oak_small": {
+  "id": 102195630600222,
+  "sha": "fb5d41b73eb6bde386a95b4695989ffba9329e63978c223b19be7b1eb6d021f5"
+ },
+ "party_booth": {
+  "id": 87232188315491,
+  "sha": "085bf00ad34c133702651a3be4e477e8b8d4a240e1678f30962708702ad864ac"
+ },
+ "rewards_stall": {
+  "id": 101891771279847,
+  "sha": "4a0da1b4a94ef17e88367dd27efcdf2ba38b6e86955e25cd9a912cef67d23274"
+ },
+ "rock": {
+  "id": 117517094348256,
+  "sha": "cdfd3b30320a43a38dbafa0c027dd62cf3b6722ecbc50abec13f07aaa2d9af93"
+ },
+ "sell_pad": {
+  "id": 113991244421931,
+  "sha": "267bd6633d8f1e2561e7fc0849f5c7a0d1822997fd11a359e70a308a51e6baa1"
+ },
+ "shredder": {
+  "id": 85266761848376,
+  "sha": "1264a0d925d8c56ba2510272074901c4291b52b16d8b9479338027124c5cd5fa"
+ },
+ "start_sign": {
+  "id": 85905344230897,
+  "sha": "ab19f8a27035d01196523772d3692a62359d3d58d7e2eb85759e6a94dd39b190"
+ },
+ "stump": {
+  "id": 96951898985140,
+  "sha": "d271bab71001eb58cf43c0fa01aa106d8a96a399216705dce132ad5cf835c941"
+ },
+ "tool_lasermower": {
+  "id": 106460813069154,
+  "sha": "7400640a7d7b9dc05efc4f21fdefa888143cdb089682d0bf1048e4efb4d1155a"
+ },
+ "tool_pushmower": {
+  "id": 140174141177400,
+  "sha": "764b0547e1038db37c9c6c5a5a5587645fa2054ab4a71f17301812951beb144d"
+ },
+ "tool_scissors": {
+  "id": 81464534685985,
+  "sha": "647f769cacdf8d3ad7b830d82c473fe5a87b5b511c346760c6c952f5219376ee"
+ },
+ "tool_scythe": {
+  "id": 116128927286567,
+  "sha": "4d153759ee2c7509dc56a2ca018651053c0046724e56171c6be0ca752116604f"
+ },
+ "tool_sickle": {
+  "id": 97061048845459,
+  "sha": "490b3a080eb4037aff64c50c5298b8b2b16cd43065435b60f71390f254099760"
+ }
+}

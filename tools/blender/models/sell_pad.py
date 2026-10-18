@@ -28,7 +28,7 @@ def build(lib):
     for sy in (-1, 1):
         kit.log_ends(lib, "logx%d" % sy, (-half - over, sy * half, r), (half + over, sy * half, r), r, wood, ends, verts=10)
     for sx in (-1, 1):
-        kit.log_ends(lib, "logy%d" % sx, (sx * half, -half - over, r + 0.18), (sx * half, half + over, r + 0.18), r, wood, ends, verts=10)
+        kit.log_ends(lib, "logy%d" % sx, (sx * half, -half - over, r + 0.02), (sx * half, half + over, r + 0.02), r, wood, ends, verts=10)
     # hazard border lying flat just inside the logs
     hw, inset = 0.85, half - r - 0.45
     L = 2 * inset + hw

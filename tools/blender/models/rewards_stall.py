@@ -23,12 +23,12 @@ def chest(lib, name, x, y, wood, wood_dark, gold, gem_a, gem_b, rnd):
     lib.box(name + "_lid", (w + 0.1, 0.45, d * 0.9), (x, y - d / 2 - 0.15, h + d * 0.42), rot=(-12, 0, 0), mat=wood, bevel=0.08)
     lib.box(name + "_lidband", (w + 0.16, 0.5, 0.25), (x, y - d / 2 - 0.05, h + d * 0.85), rot=(-12, 0, 0), mat=gold)
     # gem pile: chunky blue blocks heaped above the rim
-    lib.box(name + "_gembed", (w - 0.3, d - 0.3, 0.5), (x, y, h + 0.05), mat=gem_a)
-    for i in range(7):
+    lib.box(name + "_gembed", (w - 0.3, d - 0.3, 0.7), (x, y, h + 0.15), mat=gem_a, bevel=0.05)
+    for i in range(9):
         gx = x + rnd.uniform(-w * 0.32, w * 0.32)
         gy = y + rnd.uniform(-d * 0.25, d * 0.25)
         s = rnd.uniform(0.55, 0.85)
-        lib.box("%s_gem%d" % (name, i), (s, s, s * 0.8), (gx, gy, h + 0.25 + rnd.uniform(0.0, 0.35)),
+        lib.box("%s_gem%d" % (name, i), (s, s, s * 0.8), (gx, gy, h + 0.5 + rnd.uniform(0.0, 0.45)),
                 rot=(rnd.uniform(-25, 25), rnd.uniform(-25, 25), rnd.uniform(0, 90)), mat=gem_a if i % 2 else gem_b, bevel=0.05)
 
 
@@ -38,10 +38,9 @@ def build(lib):
     wall = lib.material("WoodPlanks", (150, 128, 108))
     roof = lib.material("WoodPlanks", (120, 74, 48))
     board = lib.material("WoodPlanks", (96, 58, 38))
-    wood = lib.material("Wood", (142, 86, 46))
     gold = lib.material("SmoothPlastic", (240, 186, 40))
-    gem_a = lib.material("SmoothPlastic", (40, 120, 245))
-    gem_b = lib.material("Neon", (70, 160, 255))
+    gem_a = lib.material("SmoothPlastic", (26, 96, 230))
+    gem_b = lib.material("SmoothPlastic", (70, 156, 255))
     W, H = 16.0, 9.0
     by, fy = -2.6, 1.4        # back wall / front posts
     # floor slab (low wooden deck)
@@ -87,4 +86,4 @@ def build(lib):
         lib.box("sign_leg%d" % sx, (0.6, 0.6, 1.5), (sx * 4.5, sy, H + 2.5), mat=post)
     # the two reward chests, one per bay
     for i, sx in enumerate((-1, 1)):
-        chest(lib, "chest%d" % i, sx * 3.9, fy + 2.0, wood, board, gold, gem_a, gem_b, rnd)
+        chest(lib, "chest%d" % i, sx * 3.9, fy + 2.0, roof, board, gold, gem_a, gem_b, rnd)

@@ -104,12 +104,21 @@ def build(lib):
     # body behind the dash: footboards, rear deck under the seat, fenders over the back wheels
     for x in (-1, 1):
         lib.box("footboard%d" % (x > 0), (1.0, 2.2, 0.18), (x * 1.55, 0.4, 1.5), mat=steel, bevel=0.04)
-        lib.box("fender%d" % (x > 0), (1.15, 2.9, 0.3), (x * 2.0, -2.0, 2.65), rot=(0, x * 4, 0), mat=rust, bevel=0.1)
-        lib.box("fender_lip%d" % (x > 0), (1.15, 0.3, 0.9), (x * 2.0, -0.6, 2.2), rot=(-12, 0, 0), mat=rust, bevel=0.08)
-    lib.box("body", (2.9, 3.0, 1.2), (0, -1.75, 1.95), mat=rust, bevel=0.18)
+        # fender: three plates hugging the top of the back wheel, the outer one bent down a little (dented)
+        arc = [12, 58, 112, 168]
+        for k in range(3):
+            a0, a1 = math.radians(arc[k]), math.radians(arc[k + 1])
+            rr = 1.55 if k != 0 else 1.62
+            p0 = Vector((x * 2.0, -2.0 + rr * math.cos(a0), 1.25 + rr * math.sin(a0)))
+            p1 = Vector((x * 2.0, -2.0 + 1.55 * math.cos(a1), 1.25 + 1.55 * math.sin(a1)))
+            beam(lib, "fender%d_%d" % (x > 0, k), p0, p1, (1.12, 0.24), rust if k != 1 or x < 0 else rust_dark, bevel=0.07)
+        lib.box("fender_side%d" % (x > 0), (0.2, 2.2, 0.9), (x * 1.5, -1.85, 2.2), mat=rust, bevel=0.06)
+    lib.box("body", (2.9, 3.0, 1.2), (0, -1.75, 1.95), rot=(0, -1.5, 0), mat=rust, bevel=0.18)
     lib.box("tail", (2.6, 0.4, 0.9), (0, -3.35, 1.7), mat=rust_dark, bevel=0.1)
     lib.box("hitch", (0.4, 0.6, 0.15), (0, -3.7, 1.35), mat=steel)
     lib.box("patch_body", (0.9, 0.05, 0.5), (-0.6, -3.56, 1.85), rot=(0, 10, 0), mat=rust)
+    for i, (x, z) in enumerate(((-1.0, 2.0), (1.0, 2.0), (-1.0, 1.45), (1.0, 1.45))):
+        lib.box("bolt%d" % i, (0.14, 0.08, 0.14), (x, -3.57, z), mat=steel)
 
     seat(lib, seat_mat, seat_mat, steel, y=-1.0, top=3.0, width=1.8, depth=1.6)
     lib.box("seat_crack", (0.12, 0.9, 0.04), (0.3, -0.95, 3.0), rot=(0, 0, 25), mat=rust_dark)

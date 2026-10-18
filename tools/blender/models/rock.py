@@ -1,30 +1,16 @@
-"""Decoration boulder: a chunky low-poly grey Slate rock (~5 wide, ~2.6 tall) with flat-shaded facets, sitting on a
-flattened base, plus a smaller rock and a pebble leaning against it."""
+"""Decoration boulder (~5 wide, ~2.8 tall) in the chunky bevelled-block style of the rest of the game: a big
+tapered Slate block leaning a little, a second block stacked off-centre on top, a smaller rock and a pebble at its
+side, in two greys."""
 import random
-import bmesh
 
 PREVIEW = dict(dist=11, height=6, target_z=1.2)
 
-def lump(lib, name, scale, loc, mat, seed, rot_z=0):
-    """A jittered icosphere squashed to `scale` (full extents), flattened on the bottom so it sits on z = 0."""
-    rnd = random.Random(seed)
-    bm = bmesh.new()
-    bmesh.ops.create_icosphere(bm, subdivisions=1, radius=0.5)
-    for v in bm.verts:
-        j = rnd.uniform(0.86, 1.1)
-        v.co.x *= scale[0] * j; v.co.y *= scale[1] * j; v.co.z *= scale[2] * rnd.uniform(0.9, 1.08)
-        if v.co.z < -scale[2] * 0.2:
-            v.co.z = -scale[2] * 0.2
-        v.co.z += scale[2] * 0.2
-    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.01)
-    obj = lib._from_bmesh(name, bm)
-    for p in obj.data.polygons:
-        p.use_smooth = False
-    return lib._finish(obj, mat, loc, (0, 0, rot_z), 0)
-
 def build(lib):
-    grey = lib.material("Slate", (124, 126, 130))
-    grey_dk = lib.material("Slate", (98, 100, 106))
-    lump(lib, "boulder", (5.0, 3.8, 3.1), (0, 0, 0), grey, 4, 15)
-    lump(lib, "side", (2.4, 2.0, 1.7), (2.2, 1.0, 0), grey_dk, 8, 40)
-    lump(lib, "pebble", (1.2, 1.0, 0.8), (-2.2, 1.4, 0), grey_dk, 12, 70)
+    rnd = random.Random(4)
+    grey = lib.material("Slate", (128, 130, 134))
+    grey_dk = lib.material("Slate", (102, 104, 110))
+    lib.box("base", (4.4, 3.4, 2.0), (0, 0, 0.85), rot=(4, -3, 18), mat=grey, bevel=0.35, taper=(0.78, 0.8))
+    lib.box("top", (2.8, 2.4, 1.3), (-0.35, 0.15, 2.05), rot=(-7, 6, 40), mat=grey, bevel=0.3, taper=(0.7, 0.72))
+    lib.box("side", (1.9, 1.7, 1.3), (2.05, 1.05, 0.55), rot=(6, 9, -20), mat=grey_dk, bevel=0.25, taper=(0.72, 0.75))
+    lib.box("pebble", (0.9, 0.8, 0.6), (-2.25, 1.45, 0.25), rot=(0, -8, 30), mat=grey_dk, bevel=0.15, taper=(0.75, 0.75))
+    lib.box("chip", (0.6, 0.55, 0.4), (1.0, -1.95, 0.15), rot=(5, 0, 12), mat=grey, bevel=0.1, taper=(0.75, 0.75))

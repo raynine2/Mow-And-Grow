@@ -28,10 +28,10 @@ def build(lib):
     lib.box("back", (bw + 0.6, 0.3, bh + 0.6), (0, -0.3, bc), mat=roof2)
     # little plank roof (gable, ridge along X) on top of the posts
     lib.box("beam", (2 * px + 1.6, 1.2, 0.6), (0, 0, 12.5), mat=wood, bevel=0.08)
-    ang = 26
-    run = 1.9
+    ang = 34
+    run = 2.4
     for sgn in (1, -1):
         y = sgn * run / 2 * math.cos(math.radians(ang)) + sgn * 0.1
-        lib.box("roof%d" % sgn, (2 * px + 3.0, run + 0.5, 0.4), (0, y, 13.25), rot=(-sgn * ang, 0, 0), mat=roof, bevel=0.08)
-        lib.box("shingle%d" % sgn, (2 * px + 3.1, 0.6, 0.16), (0, y + sgn * 0.45, 13.25 - 0.08), rot=(-sgn * ang, 0, 0), mat=roof2)
-    lib.box("ridge", (2 * px + 3.3, 0.6, 0.5), (0, 0, 13.85), mat=roof2, bevel=0.06)
+        lib.box("roof%d" % sgn, (2 * px + 3.0, run + 0.5, 0.4), (0, y, 13.45), rot=(-sgn * ang, 0, 0), mat=roof, bevel=0.08)
+        lib.box("shingle%d" % sgn, (2 * px + 3.1, 0.6, 0.16), (0, y + sgn * 0.55, 13.45 - 0.2), rot=(-sgn * ang, 0, 0), mat=roof2)
+    lib.box("ridge", (2 * px + 3.3, 0.6, 0.5), (0, 0, 14.15), mat=roof2, bevel=0.06)

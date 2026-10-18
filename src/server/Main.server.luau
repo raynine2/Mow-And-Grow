@@ -22,6 +22,7 @@ require(script.Parent.Models).loadAll()
 local system: any = if Mode.isRun then require(script.Parent.Run) else require(script.Parent.Lobby)
 system.start()
 Monetization.start()
+require(script.Parent.Anims).start() -- our character animations (once uploaded), set before anyone spawns
 
 -- Spawn on the world's own SpawnLocation, not one from the place template (the Baseplate's). This only
 -- changes the running game; the place file keeps its parts. The Baseplate is hidden while playing because

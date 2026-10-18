@@ -5,3 +5,7 @@ build/
 # Obsidian app state (notes themselves are tracked)
 vault/.obsidian/workspace*.json
 vault/.obsidian/cache
+
+# Python caches from the Blender scripts
+__pycache__/
+*.pyc

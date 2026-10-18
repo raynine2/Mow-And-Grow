@@ -34,14 +34,20 @@ function Mowers.owns(data, id: string): boolean
 	return false
 end
 
+-- Chunky machine in the trailer's style: dark chassis, big tyres with coloured hubs, a coloured engine hood
+-- with grille and exhaust, a seat with roll bar, and a wide mowing deck out front with a spinning blade disc.
 local function decorate(model: Model, body: BasePart, def)
-	local function add(size: Vector3, offset: CFrame, color: Color3, name: string, neon: boolean?)
+	local function add(size: Vector3, offset: CFrame, color: Color3, name: string, material: Enum.Material?, shape: Enum.PartType?)
 		local p = Instance.new("Part")
 		p.Name = name
 		p.Size = size
 		p.Color = color
-		p.Material = if neon then Enum.Material.Neon else Enum.Material.Plastic
+		p.Material = material or Enum.Material.SmoothPlastic
 		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		if shape then
+			p.Shape = shape
+		end
 		p.CanCollide = false
 		p.CanQuery = false
 		p.Massless = true
@@ -53,18 +59,42 @@ local function decorate(model: Model, body: BasePart, def)
 		p.Parent = model
 		return p
 	end
-	local dark = Color3.fromRGB(40, 40, 48)
-	add(Vector3.new(5.6, 1.4, 3), CFrame.new(0, 1.3, -2.2), PropKit.shade(def.color, 1.1), "Hood")
-	add(Vector3.new(6.2, 0.6, 2.2), CFrame.new(0, -0.4, -3.4), dark, "Deck")
-	for _, x in { -2.8, 2.8 } do
-		for _, z in { -2.4, 2.4 } do
-			local wheel = add(Vector3.new(1, 2, 2), CFrame.new(x, -0.3, z), dark, "Wheel")
-			wheel.Shape = Enum.PartType.Cylinder
-		end
+	local dark = Color3.fromRGB(42, 42, 50)
+	local steel = Color3.fromRGB(150, 155, 165)
+	local c = def.color
+	-- tyres: big at the back, small at the front, each with a coloured hub
+	for _, x in { -2.9, 2.9 } do
+		add(Vector3.new(1.4, 3.4, 3.4), CFrame.new(x, 0.4, 2.2), dark, "RearTyre", Enum.Material.Fabric, Enum.PartType.Cylinder)
+		add(Vector3.new(1.5, 1.5, 1.5), CFrame.new(x, 0.4, 2.2), PropKit.shade(c, 0.9), "Hub", nil, Enum.PartType.Cylinder)
+		add(Vector3.new(1, 2.2, 2.2), CFrame.new(x * 0.95, -0.2, -2.4), dark, "FrontTyre", Enum.Material.Fabric, Enum.PartType.Cylinder)
+		add(Vector3.new(1.1, 1, 1), CFrame.new(x * 0.95, -0.2, -2.4), PropKit.shade(c, 0.9), "Hub", nil, Enum.PartType.Cylinder)
+		-- mudguard over the rear tyre
+		add(Vector3.new(1.7, 0.4, 3.8), CFrame.new(x, 2.3, 2.2), c, "Fender")
 	end
-	add(Vector3.new(0.4, 2.6, 0.4), CFrame.new(-1.2, 1.6, 0.3), dark, "SteerPost")
-	add(Vector3.new(2.4, 0.3, 0.3), CFrame.new(-1.2, 2.9, 0.3), dark, "SteerBar")
-	add(Vector3.new(1.4, 0.4, 0.8), CFrame.new(0, 0.8, -3.75), Color3.fromRGB(255, 255, 255), "Headlight", true)
+	-- engine hood with a grille and an exhaust pipe
+	add(Vector3.new(4.4, 2, 3.6), CFrame.new(0, 1.6, -1.8), c, "Hood")
+	add(Vector3.new(4.6, 0.3, 3.8), CFrame.new(0, 2.7, -1.8), PropKit.shade(c, 0.85), "HoodTop")
+	add(Vector3.new(3.4, 1.2, 0.2), CFrame.new(0, 1.5, -3.65), dark, "Grille")
+	for i = -1, 1 do
+		add(Vector3.new(3.2, 0.12, 0.25), CFrame.new(0, 1.5 + i * 0.35, -3.72), steel, "GrilleBar", Enum.Material.Metal)
+	end
+	add(Vector3.new(0.9, 0.5, 0.3), CFrame.new(-1.6, 2.1, -3.7), Color3.fromRGB(255, 250, 220), "Headlight", Enum.Material.Neon)
+	add(Vector3.new(0.9, 0.5, 0.3), CFrame.new(1.6, 2.1, -3.7), Color3.fromRGB(255, 250, 220), "Headlight", Enum.Material.Neon)
+	add(Vector3.new(0.5, 2.4, 0.5), CFrame.new(1.6, 3.6, -0.8), dark, "Exhaust", Enum.Material.Metal, Enum.PartType.Cylinder).CFrame = body.CFrame * CFrame.new(1.6, 3.6, -0.8) * CFrame.Angles(0, 0, math.rad(90))
+	-- steering wheel
+	add(Vector3.new(0.3, 1.6, 0.3), CFrame.new(0, 2.6, 0.2) * CFrame.Angles(math.rad(-30), 0, 0), dark, "SteerColumn")
+	add(Vector3.new(0.3, 1.6, 1.6), CFrame.new(0, 3.3, 0.6) * CFrame.Angles(math.rad(-30), 0, 0) * CFrame.Angles(0, 0, math.rad(90)), dark, "SteerWheel", nil, Enum.PartType.Cylinder)
+	-- roll bar behind the seat
+	for _, x in { -2.2, 2.2 } do
+		add(Vector3.new(0.4, 4.4, 0.4), CFrame.new(x, 3.2, 3.6), dark, "RollBar", Enum.Material.Metal)
+	end
+	add(Vector3.new(4.8, 0.4, 0.4), CFrame.new(0, 5.4, 3.6), dark, "RollBarTop", Enum.Material.Metal)
+	-- mowing deck out front with a spinning blade disc
+	add(Vector3.new(7.4, 0.8, 3.2), CFrame.new(0, -0.6, -5.2), steel, "Deck", Enum.Material.DiamondPlate)
+	add(Vector3.new(7.6, 0.3, 3.4), CFrame.new(0, -0.15, -5.2), PropKit.shade(c, 0.8), "DeckRim")
+	local disc = add(Vector3.new(0.2, 3, 3), CFrame.new(0, -1.05, -5.2) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(215, 220, 230), "Blade", Enum.Material.Metal, Enum.PartType.Cylinder)
+	disc:SetAttribute("SpinBlade", true)
+	add(Vector3.new(0.25, 1.1, 1.1), CFrame.new(0, -0.95, -5.2) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(220, 40, 40), "BladeHub", nil, Enum.PartType.Cylinder)
 end
 
 local function build(player: Player, def, fuel: number): Model
@@ -72,9 +102,10 @@ local function build(player: Player, def, fuel: number): Model
 	model.Name = player.Name .. "'s " .. def.name
 	local body = Instance.new("Part")
 	body.Name = "Body"
-	body.Size = Vector3.new(5.4, 1.6, 7.4)
+	body.Size = Vector3.new(5, 1.4, 7.2)
 	body.Color = def.color
 	body.TopSurface = Enum.SurfaceType.Smooth
+	body.Color = Color3.fromRGB(42, 42, 50)
 	body.CustomPhysicalProperties = PhysicalProperties.new(0.8, 0, 0, 100, 1)
 	body.CFrame = Mowers.spawnCFrame
 	body.Parent = model
@@ -89,7 +120,7 @@ local function build(player: Player, def, fuel: number): Model
 	seat.HeadsUpDisplay = false
 	seat.CanQuery = false
 	seat.Massless = true
-	seat.CFrame = body.CFrame * CFrame.new(0, 1.3, 1.4)
+	seat.CFrame = body.CFrame * CFrame.new(0, 1.4, 2.2)
 	local w = Instance.new("WeldConstraint")
 	w.Part0 = seat
 	w.Part1 = body

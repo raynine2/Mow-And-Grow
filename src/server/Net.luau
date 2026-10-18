@@ -67,12 +67,20 @@ Players.PlayerRemoving:Connect(function(p)
 end)
 
 -- Connect a handler for a client -> server remote, with a rate limit and error isolation.
+-- One handler per remote; registering again replaces it (Studio switches a lobby into a run live).
+local handlers: { [string]: { fn: (Player, ...any) -> (), rate: number } } = {}
 function Net.on(name: string, perSecond: number, handler: (Player, ...any) -> ())
+	local first = handlers[name] == nil
+	handlers[name] = { fn = handler, rate = perSecond }
+	if not first then
+		return
+	end
 	remotes[name].OnServerEvent:Connect(function(player, ...)
-		if not Net.allow(player, name, perSecond) then
+		local h = handlers[name]
+		if not h or not Net.allow(player, name, h.rate) then
 			return
 		end
-		local ok, err = pcall(handler, player, ...)
+		local ok, err = pcall(h.fn, player, ...)
 		if not ok then
 			warn(("[Net] %s from %s failed: %s"):format(name, player.Name, tostring(err)))
 		end

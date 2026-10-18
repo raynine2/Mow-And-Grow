@@ -12,9 +12,29 @@ local Stats = require(script.Parent.Stats)
 local Mode = require(script.Parent.Mode)
 local Monetization = require(script.Parent.Monetization)
 
-local system = if Mode.isRun then require(script.Parent.Run) else require(script.Parent.Lobby)
+local system: any = if Mode.isRun then require(script.Parent.Run) else require(script.Parent.Lobby)
 system.start()
 Monetization.start()
+
+-- Studio: teleports don't work, so a party pad turns this lobby into a run right here.
+if Mode.isLobby and RunService:IsStudio() then
+	system.onStudioStart = function(party: { Player })
+		if Mode.isRun then
+			return
+		end
+		system.stop()
+		Mode.set("Run")
+		system = require(script.Parent.Run)
+		system.start()
+		task.wait(0.5)
+		for _, p in Players:GetPlayers() do
+			Net.notify(p, "(Studio) Starting the run here. Live games teleport to a private server.", "yellow")
+			p:LoadCharacter()
+			PlayerData.changed(p)
+		end
+		local _ = party
+	end
+end
 
 -- What a client needs to draw its HUD and windows.
 local function snapshot(player: Player, data)

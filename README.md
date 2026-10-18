@@ -61,8 +61,8 @@ All the numbers are in `src/shared/Config.luau`.
    ReplicatedStorage and StarterPlayerScripts.
 5. Press **Play**. You'll be in the lobby.
 
-**To test a run in Studio:** select **Workspace**. Under Attributes, click **+** and add `ForceMode` (string) = `Run`,
-then press Play. Teleports don't work in Studio, so party pads only work in the published game.
+**To test a run in Studio:** press Play and walk onto the SOLO pad. Teleports don't work in Studio, so after the
+countdown the same server turns into a run. In the published game, pads teleport you to a private run server.
 
 **Studio cheats** (Command Bar while playing, server side):
 ```lua

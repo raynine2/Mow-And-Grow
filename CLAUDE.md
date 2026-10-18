@@ -50,6 +50,7 @@ The session start hook installs `rojo` and `lune` in cloud sessions.
 - Every RemoteEvent is created in `src/server/Net.luau`. The server checks everything; clients only draw.
 - The world is built in code at server start (`LobbyBuilder`, `RunBuilder`, `PropKit`), in the studded-brick
   style. Hand-made Studio parts outside `Workspace.World` are left alone.
-- One place has two modes: a public server is the **lobby**, a reserved server is a **run**. In Studio, set the
-  Workspace attribute `ForceMode` to `Run` (or `Config.STUDIO_MODE`) to test a run.
+- One place has two modes: a public server is the **lobby**, a reserved server is a **run**. In Studio a party pad
+  switches the lobby into a run in place (`Main.server` + `Lobby.onStudioStart`); the Workspace attribute
+  `ForceMode = "Run"` or `Config.STUDIO_MODE` starts straight in a run.
 - Keep functions small: Luau allows at most 200 locals in one function.

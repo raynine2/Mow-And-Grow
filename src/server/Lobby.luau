@@ -15,6 +15,8 @@ local LobbyBuilder = require(script.Parent.LobbyBuilder)
 local Lobby = {}
 
 local built = nil :: any
+local running = true
+Lobby.onStudioStart = nil :: ((party: { Player }) -> ())?
 
 -------------------------------------------------------------------------------------------------------------
 -- class booth
@@ -199,10 +201,11 @@ local function teleport(pad: Pad)
 	local host = pad.host
 	pad.label.Text = "TELEPORTING..."
 	if RunService:IsStudio() then
-		for _, p in party do
-			Net.notify(p, "Teleports don't work in Studio. Set Workspace attribute ForceMode = Run to test a run.", "yellow")
+		-- Teleports don't work in Studio: turn this server into the run instead.
+		if Lobby.onStudioStart then
+			task.spawn(Lobby.onStudioStart, party)
 		end
-		task.wait(2)
+		return
 	else
 		for _, p in party do
 			task.spawn(PlayerData.save, p)
@@ -369,7 +372,7 @@ function Lobby.start()
 	end)
 
 	task.spawn(function()
-		while true do
+		while running do
 			local hosts = {}
 			for _, pad in pads do
 				local ok, err = pcall(updatePad, pad)
@@ -391,11 +394,18 @@ function Lobby.start()
 		end
 	end)
 	task.spawn(function()
-		while true do
+		while running do
 			pcall(updateBoard)
 			task.wait(1)
 		end
 	end)
+end
+
+function Lobby.stop()
+	running = false
+	for _, p in Players:GetPlayers() do
+		p:SetAttribute("PartyHost", nil)
+	end
 end
 
 function Lobby.worldState()

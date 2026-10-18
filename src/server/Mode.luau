@@ -27,4 +27,12 @@ Mode.isLobby = not Mode.isRun
 -- Clients read this to know which HUD to show.
 ReplicatedStorage:SetAttribute("MowALawnMode", Mode.current)
 
+-- Studio only: a party pad turns the lobby into a run in the same server (teleports don't work in Studio).
+function Mode.set(mode: string)
+	Mode.current = mode
+	Mode.isRun = mode == "Run"
+	Mode.isLobby = not Mode.isRun
+	ReplicatedStorage:SetAttribute("MowALawnMode", mode)
+end
+
 return Mode

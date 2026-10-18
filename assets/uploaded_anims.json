@@ -1,0 +1,30 @@
+{
+ "cheer": {
+  "id": 93995181190470,
+  "sha": "e4a5b7af5061fb4d791a5867092a0d25bd93bcd74054e798a5ba3aab5d96d34c"
+ },
+ "fall": {
+  "id": 76601931838107,
+  "sha": "298f7d8a0dff3d9cc128fbef3b6629a144e4b4dae2d0339f4c57fc4035f396c7"
+ },
+ "idle": {
+  "id": 78715726721447,
+  "sha": "40b61dc66bbbbca97de1b450d54f899841d8699400cce98c54e89a1493c2105c"
+ },
+ "idle_look": {
+  "id": 103795595350281,
+  "sha": "201bb631b0dbecba18292bc827a5a5abec92e0a109cf640a2786f6762ec5d596"
+ },
+ "jump": {
+  "id": 79659897103533,
+  "sha": "6b6e78cd77849d9f471797af175a1b71a4ee26fbd34ba41e34768db58f64f876"
+ },
+ "run": {
+  "id": 90655149383770,
+  "sha": "7f6ae0a056dba203c2881fae7c94b915dbc67d8870175ec8d811e20b7c139661"
+ },
+ "walk": {
+  "id": 135569785163163,
+  "sha": "b327ffabf3c7dce97d881a2c6f559545a14b0ee956412aaf11375a6fd63d23b0"
+ }
+}

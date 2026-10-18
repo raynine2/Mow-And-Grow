@@ -136,6 +136,9 @@ local function anchorFor(layer: any, pos: Vector3, out: Vector3): CFrame
 		at = Vector3.new(pos.X, math.clamp(eyeY - 1.6, 1.2, 3.2), pos.Z) + out * 1.3 - right * 0.35
 	elseif layer.at == "top" then
 		at = Vector3.new(pos.X, layer.height or 3.2, pos.Z)
+	elseif layer.at == "point" then
+		-- exactly at `pos` (boss effects pass a point on the boss), raised by `height`
+		at = pos + Vector3.new(0, layer.height or 0, 0)
 	else
 		at = Vector3.new(pos.X, layer.height or 0.6, pos.Z)
 	end
@@ -476,7 +479,8 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- play an event
 -------------------------------------------------------------------------------------------------------------
--- event: punch / hit / auto / cut / reveal. pos: the clump's foot. grass: its colour (or the mutation's).
+-- event: punch / hit / auto / cut / reveal, or a boss event (client/BossFx). pos: the clump's foot. grass: its
+-- colour (or the mutation's / the boss's).
 function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, clump: Model?, style: string?)
 	local preset = Presets[event]
 	if not preset then

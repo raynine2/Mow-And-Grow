@@ -9,6 +9,10 @@ so it can be judged without Studio. It re-creates what client/HitFx + ViewModel 
 
     blender -b -P tools/preview/fx_sim.py -- punch out.png [--tuft tuft_lawn] [--color 92,168,56] [--times ...]
 
+Boss events (client/BossFx): stand back and aim at the boss, put the effect where BossFx plays it, e.g.
+    blender -b -P tools/preview/fx_sim.py -- bossHit out.png --tuft boss_dandelion --color 255,220,40 \
+        --eye 0,5,16 --target 0,7,0 --pos 0,0,5
+
 Assumptions (Roblox doesn't document them): particle Size = the card's full width in studs; Drag halves the
 speed every 1/Drag seconds; SpreadAngle tilts the emit direction by up to (x, y) degrees about X and Z.
 """
@@ -28,6 +32,11 @@ ap.add_argument("--w", type=int, default=640); ap.add_argument("--h", type=int, 
 ap.add_argument("--samples", type=int, default=12)
 ap.add_argument("--seed", type=int, default=3)
 ap.add_argument("--nohand", action="store_true")
+ap.add_argument("--eye", default="0.4,4.5,3.9", help="camera position (x,y,z, Roblox axes, the clump/boss at 0,0,0)")
+ap.add_argument("--target", default="0,2,0", help="where the camera looks")
+ap.add_argument("--pos", default="0,0,0", help="the effect's pos (HitFx.play's pos)")
+ap.add_argument("--scatter", default="tuft_lawn", help="model scattered around the scene ('' for none)")
+ap.add_argument("--fov", type=float, default=70)
 a = ap.parse_args(argv)
 
 PRESETS = json.load(open(os.path.join(ROOT, "src", "shared", "FxPresets.json")))
@@ -129,8 +138,8 @@ stubble = None
 if preset.get("pop") and os.path.exists(os.path.join(MODELS, a.tuft + "_cut.glb")):
     stubble, _ = import_glb(a.tuft + "_cut")
 rng_scene = random.Random(9)
-for i in range(14):
-    r, mesh = import_glb(a.tuft)
+for i in range(14 if a.scatter else 0):
+    r, mesh = import_glb(a.scatter)
     ang = rng_scene.uniform(0, math.tau); dist = rng_scene.uniform(7, 30)
     pos = (math.cos(ang) * dist, 0, -abs(math.sin(ang)) * dist - 4)
     r.matrix_world = to_blender(cf(*pos) @ angles(0, rng_scene.uniform(0, 6.28), 0), rng_scene.uniform(0.9, 1.1))
@@ -243,19 +252,26 @@ def stop_color(v):
 # ---------------------------------------------------------------------------------------------------------------
 # the hit: where things are (same rules as HitFx)
 # ---------------------------------------------------------------------------------------------------------------
-EYE = Vector((0.4, 4.5, 3.9))
-TARGET = Vector((0.0, 2.0, 0.0))
-OUT = Vector((0, 0, 1))  # from the clump toward the player
+def vec(s):
+    return Vector(tuple(float(v) for v in s.split(",")))
+
+EYE = vec(a.eye)
+TARGET = vec(a.target)
+POS = vec(a.pos)
+OUT = Vector((EYE.x - POS.x, 0, EYE.z - POS.z))  # from the clump toward the player
+OUT = OUT.normalized() if OUT.length > 0.1 else Vector((0, 0, 1))
 
 def anchor(layer):
     at_kind = layer.get("at", "base")
     if at_kind == "contact":
         right = OUT.cross(Vector((0, 1, 0)))
-        p = Vector((0, min(3.2, max(1.2, EYE.y - 1.6)), 0)) + OUT * 1.3 - right * 0.35
+        p = Vector((POS.x, min(3.2, max(1.2, EYE.y - 1.6)), POS.z)) + OUT * 1.3 - right * 0.35
     elif at_kind == "top":
-        p = Vector((0, layer.get("height", 3.2), 0))
+        p = Vector((POS.x, layer.get("height", 3.2), POS.z))
+    elif at_kind == "point":
+        p = POS + Vector((0, layer.get("height", 0), 0))
     else:
-        p = Vector((0, layer.get("height", 0.6), 0))
+        p = Vector((POS.x, layer.get("height", 0.6), POS.z))
     m = cf(*p)
     if layer.get("dir") == "out":
         m = look_at(p, p + OUT) @ angles(-math.radians(layer.get("tilt", 60)), 0, 0)
@@ -405,7 +421,7 @@ for fi, tau in enumerate(times):
     # camera kick and the clump's flash / wobble
     kick = preset.get("kick", 0) * max(0, 1 - tau / 0.16) if tau >= 0 else 0
     cam.matrix_world = local_to_blender(cam_cf)
-    cam_d.angle_y = math.radians(70 - kick)
+    cam_d.angle_y = math.radians(a.fov - kick)
     flash = preset.get("flash", 0) * max(0, 1 - tau / 0.14) if tau >= 0 else 0
     for mix in flash_nodes:
         mix.inputs[0].default_value = flash
@@ -489,7 +505,7 @@ for fi, tau in enumerate(times):
                         M = cf(*pos) @ angles(*(c.rot0 + ang))
                         o.matrix_world = to_blender(M, c.scale) @ src.matrix_basis
                         scene.collection.objects.link(o); temp.append(o)
-    path = os.path.join(os.path.dirname(os.path.abspath(a.out)), "_fxsim_%02d.png" % fi)
+    path = os.path.join(os.path.dirname(os.path.abspath(a.out)), "_fxsim_%s_%02d.png" % (a.event, fi))
     scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
     frames.append((tau, path))

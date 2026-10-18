@@ -16,6 +16,7 @@ local HitFx = require(script.Parent.HitFx)
 local FxIds = require(ReplicatedStorage.MowALawn:WaitForChild("FxIds")) :: { [string]: string }
 local SellFx = require(script.Parent.SellFx)
 local Confetti = require(script.Parent.Confetti)
+local BossFx = require(script.Parent.BossFx)
 
 local Fx = {}
 local player = Players.LocalPlayer
@@ -225,28 +226,8 @@ function Fx.impact(pos: Vector3, tint: Color3?)
 	Debris:AddItem(anchor, 0.25)
 end
 
--- Quick white flash on a model (boss hits).
-local function flash(model: Instance)
-	local h = model:FindFirstChild("HitFlash") :: Highlight?
-	if not h then
-		local n = Instance.new("Highlight")
-		n.Name = "HitFlash"
-		n.FillColor = Color3.new(1, 1, 1)
-		n.OutlineTransparency = 1
-		n.DepthMode = Enum.HighlightDepthMode.Occluded
-		n.Parent = model
-		h = n
-	end
-	local hl = h :: Highlight
-	hl.FillTransparency = 0.25
-	TweenService:Create(hl, TweenInfo.new(0.18), { FillTransparency = 1 }):Play()
-end
-
-local function bossModel(): Model?
-	local world = workspace:FindFirstChild("World")
-	local holder = world and world:FindFirstChild("Boss")
-	return holder and holder:FindFirstChildOfClass("Model")
-end
+-- Boss fights (intro cinematic, HP bar, hits, slams, death) live in client/BossFx; it shakes the camera with ours.
+BossFx.shake = Fx.shake
 
 -------------------------------------------------------------------------------------------------------------
 -- server fx events
@@ -375,24 +356,18 @@ handlers.shred = function(d)
 end
 
 handlers.telegraph = function(d)
-	-- outline ring + an inner disc that fills up until the slam
-	local edge = disc(d.pos + Vector3.new(0, 0.25, 0), d.radius, C.red, 0.35, 0.25)
-	local base = disc(d.pos + Vector3.new(0, 0.2, 0), d.radius - 0.6, Color3.fromRGB(255, 220, 220), 0.6, 0.2)
-	local fill = disc(d.pos + Vector3.new(0, 0.3, 0), 0.5, C.red, 0.25, 0.3)
-	TweenService:Create(fill, TweenInfo.new(d.delay, Enum.EasingStyle.Linear), { Size = Vector3.new(0.3, (d.radius - 0.6) * 2, (d.radius - 0.6) * 2) }):Play()
-	for _, p in { edge, base, fill } do
-		Debris:AddItem(p, d.delay + 0.05)
-	end
+	-- a red zone that fills up and pulses faster until the slam (BossFx)
+	BossFx.telegraph(d)
 	if near(d.pos, d.radius + 4) then
 		Sound.play("warn")
 	end
 end
 
 handlers.slam = function(d)
-	Fx.ring(d.pos, d.radius * 1.3, Color3.fromRGB(255, 245, 220), 0.45)
-	Fx.arc(d.pos + Vector3.new(0, 0.5, 0), { count = 14, color = Color3.fromRGB(150, 105, 60), size = Vector3.new(0.9, 0.9, 0.9), height = 6, spread = d.radius, life = 0.8 })
+	-- dust all round the rim, flying dirt, a shock ring (BossFx); the closer you are, the harder it shakes
+	BossFx.slam(d)
 	if near(d.pos, d.radius + 40) then
-		Fx.shake(8, 0.35)
+		Fx.shake(if near(d.pos, d.radius + 8) then 10 else 6, 0.4)
 		Sound.play("slam")
 	end
 end
@@ -403,34 +378,31 @@ handlers.knock = function(d)
 		r.AssemblyLinearVelocity = d.dir * 70 + Vector3.new(0, 40, 0)
 	end
 	Fx.shake(10, 0.4)
+	BossFx.knock()
 	Sound.play("hurt")
 end
 
 handlers.bossSpawn = function(d)
-	Fx.banner(d.name:upper(), C.red, 2.6, "Dodge the red circles!")
-	Fx.shake(6, 1)
-	Fx.arc(d.pos, { count = 30, color = Color3.fromRGB(130, 95, 60), size = Vector3.new(1, 1, 1), height = 14, spread = 18, life = 1.1 })
-	Sound.play("roar")
+	-- the intro cinematic: the boss climbs out of the ground, title card, roar (skippable)
+	BossFx.intro(d)
 end
 
 handlers.bossHit = function(d)
-	local m = bossModel()
-	if m then
-		flash(m)
-	end
-	Fx.floatText(d.pos + Vector3.new(math.random(-4, 4), math.random(-2, 2), math.random(-4, 4)), "-" .. Format.short(d.amount), C.yellow, 0.75)
+	-- impact, white flash, damage number, the top HP bar
+	BossFx.hit(d)
 	Sound.play("hit", 0.1)
 end
 
 handlers.bossDown = function(d)
-	Fx.arc(d.pos + Vector3.new(0, 4, 0), { count = 40, color = C.green, size = Vector3.new(1.2, 1.2, 1.2), height = 20, spread = 24, life = 1.4 })
-	Fx.ring(d.pos, 32, C.yellow, 0.9)
-	Fx.shake(5, 0.6)
-	Sound.play("victory")
+	-- freeze, swell, pop, "BOSS DEFEATED!" + confetti
+	BossFx.down(d)
 end
 
--- personal boss reward (one banner, the rewards underneath)
+-- personal boss reward: under the "BOSS DEFEATED!" card, or its own banner if that isn't up
 handlers.reward = function(d)
+	if BossFx.reward(d) then
+		return
+	end
 	Fx.banner(d.title, C.green, 3, ("+%s coins   +%d gems"):format(Format.short(d.coins), d.gems))
 	State.emit("flyCoins", 10)
 end

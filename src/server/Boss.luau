@@ -173,7 +173,7 @@ function Boss.spawn(z: number)
 	local model, root = build(z, def)
 	table.clear(damageBy)
 	current = { z = z, def = def, hp = maxHp, maxHp = maxHp, model = model, root = root, radius = 8 + z * 2, alive = true }
-	Net.all("Fx", "bossSpawn", { pos = root.Position, name = def.name })
+	Net.all("Fx", "bossSpawn", { pos = root.Position, name = def.name, z = z, hp = maxHp, max = maxHp })
 	if Boss.onChanged then
 		Boss.onChanged()
 	end
@@ -197,13 +197,13 @@ function Boss.damage(player: Player, amount: number)
 	end
 	b.hp = math.max(0, b.hp - amount)
 	damageBy[player] = (damageBy[player] or 0) + amount
-	Net.send(player, "Fx", "bossHit", { pos = b.model.PrimaryPart and b.model.PrimaryPart.Position or b.root.Position, amount = amount })
+	Net.send(player, "Fx", "bossHit", { pos = b.model.PrimaryPart and b.model.PrimaryPart.Position or b.root.Position, amount = amount, hp = b.hp, max = b.maxHp })
 	if Boss.onChanged then
 		Boss.onChanged()
 	end
 	if b.hp <= 0 then
 		b.alive = false
-		Net.all("Fx", "bossDown", { pos = b.root.Position, name = b.def.name })
+		Net.all("Fx", "bossDown", { pos = b.root.Position, name = b.def.name, z = b.z })
 		local z = b.z
 		local snapshot = table.clone(damageBy)
 		task.delay(1.2, function()

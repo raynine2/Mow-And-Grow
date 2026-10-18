@@ -1,5 +1,5 @@
 {
- "_about": "Hit effects (client/HitFx). Each event is a list of layers. 'sprite' layers are BillboardGui images (size in exact studs; flipbook textures play their 16 frames over the lifetime); 'particles' layers are ParticleEmitter bursts (property names in lowercase); 'clippings' are the Blender fx_clip models thrown with real physics (Roblox gravity is 196.2, so they need big upward speeds). Colours are [r,g,b] or grass / grassLight / grassPale / grassDark (follow the clump's colour). 'at': contact (where the fist or blade lands: the clump's near side, a bit below your eyes, a little to the right), base (the clump's foot, raised by 'height'), top. 'dir': out (toward you, tilted 'tilt' degrees from straight up), up, none. Render any event with tools/preview/fx_sim.py to judge it frame by frame. 'pop' (cut only): a copy of the clump flashes white, swells by 'grow' and shrinks away while the stubble appears.",
+ "_about": "Hit effects (client/HitFx). Each event is a list of layers. 'sprite' layers are BillboardGui images (size in exact studs; flipbook textures play their 16 frames over the lifetime); 'particles' layers are ParticleEmitter bursts (property names in lowercase); 'clippings' are the Blender fx_clip models thrown with real physics (Roblox gravity is 196.2, so they need big upward speeds). Colours are [r,g,b] or grass / grassLight / grassPale / grassDark (follow the clump's colour). 'at': contact (where the fist or blade lands: the clump's near side, a bit below your eyes, a little to the right), base (the clump's foot, raised by 'height'), top. 'dir': out (toward you, tilted 'tilt' degrees from straight up), up, none. Render any event with tools/preview/fx_sim.py to judge it frame by frame. 'pop' (cut only): a copy of the clump flashes white, swells by 'grow' and shrinks away while the stubble appears. Boss events (client/BossFx; the colour is the boss's or the zone's ground): bossHit, bossRise (dust at its feet while it climbs out), bossSlam / bossSlamDust (the slam's centre and its rim), bossDeath (the pop). 'at': point = exactly at pos, raised by 'height'.",
  "punch": {
   "hitstop": 0.05,
   "kick": 1.4,
@@ -1285,6 +1285,1509 @@
     "lightInfluence": 0,
     "brightness": 2,
     "zOffset": 1
+   }
+  ]
+ },
+ "bossHit": {
+  "hitstop": 0.05,
+  "kick": 1.8,
+  "flash": 0.35,
+  "wobble": 0,
+  "layers": [
+   {
+    "kind": "sprite",
+    "name": "glow",
+    "at": "contact",
+    "texture": "glow",
+    "color": [
+     [
+      0,
+      [
+       255,
+       248,
+       222
+      ]
+     ],
+     [
+      1,
+      [
+       255,
+       226,
+       160
+      ]
+     ]
+    ],
+    "size": [
+     [
+      0,
+      1.5
+     ],
+     [
+      0.3,
+      3.6
+     ],
+     [
+      1,
+      4.2
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.5,
+      0.2
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.14,
+     0.14
+    ],
+    "brightness": 2,
+    "zOffset": 1.5
+   },
+   {
+    "kind": "sprite",
+    "name": "impact",
+    "at": "contact",
+    "texture": "impact",
+    "flipbook": true,
+    "color": [
+     [
+      0,
+      [
+       255,
+       255,
+       255
+      ]
+     ],
+     [
+      1,
+      [
+       255,
+       232,
+       170
+      ]
+     ]
+    ],
+    "size": [
+     [
+      0,
+      2.2
+     ],
+     [
+      1,
+      5.5
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.05
+     ],
+     [
+      0.5,
+      0.4
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.176,
+     0.176
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 1.6,
+    "zOffset": 1.8
+   },
+   {
+    "kind": "sprite",
+    "name": "star",
+    "at": "contact",
+    "texture": "burst",
+    "color": [
+     [
+      0,
+      [
+       255,
+       255,
+       255
+      ]
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      1.2
+     ],
+     [
+      0.4,
+      3.2
+     ],
+     [
+      1,
+      3.6
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.5,
+      0.35
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.11,
+     0.11
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 1.6,
+    "zOffset": 1.6
+   },
+   {
+    "kind": "particles",
+    "name": "splinters",
+    "at": "contact",
+    "dir": "out",
+    "tilt": 45,
+    "count": 12,
+    "texture": "splinter",
+    "orientation": "VelocityParallel",
+    "color": [
+     [
+      0,
+      [
+       252,
+       255,
+       200
+      ]
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      0.5
+     ],
+     [
+      0.15,
+      1.6
+     ],
+     [
+      1,
+      0.3
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.7,
+      0
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.2,
+     0.32
+    ],
+    "speed": [
+     40,
+     60
+    ],
+    "spread": [
+     75,
+     75
+    ],
+    "drag": 6,
+    "acceleration": [
+     0,
+     -30,
+     0
+    ],
+    "lightEmission": 0.3,
+    "lightInfluence": 0,
+    "brightness": 1.3,
+    "zOffset": 1
+   },
+   {
+    "kind": "particles",
+    "name": "blades",
+    "at": "contact",
+    "dir": "out",
+    "tilt": 40,
+    "count": 8,
+    "texture": "blade",
+    "color": [
+     [
+      0,
+      "grassLight"
+     ],
+     [
+      1,
+      "grass"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      0.9
+     ],
+     [
+      0.8,
+      0.8
+     ],
+     [
+      1,
+      0
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.8,
+      0
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.7,
+     1.0
+    ],
+    "speed": [
+     22,
+     34
+    ],
+    "spread": [
+     75,
+     75
+    ],
+    "drag": 1.4,
+    "acceleration": [
+     0,
+     -42,
+     0
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "rotSpeed": [
+     -500,
+     500
+    ],
+    "lightEmission": 0,
+    "lightInfluence": 0.6
+   },
+   {
+    "kind": "sprite",
+    "name": "poof",
+    "at": "contact",
+    "texture": "poof",
+    "flipbook": true,
+    "count": 2,
+    "offset": 1.0,
+    "rise": 3,
+    "delay": 0.02,
+    "color": [
+     [
+      0,
+      [
+       255,
+       252,
+       236
+      ]
+     ],
+     [
+      1,
+      "grassPale"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      1.8
+     ],
+     [
+      1,
+      4
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.05
+     ],
+     [
+      1,
+      0.3
+     ]
+    ],
+    "lifetime": [
+     0.45,
+     0.6
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 1.25,
+    "zOffset": 1.2
+   },
+   {
+    "kind": "clippings",
+    "at": "contact",
+    "count": 4,
+    "mineCount": 4,
+    "otherCount": 2,
+    "out": [
+     6,
+     14
+    ],
+    "up": [
+     30,
+     44
+    ],
+    "side": 12,
+    "size": 1.3
+   }
+  ]
+ },
+ "bossRise": {
+  "hitstop": 0,
+  "kick": 0,
+  "flash": 0,
+  "wobble": 0,
+  "layers": [
+   {
+    "kind": "sprite",
+    "name": "poof",
+    "at": "base",
+    "height": 1.2,
+    "texture": "poof",
+    "flipbook": true,
+    "count": 3,
+    "offset": 2.5,
+    "rise": 4,
+    "delay": 0.05,
+    "color": [
+     [
+      0,
+      "grassPale"
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      4
+     ],
+     [
+      1,
+      8.5
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.05
+     ],
+     [
+      1,
+      0.35
+     ]
+    ],
+    "lifetime": [
+     0.7,
+     0.9
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 1.1,
+    "zOffset": 0.5
+   },
+   {
+    "kind": "particles",
+    "name": "clods",
+    "at": "base",
+    "height": 1,
+    "dir": "up",
+    "count": 10,
+    "texture": "splinter",
+    "orientation": "VelocityParallel",
+    "color": [
+     [
+      0,
+      "grassDark"
+     ],
+     [
+      1,
+      "grass"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      0.7
+     ],
+     [
+      0.2,
+      1.7
+     ],
+     [
+      1,
+      0.8
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.8,
+      0
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.45,
+     0.7
+    ],
+    "speed": [
+     25,
+     40
+    ],
+    "spread": [
+     50,
+     50
+    ],
+    "drag": 1,
+    "acceleration": [
+     0,
+     -80,
+     0
+    ],
+    "lightEmission": 0,
+    "lightInfluence": 0.8
+   },
+   {
+    "kind": "particles",
+    "name": "ring",
+    "at": "base",
+    "height": 0.2,
+    "dir": "up",
+    "count": 1,
+    "texture": "ring",
+    "orientation": "VelocityPerpendicular",
+    "color": [
+     [
+      0,
+      [
+       255,
+       250,
+       230
+      ]
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      2
+     ],
+     [
+      1,
+      14
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.2
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.45,
+     0.45
+    ],
+    "speed": [
+     0.01,
+     0.01
+    ],
+    "lightEmission": 0.4,
+    "lightInfluence": 0
+   },
+   {
+    "kind": "clippings",
+    "at": "base",
+    "height": 1.5,
+    "count": 3,
+    "mineCount": 3,
+    "otherCount": 3,
+    "out": [
+     2,
+     6
+    ],
+    "up": [
+     40,
+     56
+    ],
+    "side": 14,
+    "size": 1.2
+   }
+  ]
+ },
+ "bossSlam": {
+  "hitstop": 0,
+  "kick": 0,
+  "flash": 0,
+  "wobble": 0,
+  "layers": [
+   {
+    "kind": "sprite",
+    "name": "glow",
+    "at": "base",
+    "texture": "glow",
+    "color": [
+     [
+      0,
+      [
+       255,
+       248,
+       222
+      ]
+     ],
+     [
+      1,
+      [
+       255,
+       226,
+       160
+      ]
+     ]
+    ],
+    "size": [
+     [
+      0,
+      4
+     ],
+     [
+      0.3,
+      9
+     ],
+     [
+      1,
+      10
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.5,
+      0.2
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.16,
+     0.16
+    ],
+    "brightness": 2,
+    "zOffset": 1.5,
+    "height": 1.5
+   },
+   {
+    "kind": "sprite",
+    "name": "impact",
+    "at": "base",
+    "height": 2,
+    "texture": "impact",
+    "flipbook": true,
+    "color": [
+     [
+      0,
+      [
+       255,
+       255,
+       255
+      ]
+     ],
+     [
+      1,
+      [
+       255,
+       232,
+       170
+      ]
+     ]
+    ],
+    "size": [
+     [
+      0,
+      4
+     ],
+     [
+      1,
+      10
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.05
+     ],
+     [
+      0.5,
+      0.4
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.22,
+     0.22
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 1.5,
+    "zOffset": 1
+   },
+   {
+    "kind": "particles",
+    "name": "clods",
+    "at": "base",
+    "height": 1,
+    "dir": "up",
+    "count": 18,
+    "texture": "splinter",
+    "orientation": "VelocityParallel",
+    "color": [
+     [
+      0,
+      "grassLight"
+     ],
+     [
+      1,
+      "grassDark"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      0.6
+     ],
+     [
+      0.15,
+      1.8
+     ],
+     [
+      1,
+      0.6
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.8,
+      0
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.45,
+     0.75
+    ],
+    "speed": [
+     40,
+     60
+    ],
+    "spread": [
+     60,
+     60
+    ],
+    "drag": 1.5,
+    "acceleration": [
+     0,
+     -90,
+     0
+    ],
+    "lightEmission": 0,
+    "lightInfluence": 0.8
+   },
+   {
+    "kind": "sprite",
+    "name": "poof",
+    "at": "base",
+    "height": 1.5,
+    "texture": "poof",
+    "flipbook": true,
+    "count": 4,
+    "offset": 2.5,
+    "rise": 3,
+    "delay": 0.03,
+    "color": [
+     [
+      0,
+      "grassPale"
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      3
+     ],
+     [
+      1,
+      7.5
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.05
+     ],
+     [
+      1,
+      0.35
+     ]
+    ],
+    "lifetime": [
+     0.6,
+     0.8
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 1.1,
+    "zOffset": 0.5
+   },
+   {
+    "kind": "clippings",
+    "at": "base",
+    "height": 1.5,
+    "count": 6,
+    "mineCount": 6,
+    "otherCount": 6,
+    "out": [
+     2,
+     8
+    ],
+    "up": [
+     45,
+     65
+    ],
+    "side": 18,
+    "size": 1.3
+   }
+  ]
+ },
+ "bossSlamDust": {
+  "hitstop": 0,
+  "kick": 0,
+  "flash": 0,
+  "wobble": 0,
+  "layers": [
+   {
+    "kind": "sprite",
+    "name": "poof",
+    "at": "base",
+    "height": 1,
+    "texture": "poof",
+    "flipbook": true,
+    "count": 2,
+    "offset": 1.0,
+    "rise": 2.5,
+    "delay": 0.04,
+    "color": [
+     [
+      0,
+      "grassPale"
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      2.5
+     ],
+     [
+      1,
+      5.5
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.05
+     ],
+     [
+      1,
+      0.35
+     ]
+    ],
+    "lifetime": [
+     0.55,
+     0.75
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 1.1,
+    "zOffset": 0.5
+   },
+   {
+    "kind": "particles",
+    "name": "clods",
+    "at": "base",
+    "height": 0.6,
+    "dir": "up",
+    "count": 4,
+    "texture": "splinter",
+    "orientation": "VelocityParallel",
+    "color": [
+     [
+      0,
+      "grassLight"
+     ],
+     [
+      1,
+      "grassDark"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      0.5
+     ],
+     [
+      0.2,
+      1.2
+     ],
+     [
+      1,
+      0.5
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.8,
+      0
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.35,
+     0.55
+    ],
+    "speed": [
+     18,
+     28
+    ],
+    "spread": [
+     40,
+     40
+    ],
+    "drag": 1,
+    "acceleration": [
+     0,
+     -80,
+     0
+    ],
+    "lightEmission": 0,
+    "lightInfluence": 0.8
+   }
+  ]
+ },
+ "bossDeath": {
+  "hitstop": 0,
+  "kick": 0,
+  "flash": 0,
+  "wobble": 0,
+  "layers": [
+   {
+    "kind": "sprite",
+    "name": "glow",
+    "at": "point",
+    "texture": "glow",
+    "color": [
+     [
+      0,
+      [
+       255,
+       255,
+       255
+      ]
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      4
+     ],
+     [
+      0.25,
+      18
+     ],
+     [
+      1,
+      22
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.5,
+      0.2
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.35,
+     0.35
+    ],
+    "brightness": 3,
+    "zOffset": 1.5
+   },
+   {
+    "kind": "sprite",
+    "name": "impact",
+    "at": "point",
+    "texture": "impact",
+    "flipbook": true,
+    "color": [
+     [
+      0,
+      [
+       255,
+       255,
+       255
+      ]
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      6
+     ],
+     [
+      1,
+      20
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.05
+     ],
+     [
+      0.5,
+      0.35
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.3,
+     0.3
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 2,
+    "zOffset": 2
+   },
+   {
+    "kind": "sprite",
+    "name": "star",
+    "at": "point",
+    "texture": "burst",
+    "color": [
+     [
+      0,
+      [
+       255,
+       255,
+       255
+      ]
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      4
+     ],
+     [
+      0.4,
+      20
+     ],
+     [
+      1,
+      24
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.5,
+      0.3
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.2,
+     0.2
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 2,
+    "zOffset": 2.5
+   },
+   {
+    "kind": "particles",
+    "name": "sparkles",
+    "at": "point",
+    "dir": "up",
+    "count": 50,
+    "texture": "spark",
+    "color": [
+     [
+      0,
+      [
+       255,
+       255,
+       255
+      ]
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      1.4
+     ],
+     [
+      1,
+      0
+     ]
+    ],
+    "lifetime": [
+     0.6,
+     1.2
+    ],
+    "speed": [
+     30,
+     60
+    ],
+    "spread": [
+     180,
+     180
+    ],
+    "drag": 3,
+    "acceleration": [
+     0,
+     -12,
+     0
+    ],
+    "rotation": [
+     0,
+     90
+    ],
+    "lightEmission": 1,
+    "lightInfluence": 0,
+    "brightness": 2,
+    "zOffset": 2
+   },
+   {
+    "kind": "particles",
+    "name": "splinters",
+    "at": "point",
+    "dir": "up",
+    "count": 30,
+    "texture": "splinter",
+    "orientation": "VelocityParallel",
+    "color": [
+     [
+      0,
+      [
+       255,
+       255,
+       220
+      ]
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      1
+     ],
+     [
+      0.15,
+      3.2
+     ],
+     [
+      1,
+      0.6
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.7,
+      0
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.3,
+     0.5
+    ],
+    "speed": [
+     60,
+     95
+    ],
+    "spread": [
+     180,
+     180
+    ],
+    "drag": 5,
+    "acceleration": [
+     0,
+     -30,
+     0
+    ],
+    "lightEmission": 0.3,
+    "lightInfluence": 0,
+    "brightness": 1.4,
+    "zOffset": 1.5
+   },
+   {
+    "kind": "particles",
+    "name": "blades",
+    "at": "point",
+    "dir": "up",
+    "count": 30,
+    "texture": "blade",
+    "color": [
+     [
+      0,
+      "grassLight"
+     ],
+     [
+      1,
+      "grass"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      1.5
+     ],
+     [
+      0.8,
+      1.3
+     ],
+     [
+      1,
+      0
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0
+     ],
+     [
+      0.8,
+      0
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     1.0,
+     1.6
+    ],
+    "speed": [
+     25,
+     45
+    ],
+    "spread": [
+     180,
+     180
+    ],
+    "drag": 1.2,
+    "acceleration": [
+     0,
+     -40,
+     0
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "rotSpeed": [
+     -500,
+     500
+    ],
+    "lightEmission": 0,
+    "lightInfluence": 0.6
+   },
+   {
+    "kind": "sprite",
+    "name": "poof",
+    "at": "point",
+    "texture": "poof",
+    "flipbook": true,
+    "count": 6,
+    "offset": 4,
+    "rise": 3,
+    "delay": 0.03,
+    "color": [
+     [
+      0,
+      [
+       255,
+       252,
+       240
+      ]
+     ],
+     [
+      1,
+      "grassPale"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      5
+     ],
+     [
+      1,
+      11
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.05
+     ],
+     [
+      1,
+      0.35
+     ]
+    ],
+    "lifetime": [
+     0.7,
+     0.9
+    ],
+    "rotation": [
+     0,
+     360
+    ],
+    "brightness": 1.3,
+    "zOffset": 1
+   },
+   {
+    "kind": "particles",
+    "name": "ring",
+    "at": "base",
+    "height": 0.3,
+    "dir": "up",
+    "count": 1,
+    "texture": "ring",
+    "orientation": "VelocityPerpendicular",
+    "color": [
+     [
+      0,
+      [
+       255,
+       255,
+       255
+      ]
+     ],
+     [
+      1,
+      "grassLight"
+     ]
+    ],
+    "size": [
+     [
+      0,
+      4
+     ],
+     [
+      1,
+      40
+     ]
+    ],
+    "transparency": [
+     [
+      0,
+      0.1
+     ],
+     [
+      1,
+      1
+     ]
+    ],
+    "lifetime": [
+     0.5,
+     0.5
+    ],
+    "speed": [
+     0.01,
+     0.01
+    ],
+    "lightEmission": 0.6,
+    "lightInfluence": 0
+   },
+   {
+    "kind": "clippings",
+    "at": "point",
+    "count": 24,
+    "mineCount": 24,
+    "otherCount": 24,
+    "out": [
+     4,
+     16
+    ],
+    "up": [
+     40,
+     70
+    ],
+    "side": 30,
+    "size": 2.0
    }
   ]
  }

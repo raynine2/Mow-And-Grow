@@ -1,6 +1,7 @@
 -- First-person hands, like the Chop A Forest trailer: chunky grey sleeves, big red blocky gloves holding the
 -- current tool. Idle sway, walk bob, a swing on every hit, a buzz for auto tools. Drawn only on this client.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local State = require(script.Parent.State)
@@ -94,6 +95,38 @@ tool("LaserMower", function(add)
 	add(Vector3.new(0.25, 0.25, 4), CFrame.new(0, -1, -2) * CFrame.Angles(math.rad(35), 0, 0), DARK)
 	add(Vector3.new(0.25, 0.25, 4), CFrame.new(-2.4, -1, -2) * CFrame.Angles(math.rad(35), 0, 0), DARK)
 end)
+
+-- Blender tool models (uploaded ones), held at their grip (their origin); working end points forward
+local TOOL_MODEL = { Scissors = "tool_scissors", Sickle = "tool_sickle", WeedWhacker = "tool_whacker", MegaScythe = "tool_scythe" }
+local heldModel: Model? = nil
+local heldId: string? = nil
+local function modelFor(id: string?): Model?
+	if id == heldId then
+		return heldModel
+	end
+	if heldModel then
+		heldModel:Destroy()
+		heldModel = nil
+	end
+	heldId = id
+	local folder = ReplicatedStorage:FindFirstChild("MowALawnModels")
+	local template = folder and id and TOOL_MODEL[id] and folder:FindFirstChild(TOOL_MODEL[id])
+	if template and template:IsA("Model") then
+		local m = template:Clone()
+		for _, p in m:GetDescendants() do
+			if p:IsA("BasePart") then
+				p.Anchored = true
+				p.CanCollide = false
+				p.CanQuery = false
+				p.CanTouch = false
+				p.CastShadow = false
+			end
+		end
+		m.Parent = root
+		heldModel = m
+	end
+	return heldModel
+end
 
 -- where the hands rest, relative to the camera
 local REST_R = CFrame.new(1.55, -1.45, -2.4) * CFrame.Angles(math.rad(8), math.rad(8), 0)
@@ -195,8 +228,17 @@ RunService.RenderStepped:Connect(function()
 	place(rightArm, rightCf)
 	place(leftArm, leftCf)
 
+	local held = modelFor(id)
+	if held then
+		held:PivotTo(rightCf * CFrame.new(0, 0.1, -0.2))
+		for _, part in held:GetDescendants() do
+			if part:IsA("BasePart") then
+				part.Transparency = 0
+			end
+		end
+	end
 	for toolId, pieces in tools do
-		if toolId == id then
+		if toolId == id and not held then
 			local grip = if id == "PushMower" or id == "LaserMower" then rightCf * CFrame.new(0, 0, -0.1) else rightCf * CFrame.new(0, 0, -0.5)
 			for _, pc in pieces do
 				local cf = grip * pc.offset

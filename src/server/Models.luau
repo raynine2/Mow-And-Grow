@@ -117,4 +117,20 @@ function Models.place(name: string, parent: Instance, cf: CFrame, scale: number?
 	return m
 end
 
+-- Attach a placed model to a moving part: unanchor, weld every part to `to`, no mass, no collisions.
+function Models.weldTo(model: Model, to: BasePart)
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.Anchored = false
+			p.CanCollide = false
+			p.CanQuery = false
+			p.Massless = true
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = p
+			w.Part1 = to
+			w.Parent = p
+		end
+	end
+end
+
 return Models

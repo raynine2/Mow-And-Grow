@@ -6,6 +6,16 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local PlayerData = require(script.Parent.PlayerData)
 local Net = require(script.Parent.Net)
 local PropKit = require(script.Parent.PropKit)
+local Models = require(script.Parent.Models)
+
+local MOWER_MODEL = {
+	RustyRider = "mower_rusty",
+	TurboTractor = "mower_tractor",
+	GoldenZeroTurn = "mower_zeroturn",
+	MonsterMulcher = "mower_mulcher",
+	TrialMower = "mower_zeroturn",
+	RocketMower = "mower_rocket",
+}
 
 local Mowers = {}
 
@@ -109,7 +119,21 @@ local function build(player: Player, def, fuel: number): Model
 	body.CustomPhysicalProperties = PhysicalProperties.new(0.8, 0, 0, 100, 1)
 	body.CFrame = Mowers.spawnCFrame
 	body.Parent = model
-	decorate(model, body, def)
+	-- the Blender mower sits on the chassis (origin = ground under the middle); the chassis turns invisible
+	local placed = MOWER_MODEL[def.id] and Models.place(MOWER_MODEL[def.id], model, body.CFrame * CFrame.new(0, -1.2, 0))
+	if placed then
+		Models.weldTo(placed, body)
+		body.Transparency = 1
+		if def.id == "TrialMower" then
+			for _, p in placed:GetDescendants() do
+				if p:IsA("BasePart") and p.Material ~= Enum.Material.Metal and p.Material ~= Enum.Material.Fabric then
+					p.Color = PropKit.shade(def.color, p.Color.R + 0.3)
+				end
+			end
+		end
+	else
+		decorate(model, body, def)
+	end
 
 	local seat = Instance.new("VehicleSeat")
 	seat.Name = "Seat"
@@ -120,7 +144,11 @@ local function build(player: Player, def, fuel: number): Model
 	seat.HeadsUpDisplay = false
 	seat.CanQuery = false
 	seat.Massless = true
-	seat.CFrame = body.CFrame * CFrame.new(0, 1.4, 2.2)
+	-- Blender mowers have their seat spot 3 studs up and 1 stud back from the middle
+	seat.CFrame = if placed then body.CFrame * CFrame.new(0, 2.3, 1) else body.CFrame * CFrame.new(0, 1.4, 2.2)
+	if placed then
+		seat.Transparency = 1
+	end
 	local w = Instance.new("WeldConstraint")
 	w.Part0 = seat
 	w.Part1 = body

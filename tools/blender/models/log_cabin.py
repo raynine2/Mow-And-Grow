@@ -90,7 +90,7 @@ def build(lib):
     roof = lib.material("WoodPlanks", kit.ROOF)
     trim = lib.material("WoodPlanks", kit.ROOF_DARK)
     floor = lib.material("WoodPlanks", (170, 116, 72))
-    stone = lib.material("Slate", (128, 126, 122))
+    stone = lib.material("Slate", (140, 132, 120))
     glass = lib.material("Glass", (170, 210, 235))
 
     # ---- stone sill and floors ------------------------------------------------------------------------------
@@ -175,5 +175,5 @@ def build(lib):
 
     # ---- stone chimney on the -X side ------------------------------------------------------------------------
     cx = -XW - 1.75
-    lib.box("chimney", (2.2, 2.6, 17.4), (cx, -5.8, 8.7), mat=stone, bevel=0.12, taper=(0.9, 0.9))
-    lib.box("chimney_cap", (2.6, 3.0, 0.5), (cx, -5.8, 17.55), mat=stone, bevel=0.1)
+    lib.box("chimney", (2.2, 2.6, 17.4), (cx, -8.0, 8.7), mat=stone, bevel=0.12, taper=(0.9, 0.9))
+    lib.box("chimney_cap", (2.6, 3.0, 0.5), (cx, -8.0, 17.55), mat=stone, bevel=0.1)

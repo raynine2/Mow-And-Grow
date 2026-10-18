@@ -29,7 +29,7 @@ def beam(lib, name, p0, p1, size, mat, bevel=0.05, taper=None, roll=0):
 def wheel(lib, name, loc, r, w, tyre, hub, verts=12):
     """Wheel with its axle along X: fat bevelled tyre and a grey hub."""
     lib.cyl(name, r, w, loc, rot=(0, 90, 0), mat=tyre, verts=verts, bevel=0.08)
-    lib.cyl(name + "_hub", r * 0.55, w + 0.1, loc, rot=(0, 90, 0), mat=hub, verts=8, bevel=0.04)
+    lib.cyl(name + "_hub", r * 0.55, w + 0.1, loc, rot=(0, 90, 0), mat=hub, verts=8, bevel=0)
 
 
 def hazard(lib, name, origin, u_axis, v_axis, length, height, depth, mats, width=0.42, slant=35):
@@ -99,20 +99,18 @@ def build(lib):
     lib.cyl("cap", 0.24, 0.3, (0.38, 0.45, 2.65), mat=red, verts=10, bevel=0.06)
     lib.cyl("filter", 0.38, 0.45, (-0.95, 0.55, 1.95), rot=(0, 90, 0), mat=grey, verts=10, bevel=0.06)
     lib.cyl("pull", 0.3, 0.18, (-0.15, -0.6, 2.05), rot=(90, 0, 0), mat=red, verts=10, bevel=0.05)
-    lib.box("pull_handle", (0.45, 0.14, 0.14), (-0.15, -0.74, 2.05), mat=black, bevel=0.04)
-    lib.cyl("muffler", 0.17, 0.6, (0.88, -0.25, 1.6), rot=(0, 90, 0), mat=grey, verts=8, bevel=0.03)
+    lib.box("pull_handle", (0.45, 0.14, 0.14), (-0.15, -0.74, 2.05), mat=black)
+    lib.cyl("muffler", 0.17, 0.6, (0.88, -0.25, 1.6), rot=(0, 90, 0), mat=grey, verts=8, bevel=0)
 
     # grass bag at the back, hanging between the bar legs
     lib.box("bag", (1.9, 1.6, 1.25), (0, -2.15, 1.25), rot=(-8, 0, 0), mat=bag, bevel=0.2, taper=(0.9, 0.85))
-    lib.box("bag_frame", (2.0, 0.22, 0.22), (0, -1.45, 1.85), mat=black, bevel=0.05)
+    lib.box("bag_frame", (2.0, 0.22, 0.22), (0, -1.45, 1.85), mat=black)
 
     # push bar: two legs from the back of the deck up to a crossbar, with a foam grip and a throttle lever
     for x in (-1.15, 1.15):
         lib.box("bracket%d" % (x > 0), (0.24, 0.5, 0.5), (x, -1.2, 1.05), mat=black, bevel=0.06)
         beam(lib, "leg%d" % (x > 0), (x, -1.25, 1.05), (x * 0.95, -3.4, 3.05), (0.2, 0.2), black, bevel=0.05)
-    lib.box("crossbar", (2.5, 0.22, 0.22), (0, -2.35, 2.05), mat=black, bevel=0.05)
+    lib.box("crossbar", (2.5, 0.22, 0.22), (0, -2.35, 2.05), mat=black)
     beam(lib, "grip_bar", (-1.18, -3.55, 3.2), (1.18, -3.55, 3.2), (0.26, 0.26), black, bevel=0.06)
     beam(lib, "grip", (-0.85, -3.55, 3.2), (0.85, -3.55, 3.2), (0.34, 0.34), orange, bevel=0.1)
-    beam(lib, "lever", (-0.7, -3.4, 3.38), (0.7, -3.4, 3.38), (0.1, 0.1), red, bevel=0)
-    for x in (-0.7, 0.7):
-        beam(lib, "lever_arm%d" % (x > 0), (x, -3.45, 3.2), (x, -3.4, 3.4), (0.1, 0.1), red, bevel=0)
+    beam(lib, "lever", (-0.7, -3.42, 3.36), (0.7, -3.42, 3.36), (0.12, 0.12), red, bevel=0)

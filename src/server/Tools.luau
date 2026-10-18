@@ -3,6 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local PlayerData = require(script.Parent.PlayerData)
+local Models = require(script.Parent.Models)
 
 local Tools = {}
 
@@ -76,11 +77,17 @@ local function attachPushMower(char: Model, def)
 	if not root or not hum or char:FindFirstChild("PushMowerModel") then
 		return
 	end
-	local model = Instance.new("Model")
-	model.Name = "PushMowerModel"
 	-- ground is HipHeight + half the root part below the root's centre (R15)
 	local groundY = -(hum.HipHeight + root.Size.Y / 2)
 	local base = root.CFrame * CFrame.new(0, groundY, -3.4)
+	local placed = Models.place(if def.id == "LaserMower" then "tool_lasermower" else "tool_pushmower", char, base)
+	if placed then
+		placed.Name = "PushMowerModel"
+		Models.weldTo(placed, root)
+		return
+	end
+	local model = Instance.new("Model")
+	model.Name = "PushMowerModel"
 	local dark = Color3.fromRGB(40, 40, 48)
 	local laser = def.id == "LaserMower"
 	local function add(size: Vector3, cf: CFrame, color: Color3, name: string, neon: boolean?, cyl: boolean?)

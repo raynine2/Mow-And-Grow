@@ -6,6 +6,9 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Net = require(script.Parent.Net)
 local PropKit = require(script.Parent.PropKit)
 local RunBuilder = require(script.Parent.RunBuilder)
+local Models = require(script.Parent.Models)
+
+local BOSS_MODEL = { "boss_dandelion", "boss_thornbush", "boss_flytrap", "boss_vine", "boss_jungle" }
 
 local Boss = {}
 
@@ -37,9 +40,23 @@ function Boss.state()
 end
 
 local function build(z: number, def): (Model, BasePart)
+	local centre = RunBuilder.zoneCentre(z)
+	-- the Blender monster, standing on an invisible root block that the fight logic uses
+	local holder = Instance.new("Model")
+	holder.Name = def.name
+	local placed = Models.place(BOSS_MODEL[z], holder, CFrame.lookAt(centre, centre + Vector3.new(0, 0, -1)), 1 + (z - 1) * 0.12)
+	if placed then
+		local rootPart = PropKit.brick(holder, Vector3.new(8, 3, 8), CFrame.new(centre + Vector3.new(0, 1.5, 0)), Color3.new(), "Roots")
+		rootPart.Transparency = 1
+		local _, size = placed:GetBoundingBox()
+		local head = PropKit.part({ size = Vector3.one, cf = CFrame.new(centre + Vector3.new(0, size.Y * 0.8, 0)), color = Color3.new(), parent = holder, transparency = 1, collide = false, name = "Head" })
+		holder.PrimaryPart = head
+		PropKit.billboard(head, def.name, Color3.fromRGB(255, 90, 90), Vector2.new(18, 3.5), Vector3.new(0, size.Y * 0.35, 0), 300)
+		holder.Parent = folder
+		return holder, rootPart
+	end
 	local m = Instance.new("Model")
 	m.Name = def.name
-	local centre = RunBuilder.zoneCentre(z)
 	local c = def.color
 	local stem = Color3.fromRGB(70, 160, 60)
 	local root = PropKit.brick(m, Vector3.new(8, 3, 8), CFrame.new(centre + Vector3.new(0, 1.5, 0)), PropKit.shade(Config.ZONES[z].ground, 0.7), "Roots")

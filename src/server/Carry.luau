@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
+local Models = require(script.Parent.Models)
 
 local Carry = {}
 
@@ -45,6 +46,21 @@ function Carry.refresh(player: Player)
 	for i = 1, n do
 		local b = data.run.carry[#data.run.carry - n + i]
 		local mut = Config.mutation(b.m or "None")
+		local row = (i - 1) % 6
+		local col = (i - 1) // 6
+		local spot = torso.CFrame * CFrame.new(col * 2.4 - (if n > 6 then 1.2 else 0), -0.6 + row * 1.0, 1.3) * CFrame.new(0, -0.5, 0)
+		local placed = Models.place("bundle", stack, spot, 0.9)
+		if placed then
+			Models.weldTo(placed, torso)
+			if mut.color then
+				for _, p in placed:GetDescendants() do
+					if p:IsA("BasePart") and p.Material == Enum.Material.Grass then
+						p.Color = mut.color
+					end
+				end
+			end
+			continue
+		end
 		local part = Instance.new("Part")
 		part.Name = "Bundle"
 		part.Size = Vector3.new(2.2, 0.9, 1.4)
@@ -55,8 +71,6 @@ function Carry.refresh(player: Player)
 		part.CanQuery = false
 		part.CanTouch = false
 		part.Massless = true
-		local row = (i - 1) % 6
-		local col = (i - 1) // 6
 		part.CFrame = torso.CFrame * CFrame.new(col * 2.3 - (if n > 6 then 1.15 else 0), -0.6 + row * 0.95, 1.3)
 		local tape = Instance.new("Part")
 		tape.Name = "Tape"

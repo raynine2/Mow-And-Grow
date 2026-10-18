@@ -167,7 +167,18 @@ def stats():
             obj.data.calc_loop_triangles(); tris += len(obj.data.loop_triangles)
     return tris
 
+def add_origin_marker():
+    """A tiny triangle at (0,0,0) named "Origin__000000". In Roblox it tells the loader where the model's origin is
+    (the importer re-centres meshes), then it is deleted."""
+    me = bpy.data.meshes.new("Origin__000000")
+    me.from_pydata([(0, 0, 0), (0.02, 0, 0), (0, 0.02, 0)], [], [(0, 1, 2)])
+    mat = bpy.data.materials.get("Origin__000000") or bpy.data.materials.new("Origin__000000")
+    me.materials.append(mat)
+    obj = bpy.data.objects.new("Origin__000000", me)
+    bpy.context.scene.collection.objects.link(obj)
+
 def export_glb(path):
+    add_origin_marker()
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_yup=True,
                               export_apply=True, export_materials="EXPORT")

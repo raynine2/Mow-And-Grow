@@ -7,6 +7,7 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Net = require(script.Parent.Net)
 local PropKit = require(script.Parent.PropKit)
 local RunBuilder = require(script.Parent.RunBuilder)
+local Models = require(script.Parent.Models)
 
 local Field = {}
 
@@ -14,6 +15,8 @@ type Stalk = { stem: Part, head: Part?, cap: Part?, baseH: number, headH: number
 type Patch = {
 	part: Part, -- the turf brick (position used for effects)
 	stalks: { Stalk },
+	model: Model?, -- the Blender tuft, when uploaded (used instead of stalks)
+	modelScale: number,
 	z: number,
 	col: number,
 	row: number,
@@ -98,6 +101,10 @@ local function stubble(p: Patch)
 		end
 	end
 	table.clear(p.stalks)
+	if p.model then
+		p.model:Destroy()
+		p.model = nil
+	end
 	local turf = p.part
 	turf.Color = PropKit.shade(Config.ZONES[p.z].grass[2], 0.72)
 	turf.Material = Enum.Material.Plastic
@@ -134,8 +141,15 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 		mut = nil,
 		cut = alreadyCut,
 		baseColor = colorA,
+		model = nil,
+		modelScale = 1,
 	}
-	if not alreadyCut then
+	local tuftName = "tuft_" .. def.style
+	if not alreadyCut and Models.has(tuftName) then
+		p.modelScale = rng:NextNumber(0.9, 1.1)
+		p.model = Models.place(tuftName, model, CFrame.new(pos.X, TURF_TOP - 0.05, pos.Z) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0), p.modelScale)
+	end
+	if not alreadyCut and not p.model then
 		-- a tuft: blades fanned out around the middle of the tile, alternating two greens with lighter tips
 		local tilt = rng:NextNumber(0, math.pi * 2)
 		for i = 1, style.count do
@@ -237,6 +251,18 @@ local function reveal(p: Patch, luck: number)
 		return
 	end
 	local m = Config.mutation(mut)
+	if p.model then
+		for _, part in p.model:GetDescendants() do
+			if part:IsA("BasePart") then
+				part.Color = PropKit.shade(m.color, if part.Material == Enum.Material.Grass then 1 else 0.8)
+				if mut == "Galaxy" or mut == "Toxic" then
+					part.Material = Enum.Material.Neon
+				elseif mut == "Diamond" then
+					part.Material = Enum.Material.Glass
+				end
+			end
+		end
+	end
 	for _, s in p.stalks do
 		s.stem.Color = m.color
 		s.stem.Material = if mut == "Diamond" then Enum.Material.Glass elseif mut == "Galaxy" or mut == "Toxic" then Enum.Material.Neon else Enum.Material.SmoothPlastic
@@ -289,6 +315,9 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 	else
 		-- stalks shrink with damage
 		local ratio = p.hp / p.maxHp
+		if p.model then
+			p.model:ScaleTo(p.modelScale * (0.3 + 0.7 * ratio))
+		end
 		for _, s in p.stalks do
 			local knocked = layoutStalk(s, ratio)
 			if knocked then

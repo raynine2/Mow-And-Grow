@@ -51,16 +51,16 @@ def walls(lib, wood, ends):
                 if 2 <= k <= 4:
                     holes += FRONT_WIN
             for i, (s, e) in enumerate(spans(x0, x1, holes)):
-                kit.log_ends(lib, "log%s%d_%d" % (wall, k, i), (s, y, z), (e, y, z), R, wood, ends,
+                kit.log_ends(lib, "log%s%d_%d" % (wall, k, i), (s, y, z), (e, y, z), R, wood, ends, verts=8,
                              ends=(abs(s - x0) < 1e-6, abs(e - x1) < 1e-6))
     # side walls: logs along Y, half a course higher so the corners interlock
     y0, y1 = BY - OVER, FY + OVER
-    for k in range(8):
+    for k in range(7):
         z = BASE + D + k * D
         for sx in (-1, 1):
             holes = [SIDE_WIN] if 2 <= k <= 3 else []
             for i, (s, e) in enumerate(spans(y0, y1, holes)):
-                kit.log_ends(lib, "logs%d%d_%d" % (sx, k, i), (sx * XW, s, z), (sx * XW, e, z), R, wood, ends,
+                kit.log_ends(lib, "logs%d%d_%d" % (sx, k, i), (sx * XW, s, z), (sx * XW, e, z), R, wood, ends, verts=8,
                              ends=(abs(s - y0) < 1e-6, abs(e - y1) < 1e-6))
         # sill log under the first side course
     for sx in (-1, 1):
@@ -71,15 +71,15 @@ def window(lib, name, loc, rot, w, h, glass, trim):
     """Window in a local frame facing +Y: pane, frame, cross mullions, a sill and two shutters."""
     parts = [
         lib.box(name + "_glass", (w, 0.12, h), (0, 0, 0), mat=glass),
-        lib.box(name + "_top", (w + 0.6, 0.5, 0.35), (0, 0.2, h / 2 + 0.1), mat=trim, bevel=0.06),
-        lib.box(name + "_sill", (w + 0.8, 0.8, 0.3), (0, 0.35, -h / 2 - 0.1), mat=trim, bevel=0.06),
+        lib.box(name + "_top", (w + 0.6, 0.5, 0.35), (0, 0.2, h / 2 + 0.1), mat=trim),
+        lib.box(name + "_sill", (w + 0.8, 0.8, 0.3), (0, 0.35, -h / 2 - 0.1), mat=trim),
         lib.box(name + "_mv", (0.18, 0.3, h), (0, 0.05, 0), mat=trim),
         lib.box(name + "_mh", (w, 0.3, 0.18), (0, 0.05, 0.1), mat=trim),
     ]
     for sx in (-1, 1):
         parts.append(lib.box(name + "_jamb%d" % sx, (0.3, 1.6, h + 0.2), (sx * (w / 2 + 0.05), 0, 0), mat=trim))
         parts.append(lib.box(name + "_shutter%d" % sx, (w * 0.45, 0.22, h + 0.2), (sx * (w / 2 + w * 0.225 + 0.25), R + 0.08, 0),
-                             mat=trim, bevel=0.06))
+                             mat=trim))
     for p in parts:
         kit.place(p, loc, rot)
 
@@ -120,7 +120,7 @@ def build(lib):
     for sx in (-1, 1):
         g = kit.prism(lib, "gable%d" % sx, [(BY - mid - R, 0), (FY - mid + R, 0), (0, rise * (FY - mid + R) / run)],
                       1.2, mat=wood)
-        kit.place(g, (sx * XW, mid, top - 0.3), (0, 0, 90))
+        kit.place(g, (sx * XW, mid, top - 0.75), (0, 0, 90))
         lib.box("gable_beam%d" % sx, (0.5, 0.5, rise - 0.6), (sx * (XW + 0.7), mid, top + (rise - 0.6) / 2 - 0.3), mat=trim)
     slope_len = math.hypot(run, rise) + 0.3
     half_w = XW + 2.6
@@ -135,7 +135,7 @@ def build(lib):
             y = mid + sgn * (run * (1 - t))
             z = eave_z + rise * t + 0.25 + 0.3
             lib.box("shingle_%s%d" % (side, j), (2 * half_w + 0.1, slope_len / 7.5, 0.18), (0, y + sgn * 0.0, z),
-                    rot=(-sgn * ang, 0, 0), mat=trim if j % 2 else roof, bevel=0.05)
+                    rot=(-sgn * ang, 0, 0), mat=trim if j % 2 else roof)
         # fascia board at the eave
         lib.box("fascia_" + side, (2 * half_w + 0.2, 0.35, 0.8), (0, mid + sgn * (run + 0.1), eave_z - 0.1), mat=trim, bevel=0.06)
     lib.box("ridge", (2 * half_w + 0.4, 1.1, 1.1), (0, mid, eave_z + rise + 0.6), rot=(45, 0, 0), mat=trim, bevel=0.08)
@@ -159,16 +159,16 @@ def build(lib):
     for j in range(3):
         t = (j + 0.5) / 3
         lib.box("pshingle%d" % j, (2 * XW + 3.1, p_len / 5, 0.16),
-                (0, FY + p_run * t, post_top + 0.55 + p_drop * (1 - t) + 0.3), rot=(-p_ang, 0, 0), mat=trim, bevel=0.04)
+                (0, FY + p_run * t, post_top + 0.55 + p_drop * (1 - t) + 0.3), rot=(-p_ang, 0, 0), mat=trim)
     # railings: top rail + balusters between the outer posts, and along the porch sides
     for sx in (-1, 1):
         xa, xb = sx * XW, sx * 4.0
-        lib.box("rail%d" % sx, (abs(xb - xa), 0.35, 0.35), ((xa + xb) / 2, post_y, 3.3), mat=trim, bevel=0.05)
+        lib.box("rail%d" % sx, (abs(xb - xa), 0.35, 0.35), ((xa + xb) / 2, post_y, 3.3), mat=trim)
         lib.box("rail_lo%d" % sx, (abs(xb - xa), 0.3, 0.3), ((xa + xb) / 2, post_y, 1.1), mat=trim)
         for j in range(1, 8):
             x = xa + (xb - xa) * j / 8
             lib.box("bal%d_%d" % (sx, j), (0.3, 0.25, 2.2), (x, post_y, 2.2), mat=trim)
-        lib.box("srail%d" % sx, (0.35, post_y - FY - 0.8, 0.35), (sx * XW, (post_y + FY + 0.8) / 2, 3.3), mat=trim, bevel=0.05)
+        lib.box("srail%d" % sx, (0.35, post_y - FY - 0.8, 0.35), (sx * XW, (post_y + FY + 0.8) / 2, 3.3), mat=trim)
         for j in range(1, 4):
             y = FY + 0.8 + (post_y - FY - 0.8) * j / 4
             lib.box("sbal%d_%d" % (sx, j), (0.25, 0.3, 2.2), (sx * XW, y, 2.2), mat=trim)

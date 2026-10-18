@@ -13,6 +13,9 @@ local Mode = require(script.Parent.Mode)
 local Monetization = require(script.Parent.Monetization)
 local Quests = require(script.Parent.Quests)
 
+-- Blender models first (uploaded ones only), so the world builders can use them
+require(script.Parent.Models).loadAll()
+
 local system: any = if Mode.isRun then require(script.Parent.Run) else require(script.Parent.Lobby)
 system.start()
 Monetization.start()

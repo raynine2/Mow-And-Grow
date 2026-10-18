@@ -2,6 +2,7 @@
 -- (Studs are opt-in with `studs = true`.)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
+local Models = require(script.Parent.Models)
 
 local PropKit = {}
 
@@ -63,10 +64,23 @@ PropKit.LEAVES = Color3.fromRGB(46, 112, 36)
 type TreeOpts = { leaf: Color3?, trunk: Color3?, birch: boolean?, lite: boolean? }
 function PropKit.forestTree(parent: Instance, pos: Vector3, scale: number, opts: TreeOpts?): Model
 	local o = opts or {}
+	local rng = Random.new(math.floor(pos.X * 7.3 + pos.Z * 13.1))
+	-- the Blender tree when it's uploaded (accent trees get their leaves recoloured)
+	local modelName = if o.birch then "birch" elseif o.lite and Models.has("oak_small") and rng:NextNumber() < 0.3 then "oak_small" else "oak"
+	local placed = Models.place(modelName, parent, CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0), scale * rng:NextNumber(0.92, 1.08))
+	if placed then
+		if o.leaf and o.leaf ~= PropKit.LEAVES then
+			for _, part in placed:GetDescendants() do
+				if part:IsA("BasePart") and part.Material == Enum.Material.Grass then
+					part.Color = PropKit.shade(o.leaf, part.Color.G / PropKit.LEAVES.G)
+				end
+			end
+		end
+		return placed
+	end
 	local m = Instance.new("Model")
 	m.Name = "Tree"
 	local s = scale
-	local rng = Random.new(math.floor(pos.X * 7.3 + pos.Z * 13.1))
 	local tc = o.trunk or (if o.birch then PropKit.BIRCH else PropKit.shade(PropKit.TRUNK, rng:NextNumber(0.92, 1.08)))
 	local lc = o.leaf or PropKit.LEAVES
 	local w = 4 * s * rng:NextNumber(0.9, 1.1)

@@ -83,7 +83,7 @@ def build(lib):
     lib.box("deck", (3.2, 2.9, 0.75), (0, 0.05, 0.85), mat=orange, bevel=0.18, taper=(0.9, 0.9))
     lib.box("skirt", (3.35, 3.05, 0.25), (0, 0.05, 0.55), mat=orange, bevel=0.08)
     lib.box("bumper", (3.1, 0.3, 0.46), (0, 1.62, 0.62), mat=black, bevel=0.06)
-    hazard(lib, "stripe", (-1.4, 1.76, 0.44), (1, 0, 0), (0, 0, 1), 2.8, 0.36, 0.04, (yellow, black))
+    hazard(lib, "stripe", (1.4, 1.76, 0.44), (-1, 0, 0), (0, 0, 1), 2.8, 0.36, 0.04, (yellow, black))
     # side chute on the right
     lib.box("chute", (0.6, 0.9, 0.45), (1.75, 0.2, 0.75), rot=(0, 0, -10), mat=orange, bevel=0.1, taper=(0.8, 0.8))
 

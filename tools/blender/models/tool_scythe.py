@@ -61,18 +61,18 @@ def build(lib):
     glow = lib.material("Neon", (186, 84, 255))
 
     top = 5.7
-    rod(lib, "handle", (0, -1.6, 0), (0, top, 0), 0.19, wood, verts=8, bevel=0.04)
-    rod(lib, "butt", (0, -1.85, 0), (0, -1.5, 0), 0.25, dark, verts=8, bevel=0.05)
+    rod(lib, "handle", (0, -1.6, 0), (0, top, 0), 0.24, wood, verts=8, bevel=0.04)
+    rod(lib, "butt", (0, -1.9, 0), (0, -1.5, 0), 0.3, dark, verts=8, bevel=0.05)
     for i, y in enumerate((-0.45, 0.0, 0.45)):
-        rod(lib, "wrap%d" % i, (0, y - 0.16, 0), (0, y + 0.16, 0), 0.215, wrap, verts=8, bevel=0.03)
+        rod(lib, "wrap%d" % i, (0, y - 0.16, 0), (0, y + 0.16, 0), 0.27, wrap, verts=8, bevel=0.03)
     # side grip: a peg sticking up from the handle with its own wrap and knob
     rod(lib, "side_peg", (0, 2.5, 0), (0, 2.4, 0.95), 0.13, wood, verts=8, bevel=0.03)
     rod(lib, "side_wrap", (0, 2.43, 0.35), (0, 2.41, 0.85), 0.165, wrap, verts=8, bevel=0.03)
     lib.box("side_knob", (0.32, 0.32, 0.22), (0, 2.4, 1.02), mat=dark, bevel=0.06)
-    lib.box("side_clamp", (0.48, 0.4, 0.48), (0, 2.5, 0), mat=dark, bevel=0.07)
+    lib.box("side_clamp", (0.58, 0.42, 0.58), (0, 2.5, 0), mat=dark, bevel=0.07)
     # collar at the top with a glowing gem
-    lib.box("collar", (0.6, 0.7, 0.6), (0, top - 0.15, 0.05), mat=dark, bevel=0.1)
-    lib.box("gem", (0.66, 0.26, 0.26), (0, top - 0.15, 0.05), mat=glow, bevel=0.05)
+    lib.box("collar", (0.7, 0.8, 0.7), (0, top - 0.15, 0.05), mat=dark, bevel=0.1)
+    lib.box("gem", (0.76, 0.3, 0.3), (0, top - 0.15, 0.05), mat=glow, bevel=0.05)
     beam(lib, "tang", (0, top - 0.1, 0.25), (0, top + 0.05, 0.75), (0.3, 0.5), dark, bevel=0.06)
 
     # blade: arc of radius R in the YZ plane, rising from the collar (+Z) and curling back toward the hand (-Y)

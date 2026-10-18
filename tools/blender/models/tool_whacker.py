@@ -7,7 +7,7 @@ import math
 import bpy
 from mathutils import Matrix, Vector
 
-PREVIEW = dict(dist=8.0, height=3.6, target_z=0.6, yaw=70)
+PREVIEW = dict(dist=9.0, height=4.2, target_z=0.8, yaw=62)
 
 
 # ---- helpers (local to this file) -------------------------------------------------------------------------------
@@ -68,15 +68,14 @@ def build(lib):
     lib.cyl("fuel_cap", 0.14, 0.16, (0.22, -1.45, -0.72), mat=red, verts=8, bevel=0.03)
     lib.cyl("pull", 0.3, 0.16, (-0.48, -1.25, 0.15), rot=(0, 90, 0), mat=black, verts=10, bevel=0.04)
     lib.box("pull_handle", (0.1, 0.4, 0.12), (-0.58, -1.25, 0.15), mat=red)
-    lib.box("vents", (0.97, 0.5, 0.1), (0, -1.45, 0.42), mat=black)
-    for i in range(2):
-        lib.box("vent%d" % i, (0.97, 0.5, 0.06), (0, -1.45, 0.22 - i * 0.16), mat=black)
+    for i in range(3):
+        lib.box("vent%d" % i, (0.9, 0.08, 0.5), (0, -1.65 + i * 0.2, 0.15), mat=black)
     # rubber grip with a trigger underneath (the hand sits here)
     rod(lib, "grip", (0, -0.6, 0), (0, 0.6, 0), 0.2, black, verts=8, bevel=0.04)
     beam(lib, "trigger", (0, -0.15, -0.18), (0, 0.15, -0.36), (0.12, 0.12), red, bevel=0.03)
     beam(lib, "guard_loop", (0, -0.45, -0.15), (0, 0.4, -0.48), (0.1, 0.1), black, bevel=0)
     # shaft
-    rod(lib, "shaft", (0, 0.55, 0), (0, 4.7, 0), 0.12, black, verts=8, bevel=0)
+    rod(lib, "shaft", (0, 0.55, 0), (0, 4.7, 0), 0.14, black, verts=8, bevel=0)
     # loop handle (an upside-down U over the shaft)
     for x in (-0.38, 0.38):
         beam(lib, "loop_leg%d" % (x > 0), (x * 0.4, 1.5, 0.05), (x, 1.5, 0.75), (0.13, 0.13), black, bevel=0.03)
@@ -88,15 +87,15 @@ def build(lib):
     tilt = Matrix.Rotation(math.radians(35), 3, "X")
     up = tilt @ Vector((0, 0, 1))
     hub = head - up * 0.25
-    lib.cyl("spool", 0.5, 0.36, hub, rot=(35, 0, 0), mat=black, verts=12, bevel=0.06)
-    lib.cyl("spool_cap", 0.32, 0.5, hub, rot=(35, 0, 0), mat=green, verts=10, bevel=0.05)
+    lib.cyl("spool", 0.58, 0.4, hub, rot=(35, 0, 0), mat=black, verts=12, bevel=0.06)
+    lib.cyl("spool_cap", 0.36, 0.56, hub, rot=(35, 0, 0), mat=green, verts=10, bevel=0.05)
     lib.cyl("bump", 0.18, 0.3, hub - up * 0.28, rot=(35, 0, 0), mat=grey, verts=8, bevel=0.04)
     # white trimmer line through the spool
-    beam(lib, "line", hub + Vector((-1.3, 0, 0)), hub + Vector((1.3, 0, 0)), (0.06, 0.06), white, bevel=0, roll=0)
+    beam(lib, "line", hub - up * 0.05 + Vector((-1.45, 0, 0)), hub - up * 0.05 + Vector((1.45, 0, 0)), (0.1, 0.1), white, bevel=0)
     # guard: a curved green half-disc behind the spool (toward the hand), from three angled plates
-    for i, a in enumerate((-55, 0, 55)):
-        d = Matrix.Rotation(math.radians(a), 3, "Z") @ Vector((0, -0.72, 0))
-        c = head + tilt @ d + up * 0.1
-        g = lib.box("guard%d" % i, (0.85, 0.3, 0.12), c, mat=green, bevel=0.05)
+    for i, a in enumerate((-60, -20, 20, 60)):
+        d = Matrix.Rotation(math.radians(a), 3, "Z") @ Vector((0, -0.85, 0))
+        c = head + tilt @ d + up * 0.12
+        g = lib.box("guard%d" % i, (0.66, 0.42, 0.12), c, mat=green, bevel=0.04)
         g.rotation_euler = (tilt @ Matrix.Rotation(math.radians(a), 3, "Z")).to_euler()
     lift_preview(lib, 1.1)

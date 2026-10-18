@@ -62,5 +62,5 @@ def build(lib):
     for i in range(6):
         ang = i * 60 + 22 + rnd.uniform(-10, 10)
         base = lib.rotated((0, rnd.uniform(0.8, 1.05), 0), ang)
-        strip(lib, "short%d" % i, base, ang, 0.6, 0.2, [(0.65, rnd.uniform(28, 36), 0.56, 0.2),
-                                                       (0.6, rnd.uniform(58, 68), 0.12, 0.08)], (g2, g1)[i % 2])
+        strip(lib, "short%d" % i, base, ang, 0.6, 0.2, [(0.7, rnd.uniform(18, 24), 0.56, 0.2),
+                                                       (0.6, rnd.uniform(44, 52), 0.12, 0.08)], (g2, g1)[i % 2])

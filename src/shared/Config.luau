@@ -354,6 +354,9 @@ Config.ICONS = {
 	coin = "", gem = "", bundle = "", backpack = "", basket = "", upgrade = "", lock = "", clover = "", leaf = "",
 	stats = "", hands = "", scissors = "", sickle = "", pushmower = "", whacker = "", scythe = "", lasermower = "",
 }
+for name, id in require(script.Parent.IconIds) :: { [string]: string } do
+	Config.ICONS[name] = id
+end
 
 -------------------------------------------------------------------------------------------------------------
 -- Look (bubbly UI on Chop A Forest style wooden boards)

@@ -1,9 +1,9 @@
-"""Wheat Farm tuft, ~5 tall: 7 thin golden wheat stalks, each topped by a chunky wheat ear (alternating fat and
-thin kernel rings, so the silhouette is bumpy) with two whiskers, and two drooping leaves at the base.
-Bottom at z = 0, no ground tile."""
+"""Wheat Farm tuft, ~5 tall: 7 thin golden wheat stalks, each topped by a chunky wheat ear made of diamond kernels
+paired in a chevron, with two whiskers. Bottom at z = 0, no ground tile."""
 import math
 import random
 import bmesh
+from mathutils import Matrix, Vector
 
 PREVIEW = dict(dist=12, height=6.5, target_z=2.6)
 
@@ -40,27 +40,39 @@ def strip(lib, name, base, ang, w0, t0, segs, mat, start=(0.0, 0.0, 0.0), cap=Fa
     obj = lib._finish(lib._from_bmesh(name, bm), mat, base, (0, 0, ang), bevel)
     return obj, pts[-1], angs[-1]
 
+def ear(lib, name, base, ang, top, lean, mat, pairs=3):
+    """A wheat ear on top of a stalk: `pairs` pairs of diamond kernels angled out in a chevron, plus one kernel on
+    top (8 tris per kernel). `top` = (y, z) of the stalk tip and `lean` its angle (radians), as strip() returns.
+    Returns the ear's tip (y, z) in the same frame."""
+    bm = bmesh.new()
+    place = Matrix.Translation((0, top[0], top[1])) @ Matrix.Rotation(-lean, 4, "X")
+    def kernel(m, w, t, h):
+        vs = [bm.verts.new(m @ Vector(p)) for p in ((w / 2, 0, 0), (0, t / 2, 0), (-w / 2, 0, 0), (0, -t / 2, 0), (0, 0, h / 2), (0, 0, -h / 2))]
+        for k in range(4):
+            bm.faces.new((vs[k], vs[(k + 1) % 4], vs[4])); bm.faces.new((vs[(k + 1) % 4], vs[k], vs[5]))
+    for p in range(pairs):
+        d = 0.22 + p * 0.36
+        size = 1 - p * 0.1
+        for side in (-1, 1):
+            kernel(place @ Matrix.Translation((side * 0.15 * size, 0, d)) @ Matrix.Rotation(math.radians(side * 24), 4, "Y"),
+                   0.34 * size, 0.36 * size, 0.62 * size)
+    tip_d = 0.22 + pairs * 0.36
+    kernel(place @ Matrix.Translation((0, 0, tip_d - 0.05)), 0.28, 0.3, 0.56)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    lib._finish(lib._from_bmesh(name, bm), mat, base, (0, 0, ang), 0)
+    return (top[0] + math.sin(lean) * (tip_d + 0.15), top[1] + math.cos(lean) * (tip_d + 0.15))
+
 def build(lib):
     rnd = random.Random(9)
     stalk_m = lib.material("Grass", (210, 184, 98))
     head_m = lib.material("Grass", (220, 180, 70))
-    leaf_m = lib.material("Grass", (192, 170, 86))
-    stalks = [(0, 0.0, 3.3)] + [(i * 60 + rnd.uniform(-12, 12), rnd.uniform(0.55, 0.85), rnd.uniform(2.6, 3.2)) for i in range(6)]
+    stalks = [(0, 0.0, 3.6)] + [(i * 60 + rnd.uniform(-12, 12), rnd.uniform(0.55, 0.85), rnd.uniform(2.9, 3.5)) for i in range(6)]
     for i, (ang, r, h) in enumerate(stalks):
         base = lib.rotated((0, r, 0), ang)
         lean = 2 if r == 0 else rnd.uniform(6, 11)
         _, top, a = strip(lib, "stalk%d" % i, base, ang, 0.2, 0.2, [(h * 0.5, lean, 0.18, 0.18), (h * 0.5, lean + 5, 0.16, 0.16)], stalk_m)
-        # the ear: alternating fat and thin rings give the bumpy kernel silhouette of a wheat head
-        hl = rnd.uniform(0.95, 1.05)
-        la = math.degrees(a) + 3
-        ear = [(0.12 * hl, la, 0.5, 0.44), (0.3 * hl, la, 0.68, 0.6), (0.12 * hl, la, 0.46, 0.4), (0.3 * hl, la, 0.64, 0.56),
-               (0.12 * hl, la, 0.42, 0.36), (0.28 * hl, la, 0.56, 0.48), (0.3 * hl, la + 4, 0.14, 0.12)]
-        _, tip, ta = strip(lib, "ear%d" % i, base, ang, 0.2, 0.2, ear, head_m, start=(top[0], top[1], a))
-        # two awns (whiskers) fanning out of the tip
+        tip = ear(lib, "ear%d" % i, base, ang, top, a, head_m)
+        # two whiskers fanning out of the tip
         for k, side in enumerate((-1, 1)):
-            strip(lib, "awn%d_%d" % (i, k), base, ang + side * 14, 0.08, 0.08, [(0.75, math.degrees(ta) + 6, 0.03, 0.03)], head_m,
-                  start=(tip[0] - 0.08, tip[1] - 0.12, ta))
-    # drooping leaves at the base
-    for i, ang in enumerate((30, 210)):
-        strip(lib, "leaf%d" % i, lib.rotated((0, 0.3, 0), ang), ang, 0.36, 0.12,
-              [(0.9, 25, 0.34, 0.12), (0.9, 62, 0.08, 0.06)], leaf_m)
+            strip(lib, "awn%d_%d" % (i, k), base, ang + side * 16, 0.08, 0.08, [(0.8, math.degrees(a) + 8, 0.03, 0.03)], head_m,
+                  start=(tip[0] - 0.1, tip[1] - 0.2, a))

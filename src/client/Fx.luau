@@ -15,6 +15,7 @@ local Sound = require(script.Parent.Sound)
 local HitFx = require(script.Parent.HitFx)
 local FxIds = require(ReplicatedStorage.MowALawn:WaitForChild("FxIds")) :: { [string]: string }
 local SellFx = require(script.Parent.SellFx)
+local Confetti = require(script.Parent.Confetti)
 
 local Fx = {}
 local player = Players.LocalPlayer
@@ -509,6 +510,9 @@ end
 handlers.runComplete = function(d)
 	Fx.banner("RUN COMPLETE!", C.yellow, 10, ("+%d gems. Back to the lobby soon..."):format(d.gems or 0))
 	Sound.play("victory")
+	Confetti.burst(160)
+	task.delay(0.8, Confetti.burst, 120)
+	task.delay(1.8, Confetti.burst, 120)
 end
 
 handlers.purchase = function(d)

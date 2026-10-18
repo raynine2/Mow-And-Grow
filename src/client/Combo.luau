@@ -11,6 +11,7 @@ local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local Fx = require(script.Parent.Fx)
+local Confetti = require(script.Parent.Confetti)
 
 local Combo = {}
 local _ = ReplicatedStorage
@@ -115,6 +116,7 @@ local function addCut()
 	if m then
 		Fx.banner(m[1], m[2], 1.6, ("x%d combo"):format(combo))
 		Sound.play("purchase")
+		Confetti.burst(if combo >= 50 then 140 else 70)
 	end
 end
 

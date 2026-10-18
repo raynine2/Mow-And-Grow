@@ -53,6 +53,19 @@ function Sound.play(key: string, pitchVariation: number?)
 	Debris:AddItem(s, math.max(2, (s.TimeLength > 0 and s.TimeLength or 2) + 0.5))
 end
 
+-- Play a one-shot at an exact pitch (rising coin ticks, combo notes).
+function Sound.playAt(key: string, pitch: number)
+	local t = templates[key]
+	if not t then
+		return
+	end
+	local s = t:Clone()
+	s.PlaybackSpeed = pitch
+	s.Parent = SoundService
+	s:Play()
+	Debris:AddItem(s, math.max(2, (s.TimeLength > 0 and s.TimeLength or 2) + 0.5))
+end
+
 -- Background music: loops one track per mode, cross-fading when the mode changes.
 local current: Sound? = nil
 function Sound.music(key: string?)

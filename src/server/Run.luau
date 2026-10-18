@@ -266,7 +266,7 @@ local function sell(player: Player)
 	data.run.coins += coins
 	Carry.clear(player)
 	Net.send(player, "Fx", "sell", { coins = coins, count = count, from = info.shredderMouth, out = info.shredderOut })
-	Net.all("Fx", "shred", { pos = info.shredderMouth, count = count })
+	Net.all("Fx", "shred", { pos = info.shredderMouth, count = count, by = player.UserId })
 	Quests.event(player, "sell", count)
 end
 

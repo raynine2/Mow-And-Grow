@@ -12,5 +12,6 @@ require(modules:WaitForChild("Input"))
 require(modules:WaitForChild("Guide"))
 require(modules:WaitForChild("Ambient"))
 require(modules:WaitForChild("CameraView"))
+require(modules:WaitForChild("Combo"))
 
 State.fire("Ready")

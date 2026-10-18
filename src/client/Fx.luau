@@ -13,6 +13,7 @@ local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local HitFx = require(script.Parent.HitFx)
+local SellFx = require(script.Parent.SellFx)
 
 local Fx = {}
 local player = Players.LocalPlayer
@@ -360,17 +361,14 @@ handlers.gems = function(d)
 end
 
 handlers.sell = function(d)
-	-- coins pour out of the chute, the HUD counter fills from them
-	if d.out then
-		Fx.arc(d.out + Vector3.new(0, 1, 0), { count = math.min(24, 6 + d.count), color = C.yellow, size = Vector3.new(0.9, 0.25, 0.9), height = 6, spread = 7, life = 0.9, neon = false })
-	end
-	State.emit("flyCoins", math.min(12, 3 + d.count))
-	Sound.play("sell")
+	-- bundles fly into the shredder, it rumbles and sprays grass, coins fountain out and fly to you (SellFx)
+	SellFx.sell(d)
 end
 
 handlers.shred = function(d)
-	if d.pos and near(d.pos, 150) then
-		Fx.arc(d.pos + Vector3.new(0, 1, 0), { count = math.min(24, 8 + d.count * 2), color = Color3.fromRGB(150, 230, 80), size = Vector3.new(0.3, 0.9, 0.3), height = 9, spread = 5, life = 0.8 })
+	-- someone else's sale (yours is drawn by handlers.sell)
+	if d.pos and d.by ~= player.UserId and near(d.pos, 150) then
+		SellFx.shred(d)
 	end
 end
 

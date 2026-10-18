@@ -13,12 +13,42 @@ local Mode = require(script.Parent.Mode)
 local Monetization = require(script.Parent.Monetization)
 local Quests = require(script.Parent.Quests)
 
+-- Nobody spawns until the world is built (loading the models takes a few seconds).
+Players.CharacterAutoLoads = false
+
 -- Blender models first (uploaded ones only), so the world builders can use them
 require(script.Parent.Models).loadAll()
 
 local system: any = if Mode.isRun then require(script.Parent.Run) else require(script.Parent.Lobby)
 system.start()
 Monetization.start()
+
+-- Spawn on the world's own SpawnLocation, not one from the place template (the Baseplate's). This only
+-- changes the running game; the place file keeps its parts. The Baseplate is hidden while playing because
+-- its top sits exactly at the world's ground level and would flicker through the grass.
+local world = workspace:FindFirstChild("World")
+for _, d in workspace:GetDescendants() do
+	if d:IsA("SpawnLocation") and not (world and d:IsDescendantOf(world)) then
+		d.Enabled = false
+	end
+end
+local baseplate = workspace:FindFirstChild("Baseplate")
+if baseplate and baseplate:IsA("BasePart") then
+	baseplate.Transparency = 1 -- still solid, as a safety floor
+	for _, d in baseplate:GetChildren() do
+		if d:IsA("Texture") or d:IsA("Decal") then
+			d.Transparency = 1
+		end
+	end
+end
+Players.CharacterAutoLoads = true
+for _, p in Players:GetPlayers() do
+	if not p.Character then
+		task.spawn(function()
+			p:LoadCharacter()
+		end)
+	end
+end
 
 -- Studio: teleports don't work, so a party pad turns this lobby into a run right here.
 if Mode.isLobby and RunService:IsStudio() then

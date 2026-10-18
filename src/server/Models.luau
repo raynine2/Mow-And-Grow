@@ -83,20 +83,41 @@ local function prepare(name: string, asset: Instance): Model?
 	return model
 end
 
-function Models.loadAll()
+-- Loads every model at the same time (one at a time took ~30 s) and waits at most `timeout` seconds; a model
+-- that isn't loaded by then uses its brick fallback.
+function Models.loadAll(timeout: number?)
+	local pending = 0
+	local failed = 0
 	for name, id in ModelIds do
-		local ok, result = pcall(function()
-			return InsertService:LoadAsset(id)
-		end)
-		if ok and result then
-			local m = prepare(name, result)
-			if m then
-				templates[name] = m
+		pending += 1
+		task.spawn(function()
+			local ok, result = pcall(function()
+				return InsertService:LoadAsset(id)
+			end)
+			if ok and result then
+				local m = prepare(name, result)
+				if m then
+					templates[name] = m
+				end
+				result:Destroy()
+			else
+				failed += 1
+				warn(("[Models] couldn't load %s (%d): %s"):format(name, id, tostring(result)))
 			end
-			result:Destroy()
-		else
-			warn(("[Models] couldn't load %s (%d): %s"):format(name, id, tostring(result)))
-		end
+			pending -= 1
+		end)
+	end
+	local deadline = os.clock() + (timeout or 20)
+	while pending > 0 and os.clock() < deadline do
+		task.wait(0.1)
+	end
+	local loaded = 0
+	for _ in templates do
+		loaded += 1
+	end
+	print(("[Models] %d models loaded, %d failed, %d still loading"):format(loaded, failed, pending))
+	if failed > 0 then
+		warn("[Models] Models only load in a game owned by the account that uploaded them (see tools/upload_models.py). Using brick versions for the missing ones.")
 	end
 end
 

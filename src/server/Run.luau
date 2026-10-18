@@ -6,7 +6,6 @@ local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 
 local Config = require(ReplicatedStorage.MowALawn.Config)
-local Format = require(ReplicatedStorage.MowALawn.Format)
 local Net = require(script.Parent.Net)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
@@ -85,7 +84,6 @@ local function completeRun()
 		return
 	end
 	completing = true
-	Net.all("Fx", "runComplete", {})
 	for _, p in Players:GetPlayers() do
 		local data = PlayerData.get(p)
 		if data then
@@ -94,7 +92,7 @@ local function completeRun()
 			data.stats.runs += 1
 			data.run = nil -- coins, tools and coin mowers end with the run
 			PlayerData.changed(p)
-			Net.notify(p, "RUN COMPLETE! +" .. gems .. " gems", "purple")
+			Net.send(p, "Fx", "runComplete", { gems = gems })
 			task.spawn(PlayerData.save, p)
 		end
 	end
@@ -126,14 +124,16 @@ local function onBossDefeated(z: number, _damageBy: { [Player]: number })
 			data.run.coins += def.coins
 			data.stats.bosses += 1
 			PlayerData.changed(p)
-			Net.notify(p, def.name .. " defeated! +" .. Format.short(def.coins) .. " coins, +" .. gems .. " gems", "green")
+			Net.send(p, "Fx", "reward", { coins = def.coins, gems = gems, title = def.name:upper() .. " DEFEATED!" })
 		end
 	end
 	if z >= #Config.ZONES then
 		task.spawn(completeRun)
 	else
 		unlock(z + 1)
-		Net.notifyAll("ZONE " .. (z + 1) .. ": " .. Config.ZONES[z + 1].name:upper() .. " is open!", "yellow")
+		task.delay(3, function()
+			Net.all("Fx", "zoneOpen", { zone = z + 1, name = Config.ZONES[z + 1].name })
+		end)
 	end
 end
 
@@ -145,8 +145,7 @@ local function warnBagFull(player: Player)
 	local now = os.clock()
 	if (bagWarn[player] or 0) + 3 < now then
 		bagWarn[player] = now
-		Net.notify(player, "BAG FULL! Sell your bundles at the Shredder", "red")
-		Net.send(player, "Fx", "bagFull", {})
+		Net.send(player, "Fx", "bagFull", {}) -- the bag bar shakes and the guide arrow points at the Shredder
 	end
 end
 
@@ -291,8 +290,7 @@ local function buyTool(player: Player, data, id: string)
 	data.run.coins -= def.cost
 	data.run.tool = nextIndex
 	Tools.give(player)
-	Net.notify(player, "New tool: " .. def.name .. "!", "green")
-	Net.send(player, "Fx", "purchase", {})
+	Net.send(player, "Fx", "purchase", { big = true, item = def.name })
 end
 
 local function buyUpgrade(player: Player, data, id: string)

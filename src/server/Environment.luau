@@ -27,8 +27,8 @@ function Environment.apply()
 	cc.Contrast = 0.08
 	cc.Brightness = 0.02
 	local atmo = ensure("Atmosphere", "MowALawnAtmosphere") :: Atmosphere
-	atmo.Density = 0.22
-	atmo.Haze = 0.6
+	atmo.Density = 0.18
+	atmo.Haze = 0
 	atmo.Color = Color3.fromRGB(200, 225, 255)
 	atmo.Decay = Color3.fromRGB(150, 190, 255)
 	local bloom = ensure("BloomEffect", "MowALawnBloom") :: BloomEffect

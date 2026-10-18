@@ -7,6 +7,7 @@ local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
+local Sound = require(script.Parent.Sound)
 
 local Hud = {}
 local C = UI.colors
@@ -159,6 +160,7 @@ local function applyMode(mode: string)
 	lobbyHint.Visible = not isRun
 	sideButtons(mode)
 	updateHost()
+	Sound.music(if isRun then "musicRun" else "musicLobby")
 end
 
 State.on("data", function(d)
@@ -240,6 +242,82 @@ State.on("fx", function(kind)
 			task.wait(0.04)
 		end
 		bag.Position = base
+	end
+end)
+
+-------------------------------------------------------------------------------------------------------------
+-- flying icons: what you earn flies into its counter (world first, then the HUD)
+-------------------------------------------------------------------------------------------------------------
+local function fly(icon: GuiObject, from: Vector2, target: GuiObject, delay: number)
+	icon.AnchorPoint = Vector2.new(0.5, 0.5)
+	icon.Parent = UI.gui
+	icon.ZIndex = 30
+	-- positions are in screen pixels; the UIScale scales offsets, so divide them out
+	local sc = (UI.gui:FindFirstChildOfClass("UIScale") :: UIScale).Scale
+	local to = target.AbsolutePosition + target.AbsoluteSize / 2
+	icon.Position = UDim2.fromOffset(from.X / sc, from.Y / sc)
+	icon.Visible = false
+	task.delay(delay, function()
+		icon.Visible = true
+		local mid = from:Lerp(to, 0.5) + Vector2.new(math.random(-80, 80), -math.random(40, 120))
+		local t1 = TweenService:Create(icon, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.fromOffset(mid.X / sc, mid.Y / sc) })
+		t1:Play()
+		t1.Completed:Wait()
+		local t2 = TweenService:Create(icon, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.fromOffset(to.X / sc, to.Y / sc) })
+		t2:Play()
+		t2.Completed:Wait()
+		icon:Destroy()
+		UI.bounce(target)
+	end)
+end
+
+local function screenPoint(world: Vector3): Vector2?
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return nil
+	end
+	local p, onScreen = cam:WorldToViewportPoint(world)
+	if not onScreen then
+		return nil
+	end
+	-- IgnoreGuiInset is on, so viewport points line up with the gui
+	return Vector2.new(p.X, p.Y)
+end
+
+State.on("bundleGained", function(pos: Vector3, mut: string?)
+	local from = screenPoint(pos + Vector3.new(0, 2, 0))
+	if not from or not bag.Visible then
+		return
+	end
+	local icon = UI.bundleIcon(UI.gui, 28)
+	local m = Config.mutation(mut or "None")
+	if m.color then
+		icon.BackgroundColor3 = m.color
+	end
+	fly(icon, from, bag, 0)
+end)
+
+State.on("flyCoins", function(count: number)
+	if not coinPill.Visible then
+		return
+	end
+	local cam = workspace.CurrentCamera
+	local centre = if cam then cam.ViewportSize / 2 else Vector2.new(640, 360)
+	for i = 1, count do
+		local icon = UI.coinIcon(UI.gui, 30)
+		fly(icon, centre + Vector2.new(math.random(-60, 60), math.random(-30, 30)), coinPill, (i - 1) * 0.04)
+	end
+end)
+
+-- the bag pulses red while full, so the player knows to go sell (no text spam)
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		local d = State.data
+		local full = d and d.run and d.run.carry >= d.carryMax
+		if full and bag.Visible then
+			UI.bounce(bag)
+		end
 	end
 end)
 

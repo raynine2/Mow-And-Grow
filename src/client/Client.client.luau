@@ -2,10 +2,12 @@
 local modules = script.Parent
 
 local State = require(modules:WaitForChild("State"))
+require(modules:WaitForChild("Sound"))
 require(modules:WaitForChild("UI"))
 require(modules:WaitForChild("Hud"))
 require(modules:WaitForChild("Windows"))
 require(modules:WaitForChild("Fx"))
 require(modules:WaitForChild("Input"))
+require(modules:WaitForChild("Guide"))
 
 State.fire("Ready")

@@ -56,12 +56,6 @@ local function buildModel(tool: Tool, def)
 		piece(tool, handle, Vector3.new(0.2, 0.3, 1.6), CFrame.new(0, 0, -1.4), grey)
 		piece(tool, handle, Vector3.new(0.2, 0.3, 1.6), CFrame.new(0.7, 0, -2.4) * CFrame.Angles(0, math.rad(-60), 0), grey)
 		piece(tool, handle, Vector3.new(0.2, 0.3, 1.2), CFrame.new(1.4, 0, -2.0) * CFrame.Angles(0, math.rad(-120), 0), grey)
-	elseif def.id == "PushMower" or def.id == "LaserMower" then
-		-- push bar in the hand, deck on the ground in front
-		tool.Grip = CFrame.new(0, 0, 0) * CFrame.Angles(math.rad(-20), 0, 0)
-		piece(tool, handle, Vector3.new(0.3, 0.3, 3.6), CFrame.new(0, -1.1, -2) * CFrame.Angles(math.rad(-35), 0, 0), Color3.fromRGB(50, 50, 60))
-		piece(tool, handle, Vector3.new(2.8, 1.2, 2.6), CFrame.new(0, -2.6, -4), c, def.id == "LaserMower")
-		piece(tool, handle, Vector3.new(3, 0.3, 2.8), CFrame.new(0, -2.0, -4), Color3.fromRGB(40, 40, 45))
 	elseif def.id == "WeedWhacker" then
 		piece(tool, handle, Vector3.new(0.25, 0.25, 4.5), CFrame.new(0, -0.6, -2.4) * CFrame.Angles(math.rad(-30), 0, 0), Color3.fromRGB(60, 60, 70))
 		piece(tool, handle, Vector3.new(1.2, 0.8, 1.2), CFrame.new(0, -2.1, -4.3), c)
@@ -72,6 +66,71 @@ local function buildModel(tool: Tool, def)
 	end
 end
 
+-- Push mowers don't sit in the hand: while equipped, a mower is attached in front of the character on the
+-- ground (deck, wheels, push bar up to the hands), so it always lines up whatever the animation does.
+local PUSH_MOWERS = { PushMower = true, LaserMower = true }
+
+local function attachPushMower(char: Model, def)
+	local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or char:FindFirstChild("PushMowerModel") then
+		return
+	end
+	local model = Instance.new("Model")
+	model.Name = "PushMowerModel"
+	-- ground is HipHeight + half the root part below the root's centre (R15)
+	local groundY = -(hum.HipHeight + root.Size.Y / 2)
+	local base = root.CFrame * CFrame.new(0, groundY, -3.4)
+	local dark = Color3.fromRGB(40, 40, 48)
+	local laser = def.id == "LaserMower"
+	local function add(size: Vector3, cf: CFrame, color: Color3, name: string, neon: boolean?, cyl: boolean?)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.CFrame = cf
+		p.Color = color
+		p.Material = if neon then Enum.Material.Neon else Enum.Material.Plastic
+		p.TopSurface = Enum.SurfaceType.Studs
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Massless = true
+		if cyl then
+			p.Shape = Enum.PartType.Cylinder
+		end
+		local w = Instance.new("WeldConstraint")
+		w.Part0 = p
+		w.Part1 = root
+		w.Parent = p
+		p.Parent = model
+		return p
+	end
+	add(Vector3.new(3.2, 1, 2.8), base * CFrame.new(0, 0.9, 0), def.color, "Deck", laser)
+	add(Vector3.new(2.2, 0.8, 1.6), base * CFrame.new(0, 1.8, 0.2), dark, "Motor")
+	add(Vector3.new(0.6, 0.5, 0.6), base * CFrame.new(0.6, 2.4, 0.2), Color3.fromRGB(230, 60, 60), "Cap")
+	for _, x in { -1.5, 1.5 } do
+		for _, z in { -1, 1 } do
+			add(Vector3.new(0.5, 0.9, 0.9), base * CFrame.new(x, 0.45, z), dark, "Wheel", false, true)
+		end
+	end
+	-- push bar from the back of the deck up to the hands
+	for _, x in { -0.9, 0.9 } do
+		add(Vector3.new(0.25, 0.25, 3.2), base * CFrame.new(x, 2.2, 2.4) * CFrame.Angles(math.rad(-38), 0, 0), dark, "Bar")
+	end
+	add(Vector3.new(2.2, 0.3, 0.3), base * CFrame.new(0, 3.2, 3.6), def.color, "Grip")
+	if laser then
+		add(Vector3.new(3, 0.2, 0.2), base * CFrame.new(0, 0.3, -1.4), Color3.fromRGB(120, 255, 255), "Laser", true)
+	end
+	model.Parent = char
+end
+
+local function detachPushMower(char: Model?)
+	local m = char and char:FindFirstChild("PushMowerModel")
+	if m then
+		m:Destroy()
+	end
+end
+
 function Tools.build(def): Tool
 	local tool = Instance.new("Tool")
 	tool.Name = def.name
@@ -79,7 +138,32 @@ function Tools.build(def): Tool
 	tool.ToolTip = if def.kind == "auto" then "Cuts grass around you" else "Click to cut grass"
 	tool:SetAttribute("ToolId", def.id)
 	tool:SetAttribute("Kind", def.kind)
-	buildModel(tool, def)
+	if PUSH_MOWERS[def.id] then
+		tool.RequiresHandle = false
+		tool.Equipped:Connect(function()
+			local char = tool.Parent
+			if char and char:IsA("Model") then
+				attachPushMower(char, def)
+			end
+		end)
+		tool.Unequipped:Connect(function()
+			-- the tool is back in the backpack now; find the character through the player
+			local backpack = tool.Parent
+			local player = backpack and backpack.Parent
+			if player and player:IsA("Player") then
+				detachPushMower(player.Character)
+			end
+		end)
+		tool.Destroying:Connect(function()
+			for _, p in game:GetService("Players"):GetPlayers() do
+				if p.Character and not p.Character:FindFirstChildOfClass("Tool") then
+					detachPushMower(p.Character)
+				end
+			end
+		end)
+	else
+		buildModel(tool, def)
+	end
 	return tool
 end
 

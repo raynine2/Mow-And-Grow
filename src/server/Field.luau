@@ -1,5 +1,7 @@
 -- Grass patches: spawning, cutting, hidden mutations, zone clear.
--- A patch is one studded block. It shrinks as it takes damage; at 0 HP it becomes stubble and gives a bundle.
+-- A patch is a studded turf brick with a few grass stalks on top (lawn tufts, golf grass, wheat with heads,
+-- reeds with cattails, jungle bushes). Stalks shrink as the patch takes damage; at 0 HP the patch becomes
+-- short stubble and gives a bundle.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local Net = require(script.Parent.Net)
@@ -8,14 +10,15 @@ local RunBuilder = require(script.Parent.RunBuilder)
 
 local Field = {}
 
+type Stalk = { stem: Part, head: Part?, baseH: number, headH: number, x: number, z: number }
 type Patch = {
-	part: Part,
+	part: Part, -- the turf brick (position used for effects)
+	stalks: { Stalk },
 	z: number,
 	col: number,
 	row: number,
 	hp: number,
 	maxHp: number,
-	height: number,
 	mut: string?, -- nil until the first hit reveals it
 	cut: boolean,
 	baseColor: Color3,
@@ -28,6 +31,8 @@ Field.unlocked = 1 -- zones above this can't be cut yet (gate closed)
 
 local folder: Folder? = nil
 local rng = Random.new()
+local TURF_H = 0.8
+local TURF_TOP = 0.3 + TURF_H
 
 -- Hooks the run sets up.
 Field.onCut = nil :: ((Player, Patch) -> boolean)? -- return false to refuse (bag full)
@@ -39,57 +44,109 @@ local function index(col: number, row: number): number
 	return (row - 1) * Config.GRID.cols + col
 end
 
-local function stubble(p: Patch)
-	local part = p.part
-	part.Size = Vector3.new(part.Size.X, 0.3, part.Size.Z)
-	local pos = RunBuilder.patchPosition(p.z, p.col, p.row)
-	part.CFrame = CFrame.new(pos.X, 0.3 + 0.15, pos.Z)
-	part.Color = PropKit.shade(Config.ZONES[p.z].grass[2], 0.75)
-	part.Material = Enum.Material.Plastic
+-- How each zone's grass looks: stalk count, width, height factor, and an optional head on top.
+local STYLES = {
+	lawn = { count = 3, width = 1.6, height = 1.0 },
+	golf = { count = 4, width = 1.4, height = 0.8 },
+	wheat = { count = 3, width = 0.9, height = 1.0, head = Vector3.new(1.4, 1.6, 1.4), headColor = Color3.fromRGB(205, 150, 40) },
+	reeds = { count = 3, width = 0.8, height = 1.0, head = Vector3.new(1.1, 2, 1.1), headColor = Color3.fromRGB(120, 75, 40) },
+	jungle = { count = 2, width = 2.8, height = 0.6, head = Vector3.new(3.6, 1.2, 3.6), headColor = Color3.fromRGB(25, 110, 45) },
+}
+
+local function brick(parent: Instance, size: Vector3, cf: CFrame, color: Color3, name: string): Part
+	local part = PropKit.part({ size = size, cf = cf, color = color, parent = parent, collide = false, name = name })
+	part.CanTouch = false
 	part.CanQuery = false
-	local fx = part:FindFirstChild("MutationSparkle")
-	if fx then
-		fx:Destroy()
+	return part
+end
+
+local function layoutStalk(s: Stalk, ratio: number)
+	local h = math.max(0.4, s.baseH * (0.3 + 0.7 * ratio))
+	s.stem.Size = Vector3.new(s.stem.Size.X, h, s.stem.Size.Z)
+	s.stem.CFrame = CFrame.new(s.x, TURF_TOP + h / 2, s.z)
+	if s.head then
+		s.head.CFrame = CFrame.new(s.x, TURF_TOP + h + s.headH / 2, s.z)
 	end
 end
 
-local function spawnZone(z: number, alreadyCut: boolean)
+local function stubble(p: Patch)
+	for _, s in p.stalks do
+		s.stem:Destroy()
+		if s.head then
+			s.head:Destroy()
+		end
+	end
+	table.clear(p.stalks)
+	local turf = p.part
+	turf.Color = PropKit.shade(Config.ZONES[p.z].grass[2], 0.72)
+	turf.Material = Enum.Material.Plastic
+	local glow = turf:FindFirstChild("MutationGlow")
+	if glow then
+		glow:Destroy()
+	end
+	local sparkle = turf:FindFirstChild("MutationSparkle")
+	if sparkle then
+		sparkle:Destroy()
+	end
+end
+
+local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: number, alreadyCut: boolean): Patch
 	local def = Config.ZONES[z]
+	local style = STYLES[def.style] or STYLES.lawn
+	local t = Config.GRID.tile
+	local pos = RunBuilder.patchPosition(z, col, row)
+	local colorA = def.grass[1]
+	local colorB = def.grass[2]
+	local model = Instance.new("Model")
+	model.Name = "Patch"
+	local turf = brick(model, Vector3.new(t - 0.2, TURF_H, t - 0.2), CFrame.new(pos.X, 0.3 + TURF_H / 2, pos.Z), PropKit.shade(colorB, 0.88), "Turf")
+	turf.CanQuery = true
+	local p: Patch = {
+		part = turf,
+		stalks = {},
+		z = z,
+		col = col,
+		row = row,
+		hp = def.hp,
+		maxHp = def.hp,
+		mut = nil,
+		cut = alreadyCut,
+		baseColor = colorA,
+	}
+	if not alreadyCut then
+		-- spread stalks over the tile without overlapping too much
+		local spots = { Vector2.new(-1.3, -1.2), Vector2.new(1.3, -0.9), Vector2.new(-0.6, 1.4), Vector2.new(1.2, 1.3) }
+		for i = 1, style.count do
+			local spot = spots[i]
+			local jitter = Vector2.new(rng:NextNumber(-0.4, 0.4), rng:NextNumber(-0.4, 0.4))
+			local x = pos.X + (spot.X + jitter.X) * (if style.count <= 2 then 0.7 else 1)
+			local zz = pos.Z + (spot.Y + jitter.Y) * (if style.count <= 2 then 0.7 else 1)
+			local w = style.width * rng:NextNumber(0.9, 1.1)
+			local baseH = def.height * style.height * rng:NextNumber(0.75, 1.2)
+			local color = if (i + col + row) % 2 == 0 then colorA else colorB
+			local stem = brick(model, Vector3.new(w, baseH, w), CFrame.new(x, TURF_TOP + baseH / 2, zz), color, "Stalk")
+			local head = nil
+			local headH = 0
+			if style.head then
+				headH = style.head.Y
+				head = brick(model, style.head, CFrame.new(x, TURF_TOP + baseH + headH / 2, zz), style.headColor, "Head")
+			end
+			table.insert(p.stalks, { stem = stem, head = head, baseH = baseH, headH = headH, x = x, z = zz })
+		end
+	else
+		stubble(p)
+	end
+	model.Parent = zoneFolder
+	return p
+end
+
+local function spawnZone(z: number, alreadyCut: boolean)
 	local zoneFolder = PropKit.folder("Grass" .. z, folder :: Folder)
 	patches[z] = {}
 	Field.remaining[z] = if alreadyCut then 0 else Field.total
-	local t = Config.GRID.tile
 	for row = 1, Config.GRID.rows do
 		for col = 1, Config.GRID.cols do
-			local pos = RunBuilder.patchPosition(z, col, row)
-			local h = def.height * rng:NextNumber(0.85, 1.15)
-			local color = def.grass[(col + row) % 2 + 1]
-			local part = PropKit.part({
-				size = Vector3.new(t - 0.2, h, t - 0.2),
-				cf = CFrame.new(pos.X, 0.3 + h / 2, pos.Z),
-				color = color,
-				parent = zoneFolder,
-				collide = false,
-				name = "Grass",
-			})
-			part.CanTouch = false
-			part:SetAttribute("Zone", z)
-			local p: Patch = {
-				part = part,
-				z = z,
-				col = col,
-				row = row,
-				hp = def.hp,
-				maxHp = def.hp,
-				height = h,
-				mut = nil,
-				cut = alreadyCut,
-				baseColor = color,
-			}
-			patches[z][index(col, row)] = p
-			if alreadyCut then
-				stubble(p)
-			end
+			patches[z][index(col, row)] = spawnPatch(zoneFolder, z, col, row, alreadyCut)
 		end
 	end
 end
@@ -144,17 +201,36 @@ end
 local function reveal(p: Patch, luck: number)
 	local mut = Config.rollMutation(rng, luck)
 	p.mut = mut
-	if mut ~= "None" then
-		local m = Config.mutation(mut)
-		p.part.Color = m.color
-		p.part.Material = if p.mut == "Diamond" then Enum.Material.Glass else Enum.Material.SmoothPlastic
-		local sparkle = Instance.new("Sparkles")
-		sparkle.Name = "MutationSparkle"
-		sparkle.SparkleColor = m.color
-		sparkle.Parent = p.part
-		p.part:SetAttribute("Mutation", p.mut)
-		Net.all("Fx", "reveal", { pos = p.part.Position, mut = p.mut })
+	if mut == "None" then
+		return
 	end
+	local m = Config.mutation(mut)
+	for _, s in p.stalks do
+		s.stem.Color = m.color
+		s.stem.Material = if mut == "Diamond" then Enum.Material.Glass elseif mut == "Galaxy" or mut == "Toxic" then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		if s.head then
+			s.head.Color = PropKit.shade(m.color, 0.8)
+		end
+	end
+	local glow = Instance.new("PointLight")
+	glow.Name = "MutationGlow"
+	glow.Color = m.color
+	glow.Range = 10
+	glow.Brightness = 1.5
+	glow.Parent = p.part
+	local sparkle = Instance.new("ParticleEmitter") -- default texture is the engine's sparkle
+	sparkle.Name = "MutationSparkle"
+	sparkle.Color = ColorSequence.new(m.color)
+	sparkle.LightEmission = 1
+	sparkle.Size = NumberSequence.new(0.5, 0)
+	sparkle.Lifetime = NumberRange.new(0.6, 1)
+	sparkle.Rate = 8
+	sparkle.Speed = NumberRange.new(2, 4)
+	sparkle.SpreadAngle = Vector2.new(40, 40)
+	sparkle.EmissionDirection = Enum.NormalId.Top
+	sparkle.Parent = p.part
+	p.part:SetAttribute("Mutation", mut)
+	Net.all("Fx", "reveal", { pos = p.part.Position, mut = mut })
 end
 
 local function damagePatch(player: Player, p: Patch, amount: number, luck: number): boolean
@@ -170,7 +246,7 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 		end
 		p.cut = true
 		stubble(p)
-		Net.all("Fx", "cut", { pos = p.part.Position, color = p.baseColor, mut = p.mut, z = p.z })
+		Net.all("Fx", "cut", { pos = p.part.Position, color = p.baseColor, mut = p.mut, z = p.z, by = player.UserId })
 		Field.remaining[p.z] -= 1
 		if Field.onProgress then
 			Field.onProgress()
@@ -179,13 +255,13 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 			Field.onZoneCleared(p.z)
 		end
 	else
-		-- shrink with damage
+		-- stalks shrink with damage
 		local ratio = p.hp / p.maxHp
-		local h = math.max(0.6, p.height * (0.35 + 0.65 * ratio))
-		local pos = RunBuilder.patchPosition(p.z, p.col, p.row)
-		p.part.Size = Vector3.new(p.part.Size.X, h, p.part.Size.Z)
-		p.part.CFrame = CFrame.new(pos.X, 0.3 + h / 2, pos.Z)
-		Net.send(player, "Fx", "chip", { pos = p.part.Position, color = p.part.Color })
+		for _, s in p.stalks do
+			layoutStalk(s, ratio)
+		end
+		local first = p.stalks[1]
+		Net.send(player, "Fx", "chip", { pos = p.part.Position, color = if first then first.stem.Color else p.baseColor })
 	end
 	return true
 end

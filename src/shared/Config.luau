@@ -68,31 +68,31 @@ Config.BASE_CARRY = 5
 
 Config.ZONES = {
 	{
-		name = "Backyard Lawn", hp = 3, value = 3, height = 2,
+		name = "Backyard Lawn", style = "lawn", hp = 3, value = 3, height = 2,
 		grass = { Color3.fromRGB(110, 210, 70), Color3.fromRGB(90, 195, 60) },
 		ground = Color3.fromRGB(150, 110, 70),
 		boss = { name = "Dandelion King", hp = 400, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
 	},
 	{
-		name = "Golf Course", hp = 40, value = 35, height = 2.5,
+		name = "Golf Course", style = "golf", hp = 40, value = 35, height = 2.5,
 		grass = { Color3.fromRGB(70, 200, 90), Color3.fromRGB(55, 180, 75) },
 		ground = Color3.fromRGB(235, 215, 150),
 		boss = { name = "Thorn Bush", hp = 6000, color = Color3.fromRGB(40, 140, 60), every = 4, radius = 10, gems = 20, coins = 2000 },
 	},
 	{
-		name = "Wheat Farm", hp = 600, value = 420, height = 5,
+		name = "Wheat Farm", style = "wheat", hp = 600, value = 420, height = 5,
 		grass = { Color3.fromRGB(240, 200, 80), Color3.fromRGB(225, 180, 60) },
 		ground = Color3.fromRGB(140, 95, 55),
 		boss = { name = "Venus Flytrap", hp = 90000, color = Color3.fromRGB(200, 40, 70), every = 3.6, radius = 11, gems = 35, coins = 25000 },
 	},
 	{
-		name = "Swamp Reeds", hp = 8000, value = 5000, height = 6.5,
+		name = "Swamp Reeds", style = "reeds", hp = 8000, value = 5000, height = 6.5,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
 		boss = { name = "Swamp Vine", hp = 1200000, color = Color3.fromRGB(90, 70, 140), every = 3.3, radius = 12, gems = 55, coins = 300000 },
 	},
 	{
-		name = "Mega Jungle", hp = 100000, value = 60000, height = 8,
+		name = "Mega Jungle", style = "jungle", hp = 100000, value = 60000, height = 8,
 		grass = { Color3.fromRGB(30, 160, 60), Color3.fromRGB(20, 130, 50) },
 		ground = Color3.fromRGB(90, 70, 45),
 		boss = { name = "Jungle Titan", hp = 15000000, color = Color3.fromRGB(20, 90, 40), every = 3, radius = 14, gems = 80, coins = 4000000 },
@@ -303,6 +303,32 @@ function Config.productByAssetId(assetId: number)
 	end
 	return nil, nil
 end
+
+-------------------------------------------------------------------------------------------------------------
+-- Sounds. LICENSED AUDIO ONLY: Roblox-owned assets or the engine's built-in rbxasset sounds.
+-- id = "" means silent. gap = minimum seconds between plays, pitch = base playback speed.
+-------------------------------------------------------------------------------------------------------------
+Config.SOUNDS = {
+	-- All Roblox-owned (creator "Roblox", user 1), checked on the Creator Store API on 18 Oct 2026.
+	cut = { id = "rbxassetid://12222200", volume = 0.35, pitch = 1.1, gap = 0.06 }, -- swoosh.wav
+	chip = { id = "rbxassetid://12222140", volume = 0.2, pitch = 1.2, gap = 0.08 }, -- snap.wav
+	reveal = { id = "rbxassetid://17208327798", volume = 0.55 }, -- Roblox GUI - Aura
+	sell = { id = "rbxassetid://127645268874265", volume = 0.5, gap = 0.2 }, -- CoinTransfer_01
+	purchase = { id = "rbxassetid://17208380755", volume = 0.5 }, -- Roblox GUI - Purchase
+	upgrade = { id = "rbxassetid://10066947742", volume = 0.45 }, -- RBLX UI Purchase (SFX)
+	denied = { id = "rbxassetid://17208353912", volume = 0.4, gap = 0.6 }, -- Roblox GUI - Negative
+	click = { id = "rbxassetid://15675059323", volume = 0.35, gap = 0.05 }, -- Roblox_UI_Bright_Click
+	whoosh = { id = "rbxassetid://15675024286", volume = 0.35, gap = 0.1 }, -- Roblox_UI_Whoosh_01
+	warn = { id = "rbxassetid://15675028888", volume = 0.35 }, -- Roblox_UI_Whoosh_02
+	slam = { id = "rbxassetid://12221984", volume = 0.6, pitch = 0.7 }, -- collide.wav
+	hit = { id = "rbxassetid://12222046", volume = 0.35, gap = 0.08 }, -- hit.wav
+	hurt = { id = "rbxasset://sounds/ouch.ogg", volume = 0.5 }, -- engine built-in
+	roar = { id = "rbxassetid://9120031442", volume = 0.45, pitch = 1.25 }, -- Thunder With Lion Roar (pitched up)
+	victory = { id = "rbxassetid://12222253", volume = 0.6 }, -- victory.wav
+	engine = { id = "", volume = 0.3 }, -- Roblox has no mower/engine loop; silent until a licensed one is found
+	musicLobby = { id = "rbxassetid://15930255433", volume = 0.35 }, -- Roblox_RetroFluteMusic_01
+	musicRun = { id = "rbxassetid://130053244401794", volume = 0.3 }, -- TutorialMusic_01
+}
 
 -------------------------------------------------------------------------------------------------------------
 -- Look (Throw-an-Egg style studded bricks + bubbly UI)

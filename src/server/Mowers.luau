@@ -176,7 +176,7 @@ function Mowers.spawn(player: Player, id: string): boolean
 		data.run.fuel[id] = fuel
 	end
 	active[player] = build(player, def, fuel)
-	Net.notify(player, def.name .. " is waiting at the mower pad!", "green")
+	Net.send(player, "Fx", "mowerReady", { pos = Mowers.spawnCFrame.Position, name = def.name })
 	return true
 end
 

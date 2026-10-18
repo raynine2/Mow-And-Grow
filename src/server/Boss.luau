@@ -157,7 +157,6 @@ function Boss.spawn(z: number)
 	table.clear(damageBy)
 	current = { z = z, def = def, hp = maxHp, maxHp = maxHp, model = model, root = root, radius = 8 + z * 2, alive = true }
 	Net.all("Fx", "bossSpawn", { pos = root.Position, name = def.name })
-	Net.notifyAll("The " .. def.name .. " woke up! Cut it down!", "red")
 	if Boss.onChanged then
 		Boss.onChanged()
 	end

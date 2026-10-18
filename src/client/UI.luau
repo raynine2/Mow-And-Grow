@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
+local Sound = require(script.Parent.Sound)
 
 local UI = {}
 local C = Config.UI
@@ -149,6 +150,7 @@ function UI.button(parent: Instance, text: string, color: Color3, size: UDim2, o
 	label.ZIndex = b.ZIndex + 1
 	b.MouseButton1Click:Connect(function()
 		bounce(b)
+		Sound.play("click")
 		onClick()
 	end)
 	b.Parent = parent
@@ -181,6 +183,7 @@ function UI.coinIcon(parent: Instance, size: number, pos: UDim2?): Frame
 	return f
 end
 
+-- Gem: a faceted shape built from straight frames (rotated frames look jaggy in Roblox).
 function UI.gemIcon(parent: Instance, size: number, pos: UDim2?): Frame
 	local holder = Instance.new("Frame")
 	holder.Name = "GemIcon"
@@ -188,9 +191,14 @@ function UI.gemIcon(parent: Instance, size: number, pos: UDim2?): Frame
 	holder.Size = UDim2.fromOffset(size, size)
 	holder.Position = pos or UDim2.new()
 	holder.Parent = parent
-	local f = UI.frame({ size = UDim2.fromScale(0.72, 0.72), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = C.purple, parent = holder, radius = 4, outline = 2.5 })
-	f.Rotation = 45
-	UI.gradient(f, C.purple)
+	local light = UI.shade(C.purple, 1.35)
+	-- crown (top), body (bottom), shine
+	local crown = UI.frame({ size = UDim2.fromScale(0.86, 0.36), pos = UDim2.fromScale(0.07, 0.14), color = light, parent = holder, radius = 6, outline = 2.5 })
+	local body = UI.frame({ size = UDim2.fromScale(0.56, 0.44), pos = UDim2.fromScale(0.22, 0.46), color = C.purple, parent = holder, radius = 8, outline = 2.5 })
+	UI.gradient(body, C.purple)
+	UI.frame({ size = UDim2.fromScale(0.22, 0.14), pos = UDim2.fromScale(0.2, 0.24), color = Color3.new(1, 1, 1), parent = holder, radius = 4, outline = 0 }).BackgroundTransparency = 0.25
+	crown.ZIndex = 2
+	body.ZIndex = 1
 	return holder
 end
 
@@ -258,6 +266,7 @@ function UI.open(name: string)
 		return
 	end
 	openName = name
+	Sound.play("whoosh")
 	w.frame.Visible = true
 	w.refresh()
 	bounce(w.frame)

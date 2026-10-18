@@ -1,5 +1,7 @@
--- Every menu: Tools, Upgrades, Mowers (run) and Classes, Perks, Garage, Rewards (lobby), Store (both).
--- Each window rebuilds its cards from State.data when it opens or the data changes.
+-- Every menu, in Chop A Forest's style (wooden boards, blue cards, brown popups):
+--   Store (R): Robux tab + Gem Perks tab        Upgrades (TAB, run): Upgrades tab + Stats tab
+--   ToolView: popup for a tool on the cabin wall Mowers (run garage) / Garage (lobby)
+--   Classes: full-screen class shop             Rewards: daily + group popup
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
@@ -9,302 +11,45 @@ local State = require(script.Parent.State)
 
 local Windows = {}
 local C = UI.colors
-local GREY = Color3.fromRGB(150, 150, 160)
+local W = UI.wood
 
 local function data()
 	return State.data
 end
 
-local function perkText(c): string
+local function perkText(c): { string }
 	local parts = {}
 	if c.power then
 		table.insert(parts, "+" .. math.floor(c.power * 100) .. "% Power")
 	end
 	if c.speed then
-		table.insert(parts, "+" .. math.floor(c.speed * 100) .. "% Speed")
+		table.insert(parts, "+" .. math.floor(c.speed * 100) .. "% Walk Speed")
 	end
 	if c.sell then
-		table.insert(parts, "+" .. math.floor(c.sell * 100) .. "% Sell")
+		table.insert(parts, "+" .. math.floor(c.sell * 100) .. "% Sell Price")
 	end
 	if c.luck then
-		table.insert(parts, "+" .. math.floor(c.luck * 100) .. "% Luck")
+		table.insert(parts, "+" .. math.floor(c.luck * 100) .. "% Mutation Luck")
 	end
 	if c.carry then
 		table.insert(parts, "+" .. c.carry .. " Carry")
 	end
-	return table.concat(parts, ", ")
+	return parts
 end
 
-local function info(list: Instance, order: number, text: string, color: Color3?)
-	local t = UI.text(list, text, UDim2.new(1, 0, 0, 34), { color = color or C.dark, stroke = 0 })
+local function moneyLine(list: Instance, order: number, text: string)
+	local t = UI.text(list, text, UDim2.new(1, -20, 0, 34), { color = Color3.new(1, 1, 1), stroke = 2.5 })
 	t.LayoutOrder = order
 	return t
 end
 
 -------------------------------------------------------------------------------------------------------------
--- RUN: tools
+-- STORE (R): Robux + Gem Perks
 -------------------------------------------------------------------------------------------------------------
-local tools = UI.window("Tools", "TOOL SHOP", C.red)
-tools.refresh = function()
-	local d = data()
-	UI.clear(tools.list)
-	if not d or not d.run then
-		return
-	end
-	for i, t in Config.TOOLS do
-		local desc = if t.kind == "auto"
-			then ("Cuts everything around you. %s damage"):format(Format.short(t.damage))
-			else ("Click to cut %d patch%s. %s damage"):format(t.targets, if t.targets > 1 then "es" else "", Format.short(t.damage))
-		local text, color, action = "LOCKED", GREY, function() end
-		if i <= d.run.tool then
-			text, color = if i == d.run.tool then "EQUIPPED" else "OWNED", GREY
-		elseif i == d.run.tool + 1 then
-			text = "$" .. Format.short(t.cost)
-			color = if d.run.coins >= t.cost then C.green else C.orange
-			action = function()
-				State.fire("Buy", "tool", t.id)
-			end
-		end
-		UI.card(tools.list, i, t.color, t.name, desc, text, color, action)
-	end
-end
-
--------------------------------------------------------------------------------------------------------------
--- RUN: upgrades (also Tab)
--------------------------------------------------------------------------------------------------------------
-local upgrades = UI.window("Upgrades", "UPGRADES", C.blue)
-upgrades.refresh = function()
-	local d = data()
-	UI.clear(upgrades.list)
-	if not d or not d.run then
-		return
-	end
-	for i, u in Config.UPGRADES do
-		local level = d.run.upgrades[u.id] or 0
-		local text, color, action = "MAX", GREY, function() end
-		if level < u.max then
-			local cost = Config.upgradeCost(u.id, level)
-			text = "$" .. Format.short(cost)
-			color = if d.run.coins >= cost then C.green else C.orange
-			action = function()
-				State.fire("Buy", "upgrade", u.id)
-			end
-		end
-		UI.card(upgrades.list, i, C.blue, ("%s  Lv %d/%d"):format(u.name, level, u.max), u.desc, text, color, action)
-	end
-	info(upgrades.list, 99, "Upgrades last until the run ends.")
-end
-
--------------------------------------------------------------------------------------------------------------
--- RUN: mowers (garage)
--------------------------------------------------------------------------------------------------------------
-local function mowerDesc(m): string
-	return ("Speed %d, cut radius %d, %s damage, %d fuel"):format(m.speed, m.radius, Format.short(m.damage), m.fuel)
-end
-
-local mowers = UI.window("Mowers", "GARAGE", C.purple)
-mowers.refresh = function()
-	local d = data()
-	UI.clear(mowers.list)
-	if not d or not d.run then
-		return
-	end
-	for i, m in Config.MOWERS do
-		local text, color, action = "", GREY, function() end
-		local spawn = function()
-			State.fire("SpawnMower", m.id)
-			UI.close()
-		end
-		if m.currency == "coins" then
-			if table.find(d.run.mowers, m.id) then
-				text, color, action = "SPAWN", C.purple, spawn
-			else
-				text = "$" .. Format.short(m.price)
-				color = if d.run.coins >= m.price then C.green else C.orange
-				action = function()
-					State.fire("Buy", "mower", m.id)
-					UI.close()
-				end
-			end
-		elseif m.currency == "trial" then
-			if d.run.trial then
-				text, color, action = "SPAWN", C.purple, spawn
-			else
-				local p = Config.PRODUCTS[m.product]
-				text, color = "R$ " .. p.robux, C.pink
-				action = function()
-					State.fire("Prompt", "product", m.product)
-				end
-			end
-		else
-			if table.find(d.mowers, m.id) then
-				text, color, action = "SPAWN", C.purple, spawn
-			elseif m.currency == "gems" then
-				text = "LOBBY ONLY"
-			else
-				local p = Config.PRODUCTS[m.product]
-				text, color = "R$ " .. p.robux, C.pink
-				action = function()
-					State.fire("Prompt", "product", m.product)
-				end
-			end
-		end
-		local tag = if m.currency == "coins" then " (this run)" elseif m.currency == "trial" then " (1 run)" else ""
-		UI.card(mowers.list, i, m.color, m.name .. tag, mowerDesc(m), text, color, action)
-	end
-	info(mowers.list, 99, "Mowers burn fuel while driving. Refuel at a gas pump.")
-end
-
--------------------------------------------------------------------------------------------------------------
--- LOBBY: classes
--------------------------------------------------------------------------------------------------------------
-local classes = UI.window("Classes", "CLASSES", C.purple)
-local stockLine: TextLabel? = nil
-local function stockNow(): ({ string }, number)
-	local now = workspace:GetServerTimeNow()
-	local window = math.floor(now / Config.STOCK_WINDOW)
-	return Config.classStock(window), Config.STOCK_WINDOW - (now % Config.STOCK_WINDOW)
-end
-classes.refresh = function()
-	local d = data()
-	UI.clear(classes.list)
-	if not d then
-		return
-	end
-	local stock, left = stockNow()
-	stockLine = info(classes.list, 0, "Restock in " .. Format.clock(left), C.purple)
-	for i, c in Config.CLASSES do
-		local owned = table.find(d.classes, c.id) ~= nil
-		local text, color, action = "NOT IN STOCK", GREY, function() end
-		if owned then
-			if d.class == c.id then
-				text = "EQUIPPED"
-			else
-				text, color = "EQUIP", C.green
-				action = function()
-					State.fire("EquipClass", c.id)
-				end
-			end
-		elseif table.find(stock, c.id) then
-			text = Format.short(c.gems) .. " GEMS"
-			color = if d.gems >= c.gems then C.purple else C.orange
-			action = function()
-				State.fire("Buy", "class", c.id)
-			end
-		elseif c.product then
-			local p = Config.PRODUCTS[c.product]
-			text, color = "R$ " .. p.robux, C.pink
-			action = function()
-				State.fire("Prompt", "product", c.product)
-			end
-		end
-		UI.card(classes.list, i, Config.RARITY_COLORS[c.rarity], c.name .. "  (" .. c.rarity .. ")", perkText(c), text, color, action)
-	end
-end
-task.spawn(function()
-	while true do
-		task.wait(1)
-		if UI.isOpen("Classes") and stockLine and stockLine.Parent then
-			local _, left = stockNow()
-			stockLine.Text = "Restock in " .. Format.clock(left)
-			if left >= Config.STOCK_WINDOW - 1 then
-				classes.refresh() -- new stock
-			end
-		end
-	end
-end)
-
--------------------------------------------------------------------------------------------------------------
--- LOBBY: gem perks
--------------------------------------------------------------------------------------------------------------
-local perks = UI.window("Perks", "GEM PERKS", C.blue)
-perks.refresh = function()
-	local d = data()
-	UI.clear(perks.list)
-	if not d then
-		return
-	end
-	for i, p in Config.PERKS do
-		local level = d.perks[p.id] or 0
-		local cost = p.costs[level + 1]
-		local text, color, action = "MAX", GREY, function() end
-		if cost then
-			text = cost .. " GEMS"
-			color = if d.gems >= cost then C.purple else C.orange
-			action = function()
-				State.fire("Buy", "perk", p.id)
-			end
-		end
-		UI.card(perks.list, i, C.blue, ("%s  Lv %d/%d"):format(p.name, level, #p.costs), p.desc, text, color, action)
-	end
-	info(perks.list, 99, "Perks are permanent and work in every run.")
-end
-
--------------------------------------------------------------------------------------------------------------
--- LOBBY: garage (permanent mowers)
--------------------------------------------------------------------------------------------------------------
-local garage = UI.window("Garage", "GARAGE", C.orange)
-garage.refresh = function()
-	local d = data()
-	UI.clear(garage.list)
-	if not d then
-		return
-	end
-	local n = 0
-	for _, m in Config.MOWERS do
-		if m.currency == "gems" or m.currency == "robux" then
-			n += 1
-			local owned = table.find(d.mowers, m.id) ~= nil
-			local text, color, action = "OWNED", GREY, function() end
-			if not owned then
-				if m.currency == "gems" then
-					text = Format.short(m.price) .. " GEMS"
-					color = if d.gems >= m.price then C.purple else C.orange
-					action = function()
-						State.fire("Buy", "mower", m.id)
-					end
-				else
-					local p = Config.PRODUCTS[m.product]
-					text, color = "R$ " .. p.robux, C.pink
-					action = function()
-						State.fire("Prompt", "product", m.product)
-					end
-				end
-			end
-			UI.card(garage.list, n, m.color, m.name, mowerDesc(m), text, color, action)
-		end
-	end
-	info(garage.list, 99, "Owned forever. Spawn them from the Garage inside a run.")
-end
-
--------------------------------------------------------------------------------------------------------------
--- LOBBY: free rewards
--------------------------------------------------------------------------------------------------------------
-local rewards = UI.window("Rewards", "FREE REWARDS", C.yellow)
-rewards.refresh = function()
-	local d = data()
-	UI.clear(rewards.list)
-	if not d then
-		return
-	end
-	local ready = d.dailyIn <= 0
-	UI.card(rewards.list, 1, C.purple, "Daily Gems", ("+%d gems every 6 hours"):format(Config.DAILY_GEMS), if ready then "CLAIM" else Format.clock(d.dailyIn), if ready then C.green else GREY, function()
-		if ready then
-			State.fire("Claim", "daily")
-		end
-	end)
-	UI.card(rewards.list, 2, C.blue, "Join the Group", ("Join Atlas Interactive Inc for +%d gems"):format(Config.GROUP_GEMS), if d.groupClaimed then "CLAIMED" else "CLAIM", if d.groupClaimed then GREY else C.green, function()
-		if not d.groupClaimed then
-			State.fire("Claim", "group")
-		end
-	end)
-	info(rewards.list, 99, "Finish a run and beat bosses for even more gems!")
-end
-
--------------------------------------------------------------------------------------------------------------
--- BOTH: Robux store
--------------------------------------------------------------------------------------------------------------
-local store = UI.window("Store", "STORE", C.pink)
+local STORE_TABS = { { label = "Robux", window = "Store" }, { label = "Gem Perks", window = "Perks" } }
+local store = UI.window("Store", "Robux", nil, { tabs = STORE_TABS, grid = Vector2.new(250, 250), gems = true })
+local PRODUCT_ICON = { Gems150 = "gem", Gems500 = "gem", Gems1500 = "gem", Gems5000 = "gem", TrialMower = "pushmower", RocketMower = "pushmower", ClassLawnLegend = "clover", ClassGoatMan = "clover" }
+local PASS_ICON = { DoubleCoins = "coin", DoubleGems = "gem", BigBag = "backpack", VIP = "clover" }
 store.refresh = function()
 	local d = data()
 	UI.clear(store.list)
@@ -312,19 +57,24 @@ store.refresh = function()
 		return
 	end
 	local order = 0
-	info(store.list, order, "GAME PASSES", C.pink)
 	for _, key in Config.PASS_ORDER do
 		local p = Config.PASSES[key]
 		order += 1
 		local owned = d.passes[key]
-		UI.card(store.list, order, C.yellow, p.name, p.desc, if owned then "OWNED" else "R$ " .. p.robux, if owned then GREY else C.pink, function()
-			if not owned then
-				State.fire("Prompt", "pass", key)
-			end
-		end)
+		UI.blueCard(store.list, order, {
+			title = p.name,
+			sub = p.desc,
+			icon = PASS_ICON[key],
+			price = if owned then "OWNED" else "R$ " .. p.robux,
+			enabled = not owned,
+			color = Color3.fromRGB(255, 170, 40),
+			onClick = function()
+				if not owned then
+					State.fire("Prompt", "pass", key)
+				end
+			end,
+		})
 	end
-	order += 1
-	info(store.list, order, "ITEMS", C.pink)
 	for _, key in Config.PRODUCT_ORDER do
 		local p = Config.PRODUCTS[key]
 		local show = true
@@ -337,13 +87,456 @@ store.refresh = function()
 		end
 		if show then
 			order += 1
-			local desc = if p.gems then "Spend on classes, perks and mowers" elseif p.class then "Owned forever" elseif p.mower == "TrialMower" then "A fast mower for this run only" else "Owned forever"
-			UI.card(store.list, order, if p.gems then C.purple else C.orange, p.name, desc, "R$ " .. p.robux, C.pink, function()
-				State.fire("Prompt", "product", key)
-			end)
+			UI.blueCard(store.list, order, {
+				title = p.name,
+				sub = if p.gems then "Classes, perks and mowers" elseif p.mower == "TrialMower" then "A fast mower for this run" else "Yours forever",
+				icon = PRODUCT_ICON[key],
+				price = "R$ " .. p.robux,
+				enabled = true,
+				onClick = function()
+					State.fire("Prompt", "product", key)
+				end,
+			})
 		end
 	end
 end
+
+local PERK_ICON = { sell = "coin", luck = "clover", gem = "gem", bundle = "bundle" }
+local perks = UI.window("Perks", "Gem Perks", nil, { tabs = STORE_TABS, grid = Vector2.new(330, 220), gems = true })
+perks.refresh = function()
+	local d = data()
+	UI.clear(perks.list)
+	if not d then
+		return
+	end
+	for i, p in Config.PERKS do
+		local level = d.perks[p.id] or 0
+		local cost = p.costs[level + 1]
+		UI.blueCard(perks.list, i, {
+			title = p.name,
+			sub = p.desc,
+			icon = PERK_ICON[p.id],
+			level = level,
+			max = #p.costs,
+			price = if cost then tostring(cost) else "MAX",
+			priceIcon = if cost then "gem" else nil,
+			enabled = cost ~= nil and d.gems >= cost,
+			onClick = function()
+				State.fire("Buy", "perk", p.id)
+			end,
+		})
+	end
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- UPGRADES (TAB, run): Upgrades + Stats
+-------------------------------------------------------------------------------------------------------------
+local RUN_TABS = { { label = "Upgrades", window = "Upgrades" }, { label = "Stats", window = "Stats" } }
+local UPGRADE_ICON = { power = "upgrade", carry = "backpack", speed = "clover", sell = "coin" }
+local upgrades = UI.window("Upgrades", "Upgrades", nil, { tabs = RUN_TABS, grid = Vector2.new(390, 190) })
+upgrades.refresh = function()
+	local d = data()
+	UI.clear(upgrades.list)
+	if not d or not d.run then
+		return
+	end
+	for i, u in Config.UPGRADES do
+		local level = d.run.upgrades[u.id] or 0
+		local maxed = level >= u.max
+		local cost = if maxed then 0 else Config.upgradeCost(u.id, level)
+		UI.blueCard(upgrades.list, i, {
+			title = u.name,
+			sub = u.desc,
+			icon = UPGRADE_ICON[u.id],
+			level = level,
+			max = u.max,
+			price = if maxed then "MAX" else "$" .. Format.short(cost),
+			enabled = not maxed and d.run.coins >= cost,
+			color = Color3.fromRGB(70, 190, 90),
+			onClick = function()
+				State.fire("Buy", "upgrade", u.id)
+			end,
+		})
+	end
+	moneyLine(upgrades.list, 99, "Your money: $" .. Format.commas(d.run.coins))
+end
+
+local stats = UI.window("Stats", "Stats", nil, { tabs = RUN_TABS })
+stats.refresh = function()
+	local d = data()
+	UI.clear(stats.list)
+	if not d then
+		return
+	end
+	local rows = {
+		{ "upgrade", "Power", string.format("x%.2f", d.power) },
+		{ "backpack", "Carry", tostring(d.carryMax) },
+		{ "clover", "Mutation Luck", string.format("x%.2f", d.luck) },
+		{ "coin", "Sell Price", string.format("x%.2f", d.sell) },
+		{ "bundle", "Grass cut", Format.commas(d.stats.cut) },
+		{ "gem", "Runs finished", tostring(d.stats.runs) },
+		{ "lock", "Bosses beaten", tostring(d.stats.bosses) },
+	}
+	for i, r in rows do
+		UI.popupRow(stats.list, i, r[1], r[2], r[3], Color3.new(1, 1, 1)).Size = UDim2.new(1, -20, 0, 56)
+	end
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- TOOL VIEW: the popup you get from a tool hanging on the cabin wall
+-------------------------------------------------------------------------------------------------------------
+local toolView = UI.popupWindow("ToolView", "Tool", "")
+local viewTool = "Scissors"
+local TOOL_DESC = {
+	Hands = "Pull the grass out by hand. Slow, but free!",
+	Scissors = "Snip 2 patches at once. Your first real tool.",
+	Sickle = "A wide swing that cuts 4 patches at a time.",
+	PushMower = "Mows everything around you while you walk. No clicking!",
+	WeedWhacker = "Spins through thick grass in a big circle.",
+	MegaScythe = "A giant glowing blade that clears 12 patches per swing.",
+	LaserMower = "The ultimate mower. Lasers. Need we say more?",
+}
+local TOOL_ICON = { Hands = "hands", Scissors = "scissors", Sickle = "sickle", PushMower = "pushmower", WeedWhacker = "whacker", MegaScythe = "scythe", LaserMower = "lasermower" }
+State.on("openFor", function(window, item)
+	if window == "ToolView" and type(item) == "string" then
+		viewTool = item
+	end
+end)
+toolView.refresh = function()
+	local d = data()
+	UI.clear(toolView.list)
+	local index, def = 1, Config.TOOLS[1]
+	for i, t in Config.TOOLS do
+		if t.id == viewTool then
+			index, def = i, t
+		end
+	end
+	toolView.title.Text = string.upper(def.name)
+	toolView.sub.Text = "$" .. Format.commas(def.cost)
+	if not d or not d.run then
+		return
+	end
+	UI.icon(toolView.list, TOOL_ICON[def.id] or "coin", 110).LayoutOrder = 1
+	local desc = UI.text(toolView.list, TOOL_DESC[def.id] or "", UDim2.new(1, -20, 0, 60), { color = Color3.new(1, 1, 1), stroke = 2, textSize = 24 })
+	desc.LayoutOrder = 2
+	local kind = if def.kind == "auto" then "Cuts around you" else ("Cuts %d patch%s per swing"):format(def.targets, if def.targets > 1 then "es" else "")
+	UI.popupRow(toolView.list, 3, "upgrade", "Damage " .. Format.short(def.damage), kind, Color3.new(1, 1, 1))
+	moneyLine(toolView.list, 4, "Your money: $" .. Format.commas(d.run.coins))
+	local owned = index <= d.run.tool
+	local nextUp = index == d.run.tool + 1
+	if owned then
+		UI.setButton(toolView.action, "OWNED", W.grey)
+		toolView.onAction = function()
+			UI.close()
+		end
+	elseif nextUp then
+		local can = d.run.coins >= def.cost
+		UI.setButton(toolView.action, "BUY $" .. Format.short(def.cost), if can then C.green else W.grey)
+		toolView.onAction = function()
+			State.fire("Buy", "tool", def.id)
+		end
+	else
+		UI.setButton(toolView.action, "BUY " .. Config.TOOLS[index - 1].name:upper() .. " FIRST", W.grey)
+		toolView.onAction = function() end
+	end
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- MOWERS (run garage) and GARAGE (lobby)
+-------------------------------------------------------------------------------------------------------------
+local function mowerSub(m): string
+	return ("Speed %d  -  Radius %d  -  %d fuel"):format(m.speed, m.radius, m.fuel)
+end
+
+local mowers = UI.window("Mowers", "Garage", nil, { grid = Vector2.new(250, 250), gems = true })
+mowers.refresh = function()
+	local d = data()
+	UI.clear(mowers.list)
+	if not d or not d.run then
+		return
+	end
+	for i, m in Config.MOWERS do
+		local price, enabled, action, color = "", false, function() end, nil
+		local spawn = function()
+			State.fire("SpawnMower", m.id)
+			UI.close()
+		end
+		if m.currency == "coins" then
+			if table.find(d.run.mowers, m.id) then
+				price, enabled, action = "SPAWN", true, spawn
+			else
+				price, enabled = "$" .. Format.short(m.price), d.run.coins >= m.price
+				action = function()
+					State.fire("Buy", "mower", m.id)
+					UI.close()
+				end
+			end
+		elseif m.currency == "trial" then
+			if d.run.trial then
+				price, enabled, action = "SPAWN", true, spawn
+			else
+				price, enabled, color = "R$ " .. Config.PRODUCTS[m.product].robux, true, Color3.fromRGB(255, 170, 40)
+				action = function()
+					State.fire("Prompt", "product", m.product)
+				end
+			end
+		elseif table.find(d.mowers, m.id) then
+			price, enabled, action = "SPAWN", true, spawn
+		elseif m.currency == "gems" then
+			price = "LOBBY"
+		else
+			price, enabled, color = "R$ " .. Config.PRODUCTS[m.product].robux, true, Color3.fromRGB(255, 170, 40)
+			action = function()
+				State.fire("Prompt", "product", m.product)
+			end
+		end
+		UI.blueCard(mowers.list, i, { title = m.name, sub = mowerSub(m), icon = "pushmower", price = price, enabled = enabled, color = color, onClick = action })
+	end
+end
+
+local garage = UI.window("Garage", "Garage", nil, { grid = Vector2.new(250, 250), gems = true })
+garage.refresh = function()
+	local d = data()
+	UI.clear(garage.list)
+	if not d then
+		return
+	end
+	local n = 0
+	for _, m in Config.MOWERS do
+		if m.currency == "gems" or m.currency == "robux" then
+			n += 1
+			local owned = table.find(d.mowers, m.id) ~= nil
+			local price, enabled, action = "OWNED", false, function() end
+			if not owned and m.currency == "gems" then
+				price, enabled = tostring(m.price), d.gems >= m.price
+				action = function()
+					State.fire("Buy", "mower", m.id)
+				end
+			elseif not owned then
+				price, enabled = "R$ " .. Config.PRODUCTS[m.product].robux, true
+				action = function()
+					State.fire("Prompt", "product", m.product)
+				end
+			end
+			UI.blueCard(garage.list, n, {
+				title = m.name,
+				sub = mowerSub(m),
+				icon = "pushmower",
+				price = price,
+				priceIcon = if not owned and m.currency == "gems" then "gem" else nil,
+				enabled = enabled,
+				onClick = action,
+			})
+		end
+	end
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- REWARDS (lobby): daily + group, like the GROUP REWARD board
+-------------------------------------------------------------------------------------------------------------
+local rewards = UI.popupWindow("Rewards", "Free Rewards", "Free gems for supporting us!")
+rewards.refresh = function()
+	local d = data()
+	UI.clear(rewards.list)
+	if not d then
+		return
+	end
+	local ready = d.dailyIn <= 0
+	UI.popupRow(rewards.list, 1, "gem", "Daily reward +" .. Config.DAILY_GEMS, if ready then "READY" else Format.clock(d.dailyIn), if ready then C.green else Color3.new(1, 1, 1))
+	UI.popupRow(rewards.list, 2, "clover", "Join the group +" .. Config.GROUP_GEMS, if d.groupClaimed then "DONE" else "JOIN", if d.groupClaimed then C.green else C.yellow)
+	local big = UI.text(rewards.list, "+" .. Config.DAILY_GEMS, UDim2.new(1, 0, 0, 60), { color = Color3.new(1, 1, 1), stroke = 3 })
+	big.LayoutOrder = 3
+	if ready then
+		UI.setButton(rewards.action, "CLAIM DAILY", C.green)
+		rewards.onAction = function()
+			State.fire("Claim", "daily")
+		end
+	elseif not d.groupClaimed then
+		UI.setButton(rewards.action, "CLAIM GROUP", C.green)
+		rewards.onAction = function()
+			State.fire("Claim", "group")
+		end
+	else
+		UI.setButton(rewards.action, "DONE", C.green)
+		rewards.onAction = function()
+			UI.close()
+		end
+	end
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- CLASSES (lobby): full-screen class shop - list on the left, details in the middle, perks on the right
+-------------------------------------------------------------------------------------------------------------
+local classes = UI.window("Classes", "Classes", nil, {})
+classes.frame.Size = UDim2.fromOffset(1220, 660)
+classes.frame.Position = UDim2.fromScale(0.5, 0.52)
+local board = classes.frame:FindFirstChild("Board") :: Frame
+board.BackgroundColor3 = Color3.fromRGB(28, 26, 44)
+board:FindFirstChildOfClass("UIGradient"):Destroy()
+board.BackgroundTransparency = 0.12
+local panel = classes.panel :: Frame
+panel.Visible = false
+for _, d in classes.frame:GetChildren() do
+	if d.Name:match("^Tab") or d.Name:match("^Icon_") then
+		d:Destroy()
+	end
+end
+local leftList = Instance.new("ScrollingFrame")
+leftList.BackgroundTransparency = 1
+leftList.BorderSizePixel = 0
+leftList.Size = UDim2.fromOffset(340, 560)
+leftList.Position = UDim2.fromOffset(28, 84)
+leftList.ScrollBarThickness = 6
+leftList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+leftList.CanvasSize = UDim2.new()
+leftList.Parent = board
+local leftLayout = Instance.new("UIListLayout")
+leftLayout.Padding = UDim.new(0, 12)
+leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
+leftLayout.Parent = leftList
+UI.text(board, "CLASSES", UDim2.fromOffset(200, 40), { pos = UDim2.fromOffset(30, 18), align = Enum.TextXAlignment.Left, stroke = 3 })
+local restockText = UI.text(board, "", UDim2.fromOffset(200, 36), { pos = UDim2.fromOffset(170, 20), align = Enum.TextXAlignment.Right, stroke = 2.5 })
+UI.text(board, "Classes restock every 5 minutes - buy with gems", UDim2.fromOffset(340, 18), { pos = UDim2.fromOffset(30, 58), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(200, 200, 215), stroke = 1 })
+local midName = UI.text(board, "", UDim2.fromOffset(480, 70), { pos = UDim2.fromOffset(610, 70), anchor = Vector2.new(0.5, 0), stroke = 4 })
+local midRarity = UI.text(board, "", UDim2.fromOffset(300, 28), { pos = UDim2.fromOffset(610, 140), anchor = Vector2.new(0.5, 0), stroke = 2 })
+local midStock = UI.text(board, "", UDim2.fromOffset(360, 22), { pos = UDim2.fromOffset(610, 170), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(210, 210, 225), stroke = 1.5 })
+local midIconHolder = Instance.new("Frame")
+midIconHolder.BackgroundTransparency = 1
+midIconHolder.Size = UDim2.fromOffset(220, 220)
+midIconHolder.Position = UDim2.fromOffset(500, 210)
+midIconHolder.Parent = board
+local robuxBtn = UI.button(board, "", Color3.fromRGB(255, 120, 200), UDim2.fromOffset(240, 48), function() end, { pos = UDim2.fromOffset(610, 470), anchor = Vector2.new(0.5, 0), name = "RobuxBuy" })
+local buyBtn = UI.button(board, "BUY", Color3.fromRGB(235, 235, 240), UDim2.fromOffset(260, 52), function() end, { pos = UDim2.fromOffset(610, 530), anchor = Vector2.new(0.5, 0), name = "GemBuy" })
+UI.button(board, "BACK", W.red, UDim2.fromOffset(180, 50), function()
+	UI.close()
+end, { pos = UDim2.fromOffset(610, 594), anchor = Vector2.new(0.5, 0), name = "Back" })
+local rightTitle = UI.text(board, "", UDim2.fromOffset(330, 50), { pos = UDim2.fromOffset(860, 70), align = Enum.TextXAlignment.Left, stroke = 3 })
+local rightTag = UI.frame({ size = UDim2.fromOffset(120, 28), pos = UDim2.fromOffset(860, 124), color = C.green, parent = board, radius = 8, outline = 0 })
+local rightTagText = UI.text(rightTag, "", UDim2.new(1, -8, 1, -6), { pos = UDim2.fromOffset(4, 3), stroke = 1.5 })
+local rightPrice = UI.text(board, "", UDim2.fromOffset(160, 24), { pos = UDim2.fromOffset(990, 126), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(210, 210, 225), stroke = 1 })
+UI.text(board, "PERKS", UDim2.fromOffset(200, 26), { pos = UDim2.fromOffset(860, 176), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(200, 200, 215), stroke = 1.5 })
+local perkList = Instance.new("Frame")
+perkList.BackgroundTransparency = 1
+perkList.Size = UDim2.fromOffset(330, 300)
+perkList.Position = UDim2.fromOffset(860, 210)
+perkList.Parent = board
+local perkLayout = Instance.new("UIListLayout")
+perkLayout.Padding = UDim.new(0, 8)
+perkLayout.Parent = perkList
+
+local selected = Config.DEFAULT_CLASS
+local function stockNow(): ({ string }, number)
+	local now = workspace:GetServerTimeNow()
+	return Config.classStock(math.floor(now / Config.STOCK_WINDOW)), Config.STOCK_WINDOW - (now % Config.STOCK_WINDOW)
+end
+
+classes.refresh = function()
+	local d = data()
+	if not d then
+		return
+	end
+	local stock, left = stockNow()
+	restockText.Text = Format.clock(left)
+	UI.clear(leftList)
+	for i, c in Config.CLASSES do
+		local owned = table.find(d.classes, c.id) ~= nil
+		local inStock = table.find(stock, c.id) ~= nil
+		local rc = Config.RARITY_COLORS[c.rarity]
+		local card = Instance.new("TextButton")
+		card.Text = ""
+		card.AutoButtonColor = false
+		card.Size = UDim2.new(1, -12, 0, 104)
+		card.BackgroundColor3 = rc
+		card.LayoutOrder = i
+		UI.corner(card, 14)
+		UI.stroke(card, if c.id == selected then 4 else 3, if c.id == selected then Color3.new(1, 1, 1) else UI.shade(rc, 0.45))
+		UI.gradient(card, rc)
+		UI.icon(card, "clover", 70, UDim2.fromOffset(12, 17))
+		UI.text(card, c.name, UDim2.new(1, -110, 0, 38), { pos = UDim2.fromOffset(96, 14), align = Enum.TextXAlignment.Left, stroke = 3 })
+		local state = if owned then (if d.class == c.id then "EQUIPPED" else "OWNED") elseif inStock then tostring(c.gems) .. " GEMS" else "SOLD OUT"
+		local pill = UI.frame({ size = UDim2.fromOffset(140, 30), pos = UDim2.fromOffset(110, 60), color = if owned then C.green elseif inStock then Color3.fromRGB(40, 40, 60) else Color3.fromRGB(70, 70, 80), parent = card, radius = 8, outline = 0 })
+		pill.BackgroundTransparency = 0.15
+		UI.text(pill, state, UDim2.new(1, -8, 1, -6), { pos = UDim2.fromOffset(4, 3), stroke = 1.5 })
+		card.MouseButton1Click:Connect(function()
+			selected = c.id
+			classes.refresh()
+		end)
+		card.Parent = leftList
+	end
+	local c = Config.class(selected) :: any
+	local rc = Config.RARITY_COLORS[c.rarity]
+	local owned = table.find(d.classes, c.id) ~= nil
+	local inStock = table.find(stock, c.id) ~= nil
+	midName.Text = c.name
+	midName.TextColor3 = UI.shade(rc, 1.3)
+	midRarity.Text = string.upper(c.rarity)
+	midRarity.TextColor3 = rc
+	midStock.Text = (if inStock then "IN STOCK" else "SOLD OUT") .. "  -  restock " .. Format.clock(left)
+	UI.clear(midIconHolder)
+	UI.icon(midIconHolder, "clover", 200, UDim2.fromOffset(10, 10))
+	rightTitle.Text = c.name
+	rightTag.BackgroundColor3 = rc
+	rightTagText.Text = string.upper(c.rarity)
+	rightPrice.Text = if c.gems > 0 then c.gems .. " gems" else "free"
+	UI.clear(perkList)
+	perkLayout.Parent = perkList
+	for _, line in perkText(c) do
+		UI.text(perkList, line, UDim2.new(1, 0, 0, 30), { align = Enum.TextXAlignment.Left, stroke = 2 })
+	end
+	robuxBtn.Visible = c.product ~= nil and not owned
+	if c.product then
+		UI.setButton(robuxBtn, "R$ " .. Config.PRODUCTS[c.product].robux)
+	end
+	if owned then
+		UI.setButton(buyBtn, if d.class == c.id then "EQUIPPED" else "EQUIP", C.green)
+	elseif inStock then
+		UI.setButton(buyBtn, "BUY  " .. c.gems .. " GEMS", if d.gems >= c.gems then C.purple else W.grey)
+	else
+		UI.setButton(buyBtn, "SOLD OUT", W.grey)
+	end
+end
+buyBtn.MouseButton1Click:Connect(function()
+	local d = data()
+	if not d then
+		return
+	end
+	if table.find(d.classes, selected) then
+		State.fire("EquipClass", selected)
+	else
+		State.fire("Buy", "class", selected)
+	end
+end)
+robuxBtn.MouseButton1Click:Connect(function()
+	local c = Config.class(selected)
+	if c and c.product then
+		State.fire("Prompt", "product", c.product)
+	end
+end)
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if UI.isOpen("Classes") then
+			local _, left = stockNow()
+			restockText.Text = Format.clock(left)
+			if left >= Config.STOCK_WINDOW - 1 then
+				classes.refresh()
+			end
+		end
+	end
+end)
+
+-- the old "Tools" stall opens the next tool you can buy
+local _ = UI.popupWindow("Tools", "Tool Shop", "")
+State.on("openFor", function(window)
+	if window == "Tools" then
+		local d = data()
+		local nextTool = d and d.run and Config.TOOLS[d.run.tool + 1]
+		viewTool = if nextTool then nextTool.id else Config.TOOLS[#Config.TOOLS].id
+		task.defer(function()
+			UI.open("ToolView")
+		end)
+	end
+end)
 
 State.on("data", function()
 	UI.refreshOpen()

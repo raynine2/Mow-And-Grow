@@ -94,8 +94,8 @@ local function zone(world: Instance, z: number, info)
 	local groundMat = ({ lawn = Enum.Material.Grass, golf = Enum.Material.Grass, wheat = Enum.Material.Ground, reeds = Enum.Material.Mud, jungle = Enum.Material.Grass })[def.style] or Enum.Material.Grass
 	local groundColor = if groundMat == Enum.Material.Grass then PropKit.shade(def.grass[2], 0.95) else def.ground
 	PropKit.brick(m, Vector3.new(HALF_WIDTH * 2, 2, groundLen), CFrame.new(0, -1, zs - 10 + groundLen / 2), groundColor, "ZoneGround", groundMat)
-	-- soil bed under the grass patches
-	PropKit.brick(m, Vector3.new(Config.GRID.cols * Config.GRID.tile + 2, 0.4, len + 2), CFrame.new(0, 0.1, zs + len / 2), Color3.fromRGB(110, 80, 55), "Soil", Enum.Material.Ground)
+	-- a thin soil bed under the grass patches (shows where the field is once it's mown)
+	PropKit.brick(m, Vector3.new(Config.GRID.cols * Config.GRID.tile + 1, 0.3, len + 1), CFrame.new(0, 0.15, zs + len / 2), PropKit.shade(groundColor, 0.8), "Soil", groundMat)
 
 	-- zone sign
 	PropKit.sign(m, CFrame.new(-38, 7, zs - 6) * CFrame.Angles(0, math.rad(-150), 0), Vector3.new(16, 4, 1), def.name, def.grass[1], Color3.new(1, 1, 1))

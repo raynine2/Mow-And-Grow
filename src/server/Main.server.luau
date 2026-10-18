@@ -11,6 +11,7 @@ local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
 local Mode = require(script.Parent.Mode)
 local Monetization = require(script.Parent.Monetization)
+local Quests = require(script.Parent.Quests)
 
 local system: any = if Mode.isRun then require(script.Parent.Run) else require(script.Parent.Lobby)
 system.start()
@@ -92,6 +93,7 @@ local function snapshot(player: Player, data)
 			fuel = run.fuel,
 			carry = #run.carry,
 			carryMutated = muts,
+			quest = Quests.view(run),
 		}
 	end
 	return view

@@ -105,14 +105,14 @@ function PropKit.forestTree(parent: Instance, pos: Vector3, scale: number, opts:
 		br.CanCollide = false
 	end
 	-- canopy: a centre block, a ring of blocks around it, and a few on top, all slightly turned
-	local clumps = { { Vector3.new(0, 2, 0), 12 } }
+	local clumps = { { Vector3.new(0, 2, 0), 10 } }
 	for i = 0, 5 do
 		local a = i * math.pi / 3 + rng:NextNumber(-0.3, 0.3)
-		table.insert(clumps, { Vector3.new(math.cos(a) * 6.5, rng:NextNumber(-1.5, 1), math.sin(a) * 6.5), rng:NextNumber(7.5, 9.5) })
+		table.insert(clumps, { Vector3.new(math.cos(a) * 5, rng:NextNumber(-1.2, 1.2), math.sin(a) * 5), rng:NextNumber(6, 7.5) })
 	end
 	for i = 0, 2 do
 		local a = i * 2.1 + rng:NextNumber(-0.4, 0.4)
-		table.insert(clumps, { Vector3.new(math.cos(a) * 3, rng:NextNumber(5, 7), math.sin(a) * 3), rng:NextNumber(6, 8) })
+		table.insert(clumps, { Vector3.new(math.cos(a) * 2.5, rng:NextNumber(4.5, 6), math.sin(a) * 2.5), rng:NextNumber(5, 6.5) })
 	end
 	for i, c in clumps do
 		local size = c[2] * s
@@ -132,7 +132,7 @@ end
 type ForestOpts = { spacing: number?, seed: number?, scale: number?, leaf: Color3?, detailDist: number?, detailRadius: number?, accents: { Color3 }? }
 function PropKit.forest(parent: Instance, x0: number, x1: number, z0: number, z1: number, opts: ForestOpts?)
 	local o = opts or {}
-	local spacing = o.spacing or 16
+	local spacing = o.spacing or 20
 	local rng = Random.new(o.seed or 1)
 	local accents = o.accents or { Color3.fromRGB(190, 45, 40), Color3.fromRGB(230, 140, 35), Color3.fromRGB(215, 120, 170) }
 	local x = x0

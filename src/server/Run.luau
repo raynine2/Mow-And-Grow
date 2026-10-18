@@ -15,6 +15,8 @@ local Carry = require(script.Parent.Carry)
 local Tools = require(script.Parent.Tools)
 local Mowers = require(script.Parent.Mowers)
 local Boss = require(script.Parent.Boss)
+local Quests = require(script.Parent.Quests)
+local GemShop = require(script.Parent.GemShop)
 
 local Run = {}
 
@@ -24,6 +26,7 @@ local started = false
 local completing = false
 local lastSwing: { [Player]: number } = {}
 local worldDirty = true
+local startedAt = workspace:GetServerTimeNow()
 
 -------------------------------------------------------------------------------------------------------------
 -- world state for the HUD
@@ -39,6 +42,7 @@ local function worldState()
 		total = Field.total,
 		boss = Boss.state(),
 		sellPos = info and info.sellPos,
+		started = startedAt,
 	}
 end
 
@@ -127,6 +131,9 @@ local function onBossDefeated(z: number, _damageBy: { [Player]: number })
 			Net.send(p, "Fx", "reward", { coins = def.coins, gems = gems, title = def.name:upper() .. " DEFEATED!" })
 		end
 	end
+	for _, p in Players:GetPlayers() do
+		Quests.event(p, "boss", 1)
+	end
 	if z >= #Config.ZONES then
 		task.spawn(completeRun)
 	else
@@ -154,6 +161,7 @@ local function onCut(player: Player, patch): boolean
 		warnBagFull(player)
 		return false
 	end
+	Quests.event(player, "cut", 1)
 	local data = PlayerData.get(player)
 	if data then
 		data.stats.cut += 1
@@ -259,6 +267,7 @@ local function sell(player: Player)
 	Carry.clear(player)
 	Net.send(player, "Fx", "sell", { coins = coins, count = count, from = info.shredderMouth, out = info.shredderOut })
 	Net.all("Fx", "shred", { pos = info.shredderMouth, count = count })
+	Quests.event(player, "sell", count)
 end
 
 local function sellLoop()
@@ -290,6 +299,7 @@ local function buyTool(player: Player, data, id: string)
 	data.run.coins -= def.cost
 	data.run.tool = nextIndex
 	Tools.give(player)
+	Quests.event(player, "tool", nextIndex)
 	Net.send(player, "Fx", "purchase", { big = true, item = def.name })
 end
 
@@ -310,6 +320,9 @@ local function buyUpgrade(player: Player, data, id: string)
 	end
 	data.run.coins -= cost
 	data.run.upgrades[id] = level + 1
+	if id == "carry" then
+		Quests.event(player, "carry", 1)
+	end
 	Stats.applyCharacter(player, data)
 	Carry.refresh(player)
 	Net.send(player, "Fx", "purchase", {})
@@ -332,6 +345,7 @@ local function buyCoinMower(player: Player, data, id: string)
 	data.run.mowers[id] = true
 	data.run.fuel[id] = def.fuel
 	Mowers.spawn(player, id)
+	Quests.event(player, "mower", 1)
 	Net.send(player, "Fx", "purchase", {})
 end
 
@@ -395,6 +409,9 @@ function Run.start()
 	Field.onProgress = pushWorld
 	Field.onZoneCleared = function(z)
 		if z == zone then
+			for _, p in Players:GetPlayers() do
+				Quests.event(p, "zone", 1)
+			end
 			Boss.spawn(z)
 		end
 	end
@@ -413,7 +430,13 @@ function Run.start()
 		elseif kind == "upgrade" then
 			buyUpgrade(player, data, id)
 		elseif kind == "mower" then
-			buyCoinMower(player, data, id)
+			if (Config.mower(id) or {}).currency == "gems" then
+				GemShop.buyGemMower(player, data, id)
+			else
+				buyCoinMower(player, data, id)
+			end
+		elseif kind == "perk" then
+			GemShop.buyPerk(player, data, id)
 		end
 		PlayerData.changed(player)
 	end)
@@ -449,6 +472,28 @@ function Run.start()
 	end)
 
 	task.spawn(sellLoop)
+	-- walking up to a locked gate explains what's needed (like "Birch Grove is locked")
+	task.spawn(function()
+		local lastNote: { [Player]: number } = {}
+		while true do
+			task.wait(0.4)
+			local nextZone = zone + 1
+			if started and nextZone <= #Config.ZONES then
+				local gz = Config.zoneStartZ(nextZone) - 16
+				for _, p in Players:GetPlayers() do
+					local root = rootOf(p)
+					if root and math.abs(root.Position.Z - gz) < 7 and (lastNote[p] or 0) + 3 < os.clock() then
+						lastNote[p] = os.clock()
+						local left = Field.remainingIn(zone)
+						local sub = if left > 0
+							then ("Mow every patch in %s first (%d left)"):format(Config.ZONES[zone].name, left)
+							else ("Beat the %s first"):format(Config.ZONES[zone].boss.name)
+						Net.send(p, "Fx", "locked", { title = Config.ZONES[nextZone].name .. " is locked", sub = sub })
+					end
+				end
+			end
+		end
+	end)
 	task.spawn(function()
 		local acc = 0
 		while true do

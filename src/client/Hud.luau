@@ -1,7 +1,12 @@
--- The always-on screen: gems, coins, bag, zone progress / boss bar, fuel, side buttons.
+-- The always-on screen, laid out like Chop A Forest:
+--   left: coins + gems           bottom-left: backpack "3/5"        bottom: tool hotbar
+--   right: round SHOP (R) / UPGRADES (TAB) buttons                   top-left: quest tracker
+--   top-right: run timer, zone name, % of the zone mown (or the boss bar during a fight)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
@@ -13,72 +18,219 @@ local Hud = {}
 local C = UI.colors
 local player = Players.LocalPlayer
 
+-- our own hotbar replaces Roblox's backpack bar
+pcall(function()
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+end)
+
 local root = Instance.new("Frame")
 root.Name = "Hud"
 root.BackgroundTransparency = 1
 root.Size = UDim2.fromScale(1, 1)
 root.Parent = UI.gui
 
-local function pill(pos: UDim2, anchor: Vector2, width: number, color: Color3)
-	local f = UI.frame({ size = UDim2.fromOffset(width, 52), pos = pos, anchor = anchor, color = color, parent = root, radius = 26, outline = 3.5 })
-	UI.gradient(f, color)
-	return f
+-------------------------------------------------------------------------------------------------------------
+-- currencies (left, middle)
+-------------------------------------------------------------------------------------------------------------
+local function counter(y: number, icon: string)
+	local f = Instance.new("Frame")
+	f.Name = "Counter_" .. icon
+	f.BackgroundTransparency = 1
+	f.Size = UDim2.fromOffset(260, 60)
+	f.Position = UDim2.new(0, 14, 0.5, y)
+	f.Parent = root
+	UI.icon(f, icon, 58, UDim2.fromOffset(0, 1))
+	local t = UI.text(f, "0", UDim2.fromOffset(190, 46), { pos = UDim2.fromOffset(70, 7), align = Enum.TextXAlignment.Left, stroke = 3 })
+	return f, t
+end
+local coinBox, coinText = counter(-70, "coin")
+local gemBox, gemText = counter(-4, "gem")
+
+-------------------------------------------------------------------------------------------------------------
+-- backpack (bottom-left)
+-------------------------------------------------------------------------------------------------------------
+local bag = Instance.new("Frame")
+bag.Name = "Backpack"
+bag.BackgroundTransparency = 1
+bag.Size = UDim2.fromOffset(220, 80)
+bag.Position = UDim2.new(0, 14, 1, -92)
+bag.Parent = root
+UI.icon(bag, "backpack", 76, UDim2.fromOffset(0, 0))
+local bagText = UI.text(bag, "0/5", UDim2.fromOffset(140, 46), { pos = UDim2.fromOffset(84, 18), align = Enum.TextXAlignment.Left, stroke = 3 })
+
+-------------------------------------------------------------------------------------------------------------
+-- quest tracker (top-left, under Roblox's buttons)
+-------------------------------------------------------------------------------------------------------------
+local quest = Instance.new("Frame")
+quest.Name = "Quest"
+quest.BackgroundTransparency = 1
+quest.Size = UDim2.fromOffset(300, 100)
+quest.Position = UDim2.fromOffset(22, 74)
+quest.Parent = root
+local questNum = UI.text(quest, "QUEST 1/8", UDim2.fromOffset(200, 18), { align = Enum.TextXAlignment.Left, color = Color3.fromRGB(255, 170, 60), stroke = 1.5 })
+local questTitle = UI.text(quest, "", UDim2.fromOffset(300, 28), { pos = UDim2.fromOffset(0, 18), align = Enum.TextXAlignment.Left, stroke = 2 })
+local questTrack = UI.frame({ size = UDim2.fromOffset(240, 14), pos = UDim2.fromOffset(0, 52), color = Color3.fromRGB(30, 30, 34), parent = quest, radius = 7, outline = 0 })
+questTrack.BackgroundTransparency = 0.25
+local questFill = UI.frame({ size = UDim2.fromScale(0, 1), color = C.green, parent = questTrack, radius = 7, outline = 0 })
+local questCount = UI.text(questTrack, "0/1", UDim2.fromScale(1, 1.2), { stroke = 1.5 })
+questCount.ZIndex = 3
+local questHint = UI.text(quest, "", UDim2.fromOffset(300, 18), { pos = UDim2.fromOffset(0, 72), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(225, 225, 230), stroke = 1 })
+
+-------------------------------------------------------------------------------------------------------------
+-- run info (top-right): timer, zone, progress / boss bar
+-------------------------------------------------------------------------------------------------------------
+local info = Instance.new("Frame")
+info.Name = "RunInfo"
+info.BackgroundTransparency = 1
+info.Size = UDim2.fromOffset(300, 120)
+info.Position = UDim2.new(1, -18, 0, 54)
+info.AnchorPoint = Vector2.new(1, 0)
+info.Parent = root
+local timerText = UI.text(info, "0:00", UDim2.fromOffset(200, 40), { pos = UDim2.new(1, 0, 0, 0), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 3 })
+local zoneText = UI.text(info, "", UDim2.fromOffset(280, 30), { pos = UDim2.new(1, 0, 0, 40), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 2.5 })
+local pin = UI.frame({ size = UDim2.fromOffset(12, 16), pos = UDim2.new(1, -10, 0, 47), anchor = Vector2.new(1, 0), color = Color3.fromRGB(230, 50, 50), parent = info, radius = 6, outline = 2 })
+local track = UI.frame({ size = UDim2.fromOffset(280, 32), pos = UDim2.new(1, 0, 0, 76), anchor = Vector2.new(1, 0), color = Color3.fromRGB(25, 25, 30), parent = info, radius = 8, outline = 3 })
+track.BackgroundTransparency = 0.15
+local fill = UI.frame({ size = UDim2.fromScale(0, 1), color = C.green, parent = track, radius = 8, outline = 0 })
+local fillGrad = UI.gradient(fill, C.green)
+local trackText = UI.text(track, "0%", UDim2.new(1, -10, 1, -6), { pos = UDim2.fromOffset(5, 3), stroke = 2 })
+trackText.ZIndex = 3
+
+-------------------------------------------------------------------------------------------------------------
+-- round side buttons (right) with key badges
+-------------------------------------------------------------------------------------------------------------
+local side = Instance.new("Frame")
+side.Name = "SideButtons"
+side.BackgroundTransparency = 1
+side.Size = UDim2.fromOffset(110, 260)
+side.Position = UDim2.new(1, -16, 0.5, 30)
+side.AnchorPoint = Vector2.new(1, 0.5)
+side.Parent = root
+local sideLayout = Instance.new("UIListLayout")
+sideLayout.Padding = UDim.new(0, 10)
+sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+sideLayout.Parent = side
+
+local function roundButton(label: string, icon: string, key: string, window: string, order: number)
+	local b = Instance.new("TextButton")
+	b.Name = label
+	b.Text = ""
+	b.AutoButtonColor = false
+	b.BackgroundTransparency = 1
+	b.Size = UDim2.fromOffset(104, 104)
+	b.LayoutOrder = order
+	b.Parent = side
+	local disc = UI.frame({ size = UDim2.fromOffset(84, 84), pos = UDim2.fromOffset(10, 0), color = Color3.fromRGB(150, 95, 50), parent = b, radius = 999, outline = 4, name = "Disc" })
+	;(disc:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(80, 48, 24)
+	UI.gradient(disc, Color3.fromRGB(165, 105, 55))
+	UI.icon(disc, icon, 60, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	local badge = UI.frame({ size = UDim2.fromOffset(34, 24), pos = UDim2.fromOffset(72, 0), color = Color3.fromRGB(40, 40, 46), parent = b, radius = 6, outline = 2, name = "Key" })
+	UI.text(badge, key, UDim2.new(1, -6, 1, -4), { pos = UDim2.fromOffset(3, 2), stroke = 1 })
+	UI.text(b, label, UDim2.fromOffset(110, 24), { pos = UDim2.new(0.5, 0, 0, 82), anchor = Vector2.new(0.5, 0), stroke = 2.5 })
+	b.MouseButton1Click:Connect(function()
+		UI.bounce(b)
+		Sound.play("click")
+		UI.open(window)
+	end)
+	return b
+end
+
+local function sideButtons(mode: string)
+	UI.clear(side)
+	roundButton("SHOP", "basket", "R", "Store", 1)
+	if mode == "Run" then
+		roundButton("UPGRADES", "upgrade", "TAB", "Upgrades", 2)
+	else
+		roundButton("PERKS", "upgrade", "TAB", "Perks", 2)
+	end
 end
 
 -------------------------------------------------------------------------------------------------------------
--- currencies (top-left)
+-- hotbar (bottom centre): your tool in slot 1, press 1 or click to equip / unequip
 -------------------------------------------------------------------------------------------------------------
-local gemPill = pill(UDim2.fromOffset(20, 20), Vector2.zero, 210, C.purple)
-UI.gemIcon(gemPill, 44, UDim2.fromOffset(6, 4))
-local gemText = UI.text(gemPill, "0", UDim2.new(1, -64, 1, -12), { pos = UDim2.fromOffset(56, 6), align = Enum.TextXAlignment.Left })
+local hotbar = Instance.new("Frame")
+hotbar.Name = "Hotbar"
+hotbar.BackgroundTransparency = 1
+hotbar.Size = UDim2.fromOffset(90, 80)
+hotbar.Position = UDim2.new(0.5, 0, 1, -12)
+hotbar.AnchorPoint = Vector2.new(0.5, 1)
+hotbar.Parent = root
+local slot = Instance.new("TextButton")
+slot.Name = "Slot1"
+slot.Text = ""
+slot.AutoButtonColor = false
+slot.BackgroundTransparency = 1
+slot.Size = UDim2.fromOffset(80, 80)
+slot.Parent = hotbar
+local slotRing = UI.frame({ size = UDim2.fromOffset(72, 72), pos = UDim2.fromOffset(4, 4), color = Color3.fromRGB(30, 30, 36), parent = slot, radius = 14, outline = 3, name = "Ring" })
+slotRing.BackgroundTransparency = 0.35
+local slotIconHolder = Instance.new("Frame")
+slotIconHolder.BackgroundTransparency = 1
+slotIconHolder.Size = UDim2.fromScale(1, 1)
+slotIconHolder.Parent = slotRing
+UI.text(slot, "1", UDim2.fromOffset(22, 22), { pos = UDim2.fromOffset(6, 4), stroke = 2 })
+local slotName = UI.text(hotbar, "", UDim2.fromOffset(220, 20), { pos = UDim2.new(0.5, 0, 0, -22), anchor = Vector2.new(0.5, 0), stroke = 2 })
 
-local classText = UI.text(root, "", UDim2.fromOffset(320, 26), { pos = UDim2.fromOffset(26, 78), align = Enum.TextXAlignment.Left, color = C.yellow })
-local studioText = UI.text(root, "STUDIO TEST: saves are off", UDim2.fromOffset(320, 22), { pos = UDim2.fromOffset(26, 106), align = Enum.TextXAlignment.Left, color = C.orange })
-studioText.Visible = false
+local TOOL_ICON = { Hands = "hands", Scissors = "scissors", Sickle = "sickle", PushMower = "pushmower", WeedWhacker = "whacker", MegaScythe = "scythe", LaserMower = "lasermower" }
+local shownTool = ""
+local function toolObject(): Tool?
+	local char = player.Character
+	local t = char and char:FindFirstChildOfClass("Tool")
+	if t then
+		return t
+	end
+	local bp = player:FindFirstChildOfClass("Backpack")
+	return bp and bp:FindFirstChildOfClass("Tool")
+end
+local function toggleTool()
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not hum then
+		return
+	end
+	if char:FindFirstChildOfClass("Tool") then
+		hum:UnequipTools()
+	else
+		local t = toolObject()
+		if t then
+			hum:EquipTool(t)
+		end
+	end
+end
+slot.MouseButton1Click:Connect(toggleTool)
+task.spawn(function()
+	while true do
+		task.wait(0.25)
+		local t = toolObject()
+		local id = t and t:GetAttribute("ToolId") or ""
+		hotbar.Visible = t ~= nil
+		if id ~= shownTool then
+			shownTool = id
+			UI.clear(slotIconHolder)
+			if id ~= "" then
+				UI.icon(slotIconHolder, TOOL_ICON[id] or "coin", 56, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			end
+			slotName.Text = t and t.Name or ""
+		end
+		local equipped = player.Character ~= nil and player.Character:FindFirstChildOfClass("Tool") ~= nil
+		local stroke = slotRing:FindFirstChildOfClass("UIStroke") :: UIStroke
+		stroke.Color = if equipped then C.yellow else C.outline
+	end
+end)
 
 -------------------------------------------------------------------------------------------------------------
--- run: coins + bag (bottom-left)
+-- fuel (above the hotbar, while driving) + party start button (lobby)
 -------------------------------------------------------------------------------------------------------------
-local coinPill = pill(UDim2.new(0, 20, 1, -150), Vector2.zero, 260, C.green)
-UI.coinIcon(coinPill, 40, UDim2.fromOffset(7, 6))
-local coinText = UI.text(coinPill, "0", UDim2.new(1, -64, 1, -12), { pos = UDim2.fromOffset(56, 6), align = Enum.TextXAlignment.Left })
-
-local bag = UI.frame({ size = UDim2.fromOffset(260, 46), pos = UDim2.new(0, 20, 1, -88), color = C.dark, parent = root, radius = 23, outline = 3.5, name = "Bag" })
-local bagFill = UI.frame({ size = UDim2.new(0, 0, 1, 0), color = Color3.fromRGB(150, 220, 80), parent = bag, radius = 23, outline = 0, name = "Fill" })
-UI.gradient(bagFill, Color3.fromRGB(150, 220, 80))
-UI.bundleIcon(bag, 34, UDim2.fromOffset(10, 11))
-local bagText = UI.text(bag, "0 / 5", UDim2.new(1, -60, 1, -10), { pos = UDim2.fromOffset(52, 5), align = Enum.TextXAlignment.Left })
-bagText.ZIndex = 3
-
--------------------------------------------------------------------------------------------------------------
--- top centre: zone progress or boss HP
--------------------------------------------------------------------------------------------------------------
-local zoneBar = UI.frame({ size = UDim2.fromOffset(520, 64), pos = UDim2.new(0.5, 0, 0, 18), anchor = Vector2.new(0.5, 0), color = C.dark, parent = root, radius = 16, outline = 3.5, name = "ZoneBar" })
-local zoneTitle = UI.text(zoneBar, "", UDim2.new(1, -20, 0, 28), { pos = UDim2.fromOffset(10, 4) })
-local zoneTrack = UI.frame({ size = UDim2.new(1, -24, 0, 20), pos = UDim2.fromOffset(12, 36), color = Color3.fromRGB(25, 22, 35), parent = zoneBar, radius = 10, outline = 0 })
-local zoneFill = UI.frame({ size = UDim2.fromScale(0, 1), color = C.green, parent = zoneTrack, radius = 10, outline = 0 })
-local zoneFillGrad = UI.gradient(zoneFill, C.green)
-local zoneCount = UI.text(zoneTrack, "", UDim2.fromScale(1, 1), { stroke = 2 })
-zoneCount.ZIndex = 3
-
-local lobbyHint = UI.text(root, "Walk onto a pad to start a run!", UDim2.fromOffset(620, 34), { pos = UDim2.new(0.5, 0, 0, 22), anchor = Vector2.new(0.5, 0), color = C.yellow, stroke = 3 })
-
--------------------------------------------------------------------------------------------------------------
--- fuel (bottom centre, while driving)
--------------------------------------------------------------------------------------------------------------
-local fuel = UI.frame({ size = UDim2.fromOffset(300, 40), pos = UDim2.new(0.5, 0, 1, -30), anchor = Vector2.new(0.5, 1), color = C.dark, parent = root, radius = 20, outline = 3, name = "Fuel" })
-local fuelFill = UI.frame({ size = UDim2.fromScale(1, 1), color = C.orange, parent = fuel, radius = 20, outline = 0 })
+local fuel = UI.frame({ size = UDim2.fromOffset(300, 36), pos = UDim2.new(0.5, 0, 1, -110), anchor = Vector2.new(0.5, 1), color = C.dark, parent = root, radius = 18, outline = 3, name = "Fuel" })
+local fuelFill = UI.frame({ size = UDim2.fromScale(1, 1), color = C.orange, parent = fuel, radius = 18, outline = 0 })
 UI.gradient(fuelFill, C.orange)
 local fuelText = UI.text(fuel, "FUEL", UDim2.new(1, -16, 1, -8), { pos = UDim2.fromOffset(8, 4) })
 fuelText.ZIndex = 3
 fuel.Visible = false
 
--------------------------------------------------------------------------------------------------------------
--- party start button (lobby, when you host a pad)
--------------------------------------------------------------------------------------------------------------
-local startBtn = UI.button(root, "START NOW", C.green, UDim2.fromOffset(240, 66), function()
+local startBtn = UI.button(root, "START NOW", C.green, UDim2.fromOffset(240, 62), function()
 	State.fire("Party", "start")
-end, { pos = UDim2.new(0.5, 0, 1, -40), anchor = Vector2.new(0.5, 1), name = "StartNow" })
+end, { pos = UDim2.new(0.5, 0, 1, -30), anchor = Vector2.new(0.5, 1), name = "StartNow" })
 startBtn.Visible = false
 local function updateHost()
 	startBtn.Visible = State.mode == "Lobby" and player:GetAttribute("PartyHost") == true
@@ -86,62 +238,23 @@ end
 player:GetAttributeChangedSignal("PartyHost"):Connect(updateHost)
 
 -------------------------------------------------------------------------------------------------------------
--- side buttons
--------------------------------------------------------------------------------------------------------------
-local side = Instance.new("Frame")
-side.Name = "SideButtons"
-side.BackgroundTransparency = 1
-side.Size = UDim2.fromOffset(150, 420)
-side.Position = UDim2.new(1, -20, 0.5, 0)
-side.AnchorPoint = Vector2.new(1, 0.5)
-side.Parent = root
-local sideLayout = Instance.new("UIListLayout")
-sideLayout.Padding = UDim.new(0, 12)
-sideLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-sideLayout.Parent = side
-
-local function sideButtons(mode: string)
-	UI.clear(side)
-	local defs = if mode == "Run"
-		then {
-			{ "TOOLS", C.red, "Tools" },
-			{ "UPGRADES", C.blue, "Upgrades" },
-			{ "MOWERS", C.purple, "Mowers" },
-			{ "STORE", C.pink, "Store" },
-		}
-		else {
-			{ "CLASSES", C.purple, "Classes" },
-			{ "PERKS", C.blue, "Perks" },
-			{ "GARAGE", C.orange, "Garage" },
-			{ "REWARDS", C.yellow, "Rewards" },
-			{ "STORE", C.pink, "Store" },
-		}
-	for i, d in defs do
-		local b = UI.button(side, d[1], d[2], UDim2.fromOffset(150, 58), function()
-			UI.open(d[3])
-		end)
-		b.LayoutOrder = i
-	end
-end
-
--------------------------------------------------------------------------------------------------------------
 -- updates
 -------------------------------------------------------------------------------------------------------------
 local shownGems, shownCoins = 0, 0
-local function countTo(label: TextLabel, from: number, to: number)
+local function countTo(label: TextLabel, from: number, to: number, prefix: string?)
+	local pre = prefix or ""
 	if from == to then
-		label.Text = Format.short(to)
+		label.Text = pre .. Format.commas(to)
 		return
 	end
 	local v = Instance.new("NumberValue")
 	v.Value = from
 	v.Changed:Connect(function(x)
-		label.Text = Format.short(x)
+		label.Text = pre .. Format.commas(x)
 	end)
 	local t = TweenService:Create(v, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Value = to })
 	t.Completed:Connect(function()
-		label.Text = Format.short(to)
+		label.Text = pre .. Format.commas(to)
 		v:Destroy()
 	end)
 	t:Play()
@@ -154,10 +267,10 @@ local function applyMode(mode: string)
 	end
 	currentMode = mode
 	local isRun = mode == "Run"
-	coinPill.Visible = isRun
+	coinBox.Visible = isRun
 	bag.Visible = isRun
-	zoneBar.Visible = isRun
-	lobbyHint.Visible = not isRun
+	info.Visible = isRun
+	quest.Visible = isRun
 	sideButtons(mode)
 	updateHost()
 	Sound.music(if isRun then "musicRun" else "musicLobby")
@@ -168,53 +281,62 @@ State.on("data", function(d)
 	if d.gems ~= shownGems then
 		countTo(gemText, shownGems, d.gems)
 		if d.gems > shownGems then
-			UI.bounce(gemPill)
+			UI.bounce(gemBox)
 		end
 		shownGems = d.gems
 	end
-	local c = Config.class(d.class)
-	classText.Text = "Class: " .. (if c then c.name else "?")
-	studioText.Visible = d.dryRun
+	UI.setGems(d.gems)
 	if d.run then
 		if d.run.coins ~= shownCoins then
 			countTo(coinText, shownCoins, d.run.coins)
 			if d.run.coins > shownCoins then
-				UI.bounce(coinPill)
+				UI.bounce(coinBox)
 			end
 			shownCoins = d.run.coins
 		end
-		local ratio = math.clamp(d.run.carry / math.max(1, d.carryMax), 0, 1)
-		bagFill.Size = UDim2.new(ratio, 0, 1, 0)
-		bagFill.BackgroundColor3 = if ratio >= 1 then C.red else Color3.fromRGB(150, 220, 80)
-		local g = bagFill:FindFirstChildOfClass("UIGradient")
-		if g then
-			g.Color = ColorSequence.new(UI.shade(bagFill.BackgroundColor3, 1.15), UI.shade(bagFill.BackgroundColor3, 0.85))
+		local full = d.run.carry >= d.carryMax
+		bagText.Text = d.run.carry .. "/" .. d.carryMax
+		bagText.TextColor3 = if full then C.red else Color3.new(1, 1, 1)
+		local q = d.run.quest
+		quest.Visible = q ~= nil
+		if q then
+			questNum.Text = ("QUEST %d/%d"):format(q.index, q.total)
+			questTitle.Text = q.title
+			questHint.Text = q.hint or ""
+			questFill.Size = UDim2.fromScale(math.clamp(q.progress / math.max(1, q.goal), 0, 1), 1)
+			questCount.Text = ("%s/%s"):format(Format.short(q.progress), Format.short(q.goal))
 		end
-		bagText.Text = d.run.carry .. " / " .. d.carryMax .. (if ratio >= 1 then "  FULL!" else "")
-	end
-	if d.mode == "Lobby" then
-		lobbyHint.Text = if d.run then ("Saved run: Zone %d. Step on a pad to continue!"):format(d.run.zone) else "Walk onto a pad to start a run!"
 	end
 end)
 
+local runStart = 0
 State.on("world", function(w)
 	if w.mode ~= "Run" or w.loading then
 		return
 	end
+	runStart = w.started or runStart
+	zoneText.Text = w.name .. "   "
 	if w.boss then
-		zoneTitle.Text = w.boss.name:upper()
-		zoneTitle.TextColor3 = C.red
-		zoneFill.BackgroundColor3 = C.red
-		zoneFillGrad.Color = ColorSequence.new(UI.shade(C.red, 1.15), UI.shade(C.red, 0.85))
-		zoneFill.Size = UDim2.fromScale(math.clamp(w.boss.hp / w.boss.max, 0, 1), 1)
-		zoneCount.Text = Format.short(w.boss.hp) .. " / " .. Format.short(w.boss.max)
+		zoneText.Text = w.boss.name .. "   "
+		fill.BackgroundColor3 = C.red
+		fillGrad.Color = ColorSequence.new(UI.shade(C.red, 1.15), UI.shade(C.red, 0.85))
+		fill.Size = UDim2.fromScale(math.clamp(w.boss.hp / w.boss.max, 0, 1), 1)
+		trackText.Text = Format.short(w.boss.hp) .. " / " .. Format.short(w.boss.max) .. " HP"
 	else
-		zoneTitle.Text = ("ZONE %d/%d: %s"):format(w.zone, w.zones, w.name:upper())
-		zoneTitle.TextColor3 = Color3.new(1, 1, 1)
-		zoneFill.BackgroundColor3 = C.green
-		zoneFillGrad.Color = ColorSequence.new(UI.shade(C.green, 1.15), UI.shade(C.green, 0.85))
-		zoneFill.Size = UDim2.fromScale(math.clamp(w.cut / w.total, 0, 1), 1)
-		zoneCount.Text = if w.cut >= w.total then "BOSS INCOMING!" else (w.cut .. " / " .. w.total .. " cut")
+		fill.BackgroundColor3 = C.green
+		fillGrad.Color = ColorSequence.new(UI.shade(C.green, 1.15), UI.shade(C.green, 0.85))
+		local pct = w.cut / math.max(1, w.total)
+		fill.Size = UDim2.fromScale(math.clamp(pct, 0, 1), 1)
+		trackText.Text = string.format("%.1f%%", pct * 100)
+	end
+	pin.Visible = true
+end)
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		if currentMode == "Run" and runStart > 0 then
+			timerText.Text = Format.clock(workspace:GetServerTimeNow() - runStart)
+		end
 	end
 end)
 
@@ -222,7 +344,6 @@ State.on("notify", function(text, color)
 	UI.toast(text, color)
 end)
 
--- fuel gauge, driven by the Drive module
 State.on("driving", function(model: Model?)
 	fuel.Visible = model ~= nil
 end)
@@ -233,15 +354,35 @@ State.on("fuel", function(f: number, max: number)
 	fuelText.Text = if f <= 0 then "OUT OF GAS! Refuel at a pump" else ("FUEL %d / %d"):format(math.ceil(f), max)
 end)
 
--- shake the bag when it's full
-State.on("fx", function(kind)
+State.on("fx", function(kind, d)
 	if kind == "bagFull" then
-		local base = UDim2.new(0, 20, 1, -88)
+		UI.notice("Your backpack is full!", "Walk onto the sell pad to sell your bundles", "backpack")
+		local base = bag.Position
 		for i = 1, 6 do
 			bag.Position = base + UDim2.fromOffset(if i % 2 == 0 then 6 else -6, 0)
 			task.wait(0.04)
 		end
 		bag.Position = base
+	elseif kind == "locked" then
+		UI.notice(d.title, d.sub, "lock")
+	elseif kind == "quest" then
+		UI.notice("Quest complete!", d.title .. "   +$" .. Format.short(d.reward), "coin")
+	end
+end)
+
+-------------------------------------------------------------------------------------------------------------
+-- keys: R = shop, TAB = upgrades / perks, 1 = tool
+-------------------------------------------------------------------------------------------------------------
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then
+		return
+	end
+	if input.KeyCode == Enum.KeyCode.R then
+		UI.open("Store")
+	elseif input.KeyCode == Enum.KeyCode.Tab then
+		UI.open(if currentMode == "Run" then "Upgrades" else "Perks")
+	elseif input.KeyCode == Enum.KeyCode.One then
+		toggleTool()
 	end
 end)
 
@@ -252,7 +393,6 @@ local function fly(icon: GuiObject, from: Vector2, target: GuiObject, delay: num
 	icon.AnchorPoint = Vector2.new(0.5, 0.5)
 	icon.Parent = UI.gui
 	icon.ZIndex = 30
-	-- positions are in screen pixels; the UIScale scales offsets, so divide them out
 	local sc = (UI.gui:FindFirstChildOfClass("UIScale") :: UIScale).Scale
 	local to = target.AbsolutePosition + target.AbsoluteSize / 2
 	icon.Position = UDim2.fromOffset(from.X / sc, from.Y / sc)
@@ -280,44 +420,25 @@ local function screenPoint(world: Vector3): Vector2?
 	if not onScreen then
 		return nil
 	end
-	-- IgnoreGuiInset is on, so viewport points line up with the gui
 	return Vector2.new(p.X, p.Y)
 end
 
-State.on("bundleGained", function(pos: Vector3, mut: string?)
+State.on("bundleGained", function(pos: Vector3, _mut: string?)
 	local from = screenPoint(pos + Vector3.new(0, 2, 0))
 	if not from or not bag.Visible then
 		return
 	end
-	local icon = UI.bundleIcon(UI.gui, 28)
-	local m = Config.mutation(mut or "None")
-	if m.color then
-		icon.BackgroundColor3 = m.color
-	end
-	fly(icon, from, bag, 0)
+	fly(UI.icon(UI.gui, "bundle", 30), from, bag, 0)
 end)
 
 State.on("flyCoins", function(count: number)
-	if not coinPill.Visible then
+	if not coinBox.Visible then
 		return
 	end
 	local cam = workspace.CurrentCamera
 	local centre = if cam then cam.ViewportSize / 2 else Vector2.new(640, 360)
 	for i = 1, count do
-		local icon = UI.coinIcon(UI.gui, 30)
-		fly(icon, centre + Vector2.new(math.random(-60, 60), math.random(-30, 30)), coinPill, (i - 1) * 0.04)
-	end
-end)
-
--- the bag pulses red while full, so the player knows to go sell (no text spam)
-task.spawn(function()
-	while true do
-		task.wait(0.5)
-		local d = State.data
-		local full = d and d.run and d.run.carry >= d.carryMax
-		if full and bag.Visible then
-			UI.bounce(bag)
-		end
+		fly(UI.icon(UI.gui, "coin", 32), centre + Vector2.new(math.random(-60, 60), math.random(-30, 30)), coinBox, (i - 1) * 0.04)
 	end
 end)
 
@@ -327,4 +448,5 @@ function Hud.root()
 	return root
 end
 
+local _ = Config
 return Hud

@@ -31,7 +31,7 @@ Field.unlocked = 1 -- zones above this can't be cut yet (gate closed)
 
 local folder: Folder? = nil
 local rng = Random.new()
-local TURF_H = 0.8
+local TURF_H = 0.4
 local TURF_TOP = 0.3 + TURF_H
 
 -- Hooks the run sets up.
@@ -298,7 +298,14 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 			end
 		end
 		local first = p.stalks[1]
-		Net.send(player, "Fx", "chip", { pos = p.part.Position, color = if first then first.stem.Color else p.baseColor })
+		local def = Config.ZONES[p.z]
+		Net.send(player, "Fx", "chip", {
+			pos = p.part.Position,
+			color = if first then first.stem.Color else p.baseColor,
+			label = def.grassName,
+			hp = p.hp,
+			max = p.maxHp,
+		})
 	end
 	return true
 end

@@ -68,31 +68,31 @@ Config.BASE_CARRY = 5
 
 Config.ZONES = {
 	{
-		name = "Backyard Lawn", style = "lawn", hp = 3, value = 3, height = 2,
+		name = "Backyard Lawn", grassName = "Lawn Grass", style = "lawn", hp = 3, value = 3, height = 2,
 		grass = { Color3.fromRGB(110, 210, 70), Color3.fromRGB(90, 195, 60) },
 		ground = Color3.fromRGB(150, 110, 70),
 		boss = { name = "Dandelion King", hp = 400, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
 	},
 	{
-		name = "Golf Course", style = "golf", hp = 40, value = 35, height = 2.5,
+		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 40, value = 35, height = 2.5,
 		grass = { Color3.fromRGB(70, 200, 90), Color3.fromRGB(55, 180, 75) },
 		ground = Color3.fromRGB(235, 215, 150),
 		boss = { name = "Thorn Bush", hp = 6000, color = Color3.fromRGB(40, 140, 60), every = 4, radius = 10, gems = 20, coins = 2000 },
 	},
 	{
-		name = "Wheat Farm", style = "wheat", hp = 600, value = 420, height = 5,
+		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 600, value = 420, height = 5,
 		grass = { Color3.fromRGB(240, 200, 80), Color3.fromRGB(225, 180, 60) },
 		ground = Color3.fromRGB(140, 95, 55),
 		boss = { name = "Venus Flytrap", hp = 90000, color = Color3.fromRGB(200, 40, 70), every = 3.6, radius = 11, gems = 35, coins = 25000 },
 	},
 	{
-		name = "Swamp Reeds", style = "reeds", hp = 8000, value = 5000, height = 6.5,
+		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 8000, value = 5000, height = 6.5,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
 		boss = { name = "Swamp Vine", hp = 1200000, color = Color3.fromRGB(90, 70, 140), every = 3.3, radius = 12, gems = 55, coins = 300000 },
 	},
 	{
-		name = "Mega Jungle", style = "jungle", hp = 100000, value = 60000, height = 8,
+		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 100000, value = 60000, height = 8,
 		grass = { Color3.fromRGB(30, 160, 60), Color3.fromRGB(20, 130, 50) },
 		ground = Color3.fromRGB(90, 70, 45),
 		boss = { name = "Jungle Titan", hp = 15000000, color = Color3.fromRGB(20, 90, 40), every = 3, radius = 14, gems = 80, coins = 4000000 },
@@ -104,6 +104,22 @@ Config.RUN_COMPLETE_GEMS = 150
 function Config.zoneStartZ(zone: number): number
 	return Config.FIRST_ZONE_Z + (zone - 1) * Config.ZONE_SPACING
 end
+
+-------------------------------------------------------------------------------------------------------------
+-- Quests: the onboarding chain shown top-left during a run (like Chop A Forest's "QUEST 3/8").
+-- event = what counts: cut (patches), sell (bundles sold), tool (best tool index reached), carry (backpack
+-- levels), zone (zones cleared), boss (bosses beaten), mower (a ride-on mower bought or spawned).
+-------------------------------------------------------------------------------------------------------------
+Config.QUESTS = {
+	{ title = "Cut 10 grass", hint = "Click the grass to cut it", event = "cut", goal = 10, reward = 20 },
+	{ title = "Sell your bundles", hint = "Walk onto the sell pad", event = "sell", goal = 5, reward = 40 },
+	{ title = "Buy the Scissors in the cabin", hint = "They're on the wall inside the cabin", event = "tool", goal = 2, reward = 25 },
+	{ title = "Upgrade your Backpack", hint = "Press TAB to open upgrades", event = "carry", goal = 1, reward = 100 },
+	{ title = "Cut 60 grass", hint = "Keep mowing the Backyard Lawn", event = "cut", goal = 60, reward = 150 },
+	{ title = "Mow the whole Backyard Lawn", hint = "Every last patch!", event = "zone", goal = 1, reward = 250 },
+	{ title = "Beat the Dandelion King", hint = "Dodge the red circles", event = "boss", goal = 1, reward = 300 },
+	{ title = "Get a ride-on mower", hint = "Buy one at the Garage", event = "mower", goal = 1, reward = 500 },
+}
 
 -------------------------------------------------------------------------------------------------------------
 -- Mutations: rolled when a patch is first hit (hidden until then). Luck multiplies every non-None weight.
@@ -331,7 +347,16 @@ Config.SOUNDS = {
 }
 
 -------------------------------------------------------------------------------------------------------------
--- Look (Throw-an-Egg style studded bricks + bubbly UI)
+-- UI icons: image asset ids (rbxassetid://...) of icons rendered in Blender (tools/blender) and uploaded.
+-- "" = use the drawn stand-in from client/UI.luau.
+-------------------------------------------------------------------------------------------------------------
+Config.ICONS = {
+	coin = "", gem = "", bundle = "", backpack = "", basket = "", upgrade = "", lock = "", clover = "", leaf = "",
+	stats = "", hands = "", scissors = "", sickle = "", pushmower = "", whacker = "", scythe = "", lasermower = "",
+}
+
+-------------------------------------------------------------------------------------------------------------
+-- Look (bubbly UI on Chop A Forest style wooden boards)
 -------------------------------------------------------------------------------------------------------------
 Config.UI = {
 	font = Enum.Font.FredokaOne,

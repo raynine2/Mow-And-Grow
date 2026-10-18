@@ -11,6 +11,7 @@ local Net = require(script.Parent.Net)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
 local LobbyBuilder = require(script.Parent.LobbyBuilder)
+local GemShop = require(script.Parent.GemShop)
 
 local Lobby = {}
 
@@ -79,47 +80,6 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- perks + garage
 -------------------------------------------------------------------------------------------------------------
-local function buyPerk(player: Player, data, id: string)
-	local p = Config.perk(id)
-	if not p then
-		return
-	end
-	local level = data.perks[id] or 0
-	local cost = p.costs[level + 1]
-	if not cost then
-		Net.notify(player, p.name .. " is maxed!", "yellow")
-		return
-	end
-	if data.gems < cost then
-		Net.notify(player, "Not enough gems!", "red")
-		return
-	end
-	data.gems -= cost
-	data.perks[id] = level + 1
-	Net.send(player, "Fx", "purchase", {})
-	task.spawn(PlayerData.save, player)
-end
-
-local function buyGemMower(player: Player, data, id: string)
-	local m = Config.mower(id)
-	if not m or m.currency ~= "gems" then
-		return
-	end
-	if data.mowers[id] then
-		Net.notify(player, "You already own the " .. m.name .. "! Spawn it at the Garage in a run.", "yellow")
-		return
-	end
-	if data.gems < m.price then
-		Net.notify(player, "Not enough gems!", "red")
-		return
-	end
-	data.gems -= m.price
-	data.mowers[id] = true
-	Net.notify(player, m.name .. " is yours forever!", "purple")
-	Net.send(player, "Fx", "purchase", { big = true })
-	task.spawn(PlayerData.save, player)
-end
-
 -------------------------------------------------------------------------------------------------------------
 -- rewards
 -------------------------------------------------------------------------------------------------------------
@@ -325,9 +285,9 @@ function Lobby.start()
 		if kind == "class" then
 			buyClass(player, data, id)
 		elseif kind == "perk" then
-			buyPerk(player, data, id)
+			GemShop.buyPerk(player, data, id)
 		elseif kind == "mower" then
-			buyGemMower(player, data, id)
+			GemShop.buyGemMower(player, data, id)
 		end
 		PlayerData.changed(player)
 	end)

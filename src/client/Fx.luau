@@ -253,6 +253,7 @@ handlers.cut = function(d)
 	-- clippings: thin blades that fly and land
 	Fx.arc(d.pos + Vector3.new(0, 1.2, 0), { count = if m.id == "None" then 7 else 14, color = color, size = Vector3.new(0.25, 1.1, 0.25), height = 4, spread = 4, life = 0.7, neon = m.id == "Galaxy" or m.id == "Toxic" })
 	if d.by == player.UserId then
+		(Fx :: any).hideHp()
 		Fx.impact(d.pos + Vector3.new(0, 1.4, 0))
 		State.emit("bundleGained", d.pos, d.mut)
 		local now = os.clock()
@@ -263,7 +264,46 @@ handlers.cut = function(d)
 	end
 end
 
+-- One HP bar that follows the patch you're cutting (like "Oak 2.5/6 HP" in Chop A Forest).
+local hpAnchor = fxPart(Vector3.one * 0.2, Color3.new(1, 1, 1), CFrame.new(0, -100, 0))
+hpAnchor.Transparency = 1
+local hpGui = Instance.new("BillboardGui")
+hpGui.Size = UDim2.fromOffset(190, 46)
+hpGui.StudsOffsetWorldSpace = Vector3.new(0, 1.2, 0)
+hpGui.AlwaysOnTop = true
+hpGui.LightInfluence = 0
+hpGui.MaxDistance = 60
+hpGui.Adornee = hpAnchor
+hpGui.Enabled = false
+hpGui.Parent = hpAnchor
+local hpName = UI.text(hpGui, "", UDim2.new(1, 0, 0, 18), { stroke = 1.5 })
+local hpTrack = UI.frame({ size = UDim2.new(1, 0, 0, 20), pos = UDim2.fromOffset(0, 22), color = Color3.fromRGB(30, 30, 34), parent = hpGui, radius = 10, outline = 2 })
+local hpFill = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.fromRGB(255, 150, 40), parent = hpTrack, radius = 10, outline = 0 })
+UI.gradient(hpFill, Color3.fromRGB(255, 160, 50))
+local hpText = UI.text(hpTrack, "", UDim2.new(1, -8, 1, -4), { pos = UDim2.fromOffset(4, 2), stroke = 1.5 })
+hpText.ZIndex = 3
+local hpShownAt = 0
+function Fx.hideHp()
+	hpGui.Enabled = false
+end
+function Fx.hpBar(pos: Vector3, label: string, hp: number, max: number)
+	hpAnchor.CFrame = CFrame.new(pos)
+	hpName.Text = label
+	hpFill.Size = UDim2.fromScale(math.clamp(hp / math.max(max, 1), 0, 1), 1)
+	hpText.Text = Format.short(math.max(hp, 0) * 10 // 1 / 10) .. "/" .. Format.short(max) .. " HP"
+	hpGui.Enabled = true
+	hpShownAt = os.clock()
+	task.delay(1.6, function()
+		if os.clock() - hpShownAt >= 1.55 then
+			hpGui.Enabled = false
+		end
+	end)
+end
+
 handlers.chip = function(d)
+	if d.label then
+		Fx.hpBar(d.pos, d.label, d.hp, d.max)
+	end
 	-- flat clippings (like the trailer's wood chips) + flash + puff
 	Fx.arc(d.pos + Vector3.new(0, 1.5, 0), { count = 4, color = UI.shade(d.color, 1.3), size = Vector3.new(0.5, 0.08, 0.3), height = 3, spread = 3, life = 0.5 })
 	Fx.impact(d.pos + Vector3.new(0, 1.6, 0))

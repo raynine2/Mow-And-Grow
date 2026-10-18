@@ -93,6 +93,8 @@ end)
 ProximityPromptService.PromptTriggered:Connect(function(prompt)
 	local window = prompt:GetAttribute("Window")
 	if type(window) == "string" then
+		-- prompts can carry an item id (tool frames on the cabin wall, mower displays)
+		State.emit("openFor", window, prompt:GetAttribute("Item"))
 		UI.open(window)
 	end
 end)
@@ -109,9 +111,7 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
 	end
-	if input.KeyCode == Enum.KeyCode.Tab and State.isRun() then
-		UI.open("Upgrades")
-	elseif input.KeyCode == Enum.KeyCode.Escape then
+	if input.KeyCode == Enum.KeyCode.Escape then
 		UI.close()
 	end
 end)

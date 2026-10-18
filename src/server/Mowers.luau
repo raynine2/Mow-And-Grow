@@ -41,7 +41,7 @@ local function decorate(model: Model, body: BasePart, def)
 		p.Size = size
 		p.Color = color
 		p.Material = if neon then Enum.Material.Neon else Enum.Material.Plastic
-		p.TopSurface = Enum.SurfaceType.Studs
+		p.TopSurface = Enum.SurfaceType.Smooth
 		p.CanCollide = false
 		p.CanQuery = false
 		p.Massless = true
@@ -74,7 +74,7 @@ local function build(player: Player, def, fuel: number): Model
 	body.Name = "Body"
 	body.Size = Vector3.new(5.4, 1.6, 7.4)
 	body.Color = def.color
-	body.TopSurface = Enum.SurfaceType.Studs
+	body.TopSurface = Enum.SurfaceType.Smooth
 	body.CustomPhysicalProperties = PhysicalProperties.new(0.8, 0, 0, 100, 1)
 	body.CFrame = Mowers.spawnCFrame
 	body.Parent = model

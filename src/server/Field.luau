@@ -10,7 +10,7 @@ local RunBuilder = require(script.Parent.RunBuilder)
 
 local Field = {}
 
-type Stalk = { stem: Part, head: Part?, baseH: number, headH: number, x: number, z: number }
+type Stalk = { stem: Part, head: Part?, cap: Part?, baseH: number, headH: number, x: number, z: number }
 type Patch = {
 	part: Part, -- the turf brick (position used for effects)
 	stalks: { Stalk },
@@ -53,20 +53,31 @@ local STYLES = {
 	jungle = { count = 2, width = 2.8, height = 0.6, head = Vector3.new(3.6, 1.2, 3.6), headColor = Color3.fromRGB(25, 110, 45) },
 }
 
-local function brick(parent: Instance, size: Vector3, cf: CFrame, color: Color3, name: string): Part
-	local part = PropKit.part({ size = size, cf = cf, color = color, parent = parent, collide = false, name = name })
+local function brick(parent: Instance, size: Vector3, cf: CFrame, color: Color3, name: string, material: Enum.Material?): Part
+	local part = PropKit.part({ size = size, cf = cf, color = color, parent = parent, collide = false, name = name, material = material })
 	part.CanTouch = false
 	part.CanQuery = false
 	return part
 end
 
-local function layoutStalk(s: Stalk, ratio: number)
+-- After the first hit the top is knocked off (Fx flings it) and a lighter fresh-cut top shows; the stalk keeps
+-- getting shorter with every hit.
+local function layoutStalk(s: Stalk, ratio: number): Part?
 	local h = math.max(0.4, s.baseH * (0.3 + 0.7 * ratio))
 	s.stem.Size = Vector3.new(s.stem.Size.X, h, s.stem.Size.Z)
 	s.stem.CFrame = CFrame.new(s.x, TURF_TOP + h / 2, s.z)
+	local knocked = nil
 	if s.head then
-		s.head.CFrame = CFrame.new(s.x, TURF_TOP + h + s.headH / 2, s.z)
+		knocked = s.head
+		s.head = nil
 	end
+	if not s.cap then
+		local w = s.stem.Size.X
+		s.cap = brick(s.stem.Parent :: Instance, Vector3.new(w + 0.02, 0.18, w + 0.02), CFrame.new(), PropKit.shade(s.stem.Color, 1.45), "CutTop", Enum.Material.SmoothPlastic)
+	end
+	local cap = s.cap :: Part
+	cap.CFrame = CFrame.new(s.x, TURF_TOP + h + 0.08, s.z)
+	return knocked
 end
 
 local function stubble(p: Patch)
@@ -74,6 +85,9 @@ local function stubble(p: Patch)
 		s.stem:Destroy()
 		if s.head then
 			s.head:Destroy()
+		end
+		if s.cap then
+			s.cap:Destroy()
 		end
 	end
 	table.clear(p.stalks)
@@ -99,7 +113,7 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 	local colorB = def.grass[2]
 	local model = Instance.new("Model")
 	model.Name = "Patch"
-	local turf = brick(model, Vector3.new(t - 0.2, TURF_H, t - 0.2), CFrame.new(pos.X, 0.3 + TURF_H / 2, pos.Z), PropKit.shade(colorB, 0.88), "Turf")
+	local turf = brick(model, Vector3.new(t - 0.2, TURF_H, t - 0.2), CFrame.new(pos.X, 0.3 + TURF_H / 2, pos.Z), PropKit.shade(colorB, 0.88), "Turf", Enum.Material.Grass)
 	turf.CanQuery = true
 	local p: Patch = {
 		part = turf,
@@ -124,14 +138,14 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 			local w = style.width * rng:NextNumber(0.9, 1.1)
 			local baseH = def.height * style.height * rng:NextNumber(0.75, 1.2)
 			local color = if (i + col + row) % 2 == 0 then colorA else colorB
-			local stem = brick(model, Vector3.new(w, baseH, w), CFrame.new(x, TURF_TOP + baseH / 2, zz), color, "Stalk")
+			local stem = brick(model, Vector3.new(w, baseH, w), CFrame.new(x, TURF_TOP + baseH / 2, zz), color, "Stalk", Enum.Material.Grass)
 			local head = nil
 			local headH = 0
 			if style.head then
 				headH = style.head.Y
 				head = brick(model, style.head, CFrame.new(x, TURF_TOP + baseH + headH / 2, zz), style.headColor, "Head")
 			end
-			table.insert(p.stalks, { stem = stem, head = head, baseH = baseH, headH = headH, x = x, z = zz })
+			table.insert(p.stalks, { stem = stem, head = head, cap = nil, baseH = baseH, headH = headH, x = x, z = zz })
 		end
 	else
 		stubble(p)
@@ -258,7 +272,12 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 		-- stalks shrink with damage
 		local ratio = p.hp / p.maxHp
 		for _, s in p.stalks do
-			layoutStalk(s, ratio)
+			local knocked = layoutStalk(s, ratio)
+			if knocked then
+				-- the top flies off (drawn by every client), then the server copy goes
+				Net.all("Fx", "topOff", { pos = knocked.Position, size = knocked.Size, color = knocked.Color })
+				knocked:Destroy()
+			end
 		end
 		local first = p.stalks[1]
 		Net.send(player, "Fx", "chip", { pos = p.part.Position, color = if first then first.stem.Color else p.baseColor })

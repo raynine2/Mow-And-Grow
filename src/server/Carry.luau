@@ -50,7 +50,7 @@ function Carry.refresh(player: Player)
 		part.Size = Vector3.new(2.2, 0.9, 1.4)
 		part.Color = mut.color or BUNDLE_COLOR
 		part.Material = if mut.id == "None" then Enum.Material.Plastic else Enum.Material.SmoothPlastic
-		part.TopSurface = Enum.SurfaceType.Studs
+		part.TopSurface = Enum.SurfaceType.Smooth
 		part.CanCollide = false
 		part.CanQuery = false
 		part.CanTouch = false

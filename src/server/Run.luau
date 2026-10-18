@@ -346,6 +346,8 @@ local function setupPlayer(player: Player, data)
 	if data.run.zone < zone then
 		data.run.zone = zone
 	end
+	-- runs are played in first person, like the Chop A Forest trailer (the client draws the hands + tool)
+	player.CameraMode = Enum.CameraMode.LockFirstPerson
 	PlayerData.changed(player)
 	local function onCharacter(char: Model)
 		char:WaitForChild("HumanoidRootPart", 10)

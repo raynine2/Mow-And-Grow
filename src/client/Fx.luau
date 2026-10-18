@@ -12,6 +12,7 @@ local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
+local ViewModel = require(script.Parent.ViewModel)
 
 local Fx = {}
 local player = Players.LocalPlayer
@@ -181,6 +182,39 @@ function Fx.banner(text: string, color: Color3, time: number, sub: string?)
 	end)
 end
 
+-- The trailer's hit: a bright white flash and a soft dust puff where the blow lands.
+function Fx.impact(pos: Vector3, tint: Color3?)
+	local anchor = fxPart(Vector3.one * 0.2, Color3.new(1, 1, 1), CFrame.new(pos))
+	anchor.Transparency = 1
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromScale(5, 5)
+	gui.LightInfluence = 0
+	gui.AlwaysOnTop = false
+	gui.Adornee = anchor
+	gui.Parent = anchor
+	local glow = Instance.new("Frame")
+	glow.AnchorPoint = Vector2.new(0.5, 0.5)
+	glow.Position = UDim2.fromScale(0.5, 0.5)
+	glow.Size = UDim2.fromScale(0.2, 0.2)
+	glow.BackgroundColor3 = Color3.fromRGB(255, 250, 225)
+	glow.BorderSizePixel = 0
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(1, 0)
+	corner.Parent = glow
+	glow.Parent = gui
+	TweenService:Create(glow, TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }):Play()
+	-- puff: a few soft balls that swell and fade
+	for _ = 1, 3 do
+		local b = fxPart(Vector3.one * 0.8, tint or Color3.fromRGB(245, 240, 220), CFrame.new(pos + Vector3.new(math.random() - 0.5, math.random() * 0.6, math.random() - 0.5)))
+		b.Shape = Enum.PartType.Ball
+		b.Material = Enum.Material.SmoothPlastic
+		b.Transparency = 0.35
+		TweenService:Create(b, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.one * 2.4, Transparency = 1, CFrame = b.CFrame + Vector3.new(0, 1.2, 0) }):Play()
+		Debris:AddItem(b, 0.5)
+	end
+	Debris:AddItem(anchor, 0.25)
+end
+
 -- Quick white flash on a model (boss hits).
 local function flash(model: Instance)
 	local h = model:FindFirstChild("HitFlash") :: Highlight?
@@ -219,6 +253,7 @@ handlers.cut = function(d)
 	-- clippings: thin blades that fly and land
 	Fx.arc(d.pos + Vector3.new(0, 1.2, 0), { count = if m.id == "None" then 7 else 14, color = color, size = Vector3.new(0.25, 1.1, 0.25), height = 4, spread = 4, life = 0.7, neon = m.id == "Galaxy" or m.id == "Toxic" })
 	if d.by == player.UserId then
+		Fx.impact(d.pos + Vector3.new(0, 1.4, 0))
 		State.emit("bundleGained", d.pos, d.mut)
 		local now = os.clock()
 		if now - lastCutSound > 0.07 then
@@ -229,8 +264,30 @@ handlers.cut = function(d)
 end
 
 handlers.chip = function(d)
-	Fx.arc(d.pos + Vector3.new(0, 1.2, 0), { count = 2, color = d.color, size = Vector3.new(0.2, 0.7, 0.2), height = 2.5, spread = 2.5, life = 0.45 })
+	-- flat clippings (like the trailer's wood chips) + flash + puff
+	Fx.arc(d.pos + Vector3.new(0, 1.5, 0), { count = 4, color = UI.shade(d.color, 1.3), size = Vector3.new(0.5, 0.08, 0.3), height = 3, spread = 3, life = 0.5 })
+	Fx.impact(d.pos + Vector3.new(0, 1.6, 0))
 	Sound.play("chip", 0.15)
+end
+
+handlers.topOff = function(d)
+	-- the knocked-off top tumbles away and lands
+	if not near(d.pos, 120) then
+		return
+	end
+	local p = fxPart(d.size, d.color, CFrame.new(d.pos))
+	p.Material = Enum.Material.Grass
+	local angle = math.random() * math.pi * 2
+	local land = Vector3.new(d.pos.X + math.cos(angle) * 3, 0.3 + d.size.Y / 2, d.pos.Z + math.sin(angle) * 3)
+	local apex = d.pos:Lerp(land, 0.4) + Vector3.new(0, 2, 0)
+	TweenService:Create(p, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = CFrame.new(apex) * CFrame.Angles(math.rad(60), 0, 0) }):Play()
+	task.delay(0.2, function()
+		TweenService:Create(p, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = CFrame.new(land) * CFrame.Angles(math.rad(90), 0, math.rad(20)) }):Play()
+	end)
+	task.delay(1.2, function()
+		TweenService:Create(p, TweenInfo.new(0.4), { Size = d.size * 0.1 }):Play()
+	end)
+	Debris:AddItem(p, 1.7)
 end
 
 handlers.reveal = function(d)
@@ -352,6 +409,11 @@ handlers.mowerReady = function(d)
 	Fx.arc(d.pos + Vector3.new(0, 1, 0), { count = 12, color = C.purple, size = Vector3.new(0.6, 0.6, 0.6), height = 6, spread = 6, life = 0.8, neon = true })
 	Sound.play("purchase")
 end
+
+State.on("swing", function()
+	task.delay(0.12, ViewModel.slashStreak)
+	Sound.play("whoosh", 0.15)
+end)
 
 State.on("fx", function(kind, payload)
 	local h = handlers[kind]

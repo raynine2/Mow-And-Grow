@@ -19,7 +19,7 @@ local function piece(tool: Tool, handle: BasePart, size: Vector3, offset: CFrame
 	p.Size = size
 	p.Color = color
 	p.Material = if neon then Enum.Material.Neon else Enum.Material.Plastic
-	p.TopSurface = Enum.SurfaceType.Studs
+	p.TopSurface = Enum.SurfaceType.Smooth
 	p.CanCollide = false
 	p.CanQuery = false
 	p.CanTouch = false
@@ -90,7 +90,7 @@ local function attachPushMower(char: Model, def)
 		p.CFrame = cf
 		p.Color = color
 		p.Material = if neon then Enum.Material.Neon else Enum.Material.Plastic
-		p.TopSurface = Enum.SurfaceType.Studs
+		p.TopSurface = Enum.SurfaceType.Smooth
 		p.CanCollide = false
 		p.CanQuery = false
 		p.CanTouch = false

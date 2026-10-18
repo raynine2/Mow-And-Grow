@@ -23,8 +23,8 @@ function Environment.apply()
 		return inst
 	end
 	local cc = ensure("ColorCorrectionEffect", "MowALawnColor") :: ColorCorrectionEffect
-	cc.Saturation = 0.25
-	cc.Contrast = 0.08
+	cc.Saturation = 0.18
+	cc.Contrast = 0.06
 	cc.Brightness = 0.02
 	local atmo = ensure("Atmosphere", "MowALawnAtmosphere") :: Atmosphere
 	atmo.Density = 0.18
@@ -64,9 +64,9 @@ function Environment.spawn(parent: Instance, cf: CFrame)
 	s.Anchored = true
 	s.Neutral = true
 	s.Duration = 0
-	s.Color = Color3.fromRGB(255, 205, 50)
-	s.TopSurface = Enum.SurfaceType.Studs
-	s.Material = Enum.Material.Plastic
+	s.Color = Color3.fromRGB(196, 150, 100)
+	s.TopSurface = Enum.SurfaceType.Smooth
+	s.Material = Enum.Material.WoodPlanks
 	local decal = s:FindFirstChildOfClass("Decal")
 	if decal then
 		decal:Destroy()

@@ -16,13 +16,9 @@ end
 
 local function hub(world: Instance, info)
 	local m = PropKit.folder("Hub", world)
-	-- ground: studded orange bricks like the lobby
-	for x = -2, 1 do
-		for z = 0, 3 do
-			local c = if (x + z) % 2 == 0 then Color3.fromRGB(255, 165, 80) else Color3.fromRGB(235, 130, 60)
-			PropKit.brick(m, Vector3.new(25, 2, 25), CFrame.new(x * 25 + 12.5, -1, HUB_START + z * 25 + 12.5), c, "HubGround")
-		end
-	end
+	-- ground: soft grass with a gravel yard around the machines
+	PropKit.brick(m, Vector3.new(100, 2, 100), CFrame.new(0, -1, HUB_START + 50), PropKit.GRASS_GREEN, "HubGround", Enum.Material.Grass)
+	PropKit.brick(m, Vector3.new(84, 0.3, 70), CFrame.new(0, 0.15, -45), Color3.fromRGB(165, 155, 140), "Yard", Enum.Material.Pebble)
 	Environment.spawn(m, CFrame.new(0, 0.5, -68))
 
 	-- Giant Grass Shredder
@@ -81,11 +77,11 @@ local function gasPump(parent: Instance, pos: Vector3, info)
 end
 
 local ZONE_TREES = {
-	Color3.fromRGB(80, 190, 70),
-	Color3.fromRGB(60, 170, 80),
-	Color3.fromRGB(255, 170, 40),
-	Color3.fromRGB(60, 140, 120),
-	Color3.fromRGB(30, 120, 50),
+	Color3.fromRGB(70, 150, 45),
+	Color3.fromRGB(60, 140, 55),
+	Color3.fromRGB(215, 140, 40),
+	Color3.fromRGB(55, 115, 90),
+	Color3.fromRGB(30, 105, 40),
 }
 
 local function zone(world: Instance, z: number, info)
@@ -95,9 +91,11 @@ local function zone(world: Instance, z: number, info)
 	local len = fieldLength()
 	local groundLen = Config.ZONE_SPACING
 	-- ground runs from just before the gate to the next zone's gate
-	PropKit.brick(m, Vector3.new(HALF_WIDTH * 2, 2, groundLen), CFrame.new(0, -1, zs - 10 + groundLen / 2), def.ground, "ZoneGround")
-	-- dark soil bed under the grass
-	PropKit.brick(m, Vector3.new(Config.GRID.cols * Config.GRID.tile + 2, 0.4, len + 2), CFrame.new(0, 0.1, zs + len / 2), PropKit.shade(def.ground, 0.75), "Soil")
+	local groundMat = ({ lawn = Enum.Material.Grass, golf = Enum.Material.Grass, wheat = Enum.Material.Ground, reeds = Enum.Material.Mud, jungle = Enum.Material.Grass })[def.style] or Enum.Material.Grass
+	local groundColor = if groundMat == Enum.Material.Grass then PropKit.shade(def.grass[2], 0.95) else def.ground
+	PropKit.brick(m, Vector3.new(HALF_WIDTH * 2, 2, groundLen), CFrame.new(0, -1, zs - 10 + groundLen / 2), groundColor, "ZoneGround", groundMat)
+	-- soil bed under the grass patches
+	PropKit.brick(m, Vector3.new(Config.GRID.cols * Config.GRID.tile + 2, 0.4, len + 2), CFrame.new(0, 0.1, zs + len / 2), Color3.fromRGB(110, 80, 55), "Soil", Enum.Material.Ground)
 
 	-- zone sign
 	PropKit.sign(m, CFrame.new(-38, 7, zs - 6) * CFrame.Angles(0, math.rad(-150), 0), Vector3.new(16, 4, 1), def.name, def.grass[1], Color3.new(1, 1, 1))
@@ -116,16 +114,24 @@ local function zone(world: Instance, z: number, info)
 		info.gates[z] = gate
 	end
 
-	-- trees along both sides
+	-- forest along both sides: one row inside the map, a thick backdrop outside it
 	local rng = Random.new(z * 31)
 	for side = -1, 1, 2 do
 		for i = 0, 6 do
-			local pz = zs - 10 + i * 16 + rng:NextNumber(-3, 3)
-			local px = side * (HALF_WIDTH - 6 + rng:NextNumber(-2, 2))
-			local scale = (1.2 + z * 0.25) * rng:NextNumber(0.85, 1.15)
-			PropKit.coneTree(m, Vector3.new(px, 0, pz), scale, ZONE_TREES[z])
+			local pz = zs - 10 + i * 17 + rng:NextNumber(-3, 3)
+			local px = side * (HALF_WIDTH - 7 + rng:NextNumber(-2, 2))
+			PropKit.forestTree(m, Vector3.new(px, 0, pz), (0.9 + z * 0.12) * rng:NextNumber(0.85, 1.15), ZONE_TREES[z])
+		end
+		for row = 0, 2 do
+			for i = 0, 5 do
+				local pz = zs - 10 + i * 20 + rng:NextNumber(-6, 6) + row * 7
+				local px = side * (HALF_WIDTH + 8 + row * 13 + rng:NextNumber(-3, 3))
+				PropKit.forestTree(m, Vector3.new(px, 0, pz), (1.1 + z * 0.12) * rng:NextNumber(0.85, 1.2), ZONE_TREES[z])
+			end
 		end
 	end
+	PropKit.brick(m, Vector3.new(80, 2, groundLen), CFrame.new(-HALF_WIDTH - 40, -1.05, zs - 10 + groundLen / 2), PropKit.shade(PropKit.GRASS_GREEN, 0.85), "OuterGrass", Enum.Material.Grass)
+	PropKit.brick(m, Vector3.new(80, 2, groundLen), CFrame.new(HALF_WIDTH + 40, -1.05, zs - 10 + groundLen / 2), PropKit.shade(PropKit.GRASS_GREEN, 0.85), "OuterGrass", Enum.Material.Grass)
 
 	-- small theme props
 	if z == 2 then
@@ -145,7 +151,7 @@ local function zone(world: Instance, z: number, info)
 		end
 	elseif z == 5 then
 		for _, x in { -40, 40 } do
-			PropKit.coneTree(m, Vector3.new(x, 0, zs + 40), 3.4, Color3.fromRGB(20, 110, 40))
+			PropKit.forestTree(m, Vector3.new(x, 0, zs + 40), 2.4, Color3.fromRGB(20, 100, 40))
 		end
 	end
 
@@ -168,6 +174,17 @@ function RunBuilder.build()
 	end
 	PropKit.wall(world, Vector3.new(HALF_WIDTH * 2, 60, 2), CFrame.new(0, 30, HUB_START))
 	PropKit.wall(world, Vector3.new(HALF_WIDTH * 2, 60, 2), CFrame.new(0, 30, lastZ - 20))
+	-- mountains on the horizon and a forest wall behind the hub
+	local rng = Random.new(5)
+	for i = 0, 9 do
+		local side = if i % 2 == 0 then -1 else 1
+		PropKit.mountain(world, Vector3.new(side * rng:NextNumber(220, 300), -2, HUB_START + i * 70), rng:NextNumber(1.6, 2.6))
+	end
+	PropKit.mountain(world, Vector3.new(0, -2, lastZ + 200), 3)
+	for i = 0, 10 do
+		PropKit.forestTree(world, Vector3.new(-50 + i * 10 + rng:NextNumber(-2, 2), 0, HUB_START - 8 - rng:NextNumber(0, 6)), rng:NextNumber(1.1, 1.5))
+	end
+	PropKit.brick(world, Vector3.new(160, 2, 40), CFrame.new(0, -1.05, HUB_START - 20), PropKit.shade(PropKit.GRASS_GREEN, 0.85), "OuterGrass", Enum.Material.Grass)
 	return info
 end
 

@@ -4,6 +4,8 @@ local ProximityPromptService = game:GetService("ProximityPromptService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 
@@ -25,13 +27,25 @@ local function equippedSwingTool(): Tool?
 	return nil
 end
 
+local function toolCooldown(): number
+	local tool = equippedSwingTool()
+	local id = tool and tool:GetAttribute("ToolId")
+	for _, def in Config.TOOLS do
+		if def.id == id then
+			return def.cooldown or 0.4
+		end
+	end
+	return 0.4
+end
+
 local function swing()
 	local now = os.clock()
-	if now - lastSwing < 0.2 then
+	if now - lastSwing < toolCooldown() then
 		return
 	end
 	lastSwing = now
 	State.fire("Swing")
+	State.emit("swing")
 end
 
 local function hookTool(tool: Instance)

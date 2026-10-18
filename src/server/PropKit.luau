@@ -1,4 +1,5 @@
--- Building helpers for the chunky, studded-brick look (bright plastic bricks, stepped cone trees, striped stalls).
+-- Building helpers for the Chop A Forest look: smooth low-poly blocks, soft grass, chunky textured props.
+-- (Studs are opt-in with `studs = true`.)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 
@@ -19,7 +20,7 @@ type PartOpts = {
 	color: Color3,
 	parent: Instance,
 	name: string?,
-	studs: boolean?, -- studded top (default true)
+	studs: boolean?, -- studded top (default false)
 	collide: boolean?,
 	anchored: boolean?,
 	shape: Enum.PartType?,
@@ -40,15 +41,82 @@ function PropKit.part(o: PartOpts): Part
 	if o.shape then
 		p.Shape = o.shape
 	end
-	p.TopSurface = if o.studs == false then Enum.SurfaceType.Smooth else Enum.SurfaceType.Studs
-	p.BottomSurface = if o.studs == false then Enum.SurfaceType.Smooth else Enum.SurfaceType.Inlet
+	p.TopSurface = if o.studs then Enum.SurfaceType.Studs else Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
 	p.Parent = o.parent
 	return p
 end
 
--- A plain studded brick.
-function PropKit.brick(parent: Instance, size: Vector3, cf: CFrame, color: Color3, name: string?): Part
-	return PropKit.part({ size = size, cf = cf, color = color, parent = parent, name = name })
+-- A plain block (optionally with a material).
+function PropKit.brick(parent: Instance, size: Vector3, cf: CFrame, color: Color3, name: string?, material: Enum.Material?): Part
+	return PropKit.part({ size = size, cf = cf, color = color, parent = parent, name = name, material = material })
+end
+
+PropKit.GRASS_GREEN = Color3.fromRGB(98, 178, 58)
+PropKit.TRUNK = Color3.fromRGB(120, 78, 50)
+PropKit.LEAVES = Color3.fromRGB(58, 125, 40)
+
+-- Chop A Forest style tree: square trunk with four root flares and a clump of leafy cubes on top.
+function PropKit.forestTree(parent: Instance, pos: Vector3, scale: number, leaf: Color3?, trunk: Color3?): Model
+	local m = Instance.new("Model")
+	m.Name = "Tree"
+	local s = scale
+	local tc = trunk or PropKit.TRUNK
+	local lc = leaf or PropKit.LEAVES
+	local rng = Random.new(math.floor(pos.X * 7 + pos.Z * 13))
+	local w = 2.6 * s
+	local h = 13 * s * rng:NextNumber(0.85, 1.15)
+	local rot = CFrame.Angles(0, rng:NextNumber(0, math.pi / 2), 0)
+	local base = CFrame.new(pos) * rot
+	PropKit.brick(m, Vector3.new(w, h, w), base * CFrame.new(0, h / 2, 0), tc, "Trunk", Enum.Material.Wood)
+	-- root flares
+	for i = 0, 3 do
+		local a = i * math.pi / 2
+		local root = PropKit.brick(m, Vector3.new(w * 0.55, 1.1 * s, w * 0.9), base * CFrame.Angles(0, a, 0) * CFrame.new(0, 0.45 * s, w * 0.75) * CFrame.Angles(math.rad(-25), 0, 0), PropKit.shade(tc, 0.9), "Root", Enum.Material.Wood)
+		root.CanCollide = false
+	end
+	-- a couple of branches poking out
+	PropKit.brick(m, Vector3.new(w * 0.4, 4 * s, w * 0.4), base * CFrame.new(w * 0.7, h * 0.72, 0) * CFrame.Angles(0, 0, math.rad(-40)), tc, "Branch", Enum.Material.Wood)
+	-- leaf clumps
+	local top = h
+	local clumps = {
+		{ Vector3.new(0, 1.5, 0), 9 },
+		{ Vector3.new(3.4, 0, 1), 6.5 },
+		{ Vector3.new(-3, 0.4, -1.6), 6.5 },
+		{ Vector3.new(0.6, 3.6, -2.4), 5.5 },
+		{ Vector3.new(-1, 4, 2.2), 5 },
+	}
+	for i, c in clumps do
+		local size = c[2] * s * rng:NextNumber(0.9, 1.1)
+		local cf = base * CFrame.new(c[1] * s + Vector3.new(0, top, 0)) * CFrame.Angles(rng:NextNumber(-0.25, 0.25), rng:NextNumber(0, 1.5), rng:NextNumber(-0.25, 0.25))
+		local leafPart = PropKit.brick(m, Vector3.new(size, size * 0.8, size), cf, PropKit.shade(lc, 0.92 + (i % 3) * 0.06), "Leaves", Enum.Material.Grass)
+		leafPart.CanCollide = false
+	end
+	m.Parent = parent
+	return m
+end
+
+-- Stump left behind on cleared ground.
+function PropKit.stump(parent: Instance, pos: Vector3, scale: number)
+	local w = 2.6 * scale
+	PropKit.brick(parent, Vector3.new(w, 1.6 * scale, w), CFrame.new(pos + Vector3.new(0, 0.8 * scale, 0)), PropKit.TRUNK, "Stump", Enum.Material.Wood)
+	PropKit.brick(parent, Vector3.new(w - 0.3, 0.1, w - 0.3), CFrame.new(pos + Vector3.new(0, 1.6 * scale + 0.05, 0)), Color3.fromRGB(225, 185, 130), "Rings", Enum.Material.WoodPlanks)
+end
+
+-- Snowy low-poly mountain far in the background.
+function PropKit.mountain(parent: Instance, pos: Vector3, scale: number)
+	local m = Instance.new("Model")
+	m.Name = "Mountain"
+	local layers = 5
+	for i = 0, layers - 1 do
+		local w = (60 - i * 11) * scale
+		local h = 14 * scale
+		local snow = i >= layers - 2
+		local p = PropKit.brick(m, Vector3.new(w, h, w), CFrame.new(pos + Vector3.new(0, h / 2 + i * h * 0.85, 0)) * CFrame.Angles(0, math.rad(45 + i * 9), 0), if snow then Color3.fromRGB(240, 245, 250) else Color3.fromRGB(120, 130, 145), "Rock", if snow then Enum.Material.Snow else Enum.Material.Slate)
+		p.CanCollide = false
+		p.CastShadow = false
+	end
+	m.Parent = parent
 end
 
 function PropKit.cylinder(parent: Instance, radius: number, height: number, cf: CFrame, color: Color3): Part
@@ -68,26 +136,6 @@ local function shade(c: Color3, k: number): Color3
 	return Color3.new(math.clamp(c.R * k, 0, 1), math.clamp(c.G * k, 0, 1), math.clamp(c.B * k, 0, 1))
 end
 PropKit.shade = shade
-
--- Stepped "cone" tree made of shrinking studded bricks.
-function PropKit.coneTree(parent: Instance, pos: Vector3, scale: number, leaf: Color3?): Model
-	local m = Instance.new("Model")
-	m.Name = "ConeTree"
-	local leafColor = leaf or Color3.fromRGB(70, 180, 70)
-	local trunkH = 3 * scale
-	PropKit.brick(m, Vector3.new(1.6, trunkH, 1.6) * Vector3.new(scale, 1, scale), CFrame.new(pos + Vector3.new(0, trunkH / 2, 0)), Color3.fromRGB(130, 85, 50), "Trunk")
-	local y = trunkH
-	local tiers = 4
-	for i = 1, tiers do
-		local w = (7 - i * 1.4) * scale
-		local h = 1.6 * scale
-		PropKit.brick(m, Vector3.new(w, h, w), CFrame.new(pos + Vector3.new(0, y + h / 2, 0)), shade(leafColor, 1 - (i - 1) * 0.06), "Leaves")
-		y += h
-	end
-	PropKit.brick(m, Vector3.new(0.9, 1.2, 0.9) * scale, CFrame.new(pos + Vector3.new(0, y + 0.6 * scale, 0)), shade(leafColor, 0.8), "Top")
-	m.Parent = parent
-	return m
-end
 
 -- Round-ish bush made of two bricks.
 function PropKit.bush(parent: Instance, pos: Vector3, scale: number, color: Color3?)

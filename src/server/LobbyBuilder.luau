@@ -7,20 +7,13 @@ local Environment = require(script.Parent.Environment)
 
 local LobbyBuilder = {}
 
-local ORANGE = Color3.fromRGB(255, 165, 80)
-local ORANGE_DARK = Color3.fromRGB(235, 130, 60)
 
 local function ground(world: Instance)
-	-- checkerboard of big studded tiles, like a brick baseplate
-	local size = 24
-	for x = -4, 3 do
-		for z = -4, 3 do
-			local c = if (x + z) % 2 == 0 then ORANGE else ORANGE_DARK
-			PropKit.brick(world, Vector3.new(size, 2, size), CFrame.new(x * size + size / 2, -1, z * size + size / 2), c, "Ground")
-		end
-	end
-	-- grass ring outside the plaza
-	PropKit.brick(world, Vector3.new(320, 2, 320), CFrame.new(0, -1.05, 0), Color3.fromRGB(100, 200, 80), "OuterGrass")
+	-- soft grass everywhere, a wooden deck plaza in the middle, gravel paths to the pads and stalls
+	PropKit.brick(world, Vector3.new(420, 2, 420), CFrame.new(0, -1, 0), PropKit.GRASS_GREEN, "Grass", Enum.Material.Grass)
+	PropKit.brick(world, Vector3.new(120, 0.4, 120), CFrame.new(0, 0.2, -5), Color3.fromRGB(196, 150, 100), "Deck", Enum.Material.WoodPlanks)
+	PropKit.brick(world, Vector3.new(124, 0.3, 124), CFrame.new(0, 0.15, -5), Color3.fromRGB(150, 105, 65), "DeckEdge", Enum.Material.Wood)
+	PropKit.brick(world, Vector3.new(14, 0.3, 50), CFrame.new(0, 0.15, -80), Color3.fromRGB(170, 160, 145), "Path", Enum.Material.Pebble)
 	-- keep players in
 	for _, side in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
 		local pos = Vector3.new(side[1] * 100, 20, side[2] * 100)
@@ -30,28 +23,36 @@ local function ground(world: Instance)
 end
 
 local function decor(world: Instance)
+	-- a thick forest ring around the plaza, plus mountains far behind
 	local trees = PropKit.folder("Trees", world)
-	local leafs = { Color3.fromRGB(255, 150, 40), Color3.fromRGB(255, 200, 60), Color3.fromRGB(90, 190, 70), Color3.fromRGB(240, 90, 60) }
 	local rng = Random.new(7)
-	for i = 0, 15 do
-		local t = i / 16 * math.pi * 2
-		local r = 88 + rng:NextNumber(-3, 3)
-		PropKit.coneTree(trees, Vector3.new(math.cos(t) * r, 0, math.sin(t) * r), rng:NextNumber(1.2, 1.9), leafs[i % #leafs + 1])
+	for ring = 0, 2 do
+		local r = 84 + ring * 16
+		local count = 22 + ring * 6
+		for i = 0, count - 1 do
+			local t = (i + rng:NextNumber(-0.3, 0.3)) / count * math.pi * 2
+			local rr = r + rng:NextNumber(-4, 4)
+			PropKit.forestTree(trees, Vector3.new(math.cos(t) * rr, 0, math.sin(t) * rr), rng:NextNumber(1.1, 1.6))
+		end
 	end
+	for i = 0, 7 do
+		local t = i / 8 * math.pi * 2 + 0.3
+		PropKit.mountain(world, Vector3.new(math.cos(t) * 330, -2, math.sin(t) * 330), rng:NextNumber(1.6, 2.4))
+	end
+	-- fence around the plaza edge
 	local fence = PropKit.folder("Fence", world)
-	local e = 96
-	PropKit.fence(fence, Vector3.new(-e, 0, -e), Vector3.new(e, 0, -e))
-	PropKit.fence(fence, Vector3.new(e, 0, -e), Vector3.new(e, 0, e))
-	PropKit.fence(fence, Vector3.new(e, 0, e), Vector3.new(-e, 0, e))
-	PropKit.fence(fence, Vector3.new(-e, 0, e), Vector3.new(-e, 0, -e))
+	local brown = Color3.fromRGB(150, 105, 65)
+	local e = 62
+	PropKit.fence(fence, Vector3.new(-e, 0, -e - 5), Vector3.new(-8, 0, -e - 5), brown)
+	PropKit.fence(fence, Vector3.new(8, 0, -e - 5), Vector3.new(e, 0, -e - 5), brown)
 end
 
 local function arch(world: Instance)
 	local m = PropKit.folder("TitleArch", world)
 	local z = -40
 	for _, x in { -22, 22 } do
-		PropKit.brick(m, Vector3.new(5, 22, 5), CFrame.new(x, 11, z), Color3.fromRGB(110, 110, 125), "Pillar")
-		PropKit.brick(m, Vector3.new(6.4, 2, 6.4), CFrame.new(x, 22.5, z), Color3.fromRGB(90, 90, 105), "PillarCap")
+		PropKit.brick(m, Vector3.new(5, 22, 5), CFrame.new(x, 11, z), PropKit.TRUNK, "Pillar", Enum.Material.Wood)
+		PropKit.brick(m, Vector3.new(6.4, 2, 6.4), CFrame.new(x, 22.5, z), PropKit.LEAVES, "PillarCap", Enum.Material.Grass)
 	end
 	local beam = PropKit.sign(m, CFrame.new(0, 19, z), Vector3.new(36, 6, 2), Config.GAME_NAME:upper(), Color3.fromRGB(80, 200, 80), Color3.fromRGB(255, 230, 80))
 	beam.Name = "TitleBeam"

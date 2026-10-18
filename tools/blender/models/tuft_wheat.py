@@ -51,13 +51,13 @@ def ear(lib, name, base, ang, top, lean, mat, pairs=3):
         for k in range(4):
             bm.faces.new((vs[k], vs[(k + 1) % 4], vs[4])); bm.faces.new((vs[(k + 1) % 4], vs[k], vs[5]))
     for p in range(pairs):
-        d = 0.22 + p * 0.36
-        size = 1 - p * 0.1
+        d = 0.26 + p * 0.46
+        size = 1.3 - p * 0.12
         for side in (-1, 1):
             kernel(place @ Matrix.Translation((side * 0.15 * size, 0, d)) @ Matrix.Rotation(math.radians(side * 24), 4, "Y"),
                    0.34 * size, 0.36 * size, 0.62 * size)
-    tip_d = 0.22 + pairs * 0.36
-    kernel(place @ Matrix.Translation((0, 0, tip_d - 0.05)), 0.28, 0.3, 0.56)
+    tip_d = 0.26 + pairs * 0.46
+    kernel(place @ Matrix.Translation((0, 0, tip_d - 0.05)), 0.36, 0.38, 0.7)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     lib._finish(lib._from_bmesh(name, bm), mat, base, (0, 0, ang), 0)
     return (top[0] + math.sin(lean) * (tip_d + 0.15), top[1] + math.cos(lean) * (tip_d + 0.15))
@@ -66,11 +66,11 @@ def build(lib):
     rnd = random.Random(9)
     stalk_m = lib.material("Grass", (210, 184, 98))
     head_m = lib.material("Grass", (220, 180, 70))
-    stalks = [(0, 0.0, 3.6)] + [(i * 60 + rnd.uniform(-12, 12), rnd.uniform(0.55, 0.85), rnd.uniform(2.9, 3.5)) for i in range(6)]
+    stalks = [(0, 0.0, 3.3)] + [(i * 60 + rnd.uniform(-12, 12), rnd.uniform(0.6, 0.95), rnd.uniform(2.6, 3.2)) for i in range(6)]
     for i, (ang, r, h) in enumerate(stalks):
         base = lib.rotated((0, r, 0), ang)
         lean = 2 if r == 0 else rnd.uniform(6, 11)
-        _, top, a = strip(lib, "stalk%d" % i, base, ang, 0.2, 0.2, [(h * 0.5, lean, 0.18, 0.18), (h * 0.5, lean + 5, 0.16, 0.16)], stalk_m)
+        _, top, a = strip(lib, "stalk%d" % i, base, ang, 0.2, 0.2, [(h * 0.5, lean, 0.17, 0.17), (h * 0.5, lean + 5, 0.15, 0.15)], stalk_m)
         tip = ear(lib, "ear%d" % i, base, ang, top, a, head_m)
         # two whiskers fanning out of the tip
         for k, side in enumerate((-1, 1)):

@@ -19,6 +19,7 @@ local Presets = require(Shared:WaitForChild("FxPresets")) :: any
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
+local CameraView = require(script.Parent.CameraView)
 
 local HitFx = {}
 local player = Players.LocalPlayer
@@ -466,14 +467,10 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- camera kick and hit-stop
 -------------------------------------------------------------------------------------------------------------
-local BASE_FOV = 70
 local function kick(amount: number)
-	local cam = workspace.CurrentCamera
-	if not cam or amount <= 0 then
-		return
+	if amount > 0 then
+		CameraView.kick(amount) -- CameraView owns the field of view
 	end
-	cam.FieldOfView = BASE_FOV - amount
-	TweenService:Create(cam, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { FieldOfView = BASE_FOV }):Play()
 end
 
 -------------------------------------------------------------------------------------------------------------

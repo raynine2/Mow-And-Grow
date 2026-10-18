@@ -87,4 +87,109 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
+-------------------------------------------------------------------------------------------------------------
+-- camera feel: the one owner of the field of view and the camera offset
+--   - a wider view in a run (first person 82, third person 74; the lobby keeps 70) that opens up a little more
+--     the faster you go (sprinting, mowers);
+--   - first person: a figure-eight head bob while walking, a dip when you land, a slight lean when strafing;
+--   - kicks (hits) and shakes (slams, gates) are asked for here, never written straight to the camera.
+-------------------------------------------------------------------------------------------------------------
+local FOV_LOBBY, FOV_FIRST, FOV_THIRD = 70, 82, 74
+local SPEED_FOV = 7 -- extra degrees at full speed
+local kickAmount = 0
+local shakeUntil, shakePower = 0, 0
+local bobPhase = 0
+local landDip = 0
+local fovNow = FOV_LOBBY
+local rollNow = 0
+
+-- A quick zoom-in punch of `amount` degrees that springs back (hits, slams, boss death).
+function CameraView.kick(amount: number)
+	kickAmount = math.max(kickAmount, amount)
+end
+
+-- Shake the view with `power` (about 1 = light, 6 = huge) for `time` seconds.
+function CameraView.shake(power: number, time: number)
+	shakeUntil = math.max(shakeUntil, os.clock() + time)
+	shakePower = math.max(shakePower, power)
+end
+
+local function hookLanding(char: Model)
+	local hum = char:WaitForChild("Humanoid", 10) :: Humanoid?
+	if not hum then
+		return
+	end
+	local fallSpeed = 0
+	hum.StateChanged:Connect(function(_, new)
+		if new == Enum.HumanoidStateType.Freefall then
+			fallSpeed = 0
+		elseif new == Enum.HumanoidStateType.Landed then
+			landDip = math.clamp(fallSpeed / 120, 0.08, 0.45)
+		end
+	end)
+	local conn = RunService.Heartbeat:Connect(function()
+		local root = char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root and hum:GetState() == Enum.HumanoidStateType.Freefall then
+			fallSpeed = math.max(fallSpeed, -root.AssemblyLinearVelocity.Y)
+		end
+	end)
+	char.AncestryChanged:Connect(function(_, parent)
+		if not parent then
+			conn:Disconnect()
+		end
+	end)
+end
+player.CharacterAdded:Connect(hookLanding)
+if player.Character then
+	task.spawn(hookLanding, player.Character)
+end
+
+RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Value + 1, function(dt: number)
+	local cam = workspace.CurrentCamera
+	local char = player.Character
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not cam or cam.CameraType ~= Enum.CameraType.Custom or not hum or not root then
+		return -- cutscenes (boss intro) drive the camera themselves
+	end
+	local vel = root.AssemblyLinearVelocity
+	local flat = Vector3.new(vel.X, 0, vel.Z)
+	local speed = flat.Magnitude
+	local first = inFirstPerson()
+	local onGround = hum.FloorMaterial ~= Enum.Material.Air
+
+	-- field of view: eased toward the mode's base plus a speed boost; kicks bite instantly and spring back
+	local base = if not State.isRun() then FOV_LOBBY elseif first then FOV_FIRST else FOV_THIRD
+	local target = base + SPEED_FOV * math.clamp((speed - 8) / 30, 0, 1)
+	fovNow += (target - fovNow) * math.min(1, dt * 6)
+	kickAmount *= math.exp(-dt * 11)
+	cam.FieldOfView = fovNow - kickAmount
+
+	-- offset: head bob (first person, walking on the ground), landing dip, shake
+	local walk = if first and onGround and not hum.SeatPart then math.clamp(speed / 16, 0, 1.3) else 0
+	if walk > 0.05 then
+		bobPhase += dt * (5.5 + speed * 0.3)
+	end
+	local bobX = math.sin(bobPhase) * 0.06 * walk
+	local bobY = math.cos(bobPhase * 2) * 0.07 * walk
+	landDip *= math.exp(-dt * 7)
+	local sx, sy = 0, 0
+	local left = shakeUntil - os.clock()
+	if left > 0 then
+		local p = shakePower * math.min(1, left * 3) * 0.12
+		sx, sy = (math.random() - 0.5) * p, (math.random() - 0.5) * p
+	else
+		shakePower = 0
+	end
+	hum.CameraOffset = Vector3.new(bobX + sx, bobY - landDip + sy, 0)
+
+	-- a slight lean into strafes and with the steps (first person only)
+	local lateral = flat:Dot(cam.CFrame.RightVector)
+	local targetRoll = if first then math.clamp(-lateral * 0.0028, -0.05, 0.05) + math.sin(bobPhase) * 0.006 * walk else 0
+	rollNow += (targetRoll - rollNow) * math.min(1, dt * 8)
+	if math.abs(rollNow) > 1e-4 then
+		cam.CFrame = cam.CFrame * CFrame.Angles(0, 0, rollNow)
+	end
+end)
+
 return CameraView

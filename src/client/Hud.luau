@@ -317,11 +317,11 @@ State.on("world", function(w)
 	runStart = w.started or runStart
 	zoneText.Text = w.name .. "   "
 	if w.boss then
-		zoneText.Text = w.boss.name .. "   "
+		-- the boss's health has its own big bar at the top (BossFx); this corner just says what's on
 		fill.BackgroundColor3 = C.red
 		fillGrad.Color = ColorSequence.new(UI.shade(C.red, 1.15), UI.shade(C.red, 0.85))
-		fill.Size = UDim2.fromScale(math.clamp(w.boss.hp / w.boss.max, 0, 1), 1)
-		trackText.Text = Format.short(w.boss.hp) .. " / " .. Format.short(w.boss.max) .. " HP"
+		fill.Size = UDim2.fromScale(1, 1)
+		trackText.Text = "BOSS FIGHT!"
 	else
 		fill.BackgroundColor3 = C.green
 		fillGrad.Color = ColorSequence.new(UI.shade(C.green, 1.15), UI.shade(C.green, 0.85))

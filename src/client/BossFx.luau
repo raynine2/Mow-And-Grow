@@ -24,6 +24,7 @@ local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local HitFx = require(script.Parent.HitFx)
 local Confetti = require(script.Parent.Confetti)
+local CameraView = require(script.Parent.CameraView)
 
 local BossFx = {}
 -- Fx plugs in its Humanoid.CameraOffset shake (power, seconds) here.
@@ -1043,8 +1044,7 @@ function BossFx.down(d)
 	Sound.play("hit")
 	local cam = workspace.CurrentCamera
 	if cam and not intro.active and cam.CameraType == Enum.CameraType.Custom then
-		cam.FieldOfView = BASE_FOV - 12
-		tween(cam, 0.5, { FieldOfView = BASE_FOV }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		CameraView.kick(12)
 		local grade = Instance.new("ColorCorrectionEffect")
 		grade.Name = "BossFxGrade"
 		grade.Saturation = -0.6

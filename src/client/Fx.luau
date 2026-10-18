@@ -13,6 +13,7 @@ local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local HitFx = require(script.Parent.HitFx)
+local CameraView = require(script.Parent.CameraView)
 local FxIds = require(ReplicatedStorage.MowALawn:WaitForChild("FxIds")) :: { [string]: string }
 local SellFx = require(script.Parent.SellFx)
 local Confetti = require(script.Parent.Confetti)
@@ -126,27 +127,10 @@ function Fx.ring(pos: Vector3, radius: number, color: Color3, life: number)
 	Debris:AddItem(p, life + 0.05)
 end
 
--- Camera shake through Humanoid.CameraOffset (never fights the camera script).
-local shakeUntil, shakePower = 0, 0
+-- Camera shake (CameraView owns the camera offset, so shakes from everywhere add up instead of fighting).
 function Fx.shake(power: number, time: number)
-	shakeUntil = math.max(shakeUntil, os.clock() + time)
-	shakePower = math.max(shakePower, power)
+	CameraView.shake(power, time)
 end
-RunService.RenderStepped:Connect(function()
-	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
-	if not hum then
-		return
-	end
-	local left = shakeUntil - os.clock()
-	if left > 0 then
-		local p = shakePower * math.min(1, left * 3) * 0.12
-		hum.CameraOffset = Vector3.new((math.random() - 0.5) * p, (math.random() - 0.5) * p, 0)
-	elseif shakePower > 0 then
-		shakePower = 0
-		hum.CameraOffset = Vector3.zero
-	end
-end)
 
 -- One big banner at a time: a new one replaces the old one.
 local currentBanner: Frame? = nil

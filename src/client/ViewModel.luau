@@ -161,6 +161,11 @@ local PUSH_R = CFrame.new(1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local PUSH_L = CFrame.new(-1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local TWO_HANDED = { PushMower = true, LaserMower = true, WeedWhacker = true, MegaScythe = true }
 
+local stepPhase = 0
+local swayYaw, swayPitch = 0, 0
+local lastCamRot: CFrame? = nil
+local lastFrame: number? = nil
+
 local swingStart = -10
 local SWING_TIME = 0.32
 local punchSide = 1 -- bare hands alternate: 1 = right, -1 = left
@@ -278,8 +283,25 @@ RunService.RenderStepped:Connect(function()
 	local rootPart = char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local speed = if rootPart then Vector3.new(rootPart.AssemblyLinearVelocity.X, 0, rootPart.AssemblyLinearVelocity.Z).Magnitude else 0
 	local walk = math.clamp(speed / 16, 0, 1.4)
-	local bob = CFrame.new(math.sin(t * 8) * 0.06 * walk, math.abs(math.cos(t * 8)) * 0.1 * walk + math.sin(t * 1.6) * 0.03, 0)
-	local base = cam.CFrame * bob
+	local dt = math.min(0.1, t - (lastFrame or t))
+	lastFrame = t
+	-- step rhythm: the hands bob in a figure-eight with your steps, and breathe a little when standing
+	if walk > 0.05 then
+		stepPhase += dt * (5.5 + speed * 0.3)
+	end
+	local bob = CFrame.new(math.sin(stepPhase) * 0.07 * walk, -math.abs(math.cos(stepPhase)) * 0.09 * walk + math.sin(t * 1.6) * 0.03, 0)
+		* CFrame.Angles(0, 0, math.sin(stepPhase) * 0.02 * walk)
+	-- sway: the hands lag behind your mouse look (a spring toward the turn speed), so they feel weighty
+	local rel = (lastCamRot or cam.CFrame.Rotation):ToObjectSpace(cam.CFrame.Rotation)
+	lastCamRot = cam.CFrame.Rotation
+	local rx, ry = rel:ToEulerAnglesYXZ()
+	if dt > 0 then
+		local k = math.min(1, dt * 12)
+		swayYaw += (math.clamp(-ry / dt * 0.012, -0.14, 0.14) - swayYaw) * k
+		swayPitch += (math.clamp(-rx / dt * 0.012, -0.1, 0.1) - swayPitch) * k
+	end
+	local sway = CFrame.new(swayYaw * 1.4, swayPitch * 1.2, 0) * CFrame.Angles(swayPitch, swayYaw, swayYaw * 0.6)
+	local base = cam.CFrame * bob * sway
 
 	local id = equippedId()
 	local twoHanded = id ~= nil and TWO_HANDED[id] == true

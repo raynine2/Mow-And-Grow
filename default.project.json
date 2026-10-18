@@ -21,6 +21,14 @@
           "$path": "src/client",
           "$ignoreUnknownInstances": true
         }
+      },
+      "$properties": {
+        "EnableMouseLockOption": true
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future"
       }
     }
   }

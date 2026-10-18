@@ -10,7 +10,7 @@ local RunBuilder = require(script.Parent.RunBuilder)
 
 local Field = {}
 
-type Stalk = { stem: Part, head: Part?, cap: Part?, baseH: number, headH: number, x: number, z: number }
+type Stalk = { stem: Part, head: Part?, cap: Part?, baseH: number, headH: number, x: number, z: number, yaw: number, lean: number }
 type Patch = {
 	part: Part, -- the turf brick (position used for effects)
 	stalks: { Stalk },
@@ -45,12 +45,14 @@ local function index(col: number, row: number): number
 end
 
 -- How each zone's grass looks: stalk count, width, height factor, and an optional head on top.
+-- How each zone's grass looks. A patch is a tuft: `count` blades fanned around the middle, each a slab
+-- `width` wide and `thick` deep, leaning outward by `lean` degrees. Wheat and reeds carry a head on top.
 local STYLES = {
-	lawn = { count = 3, width = 1.6, height = 1.0 },
-	golf = { count = 4, width = 1.4, height = 0.8 },
-	wheat = { count = 3, width = 0.9, height = 1.0, head = Vector3.new(1.4, 1.6, 1.4), headColor = Color3.fromRGB(205, 150, 40) },
-	reeds = { count = 3, width = 0.8, height = 1.0, head = Vector3.new(1.1, 2, 1.1), headColor = Color3.fromRGB(120, 75, 40) },
-	jungle = { count = 2, width = 2.8, height = 0.6, head = Vector3.new(3.6, 1.2, 3.6), headColor = Color3.fromRGB(25, 110, 45) },
+	lawn = { count = 6, width = 1.3, thick = 0.45, height = 1.0, lean = 16, spread = 1.0 },
+	golf = { count = 7, width = 1.0, thick = 0.4, height = 0.75, lean = 10, spread = 1.3 },
+	wheat = { count = 5, width = 0.55, thick = 0.55, height = 1.0, lean = 7, spread = 1.2, head = Vector3.new(0.9, 1.7, 0.9), headColor = Color3.fromRGB(215, 160, 50) },
+	reeds = { count = 5, width = 0.55, thick = 0.55, height = 1.0, lean = 6, spread = 1.3, head = Vector3.new(0.85, 1.9, 0.85), headColor = Color3.fromRGB(115, 70, 40) },
+	jungle = { count = 5, width = 2.3, thick = 0.35, height = 0.75, lean = 34, spread = 0.6 },
 }
 
 local function brick(parent: Instance, size: Vector3, cf: CFrame, color: Color3, name: string, material: Enum.Material?): Part
@@ -60,23 +62,28 @@ local function brick(parent: Instance, size: Vector3, cf: CFrame, color: Color3,
 	return part
 end
 
--- After the first hit the top is knocked off (Fx flings it) and a lighter fresh-cut top shows; the stalk keeps
+-- A blade grows from its foot on the turf, turned by `yaw` and tipped outward by `lean`.
+local function bladeFrame(s: Stalk): CFrame
+	return CFrame.new(s.x, TURF_TOP - 0.1, s.z) * CFrame.Angles(0, s.yaw, 0) * CFrame.Angles(math.rad(s.lean), 0, 0)
+end
+
+-- After the first hit the top is knocked off (Fx flings it) and a lighter fresh-cut top shows; the blade keeps
 -- getting shorter with every hit.
 local function layoutStalk(s: Stalk, ratio: number): Part?
 	local h = math.max(0.4, s.baseH * (0.3 + 0.7 * ratio))
+	local foot = bladeFrame(s)
 	s.stem.Size = Vector3.new(s.stem.Size.X, h, s.stem.Size.Z)
-	s.stem.CFrame = CFrame.new(s.x, TURF_TOP + h / 2, s.z)
+	s.stem.CFrame = foot * CFrame.new(0, h / 2, 0)
 	local knocked = nil
 	if s.head then
 		knocked = s.head
 		s.head = nil
 	end
 	if not s.cap then
-		local w = s.stem.Size.X
-		s.cap = brick(s.stem.Parent :: Instance, Vector3.new(w + 0.02, 0.18, w + 0.02), CFrame.new(), PropKit.shade(s.stem.Color, 1.45), "CutTop", Enum.Material.SmoothPlastic)
+		s.cap = brick(s.stem.Parent :: Instance, Vector3.new(s.stem.Size.X + 0.02, 0.16, s.stem.Size.Z + 0.02), CFrame.new(), PropKit.shade(s.stem.Color, 1.5), "CutTop", Enum.Material.SmoothPlastic)
 	end
 	local cap = s.cap :: Part
-	cap.CFrame = CFrame.new(s.x, TURF_TOP + h + 0.08, s.z)
+	cap.CFrame = foot * CFrame.new(0, h + 0.07, 0)
 	return knocked
 end
 
@@ -113,7 +120,8 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 	local colorB = def.grass[2]
 	local model = Instance.new("Model")
 	model.Name = "Patch"
-	local turf = brick(model, Vector3.new(t - 0.2, TURF_H, t - 0.2), CFrame.new(pos.X, 0.3 + TURF_H / 2, pos.Z), PropKit.shade(colorB, 0.88), "Turf", Enum.Material.Grass)
+	-- turf tiles touch, so the field reads as one lawn
+	local turf = brick(model, Vector3.new(t, TURF_H, t), CFrame.new(pos.X, 0.3 + TURF_H / 2, pos.Z), PropKit.shade(colorB, 0.82), "Turf", Enum.Material.Grass)
 	turf.CanQuery = true
 	local p: Patch = {
 		part = turf,
@@ -128,24 +136,34 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 		baseColor = colorA,
 	}
 	if not alreadyCut then
-		-- spread stalks over the tile without overlapping too much
-		local spots = { Vector2.new(-1.3, -1.2), Vector2.new(1.3, -0.9), Vector2.new(-0.6, 1.4), Vector2.new(1.2, 1.3) }
+		-- a tuft: blades fanned out around the middle of the tile, alternating two greens with lighter tips
+		local tilt = rng:NextNumber(0, math.pi * 2)
 		for i = 1, style.count do
-			local spot = spots[i]
-			local jitter = Vector2.new(rng:NextNumber(-0.4, 0.4), rng:NextNumber(-0.4, 0.4))
-			local x = pos.X + (spot.X + jitter.X) * (if style.count <= 2 then 0.7 else 1)
-			local zz = pos.Z + (spot.Y + jitter.Y) * (if style.count <= 2 then 0.7 else 1)
-			local w = style.width * rng:NextNumber(0.9, 1.1)
-			local baseH = def.height * style.height * rng:NextNumber(0.75, 1.2)
-			local color = if (i + col + row) % 2 == 0 then colorA else colorB
-			local stem = brick(model, Vector3.new(w, baseH, w), CFrame.new(x, TURF_TOP + baseH / 2, zz), color, "Stalk", Enum.Material.Grass)
-			local head = nil
-			local headH = 0
+			local yaw = tilt + (i / style.count) * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
+			local r = rng:NextNumber(0.2, 1.3) * style.spread
+			local x = pos.X + math.sin(yaw) * r
+			local zz = pos.Z + math.cos(yaw) * r
+			local baseH = def.height * style.height * rng:NextNumber(0.7, 1.25)
+			local color = PropKit.shade(if (i + col + row) % 2 == 0 then colorA else colorB, rng:NextNumber(0.93, 1.07))
+			local stalk: Stalk = {
+				stem = nil :: any,
+				head = nil,
+				cap = nil,
+				baseH = baseH,
+				headH = 0,
+				x = x,
+				z = zz,
+				-- blades lean away from the middle of the tuft
+				yaw = yaw,
+				lean = style.lean * rng:NextNumber(0.6, 1.3),
+			}
+			local foot = bladeFrame(stalk)
+			stalk.stem = brick(model, Vector3.new(style.width * rng:NextNumber(0.85, 1.15), baseH, style.thick), foot * CFrame.new(0, baseH / 2, 0), color, "Blade", Enum.Material.Grass)
 			if style.head then
-				headH = style.head.Y
-				head = brick(model, style.head, CFrame.new(x, TURF_TOP + baseH + headH / 2, zz), style.headColor, "Head")
+				stalk.headH = style.head.Y
+				stalk.head = brick(model, style.head, foot * CFrame.new(0, baseH + style.head.Y / 2 - 0.1, 0), style.headColor, "Head", Enum.Material.Fabric)
 			end
-			table.insert(p.stalks, { stem = stem, head = head, cap = nil, baseH = baseH, headH = headH, x = x, z = zz })
+			table.insert(p.stalks, stalk)
 		end
 	else
 		stubble(p)

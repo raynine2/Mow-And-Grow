@@ -52,54 +52,115 @@ function PropKit.brick(parent: Instance, size: Vector3, cf: CFrame, color: Color
 	return PropKit.part({ size = size, cf = cf, color = color, parent = parent, name = name, material = material })
 end
 
-PropKit.GRASS_GREEN = Color3.fromRGB(98, 178, 58)
-PropKit.TRUNK = Color3.fromRGB(120, 78, 50)
-PropKit.LEAVES = Color3.fromRGB(58, 125, 40)
+PropKit.GRASS_GREEN = Color3.fromRGB(88, 158, 44)
+PropKit.TRUNK = Color3.fromRGB(115, 62, 44)
+PropKit.BIRCH = Color3.fromRGB(232, 228, 220)
+PropKit.LEAVES = Color3.fromRGB(46, 112, 36)
 
--- Chop A Forest style tree: square trunk with four root flares and a clump of leafy cubes on top.
-function PropKit.forestTree(parent: Instance, pos: Vector3, scale: number, leaf: Color3?, trunk: Color3?): Model
+-- Chop A Forest tree (matched to the official trailer): a thick, tall, square reddish-brown trunk with wood
+-- grain, four slanted root buttresses, a couple of branches, and a big high canopy of leafy cubes.
+-- `lite` builds a cheap far-away version (trunk + 3 leaf blocks) for the forest backdrop.
+type TreeOpts = { leaf: Color3?, trunk: Color3?, birch: boolean?, lite: boolean? }
+function PropKit.forestTree(parent: Instance, pos: Vector3, scale: number, opts: TreeOpts?): Model
+	local o = opts or {}
 	local m = Instance.new("Model")
 	m.Name = "Tree"
 	local s = scale
-	local tc = trunk or PropKit.TRUNK
-	local lc = leaf or PropKit.LEAVES
-	local rng = Random.new(math.floor(pos.X * 7 + pos.Z * 13))
-	local w = 2.6 * s
-	local h = 13 * s * rng:NextNumber(0.85, 1.15)
-	local rot = CFrame.Angles(0, rng:NextNumber(0, math.pi / 2), 0)
-	local base = CFrame.new(pos) * rot
-	PropKit.brick(m, Vector3.new(w, h, w), base * CFrame.new(0, h / 2, 0), tc, "Trunk", Enum.Material.Wood)
-	-- root flares
-	for i = 0, 3 do
-		local a = i * math.pi / 2
-		local root = PropKit.brick(m, Vector3.new(w * 0.55, 1.1 * s, w * 0.9), base * CFrame.Angles(0, a, 0) * CFrame.new(0, 0.45 * s, w * 0.75) * CFrame.Angles(math.rad(-25), 0, 0), PropKit.shade(tc, 0.9), "Root", Enum.Material.Wood)
-		root.CanCollide = false
+	local rng = Random.new(math.floor(pos.X * 7.3 + pos.Z * 13.1))
+	local tc = o.trunk or (if o.birch then PropKit.BIRCH else PropKit.shade(PropKit.TRUNK, rng:NextNumber(0.92, 1.08)))
+	local lc = o.leaf or PropKit.LEAVES
+	local w = 4 * s * rng:NextNumber(0.9, 1.1)
+	local h = 24 * s * rng:NextNumber(0.88, 1.12)
+	local base = CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, math.pi / 2), 0)
+	local trunk = PropKit.brick(m, Vector3.new(w, h, w), base * CFrame.new(0, h / 2, 0), tc, "Trunk", Enum.Material.Wood)
+	if o.lite then
+		for i = 0, 2 do
+			local size = 12 * s * rng:NextNumber(0.9, 1.15)
+			local off = CFrame.Angles(0, i * 2.1, 0) * CFrame.new(3.5 * s, 0, 0)
+			local leafPart = PropKit.brick(m, Vector3.new(size, size * 0.75, size), base * CFrame.new(0, h + 1 * s, 0) * off, PropKit.shade(lc, 0.9 + i * 0.06), "Leaves", Enum.Material.Grass)
+			leafPart.CanCollide = false
+		end
+		m.Parent = parent
+		return m
 	end
-	-- a couple of branches poking out
-	PropKit.brick(m, Vector3.new(w * 0.4, 4 * s, w * 0.4), base * CFrame.new(w * 0.7, h * 0.72, 0) * CFrame.Angles(0, 0, math.rad(-40)), tc, "Branch", Enum.Material.Wood)
-	-- leaf clumps
-	local top = h
-	local clumps = {
-		{ Vector3.new(0, 1.5, 0), 9 },
-		{ Vector3.new(3.4, 0, 1), 6.5 },
-		{ Vector3.new(-3, 0.4, -1.6), 6.5 },
-		{ Vector3.new(0.6, 3.6, -2.4), 5.5 },
-		{ Vector3.new(-1, 4, 2.2), 5 },
-	}
+	if o.birch then
+		for i = 1, 4 do
+			local y = h * (0.15 + i * 0.17) + rng:NextNumber(-1, 1)
+			PropKit.brick(m, Vector3.new(w * 0.45, 0.5, w + 0.05), base * CFrame.new(rng:NextNumber(-0.6, 0.6), y, 0) * CFrame.Angles(0, (i % 2) * math.pi / 2, 0), Color3.fromRGB(40, 38, 40), "BirchMark", Enum.Material.SmoothPlastic)
+		end
+	end
+	-- root buttresses: slanted slabs on each side, wide at the ground
+	local rootColor = PropKit.shade(tc, 0.92)
+	for i = 0, 3 do
+		local side = base * CFrame.Angles(0, i * math.pi / 2 + rng:NextNumber(-0.25, 0.25), 0)
+		local root = PropKit.brick(m, Vector3.new(w * 0.42, 3.4 * s, w * 0.95), side * CFrame.new(0, 1.2 * s, w * 0.62) * CFrame.Angles(math.rad(-38), 0, 0), rootColor, "Root", Enum.Material.Wood)
+		root.CanCollide = false
+		local toe = PropKit.brick(m, Vector3.new(w * 0.36, 0.9 * s, w * 0.7), side * CFrame.new(0, 0.4 * s, w * 1.05), rootColor, "RootToe", Enum.Material.Wood)
+		toe.CanCollide = false
+	end
+	-- branches reaching up into the canopy
+	for i = 0, 1 do
+		local a = i * math.pi + rng:NextNumber(-0.5, 0.5)
+		local br = PropKit.brick(m, Vector3.new(w * 0.32, 8 * s, w * 0.32), base * CFrame.Angles(0, a, 0) * CFrame.new(w * 0.9, h * 0.8, 0) * CFrame.Angles(0, 0, math.rad(-42)), tc, "Branch", Enum.Material.Wood)
+		br.CanCollide = false
+	end
+	-- canopy: a centre block, a ring of blocks around it, and a few on top, all slightly turned
+	local clumps = { { Vector3.new(0, 2, 0), 12 } }
+	for i = 0, 5 do
+		local a = i * math.pi / 3 + rng:NextNumber(-0.3, 0.3)
+		table.insert(clumps, { Vector3.new(math.cos(a) * 6.5, rng:NextNumber(-1.5, 1), math.sin(a) * 6.5), rng:NextNumber(7.5, 9.5) })
+	end
+	for i = 0, 2 do
+		local a = i * 2.1 + rng:NextNumber(-0.4, 0.4)
+		table.insert(clumps, { Vector3.new(math.cos(a) * 3, rng:NextNumber(5, 7), math.sin(a) * 3), rng:NextNumber(6, 8) })
+	end
 	for i, c in clumps do
-		local size = c[2] * s * rng:NextNumber(0.9, 1.1)
-		local cf = base * CFrame.new(c[1] * s + Vector3.new(0, top, 0)) * CFrame.Angles(rng:NextNumber(-0.25, 0.25), rng:NextNumber(0, 1.5), rng:NextNumber(-0.25, 0.25))
-		local leafPart = PropKit.brick(m, Vector3.new(size, size * 0.8, size), cf, PropKit.shade(lc, 0.92 + (i % 3) * 0.06), "Leaves", Enum.Material.Grass)
+		local size = c[2] * s
+		local cf = base * CFrame.new(c[1] * s + Vector3.new(0, h, 0)) * CFrame.Angles(rng:NextNumber(-0.2, 0.2), rng:NextNumber(0, 1.5), rng:NextNumber(-0.2, 0.2))
+		local shadeK = 0.86 + ((i * 37) % 5) * 0.05
+		local leafPart = PropKit.brick(m, Vector3.new(size, size * 0.8, size), cf, PropKit.shade(lc, shadeK), "Leaves", Enum.Material.Grass)
 		leafPart.CanCollide = false
 	end
+	m.PrimaryPart = trunk
 	m.Parent = parent
 	return m
 end
 
+-- A dense forest filling a rectangle (x0..x1, z0..z1) on a jittered grid. Trees closer than `detailDist` to
+-- the line x = 0 are fully detailed; the rest use the cheap version. A few birches and coloured trees mixed in,
+-- like the trailer.
+type ForestOpts = { spacing: number?, seed: number?, scale: number?, leaf: Color3?, detailDist: number?, detailRadius: number?, accents: { Color3 }? }
+function PropKit.forest(parent: Instance, x0: number, x1: number, z0: number, z1: number, opts: ForestOpts?)
+	local o = opts or {}
+	local spacing = o.spacing or 16
+	local rng = Random.new(o.seed or 1)
+	local accents = o.accents or { Color3.fromRGB(190, 45, 40), Color3.fromRGB(230, 140, 35), Color3.fromRGB(215, 120, 170) }
+	local x = x0
+	local row = 0
+	while x <= x1 do
+		local z = z0 + (if row % 2 == 0 then 0 else spacing / 2)
+		while z <= z1 do
+			local px = x + rng:NextNumber(-spacing * 0.3, spacing * 0.3)
+			local pz = z + rng:NextNumber(-spacing * 0.3, spacing * 0.3)
+			local roll = rng:NextNumber()
+			local leaf = o.leaf
+			if roll < 0.05 then
+				leaf = accents[rng:NextInteger(1, #accents)]
+			end
+			local lite = if o.detailRadius then Vector2.new(px, pz).Magnitude > o.detailRadius else math.abs(px) > (o.detailDist or 70)
+			PropKit.forestTree(parent, Vector3.new(px, 0, pz), (o.scale or 1) * rng:NextNumber(0.85, 1.15), { leaf = leaf, birch = roll > 0.88, lite = lite })
+			z += spacing
+		end
+		x += spacing
+		row += 1
+	end
+end
+
 -- Stump left behind on cleared ground.
 function PropKit.stump(parent: Instance, pos: Vector3, scale: number)
-	local w = 2.6 * scale
+	local w = 4 * scale
 	PropKit.brick(parent, Vector3.new(w, 1.6 * scale, w), CFrame.new(pos + Vector3.new(0, 0.8 * scale, 0)), PropKit.TRUNK, "Stump", Enum.Material.Wood)
+	-- (rings on top)
 	PropKit.brick(parent, Vector3.new(w - 0.3, 0.1, w - 0.3), CFrame.new(pos + Vector3.new(0, 1.6 * scale + 0.05, 0)), Color3.fromRGB(225, 185, 130), "Rings", Enum.Material.WoodPlanks)
 end
 

@@ -13,7 +13,6 @@ local function ground(world: Instance)
 	PropKit.brick(world, Vector3.new(420, 2, 420), CFrame.new(0, -1, 0), PropKit.GRASS_GREEN, "Grass", Enum.Material.Grass)
 	PropKit.brick(world, Vector3.new(120, 0.4, 120), CFrame.new(0, 0.2, -5), Color3.fromRGB(196, 150, 100), "Deck", Enum.Material.WoodPlanks)
 	PropKit.brick(world, Vector3.new(124, 0.3, 124), CFrame.new(0, 0.15, -5), Color3.fromRGB(150, 105, 65), "DeckEdge", Enum.Material.Wood)
-	PropKit.brick(world, Vector3.new(14, 0.3, 50), CFrame.new(0, 0.15, -80), Color3.fromRGB(170, 160, 145), "Path", Enum.Material.Pebble)
 	-- keep players in
 	for _, side in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
 		local pos = Vector3.new(side[1] * 100, 20, side[2] * 100)
@@ -26,15 +25,11 @@ local function decor(world: Instance)
 	-- a thick forest ring around the plaza, plus mountains far behind
 	local trees = PropKit.folder("Trees", world)
 	local rng = Random.new(7)
-	for ring = 0, 2 do
-		local r = 84 + ring * 16
-		local count = 22 + ring * 6
-		for i = 0, count - 1 do
-			local t = (i + rng:NextNumber(-0.3, 0.3)) / count * math.pi * 2
-			local rr = r + rng:NextNumber(-4, 4)
-			PropKit.forestTree(trees, Vector3.new(math.cos(t) * rr, 0, math.sin(t) * rr), rng:NextNumber(1.1, 1.6))
-		end
-	end
+	-- the plaza is a clearing in a thick forest (the forest fills a square ring around it)
+	PropKit.forest(trees, -190, 190, 72, 190, { seed = 11, detailRadius = 120 })
+	PropKit.forest(trees, -190, 190, -190, -78, { seed = 12, detailRadius = 120 })
+	PropKit.forest(trees, 72, 190, -70, 64, { seed = 13, detailRadius = 120 })
+	PropKit.forest(trees, -190, -72, -70, 64, { seed = 14, detailRadius = 120 })
 	for i = 0, 7 do
 		local t = i / 8 * math.pi * 2 + 0.3
 		PropKit.mountain(world, Vector3.new(math.cos(t) * 330, -2, math.sin(t) * 330), rng:NextNumber(1.6, 2.4))

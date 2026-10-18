@@ -77,11 +77,11 @@ local function gasPump(parent: Instance, pos: Vector3, info)
 end
 
 local ZONE_TREES = {
-	Color3.fromRGB(70, 150, 45),
-	Color3.fromRGB(60, 140, 55),
-	Color3.fromRGB(215, 140, 40),
-	Color3.fromRGB(55, 115, 90),
-	Color3.fromRGB(30, 105, 40),
+	Color3.fromRGB(46, 112, 36),
+	Color3.fromRGB(52, 120, 40),
+	Color3.fromRGB(200, 120, 35),
+	Color3.fromRGB(45, 100, 75),
+	Color3.fromRGB(28, 92, 34),
 }
 
 local function zone(world: Instance, z: number, info)
@@ -105,33 +105,34 @@ local function zone(world: Instance, z: number, info)
 		local gate = Instance.new("Model")
 		gate.Name = "Gate" .. z
 		local gz = zs - 16
-		local wall = PropKit.brick(gate, Vector3.new(HALF_WIDTH * 2, 14, 2), CFrame.new(0, 7, gz), Color3.fromRGB(120, 85, 50), "GateWall")
-		for x = -45, 45, 10 do
-			PropKit.brick(gate, Vector3.new(2, 16, 3), CFrame.new(x, 8, gz), Color3.fromRGB(95, 65, 40), "GatePost")
+		-- log palisade: a row of upright logs with pointed tops, two cross beams and a hanging sign
+		local logColor = Color3.fromRGB(125, 80, 50)
+		for x = -HALF_WIDTH + 1.5, HALF_WIDTH - 1.5, 3 do
+			local hgt = 11 + ((x * 7) % 3)
+			local log = PropKit.cylinder(gate, 1.5, hgt, CFrame.new(x, hgt / 2, gz), PropKit.shade(logColor, 0.9 + ((x * 3) % 4) * 0.04))
+			log.Material = Enum.Material.Wood
+			log.Name = "GateLog"
+			local tip = PropKit.brick(gate, Vector3.new(2.1, 2.1, 2.1), CFrame.new(x, hgt + 0.2, gz) * CFrame.Angles(math.rad(45), 0, math.rad(45)), PropKit.shade(logColor, 0.85), "GateTip", Enum.Material.Wood)
+			tip.CanCollide = false
 		end
-		PropKit.surfaceText(wall, "LOCKED: beat the " .. Config.ZONES[z - 1].boss.name, Color3.fromRGB(255, 230, 80))
+		for _, y in { 3.5, 8.5 } do
+			PropKit.brick(gate, Vector3.new(HALF_WIDTH * 2, 1.2, 1), CFrame.new(0, y, gz - 1.6), PropKit.shade(logColor, 0.75), "GateBeam", Enum.Material.WoodPlanks)
+		end
+		local sign = PropKit.brick(gate, Vector3.new(22, 4.2, 0.6), CFrame.new(0, 6.5, gz - 2.3), Color3.fromRGB(200, 160, 105), "GateSign", Enum.Material.WoodPlanks)
+		PropKit.surfaceText(sign, "LOCKED: beat the " .. Config.ZONES[z - 1].boss.name, Color3.fromRGB(255, 235, 120))
+		PropKit.wall(gate, Vector3.new(HALF_WIDTH * 2, 30, 2), CFrame.new(0, 15, gz)).Name = "GateWall"
 		gate.Parent = m
 		info.gates[z] = gate
 	end
 
-	-- forest along both sides: one row inside the map, a thick backdrop outside it
-	local rng = Random.new(z * 31)
-	for side = -1, 1, 2 do
-		for i = 0, 6 do
-			local pz = zs - 10 + i * 17 + rng:NextNumber(-3, 3)
-			local px = side * (HALF_WIDTH - 7 + rng:NextNumber(-2, 2))
-			PropKit.forestTree(m, Vector3.new(px, 0, pz), (0.9 + z * 0.12) * rng:NextNumber(0.85, 1.15), ZONE_TREES[z])
-		end
-		for row = 0, 2 do
-			for i = 0, 5 do
-				local pz = zs - 10 + i * 20 + rng:NextNumber(-6, 6) + row * 7
-				local px = side * (HALF_WIDTH + 8 + row * 13 + rng:NextNumber(-3, 3))
-				PropKit.forestTree(m, Vector3.new(px, 0, pz), (1.1 + z * 0.12) * rng:NextNumber(0.85, 1.2), ZONE_TREES[z])
-			end
-		end
-	end
-	PropKit.brick(m, Vector3.new(80, 2, groundLen), CFrame.new(-HALF_WIDTH - 40, -1.05, zs - 10 + groundLen / 2), PropKit.shade(PropKit.GRASS_GREEN, 0.85), "OuterGrass", Enum.Material.Grass)
-	PropKit.brick(m, Vector3.new(80, 2, groundLen), CFrame.new(HALF_WIDTH + 40, -1.05, zs - 10 + groundLen / 2), PropKit.shade(PropKit.GRASS_GREEN, 0.85), "OuterGrass", Enum.Material.Grass)
+	-- dense forest on both sides of the field (the field is a clearing, like the trailer)
+	local fieldHalf = Config.GRID.cols * Config.GRID.tile / 2
+	local scale = 0.95 + z * 0.08
+	local leaf = ZONE_TREES[z]
+	PropKit.forest(m, fieldHalf + 10, 130, zs - 6, zs + Config.ZONE_SPACING - 14, { seed = z * 101, leaf = leaf, scale = scale, detailDist = 62 })
+	PropKit.forest(m, -130, -(fieldHalf + 10), zs - 6, zs + Config.ZONE_SPACING - 14, { seed = z * 211, leaf = leaf, scale = scale, detailDist = 62 })
+	PropKit.brick(m, Vector3.new(110, 2, groundLen), CFrame.new(-HALF_WIDTH - 55, -1.05, zs - 10 + groundLen / 2), groundColor, "OuterGround", groundMat)
+	PropKit.brick(m, Vector3.new(110, 2, groundLen), CFrame.new(HALF_WIDTH + 55, -1.05, zs - 10 + groundLen / 2), groundColor, "OuterGround", groundMat)
 
 	-- small theme props
 	if z == 2 then
@@ -150,8 +151,8 @@ local function zone(world: Instance, z: number, info)
 			pool.Transparency = 0.25
 		end
 	elseif z == 5 then
-		for _, x in { -40, 40 } do
-			PropKit.forestTree(m, Vector3.new(x, 0, zs + 40), 2.4, Color3.fromRGB(20, 100, 40))
+		for _, x in { -44, 44 } do
+			PropKit.forestTree(m, Vector3.new(x, 0, zs + 40), 1.9, { leaf = Color3.fromRGB(20, 95, 38) })
 		end
 	end
 
@@ -181,10 +182,13 @@ function RunBuilder.build()
 		PropKit.mountain(world, Vector3.new(side * rng:NextNumber(220, 300), -2, HUB_START + i * 70), rng:NextNumber(1.6, 2.6))
 	end
 	PropKit.mountain(world, Vector3.new(0, -2, lastZ + 200), 3)
-	for i = 0, 10 do
-		PropKit.forestTree(world, Vector3.new(-50 + i * 10 + rng:NextNumber(-2, 2), 0, HUB_START - 8 - rng:NextNumber(0, 6)), rng:NextNumber(1.1, 1.5))
-	end
-	PropKit.brick(world, Vector3.new(160, 2, 40), CFrame.new(0, -1.05, HUB_START - 20), PropKit.shade(PropKit.GRASS_GREEN, 0.85), "OuterGrass", Enum.Material.Grass)
+	-- forest around the hub too
+	PropKit.forest(world, -130, 130, HUB_START - 70, HUB_START - 10, { seed = 7, detailDist = 70 })
+	PropKit.forest(world, 52, 130, HUB_START, 18, { seed = 8, detailDist = 62 })
+	PropKit.forest(world, -130, -52, HUB_START, 18, { seed = 9, detailDist = 62 })
+	PropKit.brick(world, Vector3.new(300, 2, 120), CFrame.new(0, -1.05, HUB_START - 40), PropKit.GRASS_GREEN, "OuterGrass", Enum.Material.Grass)
+	PropKit.brick(world, Vector3.new(110, 2, 100), CFrame.new(-105, -1.05, HUB_START + 50), PropKit.GRASS_GREEN, "OuterGrass", Enum.Material.Grass)
+	PropKit.brick(world, Vector3.new(110, 2, 100), CFrame.new(105, -1.05, HUB_START + 50), PropKit.GRASS_GREEN, "OuterGrass", Enum.Material.Grass)
 	return info
 end
 

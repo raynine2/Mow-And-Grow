@@ -2,6 +2,11 @@
 -- The server loads these with InsertService (see server/Models.luau). Don't edit by hand.
 return {
 	birch = 97028069392758,
+	boss_dandelion = 96657493746049,
+	boss_flytrap = 115942792432628,
+	boss_jungle = 96075390360486,
+	boss_thornbush = 102773292450772,
+	boss_vine = 128348059526621,
 	bundle = 132870158261083,
 	bush = 122834030567032,
 	fence = 130577621347383,
@@ -11,8 +16,11 @@ return {
 	leaderboard = 100417001350476,
 	log = 136720431367511,
 	log_cabin = 129304547210509,
+	mower_mulcher = 103739919686360,
+	mower_rocket = 115291236985791,
 	mower_rusty = 129516427340153,
 	mower_tractor = 138331763896406,
+	mower_zeroturn = 130107679373783,
 	oak = 76578773459540,
 	oak_small = 116718312064619,
 	party_booth = 108424189627346,

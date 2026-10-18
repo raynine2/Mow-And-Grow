@@ -73,8 +73,11 @@ local function prepare(name: string, asset: Instance): Model?
 	if #model:GetChildren() == 0 then
 		return nil
 	end
+	-- Roblox's importer turns the model 180 degrees around Y (the front ends up facing +Z). Turning the pivot
+	-- back means a placed model's front faces its CFrame's LookVector, and model-space coordinates match the
+	-- glTF file (x = x, y = up, z = glTF z).
 	local pivot = if origin then CFrame.new(origin.Position) else model:GetBoundingBox()
-	model.WorldPivot = pivot
+	model.WorldPivot = pivot * CFrame.Angles(0, math.pi, 0)
 	model:PivotTo(CFrame.new())
 	model.Parent = folder
 	return model
@@ -101,9 +104,11 @@ function Models.has(name: string): boolean
 	return templates[name] ~= nil
 end
 
--- A copy of model `name` at `cf` (its Blender origin goes there), optionally scaled. Returns nil if the model
--- isn't uploaded yet, so callers can build their fallback instead.
-function Models.place(name: string, parent: Instance, cf: CFrame, scale: number?): Model?
+-- A copy of model `name` at `cf` (its Blender origin goes there, its front faces cf.LookVector), optionally
+-- scaled. Returns nil if the model isn't uploaded yet, so callers can build their fallback instead.
+-- noCollide: the mesh gets no collisions (the caller adds simple invisible colliders, e.g. for walk-in
+-- buildings, whose door a rough mesh collision could block).
+function Models.place(name: string, parent: Instance, cf: CFrame, scale: number?, noCollide: boolean?): Model?
 	local t = templates[name]
 	if not t then
 		return nil
@@ -111,6 +116,13 @@ function Models.place(name: string, parent: Instance, cf: CFrame, scale: number?
 	local m = t:Clone()
 	if scale and scale ~= 1 then
 		m:ScaleTo(scale)
+	end
+	if noCollide then
+		for _, p in m:GetDescendants() do
+			if p:IsA("BasePart") then
+				p.CanCollide = false
+			end
+		end
 	end
 	m:PivotTo(cf)
 	m.Parent = parent

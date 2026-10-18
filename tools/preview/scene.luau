@@ -206,9 +206,63 @@ end
 moduleFolder(service("ReplicatedStorage"), "MowALawn", "src/shared")
 local serverFolder = moduleFolder(service("ServerScriptService"), "MowALawn", "src/server")
 
+-- Blender models: a stand-in for server/Models that records where each model goes. Their bounds come from
+-- MODEL_BOUNDS (a JSON file of { name = { centre = {x,y,z}, size = {x,y,z} } }, see tools/preview/bounds.py);
+-- blender_render.py then draws the real GLBs there.
+local bounds = {}
+local boundsPath = process.env.MODEL_BOUNDS
+if boundsPath and fs.isFile(boundsPath) then
+	bounds = serde.decode("json", fs.readFile(boundsPath))
+end
+local placedModels = {}
+local function fakeModel(name, cf, scale)
+	local m = newInstance("Model")
+	m.Name = name
+	rawset(m, "_glb", { name = name, pivot = cf, scale = scale or 1 })
+	table.insert(placedModels, m)
+	return m
+end
+methods.PivotTo = function(self, cf)
+	local g = rawget(self, "_glb")
+	if g then
+		g.pivot = cf
+	end
+end
+methods.ScaleTo = function(self, s)
+	local g = rawget(self, "_glb")
+	if g then
+		g.scale = s
+	end
+end
+methods.GetBoundingBox = function(self)
+	local g = rawget(self, "_glb")
+	local b = g and bounds[g.name]
+	if not b then
+		return if g then g.pivot else roblox.CFrame.new(), roblox.Vector3.new(4, 4, 4)
+	end
+	local c = roblox.Vector3.new(b.centre[1], b.centre[2], b.centre[3]) * g.scale
+	return g.pivot * roblox.CFrame.new(c), roblox.Vector3.new(b.size[1], b.size[2], b.size[3]) * g.scale
+end
+local ModelsStub = {
+	loadAll = function() end,
+	has = function(name)
+		return bounds[name] ~= nil
+	end,
+	place = function(name, parent, cf, scale)
+		if not bounds[name] then
+			return nil
+		end
+		local m = fakeModel(name, cf, scale)
+		m.Parent = parent
+		return m
+	end,
+	weldTo = function() end,
+}
+
 -- stand-ins for systems that talk to the network
 local stubs = {
 	Net = setmetatable({}, { __index = function() return function() end end }),
+	Models = ModelsStub,
 }
 
 local Random = {}
@@ -292,5 +346,24 @@ for _, d in workspace:GetDescendants() do
 		})
 	end
 end
+local function inWorkspace(i)
+	local p = i._props.Parent
+	while p do
+		if p == workspace then
+			return true
+		end
+		p = p._props.Parent
+	end
+	return false
+end
+local models = 0
+for _, m in placedModels do
+	if inWorkspace(m) then
+		local g = rawget(m, "_glb")
+		local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = g.pivot:GetComponents()
+		table.insert(parts, { model = g.name, scale = g.scale, c = { x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 } })
+		models += 1
+	end
+end
 fs.writeFile(outPath, serde.encode("json", parts))
-print(("%s: %d parts -> %s"):format(mode, #parts, outPath))
+print(("%s: %d parts, %d models -> %s"):format(mode, #parts - models, models, outPath))

@@ -3,6 +3,26 @@
   "id": 97028069392758,
   "sha": "e505a03bf33a53b20c01a20ac7d8b1436f2821288f84dcff547dcc3b06ed11e9"
  },
+ "boss_dandelion": {
+  "id": 96657493746049,
+  "sha": "c4f4ee95c3b578f04c8611c3fb5d1d7678da620beec9198d2a8db278a4016bd8"
+ },
+ "boss_flytrap": {
+  "id": 115942792432628,
+  "sha": "e96005a9cfe342fba3224a44450b17e0dc208d848fe6397b913781d134e2d1b1"
+ },
+ "boss_jungle": {
+  "id": 96075390360486,
+  "sha": "1d5acf4ff9d09a0da277816e12a645e14c409597429bb7a368575f79048f2b77"
+ },
+ "boss_thornbush": {
+  "id": 102773292450772,
+  "sha": "75df702f9cd8fa1a5847177721d56011a18d75ae1ffef25a9f7aa204562256ec"
+ },
+ "boss_vine": {
+  "id": 128348059526621,
+  "sha": "5d16cb7ceaea3de25df288c17c1ad39a7764532154a40c90b3fba24a7b4a4e15"
+ },
  "bundle": {
   "id": 132870158261083,
   "sha": "ed9a4a8d33b0a4ea93009da21293a54414b78c78647d665b1c0de37739942073"
@@ -39,6 +59,14 @@
   "id": 129304547210509,
   "sha": "529d4eab0c4e3c3a4a7900d43855349b6279a6039589199dafbcb80aba5da50f"
  },
+ "mower_mulcher": {
+  "id": 103739919686360,
+  "sha": "a2d3d5a52f989f7a900e4a116a2c806010d27568d3a1a3721e0b3ddeecdea170"
+ },
+ "mower_rocket": {
+  "id": 115291236985791,
+  "sha": "fa89abff879e9dc6e6ba1363bb97be474794ad2de46ca62f756acd2678754efb"
+ },
  "mower_rusty": {
   "id": 129516427340153,
   "sha": "44b553fc345224e73c250b0dca46affa41ad45edc22d3f15b77abb7823073837"
@@ -46,6 +74,10 @@
  "mower_tractor": {
   "id": 138331763896406,
   "sha": "d64927574c60a7cb899fdfde51a69f666d646c1b165b2cc5324475a3622b5cd8"
+ },
+ "mower_zeroturn": {
+  "id": 130107679373783,
+  "sha": "81e6e059066b966a65cbca149c5f5ff04d64f66fbe61c52fda302e43fa3d8f6b"
  },
  "oak": {
   "id": 76578773459540,

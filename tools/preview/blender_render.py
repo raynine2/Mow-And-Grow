@@ -49,12 +49,17 @@ def unit_ball():
 MESH = {"Block": unit_cube(), "Cylinder": unit_cyl(), "Ball": unit_ball()}
 
 # materials: base colour comes from the object colour, texture depends on the Roblox material
-def make_material(name, kind):
+def make_material(name, kind, fixed=None):
+    """fixed: an (r, g, b) linear colour baked into the material (for model instances, whose object colour
+    Cycles takes from the instancer); otherwise the colour comes from the object."""
     mat = bpy.data.materials.new(name); mat.use_nodes = True
     nt = mat.node_tree; n = nt.nodes; l = nt.links
     bsdf = n["Principled BSDF"]
     info = n.new("ShaderNodeObjectInfo")
     col = info.outputs["Color"]
+    if fixed is not None:
+        rgb = n.new("ShaderNodeRGB"); rgb.outputs[0].default_value = tuple(fixed) + (1,)
+        col = rgb.outputs[0]
     if kind in ("Grass", "Ground", "Mud", "Pebble", "Sand", "Slate", "Fabric", "Snow"):
         noise = n.new("ShaderNodeTexNoise")
         noise.inputs["Scale"].default_value = {"Grass": 18, "Pebble": 30, "Fabric": 40}.get(kind, 12)
@@ -106,7 +111,54 @@ cam_r = [float(x) for x in a.cam.split(",")]; look_r = [float(x) for x in a.look
 cam_b = rb(cam_r)
 coll = bpy.data.collections.new("Parts"); scene.collection.children.link(coll)
 count = 0
+
+# Blender models (entries with "model"): import each GLB once into a hidden collection, then instance it.
+# The glTF importer maps glTF (x, y, z) to Blender (x, -z, y), the same mapping as rb(), so an instance's
+# matrix is the Roblox pivot converted like a part's, with a uniform scale.
+import os
+MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assets", "models")
+model_colls = {}
+def model_collection(name):
+    if name in model_colls:
+        return model_colls[name]
+    c = bpy.data.collections.new("GLB_" + name)
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=os.path.join(MODELS_DIR, name + ".glb"))
+    for o in set(bpy.data.objects) - before:
+        for uc in list(o.users_collection):
+            uc.objects.unlink(o)
+        if o.type != "MESH" or o.name.startswith("Origin__"):
+            continue
+        c.objects.link(o)
+        base = o.name.split(".")[0]
+        kind, _, hexcol = base.partition("__")
+        if len(hexcol) >= 6:
+            key = kind + "_" + hexcol[:6]
+            if key not in mats:
+                mats[key] = make_material("M_" + key, kind, [lin(int(hexcol[i:i + 2], 16) / 255) for i in (0, 2, 4)])
+            for slot in o.material_slots:
+                slot.material = mats[key]
+    model_colls[name] = c
+    return c
+
 for p in parts:
+    if "model" not in p:
+        continue
+    pos = p["c"][:3]
+    if (Vector(pos) - Vector(cam_r)).length > a.far + 40:
+        continue
+    R = Matrix((p["c"][3:6], p["c"][6:9], p["c"][9:12]))
+    M = (C @ R @ C.transposed() * p.get("scale", 1)).to_4x4()
+    M.translation = rb(pos)
+    inst = bpy.data.objects.new("I_" + p["model"], None)
+    inst.instance_type = "COLLECTION"; inst.instance_collection = model_collection(p["model"])
+    inst.matrix_world = M
+    coll.objects.link(inst)
+    count += 1
+
+for p in parts:
+    if "model" in p:
+        continue
     pos = p["c"][:3]
     if (Vector(pos) - Vector(cam_r)).length - max(p["s"]) > a.far:
         continue

@@ -352,4 +352,99 @@ function PropKit.wall(parent: Instance, size: Vector3, cf: CFrame): Part
 	return w
 end
 
+-- Invisible solid box, for Blender models placed without mesh collisions (cabin walls, machine bodies).
+-- `at` is the model's CFrame; centre/size are in the model's own studs (before `scale`).
+function PropKit.collider(parent: Instance, at: CFrame, centre: Vector3, size: Vector3, scale: number?): Part
+	local s = scale or 1
+	local c = PropKit.wall(parent, size * s, at * CFrame.new(centre * s))
+	c.Name = "Collider"
+	return c
+end
+
+-- Text on the blank face of a Blender sign (the face looks toward the model's front, -Z). `centre` and `size`
+-- (width, height) are in the model's own studs; the text sits a hair in front of the face.
+function PropKit.facePanel(parent: Instance, at: CFrame, centre: Vector3, size: Vector2, text: string, color: Color3?, scale: number?): TextLabel
+	local s = scale or 1
+	local panel = PropKit.part({
+		size = Vector3.new(size.X * s, size.Y * s, 0.05),
+		cf = at * CFrame.new(centre * s + Vector3.new(0, 0, -0.04)),
+		color = Color3.new(1, 1, 1),
+		parent = parent,
+		transparency = 1,
+		collide = false,
+		studs = false,
+		name = "SignText",
+	})
+	panel.CanQuery = false
+	local label = PropKit.surfaceText(panel, text, color)
+	label.Size = UDim2.fromScale(0.94, 0.9)
+	label.Position = UDim2.fromScale(0.03, 0.05)
+	return label
+end
+
+-- Blender log cabin (shops). The mesh has no collisions; these boxes (in the model's studs) make the walls
+-- solid but keep the 5-wide door open. The room inside is x -11.9..11.9, z -2.5..9.5 (back wall's inner face
+-- at z 9.5, side walls' at x +-11.9), floor top at 0.5; the porch runs to z -11.9.
+local CABIN_WALLS = {
+	{ Vector3.new(0, 0.25, -1), Vector3.new(26.8, 0.5, 21.6) }, -- floor and porch
+	{ Vector3.new(0, 6, 10.2), Vector3.new(26.8, 12, 1.4) }, -- back
+	{ Vector3.new(12.65, 6, 3.5), Vector3.new(1.5, 12, 14.8) }, -- sides
+	{ Vector3.new(-12.65, 6, 3.5), Vector3.new(1.5, 12, 14.8) },
+	{ Vector3.new(7.95, 6, -3.2), Vector3.new(10.9, 12, 1.4) }, -- front, both sides of the door
+	{ Vector3.new(-7.95, 6, -3.2), Vector3.new(10.9, 12, 1.4) },
+	{ Vector3.new(0, 10, -3.2), Vector3.new(5, 4.2, 1.4) }, -- over the door
+}
+
+-- Places a cabin at `at` (front = at.LookVector). Returns false if the model isn't uploaded.
+function PropKit.cabin(parent: Instance, at: CFrame, scale: number): boolean
+	if not Models.place("log_cabin", parent, at, scale, true) then
+		return false
+	end
+	for _, c in CABIN_WALLS do
+		PropKit.collider(parent, at, c[1], c[2], scale)
+	end
+	-- a warm lamp under the roof so the room isn't dark
+	local lamp = PropKit.part({ size = Vector3.one, cf = at * CFrame.new(Vector3.new(0, 8, 3.5) * scale), color = Color3.new(1, 1, 1), parent = parent, transparency = 1, collide = false, name = "CabinLamp" })
+	lamp.CanQuery = false
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 214, 160)
+	light.Range = 22 * scale
+	light.Brightness = 1.4
+	light.Shadows = false
+	light.Parent = lamp
+	return true
+end
+
+-- A plank sign hung on the front edge of a cabin's porch roof.
+function PropKit.cabinSign(parent: Instance, at: CFrame, scale: number, text: string, color: Color3): Part
+	local sign = PropKit.part({
+		size = Vector3.new(14, 3, 0.6) * scale,
+		cf = at * CFrame.new(Vector3.new(0, 10.4, -12.3) * scale),
+		color = Color3.fromRGB(110, 70, 42),
+		parent = parent,
+		name = "CabinSign",
+		material = Enum.Material.WoodPlanks,
+	})
+	PropKit.surfaceText(sign, text, color)
+	return sign
+end
+
+-- A fence line from a to b made of the Blender fence model (8 studs a piece, front facing `facing`), or the
+-- brick fence when the model isn't uploaded.
+function PropKit.fenceRow(parent: Instance, a: Vector3, b: Vector3, facing: Vector3?)
+	if not Models.has("fence") then
+		PropKit.fence(parent, a, b, Color3.fromRGB(150, 105, 65), 3.6)
+		return
+	end
+	local dir = b - a
+	local n = math.max(1, math.floor(dir.Magnitude / 8 + 0.5))
+	local along = dir.Unit
+	local f = facing or along:Cross(Vector3.yAxis)
+	for i = 0, n - 1 do
+		local p = a + along * (dir.Magnitude * (i + 0.5) / n)
+		-- the fence runs along its X axis, so facing f (sideways to the line) lays it along the line
+		Models.place("fence", parent, CFrame.lookAt(p, p + f), dir.Magnitude / n / 8, true)
+	end
+end
+
 return PropKit

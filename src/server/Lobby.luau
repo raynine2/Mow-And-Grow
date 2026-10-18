@@ -51,6 +51,28 @@ local function updateBoard()
 	built.stockLabel.Text = table.concat(lines, "\n")
 end
 
+-- The leaderboard by the party booths: this server's players, most grass cut first.
+local function updateLeaders()
+	if not built.leaderLabel then
+		return
+	end
+	local rows = {}
+	for _, p in Players:GetPlayers() do
+		local data = PlayerData.get(p)
+		if data then
+			table.insert(rows, { name = p.DisplayName, cut = data.stats.cut or 0 })
+		end
+	end
+	table.sort(rows, function(a, b)
+		return a.cut > b.cut
+	end)
+	local lines = {}
+	for i = 1, math.min(8, #rows) do
+		table.insert(lines, ("%d. %s  -  %s cut"):format(i, rows[i].name, Format.short(rows[i].cut)))
+	end
+	built.leaderLabel.Text = if #lines > 0 then table.concat(lines, "\n") else "Mow some grass to get on the board!"
+end
+
 local function buyClass(player: Player, data, id: string)
 	local c = Config.class(id)
 	if not c or c.gems <= 0 then
@@ -354,8 +376,13 @@ function Lobby.start()
 		end
 	end)
 	task.spawn(function()
+		local tick = 0
 		while running do
 			pcall(updateBoard)
+			if tick % 5 == 0 then
+				pcall(updateLeaders)
+			end
+			tick += 1
 			task.wait(1)
 		end
 	end)

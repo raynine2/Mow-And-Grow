@@ -2,26 +2,193 @@
 -- Grass patches are spawned by Field; this file only builds the static world.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
+local Format = require(ReplicatedStorage.MowALawn.Format)
 local PropKit = require(script.Parent.PropKit)
+local Models = require(script.Parent.Models)
 local Environment = require(script.Parent.Environment)
 
 local RunBuilder = {}
 
 local HALF_WIDTH = 50 -- the map is 100 studs wide
 local HUB_START = -80
+local FLOOR_Y = 0.3 -- top of the hub's dirt yard
 
 local function fieldLength(): number
 	return Config.GRID.rows * Config.GRID.tile
 end
 
+-- An invisible part to hang a prompt on.
+local function promptSpot(parent: Instance, cf: CFrame, name: string): Part
+	local p = PropKit.part({ size = Vector3.new(2, 2, 2), cf = cf, color = Color3.new(1, 1, 1), parent = parent, transparency = 1, collide = false, name = name })
+	p.CanQuery = false
+	return p
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- tool shop: a log cabin with every tool in a frame on its walls (like Chop A Forest's axe wall)
+-------------------------------------------------------------------------------------------------------------
+local TOOL_MODEL = {
+	Scissors = "tool_scissors",
+	Sickle = "tool_sickle",
+	PushMower = "tool_pushmower",
+	WeedWhacker = "tool_whacker",
+	MegaScythe = "tool_scythe",
+	LaserMower = "tool_lasermower",
+}
+-- where each frame hangs in the cabin's room (cabin studs): four on the back wall, one on each side wall
+local FRAME_SPOTS = {
+	{ Vector3.new(9, 1.7, 9.33), 0, 0.85 },
+	{ Vector3.new(3, 1.7, 9.33), 0, 0.85 },
+	{ Vector3.new(-3, 1.7, 9.33), 0, 0.85 },
+	{ Vector3.new(-9, 1.7, 9.33), 0, 0.85 },
+	{ Vector3.new(11.77, 1.7, 7.3), 90, 0.66 },
+	{ Vector3.new(-11.77, 1.7, 7.3), -90, 0.66 },
+}
+-- hand tools hang across the pegs: their length (model Z) along the board, flat side out
+local HANG = CFrame.Angles(0, math.rad(90), 0) * CFrame.Angles(0, 0, math.rad(90))
+
+local function toolFrame(parent: Instance, cabinAt: CFrame, tool, spot)
+	local s = spot[3]
+	local cf = cabinAt * CFrame.new(spot[1]) * CFrame.Angles(0, math.rad(spot[2]), 0)
+	if not Models.place("tool_wall_frame", parent, cf, s, true) then
+		PropKit.brick(parent, Vector3.new(6, 5, 0.3) * s, cf * CFrame.new(Vector3.new(0, 3.6, 0) * s), Color3.fromRGB(232, 176, 112), "ToolBoard", Enum.Material.WoodPlanks)
+		PropKit.brick(parent, Vector3.new(5.4, 1.6, 0.4) * s, cf * CFrame.new(Vector3.new(0, 0.8, -0.3) * s), Color3.fromRGB(62, 42, 30), "PriceBoard", Enum.Material.Wood)
+	end
+	PropKit.facePanel(parent, cf, Vector3.new(0, 0.82, -0.57), Vector2.new(5.4, 1.5), "$" .. Format.commas(tool.cost), Color3.fromRGB(120, 255, 90), s)
+	local onFloor = tool.id == "PushMower" or tool.id == "LaserMower"
+	local name = TOOL_MODEL[tool.id]
+	if onFloor then
+		-- mowers stand on the cabin floor in front of their frame
+		Models.place(name, parent, cf * CFrame.new(0, -1.2, -3.6 * s), 0.85, true)
+	else
+		local target = cf * CFrame.new(Vector3.new(0, 3.9, -0.85) * s)
+		local m = Models.place(name, parent, target * HANG, 1, true)
+		if m then
+			local _, size = m:GetBoundingBox()
+			local fit = 4.2 * s / math.max(size.X, size.Y, size.Z)
+			if fit < 1 then
+				m:ScaleTo(fit)
+			end
+			local box = m:GetBoundingBox()
+			m:PivotTo(m:GetPivot() + (target.Position - box.Position))
+		end
+	end
+	local prompt = PropKit.prompt(promptSpot(parent, cf * CFrame.new(0, 3.5 * s, -1.5), "ToolFrame"), "View", tool.name, "ToolView", 7)
+	prompt:SetAttribute("Item", tool.id)
+end
+
+local function toolShop(m: Instance, info)
+	local shop = PropKit.folder("TOOL SHOP", m)
+	local pos = Vector3.new(24, FLOOR_Y, -40)
+	local at = CFrame.lookAt(pos, pos - Vector3.xAxis)
+	if not PropKit.cabin(shop, at, 1) then
+		PropKit.stall(m, CFrame.new(28, 0, -55) * CFrame.Angles(0, math.rad(90), 0), "TOOL SHOP", Color3.fromRGB(255, 80, 80), "Tools")
+		return
+	end
+	PropKit.cabinSign(shop, at, 1, "TOOL SHOP", Color3.fromRGB(255, 120, 70))
+	for i = 2, #Config.TOOLS do
+		local spot = FRAME_SPOTS[i - 1]
+		if spot then
+			toolFrame(shop, at, Config.TOOLS[i], spot)
+		end
+	end
+	-- the Guide arrow points just outside the door ("Counter" looks out of the door)
+	promptSpot(shop, at * CFrame.new(0, 2, -6), "Counter")
+	-- a lantern at the door
+	Models.place("lantern_post", shop, at * CFrame.new(5, 0.5, -10.6), 0.8, true)
+end
+
+-- Gas pump: prompt refuels your mower if it's parked nearby. `facing` is where its front looks.
+local function gasPump(parent: Instance, pos: Vector3, info, facing: Vector3?)
+	local cf = CFrame.lookAt(pos, pos + (facing or -Vector3.zAxis))
+	local body: BasePart
+	if Models.place("gas_pump", parent, cf, 1.1, true) then
+		body = PropKit.collider(parent, cf, Vector3.new(0, 3, 0), Vector3.new(3.2, 6.2, 2.8), 1.1)
+		body.Name = "GasPump"
+	else
+		local red = Color3.fromRGB(240, 60, 60)
+		body = PropKit.brick(parent, Vector3.new(3, 6, 2.4), cf * CFrame.new(0, 3, 0), red, "GasPump")
+		PropKit.brick(parent, Vector3.new(3.4, 1, 2.8), cf * CFrame.new(0, 6.5, 0), Color3.fromRGB(255, 255, 255), "PumpTop")
+		PropKit.brick(parent, Vector3.new(2, 1.4, 0.4), cf * CFrame.new(0, 4.6, -1.3), Color3.fromRGB(40, 40, 50), "PumpScreen")
+	end
+	PropKit.billboard(body, "GAS", Color3.fromRGB(255, 230, 80), Vector2.new(5, 2), Vector3.new(0, 5, 0), 120)
+	local prompt = PropKit.prompt(body, "Refuel", "Gas Pump", nil, 14)
+	prompt:SetAttribute("Pump", true)
+	table.insert(info.pumps, { pos = pos, prompt = prompt })
+end
+
+-- The garage: an open wooden bay (party booth model) where your mower spawns, with a gas pump beside it.
+local function garageBay(m: Instance, info)
+	local pos = Vector3.new(-30, FLOOR_Y, -64)
+	local at = CFrame.lookAt(pos, pos + Vector3.xAxis)
+	local g = PropKit.folder("Garage", m)
+	if Models.place("party_booth", g, at, 1.1, true) then
+		PropKit.facePanel(g, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "GARAGE", Color3.fromRGB(255, 150, 50), 1.1)
+		for _, x in { -7.2, 7.2 } do
+			PropKit.collider(g, at, Vector3.new(x, 5, 6.6), Vector3.new(1.4, 10, 1.4), 1.1)
+			PropKit.collider(g, at, Vector3.new(x, 1.2, 0), Vector3.new(0.8, 2.4, 14), 1.1)
+		end
+		PropKit.collider(g, at, Vector3.new(0, 1.2, 7), Vector3.new(14, 2.4, 0.8), 1.1)
+	else
+		PropKit.stall(g, CFrame.new(-28, 0, -70) * CFrame.Angles(0, math.rad(-90), 0), "GARAGE", Color3.fromRGB(160, 95, 255), "Mowers")
+		PropKit.pad(g, pos, 5, Color3.fromRGB(160, 95, 255), "MOWER SPAWN")
+	end
+	PropKit.prompt(promptSpot(g, at * CFrame.new(0, 3, -8.5), "GaragePrompt"), "Open", "Garage", "Mowers", 12)
+	info.garageSpawn = at * CFrame.new(0, 2, 0)
+	gasPump(g, (at * CFrame.new(10, 0, -6)).Position, info, Vector3.xAxis)
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- hub
+-------------------------------------------------------------------------------------------------------------
+-- The Giant Grass Shredder (Blender model) with its log-framed sell pad in front of the hopper.
+local function shredder(m: Instance, info): boolean
+	local s = PropKit.folder("Shredder", m)
+	local pos = Vector3.new(-24, FLOOR_Y, -36)
+	local at = CFrame.lookAt(pos, pos - Vector3.xAxis) -- drum toward the spawn, hopper toward the yard
+	if not Models.place("shredder", s, at, 1.15, true) then
+		return false
+	end
+	PropKit.collider(s, at, Vector3.new(0, 5, -0.7), Vector3.new(7.8, 10, 14.5), 1.15)
+	info.shredderMouth = (at * CFrame.new(Vector3.new(0.3, 8.8, 4.8) * 1.15)).Position
+	info.shredderOut = (at * CFrame.new(Vector3.new(0, 1.2, -8.6) * 1.15)).Position
+	local padAt = at * CFrame.new(0, 0, 16.5)
+	local sellPos = padAt.Position
+	if Models.place("sell_pad", s, padAt, 1, true) then
+		PropKit.collider(s, padAt, Vector3.new(0, 0.41, 0), Vector3.new(13, 0.82, 13))
+	else
+		PropKit.pad(s, sellPos, 6, Color3.fromRGB(80, 220, 80))
+	end
+	local holder = promptSpot(s, CFrame.new(sellPos + Vector3.new(0, 1, 0)), "SellLabel")
+	PropKit.billboard(holder, "DROP BUNDLES", Color3.fromRGB(255, 230, 80), Vector2.new(12, 2.6), Vector3.new(0, 5, 0), 120)
+	info.sellPos = sellPos
+	info.sellRadius = 7
+	-- the 2X COINS board next to the machine (opens the store)
+	local signAt = CFrame.lookAt(Vector3.new(-38, FLOOR_Y, -50), Vector3.new(-6, FLOOR_Y, -68))
+	if Models.place("start_sign", s, signAt, 0.45, true) then
+		PropKit.facePanel(s, signAt, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "2X COINS", Color3.fromRGB(255, 214, 60), 0.45)
+		PropKit.facePanel(s, signAt, Vector3.new(0, 6.1, -0.62), Vector2.new(27, 1.5), "BUY!", Color3.fromRGB(120, 255, 90), 0.45)
+		PropKit.prompt(promptSpot(s, signAt * CFrame.new(0, 3, -1.5), "CoinsSign"), "Open", "2x Coins", "Store", 10)
+	end
+	return true
+end
+
 local function hub(world: Instance, info)
 	local m = PropKit.folder("Hub", world)
-	-- ground: soft grass with a gravel yard around the machines
+	-- ground: soft grass with a dirt yard around the cabin and the machines
 	PropKit.brick(m, Vector3.new(100, 2, 100), CFrame.new(0, -1, HUB_START + 50), PropKit.GRASS_GREEN, "HubGround", Enum.Material.Grass)
-	PropKit.brick(m, Vector3.new(84, 0.3, 70), CFrame.new(0, 0.15, -45), Color3.fromRGB(165, 155, 140), "Yard", Enum.Material.Pebble)
-	Environment.spawn(m, CFrame.new(0, 0.5, -68))
+	PropKit.brick(m, Vector3.new(96, FLOOR_Y, 60), CFrame.new(0, FLOOR_Y / 2, -48), Color3.fromRGB(166, 124, 82), "Yard", Enum.Material.Ground)
+	Environment.spawn(m, CFrame.lookAt(Vector3.new(0, 0.8, -68), Vector3.new(0, 0.8, 0)))
+	toolShop(m, info)
+	-- fences along the hub's sides
+	PropKit.fenceRow(m, Vector3.new(-48, 0, -78), Vector3.new(-48, 0, 14), Vector3.xAxis)
+	PropKit.fenceRow(m, Vector3.new(48, 0, -78), Vector3.new(48, 0, 14), -Vector3.xAxis)
+	garageBay(m, info)
+	if shredder(m, info) then
+		return
+	end
 
-	-- Giant Grass Shredder
+	-- Giant Grass Shredder (brick version, used until the Blender model is uploaded)
 	local s = PropKit.folder("Shredder", m)
 	local base = CFrame.new(-28, 0, -45) * CFrame.Angles(0, math.rad(-90), 0)
 	local orange = Color3.fromRGB(255, 140, 40)
@@ -52,28 +219,6 @@ local function hub(world: Instance, info)
 	info.shredderMouth = mouth.Position
 	info.shredderOut = (base * CFrame.new(0, 1, -9)).Position
 	body:SetAttribute("Shredder", true)
-
-	-- shops
-	PropKit.stall(m, CFrame.new(28, 0, -55) * CFrame.Angles(0, math.rad(90), 0), "TOOL SHOP", Color3.fromRGB(255, 80, 80), "Tools")
-	PropKit.stall(m, CFrame.new(28, 0, -30) * CFrame.Angles(0, math.rad(90), 0), "UPGRADES", Color3.fromRGB(60, 165, 255), "Upgrades")
-	PropKit.stall(m, CFrame.new(-28, 0, -70) * CFrame.Angles(0, math.rad(-90), 0), "GARAGE", Color3.fromRGB(160, 95, 255), "Mowers")
-	PropKit.stall(m, CFrame.new(0, 0, -78) * CFrame.Angles(0, math.rad(180), 0), "STORE", Color3.fromRGB(255, 110, 190), "Store")
-	info.garageSpawn = CFrame.new(-12, 2, -70) * CFrame.Angles(0, math.rad(0), 0)
-	PropKit.pad(m, Vector3.new(-12, 0, -70), 5, Color3.fromRGB(160, 95, 255), "MOWER SPAWN")
-end
-
--- Gas pump: prompt refuels your mower if it's parked nearby.
-local function gasPump(parent: Instance, pos: Vector3, info)
-	local cf = CFrame.new(pos)
-	local red = Color3.fromRGB(240, 60, 60)
-	local body = PropKit.brick(parent, Vector3.new(3, 6, 2.4), cf * CFrame.new(0, 3, 0), red, "GasPump")
-	PropKit.brick(parent, Vector3.new(3.4, 1, 2.8), cf * CFrame.new(0, 6.5, 0), Color3.fromRGB(255, 255, 255), "PumpTop")
-	PropKit.brick(parent, Vector3.new(2, 1.4, 0.4), cf * CFrame.new(0, 4.6, -1.3), Color3.fromRGB(40, 40, 50), "PumpScreen")
-	PropKit.brick(parent, Vector3.new(0.5, 2.4, 0.5), cf * CFrame.new(1.8, 3, 0), Color3.fromRGB(30, 30, 35), "Hose")
-	PropKit.billboard(body, "GAS", Color3.fromRGB(255, 230, 80), Vector2.new(5, 2), Vector3.new(0, 5, 0), 120)
-	local prompt = PropKit.prompt(body, "Refuel", "Gas Pump", nil, 14)
-	prompt:SetAttribute("Pump", true)
-	table.insert(info.pumps, { pos = pos, prompt = prompt })
 end
 
 local ZONE_TREES = {
@@ -97,11 +242,28 @@ local function zone(world: Instance, z: number, info)
 	-- a thin soil bed under the grass patches (shows where the field is once it's mown)
 	PropKit.brick(m, Vector3.new(Config.GRID.cols * Config.GRID.tile + 1, 0.3, len + 1), CFrame.new(0, 0.15, zs + len / 2), PropKit.shade(groundColor, 0.8), "Soil", groundMat)
 
-	-- zone sign
-	PropKit.sign(m, CFrame.new(-38, 7, zs - 6) * CFrame.Angles(0, math.rad(-150), 0), Vector3.new(16, 4, 1), def.name, def.grass[1], Color3.new(1, 1, 1))
+	-- zone sign (a plank board on two posts, turned toward the road)
+	local signAt = CFrame.new(-36, 0, zs - 6) * CFrame.Angles(0, math.rad(-150), 0)
+	if Models.place("start_sign", m, signAt, 0.55, true) then
+		PropKit.facePanel(m, signAt, Vector3.new(0, 9.0, -0.62), Vector2.new(27, 4.6), def.name, Color3.fromRGB(255, 240, 200), 0.55)
+	else
+		PropKit.sign(m, CFrame.new(-38, 7, zs - 6) * CFrame.Angles(0, math.rad(-150), 0), Vector3.new(16, 4, 1), def.name, def.grass[1], Color3.new(1, 1, 1))
+	end
 
 	-- gate (zones 2+): closed until the previous boss falls
 	if z > 1 then
+		local gate = Instance.new("Model")
+		gate.Name = "Gate" .. z
+		local gz = zs - 16
+		local gateAt = CFrame.lookAt(Vector3.new(0, 0, gz), Vector3.new(0, 0, gz - 1))
+		if Models.place("gate", gate, gateAt, 1, true) then
+			PropKit.facePanel(gate, gateAt, Vector3.new(0, 5.3, -2.3), Vector2.new(15.6, 4), "LOCKED\nBeat the " .. Config.ZONES[z - 1].boss.name, Color3.fromRGB(255, 235, 120))
+			PropKit.wall(gate, Vector3.new(HALF_WIDTH * 2, 30, 2), CFrame.new(0, 15, gz)).Name = "GateWall"
+			gate.Parent = m
+			info.gates[z] = gate
+		end
+	end
+	if z > 1 and not info.gates[z] then
 		local gate = Instance.new("Model")
 		gate.Name = "Gate" .. z
 		local gz = zs - 16
@@ -163,7 +325,6 @@ function RunBuilder.build()
 	local world = Environment.apply()
 	local info = { world = world, gates = {}, pumps = {} }
 	hub(world, info)
-	gasPump(world, Vector3.new(14, 0, -40), info)
 	for z = 1, #Config.ZONES do
 		zone(world, z, info)
 	end

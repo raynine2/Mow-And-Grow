@@ -129,34 +129,73 @@ perks.refresh = function()
 end
 
 -------------------------------------------------------------------------------------------------------------
--- UPGRADES (TAB, run): Upgrades + Stats
+-- UPGRADES (TAB, run): Upgrades (Hands / Tool / Gear sections) + Stats + Index
 -------------------------------------------------------------------------------------------------------------
-local RUN_TABS = { { label = "Upgrades", window = "Upgrades" }, { label = "Stats", window = "Stats" } }
-local UPGRADE_ICON = { power = "upgrade", carry = "backpack", speed = "clover", sell = "coin" }
-local upgrades = UI.window("Upgrades", "Upgrades", nil, { tabs = RUN_TABS, grid = Vector2.new(390, 190) })
+local RUN_TABS = { { label = "Upgrades", window = "Upgrades" }, { label = "Stats", window = "Stats" }, { label = "Index", window = "Index" } }
+local UPGRADE_ICON = { swing = "hands", grasp = "bundle", power = "upgrade", speed = "clover", sell = "coin" }
+local CARD = Vector2.new(250, 200)
+
+-- A row of fixed-size cards under a heading (the window lists sections top to bottom).
+local function cardRow(list: Instance, order: number, count: number): Frame
+	local row = Instance.new("Frame")
+	row.Name = "CardRow"
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, -10, 0, CARD.Y)
+	row.LayoutOrder = order
+	row.Parent = list
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 16)
+	layout.Parent = row
+	local _ = count
+	return row
+end
+
+local function cardSlot(row: Frame, order: number): Frame
+	local slot = Instance.new("Frame")
+	slot.BackgroundTransparency = 1
+	slot.Size = UDim2.fromOffset(CARD.X, CARD.Y)
+	slot.LayoutOrder = order
+	slot.Parent = row
+	return slot
+end
+
+local upgrades = UI.window("Upgrades", "Upgrades", nil, { tabs = RUN_TABS })
 upgrades.refresh = function()
 	local d = data()
 	UI.clear(upgrades.list)
 	if not d or not d.run then
 		return
 	end
-	for i, u in Config.UPGRADES do
-		local level = d.run.upgrades[u.id] or 0
-		local maxed = level >= u.max
-		local cost = if maxed then 0 else Config.upgradeCost(u.id, level)
-		UI.blueCard(upgrades.list, i, {
-			title = u.name,
-			sub = u.desc,
-			icon = UPGRADE_ICON[u.id],
-			level = level,
-			max = u.max,
-			price = if maxed then "MAX" else "$" .. Format.short(cost),
-			enabled = not maxed and d.run.coins >= cost,
-			color = Color3.fromRGB(70, 190, 90),
-			onClick = function()
-				State.fire("Buy", "upgrade", u.id)
-			end,
-		})
+	local order = 0
+	for _, section in Config.UPGRADE_SECTIONS do
+		order += 1
+		local title = if section == "Tool" then "Tool - " .. (Config.TOOLS[d.run.tool] or Config.TOOLS[1]).name else section
+		UI.heading(upgrades.list, order, title)
+		order += 1
+		local row = cardRow(upgrades.list, order, 0)
+		for i, u in Config.UPGRADES do
+			if u.section == section then
+				local level = d.run.upgrades[u.id] or 0
+				local maxed = level >= u.max
+				local cost = if maxed then 0 else Config.upgradeCost(u.id, level)
+				UI.blueCard(cardSlot(row, i), 1, {
+					title = u.name,
+					sub = u.desc,
+					icon = UPGRADE_ICON[u.id],
+					level = level,
+					max = u.max,
+					price = if maxed then "MAX" else "$" .. Format.short(cost),
+					enabled = not maxed and d.run.coins >= cost,
+					color = Color3.fromRGB(70, 190, 90),
+					onClick = function()
+						State.fire("Buy", "upgrade", u.id)
+					end,
+				})
+			end
+		end
 	end
 	moneyLine(upgrades.list, 99, "Your money: $" .. Format.commas(d.run.coins))
 end
@@ -170,16 +209,124 @@ stats.refresh = function()
 	end
 	local rows = {
 		{ "upgrade", "Power", string.format("x%.2f", d.power) },
-		{ "backpack", "Carry", tostring(d.carryMax) },
+		{ "backpack", "Carry", if d.endless then "ENDLESS" else tostring(d.carryMax) },
+		{ "bundle", "Pickup reach", string.format("%.1f studs", d.grasp or 0) },
+		{ "hands", "Swing time", string.format("x%.2f", d.swing or 1) },
 		{ "clover", "Mutation Luck", string.format("x%.2f", d.luck) },
 		{ "coin", "Sell Price", string.format("x%.2f", d.sell) },
 		{ "bundle", "Grass cut", Format.commas(d.stats.cut) },
 		{ "gem", "Runs finished", tostring(d.stats.runs) },
 		{ "lock", "Bosses beaten", tostring(d.stats.bosses) },
+		{ "stats", "Best run", if (d.bestTime or 0) > 0 then Format.clock(d.bestTime) else "-" },
 	}
 	for i, r in rows do
 		UI.popupRow(stats.list, i, r[1], r[2], r[3], Color3.new(1, 1, 1)).Size = UDim2.new(1, -20, 0, 56)
 	end
+end
+
+-- INDEX: every grass type x mutation; the ones you've collected show their colour, the rest a lock.
+local index = UI.window("Index", "Index", nil, { tabs = RUN_TABS, gems = true })
+index.refresh = function()
+	local d = data()
+	UI.clear(index.list)
+	if not d then
+		return
+	end
+	local found = {}
+	for _, key in d.index or {} do
+		found[key] = true
+	end
+	local total, have = 0, 0
+	local order = 0
+	for z, zone in Config.ZONES do
+		order += 1
+		UI.heading(index.list, order, zone.grassName)
+		order += 1
+		local row = Instance.new("Frame")
+		row.BackgroundTransparency = 1
+		row.Size = UDim2.new(1, -10, 0, 96)
+		row.LayoutOrder = order
+		row.Parent = index.list
+		local layout = Instance.new("UIListLayout")
+		layout.FillDirection = Enum.FillDirection.Horizontal
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+		layout.Padding = UDim.new(0, 10)
+		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.Parent = row
+		for i, m in Config.MUTATIONS do
+			total += 1
+			local got = found[z .. ":" .. m.id] == true
+			if got then
+				have += 1
+			end
+			local color = if got then (m.color or zone.grass[1]) else Color3.fromRGB(60, 52, 48)
+			local cell = UI.frame({ size = UDim2.fromOffset(118, 92), color = color, parent = row, radius = 12, outline = 3 })
+			cell.LayoutOrder = i
+			UI.gradient(cell, color)
+			if got then
+				UI.icon(cell, "bundle", 40, UDim2.new(0.5, 0, 0, 8), Vector2.new(0.5, 0))
+			else
+				UI.icon(cell, "lock", 34, UDim2.new(0.5, 0, 0, 10), Vector2.new(0.5, 0))
+			end
+			UI.text(cell, if got then (if m.id == "None" then "Normal" else m.id) else "???", UDim2.new(1, -8, 0, 26), { pos = UDim2.fromOffset(4, 60), stroke = 2 })
+		end
+	end
+	local line = moneyLine(index.list, 0, ("Collected %d / %d  -  +%d gems for each new one"):format(have, total, Config.INDEX_GEMS))
+	line.LayoutOrder = 0
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- BAGS (run, the Bag Stand): bag tiers in order, the Leaf Vacuum, and the Bottomless Sack game pass
+-------------------------------------------------------------------------------------------------------------
+local bags = UI.window("Bags", "Bags & Gear", nil, { grid = Vector2.new(250, 250) })
+bags.refresh = function()
+	local d = data()
+	UI.clear(bags.list)
+	if not d or not d.run then
+		return
+	end
+	local bag = d.run.bag or 0
+	for i, b in Config.BAGS do
+		local price, enabled, action = "OWNED", false, function() end
+		if i == bag + 1 then
+			price, enabled = "$" .. Format.short(b.cost), d.run.coins >= b.cost
+			action = function()
+				State.fire("Buy", "bag", b.id)
+			end
+		elseif i > bag + 1 then
+			price = "BUY " .. string.upper(Config.BAGS[i - 1].name) .. " FIRST"
+		end
+		UI.blueCard(bags.list, i, { title = b.name, sub = ("+%d bundles carried"):format(b.carry), icon = "backpack", price = price, enabled = enabled, color = Color3.fromRGB(70, 190, 90), onClick = action })
+	end
+	local vac = Config.VACUUM
+	UI.blueCard(bags.list, 10, {
+		title = vac.name,
+		sub = ("Picks up loot from %dx farther"):format(vac.graspMult),
+		icon = "bundle",
+		price = if d.run.vacuum then "OWNED" else "$" .. Format.short(vac.cost),
+		enabled = not d.run.vacuum and d.run.coins >= vac.cost,
+		color = Color3.fromRGB(255, 150, 50),
+		onClick = function()
+			if not d.run.vacuum then
+				State.fire("Buy", "vacuum", "Vacuum")
+			end
+		end,
+	})
+	local sack = Config.PASSES.BigBag
+	local ownsSack = d.passes and d.passes.BigBag
+	UI.blueCard(bags.list, 11, {
+		title = sack.name,
+		sub = sack.desc,
+		icon = "backpack",
+		price = if ownsSack then "OWNED" else "R$ " .. sack.robux,
+		enabled = not ownsSack,
+		color = Color3.fromRGB(140, 90, 255),
+		onClick = function()
+			if not ownsSack then
+				State.fire("Prompt", "pass", "BigBag")
+			end
+		end,
+	})
 end
 
 -------------------------------------------------------------------------------------------------------------

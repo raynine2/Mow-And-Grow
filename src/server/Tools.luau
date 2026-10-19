@@ -174,44 +174,60 @@ function Tools.build(def): Tool
 	return tool
 end
 
--- Make sure the player holds exactly their best tool.
+local function toolIndex(id: any): number?
+	for i, def in Config.TOOLS do
+		if def.id == id then
+			return i
+		end
+	end
+	return nil
+end
+
+-- Make sure the player has every tool they own this run, once each (the hotbar shows them all). A tool that is
+-- new (just bought, or the best one after a respawn) is equipped straight away.
 function Tools.give(player: Player)
 	local data = PlayerData.get(player)
 	if not data or not data.run then
 		return
 	end
-	local def = Config.TOOLS[data.run.tool] or Config.TOOLS[1]
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	local char = player.Character
 	if not backpack then
 		return
 	end
-	local has = false
+	local best = math.clamp(data.run.tool, 1, #Config.TOOLS)
+	local have: { [number]: Tool } = {}
 	for _, container in { backpack, char } do
 		if container then
 			for _, t in container:GetChildren() do
 				if t:IsA("Tool") and t:GetAttribute("ToolId") then
-					if t:GetAttribute("ToolId") == def.id then
-						has = true
-					else
+					local i = toolIndex(t:GetAttribute("ToolId"))
+					if not i or i > best or have[i] then
 						t:Destroy()
+					else
+						have[i] = t
 					end
 				end
 			end
 		end
 	end
-	if not has then
-		local tool = Tools.build(def)
-		tool.Parent = backpack
-		-- equip the new tool straight away
-		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			hum:EquipTool(tool)
+	local newBest: Tool? = nil
+	for i = 1, best do
+		if not have[i] then
+			local tool = Tools.build(Config.TOOLS[i])
+			tool.Parent = backpack
+			if i == best then
+				newBest = tool
+			end
 		end
+	end
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if newBest and hum then
+		hum:EquipTool(newBest)
 	end
 end
 
--- The tool the player is holding right now (its def), or nil.
+-- The tool the player is holding right now (its def), or nil. Only tools they own count.
 function Tools.equipped(player: Player)
 	local char = player.Character
 	if not char then
@@ -221,13 +237,12 @@ function Tools.equipped(player: Player)
 	if not tool then
 		return nil
 	end
-	local id = tool:GetAttribute("ToolId")
-	for _, def in Config.TOOLS do
-		if def.id == id then
-			return def, tool
-		end
+	local i = toolIndex(tool:GetAttribute("ToolId"))
+	local data = PlayerData.get(player)
+	if not i or not data or not data.run or i > data.run.tool then
+		return nil
 	end
-	return nil
+	return Config.TOOLS[i], tool
 end
 
 -- Play the default "slash" arm swing (the stock Animate script listens for this).

@@ -45,6 +45,8 @@ local DEFAULT = {
 	lastDaily = 0,
 	groupClaimed = false,
 	stats = { cut = 0, runs = 0, bosses = 0 },
+	index = {}, -- grass types collected: ["<zone>:<mutation>"] = true (see Config.INDEX_GEMS)
+	bestTime = 0, -- fastest finished run in seconds (0 = none yet)
 	run = nil, -- the saved run, see PlayerData.newRun
 	receipts = {}, -- recent processed purchase ids
 }
@@ -54,7 +56,9 @@ function PlayerData.newRun()
 		zone = 1, -- highest zone unlocked
 		coins = 0,
 		tool = 1, -- index into Config.TOOLS of the best tool owned
-		upgrades = { power = 0, carry = 0, speed = 0, sell = 0 },
+		upgrades = { power = 0, speed = 0, sell = 0, swing = 0, grasp = 0 }, -- (old runs may also have "carry")
+		bag = 0, -- index into Config.BAGS of the best bag bought (0 = none)
+		vacuum = false, -- the Leaf Vacuum
 		mowers = {}, -- coin mowers bought this run: [id] = true
 		trial = false, -- Trial Mower bought for this run
 		fuel = {}, -- [mowerId] = fuel left

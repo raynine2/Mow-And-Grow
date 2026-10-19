@@ -30,12 +30,13 @@ end
 local function toolCooldown(): number
 	local tool = equippedSwingTool()
 	local id = tool and tool:GetAttribute("ToolId")
+	local mult = State.data and State.data.swing or 1 -- Swing Speed upgrades (the server checks the same)
 	for _, def in Config.TOOLS do
 		if def.id == id then
-			return def.cooldown or 0.4
+			return (def.cooldown or 0.4) * mult
 		end
 	end
-	return 0.4
+	return 0.4 * mult
 end
 
 local function swing()

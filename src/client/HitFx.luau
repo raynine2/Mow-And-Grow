@@ -551,7 +551,8 @@ function HitFx.swing(toolId: string?)
 	end
 	local root = myRoot()
 	local d = State.data
-	if not def or def.kind ~= "swing" or not root or not d or not d.run or d.run.carry >= (d.carryMax or 1) then
+	-- no swing effect when the bag is full (bundles still on the ground count too)
+	if not def or def.kind ~= "swing" or not root or not d or not d.run or (not d.endless and d.run.carry + (d.run.ground or 0) >= (d.carryMax or 1)) then
 		return
 	end
 	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)

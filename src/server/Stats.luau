@@ -12,17 +12,31 @@ end
 function Stats.compute(player: Player, data)
 	local class = Config.class(data.class) or Config.class(Config.DEFAULT_CLASS)
 	local run = data.run
-	local up = if run then run.upgrades else { power = 0, carry = 0, speed = 0, sell = 0 }
+	local up = if run then run.upgrades else {}
+	local function level(id: string): number
+		return up[id] or 0
+	end
+	local function per(id: string): number
+		local u = Config.upgrade(id)
+		return if u then u.per else 0
+	end
 	local vip = hasPass(player, "VIP")
+	local bag = run and Config.BAGS[run.bag or 0]
 
 	local s = {}
-	s.power = (1 + (class.power or 0) + up.power * Config.upgrade("power").per) * (if vip then 1.15 else 1)
+	s.power = (1 + (class.power or 0) + level("power") * per("power")) * (if vip then 1.15 else 1)
 	s.carry = Config.BASE_CARRY
 		+ (class.carry or 0)
-		+ up.carry * Config.upgrade("carry").per
-		+ (if hasPass(player, "BigBag") then 10 else 0)
-	s.walkSpeed = 16 * (1 + (class.speed or 0) + up.speed * Config.upgrade("speed").per)
-	s.sell = (1 + (class.sell or 0) + data.perks.sell * Config.perk("sell").per + up.sell * Config.upgrade("sell").per)
+		+ (if bag then bag.carry else 0)
+		+ level("carry") * Config.LEGACY_CARRY_PER -- Backpack upgrade levels bought before bags existed
+	if hasPass(player, "BigBag") then
+		s.carry = Config.ENDLESS_CARRY -- the Bottomless Sack
+	end
+	s.walkSpeed = 16 * (1 + (class.speed or 0) + level("speed") * per("speed"))
+	-- pickup reach (studs) and the swing cooldown multiplier
+	s.grasp = (Config.LOOT.grasp + level("grasp") * per("grasp")) * (if run and run.vacuum then Config.VACUUM.graspMult else 1)
+	s.swing = math.max(0.4, 1 - level("swing") * per("swing"))
+	s.sell = (1 + (class.sell or 0) + data.perks.sell * Config.perk("sell").per + level("sell") * per("sell"))
 		* (if hasPass(player, "DoubleCoins") then 2 else 1)
 		* (if vip then 1.15 else 1)
 	s.luck = 1 + (class.luck or 0) + data.perks.luck * Config.perk("luck").per

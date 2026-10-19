@@ -38,12 +38,44 @@ Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
 -------------------------------------------------------------------------------------------------------------
 -- Run upgrades (coins, Tab menu). Bought one level at a time, reset every run.
 -------------------------------------------------------------------------------------------------------------
+-- `section` groups them in the upgrades window (Hands / Tool / Gear). Carry comes from bags (Config.BAGS); the old
+-- "carry" upgrade is gone, but levels bought before still count (Config.LEGACY_CARRY_PER bundles each).
+Config.UPGRADE_SECTIONS = { "Hands", "Tool", "Gear" }
 Config.UPGRADES = {
-	{ id = "power", name = "Power", desc = "+20% cutting power", per = 0.20, base = 100, growth = 3.2, max = 10 },
-	{ id = "carry", name = "Backpack", desc = "+3 bundles carried", per = 3, base = 175, growth = 2.6, max = 10 },
-	{ id = "speed", name = "Walk Speed", desc = "+6% walk speed", per = 0.06, base = 250, growth = 3.0, max = 10 },
-	{ id = "sell", name = "Sell Price", desc = "+15% coins per bundle", per = 0.15, base = 300, growth = 3.4, max = 10 },
+	{ id = "swing", section = "Hands", name = "Swing Speed", desc = "-6% time between swings", per = 0.06, base = 30, growth = 2.6, max = 10 },
+	{ id = "grasp", section = "Hands", name = "Grasp", desc = "+1.5 studs pickup reach", per = 1.5, base = 60, growth = 2.5, max = 10 },
+	{ id = "power", section = "Tool", name = "Power", desc = "+20% cutting power", per = 0.20, base = 100, growth = 3.2, max = 10 },
+	{ id = "speed", section = "Gear", name = "Walk Speed", desc = "+6% walk speed", per = 0.06, base = 250, growth = 3.0, max = 10 },
+	{ id = "sell", section = "Gear", name = "Shredder Boost", desc = "+15% coins per bundle", per = 0.15, base = 300, growth = 3.4, max = 10 },
 }
+Config.LEGACY_CARRY_PER = 3
+
+-------------------------------------------------------------------------------------------------------------
+-- Loot: a cut patch drops its bundle on the ground (and sometimes a free gem). Only you can pick up yours: walk
+-- within your Grasp reach and it flies into your bag. Bundles on the ground count toward your bag, so you can't
+-- cut more than you can carry.
+-------------------------------------------------------------------------------------------------------------
+Config.LOOT = {
+	grasp = 7, -- base pickup reach in studs (+ Grasp upgrades, x the Leaf Vacuum)
+	maxOnGround = 60, -- per player, whatever their bag size
+	spread = 2.5, -- how far from the patch a drop lands
+}
+Config.GEM_DROP = { chance = 0.035, min = 1, max = 3 } -- per cut patch, before Gem Value / 2x Gems
+
+-- Bags: bought in order at the Bag Stand in the hub (coins, reset every run). The Bottomless Sack game pass
+-- (Config.PASSES.BigBag) makes your bag endless.
+Config.BAGS = {
+	{ id = "Satchel", name = "Grass Satchel", model = "bag_satchel", cost = 175, carry = 5 },
+	{ id = "Backpack", name = "Clipping Backpack", model = "bag_backpack", cost = 750, carry = 15 },
+	{ id = "Expedition", name = "Expedition Pack", model = "bag_hiker", cost = 9000, carry = 40 },
+}
+Config.ENDLESS_CARRY = 9999 -- what "endless" means in numbers (the HUD shows it as a big infinity sign)
+
+-- The Leaf Vacuum: gear from the Bag Stand. Owned for the run, works on its own (no need to hold it).
+Config.VACUUM = { name = "Leaf Vacuum", cost = 1000, graspMult = 3 }
+
+-- The Index: every grass type x mutation you've collected. A new one pays gems once.
+Config.INDEX_GEMS = 5
 
 function Config.upgrade(id: string)
 	for _, u in Config.UPGRADES do
@@ -232,7 +264,7 @@ Config.QUESTS = {
 	{ title = "Cut 10 grass", hint = "Click the grass to cut it", event = "cut", goal = 10, reward = 20 },
 	{ title = "Sell your bundles", hint = "Walk onto the sell pad", event = "sell", goal = 5, reward = 40 },
 	{ title = "Buy the Scissors in the cabin", hint = "They're on the wall inside the cabin", event = "tool", goal = 2, reward = 25 },
-	{ title = "Upgrade your Backpack", hint = "Press TAB to open upgrades", event = "carry", goal = 1, reward = 100 },
+	{ title = "Buy a bag at the Bag Stand", hint = "It's by the spawn, next to the tool shop", event = "bag", goal = 1, reward = 100 },
 	{ title = "Cut 60 grass", hint = "Keep mowing the Backyard Lawn", event = "cut", goal = 60, reward = 150 },
 	{ title = "Mow the whole Backyard Lawn", hint = "Every last patch!", event = "zone", goal = 1, reward = 250 },
 	{ title = "Beat the Dandelion King", hint = "Dodge the red circles", event = "boss", goal = 1, reward = 300 },
@@ -421,7 +453,7 @@ Config.PRODUCT_ORDER = { "Gems150", "Gems500", "Gems1500", "Gems5000", "TrialMow
 Config.PASSES = {
 	DoubleCoins = { id = 0, robux = 299, name = "2x Coins", desc = "Double coins from the shredder" },
 	DoubleGems = { id = 0, robux = 399, name = "2x Gems", desc = "Double gems from everything" },
-	BigBag = { id = 0, robux = 199, name = "Big Bag", desc = "+10 bundles carried" },
+	BigBag = { id = 0, robux = 149, name = "Bottomless Sack", desc = "Carry as many bundles as you like" },
 	VIP = { id = 0, robux = 249, name = "VIP", desc = "+15% power, +15% sell, VIP tag" },
 }
 Config.PASS_ORDER = { "DoubleCoins", "DoubleGems", "BigBag", "VIP" }

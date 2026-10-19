@@ -100,6 +100,32 @@ local function toolShop(m: Instance, info)
 	Models.place("lantern_post", shop, at * CFrame.new(5, 0.5, -10.6), 0.8, true)
 end
 
+-- The Bag Stand (bag_stand model): a striped market stall by the spawn. The three bag tiers stand on its stumps,
+-- the Bottomless Sack sits on the counter and the Leaf Vacuum leans beside it. Its prompt opens the Bags window.
+local function bagStand(m: Instance)
+	local stand = PropKit.folder("BAG STAND", m)
+	local pos = Vector3.new(28, FLOOR_Y, -68)
+	local at = CFrame.lookAt(pos, pos - Vector3.xAxis) -- facing the path from the spawn
+	if not Models.place("bag_stand", stand, at, 1, true) then
+		PropKit.stall(stand, at, "BAGS", Color3.fromRGB(90, 190, 90), "Bags")
+		return
+	end
+	PropKit.facePanel(stand, at, Vector3.new(0, 10.6, 0.9), Vector2.new(9.4, 2.2), "BAGS & GEAR", Color3.fromRGB(255, 240, 200))
+	PropKit.collider(stand, at, Vector3.new(0, 3.7, 0.7), Vector3.new(14, 7.4, 3))
+	-- the bags on their stumps (model studs: stump tops at y 2, z -4.5), each with its price in front
+	for i, bag in Config.BAGS do
+		local x = ({ -5, 0, 5 })[i]
+		if x then
+			PropKit.collider(stand, at, Vector3.new(x, 1, -4.5), Vector3.new(2.7, 2, 2.7))
+			Models.place(bag.model, stand, at * CFrame.new(x, 2, -4.5), 1.1, true)
+			PropKit.facePanel(stand, at, Vector3.new(x, 1, -5.85), Vector2.new(2.6, 0.9), "$" .. Format.short(bag.cost), Color3.fromRGB(120, 255, 90))
+		end
+	end
+	Models.place("bag_infinite", stand, at * CFrame.new(0, 3.53, -0.6), 0.75, true)
+	Models.place("tool_vacuum", stand, at * CFrame.new(-8.6, 2.65, -1), 0.8, true)
+	PropKit.prompt(promptSpot(stand, at * CFrame.new(0, 3, -7.5), "BagCounter"), "Shop", "Bags & Gear", "Bags", 12)
+end
+
 -- Gas pump: prompt refuels your mower if it's parked nearby. `facing` is where its front looks.
 local function gasPump(parent: Instance, pos: Vector3, info, facing: Vector3?)
 	local cf = CFrame.lookAt(pos, pos + (facing or -Vector3.zAxis))
@@ -187,6 +213,7 @@ local function hub(world: Instance, info)
 	end
 	Environment.spawn(m, CFrame.lookAt(Vector3.new(0, 0.8, -68), Vector3.new(0, 0.8, 0)))
 	toolShop(m, info)
+	bagStand(m)
 	-- fences along the hub's sides
 	PropKit.fenceRow(m, Vector3.new(-48, 0, -78), Vector3.new(-48, 0, 14), Vector3.xAxis)
 	PropKit.fenceRow(m, Vector3.new(48, 0, -78), Vector3.new(48, 0, 14), -Vector3.xAxis)

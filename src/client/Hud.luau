@@ -146,7 +146,7 @@ local function sideButtons(mode: string)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- hotbar (bottom centre): your tool in slot 1, press 1 or click to equip / unequip
+-- hotbar (bottom centre): every tool you own this run, in shop order; press 1-7 or click to equip / unequip
 -------------------------------------------------------------------------------------------------------------
 local hotbar = Instance.new("Frame")
 hotbar.Name = "Hotbar"
@@ -155,66 +155,98 @@ hotbar.Size = UDim2.fromOffset(90, 80)
 hotbar.Position = UDim2.new(0.5, 0, 1, -12)
 hotbar.AnchorPoint = Vector2.new(0.5, 1)
 hotbar.Parent = root
-local slot = Instance.new("TextButton")
-slot.Name = "Slot1"
-slot.Text = ""
-slot.AutoButtonColor = false
-slot.BackgroundTransparency = 1
-slot.Size = UDim2.fromOffset(80, 80)
-slot.Parent = hotbar
-local slotRing = UI.frame({ size = UDim2.fromOffset(72, 72), pos = UDim2.fromOffset(4, 4), color = Color3.fromRGB(30, 30, 36), parent = slot, radius = 14, outline = 3, name = "Ring" })
-slotRing.BackgroundTransparency = 0.35
-local slotIconHolder = Instance.new("Frame")
-slotIconHolder.BackgroundTransparency = 1
-slotIconHolder.Size = UDim2.fromScale(1, 1)
-slotIconHolder.Parent = slotRing
-UI.text(slot, "1", UDim2.fromOffset(22, 22), { pos = UDim2.fromOffset(6, 4), stroke = 2 })
-local slotName = UI.text(hotbar, "", UDim2.fromOffset(220, 20), { pos = UDim2.new(0.5, 0, 0, -22), anchor = Vector2.new(0.5, 0), stroke = 2 })
+local hotLayout = Instance.new("UIListLayout")
+hotLayout.FillDirection = Enum.FillDirection.Horizontal
+hotLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+hotLayout.SortOrder = Enum.SortOrder.LayoutOrder
+hotLayout.Padding = UDim.new(0, 8)
+hotLayout.Parent = hotbar
+local slotName = UI.text(root, "", UDim2.fromOffset(260, 20), { pos = UDim2.new(0.5, 0, 1, -116), anchor = Vector2.new(0.5, 0), stroke = 2 })
 
 local TOOL_ICON = { Hands = "hands", Scissors = "scissors", Sickle = "sickle", PushMower = "pushmower", WeedWhacker = "whacker", MegaScythe = "scythe", LaserMower = "lasermower" }
-local shownTool = ""
-local function toolObject(): Tool?
-	local char = player.Character
-	local t = char and char:FindFirstChildOfClass("Tool")
-	if t then
-		return t
-	end
-	local bp = player:FindFirstChildOfClass("Backpack")
-	return bp and bp:FindFirstChildOfClass("Tool")
+local TOOL_ORDER = {}
+for i, def in Config.TOOLS do
+	TOOL_ORDER[def.id] = i
 end
-local function toggleTool()
+
+-- The tools you hold or carry, in shop order.
+local function ownedTools(): { Tool }
+	local list = {}
+	for _, container in { player.Character, player:FindFirstChildOfClass("Backpack") } do
+		if container then
+			for _, t in container:GetChildren() do
+				if t:IsA("Tool") and t:GetAttribute("ToolId") then
+					table.insert(list, t)
+				end
+			end
+		end
+	end
+	table.sort(list, function(a, b)
+		return (TOOL_ORDER[a:GetAttribute("ToolId")] or 0) < (TOOL_ORDER[b:GetAttribute("ToolId")] or 0)
+	end)
+	return list
+end
+
+-- Equip slot `index` (or put it away if it's already in your hand). No index = your best tool.
+local function toggleTool(index: number?)
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not hum then
 		return
 	end
-	if char:FindFirstChildOfClass("Tool") then
+	local tools = ownedTools()
+	local want = if index then tools[index] else tools[#tools]
+	if not want then
+		return
+	end
+	if want.Parent == char then
 		hum:UnequipTools()
 	else
-		local t = toolObject()
-		if t then
-			hum:EquipTool(t)
-		end
+		hum:EquipTool(want)
 	end
 end
-slot.MouseButton1Click:Connect(toggleTool)
+
+local rings: { [Tool]: Frame } = {}
+local shownKey = ""
 task.spawn(function()
 	while true do
 		task.wait(0.25)
-		local t = toolObject()
-		local id = t and t:GetAttribute("ToolId") or ""
-		hotbar.Visible = t ~= nil
-		if id ~= shownTool then
-			shownTool = id
-			UI.clear(slotIconHolder)
-			if id ~= "" then
-				UI.icon(slotIconHolder, TOOL_ICON[id] or "coin", 56, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-			end
-			slotName.Text = t and t.Name or ""
+		local tools = ownedTools()
+		local ids = {}
+		for _, t in tools do
+			table.insert(ids, t:GetAttribute("ToolId"))
 		end
-		local equipped = player.Character ~= nil and player.Character:FindFirstChildOfClass("Tool") ~= nil
-		local stroke = slotRing:FindFirstChildOfClass("UIStroke") :: UIStroke
-		stroke.Color = if equipped then C.yellow else C.outline
+		local key = table.concat(ids, ",")
+		hotbar.Visible = #tools > 0
+		if key ~= shownKey then
+			shownKey = key
+			UI.clear(hotbar)
+			table.clear(rings)
+			hotbar.Size = UDim2.fromOffset(math.max(1, #tools) * 88, 80)
+			for i, t in tools do
+				local b = Instance.new("TextButton")
+				b.Name = "Slot" .. i
+				b.Text = ""
+				b.AutoButtonColor = false
+				b.BackgroundTransparency = 1
+				b.Size = UDim2.fromOffset(80, 80)
+				b.LayoutOrder = i
+				b.Parent = hotbar
+				local ring = UI.frame({ size = UDim2.fromOffset(72, 72), pos = UDim2.fromOffset(4, 4), color = Color3.fromRGB(30, 30, 36), parent = b, radius = 14, outline = 3, name = "Ring" })
+				ring.BackgroundTransparency = 0.35
+				UI.icon(ring, TOOL_ICON[t:GetAttribute("ToolId")] or "coin", 56, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+				UI.text(b, tostring(i), UDim2.fromOffset(22, 22), { pos = UDim2.fromOffset(6, 4), stroke = 2 })
+				b.MouseButton1Click:Connect(function()
+					toggleTool(i)
+				end)
+				rings[t] = ring
+			end
+		end
+		local held = player.Character and player.Character:FindFirstChildOfClass("Tool")
+		for t, ring in rings do
+			(ring:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = if t == held then C.yellow else C.outline
+		end
+		slotName.Text = if held then held.Name else ""
 	end
 end)
 
@@ -294,8 +326,9 @@ State.on("data", function(d)
 			end
 			shownCoins = d.run.coins
 		end
-		local full = d.run.carry >= d.carryMax
-		bagText.Text = d.run.carry .. "/" .. d.carryMax
+		-- bundles still lying on the ground count toward the bag too (they're reserved for you)
+		local full = not d.endless and d.run.carry + (d.run.ground or 0) >= d.carryMax
+		bagText.Text = if d.endless then d.run.carry .. "/∞" else d.run.carry .. "/" .. d.carryMax
 		bagText.TextColor3 = if full then C.red else Color3.new(1, 1, 1)
 		local q = d.run.quest
 		quest.Visible = q ~= nil
@@ -356,7 +389,11 @@ end)
 
 State.on("fx", function(kind, d)
 	if kind == "bagFull" then
-		UI.notice("Your backpack is full!", "Walk onto the sell pad to sell your bundles", "backpack")
+		if (d.ground or 0) > 0 and State.data and State.data.run and State.data.run.carry < State.data.carryMax then
+			UI.notice("Pick up your bundles!", "Walk over the bundles on the ground to fill your bag", "bundle")
+		else
+			UI.notice("Your backpack is full!", "Walk onto the sell pad to sell your bundles", "backpack")
+		end
 		local base = bag.Position
 		for i = 1, 6 do
 			bag.Position = base + UDim2.fromOffset(if i % 2 == 0 then 6 else -6, 0)
@@ -371,8 +408,9 @@ State.on("fx", function(kind, d)
 end)
 
 -------------------------------------------------------------------------------------------------------------
--- keys: R = shop, TAB = upgrades / perks, 1 = tool
+-- keys: R = shop, TAB = upgrades / perks, 1-7 = tools
 -------------------------------------------------------------------------------------------------------------
+local NUMBER_KEYS = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six, Enum.KeyCode.Seven }
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
@@ -381,8 +419,11 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		UI.open("Store")
 	elseif input.KeyCode == Enum.KeyCode.Tab then
 		UI.open(if currentMode == "Run" then "Upgrades" else "Perks")
-	elseif input.KeyCode == Enum.KeyCode.One then
-		toggleTool()
+	else
+		local n = table.find(NUMBER_KEYS, input.KeyCode)
+		if n then
+			toggleTool(n)
+		end
 	end
 end)
 
@@ -423,12 +464,19 @@ local function screenPoint(world: Vector3): Vector2?
 	return Vector2.new(p.X, p.Y)
 end
 
-State.on("bundleGained", function(pos: Vector3, _mut: string?)
-	local from = screenPoint(pos + Vector3.new(0, 2, 0))
-	if not from or not bag.Visible then
+-- loot picked up off the ground (client/LootFx): bundles fly into the bag, gems into the gem counter
+State.on("lootPicked", function(pos: Vector3, kind: string, amount: number?)
+	local from = screenPoint(pos + Vector3.new(0, 1, 0))
+	if not from then
 		return
 	end
-	fly(UI.icon(UI.gui, "bundle", 30), from, bag, 0)
+	if kind == "gem" then
+		for i = 1, math.clamp(amount or 1, 1, 5) do
+			fly(UI.icon(UI.gui, "gem", 30), from + Vector2.new(math.random(-12, 12), 0), gemBox, (i - 1) * 0.05)
+		end
+	elseif bag.Visible then
+		fly(UI.icon(UI.gui, "bundle", 30), from, bag, 0)
+	end
 end)
 
 State.on("flyCoins", function(count: number)

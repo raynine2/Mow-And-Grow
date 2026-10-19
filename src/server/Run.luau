@@ -17,6 +17,8 @@ local Mowers = require(script.Parent.Mowers)
 local Boss = require(script.Parent.Boss)
 local Quests = require(script.Parent.Quests)
 local GemShop = require(script.Parent.GemShop)
+local Loot = require(script.Parent.Loot)
+local Models = require(script.Parent.Models)
 
 local Run = {}
 
@@ -27,6 +29,8 @@ local completing = false
 local lastSwing: { [Player]: number } = {}
 local worldDirty = true
 local startedAt = workspace:GetServerTimeNow()
+local devCutting = false -- DevHook clearZone: cut without dropping loot
+local rng = Random.new()
 
 -------------------------------------------------------------------------------------------------------------
 -- world state for the HUD
@@ -167,25 +171,48 @@ local function warnBagFull(player: Player)
 	local now = os.clock()
 	if (bagWarn[player] or 0) + 3 < now then
 		bagWarn[player] = now
-		Net.send(player, "Fx", "bagFull", {}) -- the bag bar shakes and the guide arrow points at the Shredder
+		-- the bag bar shakes and the guide arrow points at the Shredder (or says to pick up your loot first)
+		Net.send(player, "Fx", "bagFull", { ground = Loot.count(player) })
 	end
 end
 
+-- Bundles in the bag plus bundles still on the ground: you can't cut more than you can carry.
+local function bagFull(player: Player): boolean
+	local ground = Loot.count(player)
+	return Carry.count(player) + ground >= Carry.capacity(player) or ground >= Config.LOOT.maxOnGround
+end
+
+-- A patch was cut: its bundle drops on the ground (two with Bigger Bundle luck, sometimes a gem too) for the
+-- cutter to pick up (server/Loot). Returns false when there's no room for it, so the patch stays standing.
 local function onCut(player: Player, patch): boolean
-	if not Carry.add(player, patch.z, patch.mut) then
+	local data = PlayerData.get(player)
+	if not data or not data.run then
+		return false
+	end
+	if devCutting then
+		data.stats.cut += 1
+		return true
+	end
+	if bagFull(player) then
 		warnBagFull(player)
 		return false
 	end
+	local stats = Stats.compute(player, data)
+	local pos = patch.part.Position
+	Loot.drop(player, "bundle", pos, patch.z, patch.mut)
+	if stats.bundle > 0 and not bagFull(player) and rng:NextNumber() < stats.bundle then
+		Loot.drop(player, "bundle", pos, patch.z, patch.mut)
+	end
+	if rng:NextNumber() < Config.GEM_DROP.chance then
+		Loot.drop(player, "gem", pos, patch.z, nil, rng:NextInteger(Config.GEM_DROP.min, Config.GEM_DROP.max))
+	end
 	Quests.event(player, "cut", 1)
-	local data = PlayerData.get(player)
-	if data then
-		data.stats.cut += 1
-		local m = Config.mutation(patch.mut or "None")
-		if m.gems > 0 then
-			local gems = math.max(1, math.floor(m.gems * Stats.compute(player, data).gems))
-			data.gems += gems
-			Net.send(player, "Fx", "gems", { pos = patch.part.Position, amount = gems, mut = m.id })
-		end
+	data.stats.cut += 1
+	local m = Config.mutation(patch.mut or "None")
+	if m.gems > 0 then
+		local gems = math.max(1, math.floor(m.gems * stats.gems))
+		data.gems += gems
+		Net.send(player, "Fx", "gems", { pos = pos, amount = gems, mut = m.id })
 	end
 	return true
 end
@@ -193,6 +220,49 @@ end
 local function rootOf(player: Player): BasePart?
 	local char = player.Character
 	return char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+-- Where a player picks up loot: their Grasp reach round them, and round the mower they're driving.
+Loot.reach = function(player: Player)
+	local points = {}
+	local data = PlayerData.get(player)
+	local root = rootOf(player)
+	if root and data then
+		table.insert(points, { pos = root.Position, radius = Stats.compute(player, data).grasp })
+	end
+	local mower, mdef = Mowers.driving(player)
+	if mower and mdef and mower.PrimaryPart then
+		table.insert(points, { pos = mower.PrimaryPart.Position, radius = mdef.radius + 4 })
+	end
+	return points
+end
+
+Loot.onGem = function(player: Player, amount: number, _pos: Vector3)
+	local data = PlayerData.get(player)
+	if data then
+		data.gems += math.max(1, math.floor(amount * Stats.compute(player, data).gems))
+		PlayerData.changed(player)
+	end
+end
+
+-- A bundle went into the bag: a grass type you've never collected goes into your Index (and pays gems once).
+Loot.onBundle = function(player: Player, z: number, m: string?)
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+	local key = z .. ":" .. (m or "None")
+	if not data.index[key] then
+		data.index[key] = true
+		local gems = math.max(1, math.floor(Config.INDEX_GEMS * Stats.compute(player, data).gems))
+		data.gems += gems
+		Net.send(player, "Fx", "indexNew", { z = z, mut = m or "None", gems = gems })
+		PlayerData.changed(player)
+	end
+end
+
+Loot.onFull = function(player: Player)
+	warnBagFull(player)
 end
 
 local function onSwing(player: Player)
@@ -205,7 +275,7 @@ local function onSwing(player: Player)
 		return
 	end
 	local now = os.clock()
-	if (lastSwing[player] or 0) + def.cooldown * 0.85 > now then
+	if (lastSwing[player] or 0) + def.cooldown * Stats.compute(player, data).swing * 0.85 > now then
 		return
 	end
 	lastSwing[player] = now
@@ -218,7 +288,7 @@ local function onSwing(player: Player)
 	local damage = def.damage * stats.power
 	local look = root.CFrame.LookVector
 	local centre = root.Position + Vector3.new(look.X, 0, look.Z) * def.radius * 0.45
-	if Carry.isFull(player) then
+	if bagFull(player) then
 		warnBagFull(player)
 	else
 		Field.hit(player, centre, def.radius, damage, def.targets, stats.luck)
@@ -240,7 +310,7 @@ local function autoTick()
 				if fuel > 0 then
 					local pos = mower.PrimaryPart.Position
 					local dmg = mdef.damage * stats.power
-					if Carry.isFull(player) then
+					if bagFull(player) then
 						warnBagFull(player)
 					else
 						Field.hit(player, pos, mdef.radius, dmg, nil, stats.luck)
@@ -254,7 +324,7 @@ local function autoTick()
 				local root = rootOf(player)
 				if def and def.kind == "auto" and root then
 					local dmg = def.damage * stats.power
-					if Carry.isFull(player) then
+					if bagFull(player) then
 						warnBagFull(player)
 					else
 						Field.hit(player, root.Position, def.radius, dmg, nil, stats.luck)
@@ -335,12 +405,58 @@ local function buyUpgrade(player: Player, data, id: string)
 	end
 	data.run.coins -= cost
 	data.run.upgrades[id] = level + 1
-	if id == "carry" then
-		Quests.event(player, "carry", 1)
-	end
 	Stats.applyCharacter(player, data)
 	Carry.refresh(player)
 	Net.send(player, "Fx", "purchase", {})
+end
+
+-- The Leaf Vacuum rides on your back (it works on its own, you don't hold it).
+local function showVacuum(player: Player)
+	local data = PlayerData.get(player)
+	local char = player.Character
+	local torso = char and (char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")) :: BasePart?
+	if not torso or not data or not data.run or not data.run.vacuum or char:FindFirstChild("VacuumPack") then
+		return
+	end
+	-- hanging at the hip, nozzle pointing down and forward
+	local cf = torso.CFrame * CFrame.new(1.35, -0.8, 0.2) * CFrame.Angles(math.rad(-70), 0, 0)
+	local m = Models.place("tool_vacuum", char, cf, 0.55, true)
+	if m then
+		m.Name = "VacuumPack"
+		Models.weldTo(m, torso)
+	end
+end
+
+local function buyBag(player: Player, data, id: string)
+	local nextIndex = (data.run.bag or 0) + 1
+	local def = Config.BAGS[nextIndex]
+	if not def or def.id ~= id then
+		Net.notify(player, "Buy the bags in order!", "red")
+		return
+	end
+	if data.run.coins < def.cost then
+		Net.notify(player, "Not enough coins!", "red")
+		return
+	end
+	data.run.coins -= def.cost
+	data.run.bag = nextIndex
+	Quests.event(player, "bag", nextIndex)
+	Carry.refresh(player)
+	Net.send(player, "Fx", "purchase", { big = true, item = def.name })
+end
+
+local function buyVacuum(player: Player, data)
+	if data.run.vacuum then
+		return
+	end
+	if data.run.coins < Config.VACUUM.cost then
+		Net.notify(player, "Not enough coins!", "red")
+		return
+	end
+	data.run.coins -= Config.VACUUM.cost
+	data.run.vacuum = true
+	showVacuum(player)
+	Net.send(player, "Fx", "purchase", { big = true, item = Config.VACUUM.name })
 end
 
 local function buyCoinMower(player: Player, data, id: string)
@@ -388,6 +504,7 @@ local function setupPlayer(player: Player, data)
 		Stats.applyCharacter(player, data)
 		Tools.give(player)
 		Carry.refresh(player)
+		showVacuum(player)
 	end
 	player.CharacterAdded:Connect(onCharacter)
 	if player.Character then
@@ -421,6 +538,7 @@ end
 
 function Run.start()
 	info = RunBuilder.build()
+	Loot.start(info.world)
 	Mowers.setup(info.world, info.garageSpawn)
 	Boss.setup(info.world)
 
@@ -456,6 +574,10 @@ function Run.start()
 			end
 		elseif kind == "perk" then
 			GemShop.buyPerk(player, data, id)
+		elseif kind == "bag" then
+			buyBag(player, data, id)
+		elseif kind == "vacuum" then
+			buyVacuum(player, data)
 		end
 		PlayerData.changed(player)
 	end)
@@ -546,6 +668,7 @@ end
 -- Studio test helpers (DevHook).
 function Run.dev(cmd: string, ...)
 	if cmd == "clearZone" then
+		devCutting = true
 		for _ = 1, Field.total do
 			if Field.remainingIn(zone) <= 0 then
 				break
@@ -561,6 +684,7 @@ function Run.dev(cmd: string, ...)
 			end
 			Field.hit(player, RunBuilder.zoneCentre(zone), 200, math.huge, 1, 1)
 		end
+		devCutting = false
 	elseif cmd == "killBoss" then
 		local player = Players:GetPlayers()[1]
 		if player then

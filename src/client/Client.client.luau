@@ -15,5 +15,6 @@ require(modules:WaitForChild("CameraView"))
 require(modules:WaitForChild("ZoneMood"))
 require(modules:WaitForChild("Wind"))
 require(modules:WaitForChild("Combo"))
+require(modules:WaitForChild("LootFx"))
 
 State.fire("Ready")

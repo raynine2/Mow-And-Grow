@@ -6,9 +6,9 @@ local PlayerData = require(script.Parent.PlayerData)
 
 local Quests = {}
 
-local ABSOLUTE = { tool = true } -- these report a level reached, not an amount gained
+local ABSOLUTE = { tool = true, bag = true } -- these report a level reached, not an amount gained
 
--- Something happened that quests may count. For "tool", amount is the new best tool index.
+-- Something happened that quests may count. For "tool" / "bag", amount is the new best tool / bag tier.
 function Quests.event(player: Player, kind: string, amount: number?)
 	local data = PlayerData.get(player)
 	local run = data and data.run
@@ -33,6 +33,8 @@ function Quests.event(player: Player, kind: string, amount: number?)
 		local nextQ = Config.QUESTS[run.quest.i]
 		if nextQ and nextQ.event == "tool" then
 			Quests.event(player, "tool", run.tool)
+		elseif nextQ and nextQ.event == "bag" and (run.bag or 0) > 0 then
+			Quests.event(player, "bag", run.bag)
 		end
 	end
 	PlayerData.changed(player)

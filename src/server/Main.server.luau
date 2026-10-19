@@ -12,6 +12,7 @@ local Stats = require(script.Parent.Stats)
 local Mode = require(script.Parent.Mode)
 local Monetization = require(script.Parent.Monetization)
 local Quests = require(script.Parent.Quests)
+local Loot = require(script.Parent.Loot)
 
 -- Nobody spawns until the world is built (loading the models takes a few seconds).
 Players.CharacterAutoLoads = false
@@ -87,6 +88,10 @@ local function snapshot(player: Player, data)
 	for id in data.mowers do
 		table.insert(mowers, id)
 	end
+	local index = {}
+	for key in data.index do
+		table.insert(index, key)
+	end
 	local view = {
 		mode = Mode.current,
 		gems = data.gems,
@@ -100,9 +105,14 @@ local function snapshot(player: Player, data)
 		passes = passes,
 		power = s.power,
 		carryMax = math.floor(s.carry),
+		endless = s.carry >= Config.ENDLESS_CARRY, -- the Bottomless Sack: the HUD shows an infinity sign
 		sell = s.sell,
 		luck = s.luck,
 		walkSpeed = s.walkSpeed,
+		grasp = s.grasp,
+		swing = s.swing,
+		index = index,
+		bestTime = data.bestTime,
 		dryRun = data._dryRun == true,
 		run = nil :: any,
 	}
@@ -127,6 +137,9 @@ local function snapshot(player: Player, data)
 			fuel = run.fuel,
 			carry = #run.carry,
 			carryMutated = muts,
+			ground = Loot.count(player), -- bundles still lying on the ground
+			bag = run.bag or 0,
+			vacuum = run.vacuum == true,
 			quest = Quests.view(run),
 		}
 	end

@@ -114,7 +114,7 @@ function Carry.refresh(player: Player)
 	stack.Parent = char
 end
 
--- Add one bundle (or two with Bigger Bundle luck). Returns false when the bag is full.
+-- Add one bundle (picked up from the ground, see server/Loot). Returns false when the bag is full.
 function Carry.add(player: Player, zone: number, mut: string?): boolean
 	local data = PlayerData.get(player)
 	if not data or not data.run then
@@ -126,10 +126,6 @@ function Carry.add(player: Player, zone: number, mut: string?): boolean
 	end
 	local m = if mut and mut ~= "None" then mut else nil
 	table.insert(data.run.carry, { z = zone, m = m })
-	local stats = Stats.compute(player, data)
-	if stats.bundle > 0 and #data.run.carry < cap and math.random() < stats.bundle then
-		table.insert(data.run.carry, { z = zone, m = m })
-	end
 	PlayerData.changed(player)
 	Carry.refresh(player)
 	return true

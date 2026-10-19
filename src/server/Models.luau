@@ -5,6 +5,7 @@
 -- model isn't uploaded yet (Models.place returns nil).
 local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local ModelIds = require(ReplicatedStorage.MowALawn.ModelIds)
 
@@ -138,6 +139,46 @@ local function buildFromParts(name: string, spec: { materials: { string }, parts
 	return model
 end
 
+-- Sculpted, texture-baked "toy" versions of some models (tools/blender/toy, method by fwjelaa / FWJ STUDIOS). Their
+-- FBX files (assets/toy_models) come in through Studio's Import 3D and live in ServerStorage.ToyModels, named like
+-- the keys below. Each replaces the game model `name`, scaled to that model's height (or `height` when it has
+-- none). turn = degrees about Y that make the mesh face its pivot's LookVector.
+local TOY_MODELS: { [string]: { name: string, height: number, turn: number } } = {
+	DandelionKing = { name = "boss_dandelion", height = 17.5, turn = 0 },
+	ThornBush = { name = "boss_thornbush", height = 16, turn = 0 },
+	VenusFlytrap = { name = "boss_flytrap", height = 18, turn = 0 },
+	SwampVine = { name = "boss_vine", height = 20, turn = 0 },
+	JungleTitan = { name = "boss_jungle", height = 22, turn = 0 },
+}
+
+-- A template from an imported toy mesh: the mesh part(s) anchored, pivot at the feet (bottom centre of the
+-- bounds), scaled to `height` studs.
+local function buildFromToy(toyName: string, src: Instance, height: number): Model?
+	local info = TOY_MODELS[toyName]
+	local model = Instance.new("Model")
+	model.Name = info.name
+	local sources = if src:IsA("BasePart") then { src } else src:GetDescendants()
+	local count = 0
+	for _, d in sources do
+		if d:IsA("BasePart") then
+			local p = d:Clone()
+			p.Anchored = true
+			p.CanTouch = false
+			p.Parent = model
+			count += 1
+		end
+	end
+	if count == 0 then
+		model:Destroy()
+		return nil
+	end
+	local cf, size = model:GetBoundingBox()
+	model.WorldPivot = CFrame.new(cf.Position - Vector3.new(0, size.Y / 2, 0)) * CFrame.Angles(0, math.rad(info.turn), 0)
+	model:ScaleTo(height / size.Y)
+	model.Parent = folder
+	return model
+end
+
 -- Loads every model at the same time (one at a time took ~30 s) and waits at most `timeout` seconds; a model
 -- that isn't loaded by then uses its native-part version if it has one, else its brick fallback.
 function Models.loadAll(timeout: number?)
@@ -190,6 +231,33 @@ function Models.loadAll(timeout: number?)
 	end
 	if built > 0 then
 		print(("[Models] %d models built from native parts"):format(built))
+	end
+	-- sculpted toy versions (imported meshes in ServerStorage.ToyModels) replace their model
+	local toys = 0
+	local toyFolder = ServerStorage:FindFirstChild("ToyModels")
+	for toyName, info in TOY_MODELS do
+		local src = toyFolder and toyFolder:FindFirstChild(toyName)
+		if src then
+			local old = templates[info.name]
+			local height = info.height
+			if old then
+				local _, size = old:GetBoundingBox()
+				height = size.Y
+			end
+			local ok, m = pcall(buildFromToy, toyName, src, height)
+			if ok and m then
+				if old then
+					old:Destroy()
+				end
+				templates[info.name] = m
+				toys += 1
+			else
+				warn(("[Models] couldn't use toy model %s: %s"):format(toyName, tostring(m)))
+			end
+		end
+	end
+	if toys > 0 then
+		print(("[Models] %d sculpted toy models in use"):format(toys))
 	end
 end
 

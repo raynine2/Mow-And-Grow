@@ -36,6 +36,10 @@ def box(name, size, loc=(0, 0, 0), rot=(0, 0, 0), mat=None, bevel=0.0, taper=Non
     if not taper or (abs(taper[0] - 1) < 1e-3 and abs(taper[1] - 1) < 1e-3):
         o["prim"] = "box"
         o["dims"] = list(size)
+    elif min(taper) >= 0.7:
+        # a gently tapered box (tree trunks, roots) reads fine as a plain box of its average width
+        o["prim"] = "box"
+        o["dims"] = [size[0] * (1 + taper[0]) / 2, size[1] * (1 + taper[1]) / 2, size[2]]
     return o
 
 

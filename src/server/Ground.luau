@@ -17,13 +17,22 @@ local COLORS = {
 -- Clear the old ground and set the look: grass blades, colours, water.
 function Ground.reset()
 	terrain:Clear()
-	terrain.Decoration = true
-	terrain.GrassLength = 0.7
-	terrain.WaterColor = Color3.fromRGB(46, 120, 110)
-	terrain.WaterTransparency = 0.35
-	terrain.WaterWaveSize = 0.12
-	terrain.WaterWaveSpeed = 8
-	terrain.WaterReflectance = 0.6
+	-- some Roblox versions don't let scripts set some of these (Decoration, GrassLength): skip those instead of
+	-- stopping the whole world build
+	local look = {
+		Decoration = true, -- animated grass blades
+		GrassLength = 0.7,
+		WaterColor = Color3.fromRGB(46, 120, 110),
+		WaterTransparency = 0.35,
+		WaterWaveSize = 0.12,
+		WaterWaveSpeed = 8,
+		WaterReflectance = 0.6,
+	}
+	for prop, value in look do
+		pcall(function()
+			(terrain :: any)[prop] = value
+		end)
+	end
 	for material, color in COLORS do
 		terrain:SetMaterialColor(material, color)
 	end

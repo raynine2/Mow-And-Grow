@@ -225,7 +225,7 @@ stats.refresh = function()
 end
 
 -- INDEX: every grass type x mutation; the ones you've collected show their colour, the rest a lock.
-local index = UI.window("Index", "Index", nil, { tabs = RUN_TABS, gems = true })
+local index = UI.window("Index", "Index", nil, { tabs = RUN_TABS }) -- no gem box: it would cover the third tab
 index.refresh = function()
 	local d = data()
 	UI.clear(index.list)

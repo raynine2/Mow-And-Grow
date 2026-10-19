@@ -104,9 +104,16 @@ def triangle_wedges(a, b, c, mat):
     return out
 
 
+def source(name):
+    """The low-part design in parts_models/<name>.py if there is one (models too detailed to convert well, e.g. the
+    grass clumps and bosses), else the normal model script in models/<name>.py."""
+    low = os.path.join(HERE, "parts_models", name + ".py")
+    return low if os.path.exists(low) else os.path.join(HERE, "models", name + ".py")
+
+
 def convert(name):
     lib.reset()
-    spec = importlib.util.spec_from_file_location(name, os.path.join(HERE, "models", name + ".py"))
+    spec = importlib.util.spec_from_file_location(name, source(name))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     mod.build(lib)

@@ -1,61 +1,47 @@
-"""Far-off mountain: a faceted low-poly peak (about 60 across, 62 high) with slate-grey rock slopes, a few ledges,
-and a snow cap whose ragged lower edge follows the rock below. Background scenery, no collisions needed."""
-import math, random
-import bmesh
+"""Far-off mountain, built only from blocks and wedges so it works as native Roblox parts (tools/blender/to_parts.py):
+about 60 across and 62 high. Three tiers of chunky slate blocks, each tier turned and tilted a little so the
+silhouette is craggy, rocky ledges sticking out, a snow cap over the top tier with snow running down the slopes in
+wedges, and a pointed snowy peak. Background scenery, no collisions needed."""
+import random
 
 PREVIEW = dict(dist=150, height=40, target_z=26, yaw=25)
-
-RINGS = [(30.0, 0.0), (26.5, 9.0), (22.0, 19.0), (17.5, 29.0), (13.0, 38.0), (8.5, 47.0), (4.5, 55.0)]
-SNOW_FROM = 3  # rings from here up are snow
-SEG = 11
 
 
 def build(lib):
     rnd = random.Random(12)
     rock = lib.material("Slate", (120, 130, 145))
-    rock_dark = lib.material("Slate", (98, 106, 120))
+    rock_dark = lib.material("Slate", (96, 104, 118))
+    rock_light = lib.material("Slate", (140, 148, 160))
     snow = lib.material("Snow", (240, 245, 250))
-    # jittered rings, shared by the rock and the snow meshes so they meet without gaps
-    rings = []
-    for j, (r, z) in enumerate(RINGS):
-        twist = j * 0.21
-        ring = []
-        for i in range(SEG):
-            a = 2 * math.pi * i / SEG + twist + rnd.uniform(-0.12, 0.12)
-            rr = r * (rnd.uniform(0.82, 1.12) if j else rnd.uniform(0.9, 1.1))
-            zz = z + (rnd.uniform(-2.5, 2.5) if j else 0)
-            ring.append((math.cos(a) * rr, math.sin(a) * rr, zz))
-        rings.append(ring)
-    peak = (rnd.uniform(-1.5, 1.5), rnd.uniform(-1.5, 1.5), 62.0)
-
-    def band(name, j0, j1, mat_a, mat_b, cap=False):
-        # faces alternate between two shades so the facets read
-        for mat, parity in ((mat_a, 0), (mat_b, 1)):
-            bm = bmesh.new()
-            vs = [[bm.verts.new(p) for p in ring] for ring in rings[j0:j1 + 1]]
-            top = bm.verts.new(peak) if cap else None
-            for j in range(len(vs) - 1):
-                for i in range(SEG):
-                    if (i + j) % 2 != parity:
-                        continue
-                    a, b = vs[j], vs[j + 1]
-                    bm.faces.new((a[i], a[(i + 1) % SEG], b[(i + 1) % SEG]))
-                    bm.faces.new((a[i], b[(i + 1) % SEG], b[i]))
-            if cap:
-                for i in range(SEG):
-                    if i % 2 == parity:
-                        bm.faces.new((vs[-1][i], vs[-1][(i + 1) % SEG], top))
-            bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-            if len(bm.faces):
-                lib._finish(lib._from_bmesh("%s%d" % (name, parity), bm), mat, (0, 0, 0), (0, 0, 0), 0)
-            else:
-                bm.free()
-
-    band("rock", 0, SNOW_FROM, rock, rock_dark)
-    band("snow", SNOW_FROM, len(RINGS) - 1, snow, snow, cap=True)
-    # rocky ledges sticking out of the slopes
+    # tiers: (size across, height, centre height, turns)
+    tiers = [(46, 20, 10, (0, 30, 60)), (34, 18, 27, (15, 45, 75)), (22, 15, 42, (5, 50))]
+    for t, (s, h, z, turns) in enumerate(tiers):
+        for i, a in enumerate(turns):
+            jitter = (rnd.uniform(-2.5, 2.5), rnd.uniform(-2.5, 2.5))
+            tilt = (rnd.uniform(-5, 5), rnd.uniform(-5, 5), a + rnd.uniform(-6, 6))
+            mat = (rock, rock_dark, rock_light)[(t + i) % 3]
+            lib.box("tier%d_%d" % (t, i), (s * rnd.uniform(0.9, 1.05), s * rnd.uniform(0.9, 1.05), h), (jitter[0], jitter[1], z), rot=tilt, mat=mat)
+    # sloped rock skirts round the two lower tiers, so the silhouette reads as a peak, not a stack of crates
+    # (a wedge is tall at its -Y side: sitting on its +Y side it slopes down away from the centre)
+    for i in range(9):
+        a = i * 40 + rnd.uniform(-10, 10)
+        lib.wedge("skirt%d" % i, (rnd.uniform(16, 20), 14, 14), lib.rotated((0, 29, 7), a), rot=(0, 0, a), mat=(rock, rock_dark)[i % 2])
+    for i in range(7):
+        a = i * 360 / 7 + 20 + rnd.uniform(-10, 10)
+        lib.wedge("shoulder%d" % i, (rnd.uniform(12, 15), 10, 12), lib.rotated((0, 21, 24), a), rot=(0, 0, a), mat=(rock_light, rock)[i % 2])
+    # rocky ledges round the lower slopes
+    for i in range(6):
+        a = i * 60 + rnd.uniform(-20, 20)
+        r = rnd.uniform(19, 23)
+        lib.box("ledge%d" % i, (9, 6, 4), lib.rotated((0, r, rnd.uniform(4, 16)), a), rot=(rnd.uniform(-10, 10), rnd.uniform(-8, 8), a), mat=rock_dark)
+    # snow: a cap on the top tier, the peak, and snow running down each side
+    lib.box("cap", (23, 23, 3), (0, 0, 50), rot=(2, -2, 50), mat=snow)
+    lib.box("cap2", (16, 16, 4), (0, 0, 53), rot=(0, 0, 20), mat=snow)
     for i in range(4):
-        a = i * 90 + rnd.uniform(-30, 30)
-        z = 5 + i * 4
-        # sunk into the slope: the cone's radius at height z, minus a bit
-        lib.box("ledge%d" % i, (8, 5, 3.4), lib.rotated((0, 27.5 - z * 0.48, z), a), rot=(rnd.uniform(-8, 8), 0, a), mat=rock_dark, bevel=0.6)
+        a = i * 90 + 20
+        # a wedge is tall at its -Y side: sitting on its +Y side it slopes down away from the centre
+        lib.wedge("peak%d" % i, (10, 6, 9), lib.rotated((0, 3, 59.5), a), rot=(0, 0, a), mat=snow)
+    for i in range(5):
+        a = i * 72 + rnd.uniform(-10, 10)
+        ln = rnd.uniform(8, 11)
+        lib.wedge("drift%d" % i, (rnd.uniform(5, 7), ln, 9), lib.rotated((0, 9.5 + ln / 2, 42.5), a), rot=(0, 0, a), mat=snow)

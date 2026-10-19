@@ -89,8 +89,57 @@ local function prepare(name: string, asset: Instance): Model?
 	return model
 end
 
+-- Native-part versions of the Blender models (server/PartModels, made by tools/blender/to_parts.py): no mesh
+-- upload needed. Used for any model that isn't uploaded.
+local partModels = script.Parent:FindFirstChild("PartModels")
+local SHAPES = { B = Enum.PartType.Block, C = Enum.PartType.Cylinder, S = Enum.PartType.Ball }
+
+-- A template from a PartModels spec. Its parts are already in the model's own studs (front = -Z), so the pivot
+-- is simply the origin.
+local function buildFromParts(name: string, spec: { materials: { string }, parts: { { any } } }): Model
+	local model = Instance.new("Model")
+	model.Name = name
+	for _, p in spec.parts do
+		local part: BasePart
+		if p[1] == "W" then
+			part = Instance.new("WedgePart")
+		else
+			local block = Instance.new("Part")
+			block.Shape = SHAPES[p[1]] or Enum.PartType.Block
+			part = block
+		end
+		part.Size = Vector3.new(p[2], p[3], p[4])
+		part.CFrame = CFrame.new(p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[16])
+		local matName = spec.materials[p[17]] or "Plastic__A3A2A5"
+		local kind, hex = matName:match("^(%w+)__(%x+)")
+		pcall(function()
+			part.Material = (Enum.Material :: any)[kind]
+		end)
+		local c = hex and parseColor(hex)
+		if c then
+			part.Color = c
+		end
+		local see = matName:match("__T(%d+)")
+		if see then
+			part.Transparency = (tonumber(see) :: number) / 100
+		end
+		if kind == "Neon" or see then
+			part.CastShadow = false
+		end
+		part.Name = matName
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.BottomSurface = Enum.SurfaceType.Smooth
+		part.Anchored = true
+		part.CanTouch = false
+		part.Parent = model
+	end
+	model.WorldPivot = CFrame.new()
+	model.Parent = folder
+	return model
+end
+
 -- Loads every model at the same time (one at a time took ~30 s) and waits at most `timeout` seconds; a model
--- that isn't loaded by then uses its brick fallback.
+-- that isn't loaded by then uses its native-part version if it has one, else its brick fallback.
 function Models.loadAll(timeout: number?)
 	local pending = 0
 	local failed = 0
@@ -124,6 +173,23 @@ function Models.loadAll(timeout: number?)
 	print(("[Models] %d models loaded, %d failed, %d still loading"):format(loaded, failed, pending))
 	if failed > 0 then
 		warn("[Models] Models only load in a game owned by the account that uploaded them (see tools/upload_models.py). Using brick versions for the missing ones.")
+	end
+	-- models that aren't uploaded but have a native-part version (PartModels) are built from that
+	local built = 0
+	for _, module in partModels and partModels:GetChildren() or {} do
+		if module:IsA("ModuleScript") and not templates[module.Name] then
+			local ok, err = pcall(function()
+				templates[module.Name] = buildFromParts(module.Name, require(module) :: any)
+			end)
+			if ok then
+				built += 1
+			else
+				warn(("[Models] couldn't build %s from parts: %s"):format(module.Name, tostring(err)))
+			end
+		end
+	end
+	if built > 0 then
+		print(("[Models] %d models built from native parts"):format(built))
 	end
 end
 

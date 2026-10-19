@@ -12,8 +12,9 @@ Config.ADMINS = { 1994267229 }
 Config.STUDIO_MODE = "Lobby"
 
 -- The ground: "Blender" = the ground_* models (server/GroundMesh), "Terrain" = Roblox Terrain (server/Ground).
+-- Terrain for now: the ground models need a mesh upload, and as native parts they'd be thousands of wedges.
 -- Blender falls back to Terrain by itself while its models aren't uploaded.
-Config.GROUND = "Blender"
+Config.GROUND = "Terrain"
 
 Config.SAVE_KEY = "MowALawn_v1"
 Config.SCHEMA = 1

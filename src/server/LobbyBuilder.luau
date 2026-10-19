@@ -8,6 +8,7 @@ local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
+local GroundMesh = require(script.Parent.GroundMesh)
 
 local LobbyBuilder = {}
 
@@ -17,7 +18,8 @@ local CYAN = Color3.fromRGB(40, 230, 255)
 local FLOOR_Y = 0 -- top of the ground (Terrain)
 local EDGE = 66 -- the fence around the clearing
 
-local function ground(world: Instance)
+-- The Terrain ground (Config.GROUND = "Terrain", or while the Blender ground models aren't uploaded).
+local function terrainGround()
 	-- grassy terrain with animated blades, a dirt clearing with a ragged edge, worn paths to the buildings
 	Ground.fill(0, 0, 440, 440, Enum.Material.Grass)
 	Ground.patch(0, 0, EDGE * 2 - 6, EDGE * 2 - 6, Enum.Material.Ground, 5)
@@ -34,6 +36,12 @@ local function ground(world: Instance)
 		local t = i / 12 * math.pi * 2 + 0.2
 		Ground.hill(math.cos(t) * 245, math.sin(t) * 245, rng:NextNumber(45, 70), rng:NextNumber(12, 24))
 	end
+end
+
+local function ground(world: Instance)
+	if not GroundMesh.lobby(world) then
+		terrainGround()
+	end
 	-- keep players in
 	for _, side in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
 		local pos = Vector3.new(side[1] * 100, 20, side[2] * 100)
@@ -44,6 +52,17 @@ end
 
 -- A glowing outline on the ground (a rectangle w x d around `centre`, in the model's own studs).
 local function outline(parent: Instance, at: CFrame, centre: Vector3, w: number, d: number, color: Color3)
+	-- the Blender outline of this size (glow_<w>x<d>), recoloured
+	local glow = Models.place(("glow_%dx%d"):format(w, d), parent, at * CFrame.new(centre), 1, true)
+	if glow then
+		for _, p in glow:GetDescendants() do
+			if p:IsA("BasePart") then
+				p.Color = color
+				p.CanQuery = false
+			end
+		end
+		return
+	end
 	for _, e in { { 0, d / 2, w, 0.4 }, { 0, -d / 2, w, 0.4 }, { w / 2, 0, 0.4, d }, { -w / 2, 0, 0.4, d } } do
 		local p = PropKit.brick(parent, Vector3.new(e[3], 0.12, e[4]), at * CFrame.new(centre + Vector3.new(e[1], 0.06, e[2])), color, "Outline", Enum.Material.Neon)
 		p.CanCollide = false
@@ -178,9 +197,17 @@ local function garageCabin(world: Instance)
 	end
 	cabinSign(m, at, s, "GARAGE", Color3.fromRGB(255, 150, 50))
 	local spot = at * CFrame.new(0, 0, -18 * s)
-	local floor = PropKit.cylinder(m, 5, 0.6, spot * CFrame.new(0, 0.3, 0), Color3.fromRGB(70, 70, 78))
+	local floor: BasePart
+	if Models.place("turntable", m, spot, 1) then
+		-- an invisible disc for the prompt (the mesh itself keeps its own collisions)
+		floor = PropKit.cylinder(m, 5, 0.6, spot * CFrame.new(0, 0.3, 0), Color3.new(1, 1, 1))
+		floor.Transparency = 1
+		floor.CanCollide = false
+	else
+		floor = PropKit.cylinder(m, 5, 0.6, spot * CFrame.new(0, 0.3, 0), Color3.fromRGB(70, 70, 78))
+		floor.Material = Enum.Material.DiamondPlate
+	end
 	floor.Name = "Turntable"
-	floor.Material = Enum.Material.DiamondPlate
 	outline(m, spot, Vector3.zero, 12, 12, Color3.fromRGB(255, 150, 50))
 	if not Models.place("mower_tractor", m, spot * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, math.rad(200), 0), 1, true) then
 		PropKit.brick(m, Vector3.new(5, 2.4, 7), spot * CFrame.new(0, 1.8, 0), Color3.fromRGB(255, 200, 40), "DisplayMower")
@@ -255,7 +282,17 @@ local function startBoard(m: Instance)
 	local lift = 9
 	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + lift, 58), Vector3.new(0, FLOOR_Y + lift, 0))
 	local s = 1.6
-	if Models.place("start_sign", m, at, s, true) then
+	-- start_board is start_sign on tall legs: it stands on the ground, its board at the same height
+	local placedBoard = Models.place("start_board", m, at * CFrame.new(0, -lift, 0), s, true)
+	if placedBoard then
+		PropKit.facePanel(m, at, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "START A RUN", GOLD, s)
+		local sub = ("Step on a pad - play solo or bring up to %d friends"):format(Config.PARTY_MAX - 1)
+		PropKit.facePanel(m, at, Vector3.new(0, 6.1, -0.62), Vector2.new(27, 1.5), sub, CREAM, s)
+		PropKit.collider(m, at, Vector3.new(0, 6, 0.6), Vector3.new(30, 12, 2.4), s)
+		for _, x in { -12.5, 12.5 } do
+			PropKit.collider(m, at, Vector3.new(x, -lift / s / 2, 0.7), Vector3.new(1.9, lift / s, 1.9), s)
+		end
+	elseif Models.place("start_sign", m, at, s, true) then
 		for _, x in { -12.5, 12.5 } do
 			local leg = PropKit.cylinder(m, 0.95 * s, lift + 1, at * CFrame.new(x * s, -lift / 2 + 0.5, 0.7 * s), Color3.fromRGB(110, 70, 42))
 			leg.Material = Enum.Material.Wood

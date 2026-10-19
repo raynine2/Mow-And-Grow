@@ -11,6 +11,10 @@ Config.ADMINS = { 1994267229 }
 -- The Workspace attribute ForceMode overrides this.
 Config.STUDIO_MODE = "Lobby"
 
+-- The ground: "Blender" = the ground_* models (server/GroundMesh), "Terrain" = Roblox Terrain (server/Ground).
+-- Blender falls back to Terrain by itself while its models aren't uploaded.
+Config.GROUND = "Blender"
+
 Config.SAVE_KEY = "MowALawn_v1"
 Config.SCHEMA = 1
 

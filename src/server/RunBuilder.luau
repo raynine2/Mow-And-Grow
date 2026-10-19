@@ -7,6 +7,7 @@ local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
+local GroundMesh = require(script.Parent.GroundMesh)
 
 local RunBuilder = {}
 
@@ -176,12 +177,14 @@ end
 
 local function hub(world: Instance, info)
 	local m = PropKit.folder("Hub", world)
-	-- ground: soft grass with a dirt yard around the cabin and the machines
-	-- grass with a dirt yard around the cabin and the machines, and a worn path out to the first field
-	Ground.fill(0, HUB_START + 50, 100, 100, Enum.Material.Grass)
-	Ground.patch(0, -48, 92, 56, Enum.Material.Ground, 3)
-	Ground.path(Vector3.new(0, 0, -30), Vector3.new(0, 0, 26), 10, Enum.Material.Ground, 4)
-	Ground.patch(-8, -36, 16, 16, Enum.Material.Mud, 6) -- trodden mud at the sell pad
+	-- ground: grass with a dirt yard around the cabin and the machines, and a worn path out to the first field
+	-- (Terrain version; the Blender ground_hub model has the same layout)
+	if not info.meshGround then
+		Ground.fill(0, HUB_START + 50, 100, 100, Enum.Material.Grass)
+		Ground.patch(0, -48, 92, 56, Enum.Material.Ground, 3)
+		Ground.path(Vector3.new(0, 0, -30), Vector3.new(0, 0, 26), 10, Enum.Material.Ground, 4)
+		Ground.patch(-8, -36, 16, 16, Enum.Material.Mud, 6) -- trodden mud at the sell pad
+	end
 	Environment.spawn(m, CFrame.lookAt(Vector3.new(0, 0.8, -68), Vector3.new(0, 0.8, 0)))
 	toolShop(m, info)
 	-- fences along the hub's sides
@@ -241,10 +244,13 @@ local function zone(world: Instance, z: number, info)
 	local groundLen = Config.ZONE_SPACING
 	-- the zone's ground (Terrain, from just before its gate to the next one): a lush meadow, golden-soil wheat
 	-- field, muddy swamp or leafy jungle floor under the clumps
-	local terrainMat = ({ lawn = Enum.Material.Grass, golf = Enum.Material.Grass, wheat = Enum.Material.Ground, reeds = Enum.Material.Mud, jungle = Enum.Material.LeafyGrass })[def.style] or Enum.Material.Grass
-	Ground.fill(0, zs - 10 + groundLen / 2, HALF_WIDTH * 2 + 220, groundLen, Enum.Material.Grass)
-	if terrainMat ~= Enum.Material.Grass then
-		Ground.patch(0, zs + Config.GRID.rows * Config.GRID.tile / 2, HALF_WIDTH * 2 - 4, Config.GRID.rows * Config.GRID.tile + 10, terrainMat, z)
+	-- (Terrain version; the Blender ground_<style> model has the same layout, plus its hills, sand and water)
+	if not info.meshGround then
+		local terrainMat = ({ lawn = Enum.Material.Grass, golf = Enum.Material.Grass, wheat = Enum.Material.Ground, reeds = Enum.Material.Mud, jungle = Enum.Material.LeafyGrass })[def.style] or Enum.Material.Grass
+		Ground.fill(0, zs - 10 + groundLen / 2, HALF_WIDTH * 2 + 220, groundLen, Enum.Material.Grass)
+		if terrainMat ~= Enum.Material.Grass then
+			Ground.patch(0, zs + Config.GRID.rows * Config.GRID.tile / 2, HALF_WIDTH * 2 - 4, Config.GRID.rows * Config.GRID.tile + 10, terrainMat, z)
+		end
 	end
 
 	-- zone sign (a plank board on two posts, turned toward the road)
@@ -299,28 +305,44 @@ local function zone(world: Instance, z: number, info)
 	PropKit.forest(m, fieldHalf + 10, 130, zs - 6, zs + Config.ZONE_SPACING - 14, { seed = z * 101, leaf = leaf, scale = scale, detailDist = 62 })
 	PropKit.forest(m, -130, -(fieldHalf + 10), zs - 6, zs + Config.ZONE_SPACING - 14, { seed = z * 211, leaf = leaf, scale = scale, detailDist = 62 })
 	-- rolling hills beyond the side forests
-	local hillRng = Random.new(z * 17)
-	for side = -1, 1, 2 do
-		Ground.hill(side * hillRng:NextNumber(175, 210), zs + hillRng:NextNumber(10, 100), hillRng:NextNumber(50, 75), hillRng:NextNumber(14, 26))
+	if not info.meshGround then
+		local hillRng = Random.new(z * 17)
+		for side = -1, 1, 2 do
+			Ground.hill(side * hillRng:NextNumber(175, 210), zs + hillRng:NextNumber(10, 100), hillRng:NextNumber(50, 75), hillRng:NextNumber(14, 26))
+		end
 	end
 
 	-- small theme props
 	if z == 2 then
-		local flag = PropKit.brick(m, Vector3.new(0.5, 9, 0.5), CFrame.new(46, 4.5, zs + 30), Color3.fromRGB(255, 255, 255), "FlagPole")
-		PropKit.brick(m, Vector3.new(0.2, 2.4, 3.4), CFrame.new(46, 7.8, zs + 31.7), Color3.fromRGB(255, 70, 70), "Flag")
-		Ground.patch(46.5, zs + 55, 6, 16, Enum.Material.Sand, 9) -- a sand trap
-		flag.Name = "FlagPole"
+		-- the flag on the putting green (the green and the sand trap are part of ground_golf)
+		local flagAt = if info.meshGround then CFrame.new(34, 0, zs + 28) else CFrame.new(46, 0, zs + 30)
+		if not Models.place("golf_flag", m, flagAt * CFrame.Angles(0, math.rad(-120), 0), 1, true) then
+			local flag = PropKit.brick(m, Vector3.new(0.5, 9, 0.5), flagAt * CFrame.new(0, 4.5, 0), Color3.fromRGB(255, 255, 255), "FlagPole")
+			PropKit.brick(m, Vector3.new(0.2, 2.4, 3.4), flagAt * CFrame.new(0, 7.8, 1.7), Color3.fromRGB(255, 70, 70), "Flag")
+			flag.Name = "FlagPole"
+		end
+		if not info.meshGround then
+			Ground.patch(46.5, zs + 55, 6, 16, Enum.Material.Sand, 9) -- a sand trap
+		end
 	elseif z == 3 then
 		for i = 0, 3 do
-			PropKit.brick(m, Vector3.new(4, 3.6, 4), CFrame.new(-46.5, 1.8, zs + 10 + i * 22), Color3.fromRGB(235, 190, 70), "HayBale")
+			local at = CFrame.new(-46.5, 0, zs + 10 + i * 22) * CFrame.Angles(0, math.rad(i * 23), 0)
+			if not Models.place("hay_bale", m, at, 1) then
+				PropKit.brick(m, Vector3.new(4, 3.6, 4), at * CFrame.new(0, 1.8, 0), Color3.fromRGB(235, 190, 70), "HayBale")
+			end
 		end
 	elseif z == 4 then
-		for side = -1, 1, 2 do
-			Ground.water(side * 46.5, zs + 48, 6, 72, 3) -- real water channels along the swamp's edges
+		if not info.meshGround then
+			for side = -1, 1, 2 do
+				Ground.water(side * 46.5, zs + 48, 6, 72, 3) -- real water channels along the swamp's edges
+			end
 		end
 	elseif z == 5 then
-		for _, x in { -47, 47 } do
-			PropKit.forestTree(m, Vector3.new(x, 0, zs + 40), 1.9, { leaf = Color3.fromRGB(20, 95, 38) })
+		for i, x in { -47, 47 } do
+			local at = CFrame.new(x, 0, zs + 40) * CFrame.Angles(0, math.rad(i * 70), 0)
+			if not Models.place("jungle_tree", m, at, 1, true) then
+				PropKit.forestTree(m, Vector3.new(x, 0, zs + 40), 1.9, { leaf = Color3.fromRGB(20, 95, 38) })
+			end
 		end
 	end
 
@@ -329,7 +351,7 @@ end
 
 function RunBuilder.build()
 	local world = Environment.apply()
-	local info = { world = world, gates = {}, pumps = {} }
+	local info = { world = world, gates = {}, pumps = {}, meshGround = GroundMesh.run(world, HUB_START, HALF_WIDTH) }
 	hub(world, info)
 	for z = 1, #Config.ZONES do
 		zone(world, z, info)
@@ -353,12 +375,14 @@ function RunBuilder.build()
 	PropKit.forest(world, -130, 130, HUB_START - 70, HUB_START - 10, { seed = 7, detailDist = 70 })
 	PropKit.forest(world, 52, 130, HUB_START, 18, { seed = 8, detailDist = 62 })
 	PropKit.forest(world, -130, -52, HUB_START, 18, { seed = 9, detailDist = 62 })
-	-- grass all around the hub too, with hills behind it
-	Ground.fill(0, HUB_START - 40, 320, 130, Enum.Material.Grass)
-	Ground.fill(-110, HUB_START + 50, 120, 100, Enum.Material.Grass)
-	Ground.fill(110, HUB_START + 50, 120, 100, Enum.Material.Grass)
-	for i = -2, 2 do
-		Ground.hill(i * 70, HUB_START - 150, 70, 20 + (i % 2) * 8)
+	-- grass all around the hub too, with hills behind it (ground_hub has these)
+	if not info.meshGround then
+		Ground.fill(0, HUB_START - 40, 320, 130, Enum.Material.Grass)
+		Ground.fill(-110, HUB_START + 50, 120, 100, Enum.Material.Grass)
+		Ground.fill(110, HUB_START + 50, 120, 100, Enum.Material.Grass)
+		for i = -2, 2 do
+			Ground.hill(i * 70, HUB_START - 150, 70, 20 + (i % 2) * 8)
+		end
 	end
 	return info
 end

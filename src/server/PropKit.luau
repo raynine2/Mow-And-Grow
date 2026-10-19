@@ -180,6 +180,18 @@ end
 
 -- Snowy low-poly mountain far in the background.
 function PropKit.mountain(parent: Instance, pos: Vector3, scale: number)
+	-- the Blender mountain is as big as the brick one at the same scale (60 across, ~62 high)
+	local spin = CFrame.Angles(0, math.rad((pos.X * 13 + pos.Z * 7) % 360), 0)
+	local placed = Models.place("mountain", parent, CFrame.new(pos) * spin, scale, true)
+	if placed then
+		for _, part in placed:GetDescendants() do
+			if part:IsA("BasePart") then
+				part.CastShadow = false
+				part.CanQuery = false
+			end
+		end
+		return
+	end
 	local m = Instance.new("Model")
 	m.Name = "Mountain"
 	local layers = 5

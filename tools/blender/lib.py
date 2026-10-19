@@ -31,10 +31,13 @@ def reset():
 # ---------------------------------------------------------------------------------------------------------------
 # materials
 # ---------------------------------------------------------------------------------------------------------------
-def material(kind, rgb):
-    """A Roblox material slot. kind = Roblox material name, rgb = (r, g, b) in 0..255."""
+def material(kind, rgb, transparency=0.0):
+    """A Roblox material slot. kind = Roblox material name, rgb = (r, g, b) in 0..255.
+    transparency > 0 adds "__T<percent>" to the name; server/Models.luau sets the MeshPart's Transparency from it."""
     assert kind in ROBLOX_MATERIALS, kind
     name = "%s__%s" % (kind, hexcol(rgb))
+    if transparency > 0:
+        name += "__T%02d" % int(round(transparency * 100))
     mat = bpy.data.materials.get(name)
     if mat:
         return mat
@@ -127,6 +130,19 @@ def sphere(name, radius, loc=(0, 0, 0), mat=None, subdiv=1):
     bmesh.ops.create_icosphere(bm, subdivisions=subdiv, radius=radius)
     return _finish(_from_bmesh(name, bm), mat, loc, (0, 0, 0), 0)
 
+def planar_uv(obj, studs_per_tile=8.0):
+    """World-space top-down UVs (1 UV unit = `studs_per_tile` studs), so a Roblox material texture tiles evenly over
+    big ground meshes instead of stretching once across the whole mesh. Call after placing the object."""
+    bpy.context.view_layer.update()
+    me = obj.data
+    uv = me.uv_layers.get("UVMap") or me.uv_layers.new(name="UVMap")
+    mw = obj.matrix_world
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            co = mw @ me.vertices[me.loops[li].vertex_index].co
+            uv.data[li].uv = (co.x / studs_per_tile, co.y / studs_per_tile)
+    return obj
+
 def rotated(vec, deg_z):
     a = math.radians(deg_z)
     return (vec[0] * math.cos(a) - vec[1] * math.sin(a), vec[0] * math.sin(a) + vec[1] * math.cos(a), vec[2])
@@ -183,7 +199,7 @@ def export_glb(path):
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_yup=True,
                               export_apply=True, export_materials="EXPORT")
 
-def preview(path, size=(900, 700), dist=None, height=None, target_z=None, samples=32, yaw=35):
+def preview(path, size=(900, 700), dist=None, height=None, target_z=None, samples=32, yaw=35, ground=True):
     """Cycles render of the current scene from a 3/4 front view, on a grass ground with sun + sky."""
     sc = bpy.context.scene
     # frame the model
@@ -195,7 +211,8 @@ def preview(path, size=(900, 700), dist=None, height=None, target_z=None, sample
                 mins = Vector(map(min, mins, w)); maxs = Vector(map(max, maxs, w))
     centre = (mins + maxs) / 2
     extent = max((maxs - mins).length, 2)
-    ground = box("__ground", (extent * 6, extent * 6, 0.2), (0, 0, -0.1), mat=material("Grass", (88, 158, 44)))
+    # ground=False for the ground models themselves: a preview floor at z = 0 would sit on top of them
+    ground = box("__ground", (extent * 6, extent * 6, 0.2), (0, 0, -0.1), mat=material("Grass", (88, 158, 44))) if ground else None
     cam_d = bpy.data.cameras.new("cam"); cam_d.lens = 40
     cam = bpy.data.objects.new("cam", cam_d); sc.collection.objects.link(cam)
     d = dist or extent * 1.25
@@ -216,4 +233,5 @@ def preview(path, size=(900, 700), dist=None, height=None, target_z=None, sample
     bpy.ops.render.render(write_still=True)
     # remove preview helpers so they never get exported
     for o in (ground, cam, sun):
-        bpy.data.objects.remove(o, do_unlink=True)
+        if o:
+            bpy.data.objects.remove(o, do_unlink=True)

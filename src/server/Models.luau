@@ -52,6 +52,12 @@ local function prepare(name: string, asset: Instance): Model?
 					if kind == "Neon" then
 						d.CastShadow = false
 					end
+					-- "Glass__2E786E__T35" = 35% transparent (water, glow sheets)
+					local see = d.Name:match("__T(%d+)$")
+					if see then
+						d.Transparency = (tonumber(see) :: number) / 100
+						d.CastShadow = false
+					end
 				end
 				-- the importer may add textures/surface appearances from the glTF material; we want Roblox materials
 				for _, extra in d:GetChildren() do

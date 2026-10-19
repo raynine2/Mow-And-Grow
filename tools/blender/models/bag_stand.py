@@ -40,4 +40,5 @@ def build(lib):
     # pedestals: round stumps with cut rings on top
     for i, (x, y) in enumerate(PEDESTALS):
         lib.cyl("stump%d" % i, 1.35, 2.0, (x, y, 1.0), mat=bark, verts=12, bevel=0.08)
-        lib.cyl("rings%d" % i, 1.18, 0.06, (x, y, 2.02), mat=rings, verts=12)
+        # just above the stump's top face (2.0), so the two don't flicker into each other
+        lib.cyl("rings%d" % i, 1.18, 0.06, (x, y, 2.045), mat=rings, verts=12)

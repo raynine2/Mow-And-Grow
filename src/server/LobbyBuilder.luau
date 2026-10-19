@@ -278,8 +278,9 @@ end
 -- The BEST TIMES board (trophy_board model): the Lobby system fills its face with the fastest runs.
 local function bestTimesBoard(world: Instance): TextLabel?
 	local m = PropKit.folder("BestTimes", world)
-	local pos = Vector3.new(56, FLOOR_Y, 4)
-	local at = CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, 4))
+	-- between where the rewards chest and the garage stand when their models aren't loaded (z -10..0, 15..35)
+	local pos = Vector3.new(56, FLOOR_Y, 8)
+	local at = CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, 8))
 	local s = 1.3
 	if not Models.place("trophy_board", m, at, s, true) then
 		return nil

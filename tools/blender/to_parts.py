@@ -115,7 +115,7 @@ def convert(name):
         mname = o.data.materials[0].name
         if mname not in mats:
             mats.append(mname)
-        mi = len(mats)
+        mi = mats.index(mname) + 1  # this object's own material (1-based, for Luau)
         mw = o.matrix_world
         loc, quat, scale = mw.decompose()
         rb = quat.to_matrix()

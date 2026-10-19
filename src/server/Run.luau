@@ -19,6 +19,7 @@ local Quests = require(script.Parent.Quests)
 local GemShop = require(script.Parent.GemShop)
 local Loot = require(script.Parent.Loot)
 local Models = require(script.Parent.Models)
+local BestTimes = require(script.Parent.BestTimes)
 
 local Run = {}
 
@@ -112,9 +113,11 @@ local function completeRun()
 			local gems = math.floor(Config.RUN_COMPLETE_GEMS * Stats.compute(p, data).gems)
 			data.gems += gems
 			data.stats.runs += 1
+			local time = if data.run then data.run.time or 0 else 0
+			local best = BestTimes.submit(p, data, time)
 			data.run = nil -- coins, tools and coin mowers end with the run
 			PlayerData.changed(p)
-			Net.send(p, "Fx", "runComplete", { gems = gems })
+			Net.send(p, "Fx", "runComplete", { gems = gems, time = time, best = best })
 			task.spawn(PlayerData.save, p)
 		end
 	end
@@ -581,6 +584,12 @@ function Run.start()
 		end
 		PlayerData.changed(player)
 	end)
+	Net.on("Seen", 1, function(player, what)
+		local data = PlayerData.get(player)
+		if what == "intro" and data and data.run then
+			data.run.introSeen = true
+		end
+	end)
 	Net.on("SpawnMower", 2, function(player, id)
 		if type(id) == "string" then
 			if not Mowers.spawn(player, id) then
@@ -613,6 +622,20 @@ function Run.start()
 	end)
 
 	task.spawn(sellLoop)
+	-- the run clock: one second per second you're in the run (the HUD ticks it between updates)
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			if started and not completing then
+				for _, p in Players:GetPlayers() do
+					local data = PlayerData.get(p)
+					if data and data.run then
+						data.run.time = (data.run.time or 0) + 1
+					end
+				end
+			end
+		end
+	end)
 	-- walking up to a locked gate explains what's needed (like "Birch Grove is locked")
 	task.spawn(function()
 		local lastNote: { [Player]: number } = {}

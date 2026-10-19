@@ -24,6 +24,7 @@ local system: any = if Mode.isRun then require(script.Parent.Run) else require(s
 system.start()
 Monetization.start()
 require(script.Parent.Anims).start() -- our character animations (once uploaded), set before anyone spawns
+require(script.Parent.BestTimes).start() -- the trophy tag with your best time over your head
 
 -- Spawn on the world's own SpawnLocation, not one from the place template (the Baseplate's). This only
 -- changes the running game; the place file keeps its parts. The Baseplate is hidden while playing because
@@ -140,6 +141,8 @@ local function snapshot(player: Player, data)
 			ground = Loot.count(player), -- bundles still lying on the ground
 			bag = run.bag or 0,
 			vacuum = run.vacuum == true,
+			time = run.time or 0,
+			introSeen = run.introSeen == true,
 			quest = Quests.view(run),
 		}
 	end

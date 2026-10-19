@@ -275,6 +275,23 @@ local function leaderboard(world: Instance): TextLabel
 	return body
 end
 
+-- The BEST TIMES board (trophy_board model): the Lobby system fills its face with the fastest runs.
+local function bestTimesBoard(world: Instance): TextLabel?
+	local m = PropKit.folder("BestTimes", world)
+	local pos = Vector3.new(56, FLOOR_Y, 4)
+	local at = CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, 4))
+	local s = 1.3
+	if not Models.place("trophy_board", m, at, s, true) then
+		return nil
+	end
+	PropKit.facePanel(m, at, Vector3.new(0, 10.9, -0.3), Vector2.new(10.4, 1.6), "BEST TIMES", GOLD, s)
+	local body = PropKit.facePanel(m, at, Vector3.new(0, 6.3, -0.3), Vector2.new(10.2, 6.6), "", Color3.new(1, 1, 1), s)
+	body.TextXAlignment = Enum.TextXAlignment.Left
+	body.TextYAlignment = Enum.TextYAlignment.Top
+	PropKit.collider(m, at, Vector3.new(0, 7, 0), Vector3.new(13, 14, 1.4), s)
+	return body
+end
+
 local PAD_COLORS = { Color3.fromRGB(80, 200, 80), Color3.fromRGB(60, 165, 255), Color3.fromRGB(160, 95, 255), Color3.fromRGB(255, 110, 190) }
 
 local function startBoard(m: Instance)
@@ -345,8 +362,9 @@ function LobbyBuilder.build()
 	garageCabin(world)
 	rewardsStall(world)
 	local leaderLabel = leaderboard(world)
+	local bestLabel = bestTimesBoard(world)
 	local pads = partyArea(world)
-	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, pads = pads }
+	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = pads }
 end
 
 return LobbyBuilder

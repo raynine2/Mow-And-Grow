@@ -342,12 +342,17 @@ State.on("data", function(d)
 	end
 end)
 
-local runStart = 0
+-- the timer shows your own run time (server/Run counts it); it ticks here between updates
+local runTime, runTimeAt = -1, 0
+State.on("data", function(d)
+	if d.run and d.run.time then
+		runTime, runTimeAt = d.run.time, os.clock()
+	end
+end)
 State.on("world", function(w)
 	if w.mode ~= "Run" or w.loading then
 		return
 	end
-	runStart = w.started or runStart
 	zoneText.Text = w.name .. "   "
 	if w.boss then
 		-- the boss's health has its own big bar at the top (BossFx); this corner just says what's on
@@ -367,8 +372,8 @@ end)
 task.spawn(function()
 	while true do
 		task.wait(0.5)
-		if currentMode == "Run" and runStart > 0 then
-			timerText.Text = Format.clock(workspace:GetServerTimeNow() - runStart)
+		if currentMode == "Run" and runTime >= 0 then
+			timerText.Text = Format.clock(runTime + math.min(os.clock() - runTimeAt, 5))
 		end
 	end
 end)

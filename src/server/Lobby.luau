@@ -12,6 +12,7 @@ local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
 local LobbyBuilder = require(script.Parent.LobbyBuilder)
 local GemShop = require(script.Parent.GemShop)
+local BestTimes = require(script.Parent.BestTimes)
 
 local Lobby = {}
 
@@ -71,6 +72,19 @@ local function updateLeaders()
 		table.insert(lines, ("%d. %s  -  %s cut"):format(i, rows[i].name, Format.short(rows[i].cut)))
 	end
 	built.leaderLabel.Text = if #lines > 0 then table.concat(lines, "\n") else "Mow some grass to get on the board!"
+end
+
+-- The BEST TIMES trophy board: the fastest finished runs from every server.
+local function updateBest()
+	if not built.bestLabel then
+		return
+	end
+	local top = BestTimes.top(8)
+	local lines = {}
+	for i, row in top do
+		table.insert(lines, ("%d. %s  -  %s"):format(i, row.name, Format.clock(row.time)))
+	end
+	built.bestLabel.Text = if #lines > 0 then table.concat(lines, "\n") else "Finish a run to set the first time!"
 end
 
 local function buyClass(player: Player, data, id: string)
@@ -381,6 +395,9 @@ function Lobby.start()
 			pcall(updateBoard)
 			if tick % 5 == 0 then
 				pcall(updateLeaders)
+			end
+			if tick % 60 == 0 then
+				task.spawn(pcall, updateBest) -- a DataStore read, once a minute
 			end
 			tick += 1
 			task.wait(1)

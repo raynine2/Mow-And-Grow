@@ -464,7 +464,8 @@ handlers.zoneOpen = function(d)
 end
 
 handlers.runComplete = function(d)
-	Fx.banner("RUN COMPLETE!", C.yellow, 10, ("+%d gems. Back to the lobby soon..."):format(d.gems or 0))
+	local time = if (d.time or 0) > 0 then "  Time " .. Format.clock(d.time) .. (if d.best then "  NEW BEST!" else "") else ""
+	Fx.banner("RUN COMPLETE!", C.yellow, 10, ("+%d gems.%s Back to the lobby soon..."):format(d.gems or 0, time))
 	Sound.play("victory")
 	Confetti.burst(160)
 	task.delay(0.8, Confetti.burst, 120)

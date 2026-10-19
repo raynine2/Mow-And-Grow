@@ -64,6 +64,8 @@ function PlayerData.newRun()
 		fuel = {}, -- [mowerId] = fuel left
 		carry = {}, -- bundles on your back: { {z = zone, m = mutationId}, ... }
 		started = os.time(),
+		time = 0, -- seconds spent playing this run (server/Run counts it; Best Times uses it)
+		introSeen = false, -- the run's fly-over intro was shown (client/Intro)
 	}
 end
 

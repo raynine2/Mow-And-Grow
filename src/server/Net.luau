@@ -14,6 +14,7 @@ local INBOUND = {
 	"Prompt", -- (kind, key)                product | pass
 	"Party", -- (action)                    start | leave
 	"Ready", -- ()                          client finished loading, send state
+	"Seen", -- (what)                       "intro": the run's fly-over was shown
 }
 -- server -> client
 local OUTBOUND = {

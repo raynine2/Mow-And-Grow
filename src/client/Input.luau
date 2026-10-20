@@ -39,14 +39,27 @@ local function toolCooldown(): number
 	return 0.4 * mult
 end
 
+-- Where you're looking: the clump in the middle of the screen is the one you chop (like aiming an axe).
+local function aim(): Vector3
+	local cam = workspace.CurrentCamera
+	return if cam then cam.CFrame.LookVector else Vector3.zAxis
+end
+
 local function swing()
 	local now = os.clock()
 	if now - lastSwing < toolCooldown() then
 		return
 	end
 	lastSwing = now
-	State.fire("Swing")
-	State.emit("swing")
+	local look = aim()
+	State.fire("Swing", look)
+	State.emit("swing", look)
+end
+
+-- The Hold upgrade (first thing in the Hands section): until you own it, every swing is its own click.
+local function canHold(): boolean
+	local run = State.data and State.data.run
+	return run ~= nil and run.upgrades ~= nil and (run.upgrades.hold or 0) >= 1
 end
 
 local function hookTool(tool: Instance)
@@ -82,7 +95,7 @@ end
 task.spawn(function()
 	while true do
 		task.wait(0.1)
-		if holding and equippedSwingTool() then
+		if holding and equippedSwingTool() and canHold() then
 			swing()
 		end
 	end

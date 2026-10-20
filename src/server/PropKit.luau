@@ -61,13 +61,14 @@ PropKit.LEAVES = Color3.fromRGB(46, 112, 36)
 -- Chop A Forest tree (matched to the official trailer): a thick, tall, square reddish-brown trunk with wood
 -- grain, four slanted root buttresses, a couple of branches, and a big high canopy of leafy cubes.
 -- `lite` builds a cheap far-away version (trunk + 3 leaf blocks) for the forest backdrop.
-type TreeOpts = { leaf: Color3?, trunk: Color3?, birch: boolean?, lite: boolean? }
+type TreeOpts = { leaf: Color3?, trunk: Color3?, birch: boolean?, lite: boolean?, bricks: boolean? } -- bricks: never the model (its leaves are a texture that can't be recoloured)
 function PropKit.forestTree(parent: Instance, pos: Vector3, scale: number, opts: TreeOpts?): Model
 	local o = opts or {}
 	local rng = Random.new(math.floor(pos.X * 7.3 + pos.Z * 13.1))
 	-- the Blender tree when it's uploaded (accent trees get their leaves recoloured)
 	local modelName = if o.birch then "birch" elseif o.lite and Models.has("oak_small") and rng:NextNumber() < 0.3 then "oak_small" else "oak"
-	local placed = Models.place(modelName, parent, CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0), scale * rng:NextNumber(0.92, 1.08))
+	local spin = CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	local placed = if o.bricks then nil else Models.place(modelName, parent, CFrame.new(pos) * spin, scale * rng:NextNumber(0.92, 1.08))
 	if placed then
 		if o.leaf and o.leaf ~= PropKit.LEAVES then
 			for _, part in placed:GetDescendants() do

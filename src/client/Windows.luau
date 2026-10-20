@@ -132,7 +132,7 @@ end
 -- UPGRADES (TAB, run): Upgrades (Hands / Tool / Gear sections) + Stats + Index
 -------------------------------------------------------------------------------------------------------------
 local RUN_TABS = { { label = "Upgrades", window = "Upgrades" }, { label = "Stats", window = "Stats" }, { label = "Index", window = "Index" } }
-local UPGRADE_ICON = { swing = "hands", grasp = "bundle", power = "upgrade", speed = "clover", sell = "coin" }
+local UPGRADE_ICON = { hold = "hands", swing = "hands", grasp = "bundle", power = "upgrade", speed = "clover", sell = "coin" }
 local CARD = Vector2.new(250, 200)
 
 -- A row of fixed-size cards under a heading (the window lists sections top to bottom).

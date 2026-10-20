@@ -1,8 +1,9 @@
 -- A bouncing brick arrow that shows the next thing to do, so nobody is ever lost:
 --   lobby, never played  -> the SOLO pad
 --   run, nothing cut yet -> the grass
---   bag full             -> the Shredder's SELL ring
+--   bag full             -> the nearest Shredder's SELL ring (the hub's or the drop-off)
 --   can afford next tool -> the Tool Shop
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -12,6 +13,7 @@ local State = require(script.Parent.State)
 
 local Guide = {}
 local C = UI.colors
+local player = Players.LocalPlayer
 
 local arrow = Instance.new("Model")
 arrow.Name = "GuideArrow"
@@ -77,7 +79,19 @@ local function pickTarget(): Vector3?
 		return nil
 	end
 	if run.carry >= d.carryMax and w.sellPos then
-		return w.sellPos
+		-- the nearest shredder: the hub's or the drop-off
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local best = w.sellPos
+		if root and w.sellSpots then
+			local bestD = math.huge
+			for _, spot in w.sellSpots do
+				local dd = (spot - root.Position).Magnitude
+				if dd < bestD then
+					best, bestD = spot, dd
+				end
+			end
+		end
+		return best
 	end
 	if w.boss then
 		return nil
@@ -90,7 +104,7 @@ local function pickTarget(): Vector3?
 		end
 	end
 	if d.stats and d.stats.cut == 0 then
-		return Config.zoneEntry(math.clamp(w.zone or 1, 1, #Config.RING.zones))
+		return Config.zoneEntry(math.clamp(w.zone or 1, 1, #Config.ZONES))
 	end
 	return nil
 end

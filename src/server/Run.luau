@@ -1,5 +1,6 @@
--- A run server: cut grass, carry bundles, shred them for coins, buy tools, beat 5 bosses, earn gems.
--- Party progress (which zone is open) is shared; coins, tools and upgrades are per player.
+-- A run server, like a round of Chop A Forest: chop grass, carry bundles, shred them for coins, buy tools, clear
+-- every area to open the next one, earn gems. Party progress (which area is open) is shared; coins, tools and
+-- upgrades are per player.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -38,6 +39,14 @@ local rng = Random.new()
 -------------------------------------------------------------------------------------------------------------
 local function worldState()
 	local def = Config.ZONES[zone]
+	local left = 0
+	for z = 1, #Config.ZONES do
+		left += Field.remainingIn(z)
+	end
+	local spots = {}
+	for _, pad in (info and info.sellPads) or {} do
+		table.insert(spots, pad.pos)
+	end
 	return {
 		mode = "Run",
 		zone = zone,
@@ -47,6 +56,8 @@ local function worldState()
 		total = Field.totalIn(zone),
 		boss = Boss.state(),
 		sellPos = info and info.sellPos,
+		sellSpots = spots, -- every shredder's pad (the hub's and the drop-off)
+		left = left, -- clumps still standing in the whole map
 		started = startedAt,
 	}
 end
@@ -59,9 +70,8 @@ end
 -- zones
 -------------------------------------------------------------------------------------------------------------
 -- `hideAfter`: seconds to leave the gate visible (clients play it sinking into the ground), else at once.
-local function openGate(z: number, hideAfter: number?)
-	local gate = info.gates[z]
-	if not gate or gate:GetAttribute("Open") then
+local function openGate(gate: Model, hideAfter: number?)
+	if gate:GetAttribute("Open") then
 		return
 	end
 	gate:SetAttribute("Open", true)
@@ -89,8 +99,11 @@ end
 local function unlock(z: number, gateShow: number?)
 	zone = z
 	Field.unlock(z)
-	for i = 2, z do
-		openGate(i, if i == z then gateShow else nil)
+	-- every gate between two open plots opens (the newest area's gates sink when its banner shows)
+	for _, g in info.gates do
+		if g.b <= z then
+			openGate(g.model, if g.b == z then gateShow else nil)
+		end
 	end
 	for _, p in Players:GetPlayers() do
 		local data = PlayerData.get(p)
@@ -135,6 +148,31 @@ local function completeRun()
 			warn("[Run] teleport back to lobby failed: " .. tostring(err))
 			Net.notifyAll("Couldn't send you back to the lobby. Please rejoin.", "red")
 		end
+	end
+end
+
+-- An area is mowed bare (Chop A Forest: the next wood unlocks). Everyone gets the area's reward, its stubble
+-- puffs away and the next area's gates sink; the last area finishes the run.
+local function onAreaCleared(z: number)
+	local def = Config.ZONES[z].boss -- the area reward is the old boss reward
+	for _, p in Players:GetPlayers() do
+		local data = PlayerData.get(p)
+		if data and data.run then
+			local gems = math.floor(def.gems * Stats.compute(p, data).gems)
+			data.gems += gems
+			data.run.coins += def.coins
+			PlayerData.changed(p)
+			Net.send(p, "Fx", "reward", { coins = def.coins, gems = gems, title = Config.ZONES[z].name:upper() .. " CLEARED!" })
+		end
+	end
+	Field.clearStubble(z)
+	if z >= #Config.ZONES then
+		task.spawn(completeRun)
+	else
+		unlock(z + 1, 6)
+		task.delay(3, function()
+			Net.all("Fx", "zoneOpen", { zone = z + 1, name = Config.ZONES[z + 1].name })
+		end)
 	end
 end
 
@@ -202,12 +240,21 @@ local function onCut(player: Player, patch): boolean
 	end
 	local stats = Stats.compute(player, data)
 	local pos = patch.part.Position
-	Loot.drop(player, "bundle", pos, patch.z, patch.mut)
-	if stats.bundle > 0 and not bagFull(player) and rng:NextNumber() < stats.bundle then
-		Loot.drop(player, "bundle", pos, patch.z, patch.mut)
+	-- the bundles land where the clump falls, when it hits the ground (a big clump breaks into several, like a
+	-- tree into logs); Bigger Bundle sometimes adds one
+	local land = patch.landPos or pos
+	local wait = Field.FALL_TIME
+	local count = Config.ZONES[patch.z].drops or 1
+	if stats.bundle > 0 and rng:NextNumber() < stats.bundle then
+		count += 1
+	end
+	for i = 1, count do
+		local along = (i - (count + 1) / 2) * 1.6
+		local spot = land + (if patch.fallDir then patch.fallDir * along else Vector3.zero)
+		Loot.drop(player, "bundle", spot, patch.z, patch.mut, nil, wait)
 	end
 	if rng:NextNumber() < Config.GEM_DROP.chance then
-		Loot.drop(player, "gem", pos, patch.z, nil, rng:NextInteger(Config.GEM_DROP.min, Config.GEM_DROP.max))
+		Loot.drop(player, "gem", land, patch.z, nil, rng:NextInteger(Config.GEM_DROP.min, Config.GEM_DROP.max), wait)
 	end
 	Quests.event(player, "cut", 1)
 	data.stats.cut += 1
@@ -268,7 +315,7 @@ Loot.onFull = function(player: Player)
 	warnBagFull(player)
 end
 
-local function onSwing(player: Player)
+local function onSwing(player: Player, look: any)
 	local data = PlayerData.get(player)
 	if not data or not data.run or completing then
 		return
@@ -289,12 +336,15 @@ local function onSwing(player: Player)
 	Tools.slash(tool)
 	local stats = Stats.compute(player, data)
 	local damage = def.damage * stats.power
-	local look = root.CFrame.LookVector
-	local centre = root.Position + Vector3.new(look.X, 0, look.Z) * def.radius * 0.45
+	-- the camera's look direction from the client picks the clump (checked: a unit vector; else the body's facing)
+	local aim = root.CFrame.LookVector
+	if typeof(look) == "Vector3" and look.Magnitude > 0.5 and look.Magnitude < 1.5 and look.X == look.X then
+		aim = look.Unit
+	end
 	if bagFull(player) then
 		warnBagFull(player)
 	else
-		Field.hit(player, centre, def.radius, damage, def.targets, stats.luck)
+		Field.hitAim(player, root.Position, aim, def.radius, damage, def.targets, stats.luck)
 	end
 	if Boss.inReach(root.Position, def.radius) then
 		Boss.damage(player, damage * Config.BOSS_TOOL_MULT)
@@ -344,7 +394,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- selling + shops
 -------------------------------------------------------------------------------------------------------------
-local function sell(player: Player)
+local function sell(player: Player, pad)
 	local data = PlayerData.get(player)
 	if not data or not data.run or #data.run.carry == 0 then
 		return
@@ -353,20 +403,28 @@ local function sell(player: Player)
 	local coins = math.floor(Carry.value(data) * Stats.compute(player, data).sell)
 	data.run.coins += coins
 	Carry.clear(player)
-	Net.send(player, "Fx", "sell", { coins = coins, count = count, from = info.shredderMouth, out = info.shredderOut })
-	Net.all("Fx", "shred", { pos = info.shredderMouth, count = count, by = player.UserId })
+	Net.send(player, "Fx", "sell", { coins = coins, count = count, from = pad.mouth, out = pad.out })
+	Net.all("Fx", "shred", { pos = pad.mouth, count = count, by = player.UserId })
 	Quests.event(player, "sell", count)
 end
 
+-- Walk onto any shredder's pad (the hub's or the drop-off) to sell.
 local function sellLoop()
+	local pads = info.sellPads or {}
+	if #pads == 0 and info.sellPos then
+		pads = { { pos = info.sellPos, radius = info.sellRadius, mouth = info.shredderMouth, out = info.shredderOut } }
+	end
 	while true do
 		task.wait(0.3)
 		for _, player in Players:GetPlayers() do
 			local root = rootOf(player)
 			if root then
-				local d = Vector3.new(root.Position.X - info.sellPos.X, 0, root.Position.Z - info.sellPos.Z).Magnitude
-				if d <= info.sellRadius and root.Position.Y < info.sellPos.Y + 10 then
-					sell(player)
+				for _, pad in pads do
+					local d = Vector3.new(root.Position.X - pad.pos.X, 0, root.Position.Z - pad.pos.Z).Magnitude
+					if d <= pad.radius and root.Position.Y < pad.pos.Y + 10 then
+						sell(player, pad)
+						break
+					end
 				end
 			end
 		end
@@ -552,7 +610,11 @@ function Run.start()
 			for _, p in Players:GetPlayers() do
 				Quests.event(p, "zone", 1)
 			end
-			Boss.spawn(z)
+			if Config.BOSSES then
+				Boss.spawn(z)
+			else
+				onAreaCleared(z)
+			end
 		end
 	end
 	Boss.onDefeated = onBossDefeated
@@ -636,24 +698,34 @@ function Run.start()
 			end
 		end
 	end)
-	-- walking up to a locked gate explains what's needed (like "Birch Grove is locked")
+	-- walking up to a locked gate explains what's needed ("Pine Wood is locked: clear Oak Wood first")
 	task.spawn(function()
 		local lastNote: { [Player]: number } = {}
+		local gates = Config.gates()
 		while true do
 			task.wait(0.4)
-			local nextZone = zone + 1
-			if started and nextZone <= #Config.ZONES then
-				local gate = Config.gatePos(nextZone)
+			if started then
 				for _, p in Players:GetPlayers() do
 					local root = rootOf(p)
-					local d = root and Vector3.new(root.Position.X - gate.X, 0, root.Position.Z - gate.Z).Magnitude
-					if d and d < 12 and (lastNote[p] or 0) + 3 < os.clock() then
-						lastNote[p] = os.clock()
-						local left = Field.remainingIn(zone)
-						local sub = if left > 0
-							then ("Mow every patch in %s first (%d left)"):format(Config.ZONES[zone].name, left)
-							else ("Beat the %s first"):format(Config.ZONES[zone].boss.name)
-						Net.send(p, "Fx", "locked", { title = Config.ZONES[nextZone].name .. " is locked", sub = sub })
+					if root and (lastNote[p] or 0) + 3 < os.clock() then
+						for _, g in gates do
+							local d = Vector3.new(root.Position.X - g.pos.X, 0, root.Position.Z - g.pos.Z).Magnitude
+							if g.b > zone and d < 12 then
+								lastNote[p] = os.clock()
+								local here = Config.ZONES[zone]
+								local left = Field.remainingIn(zone)
+								local sub
+								if g.b > zone + 1 then
+									sub = ("Clear the %s and the areas after it first"):format(here.name)
+								elseif left > 0 then
+									sub = ("Mow every clump in the %s first (%d left)"):format(here.name, left)
+								else
+									sub = ("Beat the %s first"):format(here.boss.name)
+								end
+								Net.send(p, "Fx", "locked", { title = "🔒 " .. Config.ZONES[g.b].name .. " is locked", sub = sub })
+								break
+							end
+						end
 					end
 				end
 			end
@@ -692,23 +764,13 @@ end
 -- Studio test helpers (DevHook).
 function Run.dev(cmd: string, ...)
 	if cmd == "clearZone" then
-		devCutting = true
-		for _ = 1, Field.totalIn(zone) do
-			if Field.remainingIn(zone) <= 0 then
-				break
-			end
-			-- cut everything left in the zone instantly
-			local player = Players:GetPlayers()[1]
-			if not player then
-				break
-			end
-			local data = PlayerData.get(player)
-			if data and data.run then
-				table.clear(data.run.carry)
-			end
-			Field.hit(player, Config.RING.centre, Config.RING.edge, math.huge, 1, 1)
+		-- cut everything left in the area instantly
+		local player = Players:GetPlayers()[1]
+		if player then
+			devCutting = true
+			Field.devClear(player, zone)
+			devCutting = false
 		end
-		devCutting = false
 	elseif cmd == "killBoss" then
 		local player = Players:GetPlayers()[1]
 		if player then

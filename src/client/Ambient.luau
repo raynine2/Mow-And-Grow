@@ -66,11 +66,10 @@ local birds: { Bird } = {}
 -- where birds can live: the hub / first zone in a run, the plaza edge in the lobby
 local function randomSpot(): Vector3
 	if State.mode == "Run" then
-		local zone = math.clamp((State.world and State.world.zone) or 1, 1, #Config.RING.zones)
-		local ring = Config.RING.zones[zone]
-		local a = math.random() * math.pi * 2
-		local r = ring.inner + math.random() * (ring.outer - ring.inner)
-		return Config.RING.centre + Vector3.new(math.sin(a) * r, 0, math.cos(a) * r)
+		local zone = math.clamp((State.world and State.world.zone) or 1, 1, #Config.ZONES)
+		local c = Config.zoneCentre(zone)
+		local h = Config.zoneHalf() - 10
+		return c + Vector3.new((math.random() * 2 - 1) * h, 0, (math.random() * 2 - 1) * h)
 	end
 	local a = math.random() * math.pi * 2
 	local r = math.random(30, 75)

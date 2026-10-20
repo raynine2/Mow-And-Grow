@@ -14,7 +14,6 @@ local State = require(script.Parent.State)
 local ZoneMood = {}
 local player = Players.LocalPlayer
 
-local BLEND = 14 -- studs either side of a zone's fence over which two moods mix
 local EASE = 0.9 -- how fast the look follows (per second); slow enough to read as a tween
 
 -- moods by index: 0 = the hub (base look), 1..n = the zones
@@ -23,14 +22,9 @@ for i, def in Config.ZONES do
 	moods[i] = Look.mood(def.style)
 end
 
-local function smooth(x: number): number
-	x = math.clamp(x, 0, 1)
-	return x * x * (3 - 2 * x)
-end
-
--- Which zone a world position is in (0 = the hub; the zones are rings round it, see Config.RING).
+-- Which area a world position is in (0 = the hub or outside the map; see Config.MAP).
 function ZoneMood.zoneAt(pos: Vector3): number
-	return Config.zoneAt(pos)
+	return math.max(0, Config.zoneAt(pos))
 end
 
 -- The zone the local player is standing in (0 = hub, or the lobby).
@@ -46,24 +40,9 @@ local function focus(): Vector3?
 	return cam and cam.CFrame.Position
 end
 
--- The look at a world position: the zone's mood, mixed with the neighbour's near a fence.
-local scratch: Look.Values = {}
+-- The look at a world position: the mood of the area it's in (the slow easing below blends across fences).
 local function targetAt(pos: Vector3): Look.Values
-	local zone = ZoneMood.zoneAt(pos)
-	local r = Config.ringRadius(pos)
-	-- nearest fence (the one into this zone, or the next one out)
-	local best, bestD = zone, math.huge
-	for i = math.max(1, zone), math.min(#Config.ZONES, zone + 1) do
-		local d = math.abs(r - Config.fenceRadius(i))
-		if d < bestD then
-			best, bestD = i, d
-		end
-	end
-	if bestD >= BLEND then
-		return moods[zone]
-	end
-	local t = smooth((r - Config.fenceRadius(best)) / (2 * BLEND) + 0.5)
-	return Look.blend(moods[best - 1], moods[best], t, scratch)
+	return moods[ZoneMood.zoneAt(pos)] or moods[0]
 end
 
 local current: Look.Values = table.clone(moods[0])

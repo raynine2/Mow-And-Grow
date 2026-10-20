@@ -23,22 +23,21 @@ local function path(): { { CFrame | string } }
 	local function stop(eye: Vector3, look: Vector3, caption: string)
 		table.insert(stops, { CFrame.lookAt(eye, look), caption })
 	end
-	local C = Config.RING.centre
-	local function around(r: number, deg: number, y: number): Vector3
-		local a = math.rad(deg)
-		return C + Vector3.new(math.sin(a) * r, y, math.cos(a) * r)
-	end
-	-- the whole world from high above, then down to the hub
-	stop(around(Config.RING.edge * 0.9, 200, 420), C, "Welcome to " .. Config.GAME_NAME .. "!")
-	stop(around(70, 210, 34), C + Vector3.new(-16, 4, -4), "Cut grass, pick up the bundles, sell them here")
-	-- out through the rings, each one bigger than the last
+	local hub = Config.zoneCentre(0)
+	local middle = Config.zoneCentre(1) -- the middle of the map
+	-- the whole map from high above, then down to the hub
+	stop(hub + Vector3.new(-60, 330, -260), middle, "Welcome to " .. Config.GAME_NAME .. "!")
+	stop(hub + Vector3.new(-40, 30, -70), hub + Vector3.new(-16, 4, 12), "Chop grass, pick up the bundles, sell them here")
+	-- over the areas in the order they open
 	for z, def in Config.ZONES do
-		local ring = Config.RING.zones[z]
-		local mid = (ring.inner + ring.outer) / 2
-		local caption = if z == 1 then "Mow every patch in a ring to wake its boss"
-			elseif z == #Config.ZONES then "Make it all the way out to the " .. def.name .. "!"
-			else "Beat each boss to open the gate to the next ring"
-		stop(around(mid - 30, 24 + z * 22, 40 + z * 12), around(mid, 40 + z * 22, 0), caption)
+		if z == 1 or z == 4 or z == #Config.ZONES then
+			local c = Config.zoneCentre(z)
+			local gate = Config.gatePos(z)
+			local caption = if z == 1 then "Mow every clump in an area to open the next one"
+				elseif z == #Config.ZONES then "Mow all the way to the " .. def.name .. "!"
+				else "Each area has bigger, tougher grass"
+			stop(gate + (gate - c).Unit * 30 + Vector3.new(0, 45, 0), c, caption)
+		end
 	end
 	return stops
 end

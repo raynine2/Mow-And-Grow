@@ -263,14 +263,17 @@ local function gateCutscene(z: number)
 	end
 	cutscene = true
 	local gate = Config.gatePos(z)
+	local into = Config.zoneCentre(z) - gate
+	into = Vector3.new(into.X, 0, into.Z).Unit
+	local side = into:Cross(Vector3.yAxis)
 	local back = cam.CFrame
 	cam.CameraType = Enum.CameraType.Scriptable
-	local eye = gate + Vector3.new(26, 22, -34)
-	local look = gate + Vector3.new(0, 3, 18)
+	local eye = gate - into * 34 + side * 26 + Vector3.new(0, 22, 0)
+	local look = gate + into * 18 + Vector3.new(0, 3, 0)
 	local t1 = TweenService:Create(cam, TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), { CFrame = CFrame.lookAt(eye, look) })
 	t1:Play()
 	t1.Completed:Wait()
-	local t2 = TweenService:Create(cam, TweenInfo.new(2.2, Enum.EasingStyle.Linear), { CFrame = CFrame.lookAt(gate + Vector3.new(-18, 30, -30), gate + Vector3.new(0, 0, 40)) })
+	local t2 = TweenService:Create(cam, TweenInfo.new(2.2, Enum.EasingStyle.Linear), { CFrame = CFrame.lookAt(gate - into * 30 - side * 18 + Vector3.new(0, 30, 0), gate + into * 60) })
 	t2:Play()
 	t2.Completed:Wait()
 	local t3 = TweenService:Create(cam, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = back })
@@ -314,6 +317,90 @@ handlers.cut = function(d)
 	end
 end
 
+-- A chopped clump topples over away from the cutter (like a felled tree), then bursts where it lands: the
+-- server's stubble replaces it and its bundles drop there. Everyone sees it fall; the cutter gets the pop word.
+handlers.fell = function(d)
+	if not near(d.pos, 200) then
+		return
+	end
+	local m = d.model :: Model?
+	local T = d.time or 0.7
+	local land = d.land or d.pos
+	local function impact()
+		handlers.cut({ pos = land, color = d.color, mut = d.mut, z = d.z, by = d.by })
+		if near(land, 90) then
+			Fx.shake(if d.by == player.UserId then 0.6 else 0.25, 0.25)
+		end
+	end
+	if not (m and m.Parent and m:IsA("Model")) then
+		task.delay(T, impact)
+		return
+	end
+	local base = HitFx.release(m) or m:GetPivot()
+	local dir = d.dir or Vector3.zAxis
+	local axis = Vector3.yAxis:Cross(Vector3.new(dir.X, 0, dir.Z))
+	axis = if axis.Magnitude > 1e-3 then axis.Unit else Vector3.xAxis
+	local start = os.clock()
+	local done = false
+	local conn: RBXScriptConnection
+	conn = RunService.RenderStepped:Connect(function()
+		local t = math.min(1, (os.clock() - start) / T)
+		if not m.Parent then
+			conn:Disconnect()
+			if not done then
+				done = true
+				impact()
+			end
+			return
+		end
+		-- slow at first, then crashing down (ease-in), with a little bounce at the end
+		local angle = math.rad(88) * t * t
+		m:PivotTo(CFrame.new(base.Position) * CFrame.fromAxisAngle(axis, angle) * base.Rotation)
+		if t >= 1 then
+			conn:Disconnect()
+			if not done then
+				done = true
+				impact()
+				-- gone on our screen at once (the server swaps it for stubble a moment later)
+				for _, p in m:GetDescendants() do
+					if p:IsA("BasePart") then
+						p.LocalTransparencyModifier = 1
+					end
+				end
+			end
+		end
+	end)
+end
+
+-- An area's stubble goes in a little puff of dust once the area is cleared.
+handlers.poof = function(d)
+	if not near(d.pos, 160) then
+		return
+	end
+	local a = Instance.new("Attachment")
+	a.Parent = workspace.Terrain
+	a.Position = d.pos + Vector3.new(0, 0.6, 0)
+	local e = Instance.new("ParticleEmitter")
+	e.Enabled = false
+	e.Texture = FxIds.poof or "rbxasset://textures/particles/smoke_main.dds"
+	if FxIds.poof then
+		e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+		e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+	end
+	e.Color = ColorSequence.new(Color3.fromRGB(230, 220, 190))
+	e.LightInfluence = 0.4
+	local s = math.clamp((d.scale or 2) * 0.8, 1, 4)
+	e.Size = NumberSequence.new(1.5 * s, 3 * s)
+	e.Transparency = NumberSequence.new(0.15, 0.6)
+	e.Lifetime = NumberRange.new(0.5, 0.8)
+	e.Speed = NumberRange.new(2, 5)
+	e.SpreadAngle = Vector2.new(70, 70)
+	e.Rotation = NumberRange.new(0, 360)
+	e.Parent = a
+	e:Emit(2)
+	Debris:AddItem(a, 1.2)
+end
+
 -- One HP bar that follows the patch you're cutting (like "Oak 2.5/6 HP" in Chop A Forest).
 local hpAnchor = fxPart(Vector3.one * 0.2, Color3.new(1, 1, 1), CFrame.new(0, -100, 0))
 hpAnchor.Transparency = 1
@@ -352,8 +439,9 @@ end
 
 handlers.chip = function(d)
 	if d.label then
-		Fx.hpBar(d.pos, d.label, d.hp, d.max)
+		Fx.hpBar(d.hitPos or d.pos, d.label, d.hp, d.max)
 	end
+	HitFx.lean(d.model, d.from, d.ratio)
 	-- your swing already drew this hit the moment it landed (HitFx prediction); auto tools and extra targets
 	-- of a wide swing are drawn now
 	if not HitFx.wasPredicted(d.pos) then
@@ -467,28 +555,21 @@ handlers.reward = function(d)
 end
 
 -- The log gate rumbles and sinks into the ground, dust bursting along its foot (the server hides it after).
-local function sinkGate(z: number)
-	local world = workspace:FindFirstChild("World")
-	local zoneFolder = world and world:FindFirstChild("Zone" .. z)
-	local gate = zoneFolder and zoneFolder:FindFirstChild("Gate" .. z)
-	if not gate then
-		return
-	end
+local function sinkOneGate(gate: Model)
 	local parts = {}
-	local gz = 0
 	for _, p in gate:GetDescendants() do
 		if p:IsA("BasePart") and (p.Transparency < 1 or p:FindFirstChildOfClass("SurfaceGui")) then
 			table.insert(parts, { part = p, cf = p.CFrame })
-			gz = p.Position.Z
 		end
 	end
 	if #parts == 0 then
 		return
 	end
+	local pivot = gate:GetPivot()
 	local function dust(x: number)
 		local a = Instance.new("Attachment")
 		a.Parent = workspace.Terrain
-		a.Position = Vector3.new(x, 0.8, gz)
+		a.Position = (pivot * CFrame.new(x, 0.8, 0)).Position
 		local e = Instance.new("ParticleEmitter")
 		e.Enabled = false
 		e.Texture = FxIds.poof or "rbxasset://textures/particles/smoke_main.dds"
@@ -524,7 +605,7 @@ local function sinkGate(z: number)
 		end
 		if os.clock() > nextDust and t < 0.85 then
 			nextDust = os.clock() + 0.12
-			dust(math.random(-46, 46))
+			dust(math.random(-11, 11))
 		end
 		if t >= 1 then
 			conn:Disconnect()
@@ -532,8 +613,23 @@ local function sinkGate(z: number)
 	end)
 end
 
+-- Every gate into area z (named Gate<z>_<other side>) sinks at once.
+local function sinkGate(z: number)
+	local world = workspace:FindFirstChild("World")
+	local gates = world and world:FindFirstChild("Gates")
+	if not gates then
+		return
+	end
+	local prefix = "Gate" .. z .. "_"
+	for _, g in gates:GetChildren() do
+		if g:IsA("Model") and g.Name:sub(1, #prefix) == prefix then
+			sinkOneGate(g)
+		end
+	end
+end
+
 handlers.zoneOpen = function(d)
-	Fx.banner(d.name:upper() .. " UNLOCKED!", Color3.fromRGB(120, 235, 90), 3, ("Ring %d is open: the gate is down!"):format(d.zone))
+	Fx.banner(d.name:upper() .. " UNLOCKED!", Color3.fromRGB(120, 235, 90), 3, ("Area %d of %d is open: its gates are down!"):format(d.zone, #Config.ZONES))
 	Sound.play("purchase")
 	sinkGate(d.zone)
 	task.spawn(gateCutscene, d.zone)
@@ -573,9 +669,9 @@ local SLASH_COLOR = {
 	Sickle = Color3.fromRGB(225, 235, 255),
 	MegaScythe = Color3.fromRGB(200, 150, 255),
 }
-State.on("swing", function()
+State.on("swing", function(look: Vector3?)
 	local id = heldToolId()
-	HitFx.swing(id)
+	HitFx.swing(id, look)
 	local color = SLASH_COLOR[id or ""]
 	if color then
 		task.delay(0.08, HitFx.slash, color)

@@ -8,7 +8,7 @@ local PropKit = require(script.Parent.PropKit)
 local RunBuilder = require(script.Parent.RunBuilder)
 local Models = require(script.Parent.Models)
 
-local BOSS_MODEL = { "boss_dandelion", "boss_thornbush", "boss_flytrap", "boss_vine", "boss_jungle" }
+local BOSS_MODEL = { "boss_dandelion", "boss_thornbush", "boss_thornbush", "boss_flytrap", "boss_flytrap", "boss_vine", "boss_vine", "boss_jungle" } -- by area
 
 local Boss = {}
 
@@ -44,9 +44,9 @@ local function build(z: number, def): (Model, BasePart)
 	-- the Blender monster, standing on an invisible root block that the fight logic uses
 	local holder = Instance.new("Model")
 	holder.Name = def.name
-	-- it faces the road, where the players come from
-	local toward = Config.RING.centre + Vector3.new(0, 0, Config.ringRadius(centre))
-	local placed = Models.place(BOSS_MODEL[z], holder, CFrame.lookAt(centre, Vector3.new(toward.X, centre.Y, toward.Z)), 1 + (z - 1) * 0.12)
+	-- it faces the gate the players come in through
+	local toward = Config.gatePos(z)
+	local placed = Models.place(BOSS_MODEL[z] or BOSS_MODEL[#BOSS_MODEL], holder, CFrame.lookAt(centre, Vector3.new(toward.X, centre.Y, toward.Z)), 1 + (z - 1) * 0.12)
 	if placed then
 		local rootPart = PropKit.brick(holder, Vector3.new(8, 3, 8), CFrame.new(centre + Vector3.new(0, 1.5, 0)), Color3.new(), "Roots")
 		rootPart.Transparency = 1

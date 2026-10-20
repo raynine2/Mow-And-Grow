@@ -31,8 +31,8 @@ Config.TOOLS = {
 	{ id = "Sickle", name = "Sickle", cost = 1500, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
 	{ id = "PushMower", name = "Push Mower", cost = 12000, kind = "auto", damage = 30, radius = 6, color = Color3.fromRGB(255, 140, 30) },
 	{ id = "WeedWhacker", name = "Weed Whacker", cost = 90000, kind = "auto", damage = 140, radius = 9, color = Color3.fromRGB(60, 200, 80) },
-	{ id = "MegaScythe", name = "Mega Scythe", cost = 700000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
-	{ id = "LaserMower", name = "Laser Mower", cost = 5000000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
+	{ id = "MegaScythe", name = "Mega Scythe", cost = 400000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
+	{ id = "LaserMower", name = "Laser Mower", cost = 1500000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
 }
 Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
 
@@ -43,6 +43,8 @@ Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
 -- "carry" upgrade is gone, but levels bought before still count (Config.LEGACY_CARRY_PER bundles each).
 Config.UPGRADE_SECTIONS = { "Hands", "Tool", "Gear" }
 Config.UPGRADES = {
+	-- like Chop A Forest's first purchase: until you own it, every swing is a click
+	{ id = "hold", section = "Hands", name = "Hold", desc = "Hold the button to keep cutting", per = 1, base = 20, growth = 1, max = 1 },
 	{ id = "swing", section = "Hands", name = "Swing Speed", desc = "-6% time between swings", per = 0.06, base = 30, growth = 2.6, max = 10 },
 	{ id = "grasp", section = "Hands", name = "Grasp", desc = "+1.5 studs pickup reach", per = 1.5, base = 60, growth = 2.5, max = 10 },
 	{ id = "power", section = "Tool", name = "Power", desc = "+20% cutting power", per = 0.20, base = 100, growth = 3.2, max = 10 },
@@ -96,42 +98,68 @@ function Config.upgradeCost(id: string, level: number): number
 end
 
 -------------------------------------------------------------------------------------------------------------
--- Zones: one road, cleared in order. Clear every patch to wake the boss; beat the boss to open the next zone.
+-- Areas (zones), like Chop A Forest's woods: fenced fields that open one after another. Mow every clump in the
+-- newest area and the next one unlocks (its gates sink into the ground). Clumps are "grass trees": you chop one
+-- down, it falls over and breaks into `drops` bundles, and its stubble stays until the whole area is cleared.
+-- Later areas have fewer but bigger and tougher clumps (`spacing` studs apart, `scale` x their model).
+-- model: the clump model (default "tuft_" .. style); tint: recolour it (flat colour instead of its texture).
 -------------------------------------------------------------------------------------------------------------
--- patches per zone = cols * rows. Each patch has a `tile`-sized cell but is nudged inside it, so a zone reads as
--- a meadow of scattered clumps (like the trailer's forest of trees), not a grid.
-Config.GRID = { cols = 10, rows = 12, tile = 8, jitter = 0.36 }
-Config.ZONE_SPACING = 120 -- studs from one zone's start to the next
-Config.FIRST_ZONE_Z = 30
 Config.BASE_CARRY = 5
+Config.BOSSES = false -- true: clearing an area wakes its boss, and the boss opens the next area (the old way)
 
 Config.ZONES = {
 	{
-		name = "Backyard Lawn", grassName = "Lawn Grass", style = "lawn", hp = 3, value = 3, height = 2,
+		name = "Backyard Lawn", grassName = "Lawn Grass", style = "lawn", hp = 3, value = 2, drops = 1, height = 2,
+		spacing = 12, scale = 2.2,
 		grass = { Color3.fromRGB(110, 210, 70), Color3.fromRGB(90, 195, 60) },
 		ground = Color3.fromRGB(150, 110, 70),
 		boss = { name = "Dandelion King", hp = 400, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
 	},
 	{
-		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 40, value = 35, height = 2.5,
+		name = "Flower Meadow", grassName = "Meadow Grass", style = "meadow", model = "tuft_golf", hp = 12, value = 8, drops = 1, height = 2.2,
+		spacing = 13, scale = 2.6, tint = Color3.fromRGB(150, 215, 95),
+		grass = { Color3.fromRGB(150, 215, 95), Color3.fromRGB(130, 200, 80) },
+		ground = Color3.fromRGB(120, 160, 70),
+		boss = { name = "Thorn Bush", hp = 2000, color = Color3.fromRGB(40, 140, 60), every = 4.2, radius = 9, gems = 15, coins = 600 },
+	},
+	{
+		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 50, value = 30, drops = 1, height = 2.5,
+		spacing = 14, scale = 3.0,
 		grass = { Color3.fromRGB(70, 200, 90), Color3.fromRGB(55, 180, 75) },
 		ground = Color3.fromRGB(235, 215, 150),
 		boss = { name = "Thorn Bush", hp = 6000, color = Color3.fromRGB(40, 140, 60), every = 4, radius = 10, gems = 20, coins = 2000 },
 	},
 	{
-		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 600, value = 420, height = 5,
+		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 200, value = 55, drops = 2, height = 5,
+		spacing = 15, scale = 2.2,
 		grass = { Color3.fromRGB(240, 200, 80), Color3.fromRGB(225, 180, 60) },
 		ground = Color3.fromRGB(140, 95, 55),
 		boss = { name = "Venus Flytrap", hp = 90000, color = Color3.fromRGB(200, 40, 70), every = 3.6, radius = 11, gems = 35, coins = 25000 },
 	},
 	{
-		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 8000, value = 5000, height = 6.5,
+		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 600, value = 200, drops = 2, height = 2.5,
+		spacing = 16, scale = 3.2, tint = Color3.fromRGB(255, 160, 205),
+		grass = { Color3.fromRGB(255, 160, 205), Color3.fromRGB(240, 130, 185) },
+		ground = Color3.fromRGB(120, 170, 80),
+		boss = { name = "Venus Flytrap", hp = 300000, color = Color3.fromRGB(200, 40, 70), every = 3.5, radius = 11, gems = 45, coins = 80000 },
+	},
+	{
+		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 2500, value = 750, drops = 2, height = 6.5,
+		spacing = 17, scale = 2.3,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
 		boss = { name = "Swamp Vine", hp = 1200000, color = Color3.fromRGB(90, 70, 140), every = 3.3, radius = 12, gems = 55, coins = 300000 },
 	},
 	{
-		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 100000, value = 60000, height = 8,
+		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 14000, value = 2400, drops = 3, height = 6,
+		spacing = 19, scale = 2.6, tint = Color3.fromRGB(235, 120, 45),
+		grass = { Color3.fromRGB(235, 120, 45), Color3.fromRGB(215, 95, 40) },
+		ground = Color3.fromRGB(150, 110, 60),
+		boss = { name = "Swamp Vine", hp = 4000000, color = Color3.fromRGB(90, 70, 140), every = 3.1, radius = 13, gems = 65, coins = 1000000 },
+	},
+	{
+		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 60000, value = 8000, drops = 4, height = 8,
+		spacing = 22, scale = 3.6,
 		grass = { Color3.fromRGB(30, 160, 60), Color3.fromRGB(20, 130, 50) },
 		ground = Color3.fromRGB(90, 70, 45),
 		boss = { name = "Jungle Titan", hp = 15000000, color = Color3.fromRGB(20, 90, 40), every = 3, radius = 14, gems = 80, coins = 4000000 },
@@ -140,78 +168,117 @@ Config.ZONES = {
 Config.BOSS_HP_PER_EXTRA_PLAYER = 0.6 -- +60% boss HP for every party member after the first
 Config.RUN_COMPLETE_GEMS = 150
 
+-- (old straight-road layout; only the unused Blender ground sheets in server/GroundMesh still read these)
+Config.ZONE_SPACING = 120
+Config.FIRST_ZONE_Z = 30
 function Config.zoneStartZ(zone: number): number
 	return Config.FIRST_ZONE_Z + (zone - 1) * Config.ZONE_SPACING
 end
 
 -------------------------------------------------------------------------------------------------------------
--- The run map is ONE big round world, laid out like the walls in Attack on Titan: the hub in the middle and
--- every zone a fenced ring around the one before it, each ring wider than the last. One road runs out of the hub
--- (towards +Z) through a gate in every fence; a zone's gate opens when the boss before it falls. A forest belt
--- and a ring of mountains close the world off. All radii are measured from RING.centre (the middle of the hub).
-Config.RING = {
-	centre = Vector3.new(0, 0, -32),
-	hub = 76, -- the hub's fence (zone 1's gate is in it)
-	-- per zone: the field's inner and outer edge, how far apart the grass clumps stand, and how big they are
-	zones = {
-		{ inner = 84, outer = 132, spacing = 14, scale = 1.3 },
-		{ inner = 140, outer = 196, spacing = 17, scale = 1.4 },
-		{ inner = 204, outer = 266, spacing = 20, scale = 1.5 },
-		{ inner = 274, outer = 342, spacing = 23, scale = 1.6 },
-		{ inner = 350, outer = 426, spacing = 26, scale = 1.7 },
-	},
-	edge = 432, -- the outer fence; forest beyond it
-	road = 9, -- half the road's width
-	bossAngle = 40, -- the boss arena: mid-ring, this many degrees round from the road
+-- The run map: ONE continuous world like Chop A Forest's, a 3 x 3 grid of square fenced plots. The hub (spawn,
+-- tool shop, shredder, bag stand, garage) is the middle plot of the south row and the areas fill the other eight,
+-- opening outward from the hub: the first right in front of it, the next two beside it, then the middle row's
+-- sides, then the far row. Every two plots that touch share a fence with a gate in the middle, and a gate opens
+-- once both of its plots are open. A forest belt and snowy mountains close the world off.
+-- Grid cells are { col, row }: col 1..3 runs west to east (-X to +X), row 1..3 south to north (-Z to +Z).
+-------------------------------------------------------------------------------------------------------------
+Config.MAP = {
+	cell = 180, -- one plot's side, fence to fence
+	hubCell = { 2, 1 },
+	hubCentre = Vector3.new(0, 0, -48), -- the middle of the hub plot (the hub buildings are built around it)
+	cells = { { 2, 2 }, { 3, 1 }, { 1, 1 }, { 3, 2 }, { 1, 2 }, { 2, 3 }, { 3, 3 }, { 1, 3 } }, -- area z's plot
+	gateWidth = 20, -- the opening in a shared fence
+	margin = 7, -- no grass this close to a fence
+	dropOff = 1, -- the second shredder stands in the middle of this area (Chop A Forest's far-off shredder)
 }
 
--- Horizontal distance from the middle of the hub.
-function Config.ringRadius(pos: Vector3): number
-	local c = Config.RING.centre
-	local dx, dz = pos.X - c.X, pos.Z - c.Z
-	return math.sqrt(dx * dx + dz * dz)
+local function cellOf(z: number): { number }
+	return if z <= 0 then Config.MAP.hubCell else Config.MAP.cells[z]
 end
 
--- The fence you cross to get into zone z (its gate is where the road crosses it). z = #ZONES + 1 is the outer
--- fence at the edge of the world.
-function Config.fenceRadius(z: number): number
-	local R = Config.RING
-	if z <= 1 then
-		return R.hub
-	elseif z > #R.zones then
-		return R.edge
-	end
-	return (R.zones[z - 1].outer + R.zones[z].inner) / 2
+-- The middle of area z's plot (z = 0: the hub), on the ground.
+function Config.zoneCentre(z: number): Vector3
+	local M = Config.MAP
+	local c = cellOf(z)
+	return M.hubCentre + Vector3.new((c[1] - M.hubCell[1]) * M.cell, 0, (c[2] - M.hubCell[2]) * M.cell)
 end
 
--- Which zone a point is in: 0 = the hub, 1..n = the rings (past the last ring still counts as the last zone).
+-- Half the side of a plot.
+function Config.zoneHalf(): number
+	return Config.MAP.cell / 2
+end
+
+-- Which area a point is in: 0 = the hub, 1..n = an area, -1 = outside the map.
 function Config.zoneAt(pos: Vector3): number
-	local r = Config.ringRadius(pos)
-	for z = #Config.ZONES, 1, -1 do
-		if r >= Config.fenceRadius(z) then
+	local M = Config.MAP
+	local col = math.floor((pos.X - M.hubCentre.X) / M.cell + 0.5) + M.hubCell[1]
+	local row = math.floor((pos.Z - M.hubCentre.Z) / M.cell + 0.5) + M.hubCell[2]
+	if col == M.hubCell[1] and row == M.hubCell[2] then
+		return 0
+	end
+	for z, c in M.cells do
+		if c[1] == col and c[2] == row then
 			return z
 		end
 	end
-	return 0
+	return -1
 end
 
--- Where the road crosses zone z's fence (the gate), on the ground.
+-- Every gate: a shared fence between two plots that touch. { a, b } are the areas on each side (0 = the hub,
+-- a < b), pos is the gate's middle on the ground and along the direction the fence runs. A gate is open once
+-- area b is unlocked.
+export type Gate = { a: number, b: number, pos: Vector3, along: Vector3 }
+local gateList: { Gate }? = nil
+function Config.gates(): { Gate }
+	if gateList then
+		return gateList
+	end
+	local list: { Gate } = {}
+	local ids = { 0 }
+	for z = 1, #Config.MAP.cells do
+		table.insert(ids, z)
+	end
+	for i = 1, #ids do
+		for j = i + 1, #ids do
+			local a, b = ids[i], ids[j]
+			local ca, cb = cellOf(a), cellOf(b)
+			local dc, dr = cb[1] - ca[1], cb[2] - ca[2]
+			if math.abs(dc) + math.abs(dr) == 1 then
+				local mid = (Config.zoneCentre(a) + Config.zoneCentre(b)) / 2
+				table.insert(list, { a = math.min(a, b), b = math.max(a, b), pos = mid, along = if dc ~= 0 then Vector3.zAxis else Vector3.xAxis })
+			end
+		end
+	end
+	gateList = list
+	return list
+end
+
+-- The gate you walk through into area z: the one from the most recently opened neighbour.
+function Config.gateInto(z: number): Gate?
+	local best: Gate? = nil
+	for _, g in Config.gates() do
+		if g.b == z and (best == nil or g.a > best.a) then
+			best = g
+		end
+	end
+	return best
+end
+
+-- Where that gate is, on the ground.
 function Config.gatePos(z: number): Vector3
-	return Config.RING.centre + Vector3.new(0, 0, Config.fenceRadius(z))
+	local g = Config.gateInto(z)
+	return if g then g.pos else Config.zoneCentre(z)
 end
 
--- A spot on the road just inside zone z.
+-- A spot just inside area z, past its gate.
 function Config.zoneEntry(z: number): Vector3
-	return Config.RING.centre + Vector3.new(0, 0, Config.RING.zones[z].inner + 6)
-end
-
--- Zone z's boss arena: the middle of the ring, RING.bossAngle degrees round from the road.
-function Config.zoneCentre(z: number): Vector3
-	local R = Config.RING
-	local ring = R.zones[z]
-	local r = (ring.inner + ring.outer) / 2
-	local a = math.rad(R.bossAngle)
-	return R.centre + Vector3.new(math.sin(a) * r, 0, math.cos(a) * r)
+	local g = Config.gateInto(z)
+	if not g then
+		return Config.zoneCentre(z)
+	end
+	local into = Config.zoneCentre(z) - g.pos
+	return g.pos + into.Unit * 10
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -260,6 +327,41 @@ Config.LOOK = {
 			atmoColor = Color3.fromRGB(212, 232, 214),
 			atmoDecay = Color3.fromRGB(140, 185, 165),
 			colorShiftTop = Color3.fromRGB(255, 246, 215),
+		},
+		-- soft spring morning: light haze, a touch of warmth
+		meadow = {
+			tint = Color3.fromRGB(255, 252, 232),
+			saturation = 0.32,
+			atmoColor = Color3.fromRGB(225, 236, 214),
+			atmoDecay = Color3.fromRGB(160, 195, 160),
+			colorShiftTop = Color3.fromRGB(255, 240, 210),
+			atmoHaze = 1.4,
+		},
+		-- pink blossom light: rosy air, gentle bloom
+		blossom = {
+			tint = Color3.fromRGB(255, 240, 246),
+			saturation = 0.3,
+			colorShiftTop = Color3.fromRGB(255, 225, 235),
+			atmoColor = Color3.fromRGB(250, 222, 236),
+			atmoDecay = Color3.fromRGB(215, 160, 190),
+			atmoGlare = 0.4,
+			atmoHaze = 1.5,
+			bloomIntensity = 0.7,
+		},
+		-- late autumn sun: deep orange, long haze
+		prairie = {
+			tint = Color3.fromRGB(255, 228, 196),
+			saturation = 0.34,
+			contrast = 0.14,
+			colorShiftTop = Color3.fromRGB(255, 196, 130),
+			outdoorAmbient = Color3.fromRGB(190, 160, 135),
+			atmoDensity = 0.32,
+			atmoColor = Color3.fromRGB(250, 210, 165),
+			atmoDecay = Color3.fromRGB(215, 130, 80),
+			atmoGlare = 0.7,
+			atmoHaze = 1.9,
+			bloomIntensity = 0.7,
+			raysIntensity = 0.12,
 		},
 		-- bright and clean: clearer air, crisp contrast
 		golf = {
@@ -332,13 +434,13 @@ Config.LOOK = {
 -- levels), zone (zones cleared), boss (bosses beaten), mower (a ride-on mower bought or spawned).
 -------------------------------------------------------------------------------------------------------------
 Config.QUESTS = {
-	{ title = "Cut 10 grass", hint = "Click the grass to cut it", event = "cut", goal = 10, reward = 20 },
+	{ title = "Cut 10 grass", hint = "Look at a clump and click to chop it", event = "cut", goal = 10, reward = 20 },
 	{ title = "Sell your bundles", hint = "Walk onto the sell pad", event = "sell", goal = 5, reward = 40 },
 	{ title = "Buy the Scissors in the cabin", hint = "They're on the wall inside the cabin", event = "tool", goal = 2, reward = 25 },
 	{ title = "Buy a bag at the Bag Stand", hint = "It's by the spawn, next to the tool shop", event = "bag", goal = 1, reward = 100 },
 	{ title = "Cut 60 grass", hint = "Keep mowing the Backyard Lawn", event = "cut", goal = 60, reward = 150 },
 	{ title = "Mow the whole Backyard Lawn", hint = "Every last patch!", event = "zone", goal = 1, reward = 250 },
-	{ title = "Beat the Dandelion King", hint = "Dodge the red circles", event = "boss", goal = 1, reward = 300 },
+	{ title = "Mow the whole Flower Meadow", hint = "Its gate opened when you cleared the lawn", event = "zone", goal = 1, reward = 300 },
 	{ title = "Get a ride-on mower", hint = "Buy one at the Garage", event = "mower", goal = 1, reward = 500 },
 }
 
@@ -480,7 +582,7 @@ Config.MOWERS = {
 	{ id = "TrialMower", name = "Trial Mower", currency = "trial", product = "TrialMower", damage = 800, radius = 11, speed = 44, fuel = 140, color = Color3.fromRGB(255, 80, 160) },
 	{ id = "RocketMower", name = "Rocket Mower", currency = "robux", product = "RocketMower", damage = 2000, radius = 12, speed = 50, fuel = 200, color = Color3.fromRGB(255, 70, 40) },
 }
-Config.FUEL_PRICE_PER_ZONE = { 2, 8, 40, 200, 1000 } -- coins per fuel point, by the run's current zone
+Config.FUEL_PRICE_PER_ZONE = { 2, 4, 10, 30, 90, 250, 700, 2000 } -- coins per fuel point, by the run's current zone
 
 function Config.mower(id: string)
 	for _, m in Config.MOWERS do

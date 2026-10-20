@@ -12,7 +12,7 @@ local Carry = require(script.Parent.Carry)
 
 local Loot = {}
 
-type Drop = { owner: Player, kind: string, z: number, m: string?, gems: number, pos: Vector3, model: Instance }
+type Drop = { owner: Player, kind: string, z: number, m: string?, gems: number, pos: Vector3, model: Instance?, readyAt: number, dead: boolean? }
 type Reach = { pos: Vector3, radius: number }
 
 local drops: { Drop } = {}
@@ -89,17 +89,31 @@ local function gemVisual(pos: Vector3): Instance
 end
 
 -- Drop loot for `player` near `origin`: kind "bundle" (from zone `z`, mutation `m`) or "gem" (`gems` gems).
-function Loot.drop(player: Player, kind: string, origin: Vector3, z: number, m: string?, gems: number?)
+-- `delay`: seconds until it shows up and can be picked up (a falling clump's bundles land when it hits the
+-- ground); it counts toward the bag right away.
+function Loot.drop(player: Player, kind: string, origin: Vector3, z: number, m: string?, gems: number?, delay: number?)
 	if not folder then
 		return
 	end
 	local a = rng:NextNumber(0, math.pi * 2)
 	local r = rng:NextNumber(0.6, Config.LOOT.spread)
 	local pos = Vector3.new(origin.X + math.cos(a) * r, 0, origin.Z + math.sin(a) * r)
-	local model = if kind == "gem" then gemVisual(pos) else bundleVisual(pos, m)
-	noTouch(model)
-	model:SetAttribute("Owner", player.UserId)
-	table.insert(drops, { owner = player, kind = kind, z = z, m = m, gems = gems or 0, pos = pos, model = model })
+	local d: Drop = { owner = player, kind = kind, z = z, m = m, gems = gems or 0, pos = pos, model = nil, readyAt = os.clock() + (delay or 0) }
+	local function show()
+		if d.dead or not folder then
+			return
+		end
+		local model = if kind == "gem" then gemVisual(pos) else bundleVisual(pos, m)
+		noTouch(model)
+		model:SetAttribute("Owner", player.UserId)
+		d.model = model
+	end
+	if delay and delay > 0 then
+		task.delay(delay, show)
+	else
+		show()
+	end
+	table.insert(drops, d)
 	if kind == "bundle" then
 		bundlesOf[player] = (bundlesOf[player] or 0) + 1
 	end
@@ -111,7 +125,10 @@ local function remove(i: number)
 	if d.kind == "bundle" then
 		bundlesOf[d.owner] = math.max(0, (bundlesOf[d.owner] or 1) - 1)
 	end
-	d.model:Destroy()
+	d.dead = true
+	if d.model then
+		d.model:Destroy()
+	end
 end
 
 local function within(points: { Reach }, pos: Vector3): boolean
@@ -127,8 +144,12 @@ end
 local function tick()
 	local reachOf: { [Player]: { Reach } } = {}
 	local fullWarned: { [Player]: boolean } = {}
+	local now = os.clock()
 	for i = #drops, 1, -1 do
 		local d = drops[i]
+		if now < d.readyAt then
+			continue
+		end
 		local points = reachOf[d.owner]
 		if not points then
 			points = Loot.reach(d.owner)

@@ -398,30 +398,82 @@ local function flashClump(m: Model, amount: number)
 	TweenService:Create(highlight, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { FillTransparency = 1 }):Play()
 end
 
+-- A clump you're chopping leans a little further away from you with every hit (like a tree about to go), and
+-- wobbles about that lean when it's struck. Its upright pose is remembered the first time it moves.
+type Lean = { base: CFrame, axis: Vector3, angle: number }
+local leans: { [Model]: Lean } = {}
 local wobbling: { [Model]: boolean } = {}
+local released: { [Model]: boolean } = {}
+
+local function leanOf(m: Model): Lean
+	local l = leans[m]
+	if not l then
+		l = { base = m:GetPivot(), axis = Vector3.xAxis, angle = 0 }
+		leans[m] = l
+		m.Destroying:Connect(function()
+			leans[m] = nil
+			wobbling[m] = nil
+			released[m] = nil
+		end)
+	end
+	return l
+end
+
+local function pose(m: Model, l: Lean, extra: number, axis: Vector3)
+	local cf = CFrame.new(l.base.Position) * CFrame.fromAxisAngle(l.axis, l.angle)
+	if extra ~= 0 then
+		cf = CFrame.fromAxisAngle(axis, extra) * cf.Rotation + cf.Position
+	end
+	m:PivotTo(cf * l.base.Rotation)
+end
+
+-- Lean `m` away from `from` by how much of it is cut (1 - ratio of its HP left).
+function HitFx.lean(m: Model?, from: Vector3?, ratio: number?)
+	if not m or not m.Parent or released[m] or not from or not ratio then
+		return
+	end
+	local l = leanOf(m)
+	local away = Vector3.new(l.base.Position.X - from.X, 0, l.base.Position.Z - from.Z)
+	if away.Magnitude > 0.05 then
+		local axis = Vector3.yAxis:Cross(away.Unit)
+		l.axis = if axis.Magnitude > 1e-3 then axis.Unit else Vector3.xAxis
+	end
+	l.angle = math.rad(11) * math.clamp(1 - ratio, 0, 1)
+	if not wobbling[m] then
+		pose(m, l, 0, l.axis)
+	end
+end
+
+-- Stop moving `m` (it's falling over: client/Fx animates it from here). Returns its upright pose.
+function HitFx.release(m: Model): CFrame?
+	released[m] = true
+	local l = leans[m]
+	return if l then l.base else nil
+end
+
 local function wobble(m: Model, away: Vector3, strength: number)
-	if wobbling[m] then
+	if wobbling[m] or released[m] then
 		return
 	end
 	wobbling[m] = true
-	local base = m:GetPivot()
+	local l = leanOf(m)
 	local axis = Vector3.yAxis:Cross(away)
 	axis = if axis.Magnitude > 1e-3 then axis.Unit else Vector3.xAxis
 	local start = os.clock()
 	local conn: RBXScriptConnection
 	conn = RunService.RenderStepped:Connect(function()
 		local t = os.clock() - start
-		if t > 0.55 or not m.Parent then
+		if t > 0.55 or not m.Parent or released[m] then
 			conn:Disconnect()
 			wobbling[m] = nil
-			if m.Parent then
-				m:PivotTo(base)
+			if m.Parent and not released[m] then
+				pose(m, l, 0, axis)
 			end
 			return
 		end
-		-- a damped spring: snaps away, swings back past upright, settles; a little squash on the first frames
+		-- a damped spring about its lean: snaps away, swings back past it, settles
 		local angle = math.rad(14 * strength) * math.exp(-t * 8) * math.cos(t * 24)
-		m:PivotTo(CFrame.new(base.Position) * CFrame.fromAxisAngle(axis, angle) * base.Rotation)
+		pose(m, l, angle, axis)
 	end)
 end
 
@@ -542,7 +594,40 @@ local function clumpColor(m: Model): Color3
 end
 
 -- Called when you swing a hand tool. Mirrors the server's reach: centre a little ahead of you, tool radius.
-function HitFx.swing(toolId: string?)
+-- The clump the server will pick for a swing aimed along `look` (same rule as server/Field hitAim): the one
+-- nearest the middle of your view, within reach.
+local CLUMP_RADIUS = 2.4
+local function aimedClump(rootPos: Vector3, look: Vector3, reach: number): Model?
+	local grass = grassFolder()
+	if not grass then
+		return nil
+	end
+	overlap.FilterDescendantsInstances = { grass }
+	local eye = rootPos + Vector3.new(0, 1.5, 0)
+	local seen: { [Model]: boolean } = {}
+	local best, bestScore = nil, math.huge
+	for _, part in workspace:GetPartBoundsInRadius(rootPos, reach + 14, overlap) do
+		local m = clumpOf(part)
+		if m and not seen[m] and not released[m] then
+			seen[m] = true
+			local foot = (leans[m] and leans[m].base or m:GetPivot()).Position
+			local scale = m:GetAttribute("Scale") :: number? or 2
+			local flat = Vector3.new(foot.X - rootPos.X, 0, foot.Z - rootPos.Z).Magnitude
+			if flat - CLUMP_RADIUS * scale <= reach then
+				local to = foot + Vector3.new(0, 1.3 * scale, 0) - eye
+				local d = math.max(to.Magnitude, 0.1)
+				local angle = math.acos(math.clamp(to:Dot(look) / d, -1, 1))
+				local score = angle - math.atan2(CLUMP_RADIUS * scale, d)
+				if score < bestScore then
+					best, bestScore = m, score
+				end
+			end
+		end
+	end
+	return if bestScore <= math.rad(14) then best else nil
+end
+
+function HitFx.swing(toolId: string?, look: Vector3?)
 	local def = nil
 	for _, t in Config.TOOLS do
 		if t.id == toolId then
@@ -555,16 +640,11 @@ function HitFx.swing(toolId: string?)
 	if not def or def.kind ~= "swing" or not root or not d or not d.run or (not d.endless and d.run.carry + (d.run.ground or 0) >= (d.carryMax or 1)) then
 		return
 	end
-	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
-	if look.Magnitude < 0.1 then
-		return
-	end
-	local centre = root.Position + look.Unit * def.radius * 0.45
-	local m = clumpAt(centre, def.radius)
+	local m = aimedClump(root.Position, look or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector) or root.CFrame.LookVector, def.radius)
 	if not m then
 		return
 	end
-	local pos = m:GetPivot().Position
+	local pos = (leans[m] and leans[m].base or m:GetPivot()).Position
 	table.insert(predicted, { pos = pos, at = os.clock() })
 	task.delay(STRIKE_DELAY, function()
 		if m.Parent then

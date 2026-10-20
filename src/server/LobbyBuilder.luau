@@ -283,7 +283,7 @@ end
 
 local function startBoard(m: Instance)
 	-- hanging high over the bays' status lines, like the START A RUN board in Chop A Forest's lobby
-	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + 22.5, 58), Vector3.new(0, FLOOR_Y + 22.5, 0))
+	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + 26, 58), Vector3.new(0, FLOOR_Y + 26, 0))
 	local sub = ("Step on a pad  -  play solo or bring up to %d friends"):format(Config.PARTY_MAX - 1)
 	LobbyPads.startBoard(m, at, "START A RUN", sub)
 end

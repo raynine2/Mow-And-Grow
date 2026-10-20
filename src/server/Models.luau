@@ -144,11 +144,11 @@ end
 -- the keys below. Each replaces the game model `name`, scaled to that model's height (or `height` when it has
 -- none). turn = degrees about Y that make the mesh face its pivot's LookVector.
 local TOY_MODELS: { [string]: { name: string, height: number, turn: number } } = {
-	DandelionKing = { name = "boss_dandelion", height = 17.5, turn = 0 },
-	ThornBush = { name = "boss_thornbush", height = 16, turn = 0 },
-	VenusFlytrap = { name = "boss_flytrap", height = 18, turn = 0 },
-	SwampVine = { name = "boss_vine", height = 20, turn = 0 },
-	JungleTitan = { name = "boss_jungle", height = 22, turn = 0 },
+	DandelionKing = { name = "boss_dandelion", height = 17.5, turn = 180 },
+	ThornBush = { name = "boss_thornbush", height = 16, turn = 180 },
+	VenusFlytrap = { name = "boss_flytrap", height = 18, turn = 180 },
+	SwampVine = { name = "boss_vine", height = 20, turn = 180 },
+	JungleTitan = { name = "boss_jungle", height = 22, turn = 180 },
 }
 
 -- A template from an imported toy mesh: the mesh part(s) anchored, pivot at the feet (bottom centre of the

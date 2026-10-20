@@ -282,34 +282,10 @@ local function bestTimesBoard(world: Instance): TextLabel?
 end
 
 local function startBoard(m: Instance)
-	-- the board stands high on two tall log legs so it shows over the booths' roofs
-	-- high over the bays' status lines, like the hanging START A RUN board in Chop A Forest's lobby
-	local lift = 15
-	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + lift, 64), Vector3.new(0, FLOOR_Y + lift, 0))
-	local s = 2
-	-- start_board is start_sign on tall legs: it stands on the ground, its board at the same height
-	local placedBoard = Models.place("start_board", m, at * CFrame.new(0, -lift, 0), s, true)
-	if placedBoard then
-		PropKit.facePanel(m, at, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "START A RUN", GOLD, s)
-		local sub = ("Step on a pad - play solo or bring up to %d friends"):format(Config.PARTY_MAX - 1)
-		PropKit.facePanel(m, at, Vector3.new(0, 6.1, -0.62), Vector2.new(27, 1.5), sub, CREAM, s)
-		PropKit.collider(m, at, Vector3.new(0, 6, 0.6), Vector3.new(30, 12, 2.4), s)
-		for _, x in { -12.5, 12.5 } do
-			PropKit.collider(m, at, Vector3.new(x, -lift / s / 2, 0.7), Vector3.new(1.9, lift / s, 1.9), s)
-		end
-	elseif Models.place("start_sign", m, at, s, true) then
-		for _, x in { -12.5, 12.5 } do
-			local leg = PropKit.cylinder(m, 0.95 * s, lift + 1, at * CFrame.new(x * s, -lift / 2 + 0.5, 0.7 * s), Color3.fromRGB(110, 70, 42))
-			leg.Material = Enum.Material.Wood
-			leg.Name = "SignLeg"
-		end
-		PropKit.facePanel(m, at, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "START A RUN", GOLD, s)
-		local sub = ("Step on a pad - play solo or bring up to %d friends"):format(Config.PARTY_MAX - 1)
-		PropKit.facePanel(m, at, Vector3.new(0, 6.1, -0.62), Vector2.new(27, 1.5), sub, CREAM, s)
-		PropKit.collider(m, at, Vector3.new(0, 6, 0.6), Vector3.new(30, 12, 2.4), s)
-	else
-		PropKit.sign(m, CFrame.new(0, 14, 58), Vector3.new(30, 5, 1.5), "START A RUN", Color3.fromRGB(80, 200, 80), Color3.new(1, 1, 1))
-	end
+	-- hanging high over the bays' status lines, like the START A RUN board in Chop A Forest's lobby
+	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + 22.5, 58), Vector3.new(0, FLOOR_Y + 22.5, 0))
+	local sub = ("Step on a pad  -  play solo or bring up to %d friends"):format(Config.PARTY_MAX - 1)
+	LobbyPads.startBoard(m, at, "START A RUN", sub)
 end
 
 -- The START A RUN board over a deck of four glowing party bays (server/LobbyPads), facing the spawn.

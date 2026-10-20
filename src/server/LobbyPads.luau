@@ -271,6 +271,56 @@ local function statusTag(parent: Instance, pos: Vector3): (TextLabel, TextLabel)
 end
 
 -------------------------------------------------------------------------------------------------------------
+-- the START A RUN board
+-------------------------------------------------------------------------------------------------------------
+-- A big plank board hanging from a beam between two tall log posts, high over the row (at = its middle, front
+-- = at.LookVector): a gold title with a thick brown outline and a cream line under it.
+function LobbyPads.startBoard(parent: Instance, at: CFrame, title: string, subtitle: string)
+	local m = Instance.new("Model")
+	m.Name = "StartBoard"
+	local W, H = 40, 9.5
+	local y = at.Position.Y
+	-- posts from the ground up past the board, and the beam across them
+	for _, x in { -W / 2 - 2, W / 2 + 2 } do
+		local base = at * CFrame.new(x, -y, 1)
+		local post = PropKit.cylinder(m, 1.15, y + H / 2 + 4, base * CFrame.new(0, (y + H / 2 + 4) / 2, 0), DARK_WOOD)
+		post.Material = Enum.Material.Wood
+		post.Name = "Post"
+		local cap = PropKit.cylinder(m, 1.45, 0.8, base * CFrame.new(0, y + H / 2 + 4.2, 0), LIGHT_WOOD)
+		cap.Material = Enum.Material.Wood
+		cap.CanCollide = false
+	end
+	local beam = PropKit.cylinder(m, 0.9, W + 8, at * CFrame.new(0, H / 2 + 2.6, 1) * CFrame.Angles(0, 0, math.rad(90)), WOOD)
+	beam.Material = Enum.Material.Wood
+	beam.CanCollide = false
+	-- chains
+	for _, x in { -W / 3, W / 3 } do
+		local chain = block(m, Vector3.new(0.3, 2.4, 0.3), at * CFrame.new(x, H / 2 + 1.3, 0.8), Color3.fromRGB(70, 70, 76), "Chain", Enum.Material.Metal)
+		deco(chain)
+	end
+	-- the board with a lighter frame
+	local board = block(m, Vector3.new(W, H, 0.8), at, Color3.fromRGB(104, 62, 34), "Board", Enum.Material.WoodPlanks)
+	board.CanCollide = false
+	for _, e in { { 0, H / 2, W + 1, 0.9 }, { 0, -H / 2, W + 1, 0.9 }, { W / 2, 0, 0.9, H }, { -W / 2, 0, 0.9, H } } do
+		deco(block(m, Vector3.new(e[3], e[4], 1.1), at * CFrame.new(e[1], e[2], 0.05), Color3.fromRGB(150, 96, 54), "Trim", Enum.Material.Wood))
+	end
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.PixelsPerStud = 30
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.LightInfluence = 0.15
+	gui.Brightness = 1.3
+	gui.Parent = board
+	local t = label(gui, title, UDim2.fromScale(0.9, 0.6), UDim2.fromScale(0.05, 0.05), Color3.new(1, 1, 1), 10)
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(Color3.fromRGB(255, 236, 150), Color3.fromRGB(255, 186, 50))
+	g.Rotation = 90
+	g.Parent = t
+	label(gui, subtitle, UDim2.fromScale(0.86, 0.24), UDim2.fromScale(0.07, 0.68), CREAM, 5)
+	m.Parent = parent
+end
+
+-------------------------------------------------------------------------------------------------------------
 -- the deck with four bays
 -------------------------------------------------------------------------------------------------------------
 export type PadDef = {

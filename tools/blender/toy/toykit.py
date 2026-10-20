@@ -108,6 +108,13 @@ def mat(name, color, rough=0.5, coat=0.0, sheen=0.0, emit=0.0, bump=None, bump_s
         b.inputs["Emission Strength"].default_value = emit
     m.diffuse_color = col
     if bump:
+        _bump(nt, b, bump, bump_scale, bump_strength)
+    return m
+
+
+def _bump(nt, b, bump, bump_scale, bump_strength):
+    """Adds a procedural bump (fine noise, or 'pores' cell dimples) to a Principled material's normal."""
+    if True:
         tc = nt.nodes.new("ShaderNodeTexCoord")
         if bump == "pores":
             tex = nt.nodes.new("ShaderNodeTexVoronoi")
@@ -122,7 +129,6 @@ def mat(name, color, rough=0.5, coat=0.0, sheen=0.0, emit=0.0, bump=None, bump_s
         bn.inputs["Strength"].default_value = bump_strength
         nt.links.new(out, bn.inputs["Height"])
         nt.links.new(bn.outputs["Normal"], b.inputs["Normal"])
-    return m
 
 
 def sdf_attr(obj, name, fn):
@@ -134,7 +140,7 @@ def sdf_attr(obj, name, fn):
     me.update()
 
 
-def region_mat(name, color, layers, rough=0.5, coat=0.2):
+def region_mat(name, color, layers, rough=0.5, coat=0.2, bump=None, bump_scale=40.0, bump_strength=0.2):
     """One material painting sdf_attr regions over a base colour. layers: [(attribute, '#color', roughness)],
     painted in order (later layers win)."""
     m = mat(name, color, rough=rough, coat=coat)
@@ -170,6 +176,8 @@ def region_mat(name, color, layers, rough=0.5, coat=0.2):
     if col_out is not None:
         nt.links.new(col_out, b.inputs["Base Color"])
         nt.links.new(rough_out, b.inputs["Roughness"])
+    if bump and not b.inputs["Normal"].is_linked:
+        _bump(nt, b, bump, bump_scale, bump_strength)
     return m
 
 

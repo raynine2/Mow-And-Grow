@@ -38,6 +38,7 @@ try:
     stats = None
     if do_export:
         stats = k.export(coll, name, os.path.join(REPO, "assets", "toy_models"), height=h,
+                         tri_budget=getattr(mod, "BUDGET", 16000), tex_size=getattr(mod, "TEX", 1024),
                          preview_path=os.path.join(out, f"{name}_baked.png"))
     print(f"TOY_OK {name} {round(time.time() - t0, 1)}s {stats or ''}")
 except Exception:

@@ -149,6 +149,26 @@ local TOY_MODELS: { [string]: { name: string, height: number, turn: number } } =
 	VenusFlytrap = { name = "boss_flytrap", height = 18, turn = 180 },
 	SwampVine = { name = "boss_vine", height = 20, turn = 180 },
 	JungleTitan = { name = "boss_jungle", height = 22, turn = 180 },
+	-- nature
+	Oak = { name = "oak", height = 30, turn = 180 },
+	OakSmall = { name = "oak_small", height = 22, turn = 180 },
+	Birch = { name = "birch", height = 28, turn = 180 },
+	JungleTree = { name = "jungle_tree", height = 34, turn = 180 },
+	Bush = { name = "bush", height = 5, turn = 180 },
+	Rock = { name = "rock", height = 4, turn = 180 },
+	Stump = { name = "stump", height = 3, turn = 180 },
+	Log = { name = "log", height = 3, turn = 180 },
+	-- the grass clumps you mow, and the stubble they leave
+	TuftLawn = { name = "tuft_lawn", height = 4, turn = 180 },
+	TuftLawnCut = { name = "tuft_lawn_cut", height = 1, turn = 180 },
+	TuftGolf = { name = "tuft_golf", height = 3, turn = 180 },
+	TuftGolfCut = { name = "tuft_golf_cut", height = 0.8, turn = 180 },
+	TuftWheat = { name = "tuft_wheat", height = 5, turn = 180 },
+	TuftWheatCut = { name = "tuft_wheat_cut", height = 1.2, turn = 180 },
+	TuftReeds = { name = "tuft_reeds", height = 6, turn = 180 },
+	TuftReedsCut = { name = "tuft_reeds_cut", height = 1.2, turn = 180 },
+	TuftJungle = { name = "tuft_jungle", height = 4.5, turn = 180 },
+	TuftJungleCut = { name = "tuft_jungle_cut", height = 1, turn = 180 },
 }
 
 -- A template from an imported toy mesh: the mesh part(s) anchored, pivot at the feet (bottom centre of the

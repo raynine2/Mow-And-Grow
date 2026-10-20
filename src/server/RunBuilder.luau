@@ -11,6 +11,7 @@ local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
+local Landmarks = require(script.Parent.Landmarks)
 
 local RunBuilder = {}
 
@@ -278,91 +279,184 @@ local MAX_Z = HUB.Z + (ROWS - M.hubCell[2]) * M.cell + HALF
 local MID = Vector3.new((MIN_X + MAX_X) / 2, 0, (MIN_Z + MAX_Z) / 2)
 local FENCE_H = 26 -- the invisible wall over every fence, so nobody hops into a locked area
 
--- the ground of each area's field (a grassy verge runs along its fences)
-local ZONE_GROUND = {
+-- Each area's ground: its own Terrain material, so its own colour (Ground.COLORS), inside a grassy verge.
+local AREA_GROUND = {
 	lawn = Enum.Material.Grass,
 	meadow = Enum.Material.LeafyGrass,
-	golf = Enum.Material.Grass,
-	wheat = Enum.Material.Ground,
-	blossom = Enum.Material.Grass,
+	golf = Enum.Material.Pavement,
+	wheat = Enum.Material.Sandstone,
+	blossom = Enum.Material.Limestone,
 	reeds = Enum.Material.Mud,
 	prairie = Enum.Material.Sand,
-	jungle = Enum.Material.LeafyGrass,
+	jungle = Enum.Material.Slate,
 }
+local PATH_HALF = 4 -- half a dirt path's width
 
--- Spots inside an area kept free of grass: the way in through every gate, the drop-off shredder, and the area's
--- props (sand traps, hay, ponds, trees, rocks). Built the same way every time, so the grass and the props agree.
-type Keepout = { pos: Vector3, r: number, kind: string }
-local keepoutCache: { [number]: { Keepout } } = {}
-local function keepouts(z: number): { Keepout }
-	local cached = keepoutCache[z]
+local function flat(v: Vector3): Vector3
+	local f = Vector3.new(v.X, 0, v.Z)
+	return if f.Magnitude > 1e-3 then f.Unit else Vector3.zAxis
+end
+
+-- Distance from p to the segment a-b, on the ground.
+local function segDist(p: Vector3, a: Vector3, b: Vector3): number
+	local ab = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+	local ap = Vector3.new(p.X - a.X, 0, p.Z - a.Z)
+	local len2 = ab:Dot(ab)
+	local t = if len2 > 0 then math.clamp(ap:Dot(ab) / len2, 0, 1) else 0
+	return (ap - ab * t).Magnitude
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- an area's plan: what stands where (same every time, so the grass and the props agree)
+-------------------------------------------------------------------------------------------------------------
+-- keepouts: spots kept free of grass (the way in through every gate, the drop-off, the landmark, props,
+-- clearings); paths: winding dirt paths from every gate to the area's heart (its landmark, or the drop-off);
+-- groves: spots where the grass grows thicker.
+type Keepout = { pos: Vector3, r: number, kind: string, face: Vector3? }
+type Plan = { keepouts: { Keepout }, paths: { { Vector3 } }, groves: { { pos: Vector3, r: number } } }
+local planCache: { [number]: Plan } = {}
+
+local function plan(z: number): Plan
+	local cached = planCache[z]
 	if cached then
 		return cached
 	end
+	local def = Config.ZONES[z]
+	local style = def.style
 	local c = Config.zoneCentre(z)
 	local rng = Random.new(z * 3571 + 11)
 	local list: { Keepout } = {}
-	local function add(pos: Vector3, r: number, kind: string)
-		table.insert(list, { pos = pos, r = r, kind = kind })
+	local paths: { { Vector3 } } = {}
+	local function add(pos: Vector3, r: number, kind: string, face: Vector3?)
+		table.insert(list, { pos = pos, r = r, kind = kind, face = face })
 	end
-	for _, g in Config.gates() do
-		if g.a == z or g.b == z then
-			local into = c - g.pos
-			add(g.pos + Vector3.new(into.X, 0, into.Z).Unit * 9, 12, "gate")
-		end
-	end
-	if M.dropOff == z then
-		add(c, 25, "dropoff")
-	elseif Config.BOSSES then
-		add(c, 14, "arena")
-	end
-	-- `n` props of radius `r` at random spots, clear of everything placed so far
-	local function scatter(n: number, r: number, kind: string)
-		local placed, tries = 0, 0
-		while placed < n and tries < n * 30 do
-			tries += 1
-			local edge = r + 10
-			local p = c + Vector3.new(rng:NextNumber(-HALF + edge, HALF - edge), 0, rng:NextNumber(-HALF + edge, HALF - edge))
-			local free = true
-			for _, k in list do
-				if (p - k.pos).Magnitude < k.r + r + 6 then
-					free = false
-					break
+	local function onPath(p: Vector3, extra: number): boolean
+		for _, line in paths do
+			for i = 1, #line - 1 do
+				if segDist(p, line[i], line[i + 1]) < PATH_HALF + extra then
+					return true
 				end
 			end
-			if free then
+		end
+		return false
+	end
+	local function free(p: Vector3, r: number): boolean
+		if math.abs(p.X - c.X) > HALF - M.margin - r or math.abs(p.Z - c.Z) > HALF - M.margin - r then
+			return false
+		end
+		for _, k in list do
+			if (p - k.pos).Magnitude < k.r + r + 4 then
+				return false
+			end
+		end
+		return not onPath(p, r)
+	end
+	-- the way in through every gate
+	local entries: { Vector3 } = {}
+	for _, g in Config.gates() do
+		if g.a == z or g.b == z then
+			local into = flat(c - g.pos)
+			add(g.pos + into * 9, 11, "gate")
+			table.insert(entries, g.pos + into * 1)
+		end
+	end
+	-- the landmark, 18-45 studs from the middle, facing the way most people come in
+	local lr = Landmarks.RADIUS[style] or 12
+	local entry = Config.gateInto(z)
+	local comeFrom = if entry then entry.pos else c - Vector3.zAxis * HALF
+	local landmark = c
+	for _ = 1, 60 do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local p = c + Vector3.new(math.cos(a), 0, math.sin(a)) * rng:NextNumber(18, 45)
+		if (M.dropOff ~= z or (p - c).Magnitude > 25 + lr + 6) and free(p, lr) then
+			landmark = p
+			break
+		end
+	end
+	local face = flat(comeFrom - landmark)
+	add(landmark, lr, "landmark", face)
+	local heart = landmark + face * (lr * 0.85)
+	if M.dropOff == z then
+		add(c, 25, "dropoff")
+		heart = c + flat(comeFrom - c) * 22
+	end
+	-- winding paths: a curve from every entry to the heart, bowing a little to one side
+	local function curve(a: Vector3, b: Vector3)
+		local len = (b - a).Magnitude
+		local side = flat(b - a):Cross(Vector3.yAxis)
+		local ctrl = (a + b) / 2 + side * len * rng:NextNumber(-0.3, 0.3)
+		local n = math.max(3, math.ceil(len / 5))
+		local pts = {}
+		for i = 0, n do
+			local t = i / n
+			local p = a:Lerp(ctrl, t):Lerp(ctrl:Lerp(b, t), t)
+			table.insert(pts, Vector3.new(p.X, 0, p.Z))
+		end
+		table.insert(paths, pts)
+	end
+	for _, e in entries do
+		curve(e, heart)
+	end
+	if M.dropOff == z then
+		curve(heart, landmark + face * (lr * 0.85)) -- and on to the landmark
+	end
+	-- the area's own props
+	local function scatter(n: number, r: number, kind: string)
+		local placed, tries = 0, 0
+		while placed < n and tries < n * 40 do
+			tries += 1
+			local p = c + Vector3.new(rng:NextNumber(-HALF, HALF), 0, rng:NextNumber(-HALF, HALF))
+			if free(p, r) then
 				add(p, r, kind)
 				placed += 1
 			end
 		end
 	end
-	local style = Config.ZONES[z].style
 	if style == "golf" then
 		scatter(4, 9, "sand")
-		scatter(1, 6, "flag")
 	elseif style == "meadow" then
-		scatter(5, 6, "birch")
+		scatter(4, 6, "birch")
+		scatter(6, 3, "flowers")
 	elseif style == "wheat" then
-		scatter(5, 5, "hay")
+		scatter(4, 5, "hay")
 		scatter(1, 8, "haystack")
 	elseif style == "blossom" then
-		scatter(7, 7, "blossomtree")
+		scatter(5, 7, "blossomtree")
+		scatter(4, 3, "flowers")
 	elseif style == "reeds" then
-		scatter(3, 15, "pond")
+		scatter(1, 13, "pond")
 	elseif style == "prairie" then
-		scatter(5, 7, "autumntree")
+		scatter(4, 7, "autumntree")
 		scatter(2, 5, "hay")
 	elseif style == "jungle" then
-		scatter(6, 9, "bigtree")
+		scatter(5, 9, "bigtree")
+		scatter(4, 4, "palm")
 	end
-	scatter(2, 4, "rock")
-	scatter(2, 4, "bush")
-	keepoutCache[z] = list
-	return list
+	-- two small clearings with something to find in them, and little things all over
+	scatter(2, rng:NextNumber(8, 12), "clearing")
+	local small = { "rock", "bush", "flowers", "mushroom", "fallenlog", "stump", "log" }
+	if style == "jungle" or style == "reeds" then
+		small = { "mushroom", "mushroom", "fallenlog", "bush", "rock", "stump" }
+	elseif style == "meadow" or style == "blossom" then
+		small = { "flowers", "flowers", "bush", "rock", "mushroom", "stump" }
+	end
+	for i = 1, 14 do
+		scatter(1, 3, small[(i % #small) + 1])
+	end
+	-- groves: where the grass stands thicker
+	local groves = {}
+	for _ = 1, 3 do
+		local p = c + Vector3.new(rng:NextNumber(-HALF + 30, HALF - 30), 0, rng:NextNumber(-HALF + 30, HALF - 30))
+		table.insert(groves, { pos = p, r = rng:NextNumber(20, 30) })
+	end
+	local result: Plan = { keepouts = list, paths = paths, groves = groves }
+	planCache[z] = result
+	return result
 end
 
--- Every grass clump of area z: { cf, scale } on the ground, on a jittered grid (every other row shifted half a
--- step, so it reads like a planted forest, not a grid). Keep-out spots stay clear.
+-------------------------------------------------------------------------------------------------------------
+-- the grass: scattered naturally (Poisson disc), thicker in groves, never on paths or props
+-------------------------------------------------------------------------------------------------------------
 export type PatchSpot = { cf: CFrame, scale: number }
 local patchCache: { [number]: { PatchSpot } } = {}
 function RunBuilder.patches(z: number): { PatchSpot }
@@ -371,35 +465,116 @@ function RunBuilder.patches(z: number): { PatchSpot }
 		return cached
 	end
 	local def = Config.ZONES[z]
+	local pl = plan(z)
 	local c = Config.zoneCentre(z)
 	local s = def.spacing or 14
+	local r0 = s * 0.72 -- the closest two clumps may stand (a bit closer in a grove)
 	local rng = Random.new(z * 7919)
-	local list: { PatchSpot } = {}
-	local lo = -HALF + M.margin + s * 0.5
-	local hi = HALF - M.margin - s * 0.5
-	local row = 0
-	local zz = lo
-	while zz <= hi + 0.01 do
-		local xx = lo + (row % 2) * s * 0.5
-		while xx <= hi + 0.01 do
-			local pos = c + Vector3.new(xx + rng:NextNumber(-0.25, 0.25) * s, 0, zz + rng:NextNumber(-0.25, 0.25) * s)
-			local yaw = rng:NextNumber(0, 2 * math.pi)
-			local scale = (def.scale or 2) * rng:NextNumber(0.88, 1.12)
-			local blocked = false
-			for _, k in keepouts(z) do
-				local d = pos - k.pos
-				if d.X * d.X + d.Z * d.Z < (k.r + s * 0.45) ^ 2 then
-					blocked = true
+	local lo = HALF - M.margin - s * 0.3
+	local function radiusAt(p: Vector3): number
+		for _, g in pl.groves do
+			if (p - g.pos).Magnitude < g.r then
+				return r0 * 0.78
+			end
+		end
+		return r0
+	end
+	local function blocked(p: Vector3): boolean
+		if math.abs(p.X - c.X) > lo or math.abs(p.Z - c.Z) > lo then
+			return true
+		end
+		for _, k in pl.keepouts do
+			local d = p - k.pos
+			if d.X * d.X + d.Z * d.Z < (k.r + s * 0.45) ^ 2 then
+				return true
+			end
+		end
+		for _, line in pl.paths do
+			for i = 1, #line - 1 do
+				if segDist(p, line[i], line[i + 1]) < PATH_HALF + s * 0.4 then
+					return true
+				end
+			end
+		end
+		return false
+	end
+	-- a grid of buckets so "is anything too close" only looks nearby
+	local cellSize = r0 * 0.78 / math.sqrt(2)
+	local grid: { [number]: { Vector3 } } = {}
+	local function key(p: Vector3): (number, number)
+		return math.floor((p.X - c.X + HALF) / cellSize), math.floor((p.Z - c.Z + HALF) / cellSize)
+	end
+	local function tooClose(p: Vector3, r: number): boolean
+		local gx, gz = key(p)
+		local reach = math.ceil(r / cellSize)
+		for x = gx - reach, gx + reach do
+			for zz = gz - reach, gz + reach do
+				local b = grid[x * 4096 + zz]
+				if b then
+					for _, q in b do
+						local dx, dz = q.X - p.X, q.Z - p.Z
+						if dx * dx + dz * dz < r * r then
+							return true
+						end
+					end
+				end
+			end
+		end
+		return false
+	end
+	local points: { Vector3 } = {}
+	local active: { Vector3 } = {}
+	local function accept(p: Vector3)
+		table.insert(points, p)
+		table.insert(active, p)
+		local gx, gz = key(p)
+		local k = gx * 4096 + gz
+		grid[k] = grid[k] or {}
+		table.insert(grid[k], p)
+	end
+	local function grow()
+		while #active > 0 do
+			local i = rng:NextInteger(1, #active)
+			local from = active[i]
+			local r = radiusAt(from)
+			local found = false
+			for _ = 1, 24 do
+				local a = rng:NextNumber(0, math.pi * 2)
+				local d = rng:NextNumber(r, r * 1.9)
+				local p = from + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d)
+				if not blocked(p) and not tooClose(p, radiusAt(p)) then
+					accept(p)
+					found = true
 					break
 				end
 			end
-			if not blocked then
-				table.insert(list, { cf = CFrame.new(pos) * CFrame.Angles(0, yaw, 0), scale = scale })
+			if not found then
+				table.remove(active, i)
 			end
-			xx += s
 		end
-		zz += s * 0.87
-		row += 1
+	end
+	-- seed from a coarse sweep so every pocket between paths and props fills up
+	local step = r0 * 1.5
+	local x = -lo
+	while x <= lo do
+		local zz = -lo
+		while zz <= lo do
+			local p = c + Vector3.new(x + rng:NextNumber(-0.3, 0.3) * step, 0, zz + rng:NextNumber(-0.3, 0.3) * step)
+			if not blocked(p) and not tooClose(p, radiusAt(p)) then
+				accept(p)
+				grow()
+			end
+			zz += step
+		end
+		x += step
+	end
+	local list: { PatchSpot } = {}
+	for _, p in points do
+		local grove = radiusAt(p) < r0
+		table.insert(list, {
+			cf = CFrame.new(p) * CFrame.Angles(0, rng:NextNumber(0, 2 * math.pi), 0),
+			scale = (def.scale or 2) * rng:NextNumber(0.86, 1.12) * (if grove then 1.06 else 1),
+		})
 	end
 	patchCache[z] = list
 	return list
@@ -466,37 +641,132 @@ local function fences(world: Instance, info)
 	end
 end
 
--- Each area's name on a board just inside the gate you reach it through, so you can read it over the closed gate.
-local function areaSign(parent: Instance, z: number)
+-- A wooden arch over the gate you walk into area z through, with the area's name on a board hanging from it
+-- (readable over the closed gate) and a little roof in the area's colour.
+local function areaArch(parent: Instance, z: number)
 	local g = Config.gateInto(z)
 	if not g then
 		return
 	end
 	local def = Config.ZONES[z]
-	local into = Config.zoneCentre(z) - g.pos
-	into = Vector3.new(into.X, 0, into.Z).Unit
-	local pos = g.pos + into * 7 + g.along * (M.gateWidth / 2 + 9)
-	local signAt = CFrame.lookAt(pos, g.pos - into * 6)
-	if Models.place("start_sign", parent, signAt, 0.55, true) then
-		PropKit.facePanel(parent, signAt, Vector3.new(0, 9.0, -0.62), Vector2.new(27, 4.6), def.name, Color3.fromRGB(255, 240, 200), 0.55)
-	else
-		PropKit.sign(parent, signAt * CFrame.new(0, 7, 0), Vector3.new(16, 4, 1), def.name, def.grass[1], Color3.new(1, 1, 1))
+	local back = flat(Config.zoneCentre(g.a) - g.pos) -- toward the side you come from
+	local at = CFrame.lookAt(g.pos, g.pos + back)
+	local w = M.gateWidth + 3
+	local H = 16
+	local wood = Color3.fromRGB(120, 78, 46)
+	for _, x in { -w / 2, w / 2 } do
+		local post = PropKit.cylinder(parent, 0.9, H, at * CFrame.new(x, H / 2, 0), wood)
+		post.Material = Enum.Material.Wood
+		post.Name = "ArchPost"
+	end
+	local beam = PropKit.brick(parent, Vector3.new(w + 3, 1.2, 1.4), at * CFrame.new(0, H - 0.4, 0), PropKit.shade(wood, 1.15), "ArchBeam", Enum.Material.Wood)
+	beam.CanCollide = false
+	local accent = def.tint or def.grass[1]
+	for side = -1, 1, 2 do
+		local roof = PropKit.brick(parent, Vector3.new(w / 2 + 2.4, 0.5, 3.2), at * CFrame.new(side * (w / 4 + 0.6), H + 1.1, 0) * CFrame.Angles(0, 0, math.rad(-side * 18)), PropKit.shade(accent, 0.8), "ArchRoof", Enum.Material.WoodPlanks)
+		roof.CanCollide = false
+	end
+	local board = PropKit.brick(parent, Vector3.new(w - 2, 3.4, 0.5), at * CFrame.new(0, H - 3, -0.2), Color3.fromRGB(96, 60, 34), "ArchSign", Enum.Material.WoodPlanks)
+	board.CanCollide = false
+	for _, x in { -w / 3, w / 3 } do
+		local chain = PropKit.brick(parent, Vector3.new(0.2, 1.4, 0.2), at * CFrame.new(x, H - 0.9, -0.2), Color3.fromRGB(70, 70, 76), "Chain", Enum.Material.Metal)
+		chain.CanCollide = false
+	end
+	local label = PropKit.surfaceText(board, def.name, Color3.fromRGB(255, 236, 190))
+	label.Size = UDim2.fromScale(0.94, 0.86)
+	label.Position = UDim2.fromScale(0.03, 0.07)
+end
+
+-- Every area's fences are lined on the inside with its own trees, so you can tell the woods apart at a glance
+-- (Chop A Forest: oak wood, birch grove, pines, cherry, autumn...). Gates are left clear.
+local function fenceTrees(parent: Instance, z: number)
+	local def = Config.ZONES[z]
+	local style = def.style
+	local c = Config.zoneCentre(z)
+	local rng = Random.new(z * 911)
+	local gatesHere = {}
+	for _, g in Config.gates() do
+		if g.a == z or g.b == z then
+			table.insert(gatesHere, g.pos)
+		end
+	end
+	local step = if style == "wheat" then 10 else 15
+	local inset = 6.5
+	local n = 0
+	for _, edge in { { Vector3.xAxis, Vector3.zAxis }, { Vector3.xAxis, -Vector3.zAxis }, { Vector3.zAxis, Vector3.xAxis }, { Vector3.zAxis, -Vector3.xAxis } } do
+		local along, out = edge[1], edge[2]
+		local t = -HALF + 8
+		while t <= HALF - 8 do
+			local p = c + along * t + out * (HALF - inset)
+			local nearGate = false
+			for _, gp in gatesHere do
+				if (Vector3.new(gp.X, 0, gp.Z) - p).Magnitude < 16 then
+					nearGate = true
+				end
+			end
+			if not nearGate then
+				n += 1
+				local spin = CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+				local s = rng:NextNumber(0.85, 1.1)
+				if style == "lawn" then
+					if not Models.place("oak_small", parent, CFrame.new(p) * spin, 0.62 * s, true) then
+						PropKit.forestTree(parent, p, 0.55 * s)
+					end
+				elseif style == "meadow" then
+					if not Models.place("birch", parent, CFrame.new(p) * spin, 0.6 * s, true) then
+						PropKit.forestTree(parent, p, 0.6 * s, { birch = true })
+					end
+				elseif style == "golf" then
+					if n % 2 == 0 then
+						PropKit.forestTree(parent, p, 0.5 * s, { leaf = Color3.fromRGB(70, 160, 70), bricks = true })
+					else
+						Models.place("bush", parent, CFrame.new(p) * spin, 1.7 * s, true)
+					end
+				elseif style == "wheat" then
+					if not Models.place("hay_bale", parent, CFrame.new(p) * spin, 1.1, true) then
+						PropKit.brick(parent, Vector3.new(4, 3.6, 4), CFrame.new(p + Vector3.new(0, 1.8, 0)) * spin, Color3.fromRGB(235, 190, 70), "HayBale", Enum.Material.Fabric)
+					end
+				elseif style == "blossom" then
+					PropKit.forestTree(parent, p, 0.58 * s, { leaf = if n % 3 == 0 then Color3.fromRGB(255, 205, 225) else Color3.fromRGB(255, 160, 200), bricks = true })
+				elseif style == "reeds" then
+					PropKit.forestTree(parent, p, 0.6 * s, { leaf = Color3.fromRGB(70, 128, 96), trunk = Color3.fromRGB(80, 64, 50), bricks = true })
+				elseif style == "prairie" then
+					local leaves = { Color3.fromRGB(235, 120, 40), Color3.fromRGB(215, 60, 45), Color3.fromRGB(240, 180, 50) }
+					PropKit.forestTree(parent, p, 0.6 * s, { leaf = leaves[(n % 3) + 1], bricks = true })
+				elseif style == "jungle" then
+					if n % 2 == 0 then
+						PropKit.palm(parent, p, 15 * s)
+					elseif not Models.place("jungle_tree", parent, CFrame.new(p) * spin, 0.62 * s, true) then
+						PropKit.forestTree(parent, p, 0.7 * s, { leaf = Color3.fromRGB(20, 95, 38) })
+					end
+				end
+				if n % 12 == 0 then
+					task.wait()
+				end
+			end
+			t += step
+		end
 	end
 end
 
--- One area: its props on their keep-out spots (and the drop-off shredder in its own clearing).
+-- One area: its arch, fence trees, dirt paths, landmark and props (on the plan's keep-out spots).
 local function areaProps(world: Instance, z: number, info)
 	local m = PropKit.folder("Zone" .. z, world)
-	areaSign(m, z)
-	for _, k in keepouts(z) do
+	local def = Config.ZONES[z]
+	local pl = plan(z)
+	areaArch(m, z)
+	fenceTrees(m, z)
+	for i, line in pl.paths do
+		for j = 1, #line - 1 do
+			Ground.path(line[j], line[j + 1], PATH_HALF * 2, Enum.Material.Ground, z * 100 + i * 10 + j)
+		end
+	end
+	for _, k in pl.keepouts do
 		local at = CFrame.new(k.pos) * CFrame.Angles(0, math.rad((k.pos.X * 13 + k.pos.Z * 7) % 360), 0)
-		if k.kind == "sand" then
-			Ground.disc(k.pos.X, k.pos.Z, k.r - 1, Enum.Material.Sand)
-		elseif k.kind == "flag" then
-			if not Models.place("golf_flag", m, at, 1, true) then
-				PropKit.brick(m, Vector3.new(0.5, 9, 0.5), at * CFrame.new(0, 4.5, 0), Color3.fromRGB(255, 255, 255), "FlagPole")
-				PropKit.brick(m, Vector3.new(0.2, 2.4, 3.4), at * CFrame.new(0, 7.8, 1.7), Color3.fromRGB(255, 70, 70), "Flag")
-			end
+		if k.kind == "landmark" then
+			Landmarks.build(m, def.style, CFrame.lookAt(k.pos, k.pos + (k.face or Vector3.zAxis)))
+		elseif k.kind == "sand" then
+			Ground.disc(k.pos.X, k.pos.Z, k.r - 1, Enum.Material.Salt)
 		elseif k.kind == "hay" or k.kind == "haystack" then
 			if not Models.place("hay_bale", m, at, if k.kind == "haystack" then 1.4 else 1) then
 				PropKit.brick(m, Vector3.new(4, 3.6, 4), at * CFrame.new(0, 1.8, 0), Color3.fromRGB(235, 190, 70), "HayBale")
@@ -507,6 +777,8 @@ local function areaProps(world: Instance, z: number, info)
 			if not Models.place("jungle_tree", m, at, 1.2, true) then
 				PropKit.forestTree(m, k.pos, 1.9, { leaf = Color3.fromRGB(20, 95, 38) })
 			end
+		elseif k.kind == "palm" then
+			PropKit.palm(m, k.pos, 18)
 		elseif k.kind == "blossomtree" then
 			PropKit.forestTree(m, k.pos, 0.75, { leaf = Color3.fromRGB(255, 170, 210), bricks = true })
 		elseif k.kind == "autumntree" then
@@ -514,9 +786,28 @@ local function areaProps(world: Instance, z: number, info)
 		elseif k.kind == "birch" then
 			PropKit.forestTree(m, k.pos, 0.75, { birch = true })
 		elseif k.kind == "rock" then
-			Models.place("rock", m, at, 1.6)
+			Models.place("rock", m, at, 1.4)
 		elseif k.kind == "bush" then
-			Models.place("bush", m, at, 1.3, true)
+			Models.place("bush", m, at, 1.2, true)
+		elseif k.kind == "stump" then
+			if not Models.place("stump", m, at, 1, true) then
+				PropKit.stump(m, k.pos, 0.6)
+			end
+		elseif k.kind == "log" then
+			Models.place("log", m, at, 1.2, true)
+		elseif k.kind == "flowers" then
+			PropKit.flowers(m, k.pos)
+		elseif k.kind == "mushroom" then
+			PropKit.mushroom(m, k.pos, 1.3)
+			PropKit.mushroom(m, k.pos + Vector3.new(1.2, 0, 0.6), 0.8)
+		elseif k.kind == "fallenlog" then
+			PropKit.fallenLog(m, k.pos, 7, math.rad((k.pos.X * 31) % 180))
+		elseif k.kind == "clearing" then
+			-- a little sunny clearing: a fallen trunk to sit on, flowers and mushrooms round it
+			PropKit.fallenLog(m, k.pos + Vector3.new(0, 0, 1.5), 7, math.rad((k.pos.Z * 17) % 180))
+			PropKit.flowers(m, k.pos + Vector3.new(-3, 0, -2))
+			PropKit.flowers(m, k.pos + Vector3.new(3.5, 0, -1))
+			PropKit.mushroom(m, k.pos + Vector3.new(-1, 0, -4), 1)
 		elseif k.kind == "dropoff" then
 			-- Chop A Forest's far-off shredder: sell here instead of walking all the way back to the hub
 			Ground.disc(k.pos.X, k.pos.Z, k.r - 2, Enum.Material.Ground)
@@ -526,9 +817,11 @@ local function areaProps(world: Instance, z: number, info)
 				PropKit.billboard(holder, "DROP-OFF", Color3.fromRGB(120, 255, 90), Vector2.new(10, 2.4), Vector3.new(0, 15, 0), 220)
 			end
 			gasPump(m, k.pos + Vector3.new(4, 0, 15), info, Vector3.zAxis)
-		elseif k.kind == "arena" then
-			Ground.disc(k.pos.X, k.pos.Z, 12, Enum.Material.Ground)
 		end
+	end
+	if Config.BOSSES then
+		local arena = Config.zoneCentre(z)
+		Ground.disc(arena.X, arena.Z, 12, Enum.Material.Ground)
 	end
 end
 
@@ -549,24 +842,84 @@ local function hubYard(world: Instance)
 	end
 end
 
--- The forest belt all round the outside fence and the snowy mountains on the horizon.
+-- How far a point is outside the play fence (0 inside).
+local function outside(x: number, z: number): number
+	local dx = math.max(MIN_X - x, 0, x - MAX_X)
+	local dz = math.max(MIN_Z - z, 0, z - MAX_Z)
+	return math.sqrt(dx * dx + dz * dz)
+end
+
+-- Gentle hills rolling away outside the fence (the forest grows over them).
+local function hills()
+	local rng = Random.new(41)
+	for i = 0, 25 do
+		local side = i % 4
+		local t = rng:NextNumber(-0.5, 0.5)
+		local r = rng:NextNumber(28, 55)
+		local d = r + rng:NextNumber(8, 70)
+		local x, zz
+		if side == 0 then
+			x, zz = MID.X + t * (MAX_X - MIN_X), MAX_Z + d
+		elseif side == 1 then
+			x, zz = MID.X + t * (MAX_X - MIN_X), MIN_Z - d
+		elseif side == 2 then
+			x, zz = MAX_X + d, MID.Z + t * (MAX_Z - MIN_Z)
+		else
+			x, zz = MIN_X - d, MID.Z + t * (MAX_Z - MIN_Z)
+		end
+		Ground.hill(x, zz, r, rng:NextNumber(8, 22), Enum.Material.Grass)
+	end
+end
+
+local groundRay = RaycastParams.new()
+groundRay.FilterType = Enum.RaycastFilterType.Include
+local function groundY(x: number, z: number): number
+	groundRay.FilterDescendantsInstances = { workspace.Terrain }
+	local hit = workspace:Raycast(Vector3.new(x, 200, z), Vector3.new(0, -260, 0), groundRay)
+	return if hit then hit.Position.Y - 0.3 else 0
+end
+
+-- The forest all round the outside fence, a real wall of trees: a mixed edge (oaks, birches, pines) and deep
+-- rows of tall blocky pines behind it, standing on the hills; then the snowy mountains.
 local function horizon(world: Instance)
 	local f = PropKit.folder("Forest", world)
 	local rng = Random.new(77)
-	local step = 22
 	local n = 0
-	for x = MIN_X - 96, MAX_X + 96, step do
-		for z = MIN_Z - 96, MAX_Z + 96, step do
-			if not (x > MIN_X - 10 and x < MAX_X + 10 and z > MIN_Z - 10 and z < MAX_Z + 10) then
-				local pos = Vector3.new(x + rng:NextNumber(-6, 6), 0, z + rng:NextNumber(-6, 6))
+	-- the mixed edge, right outside the fence
+	local step = 12
+	for x = MIN_X - 46, MAX_X + 46, step do
+		for z = MIN_Z - 46, MAX_Z + 46, step do
+			local px, pz = x + rng:NextNumber(-4, 4), z + rng:NextNumber(-4, 4)
+			local d = outside(px, pz)
+			if d > 7 and d <= 44 then
+				local pos = Vector3.new(px, groundY(px, pz), pz)
 				local pick = rng:NextNumber()
-				local name = if pick < 0.12 then "birch" elseif pick < 0.3 then "jungle_tree" elseif pick < 0.55 then "oak_small" else "oak"
 				local cf = CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, 2 * math.pi), 0)
-				if not Models.place(name, f, cf, rng:NextNumber(1.0, 1.45), true) then
-					PropKit.forestTree(f, pos, rng:NextNumber(1.0, 1.3), { lite = true, birch = name == "birch" })
+				if pick < 0.38 then
+					PropKit.pine(f, pos, rng:NextNumber(22, 34), false)
+				else
+					local name = if pick < 0.5 then "birch" elseif pick < 0.7 then "oak_small" else "oak"
+					if not Models.place(name, f, cf, rng:NextNumber(0.95, 1.35), true) then
+						PropKit.forestTree(f, pos, rng:NextNumber(1, 1.3), { lite = true, birch = name == "birch" })
+					end
 				end
 				n += 1
-				if n % 60 == 0 then
+				if n % 50 == 0 then
+					task.wait()
+				end
+			end
+		end
+	end
+	-- the deep pine wall
+	step = 17
+	for x = MIN_X - 135, MAX_X + 135, step do
+		for z = MIN_Z - 135, MAX_Z + 135, step do
+			local px, pz = x + rng:NextNumber(-5, 5), z + rng:NextNumber(-5, 5)
+			local d = outside(px, pz)
+			if d > 44 and d <= 135 then
+				PropKit.pine(f, Vector3.new(px, groundY(px, pz), pz), rng:NextNumber(28, 46), d > 70)
+				n += 1
+				if n % 50 == 0 then
 					task.wait()
 				end
 			end
@@ -584,15 +937,16 @@ function RunBuilder.build()
 	local world = Environment.apply()
 	local info = { world = world, gates = {}, pumps = {}, sellPads = {}, meshGround = false }
 
-	-- the ground: grass everywhere, each area's own field inside a grassy verge
-	Ground.fill(MID.X, MID.Z, (MAX_X - MIN_X) + 280, (MAX_Z - MIN_Z) + 280, Enum.Material.Grass)
+	-- the ground: grass everywhere, each area's own coloured field inside a grassy verge, hills outside
+	Ground.fill(MID.X, MID.Z, (MAX_X - MIN_X) + 300, (MAX_Z - MIN_Z) + 300, Enum.Material.Grass)
 	for z, def in Config.ZONES do
-		local mat = ZONE_GROUND[def.style] or Enum.Material.Grass
+		local mat = AREA_GROUND[def.style] or Enum.Material.Grass
 		if mat ~= Enum.Material.Grass then
 			local c = Config.zoneCentre(z)
-			Ground.fill(c.X, c.Z, M.cell - 12, M.cell - 12, mat)
+			Ground.fill(c.X, c.Z, M.cell - 10, M.cell - 10, mat)
 		end
 	end
+	hills()
 
 	hub(world, info)
 	hubYard(world)
@@ -601,8 +955,9 @@ function RunBuilder.build()
 		areaProps(world, z, info)
 		task.wait()
 	end
+	-- the surface exactly at y = 0 where everything stands (hills are left as they are)
+	Ground.flatten(MID.X, MID.Z, math.max(MAX_X - MIN_X, MAX_Z - MIN_Z) / 2 + 150)
 	horizon(world)
-	Ground.flatten(MID.X, MID.Z, math.max(MAX_X - MIN_X, MAX_Z - MIN_Z) / 2 + 140) -- surface exactly at y = 0
 	return info
 end
 

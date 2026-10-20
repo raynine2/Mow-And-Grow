@@ -10,12 +10,19 @@ local terrain = workspace.Terrain
 -- builders put the models, pads and paths.
 local SINK = 2
 
+-- Terrain colours are per material for the whole map, so every run area gets its own material (RunBuilder's
+-- AREA_GROUND) and the material its own colour. Grass and Ground are also the hub's and the lobby's.
 local COLORS = {
-	[Enum.Material.Grass] = Color3.fromRGB(98, 172, 58),
-	[Enum.Material.LeafyGrass] = Color3.fromRGB(72, 142, 48),
-	[Enum.Material.Ground] = Color3.fromRGB(150, 112, 72),
-	[Enum.Material.Mud] = Color3.fromRGB(96, 80, 60),
-	[Enum.Material.Sand] = Color3.fromRGB(214, 186, 128),
+	[Enum.Material.Grass] = Color3.fromRGB(100, 182, 56), -- Backyard Lawn, the hub, the lobby, the verges: bright green
+	[Enum.Material.LeafyGrass] = Color3.fromRGB(150, 188, 66), -- Flower Meadow: yellow-green
+	[Enum.Material.Pavement] = Color3.fromRGB(128, 206, 96), -- Golf Course: smooth, manicured light green
+	[Enum.Material.Sandstone] = Color3.fromRGB(206, 162, 82), -- Wheat Farm: golden stubble field
+	[Enum.Material.Limestone] = Color3.fromRGB(214, 168, 182), -- Blossom Garden: a carpet of pink petals
+	[Enum.Material.Mud] = Color3.fromRGB(80, 94, 64), -- Swamp Reeds: murky olive (also the lobby's trodden mud)
+	[Enum.Material.Sand] = Color3.fromRGB(214, 148, 78), -- Autumn Prairie: orange-tan
+	[Enum.Material.Slate] = Color3.fromRGB(48, 112, 46), -- Mega Jungle: deep mossy green
+	[Enum.Material.Ground] = Color3.fromRGB(156, 116, 74), -- dirt: paths, yards, the lobby clearing
+	[Enum.Material.Salt] = Color3.fromRGB(240, 224, 170), -- golf sand traps
 	[Enum.Material.Rock] = Color3.fromRGB(128, 126, 122),
 }
 

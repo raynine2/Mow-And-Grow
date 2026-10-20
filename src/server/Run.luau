@@ -43,8 +43,8 @@ local function worldState()
 		zone = zone,
 		zones = #Config.ZONES,
 		name = def.name,
-		cut = Field.total - Field.remainingIn(zone),
-		total = Field.total,
+		cut = Field.totalIn(zone) - Field.remainingIn(zone),
+		total = Field.totalIn(zone),
 		boss = Boss.state(),
 		sellPos = info and info.sellPos,
 		started = startedAt,
@@ -643,10 +643,11 @@ function Run.start()
 			task.wait(0.4)
 			local nextZone = zone + 1
 			if started and nextZone <= #Config.ZONES then
-				local gz = Config.zoneStartZ(nextZone) - 16
+				local gate = Config.gatePos(nextZone)
 				for _, p in Players:GetPlayers() do
 					local root = rootOf(p)
-					if root and math.abs(root.Position.Z - gz) < 7 and (lastNote[p] or 0) + 3 < os.clock() then
+					local d = root and Vector3.new(root.Position.X - gate.X, 0, root.Position.Z - gate.Z).Magnitude
+					if d and d < 12 and (lastNote[p] or 0) + 3 < os.clock() then
 						lastNote[p] = os.clock()
 						local left = Field.remainingIn(zone)
 						local sub = if left > 0
@@ -692,7 +693,7 @@ end
 function Run.dev(cmd: string, ...)
 	if cmd == "clearZone" then
 		devCutting = true
-		for _ = 1, Field.total do
+		for _ = 1, Field.totalIn(zone) do
 			if Field.remainingIn(zone) <= 0 then
 				break
 			end
@@ -705,7 +706,7 @@ function Run.dev(cmd: string, ...)
 			if data and data.run then
 				table.clear(data.run.carry)
 			end
-			Field.hit(player, RunBuilder.zoneCentre(zone), 200, math.huge, 1, 1)
+			Field.hit(player, Config.RING.centre, Config.RING.edge, math.huge, 1, 1)
 		end
 		devCutting = false
 	elseif cmd == "killBoss" then

@@ -44,7 +44,9 @@ local function build(z: number, def): (Model, BasePart)
 	-- the Blender monster, standing on an invisible root block that the fight logic uses
 	local holder = Instance.new("Model")
 	holder.Name = def.name
-	local placed = Models.place(BOSS_MODEL[z], holder, CFrame.lookAt(centre, centre + Vector3.new(0, 0, -1)), 1 + (z - 1) * 0.12)
+	-- it faces the road, where the players come from
+	local toward = Config.RING.centre + Vector3.new(0, 0, Config.ringRadius(centre))
+	local placed = Models.place(BOSS_MODEL[z], holder, CFrame.lookAt(centre, Vector3.new(toward.X, centre.Y, toward.Z)), 1 + (z - 1) * 0.12)
 	if placed then
 		local rootPart = PropKit.brick(holder, Vector3.new(8, 3, 8), CFrame.new(centre + Vector3.new(0, 1.5, 0)), Color3.new(), "Roots")
 		rootPart.Transparency = 1
@@ -99,10 +101,9 @@ end
 
 local function playersInZone(z: number): { Player }
 	local list = {}
-	local zs = Config.zoneStartZ(z)
 	for _, p in Players:GetPlayers() do
 		local root = p.Character and p.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-		if root and root.Position.Z > zs - 20 and root.Position.Z < zs + Config.GRID.rows * Config.GRID.tile + 20 then
+		if root and Config.zoneAt(root.Position) == z then
 			table.insert(list, p)
 		end
 	end

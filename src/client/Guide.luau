@@ -90,7 +90,7 @@ local function pickTarget(): Vector3?
 		end
 	end
 	if d.stats and d.stats.cut == 0 then
-		return Vector3.new(0, 0, Config.zoneStartZ(w.zone or 1) + 6)
+		return Config.zoneEntry(math.clamp(w.zone or 1, 1, #Config.RING.zones))
 	end
 	return nil
 end

@@ -30,8 +30,11 @@ type Patch = {
 }
 
 local patches: { [number]: { [number]: Patch } } = {} -- [zone][index]
+-- every patch also sits in a bucket of a coarse grid ([zone][cell key]), so hit tests only look nearby
+local buckets: { [number]: { [number]: { Patch } } } = {}
+local CELL = 24
 Field.remaining = {} :: { [number]: number }
-Field.total = Config.GRID.cols * Config.GRID.rows
+Field.totals = {} :: { [number]: number } -- how many patches each zone has (the ring map gives each its own count)
 Field.unlocked = 1 -- zones above this can't be cut yet (gate closed)
 
 local folder: Folder? = nil
@@ -45,8 +48,13 @@ Field.canCut = nil :: ((Player) -> boolean)?
 Field.onZoneCleared = nil :: ((number) -> ())?
 Field.onProgress = nil :: (() -> ())?
 
-local function index(col: number, row: number): number
-	return (row - 1) * Config.GRID.cols + col
+local function cellKey(cx: number, cz: number): number
+	return (cx + 1000) * 4096 + (cz + 1000)
+end
+
+-- How many patches zone z has.
+function Field.totalIn(z: number): number
+	return Field.totals[z] or #RunBuilder.patches(z)
 end
 
 -- How each zone's grass looks: stalk count, width, height factor, and an optional head on top.
@@ -127,10 +135,10 @@ local function stubble(p: Patch)
 	end
 end
 
-local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: number, alreadyCut: boolean): Patch
+local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: number, alreadyCut: boolean, at: CFrame, size: number): Patch
 	local def = Config.ZONES[z]
 	local style = STYLES[def.style] or STYLES.lawn
-	local pos = RunBuilder.patchPosition(z, col, row)
+	local pos = at.Position
 	local colorA = def.grass[1]
 	local colorB = def.grass[2]
 	local model = Instance.new("Model")
@@ -139,7 +147,7 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 	turf.Transparency = 1
 	local p: Patch = {
 		part = turf,
-		spot = CFrame.new(pos.X, TURF_TOP, pos.Z) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0),
+		spot = CFrame.new(pos.X, TURF_TOP, pos.Z) * at.Rotation,
 		stalks = {},
 		z = z,
 		col = col,
@@ -150,11 +158,10 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 		cut = alreadyCut,
 		baseColor = colorA,
 		model = nil,
-		modelScale = 1,
+		modelScale = size,
 	}
 	local tuftName = "tuft_" .. def.style
 	if not alreadyCut and Models.has(tuftName) then
-		p.modelScale = rng:NextNumber(0.88, 1.12)
 		p.model = Models.place(tuftName, model, p.spot, p.modelScale, true)
 	end
 	if not alreadyCut and not p.model then
@@ -197,10 +204,23 @@ end
 local function spawnZone(z: number, alreadyCut: boolean)
 	local zoneFolder = PropKit.folder("Grass" .. z, folder :: Folder)
 	patches[z] = {}
-	Field.remaining[z] = if alreadyCut then 0 else Field.total
-	for row = 1, Config.GRID.rows do
-		for col = 1, Config.GRID.cols do
-			patches[z][index(col, row)] = spawnPatch(zoneFolder, z, col, row, alreadyCut)
+	buckets[z] = {}
+	local spots = RunBuilder.patches(z)
+	Field.totals[z] = #spots
+	Field.remaining[z] = if alreadyCut then 0 else #spots
+	for i, spot in spots do
+		local p = spawnPatch(zoneFolder, z, i, z, alreadyCut, spot.cf, spot.scale)
+		patches[z][i] = p
+		local pos = spot.cf.Position
+		local key = cellKey(math.floor(pos.X / CELL), math.floor(pos.Z / CELL))
+		local b = buckets[z][key]
+		if not b then
+			b = {}
+			buckets[z][key] = b
+		end
+		table.insert(b, p)
+		if i % 60 == 0 then
+			task.wait() -- spread the big rings over a few frames
 		end
 	end
 end
@@ -216,27 +236,26 @@ end
 -- Patches near a point, nearest first. Only zones that are unlocked.
 local function query(pos: Vector3, radius: number): { Patch }
 	local found = {}
-	local t = Config.GRID.tile
-	local half = Config.GRID.cols * t / 2
+	local reach = radius + CLUMP_RADIUS * 2
+	local c0x, c1x = math.floor((pos.X - reach) / CELL), math.floor((pos.X + reach) / CELL)
+	local c0z, c1z = math.floor((pos.Z - reach) / CELL), math.floor((pos.Z + reach) / CELL)
 	for z = 1, Field.unlocked do
-		local zs = Config.zoneStartZ(z)
-		local zoneEnd = zs + Config.GRID.rows * t
-		if pos.Z + radius >= zs and pos.Z - radius <= zoneEnd and patches[z] then
-			-- one extra cell each way: patches are nudged inside their cells
-			local c0 = math.max(1, math.floor((pos.X - radius + half) / t))
-			local c1 = math.min(Config.GRID.cols, math.floor((pos.X + radius + half) / t) + 2)
-			local r0 = math.max(1, math.floor((pos.Z - radius - zs) / t))
-			local r1 = math.min(Config.GRID.rows, math.floor((pos.Z + radius - zs) / t) + 2)
-			for row = r0, r1 do
-				for col = c0, c1 do
-					local p = patches[z][index(col, row)]
-					if p and not p.cut then
-						local pp = RunBuilder.patchPosition(z, col, row)
-						local dx, dz = pp.X - pos.X, pp.Z - pos.Z
-						-- count a patch if any part of it is inside the circle
-						local d = math.sqrt(dx * dx + dz * dz) - CLUMP_RADIUS
-						if d <= radius then
-							table.insert(found, { p = p, d = d })
+		local zb = buckets[z]
+		if zb then
+			for cx = c0x, c1x do
+				for cz = c0z, c1z do
+					local b = zb[cellKey(cx, cz)]
+					if b then
+						for _, p in b do
+							if not p.cut then
+								local pp = p.spot.Position
+								local dx, dz = pp.X - pos.X, pp.Z - pos.Z
+								-- count a patch if any part of it is inside the circle
+								local d = math.sqrt(dx * dx + dz * dz) - CLUMP_RADIUS * p.modelScale
+								if d <= radius then
+									table.insert(found, { p = p, d = d })
+								end
+							end
 						end
 					end
 				end

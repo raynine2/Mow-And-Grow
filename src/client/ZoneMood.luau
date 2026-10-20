@@ -14,9 +14,8 @@ local State = require(script.Parent.State)
 local ZoneMood = {}
 local player = Players.LocalPlayer
 
-local BLEND = 14 -- studs either side of a zone's gate over which two moods mix
+local BLEND = 14 -- studs either side of a zone's fence over which two moods mix
 local EASE = 0.9 -- how fast the look follows (per second); slow enough to read as a tween
-local GATE_OFFSET = 16 -- a zone's gate stands this far before its first row (RunBuilder)
 
 -- moods by index: 0 = the hub (base look), 1..n = the zones
 local moods: { [number]: Look.Values } = { [0] = Look.mood(nil) }
@@ -29,15 +28,9 @@ local function smooth(x: number): number
 	return x * x * (3 - 2 * x)
 end
 
--- Which zone a world Z is in (0 = the hub before the first gate).
-function ZoneMood.zoneAt(z: number): number
-	local n = 0
-	for i = 1, #Config.ZONES do
-		if z >= Config.zoneStartZ(i) - GATE_OFFSET then
-			n = i
-		end
-	end
-	return n
+-- Which zone a world position is in (0 = the hub; the zones are rings round it, see Config.RING).
+function ZoneMood.zoneAt(pos: Vector3): number
+	return Config.zoneAt(pos)
 end
 
 -- The zone the local player is standing in (0 = hub, or the lobby).
@@ -53,14 +46,15 @@ local function focus(): Vector3?
 	return cam and cam.CFrame.Position
 end
 
--- The look at a world Z: the zone's mood, mixed with the neighbour's near a gate.
+-- The look at a world position: the zone's mood, mixed with the neighbour's near a fence.
 local scratch: Look.Values = {}
-local function targetAt(z: number): Look.Values
-	local zone = ZoneMood.zoneAt(z)
-	-- nearest gate line (the one into this zone, or the next one)
+local function targetAt(pos: Vector3): Look.Values
+	local zone = ZoneMood.zoneAt(pos)
+	local r = Config.ringRadius(pos)
+	-- nearest fence (the one into this zone, or the next one out)
 	local best, bestD = zone, math.huge
 	for i = math.max(1, zone), math.min(#Config.ZONES, zone + 1) do
-		local d = math.abs(z - (Config.zoneStartZ(i) - GATE_OFFSET))
+		local d = math.abs(r - Config.fenceRadius(i))
 		if d < bestD then
 			best, bestD = i, d
 		end
@@ -68,8 +62,7 @@ local function targetAt(z: number): Look.Values
 	if bestD >= BLEND then
 		return moods[zone]
 	end
-	local gate = Config.zoneStartZ(best) - GATE_OFFSET
-	local t = smooth((z - gate) / (2 * BLEND) + 0.5)
+	local t = smooth((r - Config.fenceRadius(best)) / (2 * BLEND) + 0.5)
 	return Look.blend(moods[best - 1], moods[best], t, scratch)
 end
 
@@ -83,8 +76,8 @@ RunService.Heartbeat:Connect(function(dt)
 	if State.isRun() then
 		local pos = focus()
 		if pos then
-			ZoneMood.zone = ZoneMood.zoneAt(pos.Z)
-			target = targetAt(pos.Z)
+			ZoneMood.zone = ZoneMood.zoneAt(pos)
+			target = targetAt(pos)
 		end
 	end
 	Look.blend(current, target, 1 - math.exp(-dt * EASE), current)

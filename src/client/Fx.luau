@@ -210,6 +210,76 @@ function Fx.impact(pos: Vector3, tint: Color3?)
 	Debris:AddItem(anchor, 0.25)
 end
 
+-- A big chunky word that pops up over a spot and floats away, like Chop A Forest's "TIMBER!" when a tree
+-- falls. Used when you mow a clump down ("MOWED!", or the mutation's name in its colour).
+local popWords = 0
+function Fx.popWord(pos: Vector3, text: string, color: Color3)
+	if popWords >= 6 then
+		return -- a wide swing can down a dozen clumps at once; a few words read better than a wall of them
+	end
+	popWords += 1
+	local anchor = fxPart(Vector3.one * 0.2, Color3.new(1, 1, 1), CFrame.new(pos + Vector3.new(0, 3, 0)))
+	anchor.Transparency = 1
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(260, 70)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.MaxDistance = 90
+	gui.Adornee = anchor
+	gui.Parent = anchor
+	local label = UI.text(gui, text, UDim2.fromScale(1, 1), { color = Color3.new(1, 1, 1), stroke = 3 })
+	label.Rotation = math.random(-8, 8)
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(UI.shade(color, 1.4), UI.shade(color, 0.85))
+	g.Rotation = 90
+	g.Parent = label
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0.2
+	scale.Parent = label
+	TweenService:Create(scale, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	TweenService:Create(anchor, TweenInfo.new(1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = anchor.CFrame + Vector3.new(0, 4, 0) }):Play()
+	task.delay(0.7, function()
+		local fade = TweenInfo.new(0.35)
+		TweenService:Create(label, fade, { TextTransparency = 1 }):Play()
+		for _, d in label:GetDescendants() do
+			if d:IsA("UIStroke") then
+				TweenService:Create(d, fade, { Transparency = 1 }):Play()
+			end
+		end
+	end)
+	task.delay(1.15, function()
+		popWords -= 1
+		anchor:Destroy()
+	end)
+end
+
+-- Zone unlock cutscene: the camera swings over to the new gate while it sinks into the ground, holds on the
+-- ring behind it, then hands back to the player. Skipped during a boss fight.
+local cutscene = false
+local function gateCutscene(z: number)
+	local cam = workspace.CurrentCamera
+	if cutscene or not cam or (State.world and State.world.boss) then
+		return
+	end
+	cutscene = true
+	local gate = Config.gatePos(z)
+	local back = cam.CFrame
+	cam.CameraType = Enum.CameraType.Scriptable
+	local eye = gate + Vector3.new(26, 22, -34)
+	local look = gate + Vector3.new(0, 3, 18)
+	local t1 = TweenService:Create(cam, TweenInfo.new(1.1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), { CFrame = CFrame.lookAt(eye, look) })
+	t1:Play()
+	t1.Completed:Wait()
+	local t2 = TweenService:Create(cam, TweenInfo.new(2.2, Enum.EasingStyle.Linear), { CFrame = CFrame.lookAt(gate + Vector3.new(-18, 30, -30), gate + Vector3.new(0, 0, 40)) })
+	t2:Play()
+	t2.Completed:Wait()
+	local t3 = TweenService:Create(cam, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = back })
+	t3:Play()
+	t3.Completed:Wait()
+	cam.CameraType = Enum.CameraType.Custom
+	cutscene = false
+end
+
 -- Boss fights (intro cinematic, HP bar, hits, slams, death) live in client/BossFx; it shakes the camera with ours.
 BossFx.shake = Fx.shake
 
@@ -230,6 +300,11 @@ handlers.cut = function(d)
 	HitFx.play("cut", d.pos, color, mine, nil, Config.ZONES[d.z] and Config.ZONES[d.z].style)
 	if mine then
 		(Fx :: any).hideHp()
+		if m.color and (d.mut or "None") ~= "None" then
+			Fx.popWord(d.pos, (m.id or d.mut):upper() .. "!", m.color)
+		else
+			Fx.popWord(d.pos, "MOWED!", Color3.fromRGB(255, 196, 60))
+		end
 		State.emit("bundleGained", d.pos, d.mut)
 		local now = os.clock()
 		if now - lastCutSound > 0.07 then
@@ -458,9 +533,10 @@ local function sinkGate(z: number)
 end
 
 handlers.zoneOpen = function(d)
-	Fx.banner(("ZONE %d: %s"):format(d.zone, d.name:upper()), C.yellow, 2.6, "The gate is open!")
+	Fx.banner(d.name:upper() .. " UNLOCKED!", Color3.fromRGB(120, 235, 90), 3, ("Ring %d is open: the gate is down!"):format(d.zone))
 	Sound.play("purchase")
 	sinkGate(d.zone)
+	task.spawn(gateCutscene, d.zone)
 end
 
 handlers.runComplete = function(d)

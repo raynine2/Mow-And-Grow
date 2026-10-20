@@ -145,6 +145,76 @@ function Config.zoneStartZ(zone: number): number
 end
 
 -------------------------------------------------------------------------------------------------------------
+-- The run map is ONE big round world, laid out like the walls in Attack on Titan: the hub in the middle and
+-- every zone a fenced ring around the one before it, each ring wider than the last. One road runs out of the hub
+-- (towards +Z) through a gate in every fence; a zone's gate opens when the boss before it falls. A forest belt
+-- and a ring of mountains close the world off. All radii are measured from RING.centre (the middle of the hub).
+Config.RING = {
+	centre = Vector3.new(0, 0, -32),
+	hub = 76, -- the hub's fence (zone 1's gate is in it)
+	-- per zone: the field's inner and outer edge, how far apart the grass clumps stand, and how big they are
+	zones = {
+		{ inner = 84, outer = 132, spacing = 14, scale = 1.3 },
+		{ inner = 140, outer = 196, spacing = 17, scale = 1.4 },
+		{ inner = 204, outer = 266, spacing = 20, scale = 1.5 },
+		{ inner = 274, outer = 342, spacing = 23, scale = 1.6 },
+		{ inner = 350, outer = 426, spacing = 26, scale = 1.7 },
+	},
+	edge = 432, -- the outer fence; forest beyond it
+	road = 9, -- half the road's width
+	bossAngle = 40, -- the boss arena: mid-ring, this many degrees round from the road
+}
+
+-- Horizontal distance from the middle of the hub.
+function Config.ringRadius(pos: Vector3): number
+	local c = Config.RING.centre
+	local dx, dz = pos.X - c.X, pos.Z - c.Z
+	return math.sqrt(dx * dx + dz * dz)
+end
+
+-- The fence you cross to get into zone z (its gate is where the road crosses it). z = #ZONES + 1 is the outer
+-- fence at the edge of the world.
+function Config.fenceRadius(z: number): number
+	local R = Config.RING
+	if z <= 1 then
+		return R.hub
+	elseif z > #R.zones then
+		return R.edge
+	end
+	return (R.zones[z - 1].outer + R.zones[z].inner) / 2
+end
+
+-- Which zone a point is in: 0 = the hub, 1..n = the rings (past the last ring still counts as the last zone).
+function Config.zoneAt(pos: Vector3): number
+	local r = Config.ringRadius(pos)
+	for z = #Config.ZONES, 1, -1 do
+		if r >= Config.fenceRadius(z) then
+			return z
+		end
+	end
+	return 0
+end
+
+-- Where the road crosses zone z's fence (the gate), on the ground.
+function Config.gatePos(z: number): Vector3
+	return Config.RING.centre + Vector3.new(0, 0, Config.fenceRadius(z))
+end
+
+-- A spot on the road just inside zone z.
+function Config.zoneEntry(z: number): Vector3
+	return Config.RING.centre + Vector3.new(0, 0, Config.RING.zones[z].inner + 6)
+end
+
+-- Zone z's boss arena: the middle of the ring, RING.bossAngle degrees round from the road.
+function Config.zoneCentre(z: number): Vector3
+	local R = Config.RING
+	local ring = R.zones[z]
+	local r = (ring.inner + ring.outer) / 2
+	local a = math.rad(R.bossAngle)
+	return R.centre + Vector3.new(math.sin(a) * r, 0, math.cos(a) * r)
+end
+
+-------------------------------------------------------------------------------------------------------------
 -- World look: lighting and post-processing (shared/Look applies it). `base` is the lobby and the hub; the
 -- server sets it at start. In a run the client (client/ZoneMood) blends toward each zone's mood as you walk,
 -- so a mood only lists what it changes. Colours are Color3, the rest numbers; everything here can be blended.

@@ -36,6 +36,7 @@ local function terrainGround()
 		local t = i / 12 * math.pi * 2 + 0.2
 		Ground.hill(math.cos(t) * 245, math.sin(t) * 245, rng:NextNumber(45, 70), rng:NextNumber(12, 24))
 	end
+	Ground.flatten(0, 0, 224) -- surface exactly at y = 0, where everything stands
 end
 
 local function ground(world: Instance)

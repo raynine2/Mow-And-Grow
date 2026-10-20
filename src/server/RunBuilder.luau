@@ -1,5 +1,8 @@
--- Builds a run's map: the hub (shredder, tool shop, upgrades, garage, gas pump) and the 5 zones along one road.
--- Grass patches are spawned by Field; this file only builds the static world.
+-- Builds a run's map: ONE big round world (see Config.RING). The hub (shredder, tool shop, bag stand, garage,
+-- gas pump) sits in the middle; each zone is a fenced ring around the one before it, wider every time, like the
+-- walls in Attack on Titan. One road runs out of the hub through a gate in every fence. A forest belt and a ring
+-- of snowy mountains close the world off.
+-- Grass patches are spawned by Field (positions from RunBuilder.patches); this file builds the static world.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local Format = require(ReplicatedStorage.MowALawn.Format)
@@ -7,17 +10,10 @@ local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
-local GroundMesh = require(script.Parent.GroundMesh)
 
 local RunBuilder = {}
 
-local HALF_WIDTH = 50 -- the map is 100 studs wide
-local HUB_START = -80
 local FLOOR_Y = 0 -- top of the ground (Terrain)
-
-local function fieldLength(): number
-	return Config.GRID.rows * Config.GRID.tile
-end
 
 -- An invisible part to hang a prompt on.
 local function promptSpot(parent: Instance, cf: CFrame, name: string): Part
@@ -206,17 +202,12 @@ local function hub(world: Instance, info)
 	-- ground: grass with a dirt yard around the cabin and the machines, and a worn path out to the first field
 	-- (Terrain version; the Blender ground_hub model has the same layout)
 	if not info.meshGround then
-		Ground.fill(0, HUB_START + 50, 100, 100, Enum.Material.Grass)
 		Ground.patch(0, -48, 92, 56, Enum.Material.Ground, 3)
-		Ground.path(Vector3.new(0, 0, -30), Vector3.new(0, 0, 26), 10, Enum.Material.Ground, 4)
 		Ground.patch(-8, -36, 16, 16, Enum.Material.Mud, 6) -- trodden mud at the sell pad
 	end
 	Environment.spawn(m, CFrame.lookAt(Vector3.new(0, 0.8, -68), Vector3.new(0, 0.8, 0)))
 	toolShop(m, info)
 	bagStand(m)
-	-- fences along the hub's sides
-	PropKit.fenceRow(m, Vector3.new(-48, 0, -78), Vector3.new(-48, 0, 14), Vector3.xAxis)
-	PropKit.fenceRow(m, Vector3.new(48, 0, -78), Vector3.new(48, 0, 14), -Vector3.xAxis)
 	garageBay(m, info)
 	if shredder(m, info) then
 		return
@@ -255,189 +246,272 @@ local function hub(world: Instance, info)
 	body:SetAttribute("Shredder", true)
 end
 
-local ZONE_TREES = {
-	Color3.fromRGB(46, 112, 36),
-	Color3.fromRGB(52, 120, 40),
-	Color3.fromRGB(200, 120, 35),
-	Color3.fromRGB(45, 100, 75),
-	Color3.fromRGB(28, 92, 34),
+-------------------------------------------------------------------------------------------------------------
+-- the ring world
+-------------------------------------------------------------------------------------------------------------
+local R = Config.RING
+local C = R.centre
+
+-- the ground under each zone's field
+local ZONE_GROUND = {
+	lawn = Enum.Material.Grass,
+	golf = Enum.Material.Grass,
+	wheat = Enum.Material.Ground,
+	reeds = Enum.Material.Mud,
+	jungle = Enum.Material.LeafyGrass,
 }
 
+-- a point at radius r and angle a (radians, 0 = along the road, +Z), on the ground
+local function polar(r: number, a: number): Vector3
+	return C + Vector3.new(math.sin(a) * r, 0, math.cos(a) * r)
+end
 
-local function zone(world: Instance, z: number, info)
-	local def = Config.ZONES[z]
-	local m = PropKit.folder("Zone" .. z, world)
-	local zs = Config.zoneStartZ(z)
-	local groundLen = Config.ZONE_SPACING
-	-- the zone's ground (Terrain, from just before its gate to the next one): a lush meadow, golden-soil wheat
-	-- field, muddy swamp or leafy jungle floor under the clumps
-	-- (Terrain version; the Blender ground_<style> model has the same layout, plus its hills, sand and water)
-	if not info.meshGround then
-		local terrainMat = ({ lawn = Enum.Material.Grass, golf = Enum.Material.Grass, wheat = Enum.Material.Ground, reeds = Enum.Material.Mud, jungle = Enum.Material.LeafyGrass })[def.style] or Enum.Material.Grass
-		Ground.fill(0, zs - 10 + groundLen / 2, HALF_WIDTH * 2 + 220, groundLen, Enum.Material.Grass)
-		if terrainMat ~= Enum.Material.Grass then
-			Ground.patch(0, zs + Config.GRID.rows * Config.GRID.tile / 2, HALF_WIDTH * 2 - 4, Config.GRID.rows * Config.GRID.tile + 10, terrainMat, z)
+-- Spots inside a zone's field kept free of grass for its props (ponds, sand traps, hay bales, big trees, rocks).
+-- Built the same way every time, so the grass and the props agree.
+type Keepout = { pos: Vector3, r: number, kind: string }
+local keepoutCache: { [number]: { Keepout } } = {}
+local function keepouts(z: number): { Keepout }
+	local cached = keepoutCache[z]
+	if cached then
+		return cached
+	end
+	local ring = R.zones[z]
+	local mid = (ring.inner + ring.outer) / 2
+	local list: { Keepout } = {}
+	local style = Config.ZONES[z].style
+	local function add(angleDeg: number, r: number, radius: number, kind: string)
+		table.insert(list, { pos = polar(r, math.rad(angleDeg)), r = radius, kind = kind })
+	end
+	if style == "golf" then
+		for _, a in { 100, 175, 255, 320 } do
+			add(a, mid + ((a % 3) - 1) * 12, 9, "sand")
+		end
+		add(205, mid, 7, "flag")
+	elseif style == "wheat" then
+		for _, a in { 85, 140, 200, 265, 325 } do
+			add(a, ring.inner + 10, 5, "hay")
+		end
+		add(232, mid, 8, "haystack")
+	elseif style == "reeds" then
+		for _, a in { 95, 160, 220, 290 } do
+			add(a, mid, 16, "pond")
+		end
+	elseif style == "jungle" then
+		for _, a in { 70, 120, 170, 215, 260, 300, 335 } do
+			add(a, mid + ((a % 5) - 2) * 10, 9, "bigtree")
 		end
 	end
+	-- a few rocks and bushes in every zone, near its outer fence
+	for i = 1, 5 do
+		add(60 + i * 55 + z * 13, ring.outer - 6, 4, if i % 2 == 0 then "rock" else "bush")
+	end
+	keepoutCache[z] = list
+	return list
+end
 
-	-- zone sign (a plank board on two posts, turned toward the road)
-	local signAt = CFrame.new(-36, 0, zs - 6) * CFrame.Angles(0, math.rad(-150), 0)
+-- Every grass clump of zone z: { cf, scale } on the ground, scattered in rows round the ring (each row jittered
+-- and offset so it doesn't read as a grid). The road and the keep-out spots stay clear.
+export type PatchSpot = { cf: CFrame, scale: number }
+local patchCache: { [number]: { PatchSpot } } = {}
+function RunBuilder.patches(z: number): { PatchSpot }
+	local cached = patchCache[z]
+	if cached then
+		return cached
+	end
+	local ring = R.zones[z]
+	local s = ring.spacing
+	local rng = Random.new(z * 7919)
+	local list: { PatchSpot } = {}
+	local r = ring.inner + s * 0.5
+	local row = 0
+	while r <= ring.outer - s * 0.4 do
+		local n = math.max(8, math.floor(2 * math.pi * r / s))
+		local offset = (row % 2) * 0.5
+		for i = 0, n - 1 do
+			local a = (i + offset + rng:NextNumber(-0.18, 0.18)) / n * 2 * math.pi
+			local pos = polar(r + rng:NextNumber(-0.22, 0.22) * s, a)
+			local rel = pos - C
+			local blocked = rel.Z > 0 and math.abs(rel.X) < R.road + s * 0.4 -- the road
+			if not blocked then
+				for _, k in keepouts(z) do
+					local d = pos - k.pos
+					if d.X * d.X + d.Z * d.Z < (k.r + s * 0.45) ^ 2 then
+						blocked = true
+						break
+					end
+				end
+			end
+			if not blocked then
+				table.insert(list, {
+					cf = CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, 2 * math.pi), 0),
+					scale = ring.scale * rng:NextNumber(0.88, 1.12),
+				})
+			end
+		end
+		r += s * 0.87
+		row += 1
+	end
+	patchCache[z] = list
+	return list
+end
+
+-- A ring of fence round the centre at `radius`, with an opening `gap` studs wide where the road crosses it.
+-- Every piece has an invisible collider so nobody hops over into a locked zone.
+local function ringFence(parent: Instance, radius: number, gap: number)
+	local n = math.max(12, math.floor(2 * math.pi * radius / 10 + 0.5))
+	for i = 0, n - 1 do
+		local p0 = polar(radius, i / n * 2 * math.pi)
+		local p1 = polar(radius, (i + 1) / n * 2 * math.pi)
+		local mid = (p0 + p1) / 2
+		local rel = mid - C
+		if not (rel.Z > 0 and math.abs(rel.X) < gap / 2) then
+			local out = Vector3.new(rel.X, 0, rel.Z).Unit
+			PropKit.fenceRow(parent, p0, p1, out)
+			local up = mid + Vector3.new(0, 13, 0)
+			PropKit.wall(parent, Vector3.new((p1 - p0).Magnitude + 0.6, 26, 1.6), CFrame.lookAt(up, up + out)).Name = "FenceWall"
+		end
+	end
+end
+
+-- The forest belt outside the last fence and the ring of snowy mountains on the horizon.
+local function horizon(world: Instance)
+	local f = PropKit.folder("Forest", world)
+	local rng = Random.new(77)
+	local rr = R.edge + 10
+	local row = 0
+	while rr <= R.edge + 96 do
+		local n = math.floor(2 * math.pi * rr / 24)
+		for i = 0, n - 1 do
+			local pos = polar(rr + rng:NextNumber(-6, 6), (i + (row % 2) * 0.5 + rng:NextNumber(-0.25, 0.25)) / n * 2 * math.pi)
+			local pick = rng:NextNumber()
+			local name = if pick < 0.12 then "birch" elseif pick < 0.3 then "jungle_tree" elseif pick < 0.55 then "oak_small" else "oak"
+			Models.place(name, f, CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, 2 * math.pi), 0), rng:NextNumber(1.0, 1.45), true)
+		end
+		rr += 22
+		row += 1
+	end
+	for i = 0, 23 do
+		local a = (i + rng:NextNumber(-0.2, 0.2)) / 24 * 2 * math.pi
+		PropKit.mountain(world, polar(rng:NextNumber(600, 660), a) + Vector3.new(0, -2, 0), rng:NextNumber(2.6, 3.6))
+	end
+end
+
+-- One zone: the fence (with the gate) you cross to get in, its sign, gas pump, lanterns, boss arena and props.
+local function zone(world: Instance, z: number, info)
+	local def = Config.ZONES[z]
+	local ring = R.zones[z]
+	local m = PropKit.folder("Zone" .. z, world)
+	local gate = Config.gatePos(z)
+	local width = R.road * 2 + 8
+
+	ringFence(m, Config.fenceRadius(z), width)
+
+	-- zone sign beside the gate, inside the ring, turned to the road
+	local signAt = CFrame.lookAt(gate + Vector3.new(-R.road - 10, 0, 7), gate + Vector3.new(0, 0, 4))
 	if Models.place("start_sign", m, signAt, 0.55, true) then
 		PropKit.facePanel(m, signAt, Vector3.new(0, 9.0, -0.62), Vector2.new(27, 4.6), def.name, Color3.fromRGB(255, 240, 200), 0.55)
 	else
-		PropKit.sign(m, CFrame.new(-38, 7, zs - 6) * CFrame.Angles(0, math.rad(-150), 0), Vector3.new(16, 4, 1), def.name, def.grass[1], Color3.new(1, 1, 1))
+		PropKit.sign(m, signAt * CFrame.new(0, 7, 0), Vector3.new(16, 4, 1), def.name, def.grass[1], Color3.new(1, 1, 1))
 	end
 
-	-- gate (zones 2+): closed until the previous boss falls
+	-- the gate (zones 2+): closed until the boss before it falls
 	if z > 1 then
-		local gate = Instance.new("Model")
-		gate.Name = "Gate" .. z
-		local gz = zs - 16
-		local gateAt = CFrame.lookAt(Vector3.new(0, 0, gz), Vector3.new(0, 0, gz - 1))
-		if Models.place("gate", gate, gateAt, 1, true) then
-			PropKit.facePanel(gate, gateAt, Vector3.new(0, 5.3, -2.3), Vector2.new(15.6, 4), "LOCKED\nBeat the " .. Config.ZONES[z - 1].boss.name, Color3.fromRGB(255, 235, 120))
-			PropKit.wall(gate, Vector3.new(HALF_WIDTH * 2, 30, 2), CFrame.new(0, 15, gz)).Name = "GateWall"
-			gate.Parent = m
-			info.gates[z] = gate
+		local g = Instance.new("Model")
+		g.Name = "Gate" .. z
+		local gateAt = CFrame.lookAt(gate, gate - Vector3.zAxis) -- faces the hub side
+		if Models.place("gate", g, gateAt, width / 16, true) then
+			PropKit.facePanel(g, gateAt, Vector3.new(0, 5.3, -2.3), Vector2.new(15.6, 4), "LOCKED\nBeat the " .. Config.ZONES[z - 1].boss.name, Color3.fromRGB(255, 235, 120), width / 16)
+		else
+			local logColor = Color3.fromRGB(125, 80, 50)
+			for x = -width / 2 + 1.5, width / 2 - 1.5, 3 do
+				local hgt = 11 + ((x * 7) % 3)
+				local log = PropKit.cylinder(g, 1.5, hgt, CFrame.new(gate + Vector3.new(x, hgt / 2, 0)), PropKit.shade(logColor, 0.95))
+				log.Material = Enum.Material.Wood
+				log.Name = "GateLog"
+			end
+			local sign = PropKit.brick(g, Vector3.new(22, 4.2, 0.6), CFrame.new(gate + Vector3.new(0, 6.5, -2.3)), Color3.fromRGB(200, 160, 105), "GateSign", Enum.Material.WoodPlanks)
+			PropKit.surfaceText(sign, "LOCKED: beat the " .. Config.ZONES[z - 1].boss.name, Color3.fromRGB(255, 235, 120))
 		end
-	end
-	if z > 1 and not info.gates[z] then
-		local gate = Instance.new("Model")
-		gate.Name = "Gate" .. z
-		local gz = zs - 16
-		-- log palisade: a row of upright logs with pointed tops, two cross beams and a hanging sign
-		local logColor = Color3.fromRGB(125, 80, 50)
-		for x = -HALF_WIDTH + 1.5, HALF_WIDTH - 1.5, 3 do
-			local hgt = 11 + ((x * 7) % 3)
-			local log = PropKit.cylinder(gate, 1.5, hgt, CFrame.new(x, hgt / 2, gz), PropKit.shade(logColor, 0.9 + ((x * 3) % 4) * 0.04))
-			log.Material = Enum.Material.Wood
-			log.Name = "GateLog"
-			local tip = PropKit.brick(gate, Vector3.new(2.1, 2.1, 2.1), CFrame.new(x, hgt + 0.2, gz) * CFrame.Angles(math.rad(45), 0, math.rad(45)), PropKit.shade(logColor, 0.85), "GateTip", Enum.Material.Wood)
-			tip.CanCollide = false
-		end
-		for _, y in { 3.5, 8.5 } do
-			PropKit.brick(gate, Vector3.new(HALF_WIDTH * 2, 1.2, 1), CFrame.new(0, y, gz - 1.6), PropKit.shade(logColor, 0.75), "GateBeam", Enum.Material.WoodPlanks)
-		end
-		local sign = PropKit.brick(gate, Vector3.new(22, 4.2, 0.6), CFrame.new(0, 6.5, gz - 2.3), Color3.fromRGB(200, 160, 105), "GateSign", Enum.Material.WoodPlanks)
-		PropKit.surfaceText(sign, "LOCKED: beat the " .. Config.ZONES[z - 1].boss.name, Color3.fromRGB(255, 235, 120))
-		PropKit.wall(gate, Vector3.new(HALF_WIDTH * 2, 30, 2), CFrame.new(0, 15, gz)).Name = "GateWall"
-		gate.Parent = m
-		info.gates[z] = gate
+		PropKit.wall(g, Vector3.new(width + 2, 30, 2), CFrame.new(gate + Vector3.new(0, 15, 0))).Name = "GateWall"
+		g.Parent = m
+		info.gates[z] = g
 	end
 
-	-- dense forest on both sides of the field (the field is a clearing, like the trailer)
-	local fieldHalf = Config.GRID.cols * Config.GRID.tile / 2
-	local scale = 0.95 + z * 0.08
-	local leaf = ZONE_TREES[z]
-	PropKit.forest(m, fieldHalf + 10, 130, zs - 6, zs + Config.ZONE_SPACING - 14, { seed = z * 101, leaf = leaf, scale = scale, detailDist = 62 })
-	PropKit.forest(m, -130, -(fieldHalf + 10), zs - 6, zs + Config.ZONE_SPACING - 14, { seed = z * 211, leaf = leaf, scale = scale, detailDist = 62 })
-	-- rolling hills beyond the side forests
-	if not info.meshGround then
-		local hillRng = Random.new(z * 17)
+	-- a gas pump just inside the gate beside the road, and lanterns along the road through the ring
+	gasPump(m, gate + Vector3.new(R.road + 7, 0, 10), info, -Vector3.xAxis)
+	local r = ring.inner + 4
+	while r < ring.outer do
 		for side = -1, 1, 2 do
-			Ground.hill(side * hillRng:NextNumber(175, 210), zs + hillRng:NextNumber(10, 100), hillRng:NextNumber(50, 75), hillRng:NextNumber(14, 26))
+			local p = R.centre + Vector3.new(side * (R.road + 2), 0, r)
+			Models.place("lantern_post", m, CFrame.lookAt(p, R.centre + Vector3.new(0, 0, r)), 0.8, true)
 		end
+		r += 34
 	end
 
-	-- small theme props
-	if z == 2 then
-		-- the flag on the putting green (the green and the sand trap are part of ground_golf)
-		local flagAt = if info.meshGround then CFrame.new(34, 0, zs + 28) else CFrame.new(46, 0, zs + 30)
-		if not Models.place("golf_flag", m, flagAt * CFrame.Angles(0, math.rad(-120), 0), 1, true) then
-			local flag = PropKit.brick(m, Vector3.new(0.5, 9, 0.5), flagAt * CFrame.new(0, 4.5, 0), Color3.fromRGB(255, 255, 255), "FlagPole")
-			PropKit.brick(m, Vector3.new(0.2, 2.4, 3.4), flagAt * CFrame.new(0, 7.8, 1.7), Color3.fromRGB(255, 70, 70), "Flag")
-			flag.Name = "FlagPole"
-		end
-		if not info.meshGround then
-			Ground.patch(46.5, zs + 55, 6, 16, Enum.Material.Sand, 9) -- a sand trap
-		end
-	elseif z == 3 then
-		for i = 0, 3 do
-			local at = CFrame.new(-46.5, 0, zs + 10 + i * 22) * CFrame.Angles(0, math.rad(i * 23), 0)
-			if not Models.place("hay_bale", m, at, 1) then
+	-- the boss arena: a worn dirt circle the boss grows out of
+	local arena = Config.zoneCentre(z)
+	Ground.disc(arena.X, arena.Z, 12, Enum.Material.Ground)
+
+	-- the zone's props (their spots are kept free of grass, see keepouts)
+	for _, k in keepouts(z) do
+		local at = CFrame.new(k.pos) * CFrame.Angles(0, math.rad((k.pos.X * 13 + k.pos.Z * 7) % 360), 0)
+		if k.kind == "sand" then
+			Ground.disc(k.pos.X, k.pos.Z, k.r - 1, Enum.Material.Sand)
+		elseif k.kind == "flag" then
+			if not Models.place("golf_flag", m, at, 1, true) then
+				PropKit.brick(m, Vector3.new(0.5, 9, 0.5), at * CFrame.new(0, 4.5, 0), Color3.fromRGB(255, 255, 255), "FlagPole")
+				PropKit.brick(m, Vector3.new(0.2, 2.4, 3.4), at * CFrame.new(0, 7.8, 1.7), Color3.fromRGB(255, 70, 70), "Flag")
+			end
+		elseif k.kind == "hay" or k.kind == "haystack" then
+			if not Models.place("hay_bale", m, at, if k.kind == "haystack" then 1.4 else 1) then
 				PropKit.brick(m, Vector3.new(4, 3.6, 4), at * CFrame.new(0, 1.8, 0), Color3.fromRGB(235, 190, 70), "HayBale")
 			end
-		end
-	elseif z == 4 then
-		if not info.meshGround then
-			for side = -1, 1, 2 do
-				Ground.water(side * 46.5, zs + 48, 6, 72, 3) -- real water channels along the swamp's edges
+		elseif k.kind == "pond" then
+			Ground.water(k.pos.X, k.pos.Z, k.r * 1.5, k.r * 1.1, 3)
+		elseif k.kind == "bigtree" then
+			if not Models.place("jungle_tree", m, at, 1.2, true) then
+				PropKit.forestTree(m, k.pos, 1.9, { leaf = Color3.fromRGB(20, 95, 38) })
 			end
-		end
-	elseif z == 5 then
-		for i, x in { -47, 47 } do
-			local at = CFrame.new(x, 0, zs + 40) * CFrame.Angles(0, math.rad(i * 70), 0)
-			if not Models.place("jungle_tree", m, at, 1, true) then
-				PropKit.forestTree(m, Vector3.new(x, 0, zs + 40), 1.9, { leaf = Color3.fromRGB(20, 95, 38) })
-			end
+		elseif k.kind == "rock" then
+			Models.place("rock", m, at, 1.6)
+		elseif k.kind == "bush" then
+			Models.place("bush", m, at, 1.3, true)
 		end
 	end
-
-	gasPump(m, Vector3.new(36, 0, zs - 8), info)
 end
 
 function RunBuilder.build()
 	local world = Environment.apply()
-	local info = { world = world, gates = {}, pumps = {}, meshGround = GroundMesh.run(world, HUB_START, HALF_WIDTH) }
+	-- one round world on Terrain (the straight-road Blender ground sheets don't fit it)
+	local info = { world = world, gates = {}, pumps = {}, meshGround = false }
+
+	-- the ground, painted from the outside in: forest floor, each ring's own ground, then the hub
+	Ground.disc(C.X, C.Z, R.edge + 260, Enum.Material.Grass)
+	for z = #Config.ZONES, 1, -1 do
+		local mat = ZONE_GROUND[Config.ZONES[z].style] or Enum.Material.Grass
+		Ground.disc(C.X, C.Z, Config.fenceRadius(z + 1) - 2, mat)
+		if mat ~= Enum.Material.Grass then
+			-- a grassy verge along the fence, so every ring reads as its own field
+			Ground.ring(C.X, C.Z, Config.fenceRadius(z) - 1, Config.fenceRadius(z) + 5, Enum.Material.Grass)
+		end
+	end
+	Ground.disc(C.X, C.Z, R.hub + 3, Enum.Material.Grass)
+	-- the road out of the hub, through every gate to the edge of the world
+	Ground.path(C + Vector3.new(0, 0, 20), C + Vector3.new(0, 0, R.edge + 6), R.road * 2, Enum.Material.Ground, 4)
+
 	hub(world, info)
 	for z = 1, #Config.ZONES do
 		zone(world, z, info)
 	end
-	-- walls: sides and the far end
-	local lastZ = Config.zoneStartZ(#Config.ZONES) + Config.ZONE_SPACING
-	local length = lastZ - HUB_START
-	for side = -1, 1, 2 do
-		PropKit.wall(world, Vector3.new(2, 60, length), CFrame.new(side * HALF_WIDTH, 30, HUB_START + length / 2))
-	end
-	PropKit.wall(world, Vector3.new(HALF_WIDTH * 2, 60, 2), CFrame.new(0, 30, HUB_START))
-	PropKit.wall(world, Vector3.new(HALF_WIDTH * 2, 60, 2), CFrame.new(0, 30, lastZ - 20))
-	-- mountains on the horizon and a forest wall behind the hub
-	local rng = Random.new(5)
-	for i = 0, 9 do
-		local side = if i % 2 == 0 then -1 else 1
-		PropKit.mountain(world, Vector3.new(side * rng:NextNumber(220, 300), -2, HUB_START + i * 70), rng:NextNumber(1.6, 2.6))
-	end
-	PropKit.mountain(world, Vector3.new(0, -2, lastZ + 200), 3)
-	-- forest around the hub too
-	PropKit.forest(world, -130, 130, HUB_START - 70, HUB_START - 10, { seed = 7, detailDist = 70 })
-	PropKit.forest(world, 52, 130, HUB_START, 18, { seed = 8, detailDist = 62 })
-	PropKit.forest(world, -130, -52, HUB_START, 18, { seed = 9, detailDist = 62 })
-	-- grass all around the hub too, with hills behind it (ground_hub has these)
-	if not info.meshGround then
-		Ground.fill(0, HUB_START - 40, 320, 130, Enum.Material.Grass)
-		Ground.fill(-110, HUB_START + 50, 120, 100, Enum.Material.Grass)
-		Ground.fill(110, HUB_START + 50, 120, 100, Enum.Material.Grass)
-		for i = -2, 2 do
-			Ground.hill(i * 70, HUB_START - 150, 70, 20 + (i % 2) * 8)
-		end
-	end
+	ringFence(PropKit.folder("Edge", world), R.edge, 0) -- the edge of the world
+	horizon(world)
+	Ground.flatten(C.X, C.Z, R.edge + 260) -- surface exactly at y = 0, where everything stands
 	return info
 end
 
--- Centre of patch (col, row) of a zone, at ground level.
--- Each patch sits in its own cell, nudged by a fixed per-patch amount (the same patch always lands on the same
--- spot, so saved runs and hit tests agree).
-local patchCache: { [number]: Vector3 } = {}
-function RunBuilder.patchPosition(z: number, col: number, row: number): Vector3
-	local key = (z * 1000 + row) * 1000 + col
-	local cached = patchCache[key]
-	if cached then
-		return cached
-	end
-	local t = Config.GRID.tile
-	local j = (Config.GRID.jitter or 0) * t
-	local rng = Random.new(z * 100003 + row * 1009 + col * 31)
-	-- every other row shifted by a quarter cell, so the rows don't line up
-	local stagger = if row % 2 == 0 then t * 0.25 else -t * 0.25
-	local x = -Config.GRID.cols * t / 2 + (col - 0.5) * t + stagger + rng:NextNumber(-j, j)
-	local zz = Config.zoneStartZ(z) + (row - 0.5) * t + rng:NextNumber(-j, j)
-	local pos = Vector3.new(x, 0, zz)
-	patchCache[key] = pos
-	return pos
-end
-
+-- Zone z's boss arena (see Config.zoneCentre).
 function RunBuilder.zoneCentre(z: number): Vector3
-	return Vector3.new(0, 0, Config.zoneStartZ(z) + fieldLength() / 2)
+	return Config.zoneCentre(z)
 end
 
 return RunBuilder

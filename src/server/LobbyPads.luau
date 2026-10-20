@@ -169,7 +169,7 @@ local function painting(parent: Instance)
 	sky.Rotation = 90
 	sky.Parent = art
 	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 6
+	stroke.Thickness = 4
 	stroke.Color = Color3.fromRGB(70, 42, 22)
 	stroke.Parent = art
 	-- tree line
@@ -230,7 +230,7 @@ local function sign(parent: Instance, at: CFrame, title: string, sub: string, ma
 	-- the face
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
-	gui.PixelsPerStud = 44
+	gui.PixelsPerStud = 26
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.LightInfluence = 0.25
 	gui.Brightness = 1.4
@@ -243,14 +243,14 @@ local function sign(parent: Instance, at: CFrame, title: string, sub: string, ma
 	paper.Rotation = 90
 	paper.Parent = bg
 	painting(bg)
-	label(bg, title, UDim2.fromScale(0.94, 0.19), UDim2.fromScale(0.03, 0.52), CREAM, 5)
-	local number = label(bg, sub, UDim2.fromScale(0.7, 0.1), UDim2.fromScale(0.15, 0.7), Color3.fromRGB(255, 214, 90), 3)
+	label(bg, title, UDim2.fromScale(0.94, 0.19), UDim2.fromScale(0.03, 0.52), CREAM, 3)
+	local number = label(bg, sub, UDim2.fromScale(0.7, 0.1), UDim2.fromScale(0.15, 0.7), Color3.fromRGB(255, 214, 90), 2)
 	local pillBox = frame(bg, UDim2.fromScale(0.56, 0.12), UDim2.fromScale(0.22, 0.81), OPEN, 16)
 	local ps = Instance.new("UIStroke")
-	ps.Thickness = 3
+	ps.Thickness = 2
 	ps.Color = Color3.fromRGB(30, 60, 40)
 	ps.Parent = pillBox
-	local pill = label(pillBox, "OPEN", UDim2.fromScale(0.9, 0.8), UDim2.fromScale(0.05, 0.1), Color3.new(1, 1, 1), 2.5)
+	local pill = label(pillBox, "OPEN", UDim2.fromScale(0.9, 0.8), UDim2.fromScale(0.05, 0.1), Color3.new(1, 1, 1), 1.5)
 	label(bg, "👤 " .. maxText, UDim2.fromScale(0.5, 0.06), UDim2.fromScale(0.25, 0.935), Color3.fromRGB(110, 70, 40), 0)
 	m.Parent = parent
 	return { pill = pill, pillBox = pillBox, number = number }
@@ -306,17 +306,17 @@ function LobbyPads.startBoard(parent: Instance, at: CFrame, title: string, subti
 	end
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
-	gui.PixelsPerStud = 30
+	gui.PixelsPerStud = 14 -- low enough that the title can grow past Roblox's 100 px TextScaled cap
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.LightInfluence = 0.15
 	gui.Brightness = 1.3
 	gui.Parent = board
-	local t = label(gui, title, UDim2.fromScale(0.9, 0.6), UDim2.fromScale(0.05, 0.05), Color3.new(1, 1, 1), 10)
+	local t = label(gui, title, UDim2.fromScale(0.9, 0.6), UDim2.fromScale(0.05, 0.06), Color3.new(1, 1, 1), 5)
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new(Color3.fromRGB(255, 236, 150), Color3.fromRGB(255, 186, 50))
 	g.Rotation = 90
 	g.Parent = t
-	label(gui, subtitle, UDim2.fromScale(0.86, 0.24), UDim2.fromScale(0.07, 0.68), CREAM, 5)
+	label(gui, subtitle, UDim2.fromScale(0.86, 0.22), UDim2.fromScale(0.07, 0.7), CREAM, 2.5)
 	m.Parent = parent
 end
 

@@ -259,6 +259,9 @@ local function onCut(player: Player, patch): boolean
 	Quests.event(player, "cut", 1)
 	data.stats.cut += 1
 	local m = Config.mutation(patch.mut or "None")
+	if m.id ~= "None" then
+		data.stats.rare = (data.stats.rare or 0) + 1
+	end
 	if m.gems > 0 then
 		local gems = math.max(1, math.floor(m.gems * stats.gems))
 		data.gems += gems
@@ -402,6 +405,8 @@ local function sell(player: Player, pad)
 	local count = #data.run.carry
 	local coins = math.floor(Carry.value(data) * Stats.compute(player, data).sell)
 	data.run.coins += coins
+	data.stats.sold = (data.stats.sold or 0) + count
+	data.stats.coinsEarned = (data.stats.coinsEarned or 0) + coins
 	Carry.clear(player)
 	Net.send(player, "Fx", "sell", { coins = coins, count = count, from = pad.mouth, out = pad.out })
 	Net.all("Fx", "shred", { pos = pad.mouth, count = count, by = player.UserId })
@@ -647,10 +652,12 @@ function Run.start()
 		end
 		PlayerData.changed(player)
 	end)
-	Net.on("Seen", 1, function(player, what)
+	Net.on("Seen", 1, function(player, what, id)
 		local data = PlayerData.get(player)
 		if what == "intro" and data and data.run then
 			data.run.introSeen = true
+		elseif what == "news" and data and type(id) == "number" then
+			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)
 		end
 	end)
 	Net.on("SpawnMower", 2, function(player, id)

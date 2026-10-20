@@ -722,4 +722,43 @@ Config.UI = {
 	dark = Color3.fromRGB(45, 40, 65),
 }
 
+-------------------------------------------------------------------------------------------------------------
+-- News (the NEWS window): newest last. `id` counts up; a player who hasn't seen the newest id gets the window
+-- once in the lobby. `time` is a UTC unix time, `icon` a UI icon key.
+-------------------------------------------------------------------------------------------------------------
+Config.NEWS = {
+	{
+		id = 1,
+		title = "Mow And Grow",
+		update = "LAUNCH",
+		time = 1792324800, -- 18 Oct 2026
+		icon = "clover",
+		desc = "The lawn has gone wild. Grab your hands and start mowing!",
+		bullets = {
+			"Cut grass, carry the bundles and shred them for coins",
+			"Tools from Bare Hands to the Laser Mower",
+			"Ride-on mowers, bags, the Leaf Vacuum and upgrades",
+			"Hidden mutations: Golden, Rainbow, Diamond, Toxic and Galaxy",
+			"Classes and gem perks that you keep forever",
+		},
+	},
+	{
+		id = 2,
+		title = "The Big Rebuild",
+		update = "UPDATE 1",
+		time = 1792504800, -- 20 Oct 2026
+		icon = "star",
+		desc = "A whole new map, tree-sized grass and a brand new lobby.",
+		bullets = {
+			"8 fenced areas that open one after another",
+			"Grass clumps stand like trees: aim, chop, watch them fall",
+			"Bundles land where a clump falls",
+			"New Hold upgrade: keep the button down to keep chopping",
+			"A second shredder in the middle of the map",
+			"New lobby: glowing party pads and a big START A RUN board",
+			"New menus, stats and this news board",
+		},
+	},
+}
+
 return Config

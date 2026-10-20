@@ -1,9 +1,12 @@
 -- The always-on screen, laid out like Chop A Forest:
---   left: coins + gems           bottom-left: backpack "3/5"        bottom: tool hotbar
---   right: round SHOP (R) / UPGRADES (TAB) buttons                   top-left: quest tracker
---   top-right: run timer, zone name, % of the zone mown (or the boss bar during a fight)
+--   left: big coin + gem counters   bottom-left: backpack "3/5"     bottom: tool hotbar
+--   right: round wooden badge buttons (run: SHOP R, UPGRADES TAB; lobby: SHOP R, STATS TAB, PERKS P, NEWS J)
+--   top-left: quest tracker         top-centre: day / night bar (ReplicatedStorage DayPhase/DayLeft/DayLength)
+--   top-right: run timer, area name, AREA n/8, % cleared and the next area (or the boss bar during a fight)
+--   centre: a small crosshair in a run while the camera is in first person
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
@@ -36,15 +39,15 @@ local function counter(y: number, icon: string)
 	local f = Instance.new("Frame")
 	f.Name = "Counter_" .. icon
 	f.BackgroundTransparency = 1
-	f.Size = UDim2.fromOffset(260, 60)
+	f.Size = UDim2.fromOffset(320, 76)
 	f.Position = UDim2.new(0, 14, 0.5, y)
 	f.Parent = root
-	UI.icon(f, icon, 58, UDim2.fromOffset(0, 1))
-	local t = UI.text(f, "0", UDim2.fromOffset(190, 46), { pos = UDim2.fromOffset(70, 7), align = Enum.TextXAlignment.Left, stroke = 3 })
+	UI.icon(f, icon, 74, UDim2.fromOffset(0, 1))
+	local t = UI.text(f, "0", UDim2.fromOffset(236, 60), { pos = UDim2.fromOffset(84, 8), align = Enum.TextXAlignment.Left, stroke = 4 })
 	return f, t
 end
-local coinBox, coinText = counter(-70, "coin")
-local gemBox, gemText = counter(-4, "gem")
+local coinBox, coinText = counter(-96, "coin")
+local gemBox, gemText = counter(-10, "gem")
 
 -------------------------------------------------------------------------------------------------------------
 -- backpack (bottom-left)
@@ -52,11 +55,11 @@ local gemBox, gemText = counter(-4, "gem")
 local bag = Instance.new("Frame")
 bag.Name = "Backpack"
 bag.BackgroundTransparency = 1
-bag.Size = UDim2.fromOffset(220, 80)
-bag.Position = UDim2.new(0, 14, 1, -92)
+bag.Size = UDim2.fromOffset(260, 96)
+bag.Position = UDim2.new(0, 14, 1, -108)
 bag.Parent = root
-UI.icon(bag, "backpack", 76, UDim2.fromOffset(0, 0))
-local bagText = UI.text(bag, "0/5", UDim2.fromOffset(140, 46), { pos = UDim2.fromOffset(84, 18), align = Enum.TextXAlignment.Left, stroke = 3 })
+UI.icon(bag, "backpack", 92, UDim2.fromOffset(0, 0))
+local bagText = UI.text(bag, "0/5", UDim2.fromOffset(160, 56), { pos = UDim2.fromOffset(98, 20), align = Enum.TextXAlignment.Left, stroke = 4 })
 
 -------------------------------------------------------------------------------------------------------------
 -- quest tracker (top-left, under Roblox's buttons)
@@ -82,19 +85,23 @@ local questHint = UI.text(quest, "", UDim2.fromOffset(300, 18), { pos = UDim2.fr
 local info = Instance.new("Frame")
 info.Name = "RunInfo"
 info.BackgroundTransparency = 1
-info.Size = UDim2.fromOffset(300, 120)
+info.Size = UDim2.fromOffset(330, 200)
 info.Position = UDim2.new(1, -18, 0, 54)
 info.AnchorPoint = Vector2.new(1, 0)
 info.Parent = root
-local timerText = UI.text(info, "0:00", UDim2.fromOffset(200, 40), { pos = UDim2.new(1, 0, 0, 0), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 3 })
-local zoneText = UI.text(info, "", UDim2.fromOffset(280, 30), { pos = UDim2.new(1, 0, 0, 40), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 2.5 })
-local pin = UI.frame({ size = UDim2.fromOffset(12, 16), pos = UDim2.new(1, -10, 0, 47), anchor = Vector2.new(1, 0), color = Color3.fromRGB(230, 50, 50), parent = info, radius = 6, outline = 2 })
-local track = UI.frame({ size = UDim2.fromOffset(280, 32), pos = UDim2.new(1, 0, 0, 76), anchor = Vector2.new(1, 0), color = Color3.fromRGB(25, 25, 30), parent = info, radius = 8, outline = 3 })
+local timerText = UI.text(info, "0:00", UDim2.fromOffset(200, 44), { pos = UDim2.new(1, 0, 0, 0), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 3.5 })
+local watch = UI.icon(info, "stopwatch", 42, UDim2.new(1, -206, 0, 1))
+local zoneText = UI.text(info, "", UDim2.fromOffset(280, 32), { pos = UDim2.new(1, 0, 0, 46), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 3 })
+local pin = UI.icon(info, "pin", 30, UDim2.new(1, -290, 0, 47))
+local areaText = UI.text(info, "AREA 1/8", UDim2.fromOffset(200, 24), { pos = UDim2.new(1, 0, 0, 80), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, color = Color3.fromRGB(255, 186, 60), stroke = 2.5 })
+local track = UI.frame({ size = UDim2.fromOffset(300, 34), pos = UDim2.new(1, 0, 0, 108), anchor = Vector2.new(1, 0), color = Color3.fromRGB(25, 25, 30), parent = info, radius = 10, outline = 3 })
 track.BackgroundTransparency = 0.15
-local fill = UI.frame({ size = UDim2.fromScale(0, 1), color = C.green, parent = track, radius = 8, outline = 0 })
+local fill = UI.frame({ size = UDim2.fromScale(0, 1), color = C.green, parent = track, radius = 10, outline = 0 })
 local fillGrad = UI.gradient(fill, C.green)
-local trackText = UI.text(track, "0%", UDim2.new(1, -10, 1, -6), { pos = UDim2.fromOffset(5, 3), stroke = 2 })
+local trackText = UI.text(track, "0% cleared", UDim2.new(1, -10, 1, -8), { pos = UDim2.fromOffset(5, 4), stroke = 2 })
 trackText.ZIndex = 3
+local nextText = UI.text(info, "", UDim2.fromOffset(330, 24), { pos = UDim2.new(1, 0, 0, 148), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, color = Color3.fromRGB(235, 235, 240), stroke = 2 })
+local _ = watch
 
 -------------------------------------------------------------------------------------------------------------
 -- round side buttons (right) with key badges
@@ -102,31 +109,47 @@ trackText.ZIndex = 3
 local side = Instance.new("Frame")
 side.Name = "SideButtons"
 side.BackgroundTransparency = 1
-side.Size = UDim2.fromOffset(110, 260)
+side.Size = UDim2.fromOffset(120, 260)
 side.Position = UDim2.new(1, -16, 0.5, 30)
 side.AnchorPoint = Vector2.new(1, 0.5)
 side.Parent = root
 local sideLayout = Instance.new("UIListLayout")
 sideLayout.Padding = UDim.new(0, 10)
+sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
 sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 sideLayout.Parent = side
 
+local function sideLeaf(parent: Instance, pos: UDim2, rot: number, size: number)
+	local l = UI.frame({ size = UDim2.fromOffset(size, size * 0.55), pos = pos, anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(110, 200, 70), parent = parent, radius = 999, outline = 2, name = "Leaf" })
+	l.Rotation = rot
+	;(l:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(40, 90, 30)
+	UI.gradient(l, Color3.fromRGB(110, 200, 70))
+	return l
+end
+
+-- A round wooden badge: grained disc, a ring, two leaves on top, the icon, a dark key badge and the name.
 local function roundButton(label: string, icon: string, key: string, window: string, order: number)
 	local b = Instance.new("TextButton")
 	b.Name = label
 	b.Text = ""
 	b.AutoButtonColor = false
 	b.BackgroundTransparency = 1
-	b.Size = UDim2.fromOffset(104, 104)
+	b.Size = UDim2.fromOffset(108, 108)
 	b.LayoutOrder = order
 	b.Parent = side
-	local disc = UI.frame({ size = UDim2.fromOffset(84, 84), pos = UDim2.fromOffset(10, 0), color = Color3.fromRGB(150, 95, 50), parent = b, radius = 999, outline = 4, name = "Disc" })
-	;(disc:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(80, 48, 24)
-	UI.gradient(disc, Color3.fromRGB(165, 105, 55))
-	UI.icon(disc, icon, 60, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-	local badge = UI.frame({ size = UDim2.fromOffset(34, 24), pos = UDim2.fromOffset(72, 0), color = Color3.fromRGB(40, 40, 46), parent = b, radius = 6, outline = 2, name = "Key" })
-	UI.text(badge, key, UDim2.new(1, -6, 1, -4), { pos = UDim2.fromOffset(3, 2), stroke = 1 })
-	UI.text(b, label, UDim2.fromOffset(110, 24), { pos = UDim2.new(0.5, 0, 0, 82), anchor = Vector2.new(0.5, 0), stroke = 2.5 })
+	local wood = Color3.fromRGB(196, 124, 62)
+	local disc = UI.frame({ size = UDim2.fromOffset(88, 88), pos = UDim2.fromOffset(10, 2), color = wood, parent = b, radius = 999, outline = 4, name = "Disc" })
+	;(disc:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(90, 50, 22)
+	UI.grain(disc, wood, 40)
+	local inner = UI.frame({ size = UDim2.fromOffset(70, 70), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(240, 208, 156), parent = disc, radius = 999, outline = 3, name = "Inner" })
+	;(inner:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(140, 84, 40)
+	UI.icon(inner, icon, 54, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	sideLeaf(b, UDim2.fromOffset(20, 10), -40, 30)
+	sideLeaf(b, UDim2.fromOffset(34, 2), -10, 22)
+	local badge = UI.frame({ size = UDim2.fromOffset(if #key > 1 then 44 else 30, 28), pos = UDim2.fromOffset(104, 64), anchor = Vector2.new(1, 0), color = Color3.fromRGB(36, 30, 26), parent = b, radius = 8, outline = 2, name = "Key" })
+	UI.text(badge, key, UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1 })
+	UI.text(b, label, UDim2.fromOffset(120, 26), { pos = UDim2.new(0.5, 0, 0, 86), anchor = Vector2.new(0.5, 0), stroke = 3 })
+	UI.raise(b, 2)
 	b.MouseButton1Click:Connect(function()
 		UI.bounce(b)
 		Sound.play("click")
@@ -140,8 +163,12 @@ local function sideButtons(mode: string)
 	roundButton("SHOP", "basket", "R", "Store", 1)
 	if mode == "Run" then
 		roundButton("UPGRADES", "upgrade", "TAB", "Upgrades", 2)
+		side.Size = UDim2.fromOffset(120, 2 * 118)
 	else
-		roundButton("PERKS", "upgrade", "TAB", "Perks", 2)
+		roundButton("STATS", "chart", "TAB", "Stats", 2)
+		roundButton("PERKS", "upgrade", "P", "Perks", 3)
+		roundButton("NEWS", "news", "J", "News", 4)
+		side.Size = UDim2.fromOffset(120, 4 * 118)
 	end
 end
 
@@ -232,10 +259,15 @@ task.spawn(function()
 				b.Size = UDim2.fromOffset(80, 80)
 				b.LayoutOrder = i
 				b.Parent = hotbar
-				local ring = UI.frame({ size = UDim2.fromOffset(72, 72), pos = UDim2.fromOffset(4, 4), color = Color3.fromRGB(30, 30, 36), parent = b, radius = 14, outline = 3, name = "Ring" })
-				ring.BackgroundTransparency = 0.35
+				local ring = UI.frame({ size = UDim2.fromOffset(72, 72), pos = UDim2.fromOffset(4, 4), color = Color3.fromRGB(40, 30, 24), parent = b, radius = 16, outline = 3, name = "Ring" })
+				ring.BackgroundTransparency = 0.25
+				local grow = Instance.new("UIScale")
+				grow.Name = "Grow"
+				grow.Parent = ring
 				UI.icon(ring, TOOL_ICON[t:GetAttribute("ToolId")] or "coin", 56, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-				UI.text(b, tostring(i), UDim2.fromOffset(22, 22), { pos = UDim2.fromOffset(6, 4), stroke = 2 })
+				local num = UI.frame({ size = UDim2.fromOffset(24, 24), pos = UDim2.fromOffset(0, 0), color = Color3.fromRGB(36, 30, 26), parent = b, radius = 999, outline = 2, name = "Num" })
+				UI.text(num, tostring(i), UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1 })
+				num.ZIndex = 3
 				b.MouseButton1Click:Connect(function()
 					toggleTool(i)
 				end)
@@ -244,7 +276,14 @@ task.spawn(function()
 		end
 		local held = player.Character and player.Character:FindFirstChildOfClass("Tool")
 		for t, ring in rings do
-			(ring:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = if t == held then C.yellow else C.outline
+			local on = t == held
+			local stroke = ring:FindFirstChildOfClass("UIStroke") :: UIStroke
+			stroke.Color = if on then C.yellow else C.outline
+			stroke.Thickness = if on then 4 else 3
+			local grow = ring:FindFirstChild("Grow") :: UIScale?
+			if grow then
+				grow.Scale = if on then 1.12 else 1
+			end
 		end
 		slotName.Text = if held then held.Name else ""
 	end
@@ -353,7 +392,11 @@ State.on("world", function(w)
 	if w.mode ~= "Run" or w.loading then
 		return
 	end
-	zoneText.Text = w.name .. "   "
+	zoneText.Text = w.name
+	local zones = w.zones or #Config.ZONES
+	areaText.Text = ("AREA %d/%d"):format(w.zone or 1, zones)
+	local nextZone = Config.ZONES[(w.zone or 1) + 1]
+	nextText.Text = if (w.zone or 1) >= zones or not nextZone then "Last area!" else "Mow it all to open " .. nextZone.name
 	if w.boss then
 		-- the boss's health has its own big bar at the top (BossFx); this corner just says what's on
 		fill.BackgroundColor3 = C.red
@@ -365,7 +408,7 @@ State.on("world", function(w)
 		fillGrad.Color = ColorSequence.new(UI.shade(C.green, 1.15), UI.shade(C.green, 0.85))
 		local pct = w.cut / math.max(1, w.total)
 		fill.Size = UDim2.fromScale(math.clamp(pct, 0, 1), 1)
-		trackText.Text = string.format("%.1f%%", pct * 100)
+		trackText.Text = string.format("%.1f%% cleared", pct * 100)
 	end
 	pin.Visible = true
 end)
@@ -413,7 +456,7 @@ State.on("fx", function(kind, d)
 end)
 
 -------------------------------------------------------------------------------------------------------------
--- keys: R = shop, TAB = upgrades / perks, 1-7 = tools
+-- keys: R = shop, TAB = upgrades (run) / stats (lobby), P = perks, J = news, 1-7 = tools
 -------------------------------------------------------------------------------------------------------------
 local NUMBER_KEYS = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six, Enum.KeyCode.Seven }
 UserInputService.InputBegan:Connect(function(input, processed)
@@ -423,11 +466,100 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if input.KeyCode == Enum.KeyCode.R then
 		UI.open("Store")
 	elseif input.KeyCode == Enum.KeyCode.Tab then
-		UI.open(if currentMode == "Run" then "Upgrades" else "Perks")
+		UI.open(if currentMode == "Run" then "Upgrades" else "Stats")
+	elseif input.KeyCode == Enum.KeyCode.P then
+		UI.open("Perks")
+	elseif input.KeyCode == Enum.KeyCode.J then
+		UI.open("News")
 	else
 		local n = table.find(NUMBER_KEYS, input.KeyCode)
 		if n then
 			toggleTool(n)
+		end
+	end
+end)
+
+-------------------------------------------------------------------------------------------------------------
+-- crosshair (screen centre): a ring with a dot, in a run while the camera is in first person
+-------------------------------------------------------------------------------------------------------------
+local cross = Instance.new("Frame")
+cross.Name = "Crosshair"
+cross.BackgroundTransparency = 1
+cross.Size = UDim2.fromOffset(26, 26)
+cross.Position = UDim2.fromScale(0.5, 0.5)
+cross.AnchorPoint = Vector2.new(0.5, 0.5)
+cross.Visible = false
+cross.Parent = root
+UI.corner(cross, 999)
+UI.stroke(cross, 2.5, Color3.new(1, 1, 1)).Transparency = 0.15
+UI.frame({ size = UDim2.fromOffset(6, 6), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.new(1, 1, 1), parent = cross, radius = 999, outline = 0, name = "Dot" })
+local windowOpen = false
+UI.onWindowChanged.Event:Connect(function(name)
+	windowOpen = name ~= nil
+end)
+RunService.RenderStepped:Connect(function()
+	local show = false
+	if currentMode == "Run" and not windowOpen then
+		local cam = workspace.CurrentCamera
+		local head = player.Character and player.Character:FindFirstChild("Head") :: BasePart?
+		show = cam ~= nil and head ~= nil and (cam.CFrame.Position - head.Position).Magnitude < 1.5
+	end
+	if cross.Visible ~= show then
+		cross.Visible = show
+	end
+end)
+
+-------------------------------------------------------------------------------------------------------------
+-- day / night bar (top centre): ReplicatedStorage attributes DayPhase ("day"/"night"), DayLeft and DayLength
+-- (seconds). Hidden until they exist; it counts down here between attribute updates.
+-------------------------------------------------------------------------------------------------------------
+local DAY = Color3.fromRGB(255, 205, 50)
+local NIGHT = Color3.fromRGB(70, 110, 230)
+local day = Instance.new("Frame")
+day.Name = "DayBar"
+day.BackgroundTransparency = 1
+day.Size = UDim2.fromOffset(300, 48)
+day.Position = UDim2.new(0.5, 0, 0, 10)
+day.AnchorPoint = Vector2.new(0.5, 0)
+day.Visible = false
+day.Parent = root
+local dayTrack = UI.frame({ size = UDim2.fromOffset(250, 30), pos = UDim2.fromOffset(44, 9), color = Color3.fromRGB(25, 25, 30), parent = day, radius = 15, outline = 3, name = "Track" })
+dayTrack.BackgroundTransparency = 0.2
+local dayFill = UI.frame({ size = UDim2.fromScale(1, 1), color = DAY, parent = dayTrack, radius = 15, outline = 0, name = "Fill" })
+local dayGrad = UI.gradient(dayFill, DAY)
+local dayText = UI.text(dayTrack, "", UDim2.new(1, -12, 1, -6), { pos = UDim2.fromOffset(6, 3), stroke = 2 })
+dayText.ZIndex = 3
+local dayIcon = Instance.new("Frame")
+dayIcon.BackgroundTransparency = 1
+dayIcon.Size = UDim2.fromOffset(48, 48)
+dayIcon.Parent = day
+local dayLeft, dayLeftAt, shownPhase = 0, os.clock(), ""
+local function readDayLeft()
+	dayLeft, dayLeftAt = tonumber(ReplicatedStorage:GetAttribute("DayLeft")) or 0, os.clock()
+end
+ReplicatedStorage:GetAttributeChangedSignal("DayLeft"):Connect(readDayLeft)
+readDayLeft()
+task.spawn(function()
+	while true do
+		task.wait(0.25)
+		local phase = ReplicatedStorage:GetAttribute("DayPhase")
+		local length = tonumber(ReplicatedStorage:GetAttribute("DayLength"))
+		local has = type(phase) == "string" and ReplicatedStorage:GetAttribute("DayLeft") ~= nil and length ~= nil and length > 0
+		day.Visible = has
+		if has then
+			local night = phase == "night"
+			if phase ~= shownPhase then
+				shownPhase = phase
+				local color = if night then NIGHT else DAY
+				dayFill.BackgroundColor3 = color
+				dayGrad.Color = ColorSequence.new(UI.shade(color, 1.15), UI.shade(color, 0.85))
+				UI.clear(dayIcon)
+				UI.icon(dayIcon, if night then "moon" else "sun", 48, UDim2.new())
+			end
+			local left = math.max(0, dayLeft - (os.clock() - dayLeftAt))
+			dayFill.Size = UDim2.fromScale(math.clamp(left / (length :: number), 0.03, 1), 1)
+			local secs = math.ceil(left)
+			dayText.Text = if secs >= 60 then ("%dm %02ds"):format(secs // 60, secs % 60) else secs .. "s"
 		end
 	end
 end)

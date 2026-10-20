@@ -1,7 +1,8 @@
 -- Every menu, in Chop A Forest's style (wooden boards, blue cards, brown popups):
---   Store (R): Robux tab + Gem Perks tab        Upgrades (TAB, run): Upgrades tab + Stats tab
+--   Store (R): client/ShopWindow                Perks: gem perks
+--   Upgrades (TAB, run) + Stats (client/StatsWindow) + Index
 --   ToolView: popup for a tool on the cabin wall Mowers (run garage) / Garage (lobby)
---   Classes: full-screen class shop             Rewards: daily + group popup
+--   Classes: full-screen class shop             Rewards: daily + group popup       News: client/NewsWindow
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
@@ -44,65 +45,10 @@ local function moneyLine(list: Instance, order: number, text: string)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- STORE (R): Robux + Gem Perks
+-- PERKS: gem perks, bought one level at a time (the Store itself is client/ShopWindow)
 -------------------------------------------------------------------------------------------------------------
-local STORE_TABS = { { label = "Robux", window = "Store" }, { label = "Gem Perks", window = "Perks" } }
-local store = UI.window("Store", "Robux", nil, { tabs = STORE_TABS, grid = Vector2.new(250, 250), gems = true })
-local PRODUCT_ICON = { Gems150 = "gem", Gems500 = "gem", Gems1500 = "gem", Gems5000 = "gem", TrialMower = "pushmower", RocketMower = "pushmower", ClassLawnLegend = "clover", ClassGoatMan = "clover" }
-local PASS_ICON = { DoubleCoins = "coin", DoubleGems = "gem", BigBag = "backpack", VIP = "clover" }
-store.refresh = function()
-	local d = data()
-	UI.clear(store.list)
-	if not d then
-		return
-	end
-	local order = 0
-	for _, key in Config.PASS_ORDER do
-		local p = Config.PASSES[key]
-		order += 1
-		local owned = d.passes[key]
-		UI.blueCard(store.list, order, {
-			title = p.name,
-			sub = p.desc,
-			icon = PASS_ICON[key],
-			price = if owned then "OWNED" else "R$ " .. p.robux,
-			enabled = not owned,
-			color = Color3.fromRGB(255, 170, 40),
-			onClick = function()
-				if not owned then
-					State.fire("Prompt", "pass", key)
-				end
-			end,
-		})
-	end
-	for _, key in Config.PRODUCT_ORDER do
-		local p = Config.PRODUCTS[key]
-		local show = true
-		if p.mower == "TrialMower" then
-			show = State.isRun()
-		elseif p.class then
-			show = table.find(d.classes, p.class) == nil
-		elseif p.mower then
-			show = table.find(d.mowers, p.mower) == nil
-		end
-		if show then
-			order += 1
-			UI.blueCard(store.list, order, {
-				title = p.name,
-				sub = if p.gems then "Classes, perks and mowers" elseif p.mower == "TrialMower" then "A fast mower for this run" else "Yours forever",
-				icon = PRODUCT_ICON[key],
-				price = "R$ " .. p.robux,
-				enabled = true,
-				onClick = function()
-					State.fire("Prompt", "product", key)
-				end,
-			})
-		end
-	end
-end
-
 local PERK_ICON = { sell = "coin", luck = "clover", gem = "gem", bundle = "bundle" }
-local perks = UI.window("Perks", "Gem Perks", nil, { tabs = STORE_TABS, grid = Vector2.new(330, 220), gems = true })
+local perks = UI.window("Perks", "Perks", nil, { grid = Vector2.new(330, 220), gems = true })
 perks.refresh = function()
 	local d = data()
 	UI.clear(perks.list)
@@ -131,7 +77,12 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- UPGRADES (TAB, run): Upgrades (Hands / Tool / Gear sections) + Stats + Index
 -------------------------------------------------------------------------------------------------------------
-local RUN_TABS = { { label = "Upgrades", window = "Upgrades" }, { label = "Stats", window = "Stats" }, { label = "Index", window = "Index" } }
+local RUN_TABS = {
+	{ label = "Upgrades", window = "Upgrades", icon = "upgrade", runOnly = true },
+	{ label = "Stats", window = "Stats", icon = "chart" },
+	{ label = "Index", window = "Index", icon = "news" },
+}
+Windows.RUN_TABS = RUN_TABS
 local UPGRADE_ICON = { hold = "hands", swing = "hands", grasp = "bundle", power = "upgrade", speed = "clover", sell = "coin" }
 local CARD = Vector2.new(250, 200)
 
@@ -162,7 +113,7 @@ local function cardSlot(row: Frame, order: number): Frame
 	return slot
 end
 
-local upgrades = UI.window("Upgrades", "Upgrades", nil, { tabs = RUN_TABS })
+local upgrades = UI.window("Upgrades", "Upgrades", nil, { tabs = RUN_TABS, size = Vector2.new(940, 580) })
 upgrades.refresh = function()
 	local d = data()
 	UI.clear(upgrades.list)
@@ -200,32 +151,8 @@ upgrades.refresh = function()
 	moneyLine(upgrades.list, 99, "Your money: $" .. Format.commas(d.run.coins))
 end
 
-local stats = UI.window("Stats", "Stats", nil, { tabs = RUN_TABS })
-stats.refresh = function()
-	local d = data()
-	UI.clear(stats.list)
-	if not d then
-		return
-	end
-	local rows = {
-		{ "upgrade", "Power", string.format("x%.2f", d.power) },
-		{ "backpack", "Carry", if d.endless then "ENDLESS" else tostring(d.carryMax) },
-		{ "bundle", "Pickup reach", string.format("%.1f studs", d.grasp or 0) },
-		{ "hands", "Swing time", string.format("x%.2f", d.swing or 1) },
-		{ "clover", "Mutation Luck", string.format("x%.2f", d.luck) },
-		{ "coin", "Sell Price", string.format("x%.2f", d.sell) },
-		{ "bundle", "Grass cut", Format.commas(d.stats.cut) },
-		{ "gem", "Runs finished", tostring(d.stats.runs) },
-		{ "lock", "Bosses beaten", tostring(d.stats.bosses) },
-		{ "stats", "Best run", if (d.bestTime or 0) > 0 then Format.clock(d.bestTime) else "-" },
-	}
-	for i, r in rows do
-		UI.popupRow(stats.list, i, r[1], r[2], r[3], Color3.new(1, 1, 1)).Size = UDim2.new(1, -20, 0, 56)
-	end
-end
-
 -- INDEX: every grass type x mutation; the ones you've collected show their colour, the rest a lock.
-local index = UI.window("Index", "Index", nil, { tabs = RUN_TABS }) -- no gem box: it would cover the third tab
+local index = UI.window("Index", "Stats", nil, { tabs = RUN_TABS }) -- no gem box: it would cover the third tab
 index.refresh = function()
 	local d = data()
 	UI.clear(index.list)
@@ -523,6 +450,7 @@ board:FindFirstChildOfClass("UIGradient"):Destroy()
 board.BackgroundTransparency = 0.12
 local panel = classes.panel :: Frame
 panel.Visible = false
+classes.title.Visible = false
 for _, d in classes.frame:GetChildren() do
 	if d.Name:match("^Tab") or d.Name:match("^Icon_") then
 		d:Destroy()
@@ -692,5 +620,10 @@ end)
 function Windows.open(name: string)
 	UI.open(name)
 end
+
+-- the bigger menus live in their own modules
+require(script.Parent.StatsWindow).build(RUN_TABS)
+require(script.Parent.ShopWindow).build()
+require(script.Parent.NewsWindow).build()
 
 return Windows

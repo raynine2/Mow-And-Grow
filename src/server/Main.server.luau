@@ -158,6 +158,18 @@ Net.on("Ready", 1, function(player)
 	Net.send(player, "World", system.worldState())
 end)
 
+-- The NEWS window was seen (newest Config.NEWS id). A run registers its own "Seen" (Run.start) that also
+-- handles this, so only the lobby registers this one.
+if not Mode.isRun then
+	Net.on("Seen", 1, function(player, what, id)
+		local data = PlayerData.get(player)
+		if what == "news" and data and type(id) == "number" then
+			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)
+			PlayerData.changed(player)
+		end
+	end)
+end
+
 -- Studio test hook: ServerStorage.DevHook:Invoke("gems", player, 1000), ("coins", player, n),
 -- ("set", player, key, value), ("save", player, true/false), ("clearZone"), ("killBoss"), ("zone", n)
 if RunService:IsStudio() then

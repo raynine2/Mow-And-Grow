@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local Sound = require(script.Parent.Sound)
+local State = require(script.Parent.State)
 
 local UI = {}
 local C = Config.UI
@@ -183,6 +184,112 @@ local function circle(parent: Instance, size: UDim2, pos: UDim2, color: Color3, 
 	return f
 end
 
+-- Extra drawn icons (no uploaded image): each draws into a square holder frame.
+local DRAW: { [string]: (Frame) -> () } = {}
+local function part(holder: Frame, sx: number, sy: number, px: number, py: number, color: Color3, radius: number?, outline: number?, rot: number?): Frame
+	local f = UI.frame({ size = UDim2.fromScale(sx, sy), pos = UDim2.fromScale(px, py), color = color, parent = holder, radius = radius or 0, outline = outline or 0 })
+	if rot then
+		f.Rotation = rot
+	end
+	return f
+end
+DRAW.stopwatch = function(h)
+	part(h, 0.2, 0.14, 0.4, 0.02, Color3.fromRGB(200, 120, 50), 3, 2)
+	local face = circle(h, UDim2.fromScale(0.82, 0.82), UDim2.fromScale(0.5, 0.56), Color3.fromRGB(250, 246, 232), 3)
+	;(face:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(150, 90, 40)
+	part(h, 0.06, 0.28, 0.47, 0.3, Color3.fromRGB(60, 50, 50), 3)
+	part(h, 0.22, 0.06, 0.5, 0.53, Color3.fromRGB(220, 60, 50), 3)
+	local leafy = part(h, 0.26, 0.14, 0.66, 0.06, Color3.fromRGB(100, 190, 60), 999, 2, -30)
+	leafy.ZIndex = 2
+end
+DRAW.pin = function(h)
+	local head = circle(h, UDim2.fromScale(0.62, 0.62), UDim2.fromScale(0.5, 0.36), Color3.fromRGB(235, 60, 60), 2.5)
+	UI.gradient(head, Color3.fromRGB(245, 70, 70))
+	circle(h, UDim2.fromScale(0.24, 0.24), UDim2.fromScale(0.5, 0.36), Color3.new(1, 1, 1), 0)
+	part(h, 0.16, 0.36, 0.42, 0.58, Color3.fromRGB(200, 45, 45), 4, 2)
+end
+DRAW.stump = function(h)
+	local body = part(h, 0.62, 0.42, 0.19, 0.44, Color3.fromRGB(150, 92, 52), 8, 2.5)
+	UI.gradient(body, Color3.fromRGB(160, 100, 56))
+	part(h, 0.86, 0.14, 0.07, 0.8, Color3.fromRGB(130, 80, 44), 6, 2)
+	part(h, 0.62, 0.2, 0.19, 0.36, Color3.fromRGB(235, 200, 140), 999, 2.5)
+	part(h, 0.3, 0.08, 0.35, 0.42, Color3.fromRGB(205, 160, 100), 999)
+	part(h, 0.14, 0.14, 0.7, 0.3, Color3.fromRGB(110, 200, 60), 999, 2)
+end
+DRAW.tree = function(h)
+	part(h, 0.16, 0.36, 0.42, 0.6, Color3.fromRGB(150, 95, 50), 3, 2)
+	local crown = circle(h, UDim2.fromScale(0.8, 0.64), UDim2.fromScale(0.5, 0.38), Color3.fromRGB(255, 200, 40), 2.5)
+	UI.gradient(crown, Color3.fromRGB(255, 215, 60))
+	circle(h, UDim2.fromScale(0.14, 0.14), UDim2.fromScale(0.3, 0.26), Color3.fromRGB(255, 250, 200), 0)
+end
+DRAW.robux = function(h)
+	local hex = part(h, 0.78, 0.78, 0.11, 0.11, Color3.fromRGB(235, 255, 235), 8, 3, 45)
+	;(hex:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(30, 90, 40)
+	local inner = part(h, 0.34, 0.34, 0.33, 0.33, Color3.fromRGB(70, 180, 80), 4, 2.5, 45)
+	inner.BackgroundTransparency = 1
+	;(inner:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(30, 90, 40)
+end
+DRAW.gift = function(h)
+	local box = part(h, 0.8, 0.56, 0.1, 0.38, Color3.fromRGB(70, 160, 250), 6, 2.5)
+	UI.gradient(box, Color3.fromRGB(80, 170, 255))
+	part(h, 0.9, 0.2, 0.05, 0.26, Color3.fromRGB(90, 180, 255), 4, 2.5)
+	part(h, 0.16, 0.7, 0.42, 0.26, Color3.fromRGB(255, 205, 60), 0, 0)
+	for _, x in { 0.22, 0.52 } do
+		part(h, 0.26, 0.2, x, 0.08, Color3.fromRGB(255, 205, 60), 999, 2)
+	end
+end
+DRAW.sun = function(h)
+	for i = 0, 7 do
+		local r = part(h, 0.12, 0.96, 0.44, 0.02, Color3.fromRGB(255, 200, 40), 4, 0, i * 22.5)
+		r.ZIndex = 1
+	end
+	local disc = circle(h, UDim2.fromScale(0.66, 0.66), UDim2.fromScale(0.5, 0.5), Color3.fromRGB(255, 205, 40), 2.5)
+	UI.gradient(disc, Color3.fromRGB(255, 220, 60))
+	disc.ZIndex = 2
+end
+DRAW.moon = function(h)
+	local disc = circle(h, UDim2.fromScale(0.8, 0.8), UDim2.fromScale(0.5, 0.5), Color3.fromRGB(235, 240, 255), 2.5)
+	UI.gradient(disc, Color3.fromRGB(240, 245, 255))
+	local bite = circle(h, UDim2.fromScale(0.66, 0.66), UDim2.fromScale(0.7, 0.36), Color3.fromRGB(70, 80, 170), 0)
+	bite.ZIndex = 2
+	circle(h, UDim2.fromScale(0.16, 0.16), UDim2.fromScale(0.82, 0.78), Color3.fromRGB(255, 225, 90), 0).ZIndex = 3
+end
+DRAW.star = function(h)
+	for _, r in { 0, 36, 72 } do
+		local arm = part(h, 0.28, 0.9, 0.36, 0.05, Color3.fromRGB(255, 200, 40), 4, 0, r)
+		arm.ZIndex = 1
+	end
+	circle(h, UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.5, 0.52), Color3.fromRGB(255, 215, 60), 0).ZIndex = 2
+end
+DRAW.chart = function(h)
+	local board = part(h, 0.74, 0.86, 0.13, 0.1, Color3.fromRGB(190, 120, 60), 6, 2.5)
+	UI.gradient(board, Color3.fromRGB(200, 130, 66))
+	part(h, 0.56, 0.62, 0.22, 0.26, Color3.fromRGB(250, 246, 232), 4, 0)
+	for i, hgt in { 0.18, 0.3, 0.42 } do
+		part(h, 0.1, hgt, 0.27 + (i - 1) * 0.16, 0.84 - hgt, Color3.fromRGB(80, 190, 70), 2, 0)
+	end
+	part(h, 0.3, 0.1, 0.35, 0.04, Color3.fromRGB(120, 120, 130), 3, 2)
+end
+DRAW.news = function(h)
+	local sheet = part(h, 0.8, 0.7, 0.1, 0.18, Color3.fromRGB(245, 242, 232), 6, 2.5, -6)
+	for i = 0, 2 do
+		local line = part(sheet, 0.7, 0.08, 0.15, 0.25 + i * 0.2, Color3.fromRGB(120, 120, 130), 2)
+		line.ZIndex = sheet.ZIndex + 1
+	end
+	local badge = circle(h, UDim2.fromScale(0.34, 0.34), UDim2.fromScale(0.8, 0.2), Color3.fromRGB(230, 50, 50), 2)
+	badge.ZIndex = 3
+end
+DRAW.hands = function(h)
+	local fist = part(h, 0.7, 0.62, 0.15, 0.24, Color3.fromRGB(230, 180, 140), 12, 2.5)
+	UI.gradient(fist, Color3.fromRGB(240, 190, 150))
+	for i = 0, 3 do
+		part(h, 0.15, 0.2, 0.18 + i * 0.16, 0.18, Color3.fromRGB(240, 196, 156), 6, 2)
+	end
+end
+DRAW.diamondBullet = function(h)
+	part(h, 0.66, 0.66, 0.17, 0.17, Color3.fromRGB(90, 210, 70), 3, 2, 45)
+end
+
 function UI.icon(parent: Instance, key: string, size: number, pos: UDim2?, anchor: Vector2?): GuiObject
 	local id = Config.ICONS and Config.ICONS[key]
 	if id and id ~= "" then
@@ -258,6 +365,8 @@ function UI.icon(parent: Instance, key: string, size: number, pos: UDim2?, ancho
 		local l = UI.frame({ size = UDim2.fromScale(1, 0.56), pos = UDim2.fromScale(0, 0.22), color = Color3.fromRGB(110, 185, 60), parent = holder, radius = 999, outline = 2.5 })
 		UI.gradient(l, Color3.fromRGB(120, 195, 65))
 		UI.frame({ size = UDim2.fromScale(0.8, 0.08), pos = UDim2.fromScale(0.1, 0.46), color = Color3.fromRGB(70, 130, 40), parent = holder, radius = 2, outline = 0 })
+	elseif DRAW[key] then
+		DRAW[key](holder)
 	else
 		circle(holder, UDim2.fromScale(0.85, 0.85), c, Color3.fromRGB(200, 200, 210), 2.5)
 	end
@@ -279,11 +388,15 @@ end
 -- wooden boards (Chop A Forest style): orange-brown frame, tan plank panel, leaves on the corners
 -------------------------------------------------------------------------------------------------------------
 local WOOD = {
-	frame = Color3.fromRGB(214, 128, 60),
-	frameEdge = Color3.fromRGB(96, 54, 26),
-	plank = Color3.fromRGB(242, 210, 158),
-	plankLine = Color3.fromRGB(222, 184, 128),
-	inset = Color3.fromRGB(178, 128, 82),
+	frame = Color3.fromRGB(206, 126, 62),
+	frameEdge = Color3.fromRGB(104, 54, 24),
+	plank = Color3.fromRGB(240, 208, 156),
+	plankLine = Color3.fromRGB(226, 190, 136),
+	inset = Color3.fromRGB(160, 102, 56), -- the darker brown boxes inside a window
+	insetEdge = Color3.fromRGB(108, 64, 30),
+	cream = Color3.fromRGB(255, 238, 205),
+	tabWood = Color3.fromRGB(150, 96, 54),
+	tabOn = Color3.fromRGB(255, 140, 40),
 	tab = Color3.fromRGB(216, 172, 112),
 	tabActive = Color3.fromRGB(118, 214, 58),
 	blue = Color3.fromRGB(64, 156, 250),
@@ -323,8 +436,11 @@ end
 
 -- Red square close button.
 function UI.closeButton(parent: Instance, pos: UDim2, onClick: () -> ()): TextButton
-	local b = UI.button(parent, "X", WOOD.red, UDim2.fromOffset(62, 62), onClick, { pos = pos, anchor = Vector2.new(1, 0), name = "Close" })
+	local b = UI.button(parent, "X", WOOD.red, UDim2.fromOffset(66, 66), onClick, { pos = pos, anchor = Vector2.new(1, 0), name = "Close" })
 	b.ZIndex = 6
+	;(b:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(90, 20, 16)
+	local label = b:FindFirstChild("Label") :: TextLabel
+	label.ZIndex = 7
 	return b
 end
 
@@ -357,55 +473,134 @@ local windows: { [string]: any } = {}
 local openName: string? = nil
 UI.onWindowChanged = Instance.new("BindableEvent")
 
-type WindowOpts = { tabs: { { label: string, window: string, icon: string? } }?, grid: Vector2?, gems: boolean? }
+type Tab = { label: string, window: string, icon: string?, runOnly: boolean? }
+type WindowOpts = { tabs: { Tab }?, grid: Vector2?, gems: boolean?, size: Vector2? }
 
--- A wooden board window. `opts.tabs` adds tabs across the top (the current one is green); `opts.grid` lays the
--- content out as a grid of cards of that cell size; `opts.gems` shows the gem counter box.
+-- Wood grain on a frame: a gradient with light and dark streaks across it.
+function UI.grain(f: GuiObject, base: Color3, rotation: number?): UIGradient
+	local old = f:FindFirstChildOfClass("UIGradient")
+	if old then
+		old:Destroy()
+	end
+	local keys = {}
+	local rng = Random.new(#f.Name + 7)
+	local n = 9
+	for i = 0, n do
+		local k = if i % 2 == 0 then rng:NextNumber(1.02, 1.1) else rng:NextNumber(0.88, 0.96)
+		table.insert(keys, ColorSequenceKeypoint.new(i / n, UI.shade(base, k)))
+	end
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(keys)
+	g.Rotation = rotation or 8
+	g.Parent = f
+	return g
+end
+
+-- A darker brown rounded box inside a window (the sections in the reference menus); cream text goes on it.
+function UI.section(parent: Instance, size: UDim2, pos: UDim2?, color: Color3?): Frame
+	local f = UI.frame({ size = size, pos = pos, color = color or WOOD.inset, parent = parent, radius = 14, outline = 3, name = "Section" })
+	;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = WOOD.insetEdge
+	return f
+end
+
+local function raise(obj: GuiObject, z: number)
+	obj.ZIndex = z
+	for _, d in obj:GetDescendants() do
+		if d:IsA("GuiObject") then
+			d.ZIndex = z + 1
+		end
+	end
+end
+UI.raise = raise
+
+-- A wooden pill tab with an icon and a label (the active one is orange).
+local function tabButton(holder: Instance, t: Tab, active: boolean, onClick: () -> ()): TextButton
+	local color = if active then WOOD.tabOn else WOOD.tabWood
+	local b = Instance.new("TextButton")
+	b.Name = "Tab_" .. t.window
+	b.Text = ""
+	b.AutoButtonColor = false
+	b.BackgroundColor3 = color
+	b.Size = UDim2.fromOffset(178, 52)
+	UI.corner(b, 14)
+	UI.stroke(b, 3, if active then Color3.fromRGB(150, 60, 10) else Color3.fromRGB(80, 46, 22))
+	UI.gradient(b, color)
+	UI.frame({ size = UDim2.new(1, 0, 0, 6), pos = UDim2.new(0, 0, 1, -6), color = UI.shade(color, 0.6), parent = b, radius = 6, outline = 0, name = "Lip" })
+	UI.icon(b, t.icon or "leaf", 44, UDim2.fromOffset(6, 2))
+	UI.text(b, string.upper(t.label), UDim2.new(1, -62, 1, -16), { pos = UDim2.fromOffset(54, 6), color = if active then Color3.new(1, 1, 1) else WOOD.cream, stroke = 2.5, name = "Label" })
+	raise(b, 6)
+	b.MouseButton1Click:Connect(function()
+		bounce(b)
+		Sound.play("click")
+		onClick()
+	end)
+	b.Parent = holder
+	return b
+end
+
+-- Lay the tabs out after the title; tabs marked runOnly only show during a run.
+local function layoutTabs(w)
+	local x = w.titleWidth + 6
+	for _, entry in w.tabs do
+		local show = not entry.tab.runOnly or State.mode == "Run"
+		entry.button.Visible = show
+		if show then
+			entry.button.Position = UDim2.fromOffset(x, -34)
+			x += 186
+		end
+	end
+end
+
+-- A wooden board window like the reference menus: a thick grained plank frame, a tan plank panel, the title in
+-- big white letters outside the top-left corner, wooden pill tabs after it (`opts.tabs`, the current one
+-- orange), a red X top-right and leaves on the corners. `opts.grid` lays the content out as a grid of cards of
+-- that cell size; `opts.gems` shows the gem counter box; `opts.size` sets the board size.
 function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpts?)
 	local o = opts or {}
+	local size = o.size or Vector2.new(900, 560)
 	local holder = Instance.new("Frame")
 	holder.Name = name .. "Window"
 	holder.BackgroundTransparency = 1
-	holder.Size = UDim2.fromOffset(900, 560)
-	holder.Position = UDim2.fromScale(0.5, 0.54)
+	holder.Size = UDim2.fromOffset(size.X, size.Y)
+	holder.Position = UDim2.fromScale(0.5, 0.55)
 	holder.AnchorPoint = Vector2.new(0.5, 0.5)
 	holder.Visible = false
 	holder.ZIndex = 10
 	holder.Parent = gui
-	local board = UI.frame({ size = UDim2.fromScale(1, 1), color = WOOD.frame, parent = holder, radius = 26, outline = 5, name = "Board" })
+	local board = UI.frame({ size = UDim2.fromScale(1, 1), color = WOOD.frame, parent = holder, radius = 30, outline = 5, name = "Board" })
 	;(board:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = WOOD.frameEdge
-	UI.gradient(board, WOOD.frame)
-	local panel = UI.planks(board, UDim2.new(1, -28, 1, -28), UDim2.fromOffset(14, 14))
-	UI.stroke(panel, 2, Color3.fromRGB(160, 100, 52))
-	leaf(holder, UDim2.fromOffset(18, 548), 74)
-	leaf(holder, UDim2.fromOffset(888, 520), 64)
-	leaf(holder, UDim2.fromOffset(470, 6), 58)
+	UI.grain(board, WOOD.frame, 4)
+	local panel = UI.planks(board, UDim2.new(1, -40, 1, -40), UDim2.fromOffset(20, 20))
+	UI.stroke(panel, 3, Color3.fromRGB(140, 84, 40))
+	UI.grain(panel, WOOD.plank, 92)
+	leaf(holder, UDim2.fromOffset(10, size.Y - 12), 86)
+	leaf(holder, UDim2.fromOffset(size.X - 6, size.Y - 18), 76)
+	leaf(holder, UDim2.fromOffset(size.X * 0.62, 4), 60)
 
-	-- tabs (or a single title tab)
-	local tabs = o.tabs or { { label = title, window = name } }
-	for i, t in tabs do
+	-- the title outside the top-left corner
+	local titleText = string.upper(title)
+	local titleWidth = math.max(150, #titleText * 38 + 40)
+	local titleLabel = UI.text(holder, titleText, UDim2.fromOffset(titleWidth, 80), { pos = UDim2.fromOffset(-14, -70), stroke = 5, name = "Title" })
+	titleLabel.ZIndex = 8
+	local w = { name = name, frame = holder, panel = panel, board = board, titleWidth = titleWidth - 20, tabs = {}, title = titleLabel }
+	for _, t in o.tabs or {} do
 		local active = t.window == name
-		local b = UI.button(holder, string.upper(t.label), if active then WOOD.tabActive else WOOD.tab, UDim2.fromOffset(230, 58), function()
+		local b = tabButton(holder, t, active, function()
 			if not active then
 				UI.open(t.window)
 			end
-		end, { pos = UDim2.fromOffset(24 + (i - 1) * 244, -30), name = "Tab" .. i })
-		b.ZIndex = 6
-		if not active then
-			local label = b:FindFirstChild("Label") :: TextLabel
-			label.TextColor3 = Color3.new(1, 1, 1)
-		end
+		end)
+		table.insert(w.tabs, { tab = t, button = b })
 	end
-	local w = { name = name, frame = holder, panel = panel }
+	layoutTabs(w)
 	if o.gems then
-		local box = UI.frame({ size = UDim2.fromOffset(200, 56), pos = UDim2.new(1, -88, 0, -28), anchor = Vector2.new(1, 0), color = WOOD.tab, parent = holder, radius = 10, outline = 3, name = "GemBox" })
-		box.ZIndex = 6
-		UI.icon(box, "gem", 42, UDim2.fromOffset(10, 7)).ZIndex = 7
-		local t = UI.text(box, "0", UDim2.new(1, -66, 1, -12), { pos = UDim2.fromOffset(58, 6), align = Enum.TextXAlignment.Left, name = "Count" })
-		t.ZIndex = 7
+		local box = UI.frame({ size = UDim2.fromOffset(190, 52), pos = UDim2.new(1, -86, 0, -30), anchor = Vector2.new(1, 0), color = Color3.fromRGB(60, 36, 20), parent = holder, radius = 12, outline = 3, name = "GemBox" })
+		UI.icon(box, "gem", 40, UDim2.fromOffset(8, 6))
+		local t = UI.text(box, "0", UDim2.new(1, -62, 1, -12), { pos = UDim2.fromOffset(54, 6), align = Enum.TextXAlignment.Left, name = "Count" })
+		raise(box, 6)
 		w.gemText = t
 	end
-	UI.closeButton(holder, UDim2.new(1, 10, 0, -28), function()
+	UI.closeButton(holder, UDim2.new(1, 18, 0, -36), function()
 		UI.close()
 	end)
 
@@ -443,6 +638,9 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 	list.Parent = panel
 	w.list = list
 	w.refresh = function() end
+	w.layoutTabs = function()
+		layoutTabs(w)
+	end
 	windows[name] = w
 	return w
 end
@@ -530,6 +728,9 @@ function UI.open(name: string)
 	end
 	openName = name
 	Sound.play("whoosh")
+	if w.layoutTabs then
+		w.layoutTabs()
+	end
 	w.frame.Visible = true
 	w.refresh()
 	bounce(w.frame)
@@ -556,9 +757,10 @@ end
 
 -- A section heading inside a window (dark brown inset bar).
 function UI.heading(list: Instance, order: number, text: string)
-	local bar = UI.frame({ size = UDim2.new(1, -10, 0, 44), color = WOOD.inset, parent = list, radius = 10, outline = 0, name = "Heading" })
+	local bar = UI.frame({ size = UDim2.new(1, -10, 0, 44), color = WOOD.inset, parent = list, radius = 12, outline = 3, name = "Heading" })
+	;(bar:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = WOOD.insetEdge
 	bar.LayoutOrder = order
-	UI.text(bar, string.upper(text), UDim2.new(1, -20, 1, -10), { pos = UDim2.fromOffset(10, 5) })
+	UI.text(bar, string.upper(text), UDim2.new(1, -20, 1, -10), { pos = UDim2.fromOffset(10, 5), color = WOOD.cream })
 	return bar
 end
 
@@ -688,9 +890,9 @@ function UI.notice(title: string, sub: string?, icon: string?)
 	if currentNotice then
 		currentNotice:Destroy()
 	end
-	local f = UI.frame({ size = UDim2.fromOffset(470, if sub then 78 else 54), pos = UDim2.new(0.5, 0, 1, -118), anchor = Vector2.new(0.5, 1), color = Color3.fromRGB(32, 28, 26), parent = gui, radius = 10, outline = 2, name = "Notice" })
-	f.BackgroundTransparency = 0.12
-	;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(80, 70, 60)
+	local f = UI.frame({ size = UDim2.fromOffset(520, if sub then 92 else 60), pos = UDim2.new(0.5, 0, 1, -180), anchor = Vector2.new(0.5, 1), color = Color3.fromRGB(58, 38, 24), parent = gui, radius = 14, outline = 3, name = "Notice" })
+	f.BackgroundTransparency = 0.06
+	;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(150, 100, 56)
 	f.ZIndex = 45
 	currentNotice = f
 	local x = 16
@@ -698,10 +900,10 @@ function UI.notice(title: string, sub: string?, icon: string?)
 		UI.icon(f, icon, 34, UDim2.fromOffset(14, if sub then 8 else 10)).ZIndex = 46
 		x = 56
 	end
-	local t = UI.text(f, title, UDim2.new(1, -x - 14, 0, 32), { pos = UDim2.fromOffset(x, 6), align = Enum.TextXAlignment.Center, color = Color3.fromRGB(255, 170, 50), stroke = 2 })
+	local t = UI.text(f, title, UDim2.new(1, -x - 14, 0, 40), { pos = UDim2.fromOffset(x, 6), align = Enum.TextXAlignment.Center, color = Color3.fromRGB(255, 186, 60), stroke = 2.5 })
 	t.ZIndex = 46
 	if sub then
-		local s = UI.text(f, sub, UDim2.new(1, -28, 0, 26), { pos = UDim2.fromOffset(14, 44), color = Color3.new(1, 1, 1), stroke = 1.5 })
+		local s = UI.text(f, sub, UDim2.new(1, -28, 0, 30), { pos = UDim2.fromOffset(14, 52), color = WOOD.cream, stroke = 2 })
 		s.ZIndex = 46
 	end
 	bounce(f)

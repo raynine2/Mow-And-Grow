@@ -44,7 +44,9 @@ local DEFAULT = {
 	mowers = {}, -- permanent mowers (gems / robux): [id] = true
 	lastDaily = 0,
 	groupClaimed = false,
-	stats = { cut = 0, runs = 0, bosses = 0 },
+	-- lifetime stats (the STATS window): clumps cut, bundles sold, coins earned, mutated ("rare") clumps cut,
+	-- seconds played; newsSeen = the newest Config.NEWS id the player has seen
+	stats = { cut = 0, runs = 0, bosses = 0, sold = 0, coinsEarned = 0, rare = 0, playtime = 0, newsSeen = 0 },
 	index = {}, -- grass types collected: ["<zone>:<mutation>"] = true (see Config.INDEX_GEMS)
 	bestTime = 0, -- fastest finished run in seconds (0 = none yet)
 	run = nil, -- the saved run, see PlayerData.newRun
@@ -177,6 +179,18 @@ end
 function PlayerData.get(player: Player)
 	return profiles[player]
 end
+
+-- Total playtime: one second per second online, in any mode (the client ticks its copy between updates).
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for _, prof in profiles do
+			if prof.stats then
+				prof.stats.playtime = (prof.stats.playtime or 0) + 1
+			end
+		end
+	end
+end)
 
 function PlayerData.wait(player: Player, timeout: number?)
 	local deadline = os.clock() + (timeout or 30)

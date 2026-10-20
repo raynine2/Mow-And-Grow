@@ -17,7 +17,6 @@
 -- PLAY: the server builds the world in code as before (so every prompt, pad and sign is wired up), then swaps
 -- in your saved map: your scenery replaces the generated one and each working piece is moved to where you put
 -- it. With no Maps folder the game builds everything from code, like before.
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -40,6 +39,15 @@ local function lobbyRegion(offset: Vector3): Region3
 	local a = Vector3.new(-LOBBY_HALF, TERRAIN_LOW, -LOBBY_HALF) + offset
 	local b = Vector3.new(LOBBY_HALF, TERRAIN_HIGH, LOBBY_HALF) + offset
 	return Region3.new(a, b):ExpandToGrid(4)
+end
+
+-- The same box in Terrain cells (4 studs), for CopyRegion; and its low corner, for PasteRegion.
+local function lobbyCells(offset: Vector3): (Region3int16, Vector3int16)
+	local a = Vector3.new(-LOBBY_HALF, TERRAIN_LOW, -LOBBY_HALF) + offset
+	local b = Vector3.new(LOBBY_HALF, TERRAIN_HIGH, LOBBY_HALF) + offset
+	local lo = Vector3int16.new(a.X // 4, a.Y // 4, a.Z // 4)
+	local hi = Vector3int16.new(b.X // 4 - 1, b.Y // 4 - 1, b.Z // 4 - 1)
+	return Region3int16.new(lo, hi), lo
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -306,10 +314,10 @@ local function prepareTerrain(mode: string): boolean
 	end
 	-- lobby: lift its ground from beside the run map onto the middle
 	local ok, err = pcall(function()
-		local copy = terrain:CopyRegion(lobbyRegion(MapStore.LOBBY_OFFSET))
+		local copy = terrain:CopyRegion((lobbyCells(MapStore.LOBBY_OFFSET)))
 		terrain:Clear()
-		local corner = lobbyRegion(Vector3.zero).CFrame.Position - lobbyRegion(Vector3.zero).Size / 2
-		terrain:PasteRegion(copy, Vector3int16.new(corner.X // 4, corner.Y // 4, corner.Z // 4), true)
+		local _, corner = lobbyCells(Vector3.zero)
+		terrain:PasteRegion(copy, corner, true)
 	end)
 	terrainState = "lobby"
 	if not ok then
@@ -367,7 +375,6 @@ end
 
 function MapStore.bake(force: boolean?)
 	assert(RunService:IsStudio() and not RunService:IsRunning(), "Bake in Studio with the game stopped (edit mode)")
-	assert(#Players:GetPlayers() == 0, "Bake in edit mode")
 	local old = workspace:FindFirstChild("Maps")
 	if old then
 		if not force then
@@ -388,7 +395,7 @@ function MapStore.bake(force: boolean?)
 	-- the lobby first (each build clears the terrain), then moved aside with its ground
 	local lobbyInfo = require(script.Parent.LobbyBuilder).build()
 	stamp(lobbyInfo.world, lobbyInfo)
-	local lobbyGround = workspace.Terrain:CopyRegion(lobbyRegion(Vector3.zero))
+	local lobbyGround = workspace.Terrain:CopyRegion((lobbyCells(Vector3.zero)))
 	local lobby = asModel(lobbyInfo.world, "Lobby")
 	lobby:PivotTo(CFrame.new(MapStore.LOBBY_OFFSET))
 	lobby.Parent = maps
@@ -399,8 +406,8 @@ function MapStore.bake(force: boolean?)
 	local run = asModel(runInfo.world, "Run")
 	run.Parent = maps
 
-	local corner = lobbyRegion(MapStore.LOBBY_OFFSET).CFrame.Position - lobbyRegion(MapStore.LOBBY_OFFSET).Size / 2
-	workspace.Terrain:PasteRegion(lobbyGround, Vector3int16.new(corner.X // 4, corner.Y // 4, corner.Z // 4), true)
+	local _, corner = lobbyCells(MapStore.LOBBY_OFFSET)
+	workspace.Terrain:PasteRegion(lobbyGround, corner, true)
 	maps:SetAttribute("Terrain", true)
 	maps:SetAttribute("BakedAt", os.date("%Y-%m-%d %H:%M"))
 	print(("[MapStore] Baked: Workspace.Maps.Run (the run map) and Workspace.Maps.Lobby (%d studs to the side). Edit away, then save the place."):format(MapStore.LOBBY_OFFSET.X))

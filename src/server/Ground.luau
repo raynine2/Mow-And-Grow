@@ -3,6 +3,10 @@
 -- filled so the ground's top is at y = 0 (the world builders place things on y = 0).
 local Ground = {}
 
+-- True while a world is built on top of a map saved in the place (server/MapStore): the saved Terrain is the
+-- ground then, so the builders' fills, hills and paths are skipped.
+Ground.locked = false
+
 local terrain = workspace.Terrain
 
 -- Smooth terrain draws its surface 2 studs ABOVE the top of a fill (measured: a block filled up to y = 0 shows its
@@ -28,7 +32,9 @@ local COLORS = {
 
 -- Clear the old ground and set the look: grass blades, colours, water.
 function Ground.reset()
-	terrain:Clear()
+	if not Ground.locked then
+		terrain:Clear()
+	end
 	-- some Roblox versions don't let scripts set some of these (Decoration, GrassLength): skip those instead of
 	-- stopping the whole world build
 	local look = {
@@ -52,11 +58,17 @@ end
 
 -- A flat slab of `material`, `w` x `d` studs centred on (cx, cz), top at y = 0, 8 studs deep.
 function Ground.fill(cx: number, cz: number, w: number, d: number, material: Enum.Material)
+	if Ground.locked then
+		return
+	end
 	terrain:FillBlock(CFrame.new(cx, -4 - SINK, cz), Vector3.new(w, 8, d), material)
 end
 
 -- A flat disc of `material` (radius `r`) centred on (cx, cz), top at y = 0.
 function Ground.disc(cx: number, cz: number, r: number, material: Enum.Material)
+	if Ground.locked then
+		return
+	end
 	terrain:FillCylinder(CFrame.new(cx, -4 - SINK, cz), 8, r, material)
 end
 
@@ -70,6 +82,9 @@ end
 -- A patch of `material` with a ragged, natural edge: a block in the middle and overlapping discs of random size
 -- all along its border (the ground stays flat; only the material changes).
 function Ground.patch(cx: number, cz: number, w: number, d: number, material: Enum.Material, seed: number?)
+	if Ground.locked then
+		return
+	end
 	local rng = Random.new(seed or 1)
 	terrain:FillBlock(CFrame.new(cx, -4 - SINK, cz), Vector3.new(math.max(4, w - 10), 8, math.max(4, d - 10)), material)
 	local function disc(x: number, z: number, r: number)
@@ -88,6 +103,9 @@ end
 
 -- A worn path of `material` from a to b (flat on y = 0), `width` studs wide, with rounded, slightly wobbly edges.
 function Ground.path(a: Vector3, b: Vector3, width: number, material: Enum.Material, seed: number?)
+	if Ground.locked then
+		return
+	end
 	local rng = Random.new(seed or 2)
 	local dir = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
 	local len = dir.Magnitude
@@ -103,6 +121,9 @@ end
 
 -- Water `w` x `d` with its surface at y = 0 and a muddy bed under it.
 function Ground.water(cx: number, cz: number, w: number, d: number, depth: number?)
+	if Ground.locked then
+		return
+	end
 	local dp = depth or 4
 	terrain:FillBlock(CFrame.new(cx, -dp - 4 - SINK, cz), Vector3.new(w + 8, 8, d + 8), Enum.Material.Mud)
 	terrain:FillBlock(CFrame.new(cx, -dp / 2 - SINK, cz), Vector3.new(w, dp, d), Enum.Material.Water)
@@ -110,6 +131,9 @@ end
 
 -- A rolling hill: the top of a big ball poking out of the ground, `height` studs high and `radius` across.
 function Ground.hill(x: number, z: number, radius: number, height: number, material: Enum.Material?)
+	if Ground.locked then
+		return
+	end
 	-- a ball of radius R centred at y = height - R meets the ground in a circle of `radius`: R = (r^2 + h^2) / 2h
 	local r = (radius * radius + height * height) / (2 * height)
 	terrain:FillBall(Vector3.new(x, height - r - SINK, z), r, material or Enum.Material.Grass)
@@ -120,6 +144,9 @@ end
 -- puts the surface right at y = 0. Hills (ground above y = 0) and water are left alone. Run it once the ground
 -- is all painted.
 function Ground.flatten(cx: number, cz: number, half: number)
+	if Ground.locked then
+		return
+	end
 	local tile = 256
 	for x0 = cx - half, cx + half - 1, tile do
 		for z0 = cz - half, cz + half - 1, tile do

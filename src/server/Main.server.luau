@@ -17,6 +17,9 @@ local Loot = require(script.Parent.Loot)
 -- Nobody spawns until the world is built (loading the models takes a few seconds).
 Players.CharacterAutoLoads = false
 
+-- The maps saved in the place (Workspace.Maps, see server/MapStore) leave Workspace before anyone joins.
+require(script.Parent.MapStore).init()
+
 -- Blender models first (uploaded ones only), so the world builders can use them
 require(script.Parent.Models).loadAll()
 

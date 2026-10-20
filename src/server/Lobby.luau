@@ -460,7 +460,7 @@ end
 
 -------------------------------------------------------------------------------------------------------------
 function Lobby.start()
-	built = LobbyBuilder.build()
+	built = require(script.Parent.MapStore).load("Lobby", LobbyBuilder.build) -- the saved map, if the place has one
 	for i, def in built.pads do
 		table.insert(pads, {
 			index = i,

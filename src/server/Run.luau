@@ -603,7 +603,7 @@ local function waitForHost(): number
 end
 
 function Run.start()
-	info = RunBuilder.build()
+	info = require(script.Parent.MapStore).load("Run", RunBuilder.build) -- the saved map, if the place has one
 	Loot.start(info.world)
 	Mowers.setup(info.world, info.garageSpawn)
 	Boss.setup(info.world)

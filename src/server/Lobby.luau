@@ -159,6 +159,7 @@ type Pad = {
 	radius: number,
 	label: TextLabel,
 	title: string,
+	show: ((state: string, count: number, left: number?) -> ())?, -- the pad's glow, sign tag and status line
 	host: Player?,
 	members: { Player },
 	startAt: number?,
@@ -195,7 +196,11 @@ local function teleport(pad: Pad)
 	pad.teleporting = true
 	local party = table.clone(pad.members)
 	local host = pad.host
-	pad.label.Text = "TELEPORTING..."
+	if pad.show then
+		pad.show("teleporting", #party, 0)
+	else
+		pad.label.Text = "TELEPORTING..."
+	end
 	if RunService:IsStudio() then
 		-- Teleports don't work in Studio: turn this server into the run instead.
 		if Lobby.onStudioStart then
@@ -282,11 +287,17 @@ local function updatePad(pad: Pad)
 	end
 	-- label + countdown
 	if #pad.members == 0 then
-		pad.label.Text = pad.title
+		if pad.show then
+			pad.show("open", 0, nil)
+		else
+			pad.label.Text = pad.title
+		end
 		return
 	end
 	local left = math.max(0, math.ceil((pad.startAt or os.clock()) - os.clock()))
-	if pad.kind == "solo" then
+	if pad.show then
+		pad.show("starting", #pad.members, left)
+	elseif pad.kind == "solo" then
 		pad.label.Text = "SOLO\nStarting in " .. left
 	else
 		pad.label.Text = ("PARTY %d/%d\nHost: %s\nStarting in %d"):format(#pad.members, Config.PARTY_MAX, pad.host and pad.host.DisplayName or "?", left)
@@ -306,6 +317,7 @@ function Lobby.start()
 			radius = def.radius,
 			label = def.label,
 			title = def.title,
+			show = def.show,
 			host = nil,
 			members = {},
 			startAt = nil,

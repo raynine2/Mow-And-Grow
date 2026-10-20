@@ -9,6 +9,7 @@ local Models = require(script.Parent.Models)
 local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
 local GroundMesh = require(script.Parent.GroundMesh)
+local LobbyPads = require(script.Parent.LobbyPads)
 
 local LobbyBuilder = {}
 
@@ -51,25 +52,10 @@ local function ground(world: Instance)
 	end
 end
 
--- A glowing outline on the ground (a rectangle w x d around `centre`, in the model's own studs).
+-- A glowing frame on the ground (a rectangle w x d around `centre`, in the model's own studs), like the neon
+-- pads in front of Chop A Forest's stalls: bright strips, a tinted fill and rising wisps (server/LobbyPads).
 local function outline(parent: Instance, at: CFrame, centre: Vector3, w: number, d: number, color: Color3)
-	-- the Blender outline of this size (glow_<w>x<d>), recoloured
-	local glow = Models.place(("glow_%dx%d"):format(w, d), parent, at * CFrame.new(centre), 1, true)
-	if glow then
-		for _, p in glow:GetDescendants() do
-			if p:IsA("BasePart") then
-				p.Color = color
-				p.CanQuery = false
-			end
-		end
-		return
-	end
-	for _, e in { { 0, d / 2, w, 0.4 }, { 0, -d / 2, w, 0.4 }, { w / 2, 0, 0.4, d }, { -w / 2, 0, 0.4, d } } do
-		local p = PropKit.brick(parent, Vector3.new(e[3], 0.12, e[4]), at * CFrame.new(centre + Vector3.new(e[1], 0.06, e[2])), color, "Outline", Enum.Material.Neon)
-		p.CanCollide = false
-		p.CanQuery = false
-		p.CastShadow = false
-	end
+	LobbyPads.glow(parent, at * CFrame.new(centre), w, d, color)
 end
 
 -- An invisible part to hang a prompt on.
@@ -256,11 +242,12 @@ local function rewardsStall(world: Instance)
 	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -5), "RewardsPrompt"), "Open", "Free Rewards", "Rewards", 14)
 end
 
--- The leaderboard's text label (the Lobby system fills it with this server's top mowers).
+-- The leaderboard's text label (the Lobby system fills it with this server's top mowers). It stands to the right
+-- of the party pads, turned toward the plaza (Chop A Forest's CASH EARNED board).
 local function leaderboard(world: Instance): TextLabel
 	local m = PropKit.folder("Leaderboard", world)
-	local pos = Vector3.new(50, FLOOR_Y, 30)
-	local at = CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, -10))
+	local pos = Vector3.new(44, FLOOR_Y, 44)
+	local at = CFrame.lookAt(pos, Vector3.new(4, FLOOR_Y, 4))
 	local s = 1.25
 	local body: TextLabel
 	if Models.place("leaderboard", m, at, s, true) then
@@ -279,9 +266,9 @@ end
 -- The BEST TIMES board (trophy_board model): the Lobby system fills its face with the fastest runs.
 local function bestTimesBoard(world: Instance): TextLabel?
 	local m = PropKit.folder("BestTimes", world)
-	-- between where the rewards chest and the garage stand when their models aren't loaded (z -10..0, 15..35)
-	local pos = Vector3.new(56, FLOOR_Y, 8)
-	local at = CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, 8))
+	-- to the left of the party pads, turned toward the plaza (like Chop A Forest's BEST TIMES board)
+	local pos = Vector3.new(-44, FLOOR_Y, 44)
+	local at = CFrame.lookAt(pos, Vector3.new(-4, FLOOR_Y, 4))
 	local s = 1.3
 	if not Models.place("trophy_board", m, at, s, true) then
 		return nil
@@ -294,12 +281,10 @@ local function bestTimesBoard(world: Instance): TextLabel?
 	return body
 end
 
-local PAD_COLORS = { Color3.fromRGB(80, 200, 80), Color3.fromRGB(60, 165, 255), Color3.fromRGB(160, 95, 255), Color3.fromRGB(255, 110, 190) }
-
 local function startBoard(m: Instance)
 	-- the board stands high on two tall log legs so it shows over the booths' roofs
-	local lift = 9
-	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + lift, 58), Vector3.new(0, FLOOR_Y + lift, 0))
+	local lift = 11
+	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + lift, 60), Vector3.new(0, FLOOR_Y + lift, 0))
 	local s = 1.6
 	-- start_board is start_sign on tall legs: it stands on the ground, its board at the same height
 	local placedBoard = Models.place("start_board", m, at * CFrame.new(0, -lift, 0), s, true)
@@ -326,33 +311,11 @@ local function startBoard(m: Instance)
 	end
 end
 
+-- The START A RUN board over a deck of four glowing party bays (server/LobbyPads), facing the spawn.
 local function partyArea(world: Instance)
 	local m = PropKit.folder("PartyBooths", world)
 	startBoard(m)
-	local pads = {}
-	for i = 1, 4 do
-		local kind = if i == 1 then "solo" else "party"
-		local title = if i == 1 then "SOLO" else "PARTY"
-		local pos = Vector3.new(-27 + (i - 1) * 18, FLOOR_Y, 38)
-		local at = CFrame.lookAt(pos, pos - Vector3.zAxis)
-		local high = 6
-		if Models.place("party_booth", m, at, 1, true) then
-			PropKit.facePanel(m, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "THE LAWN\n" .. title, CREAM)
-			for _, x in { -7.2, 7.2 } do
-				PropKit.collider(m, at, Vector3.new(x, 5, 6.6), Vector3.new(1.4, 10, 1.4)) -- back posts
-				PropKit.collider(m, at, Vector3.new(x, 1.2, 0), Vector3.new(0.8, 2.4, 14)) -- side rails
-			end
-			PropKit.collider(m, at, Vector3.new(0, 1.2, 7), Vector3.new(14, 2.4, 0.8)) -- back rail
-			high = 14.5
-		else
-			PropKit.pad(m, pos, 7, PAD_COLORS[i])
-		end
-		local holder = PropKit.part({ size = Vector3.new(1, 1, 1), cf = CFrame.new(pos + Vector3.new(0, 1, 0)), color = PAD_COLORS[i], parent = m, transparency = 1, collide = false, name = "PadInfo" .. i })
-		holder.CanQuery = false
-		local label = PropKit.billboard(holder, title, Color3.new(1, 1, 1), Vector2.new(12, 3.5), Vector3.new(0, high, 0), 150)
-		table.insert(pads, { kind = kind, pos = pos, radius = 6, label = label, title = title })
-	end
-	return pads
+	return LobbyPads.build(m, Vector3.new(0, FLOOR_Y, 40), -Vector3.zAxis)
 end
 
 function LobbyBuilder.build()

@@ -1,6 +1,8 @@
--- First-person hands, like Chop A Forest's: big blocky fists and forearms in the player's own skin colours
--- (their avatar's hand and arm colours), holding the current tool. Idle sway, walk bob, a swing on every hit, a
--- buzz for auto tools. Drawn only on this client.
+-- First-person hands, like Chop A Forest's: your avatar's ACTUAL arms (its own parts, skin and shirt sleeves),
+-- swung up in front of the camera and holding the current tool. Each frame the shoulder joints are aimed at where
+-- the hands should be (idle sway, walk bob, a swing on every hit, jabs with bare hands, a buzz for auto tools).
+-- Only this client sees it: joint changes made here don't replicate, and they're put back in third person.
+-- Brick fists in the avatar's colours are the fallback for a rig without arms.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -199,11 +201,110 @@ local handR: Model? = nil
 local handL: Model? = nil
 local _ = handModel
 
+-------------------------------------------------------------------------------------------------------------
+-- the real arms
+-------------------------------------------------------------------------------------------------------------
+type ArmRig = { parts: { BasePart }, shoulder: Motor6D?, bend: { Motor6D }, hand: BasePart?, length: number, r6: boolean }
+
+-- The arm of `char` on `side` ("Right"/"Left"): R15 (UpperArm, LowerArm, Hand) or R6 ("Right Arm").
+local function armRig(char: Model, side: string): ArmRig?
+	local upper = char:FindFirstChild(side .. "UpperArm")
+	if upper and upper:IsA("BasePart") then
+		local lower = char:FindFirstChild(side .. "LowerArm") :: BasePart?
+		local hand = char:FindFirstChild(side .. "Hand") :: BasePart?
+		local shoulder = upper:FindFirstChild(side .. "Shoulder")
+		local bend = {}
+		for _, j in { lower and lower:FindFirstChild(side .. "Elbow"), hand and hand:FindFirstChild(side .. "Wrist") } do
+			if j and j:IsA("Motor6D") then
+				table.insert(bend, j)
+			end
+		end
+		local parts = { upper }
+		local length = upper.Size.Y
+		for _, p in { lower, hand } do
+			if p then
+				table.insert(parts, p)
+				length += p.Size.Y
+			end
+		end
+		return { parts = parts, shoulder = if shoulder and shoulder:IsA("Motor6D") then shoulder else nil, bend = bend, hand = hand or upper, length = length, r6 = false }
+	end
+	local arm = char:FindFirstChild(side .. " Arm")
+	local torso = char:FindFirstChild("Torso")
+	local shoulder = torso and torso:FindFirstChild(side .. " Shoulder")
+	if arm and arm:IsA("BasePart") and shoulder and shoulder:IsA("Motor6D") then
+		return { parts = { arm }, shoulder = shoulder, bend = {}, hand = arm, length = arm.Size.Y, r6 = true }
+	end
+	return nil
+end
+
+local savedC0: { [Motor6D]: CFrame } = {}
+
+-- Put every arm joint we moved back the way it was (third person, death, a new character).
+local function restoreArms()
+	for motor, c0 in savedC0 do
+		if motor.Parent then
+			motor.C0 = c0
+		end
+	end
+	table.clear(savedC0)
+end
+
+-- Aim the arm from its shoulder at `target` (a world point where the fist should be), straight at the elbow and
+-- wrist, palm down. If the target is further than the arm reaches, the whole arm slides toward it a little (that's
+-- the punch reaching out); the shoulder itself is off-screen, so nobody sees it move.
+local function poseArm(rig: ArmRig, target: Vector3, cam: Camera)
+	local motor = rig.shoulder
+	if not motor or not motor.Part0 then
+		return
+	end
+	if savedC0[motor] == nil then
+		savedC0[motor] = motor.C0
+	end
+	local shoulderAt = (motor.Part0.CFrame * savedC0[motor]).Position
+	local toward = target - shoulderAt
+	local dist = toward.Magnitude
+	if dist < 0.1 then
+		return
+	end
+	local d = toward / dist
+	local slide = math.clamp(dist - rig.length, 0, 1.8)
+	local right = cam.CFrame.RightVector
+	right -= d * right:Dot(d)
+	if right.Magnitude < 0.01 then
+		right = cam.CFrame.UpVector:Cross(d)
+	end
+	local joint = CFrame.fromMatrix(shoulderAt + d * slide, right.Unit, -d)
+	motor.Transform = CFrame.identity
+	motor.C0 = motor.Part0.CFrame:Inverse() * joint
+	for _, j in rig.bend do
+		j.Transform = CFrame.identity
+	end
+	for _, p in rig.parts do
+		p.LocalTransparencyModifier = 0
+	end
+end
+
+-- Where a tool sits in the real fist: forward along the arm, its "up" the back of the hand.
+local function gripOf(rig: ArmRig): CFrame?
+	local hand = rig.hand
+	if not hand then
+		return nil
+	end
+	local tip = if rig.r6 then hand.Size.Y / 2 - 0.3 else hand.Size.Y * 0.2
+	return hand.CFrame * CFrame.new(0, -tip, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+end
+
+player.CharacterAdded:Connect(function()
+	table.clear(savedC0)
+end)
+
 -- where the hands rest, relative to the camera
 -- fists a little further off and tipped up, so you see the knuckles and the forearms run down to the screen's
 -- bottom corners (like Chop A Forest), not the flat tops of the forearms
-local REST_R = CFrame.new(1.8, -1.55, -3.35) * CFrame.Angles(math.rad(30), math.rad(12), 0)
-local REST_L = CFrame.new(-1.85, -1.65, -3.5) * CFrame.Angles(math.rad(26), math.rad(-12), 0)
+-- (with the real arms only the position matters: the arm points from the shoulder at it)
+local REST_R = CFrame.new(1.25, -1.35, -3.6) * CFrame.Angles(math.rad(30), math.rad(12), 0)
+local REST_L = CFrame.new(-1.3, -1.45, -3.7) * CFrame.Angles(math.rad(26), math.rad(-12), 0)
 local PUSH_R = CFrame.new(1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local PUSH_L = CFrame.new(-1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local TWO_HANDED = { PushMower = true, LaserMower = true, WeedWhacker = true, MegaScythe = true }
@@ -313,6 +414,7 @@ RunService.RenderStepped:Connect(function()
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not cam or not hum or hum.Health <= 0 or hum.SeatPart or not inFirstPerson() then
 		hideAll()
+		restoreArms()
 		-- third person: show the real tool in the character's hand again
 		if char then
 			for _, d in char:GetDescendants() do
@@ -379,8 +481,25 @@ RunService.RenderStepped:Connect(function()
 		rightCf = base * REST_R * swing
 		leftCf = base * REST_L
 	end
-	placeHand(handR, rightArm, rightCf)
-	placeHand(handL, leftArm, leftCf)
+	local rigR = armRig(char, "Right")
+	local rigL = armRig(char, "Left")
+	if rigR and rigL then
+		-- the real arms: hide the brick fists, aim the avatar's own arms at the fist spots
+		for _, pieces in { rightArm, leftArm } do
+			for _, pc in pieces do
+				pc.part.Transparency = 1
+			end
+		end
+		poseArm(rigR, rightCf.Position, cam)
+		poseArm(rigL, leftCf.Position, cam)
+		local grip = gripOf(rigR)
+		if grip then
+			rightCf = grip
+		end
+	else
+		placeHand(handR, rightArm, rightCf)
+		placeHand(handL, leftArm, leftCf)
+	end
 
 	local held = modelFor(id)
 	if held then
@@ -393,7 +512,7 @@ RunService.RenderStepped:Connect(function()
 	end
 	for toolId, pieces in tools do
 		if toolId == id and not held then
-			local grip = if id == "PushMower" or id == "LaserMower" then rightCf * CFrame.new(0, 0, -0.1) else rightCf * CFrame.new(0, 0, -0.5)
+			local grip = if id == "PushMower" or id == "LaserMower" then rightCf * CFrame.new(0, 0, -0.1) else rightCf * CFrame.new(0, 0, -0.3)
 			for _, pc in pieces do
 				local cf = grip * pc.offset
 				if pc.part:GetAttribute("Spin") then

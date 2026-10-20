@@ -10,6 +10,7 @@ local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
+local LobbyBuilder = require(script.Parent.LobbyBuilder)
 
 local RunBuilder = {}
 
@@ -500,6 +501,8 @@ function RunBuilder.build()
 	Ground.path(C + Vector3.new(0, 0, 20), C + Vector3.new(0, 0, R.edge + 6), R.road * 2, Enum.Material.Ground, 4)
 
 	hub(world, info)
+	-- the old lobby's buildings (party pads, classes, rewards, garage, boards) round the hub: one map
+	info.lobby = LobbyBuilder.hub(world)
 	for z = 1, #Config.ZONES do
 		zone(world, z, info)
 	end

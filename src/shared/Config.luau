@@ -9,7 +9,7 @@ Config.ADMINS = { 1994267229 }
 
 -- Studio only: which mode a test server starts in ("Lobby" or "Run").
 -- The Workspace attribute ForceMode overrides this.
-Config.STUDIO_MODE = "Lobby"
+Config.STUDIO_MODE = "Run"
 
 -- The ground: "Blender" = the ground_* models (server/GroundMesh), "Terrain" = Roblox Terrain (server/Ground).
 -- Terrain for now: the ground models need a mesh upload, and as native parts they'd be thousands of wedges.
@@ -151,16 +151,16 @@ end
 -- and a ring of mountains close the world off. All radii are measured from RING.centre (the middle of the hub).
 Config.RING = {
 	centre = Vector3.new(0, 0, -32),
-	hub = 76, -- the hub's fence (zone 1's gate is in it)
+	hub = 130, -- the hub's fence (zone 1's gate is in it); the hub holds the run shops AND the old lobby's buildings
 	-- per zone: the field's inner and outer edge, how far apart the grass clumps stand, and how big they are
 	zones = {
-		{ inner = 84, outer = 132, spacing = 14, scale = 1.3 },
-		{ inner = 140, outer = 196, spacing = 17, scale = 1.4 },
-		{ inner = 204, outer = 266, spacing = 20, scale = 1.5 },
-		{ inner = 274, outer = 342, spacing = 23, scale = 1.6 },
-		{ inner = 350, outer = 426, spacing = 26, scale = 1.7 },
+		{ inner = 138, outer = 186, spacing = 14, scale = 1.3 },
+		{ inner = 194, outer = 250, spacing = 17, scale = 1.4 },
+		{ inner = 258, outer = 320, spacing = 20, scale = 1.5 },
+		{ inner = 328, outer = 396, spacing = 23, scale = 1.6 },
+		{ inner = 404, outer = 480, spacing = 26, scale = 1.7 },
 	},
-	edge = 432, -- the outer fence; forest beyond it
+	edge = 486, -- the outer fence; forest beyond it
 	road = 9, -- half the road's width
 	bossAngle = 40, -- the boss arena: mid-ring, this many degrees round from the road
 }

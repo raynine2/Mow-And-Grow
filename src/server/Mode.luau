@@ -1,4 +1,6 @@
--- One place, two modes. A reserved server (made by a party pad) is a RUN; every other server is the LOBBY.
+-- The game is ONE map now: every server is the ring world (a "Run"), its hub holding what the lobby used to
+-- (party pads, classes, rewards, garage, boards). A party pad still takes a party to a private copy (a reserved
+-- server). The old separate lobby only comes up in Studio with Workspace attribute ForceMode = "Lobby".
 -- In Studio: Workspace attribute ForceMode ("Lobby" / "Run") or Config.STUDIO_MODE decides.
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,10 +16,7 @@ local function detect(): string
 		end
 		return if Config.STUDIO_MODE == "Run" then "Run" else "Lobby"
 	end
-	if game.PrivateServerId ~= "" and game.PrivateServerOwnerId == 0 then
-		return "Run"
-	end
-	return "Lobby"
+	return "Run"
 end
 
 Mode.current = detect()

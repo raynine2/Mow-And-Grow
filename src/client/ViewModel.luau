@@ -211,8 +211,8 @@ type ArmSet = { model: Model, right: { BasePart }, left: { BasePart }, char: Mod
 local arms: ArmSet? = nil
 local nextArmBuild = 0
 -- where the shoulders sit relative to the camera: low and a little behind, so the arms come up from the corners
-local SHOULDER_R = Vector3.new(1.6, -2.1, 0.6)
-local SHOULDER_L = Vector3.new(-1.6, -2.1, 0.6)
+local SHOULDER_R = Vector3.new(2, -2.5, 0.4)
+local SHOULDER_L = Vector3.new(-2, -2.5, 0.4)
 local KEEP = { SpecialMesh = true, SurfaceAppearance = true, Decal = true, Texture = true }
 
 local function copyPart(src: Instance): BasePart?
@@ -335,8 +335,8 @@ end
 -- fists a little further off and tipped up, so you see the knuckles and the forearms run down to the screen's
 -- bottom corners (like Chop A Forest), not the flat tops of the forearms
 -- (with the real arms only the position matters: the arm points from the shoulder at it)
-local REST_R = CFrame.new(1.25, -1.35, -3.6) * CFrame.Angles(math.rad(30), math.rad(12), 0)
-local REST_L = CFrame.new(-1.3, -1.45, -3.7) * CFrame.Angles(math.rad(26), math.rad(-12), 0)
+local REST_R = CFrame.new(1.45, -1.5, -4.1) * CFrame.Angles(math.rad(30), math.rad(12), 0)
+local REST_L = CFrame.new(-1.5, -1.6, -4.2) * CFrame.Angles(math.rad(26), math.rad(-12), 0)
 local PUSH_R = CFrame.new(1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local PUSH_L = CFrame.new(-1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local TWO_HANDED = { PushMower = true, LaserMower = true, WeedWhacker = true, MegaScythe = true }

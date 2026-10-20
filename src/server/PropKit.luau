@@ -460,4 +460,102 @@ function PropKit.fenceRow(parent: Instance, a: Vector3, b: Vector3, facing: Vect
 	end
 end
 
+
+-------------------------------------------------------------------------------------------------------------
+-- forest edge and small props (the run map)
+-------------------------------------------------------------------------------------------------------------
+local PINE = Color3.fromRGB(38, 102, 58)
+
+local function noTouch(p: BasePart, shadow: boolean?)
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	if shadow == false then
+		p.CastShadow = false
+	end
+end
+
+-- A blocky pine like the dark wall of pines round Chop A Forest's map: a trunk and stacked, turned leaf blocks
+-- that get smaller toward the tip. `height` studs tall; `far` = no shadows (cheap, for the back rows).
+function PropKit.pine(parent: Instance, pos: Vector3, height: number, far: boolean?): Model
+	local m = Instance.new("Model")
+	m.Name = "Pine"
+	local rng = Random.new(math.floor(pos.X * 3.7 + pos.Z * 11.3))
+	local trunkH = height * 0.22
+	local trunk = PropKit.brick(m, Vector3.new(height * 0.07, trunkH, height * 0.07), CFrame.new(pos + Vector3.new(0, trunkH / 2, 0)), Color3.fromRGB(96, 62, 38), "Trunk", Enum.Material.Wood)
+	noTouch(trunk, not far)
+	local layers = 4
+	local y = trunkH * 0.75
+	local leaf = PropKit.shade(PINE, rng:NextNumber(0.85, 1.12))
+	for i = 0, layers - 1 do
+		local k = 1 - i / layers
+		local w = height * (0.42 * k + 0.08)
+		local h = (height - trunkH * 0.75) / layers * 1.15
+		local layer = PropKit.brick(m, Vector3.new(w, h, w), CFrame.new(pos + Vector3.new(0, y + h / 2, 0)) * CFrame.Angles(0, math.rad(i * 37 + rng:NextNumber(0, 20)), 0), PropKit.shade(leaf, 0.92 + i * 0.05), "Leaves", Enum.Material.Grass)
+		noTouch(layer, not far)
+		y += h * 0.82
+	end
+	local tip = PropKit.brick(m, Vector3.new(height * 0.06, height * 0.1, height * 0.06), CFrame.new(pos + Vector3.new(0, y + height * 0.04, 0)), PropKit.shade(leaf, 1.15), "Tip", Enum.Material.Grass)
+	noTouch(tip, not far)
+	m.Parent = parent
+	return m
+end
+
+-- A palm: a leaning, segmented trunk and a crown of drooping fronds.
+function PropKit.palm(parent: Instance, pos: Vector3, height: number): Model
+	local m = Instance.new("Model")
+	m.Name = "Palm"
+	local rng = Random.new(math.floor(pos.X * 5.1 + pos.Z * 2.3))
+	local lean = CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	local cf = CFrame.new(pos) * lean
+	local seg = 5
+	local top = cf
+	for i = 0, seg - 1 do
+		local h = height / seg
+		top = cf * CFrame.Angles(math.rad(i * 3.5), 0, 0) * CFrame.new(0, h * (i + 0.5), 0)
+		local piece = PropKit.brick(m, Vector3.new(1.4 - i * 0.12, h * 1.05, 1.4 - i * 0.12), top, PropKit.shade(Color3.fromRGB(150, 108, 66), 0.9 + (i % 2) * 0.12), "Trunk", Enum.Material.Wood)
+		noTouch(piece)
+	end
+	local crown = top * CFrame.new(0, height / seg / 2, 0)
+	for i = 0, 6 do
+		local f = PropKit.brick(m, Vector3.new(1.6, 0.3, height * 0.42), crown * CFrame.Angles(0, i * math.pi * 2 / 7, 0) * CFrame.Angles(math.rad(-22), 0, 0) * CFrame.new(0, 0, -height * 0.18), PropKit.shade(Color3.fromRGB(56, 150, 52), 0.9 + (i % 3) * 0.06), "Frond", Enum.Material.Grass)
+		noTouch(f)
+	end
+	m.Parent = parent
+	return m
+end
+
+-- A little bunch of flowers (stems and coloured heads).
+function PropKit.flowers(parent: Instance, pos: Vector3, color: Color3?)
+	local rng = Random.new(math.floor(pos.X * 7 + pos.Z * 13))
+	local colors = { Color3.fromRGB(255, 90, 120), Color3.fromRGB(255, 220, 60), Color3.fromRGB(170, 120, 255), Color3.fromRGB(255, 255, 255) }
+	for _ = 1, rng:NextInteger(4, 7) do
+		local p = pos + Vector3.new(rng:NextNumber(-1.4, 1.4), 0, rng:NextNumber(-1.4, 1.4))
+		local h = rng:NextNumber(0.8, 1.5)
+		noTouch(PropKit.brick(parent, Vector3.new(0.15, h, 0.15), CFrame.new(p + Vector3.new(0, h / 2, 0)), Color3.fromRGB(70, 150, 50), "Stem", Enum.Material.Grass), false)
+		noTouch(PropKit.brick(parent, Vector3.new(0.5, 0.3, 0.5), CFrame.new(p + Vector3.new(0, h, 0)) * CFrame.Angles(0, rng:NextNumber(0, 1.5), 0), color or colors[rng:NextInteger(1, #colors)], "Petals", Enum.Material.SmoothPlastic), false)
+	end
+end
+
+-- A red mushroom with white spots.
+function PropKit.mushroom(parent: Instance, pos: Vector3, scale: number)
+	local s = scale
+	noTouch(PropKit.brick(parent, Vector3.new(0.6, 1.2, 0.6) * s, CFrame.new(pos + Vector3.new(0, 0.6 * s, 0)), Color3.fromRGB(240, 230, 210), "Stalk", Enum.Material.SmoothPlastic), false)
+	noTouch(PropKit.brick(parent, Vector3.new(1.6, 0.6, 1.6) * s, CFrame.new(pos + Vector3.new(0, 1.4 * s, 0)), Color3.fromRGB(220, 50, 45), "Cap", Enum.Material.SmoothPlastic), false)
+	for i = 0, 2 do
+		local a = i * 2.1
+		noTouch(PropKit.brick(parent, Vector3.new(0.3, 0.1, 0.3) * s, CFrame.new(pos + Vector3.new(math.cos(a) * 0.45 * s, 1.72 * s, math.sin(a) * 0.45 * s)), Color3.new(1, 1, 1), "Spot", Enum.Material.SmoothPlastic), false)
+	end
+end
+
+-- A fallen, mossy trunk lying on the ground.
+function PropKit.fallenLog(parent: Instance, pos: Vector3, length: number, yaw: number)
+	local cf = CFrame.new(pos + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, yaw, 0) * CFrame.Angles(0, math.rad(90), 0)
+	local log = PropKit.cylinder(parent, 0.95, length, cf * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(118, 78, 48))
+	log.Material = Enum.Material.Wood
+	log.Name = "FallenLog"
+	local moss = PropKit.brick(parent, Vector3.new(length * 0.6, 0.3, 1.2), cf * CFrame.new(0, 0.85, 0), Color3.fromRGB(80, 140, 60), "Moss", Enum.Material.Grass)
+	noTouch(moss)
+end
+
 return PropKit

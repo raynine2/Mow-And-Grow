@@ -189,7 +189,7 @@ Config.MAP = {
 	hubCentre = Vector3.new(0, 0, -48), -- the middle of the hub plot (the hub buildings are built around it)
 	cells = { { 2, 2 }, { 3, 1 }, { 1, 1 }, { 3, 2 }, { 1, 2 }, { 2, 3 }, { 3, 3 }, { 1, 3 } }, -- area z's plot
 	gateWidth = 20, -- the opening in a shared fence
-	margin = 7, -- no grass this close to a fence
+	margin = 13, -- no grass this close to a fence (each area's signature trees line the inside of its fences)
 	dropOff = 1, -- the second shredder stands in the middle of this area (Chop A Forest's far-off shredder)
 }
 
@@ -297,7 +297,7 @@ Config.LOOK = {
 	bloomSize = 26,
 	bloomThreshold = 1.4, -- only HDR-bright things bloom (sun, neon, glare)
 	dof = { focus = 60, radius = 70, far = 0.1 }, -- very soft blur far away only
-	clouds = { cover = 0.55, density = 0.6, color = Color3.fromRGB(255, 255, 255) },
+	clouds = { cover = 0.42, density = 0.32, color = Color3.fromRGB(255, 255, 255) }, -- soft high streaks
 	wind = Vector3.new(4, 0, 3), -- workspace.GlobalWind: drifts the clouds and the floating pollen
 	base = {
 		brightness = 2.7,
@@ -309,16 +309,40 @@ Config.LOOK = {
 		contrast = 0.1,
 		ccBrightness = 0.015,
 		tint = Color3.fromRGB(255, 251, 242),
-		atmoDensity = 0.27,
-		atmoOffset = 0.2,
-		atmoColor = Color3.fromRGB(205, 225, 245),
-		atmoDecay = Color3.fromRGB(130, 170, 215),
-		atmoGlare = 0.3,
-		atmoHaze = 1.1,
+		-- a saturated cartoon-blue sky with a pale, hazy band at the horizon (Chop A Forest's sky)
+		atmoDensity = 0.3,
+		atmoOffset = 0.25,
+		atmoColor = Color3.fromRGB(214, 232, 255),
+		atmoDecay = Color3.fromRGB(86, 136, 232),
+		atmoGlare = 0.15,
+		atmoHaze = 1.0,
 		bloomIntensity = 0.55,
 		raysIntensity = 0.05,
 		raysSpread = 0.55,
 	},
+	-- Night in a run (server/DayNight turns the clock; client/ZoneMood blends this in as the sun goes down):
+	-- deep blue light, stars and the moon in the sky.
+	night = {
+		brightness = 1.1,
+		exposure = -0.05,
+		ambient = Color3.fromRGB(58, 66, 110),
+		outdoorAmbient = Color3.fromRGB(74, 88, 150),
+		colorShiftTop = Color3.fromRGB(120, 140, 220),
+		saturation = 0.08,
+		contrast = 0.12,
+		ccBrightness = 0.02,
+		tint = Color3.fromRGB(196, 210, 255),
+		atmoDensity = 0.32,
+		atmoOffset = 0.2,
+		atmoColor = Color3.fromRGB(70, 92, 160),
+		atmoDecay = Color3.fromRGB(26, 36, 92),
+		atmoGlare = 0,
+		atmoHaze = 1.2,
+		bloomIntensity = 0.8,
+		raysIntensity = 0,
+		raysSpread = 0.55,
+	},
+	day = { length = 480, nightLength = 240, dawn = 6.5, dusk = 18 }, -- seconds of day and night, sun times
 	moods = {
 		-- fresh green-gold
 		lawn = {

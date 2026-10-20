@@ -53,6 +53,12 @@ local function lighting()
 	end
 	if sky and sky.Name == "MowALawnSky" then
 		sky.SunAngularSize = look.sunSize
+		-- the sun and moon on, and a sky full of stars for the nights in a run (server/DayNight)
+		pcall(function()
+			sky.CelestialBodiesShown = true
+			sky.StarCount = 3000
+			sky.MoonAngularSize = 14
+		end)
 	end
 	workspace.GlobalWind = look.wind
 	local terrain = workspace:FindFirstChildOfClass("Terrain")

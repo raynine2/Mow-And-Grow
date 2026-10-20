@@ -602,6 +602,7 @@ function Run.start()
 	Loot.start(info.world)
 	Mowers.setup(info.world, info.garageSpawn)
 	Boss.setup(info.world)
+	require(script.Parent.DayNight).start() -- 8-minute days, 4-minute nights (runs only)
 
 	Field.onCut = onCut
 	Field.onProgress = pushWorld

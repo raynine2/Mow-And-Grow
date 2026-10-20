@@ -2,6 +2,7 @@
 -- zone's mood (Config.LOOK.moods: fresh lawn, clean golf course, golden wheat farm, misty swamp, humid jungle).
 -- The lobby and the hub keep the base look the server set. Client-only, and it only writes while something
 -- is changing.
+local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -20,6 +21,27 @@ local EASE = 0.9 -- how fast the look follows (per second); slow enough to read 
 local moods: { [number]: Look.Values } = { [0] = Look.mood(nil) }
 for i, def in Config.ZONES do
 	moods[i] = Look.mood(def.style)
+end
+
+-- the night look (server/DayNight turns the clock; this eases the deep blue light in around sunset)
+local night: Look.Values = table.clone(Config.LOOK.base)
+for k, v in Config.LOOK.night do
+	night[k] = v
+end
+
+-- How much of the night look to use at the current time of day: 0 by day, 1 at night, eased across ~1.2 hours
+-- of game time around dusk and dawn.
+local function nightness(): number
+	local d = Config.LOOK.day
+	local c = Lighting.ClockTime
+	local function ramp(x: number): number
+		x = math.clamp(x, 0, 1)
+		return x * x * (3 - 2 * x)
+	end
+	if c >= 12 then
+		return ramp((c - (d.dusk - 0.6)) / 1.2)
+	end
+	return 1 - ramp((c - (d.dawn - 0.6)) / 1.2)
 end
 
 -- Which area a world position is in (0 = the hub or outside the map; see Config.MAP).
@@ -45,6 +67,7 @@ local function targetAt(pos: Vector3): Look.Values
 	return moods[ZoneMood.zoneAt(pos)] or moods[0]
 end
 
+local nightMix: Look.Values = {}
 local current: Look.Values = table.clone(moods[0])
 local written: Look.Values = table.clone(moods[0])
 local changed: Look.Values = {}
@@ -57,6 +80,11 @@ RunService.Heartbeat:Connect(function(dt)
 		if pos then
 			ZoneMood.zone = ZoneMood.zoneAt(pos)
 			target = targetAt(pos)
+		end
+		-- the time of day on top of the area's mood
+		local n = nightness()
+		if n > 0.001 then
+			target = Look.blend(target, night, n, nightMix)
 		end
 	end
 	Look.blend(current, target, 1 - math.exp(-dt * EASE), current)

@@ -26,7 +26,7 @@ function Ground.reset()
 	-- stopping the whole world build
 	local look = {
 		Decoration = true, -- animated grass blades
-		GrassLength = 0.7,
+		GrassLength = 0.25, -- short, like Chop A Forest's flat lawn, so the clumps you chop stand out
 		WaterColor = Color3.fromRGB(46, 120, 110),
 		WaterTransparency = 0.35,
 		WaterWaveSize = 0.12,

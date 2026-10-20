@@ -388,14 +388,15 @@ local function notch(p: Patch, from: Vector3, ratio: number)
 	local cut = 1 - ratio
 	if not p.notch then
 		local m = Config.mutation(p.mut or "None")
-		local fresh = if m.color then PropKit.shade(m.color, 1.35) else Color3.fromRGB(226, 245, 186)
-		p.notch = brick(p.holder, Vector3.one, CFrame.new(), fresh, "Notch", Enum.Material.SmoothPlastic)
+		local grass = Config.ZONES[p.z].tint or Config.ZONES[p.z].grass[1]
+		local fresh = PropKit.shade(m.color or grass, 1.3) -- the pale inside of the cut stems
+		p.notch = brick(p.holder, Vector3.one, CFrame.new(), fresh, "Notch", Enum.Material.Grass)
 	end
 	local notchPart = p.notch :: BasePart
-	local w = r * (0.55 + 0.7 * cut)
-	local h = math.max(0.4, hgt * 0.07) * (1 + 0.8 * cut)
-	local d = r * (0.2 + 0.6 * cut)
-	local at = p.spot.Position + Vector3.new(0, math.min(hgt * 0.18, 2.6), 0) + dir * (r * 0.85 - d / 2)
+	local w = r * (0.35 + 0.45 * cut)
+	local h = math.max(0.3, hgt * 0.045) * (1 + 0.6 * cut)
+	local d = r * (0.15 + 0.4 * cut)
+	local at = p.spot.Position + Vector3.new(0, math.min(hgt * 0.14, 1.8), 0) + dir * (r * 0.55 - d / 2)
 	notchPart.Size = Vector3.new(w, h, d)
 	notchPart.CFrame = CFrame.lookAt(at, at + dir)
 end

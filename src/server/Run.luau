@@ -769,6 +769,97 @@ function Run.worldState()
 	return if info and started then worldState() else { mode = "Run", loading = true }
 end
 
+-- Dev panel (client/DevPanel, checked by Main.server): cheats for testing a run.
+local infCash: { [Player]: boolean } = {}
+local INF_CASH = 1e12
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		for p in infCash do
+			local data = p.Parent and PlayerData.get(p)
+			if not data then
+				infCash[p] = nil
+			elseif data.run and data.run.coins < INF_CASH then
+				data.run.coins = INF_CASH
+				PlayerData.changed(p)
+			end
+		end
+	end
+end)
+
+local function devMaxAll(player: Player, data)
+	data.run.tool = #Config.TOOLS
+	data.run.bag = #Config.BAGS
+	for _, u in Config.UPGRADES do
+		data.run.upgrades[u.id] = u.max
+	end
+	if not data.run.vacuum then
+		data.run.vacuum = true
+		showVacuum(player)
+	end
+	for _, m in Config.MOWERS do
+		if m.currency == "coins" then
+			data.run.mowers[m.id] = true
+			data.run.fuel[m.id] = m.fuel
+		end
+	end
+	Tools.give(player)
+	Stats.applyCharacter(player, data)
+	Carry.refresh(player)
+end
+
+function Run.devAction(player: Player, data, action: string, _arg: any): string?
+	if not info or not started or not data.run then
+		return "Wait for the run to load"
+	end
+	if action == "infCash" then
+		infCash[player] = not infCash[player] or nil
+		if infCash[player] then
+			data.run.coins = INF_CASH
+		end
+		return if infCash[player] then "Infinite cash ON" else "Infinite cash OFF"
+	elseif action == "coins" then
+		data.run.coins += 1000000
+		return "+1M coins"
+	elseif action == "tools" then
+		data.run.tool = #Config.TOOLS
+		Tools.give(player)
+		return "All tools"
+	elseif action == "maxAll" then
+		devMaxAll(player, data)
+		return "Everything maxed"
+	elseif action == "boss" then
+		if Boss.alive() then
+			return "A boss is already out"
+		end
+		Boss.spawn(zone)
+		return Config.ZONES[zone].boss.name .. " spawned"
+	elseif action == "killBoss" then
+		Boss.damage(player, math.huge)
+		return "Boss killed"
+	elseif action == "bossesOn" then
+		Config.BOSSES = not Config.BOSSES
+		return if Config.BOSSES then "Bosses after each area: ON" else "Bosses after each area: OFF"
+	elseif action == "clear" then
+		devCutting = true
+		Field.devClear(player, zone)
+		devCutting = false
+		return "Area cleared"
+	elseif action == "nextArea" then
+		if zone < #Config.ZONES then
+			unlock(zone + 1, 6)
+		end
+		return "Area " .. zone .. " open"
+	elseif action == "allAreas" then
+		unlock(#Config.ZONES)
+		return "All areas open"
+	elseif action == "night" then
+		require(script.Parent.DayNight).skip()
+		return "Skipped to the next day/night"
+	end
+	return nil
+end
+
 -- Studio test helpers (DevHook).
 function Run.dev(cmd: string, ...)
 	if cmd == "clearZone" then

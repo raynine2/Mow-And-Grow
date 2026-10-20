@@ -15,6 +15,7 @@ local INBOUND = {
 	"Party", -- (action, pad, ...)          start | create (pad, size, difficulty, peaceful) | cancel (pad) | load
 	"Ready", -- ()                          client finished loading, send state
 	"Seen", -- (what)                       "intro": the run's fly-over was shown
+	"Dev", -- (action, arg)                 dev panel (Studio, or Config.ADMINS / the game's owner)
 }
 -- server -> client
 local OUTBOUND = {

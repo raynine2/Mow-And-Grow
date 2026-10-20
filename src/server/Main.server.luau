@@ -170,6 +170,49 @@ if not Mode.isRun then
 	end)
 end
 
+-- Dev panel (client/DevPanel): everyone in Studio, and in live servers only Config.ADMINS or the game's owner.
+local function isDev(player: Player): boolean
+	if RunService:IsStudio() or table.find(Config.ADMINS, player.UserId) then
+		return true
+	end
+	if game.CreatorType == Enum.CreatorType.User then
+		return player.UserId == game.CreatorId
+	end
+	local ok, rank = pcall(player.GetRankInGroup, player, game.CreatorId)
+	return ok and rank >= 255
+end
+local function markDev(player: Player)
+	if isDev(player) then
+		player:SetAttribute("IsDev", true)
+	end
+end
+Players.PlayerAdded:Connect(markDev)
+for _, p in Players:GetPlayers() do
+	task.spawn(markDev, p)
+end
+Net.on("Dev", 8, function(player, action, arg)
+	if player:GetAttribute("IsDev") ~= true or type(action) ~= "string" then
+		return
+	end
+	local data = PlayerData.get(player)
+	if not data then
+		return
+	end
+	local msg: string?
+	if action == "gems" then
+		data.gems += 100000
+		msg = "+100K gems"
+	elseif system.devAction then
+		msg = system.devAction(player, data, action, arg)
+	else
+		msg = "Start a run first (stand on a pad)"
+	end
+	PlayerData.changed(player)
+	if msg then
+		Net.notify(player, "[DEV] " .. msg, "yellow")
+	end
+end)
+
 -- Studio test hook: ServerStorage.DevHook:Invoke("gems", player, 1000), ("coins", player, n),
 -- ("set", player, key, value), ("save", player, true/false), ("clearZone"), ("killBoss"), ("zone", n)
 if RunService:IsStudio() then

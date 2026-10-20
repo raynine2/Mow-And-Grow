@@ -11,6 +11,7 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local DayNight = {}
 
 local started = false
+local t0 = os.clock()
 
 -- Where in the cycle we are: phase, seconds into it, the phase's length, and the clock time it means.
 function DayNight.at(t: number): (string, number, number, number)
@@ -39,7 +40,7 @@ function DayNight.start()
 			sky.MoonAngularSize = 14
 		end)
 	end
-	local t0 = os.clock()
+	t0 = os.clock()
 	-- the clock, 10 times a second (smooth on the clients)
 	task.spawn(function()
 		while true do
@@ -58,6 +59,12 @@ function DayNight.start()
 			task.wait(1)
 		end
 	end)
+end
+
+-- Dev panel: jump to the start of the other phase (day -> night, night -> day).
+function DayNight.skip()
+	local _, into, len = DayNight.at(os.clock() - t0)
+	t0 -= len - into
 end
 
 return DayNight

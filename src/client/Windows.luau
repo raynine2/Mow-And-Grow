@@ -625,5 +625,6 @@ end
 require(script.Parent.StatsWindow).build(RUN_TABS)
 require(script.Parent.ShopWindow).build()
 require(script.Parent.NewsWindow).build()
+require(script.Parent.DevPanel) -- F2 / DEV button, for devs only
 
 return Windows

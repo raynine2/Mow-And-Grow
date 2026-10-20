@@ -283,9 +283,10 @@ end
 
 local function startBoard(m: Instance)
 	-- the board stands high on two tall log legs so it shows over the booths' roofs
-	local lift = 11
-	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + lift, 60), Vector3.new(0, FLOOR_Y + lift, 0))
-	local s = 1.6
+	-- high over the bays' status lines, like the hanging START A RUN board in Chop A Forest's lobby
+	local lift = 15
+	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + lift, 64), Vector3.new(0, FLOOR_Y + lift, 0))
+	local s = 2
 	-- start_board is start_sign on tall legs: it stands on the ground, its board at the same height
 	local placedBoard = Models.place("start_board", m, at * CFrame.new(0, -lift, 0), s, true)
 	if placedBoard then

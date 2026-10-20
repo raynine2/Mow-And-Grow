@@ -10,7 +10,7 @@ local Models = require(script.Parent.Models)
 
 local LobbyPads = {}
 
-local OPEN = Color3.fromRGB(70, 255, 140)
+local OPEN = Color3.fromRGB(80, 255, 95)
 local BUSY = Color3.fromRGB(40, 210, 255)
 local CREAM = Color3.fromRGB(255, 240, 205)
 local DARK_WOOD = Color3.fromRGB(92, 58, 34)
@@ -162,7 +162,7 @@ end
 
 -- A little painting of the lawn: sky, a dark tree line, and a field full of grass clumps.
 local function painting(parent: Instance)
-	local art = frame(parent, UDim2.fromScale(0.86, 0.5), UDim2.fromScale(0.07, 0.06), Color3.fromRGB(150, 210, 255), 10)
+	local art = frame(parent, UDim2.fromScale(0.88, 0.46), UDim2.fromScale(0.06, 0.05), Color3.fromRGB(150, 210, 255), 10)
 	art.ClipsDescendants = true
 	local sky = Instance.new("UIGradient")
 	sky.Color = ColorSequence.new(Color3.fromRGB(120, 195, 255), Color3.fromRGB(225, 245, 255))
@@ -243,15 +243,15 @@ local function sign(parent: Instance, at: CFrame, title: string, sub: string, ma
 	paper.Rotation = 90
 	paper.Parent = bg
 	painting(bg)
-	label(bg, title, UDim2.fromScale(0.9, 0.15), UDim2.fromScale(0.05, 0.57), CREAM, 4)
-	local number = label(bg, sub, UDim2.fromScale(0.6, 0.08), UDim2.fromScale(0.2, 0.71), Color3.fromRGB(255, 214, 90), 2.5)
-	local pillBox = frame(bg, UDim2.fromScale(0.44, 0.1), UDim2.fromScale(0.28, 0.81), OPEN, 14)
+	label(bg, title, UDim2.fromScale(0.94, 0.19), UDim2.fromScale(0.03, 0.52), CREAM, 5)
+	local number = label(bg, sub, UDim2.fromScale(0.7, 0.1), UDim2.fromScale(0.15, 0.7), Color3.fromRGB(255, 214, 90), 3)
+	local pillBox = frame(bg, UDim2.fromScale(0.56, 0.12), UDim2.fromScale(0.22, 0.81), OPEN, 16)
 	local ps = Instance.new("UIStroke")
 	ps.Thickness = 3
 	ps.Color = Color3.fromRGB(30, 60, 40)
 	ps.Parent = pillBox
 	local pill = label(pillBox, "OPEN", UDim2.fromScale(0.9, 0.8), UDim2.fromScale(0.05, 0.1), Color3.new(1, 1, 1), 2.5)
-	label(bg, maxText, UDim2.fromScale(0.5, 0.06), UDim2.fromScale(0.25, 0.92), Color3.fromRGB(110, 70, 40), 0).TextStrokeTransparency = 1
+	label(bg, "👤 " .. maxText, UDim2.fromScale(0.5, 0.06), UDim2.fromScale(0.25, 0.935), Color3.fromRGB(110, 70, 40), 0)
 	m.Parent = parent
 	return { pill = pill, pillBox = pillBox, number = number }
 end
@@ -261,7 +261,7 @@ local function statusTag(parent: Instance, pos: Vector3): (TextLabel, TextLabel)
 	local holder = PropKit.part({ size = Vector3.one, cf = CFrame.new(pos), color = Color3.new(1, 1, 1), parent = parent, transparency = 1, collide = false, name = "PadStatus" })
 	holder.CanQuery = false
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromScale(13, 3)
+	gui.Size = UDim2.fromScale(14, 3.4)
 	gui.LightInfluence = 0
 	gui.MaxDistance = 140
 	gui.Parent = holder
@@ -301,7 +301,8 @@ function LobbyPads.build(parent: Instance, centre: Vector3, facing: Vector3): { 
 
 	local defs: { PadDef } = {}
 	for i = 1, count do
-		local x = -span / 2 + GAP + BAY / 2 + (i - 1) * (BAY + GAP)
+		-- bay 1 (SOLO) on the left as players look at the row
+		local x = span / 2 - GAP - BAY / 2 - (i - 1) * (BAY + GAP)
 		local bay = back * CFrame.new(x, DECK_H, -0.6)
 		local pos = bay.Position
 		local solo = i == 1
@@ -311,11 +312,11 @@ function LobbyPads.build(parent: Instance, centre: Vector3, facing: Vector3): { 
 		-- the guide arrow points new players at the first bay ("PadInfo1")
 		local marker = PropKit.part({ size = Vector3.one, cf = CFrame.new(pos + Vector3.new(0, 1, 0)), color = OPEN, parent = m, transparency = 1, collide = false, name = "PadInfo" .. i })
 		marker.CanQuery = false
-		local handles = sign(m, back * CFrame.new(x, DECK_H, DEPTH / 2 + 1.3), "THE LAWN", if solo then "SOLO" else "PARTY " .. i, "up to " .. maxN)
-		local top, bottom = statusTag(m, (back * CFrame.new(x, DECK_H + 18.5, DEPTH / 2 + 1.3)).Position)
+		local handles = sign(m, back * CFrame.new(x, DECK_H, DEPTH / 2 + 1.3), "THE LAWN", if solo then "SOLO" else "PARTY " .. (i - 1), "up to " .. maxN)
+		local top, bottom = statusTag(m, (back * CFrame.new(x, DECK_H + 17, DEPTH / 2 + 1.3)).Position)
 		-- lanterns between the bays, at the front
 		if i < count then
-			local lx = x + BAY / 2 + GAP / 2
+			local lx = x - BAY / 2 - GAP / 2
 			local lp = (back * CFrame.new(lx, DECK_H, -DEPTH / 2 + 0.2)).Position
 			if not Models.place("lantern_post", m, CFrame.lookAt(lp, lp + facing), 0.75, true) then
 				block(m, Vector3.new(0.6, 4, 0.6), CFrame.new(lp + Vector3.new(0, 2, 0)), DARK_WOOD, "LanternPost", Enum.Material.Wood)

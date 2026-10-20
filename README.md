@@ -1,8 +1,8 @@
 # Mow A Lawn
 
 A Roblox incremental game in the style of Chop A Forest, but with grass. You mow overgrown fields, carry grass
-bundles to the **Giant Grass Shredder**, sell them for coins, buy better tools and mowers, beat a giant weed boss
-in every zone, and earn gems that buy permanent classes and perks. The building style uses chunky studded bricks.
+bundles to the **Giant Grass Shredder**, sell them for coins, buy better tools and mowers, clear every area to
+open the next, and earn gems that buy permanent classes and perks. The building style uses chunky studded bricks.
 
 ## How the game works
 
@@ -16,17 +16,20 @@ in every zone, and earn gems that buy permanent classes and perks. The building 
 - **Garage**: permanent ride-on mowers, bought with gems or Robux.
 
 **Run** (private server, saves if you leave)
-1. You start with bare hands and pull grass. Every patch you cut becomes a bundle on your back.
-2. When your bag is full, walk onto the SELL ring at the Shredder to turn bundles into coins.
+1. You start with bare hands. Look at a grass clump (they stand 7-14 studs tall, like trees) and click to chop it:
+   every hit cuts a notch and leans it further, and the last hit topples it. Its bundles land where it falls;
+   walk over them to pick them up. Buy **Hold** (Tab, Hands) to keep chopping while the button is held.
+2. When your bag is full, walk onto the SELL pad at a Shredder (the hub's, or the drop-off in the first area).
 3. Coins buy tools in order: Scissors → Sickle → Push Mower → Weed Whacker → Mega Scythe → Laser Mower.
    They also buy upgrades (Power, Backpack, Walk Speed, Sell; press Tab) and coin mowers.
 4. Ride-on mowers cut while you drive and burn fuel. Refuel at the gas pumps.
-5. Cutting every patch in a zone wakes its boss: Dandelion King, Thorn Bush, Venus Flytrap, Swamp Vine and
-   Jungle Titan. Dodge the red circles. Beating a boss opens the next zone.
-6. Zones in order: Backyard Lawn → Golf Course → Wheat Farm → Swamp Reeds → Mega Jungle.
+5. The map is one world like Chop A Forest's: a 3 x 3 grid of fenced plots with the hub in the middle of the south
+   row. Mowing every clump in an area pays its reward, clears its stubble and sinks the gates of the next area.
+   Areas in order: Backyard Lawn → Flower Meadow → Golf Course → Wheat Farm → Blossom Garden → Swamp Reeds →
+   Autumn Prairie → Mega Jungle. (The old zone bosses are off; `Config.BOSSES = true` brings them back.)
 7. **Mutations are hidden until you cut**: Golden, Rainbow, Diamond, Toxic and Galaxy. They burst when
    revealed, are worth 2–10×, and give bonus gems.
-8. Beating the last boss completes the run. You get gems and go back to the lobby, and coins, tools and coin
+8. Clearing the last area completes the run. You get gems and go back to the lobby, and coins, tools and coin
    mowers reset.
 
 All the numbers are in `src/shared/Config.luau`.
@@ -68,7 +71,7 @@ countdown the same server turns into a run. In the published game, pads teleport
 ```lua
 game.ServerStorage.DevHook:Invoke("coins", nil, 100000)   -- give coins
 game.ServerStorage.DevHook:Invoke("gems", nil, 5000)      -- give gems
-game.ServerStorage.DevHook:Invoke("clearZone")            -- cut the whole current zone (spawns the boss)
+game.ServerStorage.DevHook:Invoke("clearZone")            -- cut the whole current area (opens the next one)
 game.ServerStorage.DevHook:Invoke("killBoss")             -- defeat the boss
 ```
 Studio never saves your profile, so tests can't break real data.

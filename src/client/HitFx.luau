@@ -596,7 +596,6 @@ end
 -- Called when you swing a hand tool. Mirrors the server's reach: centre a little ahead of you, tool radius.
 -- The clump the server will pick for a swing aimed along `look` (same rule as server/Field hitAim): the one
 -- nearest the middle of your view, within reach.
-local CLUMP_RADIUS = 2.4
 local function aimedClump(rootPos: Vector3, look: Vector3, reach: number): Model?
 	local grass = grassFolder()
 	if not grass then
@@ -606,18 +605,19 @@ local function aimedClump(rootPos: Vector3, look: Vector3, reach: number): Model
 	local eye = rootPos + Vector3.new(0, 1.5, 0)
 	local seen: { [Model]: boolean } = {}
 	local best, bestScore = nil, math.huge
-	for _, part in workspace:GetPartBoundsInRadius(rootPos, reach + 14, overlap) do
+	for _, part in workspace:GetPartBoundsInRadius(rootPos, reach + 12, overlap) do
 		local m = clumpOf(part)
 		if m and not seen[m] and not released[m] then
 			seen[m] = true
 			local foot = (leans[m] and leans[m].base or m:GetPivot()).Position
-			local scale = m:GetAttribute("Scale") :: number? or 2
+			local radius = m:GetAttribute("Radius") :: number? or 3
+			local height = m:GetAttribute("Height") :: number? or 6
 			local flat = Vector3.new(foot.X - rootPos.X, 0, foot.Z - rootPos.Z).Magnitude
-			if flat - CLUMP_RADIUS * scale <= reach then
-				local to = foot + Vector3.new(0, 1.3 * scale, 0) - eye
+			if flat - radius <= reach then
+				local to = foot + Vector3.new(0, math.min(height * 0.4, 5), 0) - eye
 				local d = math.max(to.Magnitude, 0.1)
 				local angle = math.acos(math.clamp(to:Dot(look) / d, -1, 1))
-				local score = angle - math.atan2(CLUMP_RADIUS * scale, d)
+				local score = angle - math.atan2(math.max(radius, height * 0.35), d)
 				if score < bestScore then
 					best, bestScore = m, score
 				end

@@ -26,6 +26,8 @@ type Patch = {
 	fallDir: Vector3?, -- set when it falls: away from whoever cut it
 	landPos: Vector3?, -- where its top lands (its bundles drop there)
 	modelScale: number,
+	radius: number, -- how far it reaches out from its middle (studs), for hit tests
+	height: number, -- how tall it stands
 	z: number,
 	col: number,
 	row: number,
@@ -47,7 +49,7 @@ Field.unlocked = 1 -- zones above this can't be cut yet (gate closed)
 local folder: Folder? = nil
 local rng = Random.new()
 local TURF_TOP = 0.02 -- the clumps stand on the zone's ground (top at y = 0)
-local CLUMP_RADIUS = 2.4 -- how far a clump reaches out from its centre (for hit tests)
+local MAX_RADIUS = 10 -- the widest clump's reach from its middle (hit tests look this far past their circle)
 
 -- Hooks the run sets up.
 Field.onCut = nil :: ((Player, Patch) -> boolean)? -- return false to refuse (bag full)
@@ -204,12 +206,18 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 		baseColor = colorA,
 		model = nil,
 		modelScale = size,
+		radius = 1.5 * size * 0.6,
+		height = (def.height or 2) * size * 0.75,
 	}
 	local tuftName = clumpName(z)
 	if not alreadyCut and Models.has(tuftName) then
 		p.model = Models.place(tuftName, model, p.spot, p.modelScale, true)
 		if p.model then
-			p.model:SetAttribute("Scale", p.modelScale) -- the client's aim prediction reads it
+			local _, bounds = p.model:GetBoundingBox()
+			p.radius = math.max(bounds.X, bounds.Z) * 0.45
+			p.height = bounds.Y
+			p.model:SetAttribute("Radius", p.radius) -- the client's aim prediction reads these
+			p.model:SetAttribute("Height", p.height)
 			if def.tint then
 				paint(p.model, def.tint)
 			end
@@ -287,7 +295,7 @@ end
 -- Patches near a point, nearest first. Only zones that are unlocked.
 local function query(pos: Vector3, radius: number): { Patch }
 	local found = {}
-	local reach = radius + CLUMP_RADIUS * 4 -- the biggest clumps are ~4x their model
+	local reach = radius + MAX_RADIUS
 	local c0x, c1x = math.floor((pos.X - reach) / CELL), math.floor((pos.X + reach) / CELL)
 	local c0z, c1z = math.floor((pos.Z - reach) / CELL), math.floor((pos.Z + reach) / CELL)
 	for z = 1, Field.unlocked do
@@ -302,7 +310,7 @@ local function query(pos: Vector3, radius: number): { Patch }
 								local pp = p.spot.Position
 								local dx, dz = pp.X - pos.X, pp.Z - pos.Z
 								-- count a patch if any part of it is inside the circle
-								local d = math.sqrt(dx * dx + dz * dz) - CLUMP_RADIUS * p.modelScale
+								local d = math.sqrt(dx * dx + dz * dz) - p.radius
 								if d <= radius then
 									table.insert(found, { p = p, d = d })
 								end
@@ -363,11 +371,7 @@ end
 
 -- How tall a clump stands (studs), for where hits land and how far it falls.
 local function clumpHeight(p: Patch): number
-	if p.model then
-		local _, size = p.model:GetBoundingBox()
-		return size.Y
-	end
-	return (Config.ZONES[p.z].height or 2) * p.modelScale * 0.75
+	return p.height
 end
 
 local function flatDir(v: Vector3): Vector3?
@@ -380,7 +384,7 @@ end
 local function notch(p: Patch, from: Vector3, ratio: number)
 	local dir = p.notchDir or flatDir(from - p.spot.Position) or Vector3.zAxis
 	p.notchDir = dir
-	local s = p.modelScale
+	local r, hgt = p.radius, p.height
 	local cut = 1 - ratio
 	if not p.notch then
 		local m = Config.mutation(p.mut or "None")
@@ -388,10 +392,10 @@ local function notch(p: Patch, from: Vector3, ratio: number)
 		p.notch = brick(p.holder, Vector3.one, CFrame.new(), fresh, "Notch", Enum.Material.SmoothPlastic)
 	end
 	local notchPart = p.notch :: BasePart
-	local w = (0.45 + 0.75 * cut) * s
-	local h = (0.3 + 0.25 * cut) * s
-	local d = (0.15 + 0.55 * cut) * s
-	local at = p.spot.Position + Vector3.new(0, 0.5 * s, 0) + dir * (0.75 * s - d / 2)
+	local w = r * (0.55 + 0.7 * cut)
+	local h = math.max(0.4, hgt * 0.07) * (1 + 0.8 * cut)
+	local d = r * (0.2 + 0.6 * cut)
+	local at = p.spot.Position + Vector3.new(0, math.min(hgt * 0.18, 2.6), 0) + dir * (r * 0.85 - d / 2)
 	notchPart.Size = Vector3.new(w, h, d)
 	notchPart.CFrame = CFrame.lookAt(at, at + dir)
 end
@@ -464,7 +468,7 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 		local h = clumpHeight(p)
 		Net.send(player, "Fx", "chip", {
 			pos = p.part.Position,
-			hitPos = p.spot.Position + Vector3.new(0, math.min(h * 0.35, 2.5 * p.modelScale), 0),
+			hitPos = p.spot.Position + Vector3.new(0, math.min(h * 0.35, 4), 0),
 			color = if first then first.stem.Color else p.baseColor,
 			label = def.grassName,
 			hp = p.hp,
@@ -507,13 +511,12 @@ function Field.hitAim(player: Player, rootPos: Vector3, look: Vector3, reach: nu
 	local list = query(rootPos, reach)
 	local best, bestScore = nil, math.huge
 	for _, p in list do
-		local s = p.modelScale
-		local mid = p.spot.Position + Vector3.new(0, 1.3 * s, 0)
+		local mid = p.spot.Position + Vector3.new(0, math.min(p.height * 0.4, 5), 0)
 		local to = mid - eye
 		local d = math.max(to.Magnitude, 0.1)
 		local angle = math.acos(math.clamp(to:Dot(look) / d, -1, 1))
 		-- a big clump up close fills more of the view, so it counts over a wider angle
-		local score = angle - math.atan2(CLUMP_RADIUS * s, d)
+		local score = angle - math.atan2(math.max(p.radius, p.height * 0.35), d)
 		if score < bestScore then
 			best, bestScore = p, score
 		end

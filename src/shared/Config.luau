@@ -101,7 +101,7 @@ end
 -- Areas (zones), like Chop A Forest's woods: fenced fields that open one after another. Mow every clump in the
 -- newest area and the next one unlocks (its gates sink into the ground). Clumps are "grass trees": you chop one
 -- down, it falls over and breaks into `drops` bundles, and its stubble stays until the whole area is cleared.
--- Later areas have fewer but bigger and tougher clumps (`spacing` studs apart, `scale` x their model).
+-- Clumps stand 7-14 studs tall like trees (`scale` x their model, `spacing` studs apart); later areas are tougher.
 -- model: the clump model (default "tuft_" .. style); tint: recolour it (flat colour instead of its texture).
 -------------------------------------------------------------------------------------------------------------
 Config.BASE_CARRY = 5
@@ -110,56 +110,56 @@ Config.BOSSES = false -- true: clearing an area wakes its boss, and the boss ope
 Config.ZONES = {
 	{
 		name = "Backyard Lawn", grassName = "Lawn Grass", style = "lawn", hp = 3, value = 2, drops = 1, height = 2,
-		spacing = 12, scale = 2.2,
+		spacing = 11, scale = 4.0,
 		grass = { Color3.fromRGB(110, 210, 70), Color3.fromRGB(90, 195, 60) },
 		ground = Color3.fromRGB(150, 110, 70),
 		boss = { name = "Dandelion King", hp = 400, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
 	},
 	{
 		name = "Flower Meadow", grassName = "Meadow Grass", style = "meadow", model = "tuft_golf", hp = 12, value = 8, drops = 1, height = 2.2,
-		spacing = 13, scale = 2.6, tint = Color3.fromRGB(150, 215, 95),
+		spacing = 11.5, scale = 6.3, tint = Color3.fromRGB(150, 215, 95),
 		grass = { Color3.fromRGB(150, 215, 95), Color3.fromRGB(130, 200, 80) },
 		ground = Color3.fromRGB(120, 160, 70),
 		boss = { name = "Thorn Bush", hp = 2000, color = Color3.fromRGB(40, 140, 60), every = 4.2, radius = 9, gems = 15, coins = 600 },
 	},
 	{
 		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 50, value = 30, drops = 1, height = 2.5,
-		spacing = 14, scale = 3.0,
+		spacing = 12.5, scale = 7.2,
 		grass = { Color3.fromRGB(70, 200, 90), Color3.fromRGB(55, 180, 75) },
 		ground = Color3.fromRGB(235, 215, 150),
 		boss = { name = "Thorn Bush", hp = 6000, color = Color3.fromRGB(40, 140, 60), every = 4, radius = 10, gems = 20, coins = 2000 },
 	},
 	{
-		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 200, value = 55, drops = 2, height = 5,
-		spacing = 15, scale = 2.2,
+		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 150, value = 55, drops = 1, height = 5,
+		spacing = 8, scale = 4.0,
 		grass = { Color3.fromRGB(240, 200, 80), Color3.fromRGB(225, 180, 60) },
 		ground = Color3.fromRGB(140, 95, 55),
 		boss = { name = "Venus Flytrap", hp = 90000, color = Color3.fromRGB(200, 40, 70), every = 3.6, radius = 11, gems = 35, coins = 25000 },
 	},
 	{
 		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 600, value = 200, drops = 2, height = 2.5,
-		spacing = 16, scale = 3.2, tint = Color3.fromRGB(255, 160, 205),
+		spacing = 13.5, scale = 5.1, tint = Color3.fromRGB(255, 160, 205),
 		grass = { Color3.fromRGB(255, 160, 205), Color3.fromRGB(240, 130, 185) },
 		ground = Color3.fromRGB(120, 170, 80),
 		boss = { name = "Venus Flytrap", hp = 300000, color = Color3.fromRGB(200, 40, 70), every = 3.5, radius = 11, gems = 45, coins = 80000 },
 	},
 	{
 		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 2500, value = 750, drops = 2, height = 6.5,
-		spacing = 17, scale = 2.3,
+		spacing = 12, scale = 4.6,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
 		boss = { name = "Swamp Vine", hp = 1200000, color = Color3.fromRGB(90, 70, 140), every = 3.3, radius = 12, gems = 55, coins = 300000 },
 	},
 	{
-		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 14000, value = 2400, drops = 3, height = 6,
-		spacing = 19, scale = 2.6, tint = Color3.fromRGB(235, 120, 45),
+		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 6000, value = 1600, drops = 2, height = 6,
+		spacing = 9.5, scale = 5.1, tint = Color3.fromRGB(235, 120, 45),
 		grass = { Color3.fromRGB(235, 120, 45), Color3.fromRGB(215, 95, 40) },
 		ground = Color3.fromRGB(150, 110, 60),
 		boss = { name = "Swamp Vine", hp = 4000000, color = Color3.fromRGB(90, 70, 140), every = 3.1, radius = 13, gems = 65, coins = 1000000 },
 	},
 	{
 		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 60000, value = 8000, drops = 4, height = 8,
-		spacing = 22, scale = 3.6,
+		spacing = 21, scale = 6.0,
 		grass = { Color3.fromRGB(30, 160, 60), Color3.fromRGB(20, 130, 50) },
 		ground = Color3.fromRGB(90, 70, 45),
 		boss = { name = "Jungle Titan", hp = 15000000, color = Color3.fromRGB(20, 90, 40), every = 3, radius = 14, gems = 80, coins = 4000000 },

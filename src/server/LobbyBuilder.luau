@@ -355,52 +355,6 @@ local function partyArea(world: Instance)
 	return pads
 end
 
--------------------------------------------------------------------------------------------------------------
--- the lobby's buildings inside the ring map's hub (the game is one map now)
--------------------------------------------------------------------------------------------------------------
--- Builds one lobby building into a Model, then swings it from its lobby spot (`anchor`) to `target` in the hub.
--- Returns what the builder returned and the move (lobby space -> hub space) for positions it handed back.
-local function relocate(world: Instance, name: string, anchor: CFrame, target: CFrame, build: (Instance) -> any): (any, CFrame)
-	local m = Instance.new("Model")
-	m.Name = name
-	m.WorldPivot = anchor
-	m.Parent = world
-	local result = build(m)
-	m:PivotTo(target)
-	return result, target * anchor:Inverse()
-end
-
--- Puts the lobby's buildings round the ring map's hub (Config.RING): classes cabin to the west, garage to the
--- east, the party booths with the START board to the south (the road leaves north), rewards, leaderboard and
--- the BEST TIMES board in between, all facing the middle. Returns the same handles as LobbyBuilder.build.
-function LobbyBuilder.hub(world: Instance)
-	local C = Config.RING.centre
-	local function spot(x: number, z: number): CFrame
-		local p = C + Vector3.new(x, 0, z)
-		return CFrame.lookAt(p, Vector3.new(C.X, 0, C.Z))
-	end
-	-- dirt yards under the new buildings
-	for i, yard in { { -100, 0, 34, 30 }, { 100, 0, 34, 30 }, { 0, -104, 80, 40 }, { -72, -78, 24, 22 }, { 72, -82, 22, 18 } } do
-		Ground.patch(C.X + yard[1], C.Z + yard[2], yard[3], yard[4], Enum.Material.Ground, 40 + i)
-	end
-	local stockLabel = relocate(world, "Classes", CFrame.lookAt(Vector3.new(-46, 0, -22), Vector3.new(-45, 0, -22)), spot(-100, 0), classCabin)
-	relocate(world, "Garage", CFrame.lookAt(Vector3.new(46, 0, -22), Vector3.new(45, 0, -22)), spot(100, 0), function(m)
-		garageCabin(m)
-		return nil
-	end)
-	relocate(world, "FreeRewards", CFrame.lookAt(Vector3.new(-50, 0, 26), Vector3.new(0, 0, 16)), spot(-72, -78), function(m)
-		rewardsStall(m)
-		return nil
-	end)
-	local leaderLabel = relocate(world, "Leaderboard", CFrame.lookAt(Vector3.new(50, 0, 30), Vector3.new(0, 0, -10)), spot(72, -82), leaderboard)
-	local bestLabel = relocate(world, "BestTimes", CFrame.lookAt(Vector3.new(56, 0, 8), Vector3.new(0, 0, 8)), spot(92, -40), bestTimesBoard)
-	local padDefs, move = relocate(world, "PartyBooths", CFrame.lookAt(Vector3.new(0, 0, 38), Vector3.new(0, 0, 0)), spot(0, -100), partyArea)
-	for _, def in padDefs do
-		def.pos = move * def.pos
-	end
-	return { stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = padDefs }
-end
-
 function LobbyBuilder.build()
 	local world = Environment.apply()
 	ground(world)

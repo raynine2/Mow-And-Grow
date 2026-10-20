@@ -265,7 +265,7 @@ local startBtn = UI.button(root, "START NOW", C.green, UDim2.fromOffset(240, 62)
 end, { pos = UDim2.new(0.5, 0, 1, -30), anchor = Vector2.new(0.5, 1), name = "StartNow" })
 startBtn.Visible = false
 local function updateHost()
-	startBtn.Visible = player:GetAttribute("PartyHost") == true -- the party pads are in the hub now (one map)
+	startBtn.Visible = State.mode == "Lobby" and player:GetAttribute("PartyHost") == true
 end
 player:GetAttributeChangedSignal("PartyHost"):Connect(updateHost)
 

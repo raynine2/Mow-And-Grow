@@ -10,7 +10,6 @@ local Net = require(script.Parent.Net)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
 local RunBuilder = require(script.Parent.RunBuilder)
-local Hub = require(script.Parent.Hub)
 local Field = require(script.Parent.Field)
 local Carry = require(script.Parent.Carry)
 local Tools = require(script.Parent.Tools)
@@ -49,7 +48,6 @@ local function worldState()
 		boss = Boss.state(),
 		sellPos = info and info.sellPos,
 		started = startedAt,
-		stockWindow = Config.STOCK_WINDOW, -- the hub's class cabin restocks on this clock
 	}
 end
 
@@ -546,7 +544,6 @@ function Run.start()
 	Loot.start(info.world)
 	Mowers.setup(info.world, info.garageSpawn)
 	Boss.setup(info.world)
-	Hub.start(info.lobby) -- party pads, classes, rewards and boards in the hub
 
 	Field.onCut = onCut
 	Field.onProgress = pushWorld
@@ -580,8 +577,6 @@ function Run.start()
 			end
 		elseif kind == "perk" then
 			GemShop.buyPerk(player, data, id)
-		elseif kind == "class" then
-			Hub.buyClass(player, data, id)
 		elseif kind == "bag" then
 			buyBag(player, data, id)
 		elseif kind == "vacuum" then

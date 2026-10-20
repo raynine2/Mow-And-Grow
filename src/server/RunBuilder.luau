@@ -926,10 +926,11 @@ local function horizon(world: Instance)
 		end
 	end
 	local reach = math.max(MAX_X - MIN_X, MAX_Z - MIN_Z) / 2
-	for i = 0, 27 do
-		local a = (i + rng:NextNumber(-0.2, 0.2)) / 28 * 2 * math.pi
-		local r = reach + rng:NextNumber(230, 290)
-		PropKit.mountain(world, MID + Vector3.new(math.sin(a) * r, -2, math.cos(a) * r), rng:NextNumber(2.8, 3.8))
+	-- far-off peaks peeking over the pine wall (smaller and further than before, so they read as a horizon)
+	for i = 0, 23 do
+		local a = (i + rng:NextNumber(-0.2, 0.2)) / 24 * 2 * math.pi
+		local r = reach + rng:NextNumber(330, 420)
+		PropKit.mountain(world, MID + Vector3.new(math.sin(a) * r, -6, math.cos(a) * r), rng:NextNumber(2.2, 3.1))
 	end
 end
 

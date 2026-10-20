@@ -128,11 +128,10 @@ local function stamp(world: Instance, info: any): { [string]: Instance }
 	return units
 end
 
--- Where a piece is (to tell how far it was moved).
+-- Where a piece is (to tell how far it was moved): its first part. The saved and the generated piece are built
+-- the same way, so their first parts match (a Folder piece is saved as a Model with the same children).
 local function pivotOf(inst: Instance): CFrame?
-	if inst:IsA("Model") then
-		return inst:GetPivot()
-	elseif inst:IsA("BasePart") then
+	if inst:IsA("BasePart") then
 		return inst.CFrame
 	end
 	for _, d in inst:GetDescendants() do
@@ -212,7 +211,7 @@ local function shiftInfo(info: any, moved: { { parts: { BasePart }, delta: CFram
 end
 
 -- Put the generated working pieces into the saved map where the user left them, and make the saved map the world.
-local function swapIn(info: any, saved: Model): Folder
+local function swapIn(info: any, saved: Folder): Folder
 	local world = info.world :: Instance
 	local genUnits = stamp(world, info)
 	local savedUnits: { [string]: Instance } = {}
@@ -267,16 +266,11 @@ local function swapIn(info: any, saved: Model): Folder
 	end
 
 	-- 3) the saved map becomes the world
-	local folder = Instance.new("Folder")
-	folder.Name = "World"
-	for _, c in saved:GetChildren() do
-		c.Parent = folder
-	end
-	saved:Destroy()
 	world:Destroy()
-	folder.Parent = workspace
-	info.world = folder
-	return folder
+	saved.Name = "World"
+	saved.Parent = workspace
+	info.world = saved
+	return saved
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -335,11 +329,11 @@ end
 -- map saved in the place when there is one. Returns the builder's info, with info.world the finished world.
 function MapStore.load(mode: string, build: () -> any): any
 	local maps = findMaps()
-	local saved = maps and maps:FindFirstChild(mode)
-	if not saved or not saved:IsA("Model") then
+	local found = maps and maps:FindFirstChild(mode)
+	if not found or not found:IsA("Folder") then
 		return build()
 	end
-	saved = saved:Clone() :: Model -- keep the stash whole (Studio can switch lobby -> run)
+	local saved = found:Clone() :: Folder -- keep the stash whole (Studio can switch lobby -> run)
 	Ground.locked = prepareTerrain(mode)
 	local ok, info = pcall(build)
 	Ground.locked = false
@@ -347,7 +341,7 @@ function MapStore.load(mode: string, build: () -> any): any
 		error(info)
 	end
 	if mode == "Lobby" then
-		saved:PivotTo(CFrame.new(-MapStore.LOBBY_OFFSET) * saved:GetPivot())
+		moveBy(saved, CFrame.new(-MapStore.LOBBY_OFFSET))
 	end
 	local okSwap, err = pcall(swapIn, info, saved)
 	if not okSwap then
@@ -362,15 +356,25 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- baking (Studio, edit mode)
 -------------------------------------------------------------------------------------------------------------
-local function asModel(world: Instance, name: string): Model
-	local m = Instance.new("Model")
-	m.Name = name
-	for _, c in world:GetChildren() do
-		c.Parent = m
+-- The built world as a saved map: a Folder (so clicking a tree in Studio picks the tree, not the whole map),
+-- with every working piece that is a Folder turned into a Model (so it can be picked and moved as one).
+local function asSaved(world: Instance, info: any, name: string): Folder
+	for _, unit in stamp(world, info) do
+		if unit:IsA("Folder") then
+			local m = Instance.new("Model")
+			m.Name = unit.Name
+			for k, v in unit:GetAttributes() do
+				m:SetAttribute(k, v)
+			end
+			for _, c in unit:GetChildren() do
+				c.Parent = m
+			end
+			m.Parent = unit.Parent
+			unit:Destroy()
+		end
 	end
-	world:Destroy()
-	m.WorldPivot = CFrame.identity
-	return m
+	world.Name = name
+	return world :: Folder
 end
 
 function MapStore.bake(force: boolean?)
@@ -394,16 +398,14 @@ function MapStore.bake(force: boolean?)
 
 	-- the lobby first (each build clears the terrain), then moved aside with its ground
 	local lobbyInfo = require(script.Parent.LobbyBuilder).build()
-	stamp(lobbyInfo.world, lobbyInfo)
 	local lobbyGround = workspace.Terrain:CopyRegion((lobbyCells(Vector3.zero)))
-	local lobby = asModel(lobbyInfo.world, "Lobby")
-	lobby:PivotTo(CFrame.new(MapStore.LOBBY_OFFSET))
+	local lobby = asSaved(lobbyInfo.world, lobbyInfo, "Lobby")
+	moveBy(lobby, CFrame.new(MapStore.LOBBY_OFFSET))
 	lobby.Parent = maps
 	maps.Parent = workspace
 
 	local runInfo = require(script.Parent.RunBuilder).build()
-	stamp(runInfo.world, runInfo)
-	local run = asModel(runInfo.world, "Run")
+	local run = asSaved(runInfo.world, runInfo, "Run")
 	run.Parent = maps
 
 	local _, corner = lobbyCells(MapStore.LOBBY_OFFSET)

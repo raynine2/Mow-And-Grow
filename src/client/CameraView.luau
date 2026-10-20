@@ -94,8 +94,9 @@ end)
 --   - first person: a figure-eight head bob while walking, a dip when you land, a slight lean when strafing;
 --   - kicks (hits) and shakes (slams, gates) are asked for here, never written straight to the camera.
 -------------------------------------------------------------------------------------------------------------
-local FOV_LOBBY, FOV_FIRST, FOV_THIRD = 70, 82, 74
-local SPEED_FOV = 7 -- extra degrees at full speed
+-- Chop A Forest keeps the default 70 in first person too; a wider view made the fists and tools look small
+local FOV_LOBBY, FOV_FIRST, FOV_THIRD = 70, 70, 72
+local SPEED_FOV = 5 -- extra degrees at full speed
 local kickAmount = 0
 local shakeUntil, shakePower = 0, 0
 local bobPhase = 0

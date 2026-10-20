@@ -329,7 +329,7 @@ export type PadDef = {
 	radius: number,
 	label: TextLabel,
 	title: string,
-	show: (state: string, count: number, left: number?) -> (),
+	show: (state: string, count: number, left: number?, who: string?, limit: number?) -> (),
 }
 
 -- Builds the row with its middle at `centre`, the bays facing `facing` (toward where players come from).
@@ -383,23 +383,27 @@ function LobbyPads.build(parent: Instance, centre: Vector3, facing: Vector3): { 
 			radius = BAY / 2 - 0.4,
 			label = top,
 			title = if solo then "SOLO" else "PARTY",
-			show = function(newState: string, n: number, left: number?)
-				-- "open": nobody on it; "starting": counting down; "teleporting"
+			show = function(newState: string, n: number, left: number?, who: string?, limit: number?)
+				-- "open": nobody on it; "creating": someone is picking the party settings; "starting": counting
+				-- down; "teleporting". `limit` is the party size the host picked.
+				local cap = limit or maxN
 				if newState == "open" then
 					top.Text = if solo then "Touch to play solo" else "Touch to create a party"
+				elseif newState == "creating" then
+					top.Text = (who or "Someone") .. " is creating a party..."
 				elseif newState == "starting" then
 					top.Text = ("Teleporting in %d..."):format(left or 0)
 				else
 					top.Text = "Teleporting..."
 				end
-				bottom.Text = ("%d/%d"):format(n, maxN)
+				bottom.Text = if newState == "creating" then "-/-" else ("%d/%d"):format(n, cap)
 				if newState ~= state then
 					state = newState
 					local busy = newState ~= "open"
 					local c = if busy then BUSY else OPEN
 					glow.setColor(c)
 					handles.pillBox.BackgroundColor3 = c
-					handles.pill.Text = if newState == "open" then "OPEN" elseif newState == "starting" then "STARTING" else "GO!"
+					handles.pill.Text = if newState == "open" then "OPEN" elseif newState == "creating" then "SETTING UP" elseif newState == "starting" then "STARTING" else "GO!"
 				end
 			end,
 		}

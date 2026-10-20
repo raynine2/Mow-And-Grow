@@ -3,6 +3,12 @@
   "servePort": 34872,
   "tree": {
     "$className": "DataModel",
+    "ReplicatedFirst": {
+      "MowALawnBoot": {
+        "$path": "src/first",
+        "$ignoreUnknownInstances": true
+      }
+    },
     "ReplicatedStorage": {
       "MowALawn": {
         "$path": "src/shared",

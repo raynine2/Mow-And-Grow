@@ -17,5 +17,7 @@ require(modules:WaitForChild("Wind"))
 require(modules:WaitForChild("Combo"))
 require(modules:WaitForChild("LootFx"))
 require(modules:WaitForChild("Intro"))
+require(modules:WaitForChild("Loading"))
+require(modules:WaitForChild("PartyWindow"))
 
 State.fire("Ready")

@@ -12,7 +12,7 @@ local INBOUND = {
 	"SpawnMower", -- (mowerId)
 	"Claim", -- (kind)                      daily | group
 	"Prompt", -- (kind, key)                product | pass
-	"Party", -- (action)                    start | leave
+	"Party", -- (action, pad, ...)          start | create (pad, size, difficulty, peaceful) | cancel (pad) | load
 	"Ready", -- ()                          client finished loading, send state
 	"Seen", -- (what)                       "intro": the run's fly-over was shown
 }

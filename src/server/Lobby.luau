@@ -153,21 +153,32 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- party pads
 -------------------------------------------------------------------------------------------------------------
+-- A free PARTY bay doesn't start on its own any more (like Chop A Forest): the first player to step on it gets
+-- the Create Party window (client/PartyWindow) and picks the difficulty, Peaceful Mode and the party size; CREATE
+-- makes them the host and starts the countdown, and friends can step on to join. The SOLO bay starts at once.
 type Pad = {
+	index: number,
 	kind: string,
 	pos: Vector3,
 	radius: number,
 	label: TextLabel,
 	title: string,
-	show: ((state: string, count: number, left: number?) -> ())?, -- the pad's glow, sign tag and status line
+	show: ((state: string, count: number, left: number?, who: string?, limit: number?) -> ())?, -- the pad's look
 	host: Player?,
 	members: { Player },
 	startAt: number?,
 	teleporting: boolean,
+	pending: Player?, -- who has the Create Party window open for this bay
+	pendingAt: number,
+	declined: { [Player]: boolean }, -- pressed BACK: don't reopen until they step off
+	limit: number?, -- the party size the host picked
+	difficulty: string,
+	peaceful: boolean,
 }
 local pads: { Pad } = {}
 local friendCache: { [string]: boolean } = {}
 local denyWarn: { [Player]: number } = {}
+local SETUP_TIMEOUT = 45 -- seconds the Create Party window can stay open
 
 local function isFriend(a: Player, b: Player): boolean
 	if a == b then
@@ -192,51 +203,142 @@ local function onPad(player: Player, pad: Pad): boolean
 	return d <= pad.radius and root.Position.Y < pad.pos.Y + 12
 end
 
-local function teleport(pad: Pad)
-	pad.teleporting = true
-	local party = table.clone(pad.members)
-	local host = pad.host
-	if pad.show then
-		pad.show("teleporting", #party, 0)
-	else
-		pad.label.Text = "TELEPORTING..."
+local function warnOnce(p: Player, text: string)
+	if (denyWarn[p] or 0) + 4 < os.clock() then
+		denyWarn[p] = os.clock()
+		Net.notify(p, text, "red")
 	end
+end
+
+-- Send `party` to a new private run server (in Studio: turn this server into the run). Every client shows the
+-- loading screen first (client/Loading) and hands it to the teleport, so it stays up on the other side.
+local function sendParty(party: { Player }, host: Player?, settings: { [string]: any }): boolean
+	for _, p in party do
+		Net.send(p, "Fx", "loading", {})
+	end
+	task.wait(1.2) -- time for the clients to put up the loading screen
 	if RunService:IsStudio() then
-		-- Teleports don't work in Studio: turn this server into the run instead.
 		if Lobby.onStudioStart then
 			task.spawn(Lobby.onStudioStart, party)
 		end
-		return
-	else
-		for _, p in party do
-			task.spawn(PlayerData.save, p)
-		end
-		local ok, err = pcall(function()
-			local code = TeleportService:ReserveServer(game.PlaceId)
-			local options = Instance.new("TeleportOptions")
-			options.ReservedServerAccessCode = code
-			options:SetTeleportData({ host = host and host.UserId or party[1].UserId })
-			TeleportService:TeleportAsync(game.PlaceId, party, options)
-		end)
-		if not ok then
-			warn("[Lobby] teleport failed: " .. tostring(err))
-			for _, p in party do
-				Net.notify(p, "Teleport failed, try again!", "red")
-			end
-		end
-		task.wait(5)
+		return true
 	end
+	for _, p in party do
+		task.spawn(PlayerData.save, p)
+	end
+	local ok, err = pcall(function()
+		local code = TeleportService:ReserveServer(game.PlaceId)
+		local options = Instance.new("TeleportOptions")
+		options.ReservedServerAccessCode = code
+		options:SetTeleportData({
+			host = host and host.UserId or party[1].UserId,
+			difficulty = settings.difficulty or "Normal",
+			peaceful = settings.peaceful == true,
+		})
+		TeleportService:TeleportAsync(game.PlaceId, party, options)
+	end)
+	if not ok then
+		warn("[Lobby] teleport failed: " .. tostring(err))
+		for _, p in party do
+			Net.send(p, "Fx", "loadingDone", {})
+			Net.notify(p, "Teleport failed, try again!", "red")
+		end
+	end
+	return ok
+end
+
+local function resetPad(pad: Pad)
 	pad.host = nil
 	table.clear(pad.members)
 	pad.startAt = nil
+	pad.limit = nil
+	pad.difficulty = "Normal"
+	pad.peaceful = false
 	pad.teleporting = false
 end
 
-local function updatePad(pad: Pad)
-	if pad.teleporting then
+local function teleport(pad: Pad)
+	pad.teleporting = true
+	local party = table.clone(pad.members)
+	if pad.show then
+		pad.show("teleporting", #party, 0, nil, pad.limit)
+	else
+		pad.label.Text = "TELEPORTING..."
+	end
+	local studio = RunService:IsStudio()
+	sendParty(party, pad.host, { difficulty = pad.difficulty, peaceful = pad.peaceful })
+	if studio then
 		return
 	end
-	-- who is standing on it
+	task.wait(5)
+	resetPad(pad)
+end
+
+-- What the Create Party window's SAVED RUNS panel shows.
+local function savedRun(data): { [string]: any }?
+	local run = data.run
+	if not run then
+		return nil
+	end
+	return {
+		zone = run.zone or 1,
+		cut = data.stats and data.stats.cut or 0,
+		started = run.started or os.time(),
+		time = run.time or 0,
+	}
+end
+
+-- A player stepped onto a free PARTY bay: open the Create Party window for them.
+local function offerSetup(pad: Pad, p: Player, data)
+	pad.pending = p
+	pad.pendingAt = os.clock()
+	Net.send(p, "Fx", "partySetup", {
+		pad = pad.index,
+		wins = data.stats and data.stats.runs or 0,
+		max = Config.PARTY_MAX,
+		run = savedRun(data),
+		now = os.time(),
+	})
+end
+
+local function inOtherParty(pad: Pad, p: Player): boolean
+	for _, other in pads do
+		if other ~= pad and (table.find(other.members, p) or other.pending == p) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Somebody standing on `pad` who isn't in its party yet.
+local function arrive(pad: Pad, p: Player)
+	local data = PlayerData.get(p)
+	if not data or inOtherParty(pad, p) then
+		return
+	end
+	if pad.kind == "party" and not pad.host then
+		if pad.pending == nil and not pad.declined[p] then
+			offerSetup(pad, p, data)
+		elseif pad.pending and pad.pending ~= p then
+			warnOnce(p, pad.pending.DisplayName .. " is creating a party here...")
+		end
+		return
+	end
+	local limit = if pad.kind == "solo" then 1 else (pad.limit or Config.PARTY_MAX)
+	if #pad.members >= limit then
+		warnOnce(p, "This pad is full!")
+	elseif pad.host and not isFriend(pad.host, p) then
+		warnOnce(p, "This party is for " .. pad.host.DisplayName .. "'s friends!")
+	else
+		table.insert(pad.members, p)
+		pad.host = pad.host or p
+		if not pad.startAt then
+			pad.startAt = os.clock() + (if pad.kind == "solo" then Config.SOLO_COUNTDOWN else Config.PARTY_COUNTDOWN)
+		end
+	end
+end
+
+local function dropLeavers(pad: Pad)
 	for i = #pad.members, 1, -1 do
 		local p = pad.members[i]
 		if not p.Parent or not onPad(p, pad) then
@@ -252,43 +354,31 @@ local function updatePad(pad: Pad)
 	if pad.host == nil then
 		table.clear(pad.members)
 		pad.startAt = nil
+		pad.limit = nil
 	end
-	for _, p in Players:GetPlayers() do
-		if not table.find(pad.members, p) and onPad(p, pad) and PlayerData.get(p) then
-			local alreadyElsewhere = false
-			for _, other in pads do
-				if other ~= pad and table.find(other.members, p) then
-					alreadyElsewhere = true
-				end
-			end
-			if not alreadyElsewhere then
-				local limit = if pad.kind == "solo" then 1 else Config.PARTY_MAX
-				if #pad.members >= limit then
-					if (denyWarn[p] or 0) + 4 < os.clock() then
-						denyWarn[p] = os.clock()
-						Net.notify(p, "This pad is full!", "red")
-					end
-				elseif pad.host and not isFriend(pad.host, p) then
-					if (denyWarn[p] or 0) + 4 < os.clock() then
-						denyWarn[p] = os.clock()
-						Net.notify(p, "This party is for " .. pad.host.DisplayName .. "'s friends!", "red")
-					end
-				else
-					table.insert(pad.members, p)
-					if not pad.host then
-						pad.host = p
-					end
-					if not pad.startAt then
-						pad.startAt = os.clock() + (if pad.kind == "solo" then Config.SOLO_COUNTDOWN else Config.PARTY_COUNTDOWN)
-					end
-				end
-			end
+	-- the Create Party window closes when its player steps off, leaves, or takes too long
+	local pending = pad.pending
+	if pending and (not pending.Parent or not onPad(pending, pad) or os.clock() - pad.pendingAt > SETUP_TIMEOUT) then
+		pad.pending = nil
+		if pending.Parent then
+			Net.send(pending, "Fx", "partySetupClose", { pad = pad.index })
 		end
 	end
-	-- label + countdown
+	for p in pad.declined do
+		if not p.Parent or not onPad(p, pad) then
+			pad.declined[p] = nil
+		end
+	end
+end
+
+local function showPad(pad: Pad)
 	if #pad.members == 0 then
 		if pad.show then
-			pad.show("open", 0, nil)
+			if pad.pending then
+				pad.show("creating", 0, nil, pad.pending.DisplayName)
+			else
+				pad.show("open", 0, nil)
+			end
 		else
 			pad.label.Text = pad.title
 		end
@@ -296,22 +386,84 @@ local function updatePad(pad: Pad)
 	end
 	local left = math.max(0, math.ceil((pad.startAt or os.clock()) - os.clock()))
 	if pad.show then
-		pad.show("starting", #pad.members, left)
+		pad.show("starting", #pad.members, left, nil, pad.limit)
 	elseif pad.kind == "solo" then
 		pad.label.Text = "SOLO\nStarting in " .. left
 	else
 		pad.label.Text = ("PARTY %d/%d\nHost: %s\nStarting in %d"):format(#pad.members, Config.PARTY_MAX, pad.host and pad.host.DisplayName or "?", left)
 	end
-	if pad.startAt and os.clock() >= pad.startAt then
+end
+
+local function updatePad(pad: Pad)
+	if pad.teleporting then
+		return
+	end
+	dropLeavers(pad)
+	for _, p in Players:GetPlayers() do
+		if not table.find(pad.members, p) and pad.pending ~= p and onPad(p, pad) then
+			arrive(pad, p)
+		end
+	end
+	showPad(pad)
+	if #pad.members > 0 and pad.startAt and os.clock() >= pad.startAt then
 		task.spawn(teleport, pad)
 	end
+end
+
+-- The Create Party window's buttons: create (size, difficulty, peaceful), cancel, or load the saved run.
+local DIFFICULTY_WINS = { Normal = 0, Hard = 1, Expert = 5 }
+local function onPartyAction(player: Player, action: any, padIndex: any, size: any, difficulty: any, peaceful: any)
+	if action == "start" then
+		for _, pad in pads do
+			if pad.host == player and not pad.teleporting and #pad.members > 0 then
+				pad.startAt = os.clock()
+			end
+		end
+		return
+	end
+	if action == "load" then
+		local data = PlayerData.get(player)
+		if not data or not data.run then
+			Net.notify(player, "You don't have a saved run.", "red")
+			return
+		end
+		for _, pad in pads do
+			if pad.pending == player then
+				pad.pending = nil
+			end
+		end
+		task.spawn(sendParty, { player }, player, {})
+		return
+	end
+	local pad = type(padIndex) == "number" and pads[padIndex] or nil
+	if not pad or pad.pending ~= player then
+		return
+	end
+	pad.pending = nil
+	if action == "cancel" then
+		pad.declined[player] = true
+		return
+	end
+	if action ~= "create" or pad.host or not onPad(player, pad) then
+		return
+	end
+	local data = PlayerData.get(player)
+	local wins = data and data.stats and data.stats.runs or 0
+	local diff = if type(difficulty) == "string" and DIFFICULTY_WINS[difficulty] and wins >= DIFFICULTY_WINS[difficulty] then difficulty else "Normal"
+	pad.limit = math.clamp(math.floor(tonumber(size) or Config.PARTY_MAX), 1, Config.PARTY_MAX)
+	pad.difficulty = diff
+	pad.peaceful = peaceful == true
+	pad.host = player
+	table.insert(pad.members, player)
+	pad.startAt = os.clock() + (if pad.limit == 1 then Config.SOLO_COUNTDOWN else Config.PARTY_COUNTDOWN)
 end
 
 -------------------------------------------------------------------------------------------------------------
 function Lobby.start()
 	built = LobbyBuilder.build()
-	for _, def in built.pads do
+	for i, def in built.pads do
 		table.insert(pads, {
+			index = i,
 			kind = def.kind,
 			pos = def.pos,
 			radius = def.radius,
@@ -322,6 +474,12 @@ function Lobby.start()
 			members = {},
 			startAt = nil,
 			teleporting = false,
+			pending = nil,
+			pendingAt = 0,
+			declined = {},
+			limit = nil,
+			difficulty = "Normal",
+			peaceful = false,
 		})
 	end
 
@@ -355,15 +513,7 @@ function Lobby.start()
 			PlayerData.changed(player)
 		end
 	end)
-	Net.on("Party", 3, function(player, action)
-		if action == "start" then
-			for _, pad in pads do
-				if pad.host == player and not pad.teleporting and #pad.members > 0 then
-					pad.startAt = os.clock()
-				end
-			end
-		end
-	end)
+	Net.on("Party", 3, onPartyAction)
 
 	PlayerData.onLoaded(function(player, data)
 		local function onCharacter()
@@ -377,6 +527,9 @@ function Lobby.start()
 	end)
 	Players.PlayerRemoving:Connect(function(p)
 		denyWarn[p] = nil
+		for _, pad in pads do
+			pad.declined[p] = nil
+		end
 	end)
 
 	task.spawn(function()

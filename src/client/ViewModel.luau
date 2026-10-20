@@ -1,5 +1,6 @@
--- First-person hands, like the Chop A Forest trailer: chunky grey sleeves, big red blocky gloves holding the
--- current tool. Idle sway, walk bob, a swing on every hit, a buzz for auto tools. Drawn only on this client.
+-- First-person hands, like Chop A Forest's: big blocky fists and forearms in the player's own skin colours
+-- (their avatar's hand and arm colours), holding the current tool. Idle sway, walk bob, a swing on every hit, a
+-- buzz for auto tools. Drawn only on this client.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -9,8 +10,7 @@ local State = require(script.Parent.State)
 local ViewModel = {}
 local player = Players.LocalPlayer
 
-local SLEEVE = Color3.fromRGB(95, 95, 108)
-local GLOVE = Color3.fromRGB(232, 72, 68)
+local SKIN = Color3.fromRGB(204, 142, 105) -- until the avatar's colours are known
 local WOOD = Color3.fromRGB(205, 160, 100)
 local STEEL = Color3.fromRGB(205, 210, 220)
 local DARK = Color3.fromRGB(45, 45, 55)
@@ -34,22 +34,66 @@ local function part(parent: Instance, size: Vector3, color: Color3, material: En
 	return p
 end
 
--- An arm is a list of {part, offset from the hand's CFrame}.
-type Piece = { part: BasePart, offset: CFrame }
-local function arm(): { Piece }
+-- An arm is a list of {part, offset from the hand's CFrame}. `role` says which avatar colour it takes:
+-- "arm" (the forearm: LowerArm), "hand" (the fist: Hand), "shade" (finger creases: the hand a bit darker).
+type Piece = { part: BasePart, offset: CFrame, role: string? }
+local function shade(c: Color3, k: number): Color3
+	return Color3.new(math.clamp(c.R * k, 0, 1), math.clamp(c.G * k, 0, 1), math.clamp(c.B * k, 0, 1))
+end
+-- `side` 1 = right, -1 = left (the thumb sits on the inside).
+local function arm(side: number): { Piece }
 	local pieces = {}
-	local function add(size: Vector3, offset: CFrame, color: Color3)
-		table.insert(pieces, { part = part(root, size, color), offset = offset })
+	local function add(size: Vector3, offset: CFrame, role: string)
+		table.insert(pieces, { part = part(root, size, SKIN), offset = offset, role = role })
 	end
-	add(Vector3.new(1.05, 1.05, 3), CFrame.new(0, 0, 1.9), SLEEVE) -- sleeve back toward the camera
-	add(Vector3.new(1.3, 1.25, 1.3), CFrame.new(0, 0, 0), GLOVE) -- glove
-	add(Vector3.new(1.34, 0.32, 1.1), CFrame.new(0, 0.5, -0.2), Color3.fromRGB(205, 55, 52)) -- knuckle ridge
-	add(Vector3.new(1.36, 0.3, 0.32), CFrame.new(0, 0.1, -0.66), Color3.fromRGB(205, 55, 52)) -- finger line
-	add(Vector3.new(0.45, 0.5, 0.9), CFrame.new(-0.62, -0.1, -0.1), GLOVE) -- thumb
+	add(Vector3.new(1.35, 1.35, 3.2), CFrame.new(0, -0.05, 2.1), "arm") -- forearm back toward the camera
+	add(Vector3.new(1.6, 1.5, 1.55), CFrame.new(0, 0, 0), "hand") -- the fist
+	add(Vector3.new(1.62, 0.42, 0.5), CFrame.new(0, 0.4, -0.58), "shade") -- top row of knuckles
+	add(Vector3.new(1.62, 0.42, 0.5), CFrame.new(0, -0.08, -0.62), "hand") -- curled fingers
+	add(Vector3.new(1.62, 0.36, 0.45), CFrame.new(0, -0.5, -0.56), "shade") -- bottom row
+	add(Vector3.new(0.5, 0.55, 1.05), CFrame.new(-0.78 * side, 0.15, -0.15), "hand") -- thumb
 	return pieces
 end
-local rightArm = arm()
-local leftArm = arm()
+local rightArm = arm(1)
+local leftArm = arm(-1)
+
+-- The avatar's own colours: R15 hands / lower arms, R6 arms, else Body Colors.
+local function avatarColors(char: Model): (Color3?, Color3?)
+	local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
+	local lower = char:FindFirstChild("RightLowerArm") or hand
+	if hand and hand:IsA("BasePart") and lower and lower:IsA("BasePart") then
+		return hand.Color, lower.Color
+	end
+	local bc = char:FindFirstChildOfClass("BodyColors")
+	if bc then
+		return bc.RightArmColor3, bc.RightArmColor3
+	end
+	return nil, nil
+end
+
+local lastSkin: Color3? = nil
+local function paintArms(handColor: Color3, armColor: Color3)
+	for _, pieces in { rightArm, leftArm } do
+		for _, pc in pieces do
+			pc.part.Color = if pc.role == "arm" then armColor elseif pc.role == "shade" then shade(handColor, 0.88) else handColor
+		end
+	end
+end
+
+-- The avatar's look loads after the character spawns (and can change), so check its colours now and then.
+task.spawn(function()
+	while true do
+		local char = player.Character
+		if char then
+			local handColor, armColor = avatarColors(char)
+			if handColor and armColor and handColor ~= lastSkin then
+				lastSkin = handColor
+				paintArms(handColor, armColor)
+			end
+		end
+		task.wait(1)
+	end
+end)
 
 -- tool models, keyed by tool id; offsets are from the right hand
 local tools: { [string]: { Piece } } = {}
@@ -150,13 +194,14 @@ local function handModel(name: string): Model?
 	m.Parent = root
 	return m
 end
+-- (the Blender glove models aren't used any more: the fists are the avatar's own colours, like Chop A Forest)
 local handR: Model? = nil
 local handL: Model? = nil
-local lastHandLook = 0
+local _ = handModel
 
 -- where the hands rest, relative to the camera
-local REST_R = CFrame.new(1.55, -1.45, -2.4) * CFrame.Angles(math.rad(8), math.rad(8), 0)
-local REST_L = CFrame.new(-1.6, -1.6, -2.6) * CFrame.Angles(math.rad(5), math.rad(-8), 0)
+local REST_R = CFrame.new(1.7, -1.75, -2.7) * CFrame.Angles(math.rad(10), math.rad(10), 0)
+local REST_L = CFrame.new(-1.75, -1.85, -2.9) * CFrame.Angles(math.rad(6), math.rad(-10), 0)
 local PUSH_R = CFrame.new(1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local PUSH_L = CFrame.new(-1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local TWO_HANDED = { PushMower = true, LaserMower = true, WeedWhacker = true, MegaScythe = true }
@@ -331,11 +376,6 @@ RunService.RenderStepped:Connect(function()
 	else
 		rightCf = base * REST_R * swing
 		leftCf = base * REST_L
-	end
-	if os.clock() - lastHandLook > 1 and not (handR and handL) then
-		lastHandLook = os.clock()
-		handR = handR or handModel("hand_right")
-		handL = handL or handModel("hand_left")
 	end
 	placeHand(handR, rightArm, rightCf)
 	placeHand(handL, leftArm, leftCf)

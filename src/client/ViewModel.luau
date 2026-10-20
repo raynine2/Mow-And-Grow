@@ -200,8 +200,10 @@ local handL: Model? = nil
 local _ = handModel
 
 -- where the hands rest, relative to the camera
-local REST_R = CFrame.new(1.7, -1.75, -2.7) * CFrame.Angles(math.rad(10), math.rad(10), 0)
-local REST_L = CFrame.new(-1.75, -1.85, -2.9) * CFrame.Angles(math.rad(6), math.rad(-10), 0)
+-- fists a little further off and tipped up, so you see the knuckles and the forearms run down to the screen's
+-- bottom corners (like Chop A Forest), not the flat tops of the forearms
+local REST_R = CFrame.new(1.8, -1.55, -3.35) * CFrame.Angles(math.rad(30), math.rad(12), 0)
+local REST_L = CFrame.new(-1.85, -1.65, -3.5) * CFrame.Angles(math.rad(26), math.rad(-12), 0)
 local PUSH_R = CFrame.new(1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local PUSH_L = CFrame.new(-1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
 local TWO_HANDED = { PushMower = true, LaserMower = true, WeedWhacker = true, MegaScythe = true }

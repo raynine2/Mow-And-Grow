@@ -76,6 +76,26 @@ game.ServerStorage.DevHook:Invoke("killBoss")             -- defeat the boss
 ```
 Studio never saves your profile, so tests can't break real data.
 
+## Editing the maps in Studio
+
+Both maps can live in the place as real parts, so you can see and change them in Studio:
+
+- `Workspace.Maps.Run`: the run map, where it really is.
+- `Workspace.Maps.Lobby`: the lobby, 3000 studs to the side (it moves back to the middle when the game starts).
+- The terrain of both maps.
+
+Move, recolour, delete or add anything, sculpt the terrain, then save the place. Pieces with a `MapUnit`
+attribute (shops, shredders, gates, gas pumps, party pads, the spawn) are wired up by code: move or delete them as
+a whole and the game follows, but changes inside them are replaced by code. With no `Workspace.Maps`, the game
+builds both maps from code like before.
+
+To make the maps from the current code (Studio stopped, View → Command Bar):
+`require(game.ServerScriptService.MowALawn.MapStore).bake()`. Making them again needs `bake(true)`, which
+replaces your edits; the old maps are kept in `ServerStorage.MowALawnBackups`.
+
+**Dev panel:** in Studio (and for `Config.ADMINS` in live games) press F2 or the red DEV button: infinite cash,
+gems, every tool, max everything, spawn or kill the area's boss, bosses on/off, clear or open areas, skip to night.
+
 ## Before publishing
 
 - Create the developer products and game passes on the Creator Dashboard, then put their ids into

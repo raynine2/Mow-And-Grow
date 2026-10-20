@@ -50,6 +50,13 @@ The session start hook installs `rojo` and `lune` in cloud sessions.
 - Every RemoteEvent is created in `src/server/Net.luau`. The server checks everything; clients only draw.
 - The world is built in code at server start (`LobbyBuilder`, `RunBuilder`, `PropKit`), in the studded-brick
   style. Hand-made Studio parts outside `Workspace.World` are left alone.
+- **Saved maps (`server/MapStore`).** The place can hold both maps as real parts in `Workspace.Maps` (`Run` where
+  it really is, `Lobby` 3000 studs to the side, plus their terrain), made in edit mode with
+  `require(game.ServerScriptService.MowALawn.MapStore).bake()`. The owner edits them by hand. At runtime the
+  builders still run, then the saved map replaces the generated scenery and each working piece (`MapUnit`
+  attribute: shops, shredders, gates, pumps, pads, spawn) is moved to where it was placed. So a builder change to
+  scenery won't show while a saved map exists: tell the user, and never re-bake (`bake(true)`) without asking,
+  because it replaces their hand edits (the old map goes to `ServerStorage.MowALawnBackups`).
 - One place has two modes: a public server is the **lobby**, a reserved server is a **run**. In Studio a party pad
   switches the lobby into a run in place (`Main.server` + `Lobby.onStudioStart`); the Workspace attribute
   `ForceMode = "Run"` or `Config.STUDIO_MODE` starts straight in a run.

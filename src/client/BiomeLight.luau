@@ -102,8 +102,11 @@ local function apply(l: Look)
 	color.Contrast = l.contrast * 0.3
 	atmosphere.Color = l.fog
 	atmosphere.Decay = l.fog:Lerp(Color3.new(0, 0, 0), 0.35)
-	atmosphere.Haze = l.haze
-	atmosphere.Density = l.density
+	-- a sky the owner added (any Sky but the game's "MowALawnSky") stays visible: little haze over it
+	local sky = Lighting:FindFirstChildOfClass("Sky")
+	local ownSky = sky ~= nil and sky.Name ~= "MowALawnSky"
+	atmosphere.Haze = if ownSky then l.haze * 0.15 else l.haze
+	atmosphere.Density = if ownSky then l.density * 0.75 else l.density
 	rays.Intensity = l.sunRays
 	bloom.Intensity = l.bloom * 0.45
 end

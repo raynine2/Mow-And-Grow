@@ -552,10 +552,14 @@ function WorldGen.lighting()
 	L.EnvironmentSpecularScale = 1
 	L.ShadowSoftness = 0.5 -- soft, readable shadows
 	L.GlobalShadows = true
+	-- a sky the owner put in Lighting (anything but the game's own "MowALawnSky") should be seen: no 3D clouds over
+	-- it and only a little haze at the horizon
+	local sky = L:FindFirstChildOfClass("Sky")
+	local ownSky = sky ~= nil and sky.Name ~= "MowALawnSky"
 	local atm = Instance.new("Atmosphere")
-	atm.Density = 0.3
+	atm.Density = if ownSky then 0.22 else 0.3
 	atm.Offset = 0.2
-	atm.Haze = 1
+	atm.Haze = if ownSky then 0.15 else 1
 	atm.Glare = 0
 	atm.Color = Color3.fromRGB(150, 210, 235)
 	atm.Decay = Color3.fromRGB(98, 136, 153)
@@ -582,7 +586,7 @@ function WorldGen.lighting()
 	clouds.Cover = 0.55
 	clouds.Density = 0.6
 	clouds.Color = Color3.fromRGB(255, 255, 255)
-	clouds.Enabled = true
+	clouds.Enabled = not ownSky
 	clouds.Parent = workspace.Terrain
 end
 

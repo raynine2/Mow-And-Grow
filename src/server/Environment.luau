@@ -67,7 +67,8 @@ local function lighting()
 		clouds.Cover = look.clouds.cover
 		clouds.Density = look.clouds.density
 		clouds.Color = look.clouds.color
-		clouds.Enabled = true
+		local own = Lighting:FindFirstChildOfClass("Sky")
+		clouds.Enabled = not (own and own.Name ~= "MowALawnSky") -- a hand-made sky stays visible
 		clouds.Parent = terrain
 	end
 end

@@ -146,6 +146,89 @@ local function partNature(w: Instance)
 	end
 end
 
+-- The stone stairs between the areas (the saved world's "Stair" blocks) restyled to match the hubs: rough slate
+-- risers, packed-dirt treads like the paths with a stone kerb along each side, a round log along the front edge
+-- of every step, and a lamp post either side at the top and the bottom.
+local STAIR_STONE = { Color3.fromRGB(150, 146, 138), Color3.fromRGB(136, 132, 126) }
+local TREAD = Color3.fromRGB(214, 152, 88)
+local KERB = Color3.fromRGB(170, 166, 158)
+local STAIR_LOG = Color3.fromRGB(182, 128, 78)
+local function deco(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, mat: Enum.Material, shape: Enum.PartType?): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = mat
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if shape then
+		p.Shape = shape
+	end
+	p.Parent = parent
+	return p
+end
+
+local function restyleStairs(w: Instance)
+	-- the stairs come in runs (one folder each); restyle every run
+	local runs: { [Instance]: { BasePart } } = {}
+	for _, p in w:GetDescendants() do
+		if p:IsA("BasePart") and p.Name == "Stair" and p.Parent then
+			runs[p.Parent] = runs[p.Parent] or {}
+			table.insert(runs[p.Parent], p)
+		end
+	end
+	local Models = require(script.Parent.Models)
+	for folder, steps in runs do
+		local look = steps[1].CFrame.LookVector
+		table.sort(steps, function(a, b)
+			return a.Position:Dot(look) < b.Position:Dot(look)
+		end)
+		local function top(p: BasePart): number
+			return p.Position.Y + p.Size.Y / 2
+		end
+		for i, p in steps do
+			p.Material = Enum.Material.Slate
+			p.Color = STAIR_STONE[i % 2 + 1]
+			p.TopSurface = Enum.SurfaceType.Smooth
+			local w2, d = p.Size.X / 2, p.Size.Z
+			local y = p.Size.Y / 2
+			-- dirt tread with a stone kerb along both sides
+			deco(folder, "StairTread", Vector3.new(p.Size.X - 1.6, 0.2, d + 0.02), p.CFrame * CFrame.new(0, y + 0.08, 0), TREAD, Enum.Material.Sand)
+			for _, sx in { -1, 1 } do
+				deco(folder, "StairKerb", Vector3.new(0.8, 0.45, d + 0.04), p.CFrame * CFrame.new(sx * (w2 - 0.4), y + 0.2, 0), KERB, Enum.Material.Slate)
+			end
+			-- a log along the edge facing the lower neighbour (the riser you see walking up)
+			local before, after = steps[i - 1], steps[i + 1]
+			local lowerBehind = before ~= nil and top(before) < top(p) - 0.2
+			local lowerAhead = after ~= nil and top(after) < top(p) - 0.2
+			for _, edge in { if lowerBehind then 1 else 0, if lowerAhead then -1 else 0 } do
+				if edge ~= 0 then
+					-- local -Z points along `look` (ahead); +Z is behind
+					deco(folder, "StairLog", Vector3.new(p.Size.X - 1.6, 0.8, 0.8), p.CFrame * CFrame.new(0, y + 0.05, edge * (d / 2 - 0.35)), STAIR_LOG, Enum.Material.Wood, Enum.PartType.Cylinder)
+				end
+			end
+		end
+		-- lamp posts on the stair's edges at the bottom and the top, facing across it
+		local lamps = Instance.new("Folder")
+		lamps.Name = "StairLamps"
+		lamps.Parent = folder
+		for _, p in { steps[1], steps[#steps] } do
+			for _, sx in { -1, 1 } do
+				local at = p.CFrame * CFrame.new(sx * (p.Size.X / 2 - 1.2), p.Size.Y / 2, 0)
+				local foot = at.Position
+				local inward = foot - at.RightVector * sx
+				Models.place("lantern_post", lamps, CFrame.lookAt(foot, Vector3.new(inward.X, foot.Y, inward.Z)), 0.85, true)
+			end
+		end
+	end
+end
+
 -- Dirt paths across the village between the hub buildings (like the lobby's: server/HubPaths).
 local PATHS = {
 	{ Vector2.new(0, -82), Vector2.new(0, 30) }, -- the main walk: spawn -> fountain -> the way north to the meadow
@@ -200,6 +283,7 @@ function RunWorld.build()
 	require(script.Parent.WorldGen).lighting()
 	clearVillage(w)
 	texturedGround(w)
+	restyleStairs(w)
 	-- (the saved world keeps its voxel trees, bushes and rocks: partNature would swap them for part-built ones)
 
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }

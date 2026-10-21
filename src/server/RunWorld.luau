@@ -87,6 +87,37 @@ local function clearVillage(w: Instance)
 	end
 end
 
+-- Warm studded paths across the village between the hub buildings (like the lobby's), on the grass.
+local PATHS = {
+	{ Vector2.new(0, -78), Vector2.new(0, 30) }, -- spawn -> fountain -> the way north to the meadow
+	{ Vector2.new(-34, -40), Vector2.new(30, -40) }, -- shredder <-> tool shop
+	{ Vector2.new(-30, -64), Vector2.new(28, -64) }, -- garage <-> bag stand
+}
+local function paths(w: Instance)
+	local f = Instance.new("Folder")
+	f.Name = "Paths"
+	for _, s in PATHS do
+		local a, b = s[1], s[2]
+		local mid = (a + b) / 2
+		local len = (b - a).Magnitude + 8
+		local cf = CFrame.lookAt(Vector3.new(mid.X, 0.1, mid.Y), Vector3.new(b.X, 0.1, b.Y))
+		for _, layer in { { 9, 0.16, Color3.fromRGB(196, 120, 60) }, { 7, 0.2, Color3.fromRGB(240, 162, 82) } } do
+			local p = Instance.new("Part")
+			p.Name = "Path"
+			p.Anchored = true
+			p.CanCollide = false
+			p.CanTouch = false
+			p.Size = Vector3.new(layer[1], layer[2], len)
+			p.CFrame = cf * CFrame.new(0, layer[2] / 2 - 0.1, 0)
+			p.Color = layer[3]
+			p.Material = Enum.Material.Plastic
+			p.TopSurface = Enum.SurfaceType.Studs
+			p.Parent = f
+		end
+	end
+	f.Parent = w
+end
+
 -- Players who fall into the sea, a gorge or lava come back at the way into the area they're working on.
 local function safetyNet(info)
 	task.spawn(function()
@@ -126,6 +157,7 @@ function RunWorld.build()
 	clearVillage(w)
 
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
+	paths(w)
 	RunBuilder.hub(w, info)
 
 	local gates = w:FindFirstChild("Gates")

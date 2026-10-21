@@ -92,9 +92,10 @@ def cabin():
         v.box((x0, 4, -4), (x0 + 4, 7, -3), DARK)
         v.box((x0 + 1, 5, -4), (x0 + 3, 6, -3), GLOW)
     # porch posts and its roof
+    # (the porch roof sits high enough that the game's sign, y 8.9..11.9 at z -12.3, hangs clear under it)
     for x in (-14, 13):
-        v.box((x, 1, -13), (x, 10, -13), WOOD[3])
-    v.box((-16, 11, -14), (15, 11, -4), lambda x, y, z: ROOF[(x // 2) % 2])
+        v.box((x, 1, -13), (x, 12, -13), WOOD[3])
+    v.box((-16, 13, -14), (15, 13, -4), lambda x, y, z: ROOF[(x // 2) % 2])
     # gable roof over the room, ridge along x
     for k in range(7):
         z0, z1 = -5 + k, 11 - k

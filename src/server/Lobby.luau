@@ -27,8 +27,13 @@ local function stockWindow(): number
 	return math.floor(workspace:GetServerTimeNow() / Config.STOCK_WINDOW)
 end
 
-local function inStock(classId: string): boolean
+local function inStock(data, classId: string): boolean
 	local w = stockWindow()
+	-- a Restock / Lucky Restock bought this window replaces the booth's stock for that player
+	local deal = data.classDeal
+	if deal and deal.window == w then
+		return table.find(deal.ids, classId) ~= nil
+	end
 	-- a few seconds of grace so a click right at the restock still counts
 	for _, win in { w, if workspace:GetServerTimeNow() % Config.STOCK_WINDOW < 5 then w - 1 else w } do
 		if table.find(Config.classStock(win), classId) then
@@ -97,7 +102,7 @@ local function buyClass(player: Player, data, id: string)
 		Net.notify(player, "Equipped " .. c.name, "green")
 		return
 	end
-	if not inStock(id) then
+	if not inStock(data, id) then
 		Net.notify(player, c.name .. " isn't in stock right now. Check back after the restock!", "red")
 		return
 	end
@@ -461,6 +466,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 function Lobby.start()
 	built = require(script.Parent.MapStore).load("Lobby", LobbyBuilder.build) -- the saved map, if the place has one
+	require(script.Parent.LobbyBoards).start() -- the all-time leaderboards
 	for i, def in built.pads do
 		table.insert(pads, {
 			index = i,
@@ -504,6 +510,15 @@ function Lobby.start()
 			Stats.applyCharacter(player, data)
 			PlayerData.changed(player)
 			Net.notify(player, "Equipped " .. (Config.class(id) :: any).name, "green")
+		end
+	end)
+	-- Peaceful Mode: runs this player hosts have no night monsters (and don't set a best time)
+	Net.on("Setting", 3, function(player, key, value)
+		local data = PlayerData.get(player)
+		if data and key == "peaceful" and type(value) == "boolean" then
+			data.peaceful = value
+			PlayerData.changed(player)
+			Net.notify(player, if value then "Peaceful Mode ON: no night monsters, no best times" else "Peaceful Mode OFF", "green")
 		end
 	end)
 	Net.on("Claim", 2, function(player, kind)

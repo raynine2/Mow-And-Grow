@@ -42,11 +42,17 @@ local DEFAULT = {
 	class = Config.DEFAULT_CLASS,
 	perks = { sell = 0, bundle = 0, luck = 0, gem = 0 },
 	mowers = {}, -- permanent mowers (gems / robux): [id] = true
+	tools = {}, -- PERMANENT tools bought with Robux, given at the start of every run: [id] = true
 	lastDaily = 0,
 	groupClaimed = false,
 	-- lifetime stats (the STATS window): clumps cut, bundles sold, coins earned, mutated ("rare") clumps cut,
 	-- seconds played; newsSeen = the newest Config.NEWS id the player has seen
 	stats = { cut = 0, runs = 0, bosses = 0, sold = 0, coinsEarned = 0, rare = 0, playtime = 0, newsSeen = 0 },
+	guns = {}, -- boss-crate guns bought with Robux: [gunId] = true
+	peaceful = false, -- Peaceful Mode for runs this player hosts (no night monsters, no best time)
+	pets = {}, -- hatched critters: [uid] = petId
+	petsOn = {}, -- equipped pet uids (at most Config.PET_EQUIP)
+	petNext = 1, -- next uid number
 	index = {}, -- grass types collected: ["<zone>:<mutation>"] = true (see Config.INDEX_GEMS)
 	bestTime = 0, -- fastest finished run in seconds (0 = none yet)
 	run = nil, -- the saved run, see PlayerData.newRun

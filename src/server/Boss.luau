@@ -134,6 +134,8 @@ local function stun(player: Player, from: Vector3)
 	end)
 end
 
+Boss.stun = stun -- night crawlers knock players back the same way
+
 local function attackLoop(b)
 	while b.alive do
 		task.wait(b.def.every)
@@ -218,6 +220,14 @@ function Boss.damage(player: Player, amount: number)
 			Boss.onChanged()
 		end
 	end
+end
+
+-- Where the boss stands (its root) and its max HP, for the boss-crate guns.
+function Boss.info(): (Vector3?, number)
+	if not current or not current.alive then
+		return nil, 0
+	end
+	return current.root.Position, current.maxHp
 end
 
 function Boss.alive(): boolean

@@ -16,6 +16,10 @@ local INBOUND = {
 	"Ready", -- ()                          client finished loading, send state
 	"Seen", -- (what)                       "intro": the run's fly-over was shown
 	"Dev", -- (action, arg)                 dev panel (Studio, or Config.ADMINS / the game's owner)
+	"Hatch", -- (eggId, count)              open a gem egg (Robux eggs go through Prompt)
+	"Pet", -- (action, uid)                 equip | unequip | best
+	"Shoot", -- (aimDir)                    fire the boss-crate gun (server checks rate + range)
+	"Setting", -- (key, value)              peaceful (lobby)
 }
 -- server -> client
 local OUTBOUND = {

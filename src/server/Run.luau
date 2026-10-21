@@ -22,6 +22,8 @@ local GemShop = require(script.Parent.GemShop)
 local Loot = require(script.Parent.Loot)
 local Models = require(script.Parent.Models)
 local BestTimes = require(script.Parent.BestTimes)
+local Night = require(script.Parent.Night)
+local Guns = require(script.Parent.Guns)
 
 local Run = {}
 
@@ -60,6 +62,7 @@ local function worldState()
 		sellSpots = spots, -- every shredder's pad (the hub's and the drop-off)
 		left = left, -- clumps still standing in the whole map
 		started = startedAt,
+		night = Night.state(), -- { night, left, length, peaceful } (server/Night reads server/DayNight's clock)
 	}
 end
 
@@ -132,7 +135,8 @@ local function completeRun()
 			data.gems += gems
 			data.stats.runs += 1
 			local time = if data.run then data.run.time or 0 else 0
-			local best = BestTimes.submit(p, data, time)
+			-- a Peaceful Mode run doesn't count for the BEST TIMES board
+			local best = if Night.peaceful then nil else BestTimes.submit(p, data, time)
 			data.run = nil -- coins, tools and coin mowers end with the run
 			PlayerData.changed(p)
 			Net.send(p, "Fx", "runComplete", { gems = gems, time = time, best = best })
@@ -182,6 +186,7 @@ local function onAreaCleared(z: number)
 end
 
 local function onBossDefeated(z: number, _damageBy: { [Player]: number })
+	Guns.clear() -- the crate and the guns go with the boss
 	local def = Config.ZONES[z].boss
 	for _, p in Players:GetPlayers() do
 		local data = PlayerData.get(p)
@@ -357,6 +362,7 @@ local function onSwing(player: Player, look: any)
 	if Boss.inReach(root.Position, def.radius) then
 		Boss.damage(player, damage * Config.BOSS_TOOL_MULT)
 	end
+	Night.hit(player, root.Position, def.radius, damage)
 end
 
 -- Auto tools and mowers cut every tick.
@@ -393,6 +399,7 @@ local function autoTick()
 					if Boss.inReach(root.Position, def.radius) then
 						Boss.damage(player, dmg)
 					end
+					Night.hit(player, root.Position, def.radius, dmg)
 				end
 			end
 		end
@@ -599,6 +606,8 @@ local function waitForHost(): number
 					end
 				end
 				local hd = PlayerData.get(host)
+				-- Peaceful Mode (picked in the Create Party window, sent with the teleport) decides for the whole party
+				Night.peaceful = (type(tpData) == "table" and tpData.peaceful == true) or (hd ~= nil and hd.peaceful == true)
 				return if hd and hd.run then math.clamp(hd.run.zone, 1, #Config.ZONES) else 1
 			end
 		end
@@ -622,8 +631,20 @@ function Run.start()
 	Boss.setup(info.world)
 	if not Config.WORLD_GEN then
 		-- 8-minute days, 4-minute nights (runs only). The generated world keeps each valley's own time of day
-		-- (client/BiomeLight), which is its look.
+		-- (client/BiomeLight), which is its look (so its nights, and the Weed Crawlers, don't come).
 		require(script.Parent.DayNight).start()
+	end
+	Guns.start(info.world)
+	Night.start(info.world, Night.peaceful) -- the Weed Crawlers come out at night
+	Night.onChanged = pushWorld
+	Night.onKill = function(player: Player, pos: Vector3, z: number)
+		local data = PlayerData.get(player)
+		if data and data.run then
+			local coins = math.floor((Config.ZONES[z] or Config.ZONES[1]).value * Config.CRAWLERS.reward * Stats.compute(player, data).sell)
+			data.run.coins += coins
+			PlayerData.changed(player)
+			Net.send(player, "Fx", "crawlerDown", { pos = pos, coins = coins })
+		end
 	end
 
 	Field.onCut = onCut
@@ -635,6 +656,7 @@ function Run.start()
 			end
 			if Config.BOSSES then
 				Boss.spawn(z)
+				Guns.dropCrate(z)
 			else
 				onAreaCleared(z)
 			end
@@ -892,6 +914,10 @@ function Run.dev(cmd: string, ...)
 		if player then
 			Boss.damage(player, math.huge)
 		end
+	elseif cmd == "night" then
+		Night.skipTo(true)
+	elseif cmd == "day" then
+		Night.skipTo(false)
 	elseif cmd == "zone" then
 		unlock(math.clamp(tonumber((...)) or 1, 1, #Config.ZONES))
 	end

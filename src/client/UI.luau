@@ -158,6 +158,80 @@ function UI.button(parent: Instance, text: string, color: Color3, size: UDim2, o
 	return b
 end
 
+-- Every clickable that isn't a UI.button still gets the bounce + click sound.
+function UI.clicky(b: GuiButton)
+	b.MouseButton1Click:Connect(function()
+		bounce(b)
+		Sound.play("click")
+	end)
+end
+
+-- Chop A Forest marks every Robux price with a rainbow fill. Re-applied by setButton when the colour changes.
+local RAINBOW = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 200, 255)),
+	ColorSequenceKeypoint.new(0.3, Color3.fromRGB(190, 110, 255)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 110, 170)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(255, 215, 60)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(110, 230, 90)),
+})
+function UI.rainbow(b: GuiObject)
+	b.BackgroundColor3 = Color3.new(1, 1, 1)
+	local g = b:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+	g.Color = RAINBOW
+	g.Rotation = 0
+	g.Parent = b
+	b:SetAttribute("Rainbow", true)
+	local lip = b:FindFirstChild("Lip") :: Frame?
+	if lip then
+		lip.BackgroundColor3 = Color3.fromRGB(120, 70, 170)
+	end
+end
+
+-- A rainbow Robux price button: "R$ 120".
+function UI.robuxButton(parent: Instance, robux: number, size: UDim2, onClick: () -> (), props: { pos: UDim2?, anchor: Vector2?, name: string?, prefix: string? }?): TextButton
+	local o = props or {}
+	local b = UI.button(parent, (o.prefix or "") .. "R$ " .. robux, Color3.new(1, 1, 1), size, onClick, o)
+	UI.rainbow(b)
+	return b
+end
+
+-- Tilted ribbon on a card's top-left corner ("BEST VALUE", "POPULAR", "FOREVER").
+function UI.ribbon(card: GuiObject, text: string, color: Color3?)
+	local r = UI.frame({ size = UDim2.fromOffset(118, 24), pos = UDim2.fromOffset(-16, -18), color = color or Color3.fromRGB(255, 90, 120), parent = card, radius = 6, outline = 2, name = "Ribbon" })
+	r.Rotation = -10
+	r.ZIndex = card.ZIndex + 4
+	local t = UI.text(r, text, UDim2.new(1, -8, 1, -4), { pos = UDim2.fromOffset(4, 2), stroke = 1.5 })
+	t.ZIndex = r.ZIndex + 1
+	return r
+end
+
+-- Chop A Forest's open animation: the children of `container` pop in one after another
+-- (small -> overshoot -> 1), in LayoutOrder, about 0.04 s apart.
+function UI.popIn(container: Instance, step: number?)
+	local kids = {}
+	for _, k in container:GetChildren() do
+		if k:IsA("GuiObject") and k.Visible then
+			table.insert(kids, k)
+		end
+	end
+	table.sort(kids, function(a, b)
+		return a.LayoutOrder < b.LayoutOrder
+	end)
+	local gap = step or 0.04
+	for i, k in kids do
+		local sc = k:FindFirstChild("Pop") :: UIScale?
+		if not sc then
+			local n = Instance.new("UIScale")
+			n.Name = "Pop"
+			n.Parent = k
+			sc = n
+		end
+		local s = sc :: UIScale
+		s.Scale = 0
+		TweenService:Create(s, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, math.min((i - 1) * gap, 0.45)), { Scale = 1 }):Play()
+	end
+end
+
 function UI.setButton(b: TextButton, text: string, color: Color3?)
 	local label = b:FindFirstChild("Label") :: TextLabel?
 	if label then
@@ -165,15 +239,63 @@ function UI.setButton(b: TextButton, text: string, color: Color3?)
 	end
 	if color then
 		b.BackgroundColor3 = color
+		b:SetAttribute("Rainbow", nil)
 		local g = b:FindFirstChildOfClass("UIGradient")
 		if g then
 			g.Color = ColorSequence.new(UI.shade(color, 1.15), UI.shade(color, 0.85))
+			g.Rotation = 90 -- a rainbow button turned it sideways
 		end
 		local lip = b:FindFirstChild("Lip") :: Frame?
 		if lip then
 			lip.BackgroundColor3 = UI.shade(color, 0.6)
 		end
 	end
+end
+
+-- Every clickable that isn't a UI.button still gets the bounce + click sound.
+function UI.clicky(b: GuiButton)
+	b.MouseButton1Click:Connect(function()
+		bounce(b)
+		Sound.play("click")
+	end)
+end
+
+local RAINBOW = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 200, 255)),
+	ColorSequenceKeypoint.new(0.3, Color3.fromRGB(190, 110, 255)),
+	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 110, 170)),
+	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(255, 215, 60)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(110, 230, 90)),
+})
+function UI.rainbow(b: GuiObject)
+	b.BackgroundColor3 = Color3.new(1, 1, 1)
+	local g = b:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+	g.Color = RAINBOW
+	g.Rotation = 0
+	g.Parent = b
+	b:SetAttribute("Rainbow", true)
+	local lip = b:FindFirstChild("Lip") :: Frame?
+	if lip then
+		lip.BackgroundColor3 = Color3.fromRGB(120, 70, 170)
+	end
+end
+
+-- A rainbow Robux price button: "R$ 120".
+function UI.robuxButton(parent: Instance, robux: number, size: UDim2, onClick: () -> (), props: { pos: UDim2?, anchor: Vector2?, name: string?, prefix: string? }?): TextButton
+	local o = props or {}
+	local b = UI.button(parent, (o.prefix or "") .. "R$ " .. robux, Color3.new(1, 1, 1), size, onClick, o)
+	UI.rainbow(b)
+	return b
+end
+
+-- Tilted ribbon on a card's top-left corner ("BEST VALUE", "POPULAR", "EXCLUSIVE").
+function UI.ribbon(card: GuiObject, text: string, color: Color3?)
+	local r = UI.frame({ size = UDim2.fromOffset(130, 26), pos = UDim2.fromOffset(-14, 6), color = color or Color3.fromRGB(255, 90, 120), parent = card, radius = 6, outline = 2, name = "Ribbon" })
+	r.Rotation = -12
+	r.ZIndex = card.ZIndex + 4
+	local t = UI.text(r, text, UDim2.new(1, -8, 1, -4), { pos = UDim2.fromOffset(4, 2), stroke = 1.5 })
+	t.ZIndex = r.ZIndex + 1
+	return r
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -708,6 +830,13 @@ function UI.popupRow(list: Instance, order: number, icon: string?, text: string,
 	return row
 end
 
+-- A window built by hand (not UI.window / UI.popupWindow), like the class card deal: needs { frame, refresh }.
+function UI.register(name: string, w)
+	w.name = name
+	windows[name] = w
+	return w
+end
+
 function UI.setGems(amount: number)
 	for _, w in windows do
 		if w.gemText then
@@ -734,6 +863,13 @@ function UI.open(name: string)
 	w.frame.Visible = true
 	w.refresh()
 	bounce(w.frame)
+	if w.pop then
+		for _, c in w.pop do
+			UI.popIn(c)
+		end
+	elseif w.list then
+		UI.popIn(w.list)
+	end
 	UI.onWindowChanged:Fire(name)
 end
 
@@ -743,6 +879,13 @@ function UI.close()
 	end
 	openName = nil
 	UI.onWindowChanged:Fire(nil)
+end
+
+-- A window built by hand (not UI.window / UI.popupWindow): needs at least { frame, refresh }.
+function UI.register(name: string, w)
+	w.name = name
+	windows[name] = w
+	return w
 end
 
 function UI.isOpen(name: string): boolean
@@ -799,6 +942,9 @@ function UI.blueCard(list: Instance, order: number, o: CardOpts)
 	local btn = UI.button(card, o.price, if o.enabled then WOOD.purple else WOOD.grey, UDim2.fromOffset(200, 46), function()
 		o.onClick()
 	end, { pos = UDim2.new(0.5, 0, 1, -12), anchor = Vector2.new(0.5, 1), name = "Price" })
+	if string.sub(o.price, 1, 2) == "R$" then
+		UI.rainbow(btn)
+	end
 	if o.priceIcon then
 		local label = btn:FindFirstChild("Label") :: TextLabel
 		label.Size = UDim2.new(1, -50, 1, -12)

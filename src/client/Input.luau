@@ -113,10 +113,16 @@ ProximityPromptService.PromptTriggered:Connect(function(prompt)
 	end
 end)
 
--- close a window when you walk away from the stall that opened it
+-- close a window when you walk away from the stall that opened it (only then: a camera cut, like the class
+-- room's, hides prompts for a moment while you're still standing there)
 ProximityPromptService.PromptHidden:Connect(function(prompt)
 	local window = prompt:GetAttribute("Window")
 	if type(window) == "string" and UI.isOpen(window) then
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local part = prompt.Parent
+		if root and part and part:IsA("BasePart") and (root.Position - part.Position).Magnitude <= prompt.MaxActivationDistance + 1 then
+			return
+		end
 		UI.close()
 	end
 end)

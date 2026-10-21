@@ -198,7 +198,7 @@ end
 -- (1.5 - 2.8); the meshes are about 1.6 of those. Quarter-turn yaws keep the voxels on the world grid.
 local function meshTree(zi: number, parent: Instance, at: Vector3, size: number, R: () -> number): boolean
 	local v = 1 + math.floor(R() * 3) % 3
-	local name = "Tree_" .. Zones.region(zi).id .. "_" .. v
+	local name = "Tree_" .. (Zones.region(zi).id or "meadow") .. "_" .. v -- the village has no id: meadow trees
 	if not Models.has(name) then
 		name = "Tree_meadow_" .. v
 	end

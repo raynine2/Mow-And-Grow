@@ -39,7 +39,8 @@ local grass: Instance? = nil
 local conns: { RBXScriptConnection } = {}
 
 local function isTuft(inst: Instance): boolean
-	return inst:IsA("Model") and inst.Name:sub(1, 5) == "tuft_" and inst.Name:sub(-4) ~= "_cut"
+	-- the toy tufts, and the generated world's voxel clumps (server/Field names their holder "Clump")
+	return inst:IsA("Model") and ((inst.Name:sub(1, 5) == "tuft_" and inst.Name:sub(-4) ~= "_cut") or inst.Name == "Clump")
 end
 
 local function track(m: Instance)

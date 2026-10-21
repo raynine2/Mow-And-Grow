@@ -64,7 +64,26 @@ end
 local birds: { Bird } = {}
 
 -- where birds can live: the hub / first zone in a run, the plaza edge in the lobby
+local birdRay = RaycastParams.new()
+birdRay.FilterType = Enum.RaycastFilterType.Include
 local function randomSpot(): Vector3
+	-- the generated world has terraces: birds land on the ground somewhere around you
+	local world = workspace:FindFirstChild("World")
+	local ground = world and world:FindFirstChild("Ground")
+	local char = player.Character
+	local me = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if Config.WORLD_GEN and ground and me then
+		for _ = 1, 6 do
+			local a = math.random() * math.pi * 2
+			local r = math.random(18, 55)
+			local p = me.Position + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
+			birdRay.FilterDescendantsInstances = { ground }
+			local hit = workspace:Raycast(p + Vector3.new(0, 40, 0), Vector3.new(0, -90, 0), birdRay)
+			if hit and hit.Normal.Y > 0.9 then
+				return hit.Position
+			end
+		end
+	end
 	if State.mode == "Run" then
 		local zone = math.clamp((State.world and State.world.zone) or 1, 1, #Config.ZONES)
 		local c = Config.zoneCentre(zone)
@@ -98,6 +117,9 @@ RunService.Heartbeat:Connect(function(dt)
 	local t = os.clock()
 	for _, b in birds do
 		b.timer -= dt
+		if me and b.state ~= "fly" and (me.Position - b.pos).Magnitude > 120 then
+			b.pos = randomSpot() -- left far behind: come and live near the player again
+		end
 		local hop = 0
 		local peck = 0
 		if b.state == "fly" then

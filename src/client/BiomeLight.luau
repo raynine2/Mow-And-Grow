@@ -114,8 +114,7 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	local step = acc
 	acc = 0
-	-- only in a run in the generated world (the lobby has its own look)
-	if player:GetAttribute("BiomeLightOff") or not Config.WORLD_GEN or not State.isRun() then
+	if player:GetAttribute("BiomeLightOff") or not Config.WORLD_GEN then
 		current = nil
 		return
 	end
@@ -124,7 +123,8 @@ RunService.RenderStepped:Connect(function(dt)
 	if not root then
 		return
 	end
-	local want = target(root.Position)
+	-- the lobby (generated-world style) always has the village's sunny meadow look
+	local want = if State.isRun() then target(root.Position) else preset(0)
 	if not current then
 		current = want
 	else

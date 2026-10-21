@@ -91,6 +91,8 @@ local function scatter(world: Instance)
 	end
 end
 
+local lanterns: (Instance) -> ()
+
 local function decor(world: Instance)
 	-- the clearing sits in a thick forest, with mountains far behind
 	local trees = PropKit.folder("Trees", world)
@@ -110,7 +112,12 @@ local function decor(world: Instance)
 	PropKit.fenceRow(fence, Vector3.new(-e, FLOOR_Y, -e), Vector3.new(e, FLOOR_Y, -e), Vector3.zAxis)
 	PropKit.fenceRow(fence, Vector3.new(e, FLOOR_Y, -e), Vector3.new(e, FLOOR_Y, e), -Vector3.xAxis)
 	PropKit.fenceRow(fence, Vector3.new(-e, FLOOR_Y, -e), Vector3.new(-e, FLOOR_Y, e), Vector3.xAxis)
-	-- lanterns along the walk from the spawn to the booths
+	lanterns(world)
+	scatter(world)
+end
+
+-- lanterns along the walk from the spawn to the booths
+function lanterns(world: Instance)
 	local lamps = PropKit.folder("Lanterns", world)
 	for _, z in { -34, -14, 6, 24 } do
 		for _, x in { -13, 13 } do
@@ -120,7 +127,6 @@ local function decor(world: Instance)
 			end
 		end
 	end
-	scatter(world)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -297,8 +303,14 @@ end
 
 function LobbyBuilder.build()
 	local world = Environment.apply()
-	ground(world)
-	decor(world)
+	if Config.WORLD_GEN then
+		-- the generated world's style: a voxel island with big voxel trees and a windmill (server/LobbyArt)
+		require(script.Parent.LobbyArt).build(world)
+		lanterns(world)
+	else
+		ground(world)
+		decor(world)
+	end
 	Environment.spawn(world, CFrame.lookAt(Vector3.new(0, 0.8, -46), Vector3.new(0, 0.8, 0)))
 	local stockLabel = classCabin(world)
 	garageCabin(world)

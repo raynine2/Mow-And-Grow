@@ -75,6 +75,9 @@ local changed: Look.Values = {}
 RunService.Heartbeat:Connect(function(dt)
 	local target = moods[0]
 	ZoneMood.zone = 0
+	if Config.WORLD_GEN and not State.isRun() then
+		return -- the generated world's lobby: client/BiomeLight does the lighting
+	end
 	if State.isRun() then
 		local pos = focus()
 		if pos then

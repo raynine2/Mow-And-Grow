@@ -129,9 +129,9 @@ local function roundTree(parent: Instance, at: Vector3, size: number, leaves: { 
 	end
 	local shades = { leaves[4], leaves[1], leaves[3] }
 	local top = at + Vector3.new(0, h + 4 * s, 0)
-	local v = if fine then 1.6 * s else 2.8 * s
+	local v = if fine then 1.9 * s else 3.2 * s
 	lump(m, top, 8 * s, v, shades, 0.25)
-	local balls = if fine then 6 else 4
+	local balls = if fine then 5 else 3
 	for k = 1, balls do
 		local a = k / balls * math.pi * 2 + (R() - 0.5) * 0.6
 		local dy = (R() * 5 - 3) * s
@@ -565,7 +565,7 @@ function WorldArt.decorate(world: Instance, plan: any)
 
 	-- 2) the forest wall: big trees on the wooded plateau around every area
 	local R = WorldPlan.rng(4242)
-	local spacing = 19
+	local spacing = 23
 	local B = Zones.BOUNDS
 	for x = B.minX, B.maxX, spacing do
 		for z = B.minZ, B.maxZ, spacing do
@@ -583,7 +583,7 @@ function WorldArt.decorate(world: Instance, plan: any)
 						end
 					end
 				end
-				local size = if front then 0.95 + R() * 0.35 else 1.2 + R() * 0.5
+				local size = if front then 1.15 + R() * 0.4 else 1.3 + R() * 0.5
 				treeFor(c.near, folderFor(c.near), v3(p, c.h), size, R, front)
 			end
 		end

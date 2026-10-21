@@ -31,6 +31,11 @@ local function wanted(p: Instance): boolean
 	if not p:IsA("BasePart") or p:IsA("MeshPart") or p.Transparency >= 0.6 then
 		return false
 	end
+	-- nor the hubs' part-built trees, bushes and rocks (server/HubKit): Chop A Forest's look has no outlines
+	local model = p.Parent
+	if model and model:IsA("Model") and (model.Name == "Tree" or model.Name == "Bush" or model.Name == "Rock") then
+		return false
+	end
 	-- only scenery: trees, bushes, landmarks (World.Visuals); never the ground, paths or grass
 	local visuals = p:FindFirstAncestor("Visuals")
 	if not visuals or p.Size.Y < 0.6 then

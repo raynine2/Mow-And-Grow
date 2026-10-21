@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
 local WorldPlan = require(ReplicatedStorage.MowALawn.WorldPlan)
+local Models = require(script.Parent.VoxelModels)
 
 local WorldArt = {}
 
@@ -193,7 +194,30 @@ local function crystalTree(parent: Instance, at: Vector3, size: number, cols: { 
 	m.Parent = parent
 end
 
+-- The Blender tree for this area (3 variants), if the models are imported. `size` is the old part-tree size
+-- (1.5 - 2.8); the meshes are about 1.6 of those. Quarter-turn yaws keep the voxels on the world grid.
+local function meshTree(zi: number, parent: Instance, at: Vector3, size: number, R: () -> number): boolean
+	local v = 1 + math.floor(R() * 3) % 3
+	local name = "Tree_" .. Zones.region(zi).id .. "_" .. v
+	if not Models.has(name) then
+		name = "Tree_meadow_" .. v
+	end
+	local scale = size / 1.6
+	if not Models.place(parent, name, at, { scale = scale, yaw = math.floor(R() * 4) * math.pi / 2 }) then
+		return false
+	end
+	Models.blocker(parent, Vector3.new(4.8 * scale, 20 * scale, 4.8 * scale), CFrame.new(at + Vector3.new(0, 10 * scale, 0)))
+	count += 2
+	if count % 500 < 2 then
+		task.wait()
+	end
+	return true
+end
+
 local function treeFor(zi: number, parent: Instance, at: Vector3, size: number, R: () -> number, fine: boolean?)
+	if meshTree(zi, parent, at, size, R) then
+		return
+	end
 	local def = Zones.region(zi)
 	local id = def.id
 	if id == "pine" then
@@ -218,10 +242,51 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- landmarks
 -------------------------------------------------------------------------------------------------------------
+-- Blender landmarks: scale, and how high the foot sits above the ground (the floating rock hangs in the air).
+local LANDMARK_MESH = {
+	windmill = { scale = 1.25 },
+	silo = { scale = 1.1 },
+	cherry = { scale = 1 },
+	elderpine = { scale = 1 },
+	mushroomhut = { scale = 1 },
+	icespire = { scale = 1.2 },
+	volcano = { scale = 1.5 },
+	floatrock = { scale = 1, lift = 14 },
+}
+
+local function meshLandmark(parent: Instance, def: any, at: Vector3): boolean
+	local l = def.landmark
+	local name = "Landmark_" .. l.kind
+	local spec = LANDMARK_MESH[l.kind]
+	if not spec or not Models.has(name) then
+		return false
+	end
+	local m = Instance.new("Model")
+	m.Name = def.name .. " Landmark"
+	local body = Models.place(m, name, at + Vector3.new(0, spec.lift or 0, 0), { scale = spec.scale, collide = true }) :: MeshPart
+	if l.kind == "windmill" then
+		-- the sails hang on the axle at the tower's front and turn (client/Fx spins parts with Spin). A placed
+		-- mesh's own +Z is its front (VoxelModels turns imports to face the LookVector), so the axle is at +Z.
+		local k = spec.scale
+		local axle = body.CFrame * CFrame.new(0, -body.Size.Y / 2 + 25.8 * k, 14.4 * k)
+		local sails = Models.place(m, "Landmark_windmill_sails", at, { scale = k })
+		if sails then
+			sails.CFrame = axle
+			sails:SetAttribute("Spin", 0.5)
+			sails:SetAttribute("SpinAxis", "Z")
+		end
+	end
+	m.Parent = parent
+	return true
+end
+
 local function landmark(parent: Instance, zi: number, base: number)
 	local def = Zones.list[zi]
 	local l = def.landmark
 	local at = v3(l.at, base)
+	if meshLandmark(parent, def, at) then
+		return
+	end
 	local m = Instance.new("Model")
 	m.Name = def.name .. " Landmark"
 	local accent = def.palette.accent
@@ -518,7 +583,10 @@ function WorldArt.decorate(world: Instance, plan: any)
 				if edge and patchFree(p, 3) and not onCorridor(p) then
 					local id = Zones.list[c.region].id
 					local r = 2.4 + hash(i, j, 62) * 1.8
-					lump(folderFor(c.region), v3(p, c.h), r, 1.2, BUSH[id] or BUSH.meadow, 0.2, true, true)
+					local yaw = math.floor(hash(i, j, 63) * 4) * math.pi / 2
+					if not Models.place(folderFor(c.region), "Bush_" .. id, v3(p, c.h - 0.2), { scale = r / 4.2, yaw = yaw, collide = true }) then
+						lump(folderFor(c.region), v3(p, c.h), r, 1.2, BUSH[id] or BUSH.meadow, 0.2, true, true)
+					end
 				end
 			end
 		end
@@ -610,9 +678,12 @@ function WorldArt.decorate(world: Instance, plan: any)
 				placed += 1
 				if placed % 4 == 0 then
 					local s = 2 + R() * 2.5
-					local g = shade(def.palette.rock, 1.25)
-					blk(f, Vector3.new(s * 1.4, s, s * 1.2), CFrame.new(v3(p, c.h + s * 0.45)) * CFrame.Angles(0, R() * 3, 0), g)
-					deco(blk(f, Vector3.new(s * 0.7, s * 0.6, s * 0.7), CFrame.new(v3(p + Vector2.new(s * 0.8, s * 0.5), c.h + s * 0.25)), shade(g, 0.9)))
+					local rockName = "Rock_" .. def.id .. (if s > 3.4 then "_big" else "")
+					if not Models.place(f, rockName, v3(p, c.h - 0.3), { scale = s / 3, yaw = math.floor(R() * 4) * math.pi / 2, collide = true }) then
+						local g = shade(def.palette.rock, 1.25)
+						blk(f, Vector3.new(s * 1.4, s, s * 1.2), CFrame.new(v3(p, c.h + s * 0.45)) * CFrame.Angles(0, R() * 3, 0), g)
+						deco(blk(f, Vector3.new(s * 0.7, s * 0.6, s * 0.7), CFrame.new(v3(p + Vector2.new(s * 0.8, s * 0.5), c.h + s * 0.25)), shade(g, 0.9)))
+					end
 				else
 					-- giants: the trees inside an area tower over the grass like in the reference
 					treeFor(zi, f, v3(p, c.h), 1.8 + R() * 1, R, true)

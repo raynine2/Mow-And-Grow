@@ -2,6 +2,8 @@
 -- straight up on a one-stud grid, studs on top, heights in whole brick steps (tallest in the middle), two or three
 -- close shades of the area's colour. Rare clumps are made of glowing bricks. server/Field builds every clump
 -- with this; edit it to restyle the grass everywhere.
+local Models = require(script.Parent.VoxelModels)
+
 local GrassStyle = {}
 
 local BRICK = 1.2 -- one brick's height
@@ -37,7 +39,35 @@ export type Stick = { part: BasePart, h: number, cell: Vector3 }
 
 -- Build one clump standing on `at` (its foot, on the ground). `rng` is a Random. Returns the model and its
 -- sticks (each stick's full height, so it can be shrunk while chopped and regrown).
+-- The Blender clump (one mesh, two variants per area) when the models are imported; rare ones glow.
+local function meshClump(parent: Instance, at: Vector3, id: string, rng: Random, rare: boolean): (Model?, { Stick }?)
+	local name = "Clump_" .. id .. "_" .. rng:NextInteger(1, 2)
+	if not Models.has(name) then
+		return nil, nil
+	end
+	local m = Instance.new("Model")
+	m.Name = "Clump"
+	local p = Models.place(m, name, at, { scale = rng:NextNumber(0.95, 1.15), yaw = rng:NextInteger(0, 3) * math.pi / 2, shadow = false, name = "Stick" }) :: MeshPart
+	if rare then
+		local st = GrassStyle.STYLES[id] or GrassStyle.STYLES.meadow
+		p.TextureID = ""
+		p.Material = Enum.Material.Neon
+		p.Color = st.rare
+	end
+	m.Parent = parent
+	return m, { { part = p, h = p.Size.Y, cell = Vector3.zero } }
+end
+
+-- What's left after mowing, if the models are imported (nil otherwise).
+function GrassStyle.stubble(parent: Instance, at: Vector3, id: string, rng: Random): MeshPart?
+	return Models.place(parent, "Stubble_" .. id, at, { yaw = rng:NextInteger(0, 3) * math.pi / 2, shadow = false })
+end
+
 function GrassStyle.build(parent: Instance, at: Vector3, id: string, rng: Random, rare: boolean): (Model, { Stick })
+	local mm, ms = meshClump(parent, at, id, rng, rare)
+	if mm and ms then
+		return mm, ms
+	end
 	local st = GrassStyle.STYLES[id] or GrassStyle.STYLES.meadow
 	local m = Instance.new("Model")
 	m.Name = "Clump"

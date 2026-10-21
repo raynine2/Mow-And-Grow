@@ -700,7 +700,7 @@ task.spawn(function()
 		end
 		for _, p in world:GetDescendants() do
 			if p:IsA("BasePart") and p:GetAttribute("Spin") then
-				table.insert(rollers, { part = p, base = p.CFrame, speed = p:GetAttribute("Spin") })
+				table.insert(rollers, { part = p, base = p.CFrame, speed = p:GetAttribute("Spin"), z = p:GetAttribute("SpinAxis") == "Z" })
 			end
 		end
 	end
@@ -716,7 +716,9 @@ task.spawn(function()
 		local t = os.clock()
 		for i, r in rollers do
 			if r.part.Parent then
-				r.part.CFrame = r.base * CFrame.Angles(t * r.speed * (if i % 2 == 0 then 1 else -1), 0, 0)
+				local a = t * r.speed * (if i % 2 == 0 then 1 else -1)
+				-- rollers turn about their X axis; windmill sails (SpinAxis "Z") about their face
+				r.part.CFrame = r.base * (if r.z then CFrame.Angles(0, 0, a) else CFrame.Angles(a, 0, 0))
 			end
 		end
 	end)

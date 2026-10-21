@@ -76,7 +76,7 @@ for _, cor in plan.corridors do
 	dot(cor.a:Lerp(cor.b, 0.5), 5, { 255, 200, 0 })
 end
 for _, pad in plan.pads do
-	dot(pad.at, 4, if pad.kind == "toZone" then { 0, 255, 255 } else { 0, 160, 255 })
+	dot(pad.at, 4, { 0, 255, 255 })
 end
 for _, patch in plan.patches do
 	for _, b in patch.blobs do

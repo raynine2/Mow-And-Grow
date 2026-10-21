@@ -8,7 +8,7 @@
 -- around the floating isles).
 local WorldPlan = {}
 
-export type Cell = { kind: string, h: number, region: number?, near: number }
+export type Cell = { kind: string, h: number, region: number?, near: number, forest: boolean? }
 export type Corridor = {
 	zone: number, -- the zone this corridor leads INTO
 	from: number, -- the region it comes from
@@ -105,11 +105,11 @@ function WorldPlan.make(Z: any)
 			isleZone = zi
 			local c = def.center
 			plan.islands = {
-				{ c = c, r = 50 },
-				{ c = c + Vector2.new(-78, 26), r = 30 },
-				{ c = c + Vector2.new(64, -46), r = 30 },
-				{ c = c + Vector2.new(46, 72), r = 28 },
-				{ c = c + Vector2.new(-46, -70), r = 30 },
+				{ c = c, r = 68 },
+				{ c = c + Vector2.new(-105, 35), r = 40 },
+				{ c = c + Vector2.new(86, -62), r = 40 },
+				{ c = c + Vector2.new(62, 97), r = 38 },
+				{ c = c + Vector2.new(-62, -95), r = 40 },
 			}
 		end
 	end
@@ -239,8 +239,8 @@ function WorldPlan.make(Z: any)
 			local c = plan.cells[i][j]
 			if c.kind == "rock" then
 				local top = -math.huge
-				for di = -3, 3 do
-					for dj = -3, 3 do
+				for di = -4, 4 do
+					for dj = -4, 4 do
 						local o = get(i + di, j + dj)
 						if o and o.kind == "zone" and o.h > top then
 							top = o.h
@@ -250,6 +250,7 @@ function WorldPlan.make(Z: any)
 				local p = centre(i, j)
 				local rough = fbm(p.X / 40, p.Y / 40, 7)
 				if top > -math.huge then
+					c.forest = true
 					c.h = quant(top + 12 + 2 * rough, 4)
 				else
 					local def = Z.region(c.near)
@@ -349,19 +350,17 @@ function WorldPlan.make(Z: any)
 		end
 	end
 
-	-- 5) teleport pads: a ring in the village, one at the way into each zone
-	local vc = Z.village.center
-	for zi = 1, n do
-		local ang = (zi - 1) / n * math.pi * 2 + math.pi / 8
-		local p = vc + Vector2.new(math.cos(ang), math.sin(ang)) * 50
-		table.insert(plan.pads, { kind = "toZone", zone = zi, at = p, h = 0 })
+	-- 5) drop-off shredders: one in every area after the first, a little way in from its gate (Chop A Forest has
+	-- one out in the map, so you don't walk all the way back to the hub to sell)
+	for zi = 2, n do
 		local cor = plan.corridors[zi]
-		local dir = (cor.b - cor.a).Unit
-		local back = cor.b + dir * 18 + Vector2.new(-dir.Y, dir.X) * 14
-		if Z.list[zi].floating then
-			back = cor.b + dir * 10
+		local def = Z.list[zi]
+		local dir = (def.center - cor.b).Unit
+		local p = cor.b + dir * 46 + Vector2.new(-dir.Y, dir.X) * 22
+		if def.floating then
+			p = plan.islands[1].c + Vector2.new(-30, 0)
 		end
-		table.insert(plan.pads, { kind = "toVillage", zone = zi, at = back, h = heightAt(back) })
+		table.insert(plan.pads, { kind = "dropoff", zone = zi, at = p, h = heightAt(p) })
 	end
 
 	-- 6) grass patches: irregular blobs on each zone's floor, away from the landmark, gates and pads
@@ -369,11 +368,11 @@ function WorldPlan.make(Z: any)
 		local R = rng(zi * 7919 + 13)
 		local chosen = {}
 		local tries = 0
-		local want = if def.floating then 7 else 7
+		local want = if def.floating then 8 else 11
 		while #chosen < want and tries < 600 do
 			tries += 1
 			local ang = R() * math.pi * 2
-			local dist = math.sqrt(R()) * def.radius * 0.8
+			local dist = math.sqrt(R()) * def.radius * 0.78
 			local p = def.center + Vector2.new(math.cos(ang), math.sin(ang)) * dist
 			local i, j = cellAt(p)
 			local c = get(i, j)
@@ -392,12 +391,12 @@ function WorldPlan.make(Z: any)
 				end
 			end
 			for _, q in chosen do
-				if ok and (p - q.at).Magnitude < 44 then
+				if ok and (p - q.at).Magnitude < 52 then
 					ok = false
 				end
 			end
 			if ok then
-				local r = 15 + R() * 9
+				local r = 17 + R() * 10
 				local blobs = { { at = p, r = r } }
 				for k = 1, 3 do
 					local a2 = R() * math.pi * 2

@@ -11,9 +11,9 @@ Zones.CELL = 8 -- the voxel grid: one ground column per 8 x 8 studs
 Zones.STEP = 2 -- terraces rise in 2-stud steps (a player walks up one without jumping)
 Zones.FLOOR = -24 -- bottom of every ground column
 Zones.SEA = -6 -- sea and gorge water surface
-Zones.BOUNDS = { minX = -600, maxX = 600, minZ = -600, maxZ = 640 }
-Zones.COAST = 560 -- past this distance from the middle it's open sea
-Zones.WORLD_CENTER = Vector2.new(10, 40)
+Zones.BOUNDS = { minX = -820, maxX = 820, minZ = -820, maxZ = 860 }
+Zones.COAST = 770 -- past this distance from the middle it's open sea
+Zones.WORLD_CENTER = Vector2.new(14, 54)
 
 export type Palette = {
 	ground: Color3, -- terrace colour A
@@ -44,7 +44,7 @@ local C = Color3.fromRGB
 Zones.village = {
 	name = "Spawn Village",
 	center = Vector2.new(0, 0),
-	radius = 92,
+	radius = 124,
 	base = 0,
 	amp = 0,
 	palette = {
@@ -61,14 +61,14 @@ Zones.list = {
 	{
 		id = "meadow",
 		name = "Sunny Meadow",
-		center = Vector2.new(22, 250),
-		radius = 152,
+		center = Vector2.new(30, 338),
+		radius = 205,
 		base = 4,
 		amp = 8,
-		freq = 1 / 70,
+		freq = 1 / 1.35 / 70,
 		price = 0,
 		gate = "open", -- from the village: an open slope, no gate
-		landmark = { kind = "windmill", at = Vector2.new(70, 300), height = 44 },
+		landmark = { kind = "windmill", at = Vector2.new(94, 405), height = 44 },
 		ambient = "pollen",
 		grassName = "Meadow Tuft",
 		palette = {
@@ -84,14 +84,14 @@ Zones.list = {
 	{
 		id = "wheat",
 		name = "Golden Wheat Hills",
-		center = Vector2.new(-276, 196),
-		radius = 146,
+		center = Vector2.new(-373, 265),
+		radius = 197,
 		base = 14,
 		amp = 18,
-		freq = 1 / 60,
+		freq = 1 / 1.35 / 60,
 		price = 250,
 		gate = "bridge", -- a broken wooden bridge over the Sparkle River gorge
-		landmark = { kind = "silo", at = Vector2.new(-320, 170), height = 52 },
+		landmark = { kind = "silo", at = Vector2.new(-432, 230), height = 52 },
 		ambient = "dust",
 		grassName = "Wheat Stalk",
 		palette = {
@@ -107,14 +107,14 @@ Zones.list = {
 	{
 		id = "blossom",
 		name = "Blossom Garden",
-		center = Vector2.new(-330, -82),
-		radius = 140,
+		center = Vector2.new(-446, -111),
+		radius = 189,
 		base = 10,
 		amp = 12,
-		freq = 1 / 55,
+		freq = 1 / 1.35 / 55,
 		price = 2500,
 		gate = "barrier", -- a stone arch closed by a pink magic barrier
-		landmark = { kind = "cherry", at = Vector2.new(-360, -100), height = 58 },
+		landmark = { kind = "cherry", at = Vector2.new(-486, -135), height = 58 },
 		ambient = "petals",
 		grassName = "Petal Tuft",
 		palette = {
@@ -130,14 +130,14 @@ Zones.list = {
 	{
 		id = "pine",
 		name = "Misty Pine Forest",
-		center = Vector2.new(-190, -318),
-		radius = 142,
+		center = Vector2.new(-256, -429),
+		radius = 192,
 		base = 2,
 		amp = 10,
-		freq = 1 / 65,
+		freq = 1 / 1.35 / 65,
 		price = 15000,
 		gate = "rockslide", -- a mountain pass blocked by fallen boulders
-		landmark = { kind = "elderpine", at = Vector2.new(-210, -350), height = 84 },
+		landmark = { kind = "elderpine", at = Vector2.new(-284, -473), height = 84 },
 		ambient = "fireflies",
 		grassName = "Fern",
 		palette = {
@@ -153,14 +153,14 @@ Zones.list = {
 	{
 		id = "swamp",
 		name = "Bubble Swamp",
-		center = Vector2.new(112, -342),
-		radius = 146,
+		center = Vector2.new(151, -462),
+		radius = 197,
 		base = -4,
 		amp = 4,
-		freq = 1 / 40,
+		freq = 1 / 1.35 / 40,
 		price = 80000,
 		gate = "ropebridge", -- a rope bridge over the swamp creek that weaves itself back together
-		landmark = { kind = "mushroomhut", at = Vector2.new(140, -380), height = 46 },
+		landmark = { kind = "mushroomhut", at = Vector2.new(189, -513), height = 46 },
 		ambient = "bubbles",
 		grassName = "Cattail",
 		palette = {
@@ -176,14 +176,14 @@ Zones.list = {
 	{
 		id = "frost",
 		name = "Frost Peaks",
-		center = Vector2.new(348, -158),
-		radius = 146,
+		center = Vector2.new(470, -213),
+		radius = 197,
 		base = 24,
 		amp = 14,
-		freq = 1 / 60,
+		freq = 1 / 1.35 / 60,
 		price = 400000,
 		gate = "icewall", -- a frozen cave entrance; the ice wall melts and shatters
-		landmark = { kind = "icespire", at = Vector2.new(380, -190), height = 96 },
+		landmark = { kind = "icespire", at = Vector2.new(513, -256), height = 96 },
 		ambient = "snow",
 		grassName = "Frost Crystal",
 		palette = {
@@ -199,14 +199,14 @@ Zones.list = {
 	{
 		id = "ember",
 		name = "Ember Ash Fields",
-		center = Vector2.new(326, 162),
-		radius = 146,
+		center = Vector2.new(440, 219),
+		radius = 197,
 		base = 14,
 		amp = 10,
-		freq = 1 / 55,
+		freq = 1 / 1.35 / 55,
 		price = 2000000,
 		gate = "obsidian", -- an obsidian bridge that rises out of a lava river
-		landmark = { kind = "volcano", at = Vector2.new(370, 190), height = 90 },
+		landmark = { kind = "volcano", at = Vector2.new(500, 256), height = 90 },
 		ambient = "embers",
 		grassName = "Ember Grass",
 		palette = {
@@ -222,15 +222,15 @@ Zones.list = {
 	{
 		id = "isles",
 		name = "Starlight Isles",
-		center = Vector2.new(176, 446),
-		radius = 124,
+		center = Vector2.new(238, 602),
+		radius = 167,
 		base = 40,
 		amp = 6,
-		freq = 1 / 40,
+		freq = 1 / 1.35 / 40,
 		price = 10000000,
 		gate = "stones", -- a portal arch; glowing stepping stones rise up to the floating islands
 		floating = true,
-		landmark = { kind = "floatrock", at = Vector2.new(200, 470), height = 70 },
+		landmark = { kind = "floatrock", at = Vector2.new(270, 634), height = 70 },
 		ambient = "sparkles",
 		grassName = "Star Crystal",
 		palette = {
@@ -245,7 +245,8 @@ Zones.list = {
 	},
 }
 
--- Gate kinds: what blocks the way into a zone until it's bought, and how it opens.
+-- Gate kinds: what blocks the way into a zone until the zone before it is mowed bare (Chop A Forest's rule; `price`
+-- above is unused), and how it opens.
 --   chasm = true: the way in crosses a gorge (water or lava at the bottom; falling in sends you back)
 Zones.GATES = {
 	open = { chasm = false, label = "" },

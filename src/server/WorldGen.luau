@@ -1,14 +1,14 @@
 -- Builds the world from shared/WorldPlan into Workspace.World: studded voxel terraces, rock rims, the sea and
 -- gorges, stairs and bridges between zones, the gates, teleport pads, grass patches, the village and a block for
--- each landmark. This is the BLOCKOUT: right shapes and zone colours, no art yet.
+-- each landmark; then server/WorldArt dresses it (trees, tiles, flowers, cracks, landmarks, ambience).
 --
 -- Run it in Studio (edit mode, command bar):  require(game.ServerScriptService.MowALawn.WorldGen).build()
 -- It replaces Workspace.World and the Terrain. Building again replaces your edits; back them up first.
 --
 -- What the game reads from the map (so moving these in Studio moves them in the game):
---   World.Gates.Gate<n>      Model, attributes Zone, Kind, Price. Children: Blocker parts (solid until bought),
---                            Walkway parts (bridges and stones: only solid once bought), Sign, Prompt
---   World.Pads.*             Part, attributes PadKind ("toZone" / "toVillage") and Zone
+--   World.Gates.Gate<n>      Model, attributes Zone, Kind. Children: Blocker parts (solid until the area before is
+--                            mowed bare), Walkway parts (bridges and stones: solid once open), Sign
+--   World.Pads.DropOff<n>    a drop-off sell spot in area n (attributes PadKind "dropoff", Zone)
 --   World.Patches.Zone<n>.*  invisible discs; grass grows inside them (attribute Zone)
 --   World.Hazards.*          invisible; touching one sends you back to safety (gorges, the sea)
 --   World.Village.Spots.*    where the village buildings go (Sell, Shop, Upgrades, Garage, Pets, Classes, ...)
@@ -18,6 +18,7 @@ local RunService = game:GetService("RunService")
 
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
 local WorldPlan = require(ReplicatedStorage.MowALawn.WorldPlan)
+local WorldArt = require(script.Parent.WorldArt)
 
 local WorldGen = {}
 
@@ -105,7 +106,22 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- ground
 -------------------------------------------------------------------------------------------------------------
+local function sideColor(c: any): Color3
+	if c.kind == "zone" then
+		local pal = Zones.region(c.region).palette
+		return pal.ground:Lerp(Color3.fromRGB(70, 46, 30), 0.35):Lerp(Color3.new(0, 0, 0), 0.25)
+	elseif c.kind == "rock" or c.kind == "cut" or c.kind == "chasm" then
+		return Zones.region(c.near).palette.rock:Lerp(Color3.new(0, 0, 0), 0.18)
+	end
+	return Color3.fromRGB(200, 170, 110)
+end
+
 local function groundColor(c: any): Color3
+	if c.kind == "rock" and c.forest then
+		-- the wooded plateau round each area: a darker version of the area's grass
+		local pal = Zones.region(c.near).palette
+		return pal.ground2:Lerp(Color3.new(0, 0, 0), 0.22)
+	end
 	if c.kind == "zone" then
 		local pal = Zones.region(c.region).palette
 		return if (c.h // Zones.STEP) % 2 == 0 then pal.ground else pal.ground2
@@ -126,7 +142,7 @@ local function buildGround(world: Folder, plan: any)
 		if c.kind == "void" then
 			return nil
 		end
-		local look = if c.kind == "zone" then "z" .. c.region .. ":" .. (c.h // Zones.STEP) % 2 elseif c.kind == "sea" then "sea" else c.kind .. ":" .. c.near .. ":" .. (c.h // 4) % 2
+		local look = if c.kind == "zone" then "z" .. c.region .. ":" .. (c.h // Zones.STEP) % 2 elseif c.kind == "sea" then "sea" else c.kind .. ":" .. c.near .. ":" .. (c.h // 4) % 2 .. (if c.forest then "f" else "")
 		return look
 	end)
 	local isleZone = nil
@@ -150,9 +166,18 @@ local function buildGround(world: Folder, plan: any)
 		local size = Vector3.new(r.w * C, top - bottom, r.d * C)
 		local cf = CFrame.new(x0 + size.X / 2, (top + bottom) / 2, z0 + size.Z / 2)
 		local name = if c.kind == "zone" then "Floor" elseif c.kind == "sea" then "SeaFloor" else "Rock"
-		local p = block(holder, name, size, cf, groundColor(c))
+		-- a 1.2-stud top in the surface colour on a body in the darker side colour (the voxel "grass on dirt" look)
+		local frost = c.kind == "zone" and Zones.region(c.region).id == "frost"
+		local topH = math.min(1.2, size.Y)
+		local topPart = block(holder, name, Vector3.new(size.X, topH, size.Z), CFrame.new(cf.X, top - topH / 2, cf.Z), groundColor(c), {
+			Material = if frost then Enum.Material.Plastic else Enum.Material.SmoothPlastic,
+			TopSurface = if frost then STUDS else SMOOTH,
+		})
+		if size.Y > topH then
+			block(holder, name .. "Side", Vector3.new(size.X, size.Y - topH, size.Z), CFrame.new(cf.X, (top - topH + bottom) / 2, cf.Z), sideColor(c), { Material = Enum.Material.SmoothPlastic, TopSurface = SMOOTH })
+		end
 		if c.kind == "zone" then
-			p:SetAttribute("Zone", c.region)
+			topPart:SetAttribute("Zone", c.region)
 		end
 		n += 1
 		if n % 400 == 0 then
@@ -177,7 +202,7 @@ local function buildWater(world: Folder, plan: any)
 	local hazards = folder(world, "Hazards")
 	local B = Zones.BOUNDS
 	local C = Zones.CELL
-	local lavaF = folder(world, "Lava")
+	local lavaF = folder(world, "Liquid")
 	local rects = WorldPlan.rects(plan, function(c)
 		if c.kind == "sea" or c.kind == "void" then
 			return "sea"
@@ -196,7 +221,7 @@ local function buildWater(world: Folder, plan: any)
 		local w, d = r.w * C, r.d * C
 		local cx, cz = x0 + w / 2, z0 + d / 2
 		if r.key == "sea" then
-			terrain:FillBlock(CFrame.new(cx, (-20 + Zones.SEA) / 2, cz), Vector3.new(w, Zones.SEA + 20, d), Enum.Material.Water)
+			block(hazards.Parent :: Instance, "Water", Vector3.new(w, 1, d), CFrame.new(cx, Zones.SEA - 0.5, cz), Color3.fromRGB(36, 176, 240), { Material = Enum.Material.Glass, Transparency = 0.1, Reflectance = 0.08, CanCollide = false, CanQuery = false, CastShadow = false, TopSurface = SMOOTH })
 			local hz = block(hazards, "Sea", Vector3.new(w, 10, d), CFrame.new(cx, Zones.SEA - 3, cz), Color3.new(0, 0, 1), { Transparency = 1, CanCollide = false, CanQuery = false, CastShadow = false })
 			hz:SetAttribute("Hazard", true)
 		else
@@ -215,7 +240,7 @@ local function buildWater(world: Folder, plan: any)
 			if best == "lava" then
 				block(lavaF, "Lava", Vector3.new(w, 1, d), CFrame.new(cx, bottom + 0.5, cz), Color3.fromRGB(255, 110, 30), { Material = Enum.Material.Neon, CanCollide = false, CastShadow = false, TopSurface = SMOOTH })
 			else
-				terrain:FillBlock(CFrame.new(cx, bottom + 3, cz), Vector3.new(w, 6, d), Enum.Material.Water)
+				block(lavaF, "Water", Vector3.new(w, 1, d), CFrame.new(cx, bottom + 5.5, cz), Color3.fromRGB(40, 196, 255), { Material = Enum.Material.Glass, Transparency = 0.1, CanCollide = false, CanQuery = false, CastShadow = false, TopSurface = SMOOTH })
 			end
 			local hz = block(hazards, "Gorge", Vector3.new(w, 10, d), CFrame.new(cx, bottom + 5, cz), Color3.new(1, 0, 0), { Transparency = 1, CanCollide = false, CanQuery = false, CastShadow = false })
 			hz:SetAttribute("Hazard", true)
@@ -265,15 +290,6 @@ local function stones(parent: Instance, cor: any, color: Color3): { BasePart }
 		table.insert(out, block(parent, "Stone", Vector3.new(5, 1.6, 5), CFrame.new(flat(p, top - 0.8)) * CFrame.Angles(0, R() * 0.6, 0), color))
 	end
 	return out
-end
-
-local function formatPrice(n: number): string
-	if n >= 1e6 then
-		return (("%.1f"):format(n / 1e6):gsub("%.0$", "")) .. "M"
-	elseif n >= 1e3 then
-		return (("%.1f"):format(n / 1e3):gsub("%.0$", "")) .. "K"
-	end
-	return tostring(n)
 end
 
 local function buildGate(gates: Folder, corridors: Folder, cor: any)
@@ -340,24 +356,18 @@ local function buildGate(gates: Folder, corridors: Folder, cor: any)
 		block(model, "ArchGlow", Vector3.new(cor.width + 6.4, 0.6, 4.4), cf * CFrame.new(0, 17.2, 0), accent, { Material = Enum.Material.Neon })
 	end
 
-	-- the price sign on the near side, facing the player coming up
+	-- the sign on the near side, facing the player coming up: what opens this gate (Chop A Forest's rule)
+	local prev = Zones.region(cor.from)
 	local signAt = cor.a + dir * 6 + side * (cor.width / 2 + 4)
-	local post = block(model, "SignPost", Vector3.new(1, 8, 1), CFrame.new(flat(signAt, cor.ha + 4)), WOOD)
-	local board = block(model, "Sign", Vector3.new(10, 6, 0.8), CFrame.lookAt(flat(signAt, cor.ha + 9), flat(signAt - dir, cor.ha + 9)), Color3.fromRGB(28, 26, 36))
-	block(model, "SignGlow", Vector3.new(10.4, 0.4, 1), board.CFrame * CFrame.new(0, -3.2, 0), accent, { Material = Enum.Material.Neon })
+	block(model, "SignPost", Vector3.new(1, 8, 1), CFrame.new(flat(signAt, cor.ha + 4)), WOOD)
+	local board = block(model, "Sign", Vector3.new(11, 6.5, 0.8), CFrame.lookAt(flat(signAt, cor.ha + 9), flat(signAt - dir, cor.ha + 9)), Color3.fromRGB(28, 26, 36))
+	block(model, "SignGlow", Vector3.new(11.4, 0.4, 1), board.CFrame * CFrame.new(0, -3.45, 0), accent, { Material = Enum.Material.Neon })
 	signText(board, {
-		{ text = string.upper(def.name), color = Color3.new(1, 1, 1), size = 1.1 },
-		{ text = formatPrice(def.price) .. " COINS", color = Color3.fromRGB(255, 214, 60), size = 1.4 },
-		{ text = gateDef.label, color = accent, size = 0.8 },
+		{ text = string.upper(def.name), color = accent, size = 1.2 },
+		{ text = "MOW ALL OF", color = Color3.new(1, 1, 1), size = 0.8 },
+		{ text = string.upper(prev.name), color = Color3.fromRGB(255, 214, 60), size = 1 },
+		{ text = "TO OPEN", color = Color3.new(1, 1, 1), size = 0.8 },
 	})
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.Name = "UnlockPrompt"
-	prompt.ActionText = "Unlock " .. def.name
-	prompt.ObjectText = formatPrice(def.price) .. " coins"
-	prompt.HoldDuration = 0.4
-	prompt.MaxActivationDistance = 14
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = post
 	model.Parent = gates
 end
 
@@ -400,16 +410,11 @@ end
 local function buildPads(world: Folder, plan: any)
 	local pads = folder(world, "Pads")
 	for _, p in plan.pads do
-		local def = Zones.list[p.zone]
 		local at = flat(p.at, p.h)
-		local part
-		if p.kind == "toZone" then
-			part = pad(pads, "ZonePad", at, 5, def.palette.accent, string.upper(def.name))
-		else
-			part = pad(pads, "VillagePad", at, 5, Color3.fromRGB(255, 220, 90), "VILLAGE")
-		end
+		local part = pad(pads, "DropOff" .. p.zone, at, 7, Color3.fromRGB(120, 255, 90), "DROP-OFF")
 		part:SetAttribute("PadKind", p.kind)
 		part:SetAttribute("Zone", p.zone)
+		part:SetAttribute("Sell", true)
 		tick()
 	end
 end
@@ -424,7 +429,6 @@ local VILLAGE_SPOTS = {
 	{ name = "Classes", at = Vector2.new(-30, -34), size = Vector3.new(12, 12, 10), label = "CLASSES" },
 	{ name = "Rewards", at = Vector2.new(14, 26), size = Vector3.new(10, 8, 8), label = "REWARDS" },
 	{ name = "Boards", at = Vector2.new(22, -42), size = Vector3.new(18, 14, 2), label = "LEADERBOARDS" },
-	{ name = "Portal", at = Vector2.new(0, -58), size = Vector3.new(14, 18, 3), label = "LOBBY" },
 }
 
 local function buildVillage(world: Folder)
@@ -456,50 +460,6 @@ local function buildVillage(world: Folder)
 	f.Shape = Enum.PartType.Cylinder
 	local w = block(v, "FountainWater", Vector3.new(0.4, 12, 12), CFrame.new(0, 2.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(60, 200, 255), { Material = Enum.Material.Neon, Transparency = 0.2 })
 	w.Shape = Enum.PartType.Cylinder
-end
-
--- A grey stand-in for each landmark (the art pass replaces them).
-local function buildLandmarks(world: Folder, plan: any)
-	local lm = folder(world, "Landmarks")
-	for zi, def in Zones.list do
-		local l = def.landmark
-		local i, j = plan.cellAt(l.at)
-		local c = plan.get(i, j)
-		local base = if c and c.kind == "zone" then c.h else def.base
-		local m = Instance.new("Model")
-		m.Name = def.id .. "_" .. l.kind
-		m:SetAttribute("Zone", zi)
-		local col = def.palette.accent
-		if l.kind == "floatrock" then
-			block(m, "Rock", Vector3.new(30, 20, 26), CFrame.new(flat(l.at, base + l.height)), def.palette.rock)
-			block(m, "Heart", Vector3.new(8, 8, 8), CFrame.new(flat(l.at, base + l.height - 13)) * CFrame.Angles(0.6, 0.6, 0), col, { Material = Enum.Material.Neon })
-		else
-			local w = if l.kind == "volcano" then 46 else 12
-			local steps = if l.kind == "volcano" then 6 else 1
-			for k = 0, steps - 1 do
-				local hh = l.height / steps
-				local ww = w * (1 - k / (steps + 1))
-				block(m, "Body", Vector3.new(ww, hh, ww), CFrame.new(flat(l.at, base + hh * (k + 0.5))), if k == steps - 1 then col else Color3.fromRGB(150, 150, 150))
-			end
-			block(m, "Top", Vector3.new(w * 0.7, 3, w * 0.7), CFrame.new(flat(l.at, base + l.height + 1.5)), col, { Material = Enum.Material.Neon })
-		end
-		local tag = block(m, "Label", Vector3.new(1, 1, 1), CFrame.new(flat(l.at, base + l.height + 6)), col, { Transparency = 1, CanCollide = false, CanQuery = false })
-		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.fromOffset(240, 40)
-		bb.AlwaysOnTop = false
-		bb.MaxDistance = 2000
-		local t = Instance.new("TextLabel")
-		t.BackgroundTransparency = 1
-		t.Size = UDim2.fromScale(1, 1)
-		t.Font = Enum.Font.Arcade
-		t.TextScaled = true
-		t.TextColor3 = Color3.new(1, 1, 1)
-		t.TextStrokeTransparency = 0
-		t.Text = string.upper(l.kind) .. " (stand-in)"
-		t.Parent = bb
-		bb.Parent = tag
-		m.Parent = lm
-	end
 end
 
 -- Grass patches: invisible discs on the zone floor. The grass system scatters clusters inside them.
@@ -568,6 +528,58 @@ local function buildBounds(world: Folder)
 	end
 end
 
+-- The place's base lighting (the meadow's sunny look; client/BiomeLight eases it per area while playing).
+function WorldGen.lighting()
+	local L = game:GetService("Lighting")
+	for _, c in L:GetChildren() do
+		if c:IsA("PostEffect") or c:IsA("Atmosphere") then
+			c:Destroy()
+		end
+	end
+	L.ClockTime = 14.8
+	L.GeographicLatitude = 30
+	L.Brightness = 2.4
+	L.ExposureCompensation = -0.15
+	L.Ambient = Color3.fromRGB(96, 100, 120)
+	L.OutdoorAmbient = Color3.fromRGB(120, 126, 140)
+	L.EnvironmentDiffuseScale = 0.8
+	L.EnvironmentSpecularScale = 0.6
+	L.ShadowSoftness = 0.08
+	L.GlobalShadows = true
+	local atm = Instance.new("Atmosphere")
+	atm.Density = 0.2
+	atm.Offset = 0.1
+	atm.Haze = 0.3
+	atm.Glare = 0.15
+	atm.Color = Color3.fromRGB(196, 228, 255)
+	atm.Decay = Color3.fromRGB(110, 170, 230)
+	atm.Parent = L
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Name = "Grade"
+	cc.Saturation = 0.18
+	cc.Contrast = 0.18
+	cc.Brightness = 0.02
+	cc.TintColor = Color3.fromRGB(255, 252, 244)
+	cc.Parent = L
+	local bl = Instance.new("BloomEffect")
+	bl.Name = "Glow"
+	bl.Intensity = 0.7
+	bl.Threshold = 1.1
+	bl.Size = 28
+	bl.Parent = L
+	local sr = Instance.new("SunRaysEffect")
+	sr.Name = "Rays"
+	sr.Intensity = 0.06
+	sr.Spread = 0.7
+	sr.Parent = L
+	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")
+	clouds.Cover = 0.55
+	clouds.Density = 0.6
+	clouds.Color = Color3.fromRGB(255, 255, 255)
+	clouds.Enabled = true
+	clouds.Parent = workspace.Terrain
+end
+
 -------------------------------------------------------------------------------------------------------------
 -- build
 -------------------------------------------------------------------------------------------------------------
@@ -595,15 +607,11 @@ function WorldGen.build(): Folder
 	end
 	buildPads(world, plan)
 	buildVillage(world)
-	buildLandmarks(world, plan)
 	buildPatches(world, plan)
 	buildIsleBridges(world, plan)
 	buildBounds(world)
-	local visuals = folder(world, "Visuals")
-	folder(visuals, "Village")
-	for _, def in Zones.list do
-		folder(visuals, def.name)
-	end
+	WorldArt.decorate(world, plan)
+	WorldGen.lighting()
 
 	local parts = 0
 	for _, d in world:GetDescendants() do

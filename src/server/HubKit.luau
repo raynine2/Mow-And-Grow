@@ -562,7 +562,12 @@ local CANOPY = {
 	blossom = { Color3.fromRGB(244, 164, 204), Color3.fromRGB(250, 190, 222), Color3.fromRGB(236, 140, 186) },
 	autumn = { Color3.fromRGB(232, 150, 52), Color3.fromRGB(222, 104, 44), Color3.fromRGB(244, 194, 70) },
 	pine = { Color3.fromRGB(46, 112, 66), Color3.fromRGB(58, 128, 74), Color3.fromRGB(40, 98, 58) },
+	swamp = { Color3.fromRGB(74, 116, 62), Color3.fromRGB(88, 132, 68), Color3.fromRGB(62, 102, 54) },
+	frost = { Color3.fromRGB(226, 240, 244), Color3.fromRGB(196, 224, 230), Color3.fromRGB(70, 118, 96) },
+	ember = { Color3.fromRGB(206, 92, 42), Color3.fromRGB(176, 62, 32), Color3.fromRGB(234, 146, 52) },
 }
+-- which canopy shape each palette uses
+local PINE_SHAPED = { pine = true, frost = true }
 local TRUNK = Color3.fromRGB(118, 80, 50)
 
 local function treeModel(name: string): Model
@@ -577,7 +582,8 @@ function HubKit.tree(parent: Instance, foot: Vector3, scale: number, kind: strin
 	local k = scale
 	local base = CFrame.new(foot) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
 	local cols = CANOPY[kind] or CANOPY.meadow
-	local trunkH = (if kind == "pine" then 5 else 7.5) * k
+	local pineShape = PINE_SHAPED[kind] == true
+	local trunkH = (if pineShape then 5 else 7.5) * k
 	local trunk = P(m, "Trunk", Vector3.new(trunkH, 1.7 * k, 1.7 * k), base * CFrame.new(0, trunkH / 2, 0) * UP, TRUNK, M.Wood, { shape = Enum.PartType.Cylinder, collide = true })
 	trunk.CanQuery = false
 	-- root flares: four wedges sloping down and out
@@ -594,7 +600,7 @@ function HubKit.tree(parent: Instance, foot: Vector3, scale: number, kind: strin
 		w.Material = M.Wood
 		w.Parent = m
 	end
-	if kind == "pine" then
+	if pineShape then
 		-- stacked square tiers, each turned 45 degrees from the last, getting smaller toward the top
 		local y = trunkH * 0.55
 		for t = 0, 4 do
@@ -622,12 +628,12 @@ function HubKit.tree(parent: Instance, foot: Vector3, scale: number, kind: strin
 end
 
 -- a bush: a few chunky green blocks
-function HubKit.bush(parent: Instance, foot: Vector3, scale: number, rng: Random, flowers: boolean?): Model
+function HubKit.bush(parent: Instance, foot: Vector3, scale: number, rng: Random, flowers: boolean?, kind: string?): Model
 	local m = treeModel("Bush")
-	local cols = CANOPY.meadow
+	local cols = CANOPY[kind or "meadow"] or CANOPY.meadow
 	for i = 0, 3 do
 		local sz = rng:NextNumber(2.2, 3.2) * scale
-		local off = Vector3.new(rng:NextNumber(-1.2, 1.2), sz * 0.4, rng:NextNumber(-1.2, 1.2)) * Vector3.new(scale, 1, scale)
+		local off = Vector3.new(rng:NextNumber(-1.2, 1.2) * scale, sz * 0.4, rng:NextNumber(-1.2, 1.2) * scale)
 		P(m, "Leaves", Vector3.new(sz, sz * 0.8, sz), CFrame.new(foot + off) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 1.5), rng:NextNumber(-0.3, 0.3)), cols[(i % 3) + 1], M.SmoothPlastic, { collide = i == 0 })
 	end
 	if flowers then

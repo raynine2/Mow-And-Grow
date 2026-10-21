@@ -111,17 +111,52 @@ local function texturedGround(w: Instance)
 	end
 end
 
+-- The saved world's voxel trees, bushes and rocks give way to Chop A Forest style ones built from parts
+-- (server/HubKit), standing where they stood and as tall, in each area's colours. The landmarks stay.
+local TREE_KIND = { meadow = "meadow", blossom = "blossom", wheat = "autumn", pine = "pine", swamp = "swamp", frost = "frost", ember = "ember", isles = "meadow" }
+local function partNature(w: Instance)
+	local visuals = w:FindFirstChild("Visuals")
+	if not visuals then
+		return
+	end
+	local HubKit = require(script.Parent.HubKit)
+	local rng = Random.new(77)
+	local n = 0
+	for _, mesh in visuals:GetDescendants() do
+		if mesh:IsA("MeshPart") then
+			local what, area = string.match(mesh.Name, "^(%a+)_(%a+)")
+			local kind = area and TREE_KIND[area]
+			if kind and (what == "Tree" or what == "Bush" or what == "Rock") then
+				local foot = mesh.Position - Vector3.new(0, mesh.Size.Y / 2, 0)
+				local parent = mesh.Parent :: Instance
+				if what == "Tree" then
+					HubKit.tree(parent, foot, mesh.Size.Y / 14.5, kind, rng)
+				elseif what == "Bush" then
+					HubKit.bush(parent, foot, mesh.Size.Y / 2.6, rng, area == "blossom" or area == "meadow", kind)
+				else
+					HubKit.rock(parent, foot, mesh.Size.Y / 2, rng)
+				end
+				mesh:Destroy()
+				n += 1
+				if n % 60 == 0 then
+					task.wait()
+				end
+			end
+		end
+	end
+end
+
 -- Dirt paths across the village between the hub buildings (like the lobby's: server/HubPaths).
 local PATHS = {
 	{ Vector2.new(0, -78), Vector2.new(0, 30) }, -- spawn -> fountain -> the way north to the meadow
 	{ Vector2.new(-34, -40), Vector2.new(30, -40) }, -- shredder <-> tool shop
 	{ Vector2.new(-30, -64), Vector2.new(28, -64) }, -- garage <-> bag stand
 }
-local SQUARE = { Vector2.new(0, -3), Vector2.new(0, 3), 30 } -- the paved square round the fountain
+local SQUARE = { Vector2.new(0, -3), Vector2.new(0, 3), 24 } -- the open dirt square round the fountain
 local function paths(w: Instance)
 	local segments = {}
 	for _, s in PATHS do
-		table.insert(segments, { a = s[1], b = s[2], width = 11 })
+		table.insert(segments, { a = s[1], b = s[2], width = 9 })
 	end
 	table.insert(segments, { a = SQUARE[1], b = SQUARE[2], width = SQUARE[3] })
 	require(script.Parent.HubPaths).lay(w, segments, 0, 5)
@@ -165,6 +200,7 @@ function RunWorld.build()
 	require(script.Parent.WorldGen).lighting()
 	clearVillage(w)
 	texturedGround(w)
+	partNature(w)
 
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
 	paths(w)

@@ -39,7 +39,36 @@ export type Glow = { setColor: (Color3) -> (), parts: { BasePart } }
 
 -- A neon frame `w` x `d` studs lying on the floor at `cf` (its top face at cf's height): bright strips, a soft
 -- tinted fill, a light, and flame-like wisps rising along every edge.
+-- The generated world's calm version: a raised studded brick border in the colour (no neon, light or flames).
+local function calmFrame(parent: Instance, cf: CFrame, w: number, d: number, color: Color3): Glow
+	local m = Instance.new("Model")
+	m.Name = "PadFrame"
+	local t = 0.8
+	local strips: { BasePart } = {}
+	for _, e in {
+		{ Vector3.new(0, 0, d / 2 - t / 2), Vector3.new(w, 0, t) },
+		{ Vector3.new(0, 0, -d / 2 + t / 2), Vector3.new(w, 0, t) },
+		{ Vector3.new(w / 2 - t / 2, 0, 0), Vector3.new(t, 0, d - 2 * t) },
+		{ Vector3.new(-w / 2 + t / 2, 0, 0), Vector3.new(t, 0, d - 2 * t) },
+	} do
+		local strip = block(m, Vector3.new(e[2].X, 0.4, e[2].Z), cf * CFrame.new(e[1] + Vector3.new(0, 0.2, 0)), PropKit.shade(color, 0.85), "Strip", Enum.Material.Plastic)
+		strip.TopSurface = Enum.SurfaceType.Studs
+		deco(strip)
+		table.insert(strips, strip)
+	end
+	m.Parent = parent
+	local function setColor(c: Color3)
+		for _, p in strips do
+			p.Color = PropKit.shade(c, 0.85)
+		end
+	end
+	return { setColor = setColor, parts = table.clone(strips) }
+end
+
 function LobbyPads.glow(parent: Instance, cf: CFrame, w: number, d: number, color: Color3): Glow
+	if Config.WORLD_GEN then
+		return calmFrame(parent, cf, w, d, color)
+	end
 	local m = Instance.new("Model")
 	m.Name = "GlowFrame"
 	local strips: { BasePart } = {}

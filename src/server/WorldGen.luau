@@ -389,7 +389,7 @@ local function pad(parent: Instance, name: string, at: Vector3, radius: number, 
 	end
 	disc(radius + 2, 1, 0.5, DARK)
 	disc(radius + 1, 1, 1.5, DARK:Lerp(Color3.new(1, 1, 1), 0.08))
-	disc(radius + 0.5, 0.3, 2.1, color, { Material = Enum.Material.Neon })
+	disc(radius + 0.5, 0.3, 2.1, color:Lerp(Color3.new(0, 0, 0), 0.15), { Material = Enum.Material.Plastic })
 	local top = disc(radius, 0.5, 2.3, Color3.fromRGB(30, 30, 40))
 	top.Name = name
 	local gui = Instance.new("SurfaceGui")
@@ -462,7 +462,7 @@ local function buildVillage(world: Folder)
 	-- a fountain in the middle
 	local f = block(v, "Fountain", Vector3.new(2, 14, 14), CFrame.new(0, 1, 0) * CFrame.Angles(0, 0, math.rad(90)), STONE)
 	f.Shape = Enum.PartType.Cylinder
-	local w = block(v, "FountainWater", Vector3.new(0.4, 12, 12), CFrame.new(0, 2.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(60, 200, 255), { Material = Enum.Material.Neon, Transparency = 0.2 })
+	local w = block(v, "FountainWater", Vector3.new(0.4, 12, 12), CFrame.new(0, 2.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(60, 170, 230), { Material = Enum.Material.Glass, Transparency = 0.3 })
 	w.Shape = Enum.PartType.Cylinder
 end
 

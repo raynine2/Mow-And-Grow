@@ -55,6 +55,9 @@ end
 -- A glowing frame on the ground (a rectangle w x d around `centre`, in the model's own studs), like the neon
 -- pads in front of Chop A Forest's stalls: bright strips, a tinted fill and rising wisps (server/LobbyPads).
 local function outline(parent: Instance, at: CFrame, centre: Vector3, w: number, d: number, color: Color3)
+	if Config.WORLD_GEN then
+		return -- the generated world's lobby keeps its plaza calm: no glowing frames in front of the buildings
+	end
 	LobbyPads.glow(parent, at * CFrame.new(centre), w, d, color)
 end
 

@@ -361,24 +361,43 @@ def rewards_stall():
 # small props
 # ===================================================================================================================
 def lantern_post():
-    """lantern_post (1.3 x 6.2 x 3.1): stone foot, iron post with a curled arm, a warm glass lantern with a little
-    roof, hanging forward (-z)."""
+    """A chunky lamp post (about 8.5 studs): a stepped stone plinth with flowers, a dark wooden post with iron bands
+    and a gold finial, an iron arm with a brace reaching forward (-z), and a lantern hanging from a chain: iron
+    corner posts, a stepped roof, open sides. The game puts a warm glowing core and a light inside it
+    (server/HubDressing), centred at (0, 4.75, -2.5) studs."""
     v = V(0.25)
-    S = lambda s: int(round(s * 4))
-    v.box((-3, 0, -3), (2, 2, 2), stones)
-    v.box((-2, 3, -2), (1, 4, 1), STONE[2])
-    v.box((-1, 5, -1), (0, S(5.8), 0), IRON[1])
-    v.box((-2, S(5.8) - 1, -2), (1, S(5.8), 1), IRON[2])
-    v.box((-1, S(5.5), -S(2.4)), (0, S(5.5) + 1, -1), IRON[1])
-    v.box((-1, S(5.5) - 2, 0), (0, S(5.5) - 1, 1), IRON[1])
-    lz = -S(2.2)
-    v.box((-1, S(4.6), lz), (0, S(5.5) - 1, lz), IRON[0])
-    v.box((-3, S(3.0), lz - 2), (2, S(4.4), lz + 3), WARM[0])
-    for (x, z) in ((-3, lz - 2), (2, lz - 2), (-3, lz + 3), (2, lz + 3)):
-        v.box((x, S(3.0), z), (x, S(4.4), z), IRON[1])
-    v.box((-4, S(4.4) + 1, lz - 3), (3, S(4.4) + 1, lz + 4), IRON[2])
-    v.box((-2, S(4.4) + 2, lz - 1), (1, S(4.4) + 2, lz + 2), IRON[1])
-    v.box((-3, S(3.0) - 1, lz - 2), (2, S(3.0) - 1, lz + 3), IRON[1])
+    v.box((-5, 0, -5), (4, 2, 4), stones)
+    v.box((-4, 3, -4), (3, 6, 3), lambda x, y, z: STONE[3] if y == 6 else STONE[2])
+    for x in range(-5, 5):
+        for z in (-6, 5):
+            r = rng_at("lf", x, z)
+            if r.random() < 0.6:
+                v.put((x, 0, z), LEAF[r.randint(0, 2)])
+                if r.random() < 0.5:
+                    v.put((x, 1, z), FLOWERS[r.randint(0, 4)])
+    v.box((-2, 7, -2), (1, 30, 1), lambda x, y, z: DARKWOOD[2] if (y // 3) % 2 else DARKWOOD[1])
+    for y in (11, 19, 27):
+        v.box((-3, y, -3), (2, y, 2), IRON[2])
+    v.box((-3, 31, -3), (2, 31, 2), IRON[1])
+    v.box((-1, 32, -1), (0, 34, 0), GOLD[2])
+    # the arm, its brace and the chain
+    v.box((-1, 27, -11), (0, 28, -3), IRON[1])
+    for t in range(5):
+        v.box((-1, 22 + t, -3 - t), (0, 22 + t, -3 - t), IRON[1])
+    v.box((-1, 25, -11), (0, 26, -10), IRON[0])
+    # the lantern: roof steps, corner posts, a band round the middle, a base and a drop finial
+    v.box((-4, 23, -14), (3, 23, -7), IRON[2])
+    v.box((-3, 24, -13), (2, 24, -8), IRON[1])
+    v.box((-2, 25, -12), (1, 25, -9), IRON[1])
+    for (x, z) in ((-3, -13), (2, -13), (-3, -8), (2, -8)):
+        v.box((x, 15, z), (x, 22, z), IRON[1])
+    for y in (15, 22):
+        v.box((-3, y, -13), (2, y, -13), IRON[1])
+        v.box((-3, y, -8), (2, y, -8), IRON[1])
+        v.box((-3, y, -13), (-3, y, -8), IRON[1])
+        v.box((2, y, -13), (2, y, -8), IRON[1])
+    v.box((-3, 14, -13), (2, 14, -8), IRON[2])
+    v.box((-1, 13, -11), (0, 13, -10), GOLD[1])
     return v.out()
 
 

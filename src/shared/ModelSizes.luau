@@ -86,7 +86,7 @@ return {
 	Prop_log_cabin__detail = Vector3.new(36.00, 13.00, 20.50),
 	Prop_bag_stand = Vector3.new(20.00, 12.00, 9.00),
 	Prop_rewards_stall = Vector3.new(22.50, 18.50, 11.50),
-	Prop_lantern_post = Vector3.new(2.00, 6.00, 3.75),
+	Prop_lantern_post = Vector3.new(2.50, 8.75, 5.00),
 	Prop_gas_pump = Vector3.new(4.00, 7.00, 3.25),
 	Prop_leaderboard = Vector3.new(15.00, 16.50, 5.50),
 	Prop_trophy_board = Vector3.new(15.00, 18.00, 4.00),

@@ -222,7 +222,9 @@ if RENDER:
         names = [n for n in objects if n.split("_")[1] == area and not n.startswith("Landmark")]
         order = [n for n in names if n.startswith("Tree")] + [n for n in names if not n.startswith("Tree")]
         preview(area, order, os.path.join(OUT, f"preview_{area}.png"))
-    if not ONLY or "props" in ONLY:
+    if "--single" in args:
+        preview_props([args[args.index("--single") + 1]], os.path.join(OUT, "single.png"))
+    elif not ONLY or "props" in ONLY:
         groups = [["log_cabin", "bag_stand", "rewards_stall"], ["shredder", "sell_pad", "party_booth", "gas_pump", "lantern_post"],
                   ["leaderboard", "trophy_board", "welcome_arch"], ["mower_statue", "barrel", "crate_stack", "planter", "bench", "signpost", "wheelbarrow", "hay_bale", "turntable"]]
         for gi, g in enumerate(groups):

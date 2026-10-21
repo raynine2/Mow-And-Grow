@@ -18,8 +18,6 @@ local FLOOR = -24
 local SEA = -6
 
 local MEADOW = Zones.list[1].palette
-local PATH = Color3.fromRGB(240, 162, 82)
-local PATH_EDGE = Color3.fromRGB(196, 120, 60)
 local SAND = Color3.fromRGB(226, 200, 140)
 
 local count = 0
@@ -92,12 +90,7 @@ end
 
 local function colorAt(x: number, z: number, h: number): (Color3, boolean)
 	if h == 0 then
-		local pd = pathDist(Vector2.new(x, z))
-		if pd < 6 then
-			return PATH, true
-		elseif pd < 8.5 then
-			return PATH_EDGE, true
-		end
+		-- (the paths themselves are cobblestones laid on top: server/HubPaths)
 		return if hash(x // 16, z // 16, 3) < 0.5 then MEADOW.ground else MEADOW.ground2, false
 	end
 	local base = if (h // 2) % 2 == 0 then MEADOW.ground else MEADOW.ground2
@@ -268,6 +261,11 @@ end
 function LobbyArt.build(world: Instance)
 	workspace.Terrain:Clear()
 	ground(world)
+	local segments = {}
+	for _, s in PATHS do
+		table.insert(segments, { a = s[1], b = s[2], width = 12 })
+	end
+	require(script.Parent.HubPaths).lay(world, segments, 0, 11)
 	nature(world)
 	cover(world)
 	bounds(world)

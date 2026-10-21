@@ -5,7 +5,7 @@ return {
 	Prop_log_cabin__detail = Vector3.new(0.00, -0.50, -2.75),
 	Prop_bag_stand = Vector3.new(0.50, 0.00, -1.50),
 	Prop_rewards_stall = Vector3.new(0.25, 0.00, -1.75),
-	Prop_lantern_post = Vector3.new(0.00, 0.00, -1.12),
+	Prop_lantern_post = Vector3.new(0.00, 0.00, -1.00),
 	Prop_gas_pump = Vector3.new(0.25, 0.00, -0.12),
 	Prop_leaderboard = Vector3.new(0.00, 0.00, -0.25),
 	Prop_trophy_board = Vector3.new(0.00, 0.00, 0.00),

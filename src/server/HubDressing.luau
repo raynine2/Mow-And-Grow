@@ -79,12 +79,6 @@ local function bunting(parent: Instance, a: Vector3, b: Vector3, sag: number?)
 	return f
 end
 
--- A plain log pole for bunting to hang from.
-local function pole(parent: Instance, at: Vector3, h: number)
-	local p = PropKit.part({ size = Vector3.new(0.8, h, 0.8), cf = CFrame.new(at + Vector3.new(0, h / 2, 0)), color = Color3.fromRGB(122, 76, 46), parent = parent, name = "BuntingPole", material = Enum.Material.SmoothPlastic })
-	return p
-end
-
 -- The welcome arch with a line of text on its board.
 local function arch(parent: Instance, cf: CFrame, text: string)
 	if not put(parent, "welcome_arch", cf) then
@@ -131,15 +125,17 @@ local function lifeFor(world: Instance)
 			smoke.RotSpeed = NumberRange.new(-30, 30)
 			smoke.Parent = spot
 		elseif m:IsA("Model") and m.Name == "lantern_post" then
+			-- a warm glowing core inside the lantern's open frame, and a soft light round it
 			local s = m:GetScale()
-			local spot = PropKit.part({ size = Vector3.new(0.2, 0.2, 0.2), cf = m:GetPivot() * CFrame.new(Vector3.new(0, 3.7, -2.2) * s), color = Color3.new(1, 1, 1), parent = m, transparency = 1, collide = false, name = "LanternLight" })
-			spot.CanQuery = false
+			local core = PropKit.part({ size = Vector3.new(1, 1.5, 1) * s, cf = m:GetPivot() * CFrame.new(Vector3.new(0, 4.75, -2.5) * s), color = Color3.fromRGB(255, 196, 110), parent = m, collide = false, name = "LanternCore", material = Enum.Material.Neon })
+			core.CanQuery = false
+			core.CastShadow = false
 			local light = Instance.new("PointLight")
-			light.Color = Color3.fromRGB(255, 200, 130)
-			light.Brightness = 0.9
-			light.Range = 12
+			light.Color = Color3.fromRGB(255, 196, 120)
+			light.Brightness = 0.7
+			light.Range = 10
 			light.Shadows = false
-			light.Parent = spot
+			light.Parent = core
 		end
 	end
 end
@@ -167,10 +163,10 @@ function HubDressing.lobby(world: Instance)
 	put(f, "crate_stack", face(Vector3.new(-38, 0, 30), Vector3.new(-30, 0, 20)))
 	-- bunting over the main walk, from the lantern posts, and across the arch
 	for _, z in { -14, 6, 24 } do
-		bunting(f, Vector3.new(-13, 6.4, z), Vector3.new(13, 6.4, z), 1.4)
+		bunting(f, Vector3.new(-13, 7.6, z), Vector3.new(13, 7.6, z), 1.4)
 	end
-	bunting(f, Vector3.new(-13, 6.4, -34), Vector3.new(-12, 17.5, -38), 0.6)
-	bunting(f, Vector3.new(13, 6.4, -34), Vector3.new(12, 17.5, -38), 0.6)
+	bunting(f, Vector3.new(-13, 7.6, -34), Vector3.new(-12, 17.5, -38), 0.6)
+	bunting(f, Vector3.new(13, 7.6, -34), Vector3.new(12, 17.5, -38), 0.6)
 	lifeFor(world)
 	hideSpawn(world)
 end
@@ -200,8 +196,9 @@ function HubDressing.village(world: Instance)
 	put(f, "hay_bale", face(Vector3.new(40, 0, -63), Vector3.new(28, 0, -68)))
 	-- bunting over the main walk on log poles, and from the arch
 	for _, z in { -52, -30 } do
-		pole(f, Vector3.new(-8, 0, z), 8)
-		pole(f, Vector3.new(8, 0, z), 8)
+		for _, x in { -8, 8 } do
+			put(f, "lantern_post", face(Vector3.new(x, 0, z), Vector3.new(0, 0, z)))
+		end
 		bunting(f, Vector3.new(-8, 7.6, z), Vector3.new(8, 7.6, z), 1.2)
 	end
 	bunting(f, Vector3.new(-8, 7.6, -30), Vector3.new(-11, 17.5, 22), 2.5)

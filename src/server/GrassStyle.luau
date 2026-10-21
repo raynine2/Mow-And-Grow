@@ -9,7 +9,7 @@ local BRICK = 1.2 -- one brick's height
 -- per area id: shades, rare glow colour, height range in bricks, how many bricks, brick width, an optional
 -- "top" (a differently coloured last brick: wheat ears, flower heads, crystal tips)
 GrassStyle.STYLES = {
-	meadow = { shades = { Color3.fromRGB(58, 176, 70), Color3.fromRGB(74, 196, 82), Color3.fromRGB(44, 152, 62) }, rare = Color3.fromRGB(255, 214, 40), bricks = { 3, 7 }, count = 14, width = 1 },
+	meadow = { shades = { Color3.fromRGB(48, 160, 64), Color3.fromRGB(62, 180, 74), Color3.fromRGB(38, 140, 58) }, rare = Color3.fromRGB(255, 214, 40), bricks = { 3, 7 }, count = 14, width = 1 },
 	wheat = { shades = { Color3.fromRGB(232, 176, 58), Color3.fromRGB(246, 196, 80), Color3.fromRGB(214, 150, 44) }, top = Color3.fromRGB(255, 232, 150), rare = Color3.fromRGB(255, 255, 230), bricks = { 4, 8 }, count = 14, width = 0.8 },
 	blossom = { shades = { Color3.fromRGB(86, 182, 96), Color3.fromRGB(70, 160, 84) }, top = Color3.fromRGB(255, 140, 200), top2 = Color3.fromRGB(255, 255, 255), rare = Color3.fromRGB(255, 60, 210), bricks = { 3, 6 }, count = 13, width = 1 },
 	pine = { shades = { Color3.fromRGB(40, 150, 110), Color3.fromRGB(54, 170, 124), Color3.fromRGB(30, 126, 94) }, rare = Color3.fromRGB(190, 255, 110), bricks = { 3, 7 }, count = 14, width = 1 },

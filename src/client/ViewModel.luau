@@ -72,18 +72,35 @@ end
 local rightArm = arm(1)
 local leftArm = arm(-1)
 
+-- A soft light just in front of the camera, so the hands are lit the same everywhere (they're tiny and close,
+-- and the world's light alone leaves them dark on their camera side).
+local lamp = part(root, Vector3.new(0.2, 0.2, 0.2), Color3.new(1, 1, 1))
+lamp.Name = "HandLight"
+lamp.Transparency = 1
+local handLight = Instance.new("PointLight")
+handLight.Color = Color3.fromRGB(255, 240, 220)
+handLight.Brightness = 1.6
+handLight.Range = 5
+handLight.Shadows = false
+handLight.Parent = lamp
+
 -- The avatar's own colours: R15 hands / lower arms, R6 arms, else Body Colors.
 local function avatarColors(char: Model): (Color3?, Color3?, Color3?)
 	local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
 	local lower = char:FindFirstChild("RightLowerArm") or hand
+	-- the sleeve: the torso's colour when it differs from the skin and there's no shirt texture over it (a shirt's
+	-- colours can't be read, so a shirt gets a friendly blue)
 	local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-	local shirt = if torso and torso:IsA("BasePart") then torso.Color else nil
+	local shirt = if torso and torso:IsA("BasePart") and not char:FindFirstChildOfClass("Shirt") then torso.Color else nil
+	if shirt and hand and hand:IsA("BasePart") and shirt == hand.Color then
+		shirt = nil
+	end
 	if hand and hand:IsA("BasePart") and lower and lower:IsA("BasePart") then
 		return hand.Color, lower.Color, shirt
 	end
 	local bc = char:FindFirstChildOfClass("BodyColors")
 	if bc then
-		return bc.RightArmColor3, bc.RightArmColor3, bc.TorsoColor3
+		return bc.RightArmColor3, bc.RightArmColor3, nil
 	end
 	return nil, nil, nil
 end
@@ -416,6 +433,7 @@ local function inFirstPerson(): boolean
 end
 
 local function hideAll()
+	handLight.Enabled = false
 	for _, p in root:GetDescendants() do
 		if p:IsA("BasePart") then
 			p.Transparency = 1
@@ -503,6 +521,8 @@ RunService.RenderStepped:Connect(function()
 	end
 	local sway = CFrame.new(swayYaw * 1.4, swayPitch * 1.2, 0) * CFrame.Angles(swayPitch, swayYaw, swayYaw * 0.6)
 	local base = cam.CFrame * bob * sway
+	lamp.CFrame = cam.CFrame * CFrame.new(0, 0.3, -0.6)
+	handLight.Enabled = true
 
 	local id = equippedId()
 	local twoHanded = id ~= nil and TWO_HANDED[id] == true

@@ -97,6 +97,20 @@ local function arch(parent: Instance, cf: CFrame, text: string)
 	end
 end
 
+-- The wooden spawn slab doesn't fit the voxel plaza: keep it (players still spawn there) but unseen.
+local function hideSpawn(world: Instance)
+	for _, d in world:GetDescendants() do
+		if d:IsA("SpawnLocation") then
+			d.Transparency = 1
+			d.CanCollide = false
+			local decal = d:FindFirstChildOfClass("Decal")
+			if decal then
+				decal.Transparency = 1
+			end
+		end
+	end
+end
+
 -- Chimney smoke for every voxel cabin, warm light in every lantern (looked for by model name under `world`).
 local function lifeFor(world: Instance)
 	for _, m in world:GetDescendants() do
@@ -158,6 +172,7 @@ function HubDressing.lobby(world: Instance)
 	bunting(f, Vector3.new(-13, 6.4, -34), Vector3.new(-12, 17.5, -38), 0.6)
 	bunting(f, Vector3.new(13, 6.4, -34), Vector3.new(12, 17.5, -38), 0.6)
 	lifeFor(world)
+	hideSpawn(world)
 end
 
 -- The run's village (y = 0): spawn at (0, -68) looking north, shredder (-24, -36), tool shop (24, -40), bag stand
@@ -192,6 +207,7 @@ function HubDressing.village(world: Instance)
 	bunting(f, Vector3.new(-8, 7.6, -30), Vector3.new(-11, 17.5, 22), 2.5)
 	bunting(f, Vector3.new(8, 7.6, -30), Vector3.new(11, 17.5, 22), 2.5)
 	lifeFor(world)
+	hideSpawn(world)
 end
 
 return HubDressing

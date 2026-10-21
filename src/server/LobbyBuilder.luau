@@ -10,6 +10,7 @@ local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
 local GroundMesh = require(script.Parent.GroundMesh)
 local LobbyPads = require(script.Parent.LobbyPads)
+local LobbyKit = require(script.Parent.LobbyKit)
 
 local LobbyBuilder = {}
 
@@ -54,8 +55,9 @@ end
 
 -- A glowing frame on the ground (a rectangle w x d around `centre`, in the model's own studs), like the neon
 -- pads in front of Chop A Forest's stalls: bright strips, a tinted fill and rising wisps (server/LobbyPads).
-local function outline(parent: Instance, at: CFrame, centre: Vector3, w: number, d: number, color: Color3)
-	LobbyPads.glow(parent, at * CFrame.new(centre), w, d, color)
+-- With `window`, stepping on it opens that window (client/LobbyFX).
+local function outline(parent: Instance, at: CFrame, centre: Vector3, w: number, d: number, color: Color3, window: string?)
+	LobbyKit.padZone(parent, at * CFrame.new(centre), w, d, color, window)
 end
 
 -- An invisible part to hang a prompt on.
@@ -147,7 +149,9 @@ local function classCabin(world: Instance): TextLabel
 		return oldClassBooth(world)
 	end
 	cabinSign(m, at, 1, "CLASSES", purple)
-	outline(m, at, Vector3.new(0, 0, -16), 16, 6, purple)
+	outline(m, at, Vector3.new(0, 0, -16), 16, 6, purple, "Classes")
+	LobbyKit.vendor(m, at * CFrame.new(0, 0.5, 2), Color3.fromRGB(196, 48, 42))
+	LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(0, 2, -16), Vector3.new(14, 3, 5), "ClassesFX"), "LobbyFX", { Kind = "sparkle", Color = purple })
 	local board = PropKit.part({ size = Vector3.new(14, 6.4, 0.3), cf = at * CFrame.new(0, 5.8, 9.3), color = Color3.fromRGB(44, 30, 60), parent = m, name = "StockBoard" })
 	local label = PropKit.surfaceText(board, "Classes in stock", Color3.new(1, 1, 1))
 	label.TextYAlignment = Enum.TextYAlignment.Top
@@ -195,7 +199,7 @@ local function garageCabin(world: Instance)
 		floor.Material = Enum.Material.DiamondPlate
 	end
 	floor.Name = "Turntable"
-	outline(m, spot, Vector3.zero, 12, 12, Color3.fromRGB(255, 150, 50))
+	outline(m, spot, Vector3.zero, 12, 12, Color3.fromRGB(255, 200, 40), "Garage")
 	if not Models.place("mower_tractor", m, spot * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, math.rad(200), 0), 1, true) then
 		PropKit.brick(m, Vector3.new(5, 2.4, 7), spot * CFrame.new(0, 1.8, 0), Color3.fromRGB(255, 200, 40), "DisplayMower")
 	end
@@ -227,11 +231,15 @@ local function rewardsStall(world: Instance)
 	end
 	PropKit.facePanel(m, at, Vector3.new(0, 13.5, -0.6), Vector2.new(16, 3), "REWARDS", Color3.fromRGB(255, 170, 50))
 	-- seen from the front the daily bay is on the left (+X), the group bay on the right
-	local daily = ("DAILY REWARD\n+%d Gems\nEvery %d hours"):format(Config.DAILY_GEMS, Config.DAILY_COOLDOWN // 3600)
+	local daily = ("DAILY REWARD\n+%d 💎\nClaim every %dh!"):format(Config.DAILY_GEMS, Config.DAILY_COOLDOWN // 3600)
 	PropKit.facePanel(m, at, Vector3.new(3.9, 6.6, 2.3), Vector2.new(6, 3.4), daily, Color3.new(1, 1, 1))
-	PropKit.facePanel(m, at, Vector3.new(-3.9, 6.6, 2.3), Vector2.new(6, 3.4), ("GROUP REWARD\n+%d Gems\nJoin the group!"):format(Config.GROUP_GEMS), Color3.new(1, 1, 1))
-	outline(m, at, Vector3.new(3.9, 0, -5), 7, 6, CYAN)
-	outline(m, at, Vector3.new(-3.9, 0, -5), 7, 6, CYAN)
+	PropKit.facePanel(m, at, Vector3.new(-3.9, 6.6, 2.3), Vector2.new(6, 3.4), ("GROUP REWARD\n+%d 💎\nJoin the group!"):format(Config.GROUP_GEMS), Color3.new(1, 1, 1))
+	outline(m, at, Vector3.new(3.9, 0, -5), 7, 6, CYAN, "Rewards")
+	outline(m, at, Vector3.new(-3.9, 0, -5), 7, 6, CYAN, "Rewards")
+	-- a glowing chest on each counter
+	for _, x in { 3.6, -3.6 } do
+		LobbyKit.tag(LobbyKit.chest(m, at * CFrame.new(x, 3.8, -3.1)), "LobbyFX", { Kind = "sparkle", Color = CYAN })
+	end
 	PropKit.collider(m, at, Vector3.new(0, 4.5, 2.65), Vector3.new(17, 9, 0.8))
 	for _, x in { -7.9, 7.9 } do
 		PropKit.collider(m, at, Vector3.new(x, 6, 0.5), Vector3.new(1.2, 12, 5.4))
@@ -251,8 +259,9 @@ local function leaderboard(world: Instance): TextLabel
 	local s = 1.25
 	local body: TextLabel
 	if Models.place("leaderboard", m, at, s, true) then
-		PropKit.facePanel(m, at, Vector3.new(0, 10.65, -0.39), Vector2.new(10, 1.3), "TOP MOWERS", GOLD, s)
+		PropKit.facePanel(m, at, Vector3.new(0, 10.65, -0.39), Vector2.new(10, 1.3), "GRASS CUT", GOLD, s)
 		body = PropKit.facePanel(m, at, Vector3.new(0, 6.6, -0.34), Vector2.new(9.6, 6.2), "", Color3.new(1, 1, 1), s)
+		LobbyKit.boardFace(body, "cut") -- all-time rows (server/LobbyBoards)
 		PropKit.collider(m, at, Vector3.new(0, 7, 0), Vector3.new(13, 14, 1.6), s)
 	else
 		local board = PropKit.part({ size = Vector3.new(12, 10, 1), cf = at * CFrame.new(0, 8, 0), color = Color3.fromRGB(44, 34, 30), parent = m, name = "LeaderBoard" })
@@ -275,6 +284,7 @@ local function bestTimesBoard(world: Instance): TextLabel?
 	end
 	PropKit.facePanel(m, at, Vector3.new(0, 10.9, -0.3), Vector2.new(10.4, 1.6), "BEST TIMES", GOLD, s)
 	local body = PropKit.facePanel(m, at, Vector3.new(0, 6.3, -0.3), Vector2.new(10.2, 6.6), "", Color3.new(1, 1, 1), s)
+	LobbyKit.boardFace(body, "best") -- all-time rows (server/LobbyBoards)
 	body.TextXAlignment = Enum.TextXAlignment.Left
 	body.TextYAlignment = Enum.TextYAlignment.Top
 	PropKit.collider(m, at, Vector3.new(0, 7, 0), Vector3.new(13, 14, 1.4), s)

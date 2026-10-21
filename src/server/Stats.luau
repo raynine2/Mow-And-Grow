@@ -22,9 +22,19 @@ function Stats.compute(player: Player, data)
 	end
 	local vip = hasPass(player, "VIP")
 	local bag = run and Config.BAGS[run.bag or 0]
+	-- equipped pets (server/Pets): summed boosts
+	local pet = { power = 0, sell = 0, speed = 0, luck = 0 }
+	for _, uid in data.petsOn or {} do
+		local p = data.pets and Config.pet(data.pets[uid])
+		if p then
+			for _, k in Config.PET_STATS do
+				pet[k] += (p :: any)[k] or 0
+			end
+		end
+	end
 
 	local s = {}
-	s.power = (1 + (class.power or 0) + level("power") * per("power")) * (if vip then 1.15 else 1)
+	s.power = (1 + (class.power or 0) + pet.power + level("power") * per("power")) * (if vip then 1.15 else 1)
 	s.carry = Config.BASE_CARRY
 		+ (class.carry or 0)
 		+ (if bag then bag.carry else 0)
@@ -32,15 +42,16 @@ function Stats.compute(player: Player, data)
 	if hasPass(player, "BigBag") then
 		s.carry = Config.ENDLESS_CARRY -- the Bottomless Sack
 	end
-	s.walkSpeed = 16 * (1 + (class.speed or 0) + level("speed") * per("speed"))
+	s.walkSpeed = 16 * (1 + (class.speed or 0) + pet.speed + level("speed") * per("speed"))
 	-- pickup reach (studs) and the swing cooldown multiplier
 	s.grasp = (Config.LOOT.grasp + level("grasp") * per("grasp")) * (if run and run.vacuum then Config.VACUUM.graspMult else 1)
 	s.swing = math.max(0.4, 1 - level("swing") * per("swing"))
-	s.sell = (1 + (class.sell or 0) + data.perks.sell * Config.perk("sell").per + level("sell") * per("sell"))
+	s.sell = (1 + (class.sell or 0) + pet.sell + data.perks.sell * Config.perk("sell").per + level("sell") * per("sell"))
 		* (if hasPass(player, "DoubleCoins") then 2 else 1)
 		* (if vip then 1.15 else 1)
-	s.luck = 1 + (class.luck or 0) + data.perks.luck * Config.perk("luck").per
+	s.luck = 1 + (class.luck or 0) + pet.luck + data.perks.luck * Config.perk("luck").per
 	s.bundle = data.perks.bundle * Config.perk("bundle").per -- chance of a double bundle
+		+ (if hasPass(player, "DoubleClippings") then 1 else 0) -- 2x Clippings: always double
 	s.gems = (1 + data.perks.gem * Config.perk("gem").per) * (if hasPass(player, "DoubleGems") then 2 else 1)
 	return s
 end

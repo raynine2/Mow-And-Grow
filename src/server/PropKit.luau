@@ -433,12 +433,19 @@ function PropKit.cabinSign(parent: Instance, at: CFrame, scale: number, text: st
 	local sign = PropKit.part({
 		size = Vector3.new(14, 3, 0.6) * scale,
 		cf = at * CFrame.new(Vector3.new(0, 10.4, -12.3) * scale),
-		color = Color3.fromRGB(110, 70, 42),
+		color = Color3.fromRGB(60, 38, 24),
 		parent = parent,
 		name = "CabinSign",
 		material = Enum.Material.WoodPlanks,
 	})
-	PropKit.surfaceText(sign, text, color)
+	-- Chop A Forest's sign style: Luckiest Guy, orange gradient, thick brown outline (`color` tints the top)
+	local label = PropKit.surfaceText(sign, text, Color3.new(1, 1, 1))
+	label.Font = Enum.Font.LuckiestGuy
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new(Color3.fromRGB(255, 222, 96), Color3.fromRGB(255, 126, 30))
+	grad.Rotation = 90
+	grad.Parent = label
+	local _ = color
 	return sign
 end
 

@@ -1,6 +1,6 @@
 -- The always-on screen, laid out like Chop A Forest:
 --   left: big coin + gem counters   bottom-left: backpack "3/5"     bottom: tool hotbar
---   right: round wooden badge buttons (run: SHOP R, UPGRADES TAB; lobby: SHOP R, STATS TAB, PERKS P, NEWS J)
+--   right: round wooden badge buttons (run: SHOP R, UPGRADES TAB; lobby: PETS P, SHOP R, STATS TAB, NEWS J)
 --   top-left: quest tracker         top-centre: day / night bar (ReplicatedStorage DayPhase/DayLeft/DayLength)
 --   top-right: run timer, area name, AREA n/8, % cleared and the next area (or the boss bar during a fight)
 --   centre: a small crosshair in a run while the camera is in first person
@@ -143,7 +143,7 @@ local function roundButton(label: string, icon: string, key: string, window: str
 	UI.grain(disc, wood, 40)
 	local inner = UI.frame({ size = UDim2.fromOffset(70, 70), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(240, 208, 156), parent = disc, radius = 999, outline = 3, name = "Inner" })
 	;(inner:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(140, 84, 40)
-	UI.icon(inner, icon, 54, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	UI.icon(inner, icon, 64, UDim2.fromScale(0.5, 0.46), Vector2.new(0.5, 0.5))
 	sideLeaf(b, UDim2.fromOffset(20, 10), -40, 30)
 	sideLeaf(b, UDim2.fromOffset(34, 2), -10, 22)
 	local badge = UI.frame({ size = UDim2.fromOffset(if #key > 1 then 44 else 30, 28), pos = UDim2.fromOffset(104, 64), anchor = Vector2.new(1, 0), color = Color3.fromRGB(36, 30, 26), parent = b, radius = 8, outline = 2, name = "Key" })
@@ -160,14 +160,14 @@ end
 
 local function sideButtons(mode: string)
 	UI.clear(side)
+	roundButton("PETS", "paw", "P", "Pets", 0)
 	roundButton("SHOP", "basket", "R", "Store", 1)
 	if mode == "Run" then
 		roundButton("UPGRADES", "upgrade", "TAB", "Upgrades", 2)
 		side.Size = UDim2.fromOffset(120, 2 * 118)
 	else
-		roundButton("STATS", "chart", "TAB", "Stats", 2)
-		roundButton("PERKS", "upgrade", "P", "Perks", 3)
-		roundButton("NEWS", "news", "J", "News", 4)
+		roundButton("STATS", "clipboard", "TAB", "Stats", 2)
+		roundButton("NEWS", "newspaper", "J", "News", 4)
 		side.Size = UDim2.fromOffset(120, 4 * 118)
 	end
 end
@@ -202,14 +202,15 @@ local function ownedTools(): { Tool }
 	for _, container in { player.Character, player:FindFirstChildOfClass("Backpack") } do
 		if container then
 			for _, t in container:GetChildren() do
-				if t:IsA("Tool") and t:GetAttribute("ToolId") then
+				if t:IsA("Tool") and (t:GetAttribute("ToolId") or t:GetAttribute("GunId")) then
 					table.insert(list, t)
 				end
 			end
 		end
 	end
+	-- the boss-crate gun goes last
 	table.sort(list, function(a, b)
-		return (TOOL_ORDER[a:GetAttribute("ToolId")] or 0) < (TOOL_ORDER[b:GetAttribute("ToolId")] or 0)
+		return (TOOL_ORDER[a:GetAttribute("ToolId")] or 99) < (TOOL_ORDER[b:GetAttribute("ToolId")] or 99)
 	end)
 	return list
 end
@@ -241,7 +242,7 @@ task.spawn(function()
 		local tools = ownedTools()
 		local ids = {}
 		for _, t in tools do
-			table.insert(ids, t:GetAttribute("ToolId"))
+			table.insert(ids, t:GetAttribute("ToolId") or t:GetAttribute("GunId"))
 		end
 		local key = table.concat(ids, ",")
 		hotbar.Visible = #tools > 0
@@ -268,6 +269,7 @@ task.spawn(function()
 				local num = UI.frame({ size = UDim2.fromOffset(24, 24), pos = UDim2.fromOffset(0, 0), color = Color3.fromRGB(36, 30, 26), parent = b, radius = 999, outline = 2, name = "Num" })
 				UI.text(num, tostring(i), UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1 })
 				num.ZIndex = 3
+				UI.clicky(b)
 				b.MouseButton1Click:Connect(function()
 					toggleTool(i)
 				end)
@@ -456,7 +458,7 @@ State.on("fx", function(kind, d)
 end)
 
 -------------------------------------------------------------------------------------------------------------
--- keys: R = shop, TAB = upgrades (run) / stats (lobby), P = perks, J = news, 1-7 = tools
+-- keys: R = shop, P = pets, TAB = upgrades (run) / stats (lobby), J = news, 1-7 = tools
 -------------------------------------------------------------------------------------------------------------
 local NUMBER_KEYS = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six, Enum.KeyCode.Seven }
 UserInputService.InputBegan:Connect(function(input, processed)
@@ -465,10 +467,10 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 	if input.KeyCode == Enum.KeyCode.R then
 		UI.open("Store")
+	elseif input.KeyCode == Enum.KeyCode.P then
+		UI.open("Pets")
 	elseif input.KeyCode == Enum.KeyCode.Tab then
 		UI.open(if currentMode == "Run" then "Upgrades" else "Stats")
-	elseif input.KeyCode == Enum.KeyCode.P then
-		UI.open("Perks")
 	elseif input.KeyCode == Enum.KeyCode.J then
 		UI.open("News")
 	else

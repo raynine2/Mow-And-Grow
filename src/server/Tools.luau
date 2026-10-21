@@ -195,6 +195,14 @@ function Tools.give(player: Player)
 	if not backpack then
 		return
 	end
+	-- a PERMANENT (Robux) tool lifts the run's best tool up to it, from the first second of every run
+	for id in data.tools or {} do
+		local i = toolIndex(id)
+		if i and i > data.run.tool then
+			data.run.tool = i
+			PlayerData.changed(player)
+		end
+	end
 	local best = math.clamp(data.run.tool, 1, #Config.TOOLS)
 	local have: { [number]: Tool } = {}
 	for _, container in { backpack, char } do

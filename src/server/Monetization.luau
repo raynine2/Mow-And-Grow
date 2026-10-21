@@ -7,8 +7,23 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Net = require(script.Parent.Net)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
+local Mode = require(script.Parent.Mode)
+local Tools = require(script.Parent.Tools)
+local Quests = require(script.Parent.Quests)
 
 local Monetization = {}
+
+-- True when buying this tool product would give the player nothing new (so we never take Robux for it).
+local function toolOwned(data, product): boolean
+	local index = Config.toolIndex(product.tool) or 0
+	if data.tools[product.tool] then
+		return true
+	end
+	if product.forever then
+		return false
+	end
+	return data.run ~= nil and data.run.tool >= index
+end
 
 -- Grant a product to a loaded profile. Returns true when granted.
 local function grant(player: Player, data, key: string, product): boolean
@@ -30,6 +45,46 @@ local function grant(player: Player, data, key: string, product): boolean
 		else
 			data.mowers[def.id] = true
 			Net.notify(player, def.name .. " is yours forever!", "purple")
+		end
+	elseif product.gun then
+		local g = Config.gun(product.gun)
+		if not g then
+			return false
+		end
+		data.guns[g.id] = true
+		Net.notify(player, "The " .. g.name .. " is in every boss crate for you now!", "purple")
+	elseif product.egg then
+		-- paid eggs hatch straight away (never refused: the Robux is already spent)
+		local Pets = require(script.Parent.Pets) :: any
+		if not Pets.hatch(player, data, product.egg, product.count or 1, true) then
+			return false
+		end
+	elseif product.restock then
+		-- the class card deal: new cards for this player until the next restock
+		local lucky = product.restock == "lucky"
+		data.classDeal = { window = Config.stockWindow(), ids = Config.rollStock(Random.new(), lucky), lucky = lucky }
+		Net.notify(player, if lucky then "Lucky cards dealt!" else "New cards dealt!", "pink")
+	elseif product.tool then
+		local index = Config.toolIndex(product.tool)
+		if not index then
+			return false
+		end
+		local def = Config.TOOLS[index]
+		if product.forever then
+			data.tools[def.id] = true
+			Net.notify(player, def.name .. " is yours in every run!", "purple")
+		else
+			Net.notify(player, def.name .. " is yours for this run!", "purple")
+		end
+		if not data.run then
+			data.run = PlayerData.newRun() -- ready for the next run
+		end
+		if index > data.run.tool then
+			data.run.tool = index
+		end
+		if Mode.current == "Run" then
+			Tools.give(player)
+			Quests.event(player, "tool", data.run.tool)
 		end
 	elseif product.class then
 		data.classes[product.class] = true
@@ -163,6 +218,13 @@ function Monetization.start()
 			local p = Config.PRODUCTS[key]
 			if not p then
 				return
+			end
+			if p.tool then
+				local data = PlayerData.get(player)
+				if not data or toolOwned(data, p) then
+					Net.notify(player, "You already have that tool!", "yellow")
+					return
+				end
 			end
 			if p.id == 0 then
 				Net.notify(player, "Coming soon!", "yellow")

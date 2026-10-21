@@ -142,6 +142,49 @@ local function pivotOf(inst: Instance): CFrame?
 	return nil
 end
 
+-- The two copies of a piece measured on the same part: one whose name path inside the piece is unique (like
+-- "StartBoard/Board"), the same in both. Child order isn't kept when the place is saved and loaded, so "the
+-- first part" can be a different part in each copy (that moved the START A RUN board off its posts).
+local function namedParts(unit: Instance): { [string]: BasePart }
+	local count: { [string]: number } = {}
+	local parts: { [string]: BasePart } = {}
+	for _, d in unit:GetDescendants() do
+		if d:IsA("BasePart") then
+			local path = d.Name
+			local node = d.Parent
+			while node and node ~= unit do
+				path = node.Name .. "/" .. path
+				node = node.Parent
+			end
+			count[path] = (count[path] or 0) + 1
+			parts[path] = d
+		end
+	end
+	for path, n in count do
+		if n > 1 then
+			parts[path] = nil
+		end
+	end
+	return parts
+end
+
+local function matchPivots(gen: Instance, saved: Instance): (CFrame?, CFrame?)
+	if gen:IsA("BasePart") and saved:IsA("BasePart") then
+		return gen.CFrame, saved.CFrame
+	end
+	local a, b = namedParts(gen), namedParts(saved)
+	local best: string? = nil
+	for path in a do
+		if b[path] and (best == nil or path < best) then
+			best = path
+		end
+	end
+	if best then
+		return a[best].CFrame, b[best].CFrame
+	end
+	return pivotOf(gen), pivotOf(saved)
+end
+
 local function moveBy(inst: Instance, delta: CFrame)
 	if inst:IsA("Model") then
 		inst:PivotTo(delta * inst:GetPivot())
@@ -229,7 +272,7 @@ local function swapIn(info: any, saved: Folder): Folder
 		local s = savedUnits[id]
 		local delta = CFrame.identity
 		if s then
-			local a, b = pivotOf(gen), pivotOf(s)
+			local a, b = matchPivots(gen, s)
 			if a and b then
 				delta = b * a:Inverse()
 			end

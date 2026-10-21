@@ -26,6 +26,7 @@ require(script.Parent.Models).loadAll()
 local system: any = if Mode.isRun then require(script.Parent.Run) else require(script.Parent.Lobby)
 system.start()
 Monetization.start()
+require(script.Parent.Pets).start() -- eggs + pets, in the lobby and in runs
 require(script.Parent.Anims).start() -- our character animations (once uploaded), set before anyone spawns
 require(script.Parent.BestTimes).start() -- the trophy tag with your best time over your head
 
@@ -96,13 +97,35 @@ local function snapshot(player: Player, data)
 	for key in data.index do
 		table.insert(index, key)
 	end
+	local pets = {} -- { uid, id, on }
+	for uid, id in data.pets or {} do
+		table.insert(pets, { uid = uid, id = id, on = table.find(data.petsOn, uid) ~= nil })
+	end
+	local tools = {} -- PERMANENT (Robux) tools
+	for id in data.tools or {} do
+		table.insert(tools, id)
+	end
 	local view = {
 		mode = Mode.current,
 		gems = data.gems,
 		class = data.class,
 		classes = classes,
+		-- a bought class deal ({ window, ids, lucky }); the client ignores it once the window has passed
+		classDeal = data.classDeal,
 		perks = data.perks,
 		mowers = mowers,
+		tools = tools,
+		pets = pets,
+		hatchLuck = (if player:GetAttribute("Pass_HatchLuck") then Config.HATCH_LUCK.pass else 1)
+			* (if player:GetAttribute("Pass_SuperHatchLuck") then Config.HATCH_LUCK.super else 1),
+		guns = (function()
+			local g = {}
+			for id in data.guns or {} do
+				table.insert(g, id)
+			end
+			return g
+		end)(),
+		peaceful = data.peaceful == true,
 		dailyIn = math.max(0, data.lastDaily + Config.DAILY_COOLDOWN - os.time()),
 		groupClaimed = data.groupClaimed,
 		stats = data.stats,

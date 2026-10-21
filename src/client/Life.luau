@@ -66,11 +66,11 @@ local function trackModel(m: Model)
 	local amp: number
 	if trunk then
 		pivot = trunk.Position + Vector3.new(0, trunk.Size.X / 2, 0) -- a trunk is an upright cylinder: its length is X
-		amp = math.rad(2.2) * math.clamp(4 / trunk.Size.Y, 0.45, 1.2) -- thick (big) trees move less
+		amp = math.rad(3.2) * math.clamp(4 / trunk.Size.Y, 0.45, 1.2) -- thick (big) trees move less
 	else
 		local cf, size = m:GetBoundingBox()
 		pivot = cf.Position - Vector3.new(0, size.Y / 2, 0)
-		amp = math.rad(3.5)
+		amp = math.rad(4.5)
 	end
 	local phase = (pivot.X * 0.37 + pivot.Z * 0.71) % (math.pi * 2)
 	for _, p in m:GetChildren() do

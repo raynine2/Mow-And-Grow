@@ -10,16 +10,19 @@ local Net = require(script.Parent.Net)
 local PropKit = require(script.Parent.PropKit)
 local RunBuilder = require(script.Parent.RunBuilder)
 local Models = require(script.Parent.Models)
+local VoxelModels = require(script.Parent.VoxelModels)
+local Zones = require(ReplicatedStorage.MowALawn.Zones)
 
 local Field = {}
 
-type Stalk = { stem: Part, head: Part?, cap: Part?, baseH: number, headH: number, x: number, z: number, yaw: number, lean: number }
+type Stalk = { stem: Part, head: Part?, cap: Part?, baseH: number, headH: number, x: number, y: number, z: number, yaw: number, lean: number }
 type Patch = {
 	part: Part, -- invisible spot at the clump's foot (position used for effects)
 	spot: CFrame, -- where the clump stands (on the ground, turned)
 	stalks: { Stalk },
 	holder: Model, -- the "Patch" model everything of this clump lives in
 	model: Model?, -- the Blender tuft, when uploaded (used instead of stalks)
+	voxel: boolean?, -- the model is the voxel clump (server/VoxelModels): it keeps its own colours
 	stub: Instance?, -- the stubble left after it falls
 	notch: BasePart?, -- the fresh cut in its foot
 	notchDir: Vector3?,
@@ -56,6 +59,22 @@ Field.onCut = nil :: ((Player, Patch) -> boolean)? -- return false to refuse (ba
 Field.canCut = nil :: ((Player) -> boolean)?
 Field.onZoneCleared = nil :: ((number) -> ())?
 Field.onProgress = nil :: (() -> ())?
+-- Where zone z's clumps stand ({ cf, scale } each). RunBuilder.patches for the plots map; server/Run sets
+-- RunWorld.patches for the generated world.
+Field.spots = nil :: ((number) -> { any })?
+
+local function spotsFor(z: number): { any }
+	return (Field.spots or RunBuilder.patches)(z)
+end
+
+-- The generated world's area id for zone z ("meadow", "frost"...), when its voxel clumps are imported.
+local function voxelId(z: number): string?
+	local def = Zones.list[z]
+	if Config.WORLD_GEN and def and VoxelModels.has("Clump_" .. def.id .. "_1") then
+		return def.id
+	end
+	return nil
+end
 
 -- The clump model of area z, and the colour it's painted when the area has a tint.
 local function clumpName(z: number): string
@@ -74,6 +93,9 @@ local function paint(model: Instance, color: Color3, material: Enum.Material?)
 	for _, d in model:GetDescendants() do
 		if d:IsA("BasePart") then
 			i += 1
+			if d:IsA("MeshPart") then
+				d.TextureID = "" -- a voxel model's colours are its texture: drop it so the paint shows
+			end
 			d.Color = PropKit.shade(color, 0.94 + (i % 3) * 0.05)
 			d.Material = material or Enum.Material.Grass
 		end
@@ -86,7 +108,7 @@ end
 
 -- How many patches zone z has.
 function Field.totalIn(z: number): number
-	return Field.totals[z] or #RunBuilder.patches(z)
+	return Field.totals[z] or #spotsFor(z)
 end
 
 -- How each zone's grass looks: stalk count, width, height factor, and an optional head on top.
@@ -112,7 +134,7 @@ end
 
 -- A blade grows from its foot on the turf, turned by `yaw` and tipped outward by `lean`.
 local function bladeFrame(s: Stalk): CFrame
-	return CFrame.new(s.x, TURF_TOP - 0.1, s.z) * CFrame.Angles(0, s.yaw, 0) * CFrame.Angles(math.rad(s.lean), 0, 0)
+	return CFrame.new(s.x, s.y + TURF_TOP - 0.1, s.z) * CFrame.Angles(0, s.yaw, 0) * CFrame.Angles(math.rad(s.lean), 0, 0)
 end
 
 -- After the first hit the top is knocked off (Fx flings it) and a lighter fresh-cut top shows; the blade keeps
@@ -157,6 +179,21 @@ local function stubble(p: Patch)
 	local turf = p.part
 	-- what's left, like a tree stump: the Blender stubble, or a low cut disc
 	local def = Config.ZONES[p.z]
+	local vid = voxelId(p.z)
+	if vid then
+		local _, yaw = p.spot:ToOrientation()
+		local vstub = VoxelModels.place(turf.Parent :: Instance, "Stubble_" .. vid, p.spot.Position, { scale = p.modelScale, yaw = yaw, shadow = false })
+		if vstub then
+			p.stub = vstub
+			for _, n in { "MutationGlow", "MutationSparkle" } do
+				local e = turf:FindFirstChild(n)
+				if e then
+					e:Destroy()
+				end
+			end
+			return
+		end
+	end
 	local stub = Models.place(clumpName(p.z) .. "_cut", turf.Parent :: Instance, p.spot, p.modelScale, true)
 	if stub and def.tint then
 		paint(stub, PropKit.shade(def.tint, 0.8))
@@ -189,12 +226,12 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 	local colorB = def.grass[2]
 	local model = Instance.new("Model")
 	model.Name = "Patch"
-	local turf = brick(model, Vector3.new(3, 1, 3), CFrame.new(pos.X, 0.5, pos.Z), colorB, "Spot")
+	local turf = brick(model, Vector3.new(3, 1, 3), CFrame.new(pos.X, pos.Y + 0.5, pos.Z), colorB, "Spot")
 	turf.Transparency = 1
 	local p: Patch = {
 		part = turf,
 		holder = model,
-		spot = CFrame.new(pos.X, TURF_TOP, pos.Z) * at.Rotation,
+		spot = CFrame.new(pos.X, pos.Y + TURF_TOP, pos.Z) * at.Rotation,
 		stalks = {},
 		z = z,
 		col = col,
@@ -210,7 +247,27 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 		height = (def.height or 2) * size * 0.75,
 	}
 	local tuftName = clumpName(z)
-	if not alreadyCut and Models.has(tuftName) then
+	local vid = voxelId(z)
+	if not alreadyCut and vid then
+		-- the generated world's voxel clump (one mesh), scaled to the zone
+		local holder = Instance.new("Model")
+		holder.Name = "Clump"
+		local _, yaw = at:ToOrientation()
+		local mesh = VoxelModels.place(holder, "Clump_" .. vid .. "_" .. rng:NextInteger(1, 2), p.spot.Position, { scale = size, yaw = yaw })
+		if mesh then
+			holder.WorldPivot = p.spot -- falls over about its foot
+			holder.Parent = model
+			p.model = holder
+			p.voxel = true
+			p.radius = math.max(mesh.Size.X, mesh.Size.Z) * 0.45
+			p.height = mesh.Size.Y
+			holder:SetAttribute("Radius", p.radius)
+			holder:SetAttribute("Height", p.height)
+		else
+			holder:Destroy()
+		end
+	end
+	if not alreadyCut and not p.model and Models.has(tuftName) then
 		p.model = Models.place(tuftName, model, p.spot, p.modelScale, true)
 		if p.model then
 			local _, bounds = p.model:GetBoundingBox()
@@ -240,6 +297,7 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 				baseH = baseH,
 				headH = 0,
 				x = x,
+				y = pos.Y,
 				z = zz,
 				-- blades lean away from the middle of the tuft
 				yaw = yaw,
@@ -264,7 +322,7 @@ local function spawnZone(z: number, alreadyCut: boolean)
 	local zoneFolder = PropKit.folder("Grass" .. z, folder :: Folder)
 	patches[z] = {}
 	buckets[z] = {}
-	local spots = RunBuilder.patches(z)
+	local spots = spotsFor(z)
 	Field.totals[z] = #spots
 	Field.remaining[z] = if alreadyCut then 0 else #spots
 	for i, spot in spots do

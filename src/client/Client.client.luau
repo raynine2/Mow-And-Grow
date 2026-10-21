@@ -13,6 +13,8 @@ require(modules:WaitForChild("Guide"))
 require(modules:WaitForChild("Ambient"))
 require(modules:WaitForChild("CameraView"))
 require(modules:WaitForChild("ZoneMood"))
+require(modules:WaitForChild("BiomeLight")) -- the generated world's per-valley lighting (runs)
+require(modules:WaitForChild("EdgeLines")) -- faint lit edges on the voxel trees near you
 require(modules:WaitForChild("Wind"))
 require(modules:WaitForChild("Combo"))
 require(modules:WaitForChild("LootFx"))

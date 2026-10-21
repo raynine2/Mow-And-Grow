@@ -19,6 +19,8 @@ local drops: { Drop } = {}
 local bundlesOf: { [Player]: number } = {}
 local folder: Folder? = nil
 local rng = Random.new()
+local groundRay = RaycastParams.new()
+groundRay.FilterType = Enum.RaycastFilterType.Include
 
 -- Set by Run: where each player can pick things up, and what happens when they do.
 Loot.reach = function(_player: Player): { Reach }
@@ -98,6 +100,14 @@ function Loot.drop(player: Player, kind: string, origin: Vector3, z: number, m: 
 	local a = rng:NextNumber(0, math.pi * 2)
 	local r = rng:NextNumber(0.6, Config.LOOT.spread)
 	local pos = Vector3.new(origin.X + math.cos(a) * r, 0, origin.Z + math.sin(a) * r)
+	-- the generated world has terraces: land on the ground under the spot (the plots map is flat at y = 0)
+	local world = workspace:FindFirstChild("World")
+	local ground = world and world:FindFirstChild("Ground")
+	if ground then
+		groundRay.FilterDescendantsInstances = { ground, world:FindFirstChild("Ways") or ground }
+		local hit = workspace:Raycast(pos + Vector3.new(0, origin.Y + 12, 0), Vector3.new(0, -60, 0), groundRay)
+		pos = Vector3.new(pos.X, if hit then hit.Position.Y else origin.Y, pos.Z)
+	end
 	local d: Drop = { owner = player, kind = kind, z = z, m = m, gems = gems or 0, pos = pos, model = nil, readyAt = os.clock() + (delay or 0) }
 	local function show()
 		if d.dead or not folder then

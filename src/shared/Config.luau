@@ -282,6 +282,67 @@ function Config.zoneEntry(z: number): Vector3
 end
 
 -------------------------------------------------------------------------------------------------------------
+-- The generated world (server/WorldGen from shared/Zones): a village in the middle and eight valleys around
+-- it, each behind one gate. When WORLD_GEN is on, runs play there (server/RunWorld) and the map helpers above
+-- answer for it: Config zone z is Zones.list[z], the hub is the village (its buildings south of the fountain),
+-- and gate positions come from attributes WorldGen puts on Workspace.World (GatePos<z>, GateEntry<z>).
+-------------------------------------------------------------------------------------------------------------
+Config.WORLD_GEN = true
+
+do
+	local Zones = require(script.Parent.Zones)
+	local plotCentre, plotAt, plotGates, plotEntry = Config.zoneCentre, Config.zoneAt, Config.gates, Config.zoneEntry
+	local HUB = Vector3.new(0, 0, -48)
+
+	local function genWorld(): Instance?
+		local w = workspace:FindFirstChild("World")
+		return if w and w:GetAttribute("GatePos2") ~= nil then w else nil
+	end
+
+	function Config.zoneCentre(z: number): Vector3
+		if not Config.WORLD_GEN then
+			return plotCentre(z)
+		end
+		local def = Zones.list[z]
+		if z <= 0 or not def then
+			return HUB
+		end
+		return Vector3.new(def.center.X, def.base, def.center.Y)
+	end
+
+	function Config.zoneAt(pos: Vector3): number
+		if not Config.WORLD_GEN then
+			return plotAt(pos)
+		end
+		return Zones.zoneAt(pos) or -1
+	end
+
+	function Config.gates(): { Gate }
+		local w = Config.WORLD_GEN and genWorld()
+		if not w then
+			return plotGates()
+		end
+		local list: { Gate } = {}
+		for z = 1, #Zones.list do
+			local pos = w:GetAttribute("GatePos" .. z)
+			if typeof(pos) == "Vector3" then
+				table.insert(list, { a = z - 1, b = z, pos = pos, along = Vector3.xAxis })
+			end
+		end
+		return list
+	end
+
+	function Config.zoneEntry(z: number): Vector3
+		local w = Config.WORLD_GEN and genWorld()
+		local entry = w and w:GetAttribute("GateEntry" .. z)
+		if typeof(entry) == "Vector3" then
+			return entry
+		end
+		return plotEntry(z)
+	end
+end
+
+-------------------------------------------------------------------------------------------------------------
 -- World look: lighting and post-processing (shared/Look applies it). `base` is the lobby and the hub; the
 -- server sets it at start. In a run the client (client/ZoneMood) blends toward each zone's mood as you walk,
 -- so a mood only lists what it changes. Colours are Color3, the rest numbers; everything here can be blended.

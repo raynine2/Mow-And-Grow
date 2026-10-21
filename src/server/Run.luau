@@ -11,6 +11,7 @@ local Net = require(script.Parent.Net)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
 local RunBuilder = require(script.Parent.RunBuilder)
+local RunWorld = require(script.Parent.RunWorld)
 local Field = require(script.Parent.Field)
 local Carry = require(script.Parent.Carry)
 local Tools = require(script.Parent.Tools)
@@ -75,6 +76,10 @@ local function openGate(gate: Model, hideAfter: number?)
 		return
 	end
 	gate:SetAttribute("Open", true)
+	if gate:GetAttribute("NewWorld") then
+		RunWorld.openGate(gate, hideAfter) -- the generated world's gates (bridges appear, barriers fade)
+		return
+	end
 	for _, p in gate:GetDescendants() do
 		if p:IsA("BasePart") then
 			p.CanCollide = false -- the way is open right away
@@ -603,11 +608,23 @@ local function waitForHost(): number
 end
 
 function Run.start()
-	info = require(script.Parent.MapStore).load("Run", RunBuilder.build) -- the saved map, if the place has one
+	if Config.WORLD_GEN then
+		info = RunWorld.build() -- the generated world (village + eight valleys)
+		Field.spots = RunWorld.patches
+	else
+		info = require(script.Parent.MapStore).load("Run", RunBuilder.build) -- the saved map, if the place has one
+	end
+	info.zone = function()
+		return zone
+	end
 	Loot.start(info.world)
 	Mowers.setup(info.world, info.garageSpawn)
 	Boss.setup(info.world)
-	require(script.Parent.DayNight).start() -- 8-minute days, 4-minute nights (runs only)
+	if not Config.WORLD_GEN then
+		-- 8-minute days, 4-minute nights (runs only). The generated world keeps each valley's own time of day
+		-- (client/BiomeLight), which is its look.
+		require(script.Parent.DayNight).start()
+	end
 
 	Field.onCut = onCut
 	Field.onProgress = pushWorld

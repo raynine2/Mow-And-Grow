@@ -301,6 +301,10 @@ local function buildGate(gates: Folder, corridors: Folder, cor: any)
 	local mid = cor.a + seg * 0.5
 	local midH = (cor.ha + cor.hb) / 2
 	local accent = def.palette.accent
+	-- where the way into this zone is, for the game (shared/Config reads these off Workspace.World)
+	local world = gates.Parent :: Instance
+	world:SetAttribute("GatePos" .. cor.zone, flat(mid, midH))
+	world:SetAttribute("GateEntry" .. cor.zone, flat(cor.b + dir * 10, cor.hb))
 
 	if cor.gate == "open" then
 		local f = folder(corridors, "Way" .. cor.zone)

@@ -7,6 +7,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Zones = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Zones"))
+local Config = require(ReplicatedStorage.MowALawn:WaitForChild("Config"))
+local State = require(script.Parent.State)
 
 local BiomeLight = {}
 local player = Players.LocalPlayer
@@ -21,14 +23,21 @@ local function ensure(className: string, name: string): Instance
 	return e
 end
 
--- the effects server/WorldGen puts in Lighting (made here if the place doesn't have them)
-local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or ensure("Atmosphere", "Atmosphere") :: Atmosphere
-local bloom = ensure("BloomEffect", "Glow") :: BloomEffect
-local color = ensure("ColorCorrectionEffect", "Grade") :: ColorCorrectionEffect
-local rays = ensure("SunRaysEffect", "Rays") :: SunRaysEffect
-bloom.Threshold = 0.8 -- neon and very bright things glow
-bloom.Size = 36
-rays.Spread = 0.7
+-- the effects server/WorldGen puts in Lighting (made here if missing). Looked up again whenever the server
+-- replaces them (a run starting resets Lighting).
+local atmosphere: Atmosphere, bloom: BloomEffect, color: ColorCorrectionEffect, rays: SunRaysEffect
+local function effects()
+	if atmosphere and atmosphere.Parent and bloom.Parent and color.Parent and rays.Parent then
+		return
+	end
+	atmosphere = (Lighting:FindFirstChildOfClass("Atmosphere") or ensure("Atmosphere", "Atmosphere")) :: Atmosphere
+	bloom = ensure("BloomEffect", "Glow") :: BloomEffect
+	color = ensure("ColorCorrectionEffect", "Grade") :: ColorCorrectionEffect
+	rays = ensure("SunRaysEffect", "Rays") :: SunRaysEffect
+	bloom.Threshold = 0.8 -- neon and very bright things glow
+	bloom.Size = 36
+	rays.Spread = 0.7
+end
 
 type Look = { [string]: any }
 
@@ -79,6 +88,7 @@ end
 local current: Look? = nil
 
 local function apply(l: Look)
+	effects()
 	Lighting.ClockTime = l.clock
 	Lighting.Ambient = l.ambient
 	Lighting.OutdoorAmbient = l.outdoor
@@ -104,7 +114,9 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	local step = acc
 	acc = 0
-	if player:GetAttribute("BiomeLightOff") then
+	-- only in a run in the generated world (the lobby has its own look)
+	if player:GetAttribute("BiomeLightOff") or not Config.WORLD_GEN or not State.isRun() then
+		current = nil
 		return
 	end
 	local char = player.Character

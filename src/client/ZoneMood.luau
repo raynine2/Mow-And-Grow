@@ -81,6 +81,9 @@ RunService.Heartbeat:Connect(function(dt)
 			ZoneMood.zone = ZoneMood.zoneAt(pos)
 			target = targetAt(pos)
 		end
+		if Config.WORLD_GEN then
+			return -- the generated world's valleys have their own lighting (client/BiomeLight)
+		end
 		-- the time of day on top of the area's mood
 		local n = nightness()
 		if n > 0.001 then

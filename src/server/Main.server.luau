@@ -19,6 +19,9 @@ Players.CharacterAutoLoads = false
 
 -- The maps saved in the place (Workspace.Maps, see server/MapStore) leave Workspace before anyone joins.
 require(script.Parent.MapStore).init()
+-- The generated run world saved in the place (Workspace.World from server/WorldGen) waits in ServerStorage until a
+-- run uses it, so the lobby can build its own World.
+require(script.Parent.RunWorld).stash()
 
 -- Blender models first (uploaded ones only), so the world builders can use them
 require(script.Parent.Models).loadAll()

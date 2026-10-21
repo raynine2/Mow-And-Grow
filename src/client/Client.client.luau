@@ -10,6 +10,7 @@ require(modules:WaitForChild("ViewModel"))
 require(modules:WaitForChild("Fx"))
 require(modules:WaitForChild("Input"))
 require(modules:WaitForChild("Guide"))
+require(modules:WaitForChild("SellPointer")) -- bag full: an arrow beside you pointing to the nearest sell spot
 require(modules:WaitForChild("Ambient"))
 require(modules:WaitForChild("CameraView"))
 require(modules:WaitForChild("ZoneMood"))

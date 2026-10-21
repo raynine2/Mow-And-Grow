@@ -79,7 +79,7 @@ Zones.list = {
 			rare = C(255, 214, 40),
 			accent = C(84, 202, 53),
 		},
-		lighting = { clock = 13.6, ambient = C(104, 118, 152), outdoor = C(118, 132, 166), brightness = 3.1, tint = C(255, 250, 246), saturation = 0.25, contrast = 0.2, fog = C(176, 214, 255), haze = 0.4, density = 0.22, sunRays = 0.04, bloom = 0.9 },
+		lighting = { clock = 17.4, ambient = C(96, 128, 140), outdoor = C(112, 146, 160), brightness = 2, tint = C(240, 255, 236), saturation = 0.32, contrast = 0.2, fog = C(150, 210, 235), haze = 1, density = 0.3, sunRays = 0.06, bloom = 1.1 },
 	},
 	{
 		id = "wheat",
@@ -102,7 +102,7 @@ Zones.list = {
 			rare = C(255, 250, 200),
 			accent = C(255, 200, 70),
 		},
-		lighting = { clock = 16.4, ambient = C(130, 112, 110), outdoor = C(150, 128, 120), brightness = 3, tint = C(255, 236, 210), saturation = 0.28, contrast = 0.18, fog = C(255, 214, 170), haze = 0.8, density = 0.26, sunRays = 0.08, bloom = 0.9 },
+		lighting = { clock = 18, ambient = C(150, 110, 90), outdoor = C(170, 124, 96), brightness = 2, tint = C(255, 230, 200), saturation = 0.32, contrast = 0.2, fog = C(255, 190, 130), haze = 1.2, density = 0.32, sunRays = 0.1, bloom = 1.1 },
 	},
 	{
 		id = "blossom",
@@ -125,7 +125,7 @@ Zones.list = {
 			rare = C(255, 40, 200),
 			accent = C(255, 120, 200),
 		},
-		lighting = { clock = 13, ambient = C(128, 110, 140), outdoor = C(146, 126, 160), brightness = 3, tint = C(255, 238, 246), saturation = 0.3, contrast = 0.16, fog = C(255, 200, 230), haze = 0.7, density = 0.25, sunRays = 0.05, bloom = 1 },
+		lighting = { clock = 18.6, ambient = C(150, 104, 150), outdoor = C(170, 118, 170), brightness = 1.9, tint = C(255, 226, 244), saturation = 0.34, contrast = 0.2, fog = C(255, 170, 220), haze = 1, density = 0.3, sunRays = 0.06, bloom = 1.2 },
 	},
 	{
 		id = "pine",
@@ -148,7 +148,7 @@ Zones.list = {
 			rare = C(133, 219, 89),
 			accent = C(64, 189, 144),
 		},
-		lighting = { clock = 10, ambient = C(90, 120, 128), outdoor = C(104, 138, 140), brightness = 2.6, tint = C(226, 248, 240), saturation = 0.22, contrast = 0.2, fog = C(150, 205, 195), haze = 1.6, density = 0.38, sunRays = 0.03, bloom = 0.9 },
+		lighting = { clock = 19.8, ambient = C(70, 120, 120), outdoor = C(80, 140, 135), brightness = 1.7, tint = C(210, 250, 236), saturation = 0.3, contrast = 0.22, fog = C(90, 170, 160), haze = 1.6, density = 0.38, sunRays = 0, bloom = 1.2 },
 	},
 	{
 		id = "swamp",
@@ -171,7 +171,7 @@ Zones.list = {
 			rare = C(200, 120, 255),
 			accent = C(180, 120, 255),
 		},
-		lighting = { clock = 17.6, ambient = C(100, 96, 130), outdoor = C(118, 112, 146), brightness = 2.4, tint = C(232, 242, 224), saturation = 0.28, contrast = 0.2, fog = C(150, 180, 130), haze = 2, density = 0.4, sunRays = 0, bloom = 1 },
+		lighting = { clock = 20.2, ambient = C(100, 90, 150), outdoor = C(116, 100, 170), brightness = 1.7, tint = C(226, 236, 214), saturation = 0.32, contrast = 0.22, fog = C(120, 150, 110), haze = 2, density = 0.4, sunRays = 0, bloom = 1.3 },
 	},
 	{
 		id = "frost",
@@ -217,7 +217,7 @@ Zones.list = {
 			rare = C(255, 220, 80),
 			accent = C(255, 110, 40),
 		},
-		lighting = { clock = 18.6, ambient = C(140, 84, 80), outdoor = C(160, 96, 84), brightness = 2.2, tint = C(255, 214, 196), saturation = 0.32, contrast = 0.22, fog = C(255, 130, 80), haze = 2, density = 0.38, sunRays = 0, bloom = 1.2 },
+		lighting = { clock = 19.6, ambient = C(150, 80, 70), outdoor = C(170, 90, 76), brightness = 1.8, tint = C(255, 210, 190), saturation = 0.34, contrast = 0.22, fog = C(255, 110, 60), haze = 2, density = 0.38, sunRays = 0, bloom = 1.3 },
 	},
 	{
 		id = "isles",

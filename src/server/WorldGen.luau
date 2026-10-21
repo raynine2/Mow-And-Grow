@@ -528,7 +528,7 @@ local function buildBounds(world: Folder)
 	end
 end
 
--- The place's base lighting (the meadow's sunny look; client/BiomeLight eases it per area while playing).
+-- The place's base lighting (the meadow's evening look; client/BiomeLight eases it per area while playing).
 function WorldGen.lighting()
 	local L = game:GetService("Lighting")
 	for _, c in L:GetChildren() do
@@ -536,12 +536,12 @@ function WorldGen.lighting()
 			c:Destroy()
 		end
 	end
-	L.ClockTime = 13.6
+	L.ClockTime = 17.4
 	L.GeographicLatitude = 22
-	L.Brightness = 3.1
+	L.Brightness = 2
 	L.ExposureCompensation = -0.1
-	L.Ambient = Color3.fromRGB(104, 118, 152)
-	L.OutdoorAmbient = Color3.fromRGB(118, 132, 166)
+	L.Ambient = Color3.fromRGB(96, 128, 140)
+	L.OutdoorAmbient = Color3.fromRGB(112, 146, 160)
 	L.ColorShift_Top = Color3.fromRGB(255, 230, 190) -- warm sunlight
 	L.ColorShift_Bottom = Color3.fromRGB(90, 120, 200) -- cool bounce light
 	L.EnvironmentDiffuseScale = 1
@@ -549,29 +549,29 @@ function WorldGen.lighting()
 	L.ShadowSoftness = 0.35 -- soft, readable shadows like Catch a Brainrot
 	L.GlobalShadows = true
 	local atm = Instance.new("Atmosphere")
-	atm.Density = 0.22
+	atm.Density = 0.3
 	atm.Offset = 0.2
-	atm.Haze = 0.4
+	atm.Haze = 1
 	atm.Glare = 0
-	atm.Color = Color3.fromRGB(176, 214, 255)
-	atm.Decay = Color3.fromRGB(86, 146, 230)
+	atm.Color = Color3.fromRGB(150, 210, 235)
+	atm.Decay = Color3.fromRGB(98, 136, 153)
 	atm.Parent = L
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "Grade"
-	cc.Saturation = 0.25
+	cc.Saturation = 0.32
 	cc.Contrast = 0.2
 	cc.Brightness = 0.02
-	cc.TintColor = Color3.fromRGB(255, 250, 246)
+	cc.TintColor = Color3.fromRGB(240, 255, 236)
 	cc.Parent = L
 	local bl = Instance.new("BloomEffect")
 	bl.Name = "Glow"
-	bl.Intensity = 0.9
+	bl.Intensity = 1.1
 	bl.Threshold = 0.8
 	bl.Size = 36
 	bl.Parent = L
 	local sr = Instance.new("SunRaysEffect")
 	sr.Name = "Rays"
-	sr.Intensity = 0.04
+	sr.Intensity = 0.06
 	sr.Spread = 0.7
 	sr.Parent = L
 	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds") or Instance.new("Clouds")

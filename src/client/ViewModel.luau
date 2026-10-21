@@ -1,9 +1,10 @@
--- First-person hands, like Chop A Forest's: chunky brick arms in your avatar's skin colour (a cuff in its shirt /
--- torso colour) held up from the bottom corners of the screen, holding the current tool. Each frame they're laid
+-- First-person hands, like Chop A Forest's: your avatar's OWN arms (copies of its arm parts, with its skin and
+-- shirt sleeves) held up from the bottom corners of the screen, holding the current tool. Each frame they're laid
 -- out to where the hands should be (idle sway, walk bob, a swing on every hit, jabs with bare hands, a buzz for auto
 -- tools). Only this client sees them.
--- (They used to be copies of the avatar's own arm meshes, but avatar bodies vary too much - bulky packages,
--- scaled rigs - and came out huge and glitchy; simple bricks always have the same, right proportions.)
+-- Every avatar's arms are shrunk to the same thickness (bulky packages and scaled rigs would fill the screen), turned
+-- knuckles-up, and the upper arm stretches back to the screen corner so there's never a floating stump. Brick
+-- fists in the avatar's colours are the fallback for a rig without arms.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -245,12 +246,13 @@ local _ = handModel
 -- lag a frame behind the camera. So, like most first-person games, we copy the avatar's own arm parts (meshes,
 -- skin colour, shirt) into a little model with a Humanoid (so the shirt still draws on them) and place the copies
 -- in front of the camera every frame. The real arms stay hidden by Roblox's first-person fade as usual.
-type ArmSet = { model: Model, right: { BasePart }, left: { BasePart }, char: Model }
+type ArmSet = { model: Model, right: { BasePart }, left: { BasePart }, char: Model, size: { [BasePart]: Vector3 } }
 local arms: ArmSet? = nil
 local nextArmBuild = 0
 -- where the shoulders sit relative to the camera: low and a little behind, so the arms come up from the corners
 local SHOULDER_R = Vector3.new(2, -2.5, 0.4)
 local SHOULDER_L = Vector3.new(-2, -2.5, 0.4)
+local ARM_WIDTH = 0.55 -- how thick the arms are in view (studs, at ~2.7 studs away)
 local KEEP = { SpecialMesh = true, SurfaceAppearance = true, Decal = true, Texture = true }
 
 local function copyPart(src: Instance): BasePart?
@@ -296,7 +298,7 @@ local function buildArms(char: Model): ArmSet?
 	if shirt then
 		shirt:Clone().Parent = model
 	end
-	local set: ArmSet = { model = model, right = {}, left = {}, char = char }
+	local set: ArmSet = { model = model, right = {}, left = {}, char = char, size = {} }
 	for _, side in { "Right", "Left" } do
 		local list = if side == "Right" then set.right else set.left
 		local names = if r15 then { side .. "UpperArm", side .. "LowerArm", side .. "Hand" } else { side .. " Arm" }
@@ -309,6 +311,20 @@ local function buildArms(char: Model): ArmSet?
 			end
 			part.Parent = model
 			table.insert(list, part)
+		end
+	end
+	-- the same thickness for every avatar: the forearm (R15) or arm (R6) ARM_WIDTH studs across
+	local ref = set.right[math.min(2, #set.right)]
+	local k = ARM_WIDTH / math.max(0.2, math.min(ref.Size.X, ref.Size.Z))
+	for _, list in { set.right, set.left } do
+		for _, part in list do
+			part.Size *= k
+			for _, d in part:GetChildren() do
+				if d:IsA("SpecialMesh") then
+					d.Scale *= k
+				end
+			end
+			set.size[part] = part.Size
 		end
 	end
 	model.Parent = root
@@ -341,9 +357,9 @@ player.CharacterAppearanceLoaded:Connect(function()
 	nextArmBuild = 0
 end)
 
--- Lay one arm (upper arm, forearm, hand) in a straight line from the shoulder so the hand's centre lands on
--- `target`. The back of the hand faces up; for R6 the one-piece arm ends at the target.
-local function poseArm(parts: { BasePart }, shoulder: Vector3, target: Vector3, cam: Camera, side: number)
+-- Lay one arm out: the hand's centre on `target`, the forearm behind it, and the upper arm (or R6's one-piece arm)
+-- stretched back to the shoulder point off the screen's corner. Knuckles up, the fists rolled a little inward.
+local function poseArm(set: ArmSet, parts: { BasePart }, shoulder: Vector3, target: Vector3, cam: Camera, side: number)
 	local toward = target - shoulder
 	local d = if toward.Magnitude > 0.01 then toward.Unit else cam.CFrame.LookVector
 	local up = cam.CFrame.UpVector
@@ -351,21 +367,33 @@ local function poseArm(parts: { BasePart }, shoulder: Vector3, target: Vector3, 
 	if up.Magnitude < 0.01 then
 		up = d:Cross(cam.CFrame.RightVector)
 	end
-	local xAxis = up.Unit * side
-	local yAxis = -d
-	local at = target
-	if #parts == 1 then
-		at -= d * math.max(0, parts[1].Size.Y / 2 - 0.5)
-	end
-	for i = #parts, 1, -1 do
+	up = CFrame.fromAxisAngle(d, math.rad(-22) * side):VectorToWorldSpace(up.Unit)
+	local yAxis = -d -- each part's top points back toward the shoulder
+	local xAxis = yAxis:Cross(up) -- and its back (+Z) points up: knuckles up
+	local n = #parts
+	local edge = target -- the front end of the next part to place
+	for i = n, 1, -1 do
 		local part = parts[i]
-		local half = part.Size.Y / 2
-		if i ~= #parts then
-			at -= d * half * 0.9
+		local base = set.size[part] or part.Size
+		local len = base.Y
+		if i == 1 then
+			-- reach all the way back to the shoulder, so the arm runs off the screen
+			len = math.max(base.Y, (edge - shoulder):Dot(d) + 0.3)
+			if part.Size.Y ~= len then
+				part.Size = Vector3.new(base.X, len, base.Z)
+			end
 		end
-		part.CFrame = CFrame.fromMatrix(at, xAxis, yAxis)
+		local centre
+		if i == n and n > 1 then
+			centre = target -- the hand
+		elseif n == 1 then
+			centre = target - d * (len / 2 - base.X * 0.5) -- R6: the arm's end is the fist
+		else
+			centre = edge - d * (len / 2) * 0.92
+		end
+		part.CFrame = CFrame.fromMatrix(centre, xAxis, yAxis)
 		part.Transparency = 0
-		at -= d * half * 0.9
+		edge = centre - d * (len / 2)
 	end
 end
 
@@ -553,7 +581,7 @@ RunService.RenderStepped:Connect(function()
 		rightCf = base * REST_R * swing
 		leftCf = base * REST_L
 	end
-	local set = nil :: ArmSet? -- (the avatar-arm copies are off: see the top of this file)
+	local set = armsFor(char)
 	if set then
 		-- the real arms: hide the brick fists and lay the avatar's own arms out to the fist spots
 		for _, pieces in { rightArm, leftArm } do
@@ -570,8 +598,8 @@ RunService.RenderStepped:Connect(function()
 				end
 			end
 		end
-		poseArm(set.right, cam.CFrame:PointToWorldSpace(SHOULDER_R), rightCf.Position, cam, 1)
-		poseArm(set.left, cam.CFrame:PointToWorldSpace(SHOULDER_L), leftCf.Position, cam, -1)
+		poseArm(set, set.right, cam.CFrame:PointToWorldSpace(SHOULDER_R), rightCf.Position, cam, 1)
+		poseArm(set, set.left, cam.CFrame:PointToWorldSpace(SHOULDER_L), leftCf.Position, cam, -1)
 	else
 		placeHand(handR, rightArm, rightCf)
 		placeHand(handL, leftArm, leftCf)

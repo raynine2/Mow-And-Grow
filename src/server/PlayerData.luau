@@ -44,6 +44,8 @@ local DEFAULT = {
 	mowers = {}, -- permanent mowers (gems / robux): [id] = true
 	tools = {}, -- PERMANENT tools bought with Robux, given at the start of every run: [id] = true
 	lastDaily = 0,
+	lastDailyDay = 0, -- the UTC day number of the last daily claim (server/Daily)
+	dailyStreak = 0, -- daily claims in a row
 	groupClaimed = false,
 	-- lifetime stats (the STATS window): clumps cut, bundles sold, coins earned, mutated ("rare") clumps cut,
 	-- seconds played; newsSeen = the newest Config.NEWS id the player has seen

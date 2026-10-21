@@ -10,6 +10,7 @@ local TeleportService = game:GetService("TeleportService")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local Format = require(ReplicatedStorage.MowALawn.Format)
 local Net = require(script.Parent.Net)
+local Daily = require(script.Parent.Daily)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
 local BestTimes = require(script.Parent.BestTimes)
@@ -123,15 +124,9 @@ end
 -------------------------------------------------------------------------------------------------------------
 local function claim(player: Player, data, kind: string)
 	if kind == "daily" then
-		local wait = data.lastDaily + Config.DAILY_COOLDOWN - os.time()
-		if wait > 0 then
-			Net.notify(player, "Next daily reward in " .. Format.clock(wait), "yellow")
+		if not Daily.claim(player, data) then -- the streak ladder (server/Daily)
 			return
 		end
-		data.lastDaily = os.time()
-		data.gems += Config.DAILY_GEMS
-		Net.notify(player, "+" .. Config.DAILY_GEMS .. " gems!", "purple")
-		Net.send(player, "Fx", "purchase", { big = true })
 	elseif kind == "group" then
 		if data.groupClaimed then
 			Net.notify(player, "Already claimed. Thanks for joining!", "yellow")

@@ -408,20 +408,63 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- REWARDS (lobby): daily + group, like the GROUP REWARD board
 -------------------------------------------------------------------------------------------------------------
-local rewards = UI.popupWindow("Rewards", "Free Rewards", "Free gems for supporting us!")
+local rewards = UI.popupWindow("Rewards", "Free Rewards", "Come back every day for bigger rewards!")
+
+-- The 7-day ladder (server/Daily): claimed days ticked, today's glowing, the rest waiting; day 7 is the big one.
+local function dayCard(parent: Instance, i: number, gems: number, state: string, size: Vector2, pos: Vector2)
+	local colors = { claimed = Color3.fromRGB(110, 200, 90), today = C.yellow, later = Color3.fromRGB(150, 116, 84) }
+	local f = UI.frame({ size = UDim2.fromOffset(size.X, size.Y), pos = UDim2.fromOffset(pos.X, pos.Y), color = colors[state], parent = parent, radius = 12, outline = 3, name = "Day" .. i })
+	UI.gradient(f, colors[state])
+	UI.text(f, "DAY " .. i, UDim2.new(1, -8, 0, 20), { pos = UDim2.fromOffset(4, 4), stroke = 2 })
+	UI.icon(f, "gem", if i == #Config.DAILY_STREAK then 34 else 26, UDim2.new(0.5, 0, 0, 27), Vector2.new(0.5, 0))
+	UI.text(f, "+" .. gems, UDim2.new(1, -8, 0, 20), { pos = UDim2.new(0, 4, 1, -24), stroke = 2 })
+	if state == "claimed" then
+		local tick = UI.text(f, "✓", UDim2.fromOffset(30, 30), { pos = UDim2.new(1, 4, 0, -10), anchor = Vector2.new(1, 0), color = Color3.new(1, 1, 1), stroke = 3 })
+		tick.Rotation = 10
+	elseif state == "today" then
+		local glow = Instance.new("UIStroke")
+		glow.Color = Color3.fromRGB(255, 255, 210)
+		glow.Thickness = 3
+		glow.Parent = f
+		UI.bounce(f)
+	else
+		f.BackgroundTransparency = 0.25
+	end
+	return f
+end
+
 rewards.refresh = function()
 	local d = data()
 	UI.clear(rewards.list)
 	if not d then
 		return
 	end
-	local ready = d.dailyIn <= 0
-	UI.popupRow(rewards.list, 1, "gem", "Daily reward +" .. Config.DAILY_GEMS, if ready then "READY" else Format.clock(d.dailyIn), if ready then C.green else Color3.new(1, 1, 1))
-	UI.popupRow(rewards.list, 2, "clover", "Join the group +" .. Config.GROUP_GEMS, if d.groupClaimed then "DONE" else "JOIN", if d.groupClaimed then C.green else C.yellow)
-	local big = UI.text(rewards.list, "+" .. Config.DAILY_GEMS, UDim2.new(1, 0, 0, 60), { color = Color3.new(1, 1, 1), stroke = 3 })
-	big.LayoutOrder = 3
-	if ready then
-		UI.setButton(rewards.action, "CLAIM DAILY", C.green)
+	local v = d.daily or { ready = d.dailyIn <= 0, wait = d.dailyIn, day = 1, streak = 0, claimedToday = false }
+	-- the calendar: days 1-4 on top, 5-6 and the big day 7 below
+	local cal = Instance.new("Frame")
+	cal.Name = "Calendar"
+	cal.BackgroundTransparency = 1
+	cal.Size = UDim2.fromOffset(440, 176)
+	cal.LayoutOrder = 1
+	cal.Parent = rewards.list
+	for i, gems in Config.DAILY_STREAK do
+		local done = if v.claimedToday then i <= v.day else i < v.day
+		local state = if done then "claimed" elseif i == v.day and v.ready then "today" else "later"
+		if i <= 4 then
+			dayCard(cal, i, gems, state, Vector2.new(104, 80), Vector2.new((i - 1) * 112, 0))
+		elseif i < #Config.DAILY_STREAK then
+			dayCard(cal, i, gems, state, Vector2.new(104, 80), Vector2.new((i - 5) * 112, 92))
+		else
+			dayCard(cal, i, gems, state, Vector2.new(216, 80), Vector2.new(224, 92))
+		end
+	end
+	local line = if v.ready then ("🔥 %d day streak  ·  Day %d is ready!"):format(v.streak, v.day)
+		else ("🔥 %d day streak  ·  Next reward in %s"):format(v.streak, Format.clock(v.wait))
+	local streak = UI.text(rewards.list, line, UDim2.new(1, 0, 0, 30), { color = Color3.new(1, 1, 1), stroke = 2.5 })
+	streak.LayoutOrder = 2
+	UI.popupRow(rewards.list, 3, "clover", "Join the group +" .. Config.GROUP_GEMS, if d.groupClaimed then "DONE" else "JOIN", if d.groupClaimed then C.green else C.yellow)
+	if v.ready then
+		UI.setButton(rewards.action, "CLAIM DAY " .. v.day, C.green)
 		rewards.onAction = function()
 			State.fire("Claim", "daily")
 		end

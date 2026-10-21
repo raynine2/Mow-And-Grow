@@ -247,7 +247,7 @@ local function rewardsStall(world: Instance)
 		PropKit.facePanel(m, at, Vector3.new(0, 13.5, -0.6), Vector2.new(16, 3), "REWARDS", PropKit.TITLE)
 	end
 	-- seen from the front the daily bay is on the left (+X), the group bay on the right
-	local daily = ("DAILY REWARD\n+%d 💎\nClaim every %dh!"):format(Config.DAILY_GEMS, Config.DAILY_COOLDOWN // 3600)
+	local daily = ("DAILY REWARD\nUp to +%d 💎\nCome back every day!"):format(Config.DAILY_STREAK[#Config.DAILY_STREAK])
 	PropKit.facePanel(m, at, Vector3.new(3.9, 6.6, 2.3), Vector2.new(6, 3.4), daily, Color3.new(1, 1, 1))
 	PropKit.facePanel(m, at, Vector3.new(-3.9, 6.6, 2.3), Vector2.new(6, 3.4), ("GROUP REWARD\n+%d 💎\nJoin the group!"):format(Config.GROUP_GEMS), Color3.new(1, 1, 1))
 	outline(m, at, Vector3.new(3.9, 0, -5), 7, 6, CYAN, "Rewards")

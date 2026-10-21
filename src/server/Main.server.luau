@@ -129,7 +129,8 @@ local function snapshot(player: Player, data)
 			return g
 		end)(),
 		peaceful = data.peaceful == true,
-		dailyIn = math.max(0, data.lastDaily + Config.DAILY_COOLDOWN - os.time()),
+		dailyIn = require(script.Parent.Daily).view(data).wait,
+		daily = require(script.Parent.Daily).view(data), -- { ready, wait, day, streak, claimedToday }
 		groupClaimed = data.groupClaimed,
 		stats = data.stats,
 		passes = passes,

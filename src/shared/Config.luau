@@ -835,8 +835,11 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- Rewards
 -------------------------------------------------------------------------------------------------------------
-Config.DAILY_GEMS = 35
-Config.DAILY_COOLDOWN = 6 * 3600
+-- The daily reward ladder (server/Daily): gems for day 1..7 of a streak, claimed once per day; then it starts
+-- over at day 1 (the streak count keeps going). Missing a day resets to day 1.
+Config.DAILY_STREAK = { 50, 75, 100, 150, 200, 300, 600 }
+Config.DAILY_GEMS = Config.DAILY_STREAK[1]
+Config.DAILY_COOLDOWN = 24 * 3600
 Config.GROUP_GEMS = 100
 
 -------------------------------------------------------------------------------------------------------------

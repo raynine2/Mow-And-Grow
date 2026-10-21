@@ -348,4 +348,43 @@ function Moments.areaCleared(d: any)
 	end)
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- daily reward
+-------------------------------------------------------------------------------------------------------------
+-- d: { day, gems, streak } from server/Daily.
+function Moments.daily(d: any)
+	local purple = UI.colors.purple
+	local big = d.day >= #Config.DAILY_STREAK
+	local c = card(420, 150, 3, 0.3)
+	rays(c, if big then UI.colors.yellow else purple, 380)
+	local title = UI.text(c, ("DAY %d REWARD!"):format(d.day), UDim2.new(1, 0, 0, 50), { pos = UDim2.fromOffset(0, 0), stroke = 4 })
+	title.ZIndex = 58
+	UI.gradient(title, if big then UI.colors.yellow else purple)
+	local amount = UI.text(c, "+" .. Format.short(d.gems) .. " GEMS", UDim2.new(1, 0, 0, 46), { pos = UDim2.fromOffset(0, 52), stroke = 3.5 })
+	amount.ZIndex = 58
+	amount.TextColor3 = Color3.fromRGB(220, 180, 255)
+	local streak = UI.text(c, ("🔥 %d DAY STREAK! Come back tomorrow"):format(d.streak), UDim2.new(1, 0, 0, 28), { pos = UDim2.fromOffset(0, 104), stroke = 2.5 })
+	streak.ZIndex = 58
+	Sound.play("purchase")
+	Sound.playAt("rareChime", if big then 1.25 else 1.05, 0.8)
+	Confetti.burst(if big then 160 else 70)
+	CameraView.kick(2)
+	task.delay(0.4, function()
+		State.emit("flyGems", math.clamp(math.floor(d.gems / 25), 4, 16))
+	end)
+end
+
+-- Joining the lobby with today's reward waiting: one reminder.
+local reminded = false
+State.on("data", function()
+	local d = State.data
+	if reminded or not d or d.mode ~= "Lobby" or not (d.daily and d.daily.ready) then
+		return
+	end
+	reminded = true
+	task.delay(5, function()
+		UI.toast(("Your daily reward is ready: day %d, +%d gems! Visit Free Rewards"):format(d.daily.day, Config.DAILY_STREAK[d.daily.day] or 0), "yellow")
+	end)
+end)
+
 return Moments

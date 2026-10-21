@@ -595,6 +595,10 @@ handlers.bossDown = function(d)
 end
 
 -- personal boss reward: under the "BOSS DEFEATED!" card, or its own banner if that isn't up
+handlers.daily = function(d)
+	Moments.daily(d) -- the day card, gems flying to the counter, confetti
+end
+
 handlers.reward = function(d)
 	if d.kind == "area" then
 		Moments.areaCleared(d) -- the reward card, counting up, confetti and a fanfare

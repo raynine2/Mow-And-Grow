@@ -629,6 +629,15 @@ State.on("flyCoins", function(count: number)
 	end
 end)
 
+-- gems from a big reward (the daily streak) burst from the middle of the screen into the gem counter
+State.on("flyGems", function(count: number)
+	local cam = workspace.CurrentCamera
+	local centre = if cam then cam.ViewportSize / 2 else Vector2.new(640, 360)
+	for i = 1, count do
+		fly(UI.icon(UI.gui, "gem", 30), centre + Vector2.new(math.random(-60, 60), math.random(-30, 30)), gemBox, (i - 1) * 0.04)
+	end
+end)
+
 applyMode(State.mode)
 
 function Hud.root()

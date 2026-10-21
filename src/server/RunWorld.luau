@@ -159,6 +159,7 @@ function RunWorld.build()
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
 	paths(w)
 	RunBuilder.hub(w, info)
+	require(script.Parent.HubDressing).village(w)
 
 	local gates = w:FindFirstChild("Gates")
 	for _, g in (if gates then gates:GetChildren() else {}) do

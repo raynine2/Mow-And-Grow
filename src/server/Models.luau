@@ -13,7 +13,18 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Models = {}
 
 -- voxel props that keep their own collisions (the rest get invisible colliders from their builders)
-local VOXEL_SOLID = { turntable = true, lantern_post = true, gas_pump = true }
+local VOXEL_SOLID = {
+	turntable = true,
+	lantern_post = true,
+	gas_pump = true,
+	bench = true,
+	mower_statue = true,
+	crate_stack = true,
+	barrel = true,
+	hay_bale = true,
+	planter = true,
+	wheelbarrow = true,
+}
 
 local templates: { [string]: Model } = {}
 local folder = Instance.new("Folder")
@@ -289,19 +300,33 @@ function Models.loadAll(timeout: number?)
 	if Config.WORLD_GEN then
 		local VoxelModels = require(script.Parent.VoxelModels)
 		local Origins = require(ReplicatedStorage.MowALawn.ModelOrigins)
-		for propName, origin in Origins do
-			local name = string.sub(propName, 6)
-			local size = VoxelModels.size(propName)
+		-- a prop can be several meshes ("Prop_<name>" and "Prop_<name>__<piece>"), each at its own origin
+		local groups: { [string]: { { mesh: string, origin: Vector3 } } } = {}
+		for meshName, origin in Origins do
+			local rest = string.sub(meshName, 6)
+			local name = string.match(rest, "^(.-)__") or rest
+			groups[name] = groups[name] or {}
+			table.insert(groups[name], { mesh = meshName, origin = origin })
+		end
+		for name, pieces in groups do
+			local model = Instance.new("Model")
+			model.Name = name
 			local holder = Instance.new("Folder")
-			local mesh = size and VoxelModels.place(holder, propName, Vector3.zero)
-			if mesh and size then
-				local model = Instance.new("Model")
-				model.Name = name
-				-- VoxelModels.place stands it at the origin facing -Z; move it to where the toy model's parts were
-				mesh.CFrame = CFrame.new(origin) * mesh.CFrame
-				mesh.CanCollide = VOXEL_SOLID[name] == true
-				mesh.CanQuery = mesh.CanCollide
-				mesh.Parent = model
+			local count = 0
+			for _, piece in pieces do
+				local mesh = VoxelModels.place(holder, piece.mesh, Vector3.zero)
+				if mesh then
+					-- VoxelModels.place stands it at the origin facing -Z; move it to where the toy model's parts were
+					mesh.CFrame = CFrame.new(piece.origin) * mesh.CFrame
+					mesh.CanCollide = VOXEL_SOLID[name] == true and not string.find(piece.mesh, "__", 1, true)
+					mesh.CanQuery = mesh.CanCollide
+					mesh.CastShadow = not string.find(piece.mesh, "__", 1, true) or mesh.Size.Magnitude > 4
+					mesh.Parent = model
+					count += 1
+				end
+			end
+			holder:Destroy()
+			if count > 0 then
 				model.WorldPivot = CFrame.new()
 				model.Parent = folder
 				local old = templates[name]
@@ -310,8 +335,9 @@ function Models.loadAll(timeout: number?)
 				end
 				templates[name] = model
 				voxels += 1
+			else
+				model:Destroy()
 			end
-			holder:Destroy()
 		end
 	end
 	if voxels > 0 then

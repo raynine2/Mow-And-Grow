@@ -321,6 +321,7 @@ function LobbyBuilder.build()
 	local leaderLabel = leaderboard(world)
 	local bestLabel = bestTimesBoard(world)
 	local pads = partyArea(world)
+	require(script.Parent.HubDressing).lobby(world) -- the generated world's style: arch, statue, benches, bunting...
 	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = pads }
 end
 

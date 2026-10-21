@@ -30,21 +30,28 @@ if "--only" in args:
 os.makedirs(OUT, exist_ok=True)
 
 kit.clear_scene()
-atlas = kit.Atlas()
+atlas = kit.Atlas()  # the world's models: trees, bushes, rocks, grass, landmarks
+prop_atlas = kit.Atlas(grid=32, px=16)  # the hub's props have their own (more colours)
 objects = {}
 sizes = {}
 origins = {}
 catalogue = models.catalogue()
-for pname, pfn in props.PROPS.items():
-    catalogue["Prop_" + pname] = (pfn, {})
+jobs = []  # (mesh name, voxels, palette, voxel size, atlas)
 for name, (fn, kw) in catalogue.items():
     vox, pal, vs = fn(**kw)
-    if name.startswith("Prop_"):
+    jobs.append((name, vox, pal, vs, atlas))
+for pname, pfn in props.PROPS.items():
+    result = pfn()
+    pieces = result if isinstance(result, dict) else {"": result}
+    for piece, (vox, pal, vs) in pieces.items():
+        name = "Prop_" + pname + ("__" + piece if piece else "")
         xs = [p[0] for p in vox]; ys = [p[1] for p in vox]; zs = [p[2] for p in vox]
-        adj = props.ADJUST.get(name[5:], (0, 0, 0))
+        adj = props.ADJUST.get(pname, (0, 0, 0))
         origins[name] = ((min(xs) + max(xs) + 1) / 2 * vs + adj[0], min(ys) * vs + adj[1], (min(zs) + max(zs) + 1) / 2 * vs + adj[2])
+        jobs.append((name, vox, pal, vs, prop_atlas))
+for name, vox, pal, vs, at in jobs:
     builder = kit.build_columns if name.startswith(("Clump", "Stubble")) else kit.build_shared
-    obj, size = builder(name, vox, pal, atlas, voxel_size=vs)
+    obj, size = builder(name, vox, pal, at, voxel_size=vs)
     objects[name] = obj
     sizes[name] = size
     print(f"{name:32s} voxels {len(vox):6d}  tris {len(obj.data.polygons) * 2:6d}  size {size[0]:.1f} x {size[1]:.1f} x {size[2]:.1f}")
@@ -53,14 +60,16 @@ for name, (fn, kw) in catalogue.items():
 
 img = atlas.image("MowAtlas", os.path.join(OUT, "MowAtlas.png"))
 mat = kit.shared_material(img)
-for obj in objects.values():
-    obj.data.materials.append(mat)
-print("atlas colours", len(atlas.index))
+pimg = prop_atlas.image("MowPropsAtlas", os.path.join(OUT, "MowPropsAtlas.png"))
+pmat = kit.shared_material(pimg, "MowPropsAtlas")
+for name, obj in objects.items():
+    obj.data.materials.append(pmat if name.startswith("Prop_") else mat)
+print("atlas colours", len(atlas.index), "props atlas colours", len(prop_atlas.index))
 
 # --- export ------------------------------------------------------------------------------------------------------
 bpy.ops.object.select_all(action="DESELECT")
-for obj in objects.values():
-    obj.select_set(True)
+for name, obj in objects.items():
+    obj.select_set(not name.startswith("Prop_"))
 bpy.ops.export_scene.fbx(
     filepath=os.path.join(OUT, "MowModels.fbx"),
     use_selection=True,
@@ -162,7 +171,51 @@ def preview(area, names, path):
         o.location = (0, 0, 0)
 
 
+def preview_props(names, path):
+    """Props side by side, every piece of a prop in its place, seen from the front-left (their fronts face -z in
+    voxels, which is +y in Blender)."""
+    scene = bpy.context.scene
+    for o in objects.values():
+        o.hide_render = True
+    placed = []
+    x = 0.0
+    hmax = 1.0
+    for n in names:
+        pieces = [k for k in objects if k == "Prop_" + n or k.startswith("Prop_" + n + "__")]
+        w = max(sizes[k][0] for k in pieces)
+        cx = x + w / 2
+        for k in pieces:
+            o = objects[k]
+            ox, oy, oz = origins[k]
+            o.location = (cx + ox, -oz, oy)
+            o.hide_render = False
+            placed.append(o)
+            hmax = max(hmax, sizes[k][1] + oy)
+        x += w + 4
+    preview_cam(x, hmax, path, front=True)
+    for o in placed:
+        o.location = (0, 0, 0)
+
+
+def preview_cam(x, h, path, front=False):
+    scene = bpy.context.scene
+    cam = bpy.data.objects.get("cam")
+    cx = x / 2
+    d = max(x * 1.0, h * 1.8)
+    side = 1 if front else -1
+    cam.location = (cx - d * 0.25, side * d, h * 0.7 + d * 0.3)
+    look = mathutils.Vector((cx, 0, h * 0.35)) - cam.location
+    cam.rotation_euler = look.to_track_quat("-Z", "Y").to_euler()
+    scene.camera = cam
+    scene.render.filepath = path
+    bpy.ops.render.render(write_still=True)
+
+
 if RENDER:
+    # make sure the camera, sun, sky and ground exist (preview() sets them up on first use)
+    if not bpy.data.objects.get("cam"):
+        first = next(iter(objects))
+        preview("setup", [first], os.path.join(OUT, "_setup.png"))
     for area in models.AREAS:
         if ONLY and area not in ONLY:
             continue
@@ -170,9 +223,10 @@ if RENDER:
         order = [n for n in names if n.startswith("Tree")] + [n for n in names if not n.startswith("Tree")]
         preview(area, order, os.path.join(OUT, f"preview_{area}.png"))
     if not ONLY or "props" in ONLY:
-        names = ["Prop_" + n for n in props.PROPS]
-        preview("props1", names[:6], os.path.join(OUT, "preview_props1.png"))
-        preview("props2", names[6:], os.path.join(OUT, "preview_props2.png"))
+        groups = [["log_cabin", "bag_stand", "rewards_stall"], ["shredder", "sell_pad", "party_booth", "gas_pump", "lantern_post"],
+                  ["leaderboard", "trophy_board", "welcome_arch"], ["mower_statue", "barrel", "crate_stack", "planter", "bench", "signpost", "wheelbarrow", "hay_bale", "turntable"]]
+        for gi, g in enumerate(groups):
+            preview_props(g, os.path.join(OUT, f"preview_props{gi + 1}.png"))
     if not ONLY:
         lms = ["Landmark_" + models.LANDMARKS[a] for a in models.AREAS]
         preview("landmarks1", ["Landmark_windmill", "Landmark_windmill_sails"] + lms[1:4], os.path.join(OUT, "preview_landmarks1.png"))

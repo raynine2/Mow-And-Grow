@@ -180,8 +180,10 @@ class Atlas:
     GRID = 16
     PX = 32
 
-    def __init__(self):
+    def __init__(self, grid=16, px=32):
         self.index = {}
+        self.GRID = grid
+        self.PX = px
 
     def tile(self, rgb):
         rgb = tuple(int(max(0, min(255, c))) for c in rgb)
@@ -207,7 +209,8 @@ class Atlas:
             for y in range(P):
                 for x in range(P):
                     edge = min(x, y, P - 1 - x, P - 1 - y)
-                    k = 1.13 if edge < 2 else (1.05 if edge < 4 else (0.98 if edge > 9 else 1.0))
+                    q = P / 32  # the rim's width scales with the tile
+                    k = 1.13 if edge < 2 * q else (1.05 if edge < 4 * q else (0.98 if edge > 9 * q else 1.0))
                     j = ((ty + y) * w + tx + x) * 4
                     px[j], px[j + 1], px[j + 2], px[j + 3] = min(1, r * k), min(1, gg * k), min(1, b * k), 1
         img.pixels = px
@@ -266,8 +269,8 @@ def build_shared(name, vox, pal, atlas, voxel_size=1.0, centre=True):
     return obj, size
 
 
-def shared_material(img):
-    mat = bpy.data.materials.new("MowAtlas")
+def shared_material(img, name="MowAtlas"):
+    mat = bpy.data.materials.new(name)
     mat.use_nodes = True
     nt = mat.node_tree
     bsdf = nt.nodes.get("Principled BSDF")

@@ -52,23 +52,26 @@ local function swayAmp(name: string): number?
 		return math.rad(2)
 	elseif name == "Landmark_cherry" or name == "Landmark_elderpine" then
 		return math.rad(0.5)
+	elseif name == "BuntingFlag" then
+		return math.rad(14) -- the hubs' bunting flutters (it swings from its top edge)
 	end
 	return nil
 end
 
 local function track(d: Instance)
-	if not d:IsA("MeshPart") or sways[d] then
+	if not d:IsA("BasePart") or sways[d] or not (d:IsA("MeshPart") or d.Name == "BuntingFlag") then
 		return
 	end
 	local amp = swayAmp(d.Name)
 	if not amp then
 		return
 	end
+	local hang = d.Name == "BuntingFlag" -- turns about its top edge (the rope), not its foot
 	local s: Sway = {
 		part = d,
 		base = d.CFrame,
-		foot = (d.CFrame * CFrame.new(0, -d.Size.Y / 2, 0)).Position,
-		amp = amp * math.clamp(30 / d.Size.Y, 0.5, 1.3), -- big trees move less
+		foot = if hang then d.Position + Vector3.new(0, d.Size.Y / 2, 0) else (d.CFrame * CFrame.new(0, -d.Size.Y / 2, 0)).Position,
+		amp = if hang then amp else amp * math.clamp(30 / d.Size.Y, 0.5, 1.3), -- big trees move less
 		phase = (d.Position.X * 0.37 + d.Position.Z * 0.71) % (math.pi * 2),
 	}
 	sways[d] = s
@@ -120,7 +123,7 @@ local function swayStep(at: Vector3, t: number)
 		-- someone else moved it (a rebuilt world, a cutscene): take its new place as home
 		if s.last and (p.Position - s.last.Position).Magnitude > 0.5 then
 			s.base = p.CFrame
-			s.foot = (p.CFrame * CFrame.new(0, -p.Size.Y / 2, 0)).Position
+			s.foot = if p.Name == "BuntingFlag" then p.Position + Vector3.new(0, p.Size.Y / 2, 0) else (p.CFrame * CFrame.new(0, -p.Size.Y / 2, 0)).Position
 		end
 		local d = (s.foot - at).Magnitude
 		local cf: CFrame

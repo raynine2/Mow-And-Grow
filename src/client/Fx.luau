@@ -325,6 +325,11 @@ end
 
 -- A chopped clump topples over away from the cutter (like a felled tree), then bursts where it lands: the
 -- server's stubble replaces it and its bundles drop there. Everyone sees it fall; the cutter gets the pop word.
+-- The fall is drawn on a copy of the clump (the real one is hidden on our screen), so it always plays out in
+-- full even if the server swaps the clump for stubble before it's down. It starts from the lean the clump
+-- already has and hinges on the bottom edge facing the cutter, like a tree on its hinge: the base rolls down
+-- into the ground instead of lifting out of it, so you never see its underside.
+local FALL_ANGLE = math.rad(84)
 handlers.fell = function(d)
 	if not near(d.pos, 200) then
 		return
@@ -347,39 +352,59 @@ handlers.fell = function(d)
 		task.delay(T, impact)
 		return
 	end
-	local base = HitFx.release(m) or m:GetPivot()
+	-- where it is now (leaned over by the chopping), back to its full size
+	HitFx.release(m)
+	local startCf = m:GetPivot()
+	local ok, ghost = pcall(function()
+		m.Archivable = true
+		return m:Clone()
+	end)
+	if not ok or not ghost then
+		task.delay(T, impact)
+		return
+	end
+	for _, p in ghost:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.Anchored = true
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+			p.LocalTransparencyModifier = 0
+		elseif p:IsA("Script") or p:IsA("LocalScript") then
+			p:Destroy()
+		end
+	end
+	ghost.Parent = workspace
+	for _, p in m:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.LocalTransparencyModifier = 1
+		end
+	end
 	local dir = d.dir or Vector3.zAxis
-	local axis = Vector3.yAxis:Cross(Vector3.new(dir.X, 0, dir.Z))
-	axis = if axis.Magnitude > 1e-3 then axis.Unit else Vector3.xAxis
+	dir = Vector3.new(dir.X, 0, dir.Z)
+	dir = if dir.Magnitude > 1e-3 then dir.Unit else Vector3.zAxis
+	local axis = Vector3.yAxis:Cross(dir).Unit
+	-- the hinge: the foot's edge on the cutter's side, at ground level
+	local foot = (d.pos :: Vector3) - Vector3.new(0, 0.5, 0)
+	local hinge = foot - dir * (radius or 1.2) * 0.75
+	-- how far it's already leaning toward `dir`, so the fall carries on from there instead of snapping upright
+	local up = startCf.UpVector
+	local already = math.asin(math.clamp(up:Dot(dir), -1, 1))
+	local total = math.max(0.1, FALL_ANGLE - math.max(0, already))
+	local rel = CFrame.new(hinge):ToObjectSpace(startCf)
+	-- a puff of dust where it gives way
+	handlers.poof({ pos = foot, scale = math.max(1.5, (radius or 1.6) * 0.7) })
 	local start = os.clock()
-	local done = false
 	local conn: RBXScriptConnection
 	conn = RunService.RenderStepped:Connect(function()
 		local t = math.min(1, (os.clock() - start) / T)
-		if not m.Parent then
-			conn:Disconnect()
-			if not done then
-				done = true
-				impact()
-			end
-			return
-		end
-		-- a little rock back toward you first (it's giving way), then slow and crashing down (ease-in)
-		local back = math.rad(6) * math.sin(math.pi * math.clamp(t / 0.28, 0, 1))
-		local angle = math.rad(88) * t ^ 2.2 - back
-		m:PivotTo(CFrame.new(base.Position) * CFrame.fromAxisAngle(axis, angle) * base.Rotation)
+		-- like a real topple: barely moving at first, speeding up all the way down (a smooth ease-in)
+		local k = t * t * (0.55 + 0.45 * t)
+		ghost:PivotTo(CFrame.new(hinge) * CFrame.fromAxisAngle(axis, total * k) * rel)
 		if t >= 1 then
 			conn:Disconnect()
-			if not done then
-				done = true
-				impact(m)
-				-- gone on our screen at once (the server swaps it for stubble a moment later)
-				for _, p in m:GetDescendants() do
-					if p:IsA("BasePart") then
-						p.LocalTransparencyModifier = 1
-					end
-				end
-			end
+			impact(ghost)
+			ghost:Destroy()
 		end
 	end)
 end

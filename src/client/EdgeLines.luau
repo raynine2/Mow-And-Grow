@@ -26,7 +26,9 @@ local function key(x: number, z: number): number
 end
 
 local function wanted(p: Instance): boolean
-	if not p:IsA("BasePart") or p.Transparency >= 0.6 then
+	-- (not meshes: a SelectionBox outlines a mesh's bounding box, not its shape; the voxel meshes have their own
+	-- lit edges in their texture)
+	if not p:IsA("BasePart") or p:IsA("MeshPart") or p.Transparency >= 0.6 then
 		return false
 	end
 	-- only scenery: trees, bushes, landmarks (World.Visuals); never the ground, paths or grass

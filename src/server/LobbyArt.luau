@@ -174,7 +174,7 @@ local function nature(world: Instance)
 			local px, pz = x + rng:NextNumber(-6, 6), z + rng:NextNumber(-6, 6)
 			local d = math.max(math.abs(px), math.abs(pz))
 			-- keep the windmill's hill open
-			local nearMill = Vector2.new(px - 52, pz - 132).Magnitude < 34
+			local nearMill = Vector2.new(px - 52, pz - 132).Magnitude < 58
 			if d > CLEARING + 12 and d < REACH - 22 and not nearMill and rng:NextNumber() < 0.85 then
 				local y = groundY(world, px, pz)
 				if y then
@@ -228,7 +228,7 @@ local function cover(world: Instance)
 	for x = -REACH + 4, REACH - 4, 6 do
 		for z = -REACH + 4, REACH - 4, 6 do
 			local r = hash(x, z, 9)
-			if r < 0.55 then
+			if r < 0.42 then
 				local px, pz = x + (hash(x, z, 1) - 0.5) * 4, z + (hash(x, z, 2) - 0.5) * 4
 				local h = heightAt(px, pz)
 				if h and not (h == 0 and pathDist(Vector2.new(px, pz)) < 9) then
@@ -241,7 +241,7 @@ local function cover(world: Instance)
 							deco(block(f, "Stem", Vector3.new(0.3, 1.2, 0.3), CFrame.new(px, h + 0.6, pz), Color3.fromRGB(60, 150, 50)))
 							deco(block(f, "Flower", Vector3.new(0.9, 0.5, 0.9), CFrame.new(px, h + 1.3, pz), col, true))
 						else
-							for k = 1, 3 do
+							for k = 1, 2 do
 								local ox, oz = (hash(x + k, z, 5) - 0.5) * 2, (hash(x, z + k, 6) - 0.5) * 2
 								local bh = 0.8 + hash(x, z, 7 + k) * 1.2
 								deco(block(f, "Blade", Vector3.new(0.35, bh, 0.35), CFrame.new(px + ox, h + bh / 2, pz + oz), blade:Lerp(Color3.new(1, 1, 0.6), hash(x, z, k) * 0.15)))

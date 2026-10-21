@@ -261,7 +261,7 @@ local function nextTarget(b: Butterfly, at: Vector3)
 		b.target = perch + Vector3.new(0, 0.15, 0)
 		b.perch = true
 	else
-		b.target = around(at, 6, 24, 1.5, 5)
+		b.target = around(at, 6, 24, 3, 6) -- up in the air (low ones read as litter on the grass)
 		b.perch = false
 	end
 end

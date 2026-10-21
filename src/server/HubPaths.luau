@@ -6,8 +6,8 @@ local HubPaths = {}
 
 export type Segment = { a: Vector2, b: Vector2, width: number }
 
-local DIRT = Color3.fromRGB(196, 150, 100)
-local BORDER = Color3.fromRGB(150, 108, 70)
+local DIRT = Color3.fromRGB(214, 152, 88) -- warm: the blue daylight greys it
+local BORDER = Color3.fromRGB(150, 98, 58)
 local MAT = Enum.Material.Sand -- a fine, even grain: reads as packed dirt without the Ground texture's grey patches
 
 local function flat(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3): Part

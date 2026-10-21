@@ -255,7 +255,7 @@ end
 local function leaderboard(world: Instance): TextLabel
 	local m = PropKit.folder("Leaderboard", world)
 	local pos = Vector3.new(44, FLOOR_Y, 44)
-	local at = CFrame.lookAt(pos, Vector3.new(4, FLOOR_Y, 4))
+	local at = CFrame.lookAt(pos, pos - Vector3.zAxis) -- square to the plaza, in line with the pads
 	local s = 1.25
 	local body: TextLabel
 	if Models.place("leaderboard", m, at, s, true) then
@@ -276,7 +276,7 @@ local function bestTimesBoard(world: Instance): TextLabel?
 	local m = PropKit.folder("BestTimes", world)
 	-- to the left of the party pads, turned toward the plaza (like Chop A Forest's BEST TIMES board)
 	local pos = Vector3.new(-44, FLOOR_Y, 44)
-	local at = CFrame.lookAt(pos, Vector3.new(-4, FLOOR_Y, 4))
+	local at = CFrame.lookAt(pos, pos - Vector3.zAxis) -- square to the plaza, in line with the pads
 	local s = 1.3
 	if not Models.place("trophy_board", m, at, s, true) then
 		return nil

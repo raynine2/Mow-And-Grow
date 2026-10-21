@@ -431,7 +431,7 @@ function PropKit.cabin(parent: Instance, at: CFrame, scale: number): boolean
 	lamp.CanQuery = false
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 214, 160)
-	light.Range = 22 * scale
+	light.Range = 13 * scale -- the room only: a wider light spilled a glow onto the grass round the cabin
 	light.Brightness = 1.4
 	light.Shadows = false
 	light.Parent = lamp

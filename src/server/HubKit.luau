@@ -611,17 +611,19 @@ function HubKit.tree(parent: Instance, foot: Vector3, scale: number, kind: strin
 		end
 		P(m, "Leaves", Vector3.new(1.4 * k, 1.8 * k, 1.4 * k), base * CFrame.new(0, y + 0.9 * k, 0), cols[1], M.SmoothPlastic)
 	else
-		-- the canopy: a big middle block and a ring of smaller ones round it, all turned a little
-		local cy = trunkH + 2.2 * k
-		P(m, "Leaves", Vector3.new(7, 5.6, 7) * k, base * CFrame.new(0, cy, 0) * CFrame.Angles(rng:NextNumber(-0.25, 0.25), rng:NextNumber(0, 1.5), rng:NextNumber(-0.25, 0.25)), cols[1], M.SmoothPlastic)
-		for i = 0, 5 do
-			local a = i / 6 * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
-			local r = rng:NextNumber(2.4, 3.4) * k
-			local sz = rng:NextNumber(3.6, 5) * k
-			local off = Vector3.new(math.cos(a) * r, rng:NextNumber(-1.4, 1.8) * k, math.sin(a) * r)
-			P(m, "Leaves", Vector3.new(sz, sz * 0.85, sz), base * CFrame.new(Vector3.new(0, cy, 0) + off) * CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0, 1.5), rng:NextNumber(-0.5, 0.5)), cols[(i % 3) + 1], M.SmoothPlastic)
+		-- the canopy, kept orderly: a big middle block, four side blocks at the quarters and one on top, each only
+		-- slightly tilted, in the palette's main shade with the side blocks a touch lighter or darker
+		local cy = trunkH + 2.4 * k
+		local tilt = 0.12
+		P(m, "Leaves", Vector3.new(7.2, 5.4, 7.2) * k, base * CFrame.new(0, cy, 0) * CFrame.Angles(rng:NextNumber(-tilt, tilt), math.pi / 4, rng:NextNumber(-tilt, tilt)), cols[1], M.SmoothPlastic)
+		for i = 0, 3 do
+			local a = i * math.pi / 2 + rng:NextNumber(-0.15, 0.15)
+			local r = 3 * k
+			local sz = rng:NextNumber(4.2, 4.8) * k
+			local off = Vector3.new(math.cos(a) * r, -0.6 * k + (i % 2) * 0.6 * k, math.sin(a) * r)
+			P(m, "Leaves", Vector3.new(sz, sz * 0.82, sz), base * CFrame.new(Vector3.new(0, cy, 0) + off) * CFrame.Angles(rng:NextNumber(-tilt, tilt), a, rng:NextNumber(-tilt, tilt)), cols[if i % 2 == 0 then 2 else 3], M.SmoothPlastic)
 		end
-		P(m, "Leaves", Vector3.new(4.4, 3.6, 4.4) * k, base * CFrame.new(0, cy + 3 * k, 0) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 1.5), rng:NextNumber(-0.3, 0.3)), cols[2], M.SmoothPlastic)
+		P(m, "Leaves", Vector3.new(4.6, 3.4, 4.6) * k, base * CFrame.new(0, cy + 3.2 * k, 0) * CFrame.Angles(0, rng:NextNumber(0, 1.5), 0), cols[2], M.SmoothPlastic)
 	end
 	m.Parent = parent
 	return m
@@ -653,6 +655,23 @@ function HubKit.rock(parent: Instance, foot: Vector3, scale: number, rng: Random
 		local sz = Vector3.new(rng:NextNumber(2, 3.4), rng:NextNumber(1.4, 2.4), rng:NextNumber(2, 3)) * scale
 		local off = Vector3.new(rng:NextNumber(-1, 1) * scale, sz.Y * 0.35, rng:NextNumber(-1, 1) * scale)
 		P(m, "Rock", sz, CFrame.new(foot + off) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 3), rng:NextNumber(-0.3, 0.3)), if i % 2 == 0 then STONE else STONE2, M.Slate, { collide = i == 0 })
+	end
+	m.Parent = parent
+	return m
+end
+
+-- A wooden rail fence from a to b (on the ground at height y): round posts every ~6 studs and two rails, like the
+-- fences round Chop A Forest's areas.
+function HubKit.fence(parent: Instance, a: Vector3, b: Vector3)
+	local m = treeModel("Fence")
+	local len = (b - a).Magnitude
+	local n = math.max(1, math.floor(len / 6 + 0.5))
+	for i = 0, n do
+		local p = a:Lerp(b, i / n)
+		post(m, p, 0.32, 3.6, LOG2, M.Wood, true)
+	end
+	for _, h in { 1.4, 2.8 } do
+		log(m, a + Vector3.new(0, h, 0), b + Vector3.new(0, h, 0), 0.2, LOG)
 	end
 	m.Parent = parent
 	return m

@@ -228,7 +228,7 @@ end
 ---------------------------------------------------------------------------- butterflies
 type Butterfly = { body: BasePart, wings: { Wing }, pos: Vector3, vel: Vector3, yaw: number, target: Vector3, perch: boolean, resting: boolean, timer: number, phase: number }
 local butterflies: { Butterfly } = {}
-for i = 1, 7 do
+for i = 1, 4 do
 	local color = BUTTERFLY_COLORS[(i - 1) % #BUTTERFLY_COLORS + 1]
 	local hind = color:Lerp(Color3.new(0, 0, 0), 0.25)
 	local m = Instance.new("Model")

@@ -156,22 +156,9 @@ function HubDressing.lobby(world: Instance)
 	end
 	local f = PropKit.folder("Dressing", world)
 	arch(f, face(Vector3.new(0, 0, -38), Vector3.new(0, 0, -60)), string.upper(Config.GAME_NAME))
-	put(f, "mower_statue", face(Vector3.new(26, 0, 6), Vector3.new(0, 0, 6)), 1)
-	-- a bench between two planters on each side, twice along the walk
-	for _, z in { -4, 15 } do
-		pair(f, "bench", 9.5, z)
-		pair(f, "planter", 9.5, z - 5.5)
-		pair(f, "planter", 9.5, z + 5.5)
-	end
-	-- crates and barrels tucked against the cabins' front corners
-	for _, sx in { -1, 1 } do
-		put(f, "crate_stack", face(Vector3.new(33 * sx, 0, -38), Vector3.new(0, 0, -38)))
-		put(f, "barrel", face(Vector3.new(29.5 * sx, 0, -39), Vector3.new(0, 0, -39)))
-	end
-	-- bunting straight across the walk between the lantern posts
-	for _, z in { -14, 6 } do -- (not at z 24: it would hang across the party pads' signs)
-		bunting(f, Vector3.new(-13, 7.6, z), Vector3.new(13, 7.6, z), 1.4)
-	end
+	-- just a bench on each side of the walk, between the lamp posts: the plaza stays open and calm
+	pair(f, "bench", 9.5, -4)
+	pair(f, "bench", 9.5, 15)
 	lifeFor(world)
 	hideSpawn(world)
 end
@@ -185,20 +172,12 @@ function HubDressing.village(world: Instance)
 	local f = PropKit.folder("Dressing", world)
 	local first = Zones.list[1]
 	arch(f, face(Vector3.new(0, 0, 22), Vector3.new(0, 0, 0)), string.upper(first.name))
-	put(f, "mower_statue", face(Vector3.new(18, 0, -20), Vector3.new(0, 0, -20)), 1)
-	-- benches on the fountain square, facing the fountain
+	-- benches by the fountain, lamp posts in pairs along the walk, hay stacked by the bag stand: few things,
+	-- each where you'd expect it
 	pair(f, "bench", 11, 0)
-	pair(f, "planter", 11, -5.5)
-	pair(f, "planter", 11, 5.5)
-	-- lantern posts in pairs along the walk, bunting strung between them
 	for _, z in { -52, -26 } do
-		pair(f, "lantern_post", 9.5, z)
-		bunting(f, Vector3.new(-9.5, 7.6, z), Vector3.new(9.5, 7.6, z), 1.2)
+		pair(f, "lantern_post", 7, z)
 	end
-	-- crates and barrels by the shredder, hay by the bag stand
-	put(f, "crate_stack", face(Vector3.new(-37, 0, -28), Vector3.new(-24, 0, -28)))
-	put(f, "barrel", face(Vector3.new(-37, 0, -32), Vector3.new(0, 0, -32)))
-	put(f, "barrel", face(Vector3.new(-37, 0, -35), Vector3.new(0, 0, -35)))
 	put(f, "hay_bale", face(Vector3.new(40, 0, -72), Vector3.new(28, 0, -72)))
 	put(f, "hay_bale", face(Vector3.new(40, 0, -63), Vector3.new(28, 0, -63)))
 	lifeFor(world)

@@ -10,7 +10,7 @@ local LobbyArt = {}
 
 local CELL = 8
 local REACH = 216 -- the island's half-size (studs)
-local CLEARING = 70 -- the flat plaza's half-size
+local CLEARING = 66 -- the flat plaza's half-size (the fence runs just inside it)
 local FLOOR = -24
 local SEA = -6
 
@@ -153,42 +153,29 @@ local function groundY(world: Instance, x: number, z: number): number?
 	return hit and hit.Position.Y
 end
 
--- A thick wood of part-built trees all round (server/HubKit), bushes and rocks along the plaza's edge.
+-- A tidy wooden fence round the plaza and a thick, even wood of green trees behind it (server/HubKit), pines in
+-- the back rows: one palette, like the woods round Chop A Forest's yard.
 local function nature(world: Instance)
 	local f = Instance.new("Folder")
 	f.Name = "Visuals"
 	f.Parent = world
 	local rng = Random.new(31)
 	local HubKit = require(script.Parent.HubKit)
-	local kinds = { "meadow", "meadow", "meadow", "blossom", "pine", "autumn" }
-	local step = 20
+	local e = CLEARING - 2
+	for _, side in { { Vector3.new(-e, 0, -e), Vector3.new(e, 0, -e) }, { Vector3.new(e, 0, -e), Vector3.new(e, 0, e) }, { Vector3.new(e, 0, e), Vector3.new(-e, 0, e) }, { Vector3.new(-e, 0, e), Vector3.new(-e, 0, -e) } } do
+		HubKit.fence(f, side[1], side[2])
+	end
+	local step = 15
 	for x = -REACH, REACH, step do
 		for z = -REACH, REACH, step do
-			local px, pz = x + rng:NextNumber(-6, 6), z + rng:NextNumber(-6, 6)
+			local px, pz = x + rng:NextNumber(-3, 3), z + rng:NextNumber(-3, 3)
 			local d = math.max(math.abs(px), math.abs(pz))
-			if d > CLEARING + 12 and d < REACH - 22 and rng:NextNumber() < 0.85 then
+			if d > CLEARING + 7 and d < REACH - 20 then
 				local y = groundY(world, px, pz)
 				if y then
-					local kind = kinds[rng:NextInteger(1, #kinds)]
-					local scale = rng:NextNumber(1.1, 1.6) * (if d < CLEARING + 30 then 0.95 else 1.2)
-					HubKit.tree(f, Vector3.new(px, y, pz), scale, kind, rng)
+					local kind = if d > CLEARING + 40 and rng:NextNumber() < 0.45 then "pine" else "meadow"
+					HubKit.tree(f, Vector3.new(px, y, pz), rng:NextNumber(1.35, 1.6), kind, rng)
 					tick()
-				end
-			end
-		end
-	end
-	-- a hedge of bushes and some rocks round the plaza, with gaps at the paths
-	for t = -CLEARING, CLEARING, 9 do
-		for _, sideP in { Vector2.new(t, CLEARING + 4), Vector2.new(t, -CLEARING - 4), Vector2.new(CLEARING + 4, t), Vector2.new(-CLEARING - 4, t) } do
-			if math.abs(t) > 10 and rng:NextNumber() < 0.8 then
-				local y = groundY(world, sideP.X, sideP.Y)
-				if y then
-					local foot = Vector3.new(sideP.X, y, sideP.Y)
-					if rng:NextNumber() < 0.2 then
-						HubKit.rock(f, foot, rng:NextNumber(0.8, 1.2), rng)
-					else
-						HubKit.bush(f, foot, rng:NextNumber(0.9, 1.3), rng, rng:NextNumber() < 0.3)
-					end
 				end
 			end
 		end

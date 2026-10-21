@@ -229,6 +229,56 @@ local function restyleStairs(w: Instance)
 	end
 end
 
+-- The areas' tiled paths (WorldArt: 3.1 x 0.3 x 3.1 tiles in World.Visuals) are kept clear of grass: the ground
+-- cover's little blades and flowers standing on a tile go, and no mowable clump grows over one (RunWorld.patches
+-- asks onPath).
+local PATH_CELL = 4
+local pathCells: { [number]: { Vector3 } } = {}
+local function cellKey(x: number, z: number): number
+	return (math.floor(x / PATH_CELL) + 4000) * 10000 + (math.floor(z / PATH_CELL) + 4000)
+end
+local function onPath(p: Vector3, r: number): boolean
+	local n = math.ceil((r + 2) / PATH_CELL)
+	for i = -n, n do
+		for j = -n, n do
+			for _, t in pathCells[cellKey(p.X + i * PATH_CELL, p.Z + j * PATH_CELL)] or {} do
+				if math.abs(t.X - p.X) < r + 1.6 and math.abs(t.Z - p.Z) < r + 1.6 and math.abs(t.Y - p.Y) < 6 then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+local function clearPaths(w: Instance)
+	local visuals = w:FindFirstChild("Visuals")
+	if not visuals then
+		return
+	end
+	table.clear(pathCells)
+	local small: { BasePart } = {}
+	for _, d in visuals:GetDescendants() do
+		if d:IsA("Part") then
+			local sz = d.Size
+			if math.abs(sz.X - 3.1) < 0.01 and math.abs(sz.Y - 0.3) < 0.01 and math.abs(sz.Z - 3.1) < 0.01 then
+				local k = cellKey(d.Position.X, d.Position.Z)
+				pathCells[k] = pathCells[k] or {}
+				table.insert(pathCells[k], d.Position)
+			elseif sz.Magnitude < 4 then
+				table.insert(small, d)
+			end
+		end
+	end
+	local n = 0
+	for _, d in small do
+		if onPath(d.Position - Vector3.new(0, 1, 0), 0) then
+			d:Destroy()
+			n += 1
+		end
+	end
+	print(("[RunWorld] %d bits of grass cleared off the paths"):format(n))
+end
+
 -- Dirt paths across the village between the hub buildings (like the lobby's: server/HubPaths).
 local PATHS = {
 	{ Vector2.new(0, -82), Vector2.new(0, 30) }, -- the main walk: spawn -> fountain -> the way north to the meadow
@@ -284,6 +334,7 @@ function RunWorld.build()
 	clearVillage(w)
 	texturedGround(w)
 	restyleStairs(w)
+	clearPaths(w)
 	-- (the saved world keeps its voxel trees, bushes and rocks: partNature would swap them for part-built ones)
 
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
@@ -373,7 +424,7 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 						local hit = workspace:Raycast(Vector3.new(x, c.Y + 40, zz), Vector3.new(0, -80, 0), ray)
 						if hit and hit.Normal.Y > 0.9 and math.abs(hit.Position.Y - (c.Y - 0.5)) < 6.5 then
 							local p = hit.Position
-							if free(p) then
+							if free(p) and not onPath(p, 2.6 * scale) then
 								table.insert(placed, p)
 								local yaw = rng:NextInteger(0, 3) * math.pi / 2
 								table.insert(list, { cf = CFrame.new(p) * CFrame.Angles(0, yaw, 0), scale = scale * rng:NextNumber(0.9, 1.1) })

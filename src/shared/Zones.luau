@@ -102,7 +102,7 @@ Zones.list = {
 			rare = C(255, 250, 200),
 			accent = C(255, 200, 70),
 		},
-		lighting = { clock = 18, ambient = C(150, 110, 90), outdoor = C(170, 124, 96), brightness = 2, tint = C(255, 230, 200), saturation = 0.32, contrast = 0.2, fog = C(255, 190, 130), haze = 1.2, density = 0.32, sunRays = 0.1, bloom = 1.1 },
+		lighting = { clock = 16.6, ambient = C(136, 112, 100), outdoor = C(156, 128, 110), brightness = 2.2, tint = C(255, 238, 214), saturation = 0.32, contrast = 0.2, fog = C(255, 190, 130), haze = 1.2, density = 0.32, sunRays = 0.1, bloom = 1.1 },
 	},
 	{
 		id = "blossom",
@@ -125,7 +125,7 @@ Zones.list = {
 			rare = C(255, 40, 200),
 			accent = C(255, 120, 200),
 		},
-		lighting = { clock = 18.6, ambient = C(150, 104, 150), outdoor = C(170, 118, 170), brightness = 1.9, tint = C(255, 226, 244), saturation = 0.34, contrast = 0.2, fog = C(255, 170, 220), haze = 1, density = 0.3, sunRays = 0.06, bloom = 1.2 },
+		lighting = { clock = 17, ambient = C(150, 104, 150), outdoor = C(170, 118, 170), brightness = 2.1, tint = C(255, 226, 244), saturation = 0.34, contrast = 0.2, fog = C(255, 170, 220), haze = 1, density = 0.3, sunRays = 0.06, bloom = 1.2 },
 	},
 	{
 		id = "pine",

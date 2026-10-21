@@ -169,7 +169,7 @@ function HubDressing.lobby(world: Instance)
 		put(f, "barrel", face(Vector3.new(29.5 * sx, 0, -39), Vector3.new(0, 0, -39)))
 	end
 	-- bunting straight across the walk between the lantern posts
-	for _, z in { -14, 6, 24 } do
+	for _, z in { -14, 6 } do -- (not at z 24: it would hang across the party pads' signs)
 		bunting(f, Vector3.new(-13, 7.6, z), Vector3.new(13, 7.6, z), 1.4)
 	end
 	lifeFor(world)

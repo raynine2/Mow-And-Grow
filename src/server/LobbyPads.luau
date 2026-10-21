@@ -385,7 +385,7 @@ function LobbyPads.build(parent: Instance, centre: Vector3, facing: Vector3): { 
 		local marker = PropKit.part({ size = Vector3.one, cf = CFrame.new(pos + Vector3.new(0, 1, 0)), color = OPEN, parent = m, transparency = 1, collide = false, name = "PadInfo" .. i })
 		marker.CanQuery = false
 		local handles = sign(m, back * CFrame.new(x, DECK_H, DEPTH / 2 + 1.3), if solo then "SOLO" else "PARTY", "", "")
-		local top = statusTag(m, (back * CFrame.new(x, DECK_H + 15.2, DEPTH / 2 + 1.3)).Position)
+		local top = statusTag(m, (back * CFrame.new(x, DECK_H + 17.5, DEPTH / 2 + 1.3)).Position)
 		-- lanterns between the bays, at the front
 		if i < count then
 			local lx = x - BAY / 2 - GAP / 2

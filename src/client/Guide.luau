@@ -24,7 +24,7 @@ local function brick(size: Vector3, offset: Vector3, color: Color3)
 	p.CanQuery = false
 	p.CanTouch = false
 	p.CastShadow = false
-	p.Material = Enum.Material.Neon
+	p.Material = Enum.Material.SmoothPlastic -- not neon: the bloom blew it up into a yellow blob
 	p.Color = color
 	p.Size = size
 	p.TopSurface = Enum.SurfaceType.Smooth
@@ -44,11 +44,17 @@ ring.CanQuery = false
 ring.CanTouch = false
 ring.CastShadow = false
 ring.Shape = Enum.PartType.Cylinder
-ring.Material = Enum.Material.Neon
+ring.Material = Enum.Material.SmoothPlastic
 ring.Color = C.yellow
 ring.Transparency = 0.5
 ring.Size = Vector3.new(0.2, 8, 8)
 ring.Parent = arrow
+-- a dark cartoon outline keeps the plain yellow arrow readable against the grass and the sky
+local outline = Instance.new("Highlight")
+outline.FillTransparency = 1
+outline.OutlineColor = Color3.fromRGB(56, 32, 16)
+outline.DepthMode = Enum.HighlightDepthMode.Occluded
+outline.Parent = arrow
 arrow.Parent = workspace
 
 local target: Vector3? = nil

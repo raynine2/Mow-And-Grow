@@ -163,8 +163,8 @@ function HubDressing.lobby(world: Instance)
 	hideSpawn(world)
 end
 
--- The run's village (y = 0): spawn at (0, -68) looking north, shredder (-24, -36), tool shop (24, -40), bag stand
--- (28, -68), garage (-30, -64), the fountain (0, 0) in a paved square, the way to the first area north of it.
+-- The run's village (y = 0): a main walk from the spawn (0, -74) north past the fountain (0, 0) to the arch; tool
+-- shop and garage on its west side, bag stand and shredder on the east (server/RunBuilder SPOT).
 function HubDressing.village(world: Instance)
 	if not Config.WORLD_GEN then
 		return
@@ -172,14 +172,15 @@ function HubDressing.village(world: Instance)
 	local f = PropKit.folder("Dressing", world)
 	local first = Zones.list[1]
 	arch(f, face(Vector3.new(0, 0, 22), Vector3.new(0, 0, 0)), string.upper(first.name))
-	-- benches by the fountain, lamp posts in pairs along the walk, hay stacked by the bag stand: few things,
-	-- each where you'd expect it
+	-- benches by the fountain, lamp posts in pairs down the main walk, hay either side of the bag stand: few
+	-- things, each where you'd expect it (the buildings' spots: server/RunBuilder SPOT)
 	pair(f, "bench", 11, 0)
-	for _, z in { -52, -26 } do
-		pair(f, "lantern_post", 7, z)
+	for _, z in { -62, -30 } do
+		pair(f, "lantern_post", 6.5, z)
 	end
-	put(f, "hay_bale", face(Vector3.new(40, 0, -72), Vector3.new(28, 0, -72)))
-	put(f, "hay_bale", face(Vector3.new(40, 0, -63), Vector3.new(28, 0, -63)))
+	for _, z in { -60, -36 } do
+		put(f, "hay_bale", face(Vector3.new(33, 0, z), Vector3.new(0, 0, z)))
+	end
 	lifeFor(world)
 	hideSpawn(world)
 end

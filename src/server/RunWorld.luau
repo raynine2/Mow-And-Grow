@@ -148,9 +148,9 @@ end
 
 -- Dirt paths across the village between the hub buildings (like the lobby's: server/HubPaths).
 local PATHS = {
-	{ Vector2.new(0, -78), Vector2.new(0, 30) }, -- spawn -> fountain -> the way north to the meadow
-	{ Vector2.new(-34, -40), Vector2.new(30, -40) }, -- shredder <-> tool shop
-	{ Vector2.new(-30, -64), Vector2.new(28, -64) }, -- garage <-> bag stand
+	{ Vector2.new(0, -82), Vector2.new(0, 30) }, -- the main walk: spawn -> fountain -> the way north to the meadow
+	{ Vector2.new(-21, -46), Vector2.new(20, -46) }, -- tool shop <-> bag stand
+	{ Vector2.new(-25, -14), Vector2.new(17, -14) }, -- garage <-> the shredder's sell pad
 }
 local SQUARE = { Vector2.new(0, -3), Vector2.new(0, 3), 24 } -- the open dirt square round the fountain
 local function paths(w: Instance)

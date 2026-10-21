@@ -17,6 +17,33 @@ local RunBuilder = {}
 
 local FLOOR_Y = 0 -- top of the ground (Terrain)
 
+-- Where the hub's buildings stand (position, and the point their front looks toward). The plot map's yard, or,
+-- in the generated world (Config.WORLD_GEN), the village laid out as a little main street: the walk runs north
+-- from the spawn to the fountain, the tool shop and the garage on its west side facing it, the bag stand and the
+-- shredder (its sell pad toward the walk) on the east side.
+local SPOT = {
+	toolShop = { Vector3.new(24, FLOOR_Y, -40), Vector3.new(0, FLOOR_Y, -40) },
+	bagStand = { Vector3.new(28, FLOOR_Y, -68), Vector3.new(0, FLOOR_Y, -68) },
+	garage = { Vector3.new(-30, FLOOR_Y, -64), Vector3.new(0, FLOOR_Y, -64) },
+	shredder = { Vector3.new(-24, FLOOR_Y, -36), Vector3.new(-48, FLOOR_Y, -36) }, -- drum toward the spawn
+	coinsSign = { Vector3.new(-38, FLOOR_Y, -50), Vector3.new(-6, FLOOR_Y, -68) },
+	spawn = Vector3.new(0, 0.8, -68),
+}
+if Config.WORLD_GEN then
+	SPOT = {
+		toolShop = { Vector3.new(-34, FLOOR_Y, -46), Vector3.new(0, FLOOR_Y, -46) },
+		bagStand = { Vector3.new(32, FLOOR_Y, -48), Vector3.new(0, FLOOR_Y, -48) },
+		garage = { Vector3.new(-34, FLOOR_Y, -14), Vector3.new(0, FLOOR_Y, -14) },
+		shredder = { Vector3.new(40, FLOOR_Y, -14), Vector3.new(80, FLOOR_Y, -14) }, -- sell pad (behind it) toward the walk
+		coinsSign = { Vector3.new(42, FLOOR_Y, 4), Vector3.new(0, FLOOR_Y, 4) },
+		spawn = Vector3.new(0, 0.8, -74),
+	}
+end
+local function spotAt(name: string): CFrame
+	local s = SPOT[name]
+	return CFrame.lookAt(s[1], s[2])
+end
+
 -- An invisible part to hang a prompt on.
 local function promptSpot(parent: Instance, cf: CFrame, name: string): Part
 	local p = PropKit.part({ size = Vector3.new(2, 2, 2), cf = cf, color = Color3.new(1, 1, 1), parent = parent, transparency = 1, collide = false, name = name })
@@ -79,8 +106,7 @@ end
 
 local function toolShop(m: Instance, info)
 	local shop = PropKit.folder("TOOL SHOP", m)
-	local pos = Vector3.new(24, FLOOR_Y, -40)
-	local at = CFrame.lookAt(pos, pos - Vector3.xAxis)
+	local at = spotAt("toolShop")
 	if not PropKit.cabin(shop, at, 1) then
 		PropKit.stall(m, CFrame.new(28, 0, -55) * CFrame.Angles(0, math.rad(90), 0), "TOOL SHOP", Color3.fromRGB(255, 80, 80), "Tools")
 		return
@@ -102,8 +128,7 @@ end
 -- the Bottomless Sack sits on the counter and the Leaf Vacuum leans beside it. Its prompt opens the Bags window.
 local function bagStand(m: Instance)
 	local stand = PropKit.folder("BAG STAND", m)
-	local pos = Vector3.new(28, FLOOR_Y, -68)
-	local at = CFrame.lookAt(pos, pos - Vector3.xAxis) -- facing the path from the spawn
+	local at = spotAt("bagStand") -- facing the walk
 	if not Models.place("bag_stand", stand, at, 1, true) then
 		PropKit.stall(stand, at, "BAGS", Color3.fromRGB(90, 190, 90), "Bags")
 		return
@@ -145,8 +170,8 @@ end
 
 -- The garage: an open wooden bay (party booth model) where your mower spawns, with a gas pump beside it.
 local function garageBay(m: Instance, info)
-	local pos = Vector3.new(-30, FLOOR_Y, -64)
-	local at = CFrame.lookAt(pos, pos + Vector3.xAxis)
+	local at = spotAt("garage")
+	local pos = at.Position
 	local g = PropKit.folder("Garage", m)
 	if Models.place("party_booth", g, at, 1.1, true) then
 		PropKit.facePanel(g, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "GARAGE", PropKit.TITLE, 1.1)
@@ -199,13 +224,12 @@ local function shredderAt(parent: Instance, info, at: CFrame, name: string): boo
 end
 
 local function shredder(m: Instance, info): boolean
-	local pos = Vector3.new(-24, FLOOR_Y, -36)
-	if not shredderAt(m, info, CFrame.lookAt(pos, pos - Vector3.xAxis), "Shredder") then -- drum toward the spawn
+	if not shredderAt(m, info, spotAt("shredder"), "Shredder") then
 		return false
 	end
 	local s = m:FindFirstChild("Shredder") :: Instance
 	-- the 2X COINS board next to the machine (opens the store)
-	local signAt = CFrame.lookAt(Vector3.new(-38, FLOOR_Y, -50), Vector3.new(-6, FLOOR_Y, -68))
+	local signAt = spotAt("coinsSign")
 	if Models.place("start_sign", s, signAt, 0.45, true) then
 		PropKit.facePanel(s, signAt, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "2X COINS", PropKit.TITLE, 0.45)
 		PropKit.facePanel(s, signAt, Vector3.new(0, 6.1, -0.62), Vector2.new(27, 1.5), "BUY!", PropKit.PRICE, 0.45)
@@ -222,7 +246,7 @@ local function hub(world: Instance, info)
 		Ground.patch(0, -48, 92, 56, Enum.Material.Ground, 3)
 		Ground.patch(-8, -36, 16, 16, Enum.Material.Mud, 6) -- trodden mud at the sell pad
 	end
-	Environment.spawn(m, CFrame.lookAt(Vector3.new(0, 0.8, -68), Vector3.new(0, 0.8, 0)))
+	Environment.spawn(m, CFrame.lookAt(SPOT.spawn, SPOT.spawn + Vector3.zAxis * 10))
 	toolShop(m, info)
 	bagStand(m)
 	garageBay(m, info)

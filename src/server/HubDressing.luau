@@ -184,7 +184,7 @@ function HubDressing.village(world: Instance)
 	end
 	local f = PropKit.folder("Dressing", world)
 	local first = Zones.list[1]
-	arch(f, face(Vector3.new(0, 0, 22), Vector3.new(0, 0, 0)), string.upper(first.name) .. "  >")
+	arch(f, face(Vector3.new(0, 0, 22), Vector3.new(0, 0, 0)), string.upper(first.name))
 	put(f, "mower_statue", face(Vector3.new(18, 0, -20), Vector3.new(0, 0, -20)), 1)
 	-- benches on the fountain square, facing the fountain
 	pair(f, "bench", 11, 0)

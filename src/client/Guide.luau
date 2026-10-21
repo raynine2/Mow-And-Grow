@@ -10,6 +10,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
+local Coach = require(script.Parent.Coach)
 
 local Guide = {}
 local C = UI.colors
@@ -58,6 +59,7 @@ outline.Parent = arrow
 arrow.Parent = workspace
 
 local target: Vector3? = nil
+local targetLift = 7 -- how high the arrow floats over the target (the coach lifts it over tall clumps)
 
 local function findPart(path: { string }): BasePart?
 	local node: Instance? = workspace:FindFirstChild("World")
@@ -117,9 +119,15 @@ end
 
 task.spawn(function()
 	while true do
-		task.wait(0.4)
-		local ok, res = pcall(pickTarget)
-		target = if ok then res else nil
+		task.wait(0.25)
+		-- while the first-run coach (client/Coach) is on, the arrow shows its step
+		if Coach.active() then
+			local p, lift = Coach.target()
+			target, targetLift = p, lift or 7
+		else
+			local ok, res = pcall(pickTarget)
+			target, targetLift = if ok then res else nil, 7
+		end
 	end
 end)
 
@@ -135,7 +143,7 @@ RunService.RenderStepped:Connect(function()
 	end
 	local t = os.clock()
 	local bob = math.abs(math.sin(t * 3.2)) * 1.6
-	local base = CFrame.new(target + Vector3.new(0, 7 + bob, 0)) * CFrame.Angles(0, t * 1.5, 0)
+	local base = CFrame.new(target + Vector3.new(0, targetLift + bob, 0)) * CFrame.Angles(0, t * 1.5, 0)
 	for _, p in arrow:GetChildren() do
 		if not p:IsA("BasePart") then
 			continue -- the outline Highlight

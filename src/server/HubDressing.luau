@@ -125,15 +125,16 @@ local function lifeFor(world: Instance)
 			smoke.RotSpeed = NumberRange.new(-30, 30)
 			smoke.Parent = spot
 		elseif m:IsA("Model") and m.Name == "lantern_post" then
-			-- a warm glowing core inside the lantern's open frame, and a soft light round it
+			-- warm amber glass inside the lantern's open frame (no neon: the hubs' bloom blows neon up into a blob)
+			-- and a soft light round it
 			local s = m:GetScale()
-			local core = PropKit.part({ size = Vector3.new(1, 1.5, 1) * s, cf = m:GetPivot() * CFrame.new(Vector3.new(0, 4.75, -2.5) * s), color = Color3.fromRGB(255, 196, 110), parent = m, collide = false, name = "LanternCore", material = Enum.Material.Neon })
+			local core = PropKit.part({ size = Vector3.new(1.1, 1.6, 1.1) * s, cf = m:GetPivot() * CFrame.new(Vector3.new(0, 4.75, -2.5) * s), color = Color3.fromRGB(255, 178, 72), parent = m, collide = false, name = "LanternCore", material = Enum.Material.SmoothPlastic })
 			core.CanQuery = false
 			core.CastShadow = false
 			local light = Instance.new("PointLight")
-			light.Color = Color3.fromRGB(255, 196, 120)
-			light.Brightness = 0.7
-			light.Range = 10
+			light.Color = Color3.fromRGB(255, 190, 110)
+			light.Brightness = 1.2
+			light.Range = 9
 			light.Shadows = false
 			light.Parent = core
 		end

@@ -271,7 +271,7 @@ local function clearPaths(w: Instance)
 	end
 	local n = 0
 	for _, d in small do
-		if onPath(d.Position - Vector3.new(0, 1, 0), 0) then
+		if onPath(d.Position - Vector3.new(0, 1, 0), 1.2) then -- (also the gaps between tiles and at the ragged edges)
 			d:Destroy()
 			n += 1
 		end

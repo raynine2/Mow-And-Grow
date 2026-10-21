@@ -6,7 +6,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
-local Sizes = require(ReplicatedStorage.MowALawn.ModelSizes)
+-- the voxel models' sizes and the smooth cartoon models' (tools/blender/smooth, meshes named S_*) together
+local Sizes = table.clone(require(ReplicatedStorage.MowALawn.ModelSizes))
+for name, size in require(ReplicatedStorage.MowALawn.SmoothSizes) do
+	Sizes[name] = size
+end
 
 local VoxelModels = {}
 

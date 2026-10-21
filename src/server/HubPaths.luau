@@ -28,9 +28,17 @@ local function flat(parent: Instance, name: string, size: Vector3, cf: CFrame, c
 	return p
 end
 
-function HubPaths.lay(parent: Instance, segments: { Segment }, y: number, _seed: number?)
+-- Round plazas (each { centre: Vector2, radius: number }) are laid the same way as the walks.
+function HubPaths.lay(parent: Instance, segments: { Segment }, y: number, _seed: number?, discs: { { centre: Vector2, radius: number } }?)
 	local f = Instance.new("Folder")
 	f.Name = "Paths"
+	for _, d in discs or {} do
+		local c = d.centre
+		local border = flat(f, "PathBorder", Vector3.new(0.08, (d.radius + 0.6) * 2, (d.radius + 0.6) * 2), CFrame.new(c.X, y + 0.04, c.Y) * CFrame.Angles(0, 0, math.rad(90)), BORDER)
+		border.Shape = Enum.PartType.Cylinder
+		local top = flat(f, "Path", Vector3.new(0.13, d.radius * 2, d.radius * 2), CFrame.new(c.X, y + 0.065, c.Y) * CFrame.Angles(0, 0, math.rad(90)), DIRT)
+		top.Shape = Enum.PartType.Cylinder
+	end
 	-- borders first (a little wider, a little lower), then the walks on top
 	for pass = 1, 2 do
 		for _, s in segments do

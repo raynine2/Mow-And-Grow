@@ -585,8 +585,33 @@ local function treeModel(name: string): Model
 	return m
 end
 
--- A tree standing at `foot` (scale 1 is about 15 studs tall). kind: meadow, blossom, autumn or pine.
-function HubKit.tree(parent: Instance, foot: Vector3, scale: number, kind: string, rng: Random): Model
+-- The Blender trees, bushes and rocks (tools/blender/smooth: round puffy canopies, soft cones), used when imported.
+local SMOOTH_TREES = {
+	meadow = { "S_tree_meadow_1", "S_tree_meadow_2", "S_tree_meadow_3", "S_tree_meadow_1", "S_tree_birch_1" },
+	blossom = { "S_tree_blossom_1", "S_tree_blossom_2" },
+	autumn = { "S_tree_autumn_1", "S_tree_autumn_2" },
+	pine = { "S_tree_pine_1", "S_tree_pine_2" },
+	frost = { "S_tree_frost_1", "S_tree_frost_2" },
+	swamp = { "S_tree_swamp_1", "S_tree_meadow_2" },
+	ember = { "S_tree_ember_1" },
+}
+local SMOOTH_BUSHES = { meadow = "S_bush_1", blossom = "S_bush_blossom", autumn = "S_bush_autumn", pine = "S_bush_pine", frost = "S_bush_pine", swamp = "S_bush_pine" }
+local function voxelModels()
+	return require(script.Parent.VoxelModels)
+end
+
+-- A tree standing at `foot` (scale 1 is about 15 studs tall). kind: meadow, blossom, autumn, pine, swamp, frost,
+-- ember. The Blender tree (a MeshPart named Tree_<kind>, which client/Life sways) with an invisible trunk
+-- blocker, or a part-built one when the models aren't imported.
+function HubKit.tree(parent: Instance, foot: Vector3, scale: number, kind: string, rng: Random): Instance
+	local list = SMOOTH_TREES[kind] or SMOOTH_TREES.meadow
+	local VM = voxelModels()
+	if VM.has(list[1]) then
+		local name = list[rng:NextInteger(1, #list)]
+		local mesh = VM.place(parent, name, foot, { scale = scale, yaw = rng:NextNumber(0, math.pi * 2), name = "Tree_" .. kind })
+		VM.blocker(parent, Vector3.new(1.8, 9, 1.8) * scale, CFrame.new(foot + Vector3.new(0, 4.5 * scale, 0)))
+		return mesh :: Instance
+	end
 	local m = treeModel("Tree")
 	local k = scale
 	local base = CFrame.new(foot) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
@@ -639,7 +664,12 @@ function HubKit.tree(parent: Instance, foot: Vector3, scale: number, kind: strin
 end
 
 -- a bush: a few chunky green blocks
-function HubKit.bush(parent: Instance, foot: Vector3, scale: number, rng: Random, flowers: boolean?, kind: string?): Model
+function HubKit.bush(parent: Instance, foot: Vector3, scale: number, rng: Random, flowers: boolean?, kind: string?): Instance
+	local VM = voxelModels()
+	local sname = if flowers and (kind == nil or kind == "meadow") then "S_bush_2" else (SMOOTH_BUSHES[kind or "meadow"] or "S_bush_1")
+	if VM.has(sname) then
+		return VM.place(parent, sname, foot, { scale = scale, yaw = rng:NextNumber(0, math.pi * 2), name = "Bush_" .. (kind or "meadow"), collide = true }) :: Instance
+	end
 	local m = treeModel("Bush")
 	local cols = CANOPY[kind or "meadow"] or CANOPY.meadow
 	for i = 0, 3 do
@@ -658,7 +688,12 @@ function HubKit.bush(parent: Instance, foot: Vector3, scale: number, rng: Random
 end
 
 -- a rock: two or three grey slabs leaning together
-function HubKit.rock(parent: Instance, foot: Vector3, scale: number, rng: Random): Model
+function HubKit.rock(parent: Instance, foot: Vector3, scale: number, rng: Random): Instance
+	local VM = voxelModels()
+	local sname = if rng:NextNumber() < 0.4 then "S_rock_2" else "S_rock_1"
+	if VM.has(sname) then
+		return VM.place(parent, sname, foot, { scale = scale * 0.8, yaw = rng:NextNumber(0, math.pi * 2), name = "Rock", collide = true }) :: Instance
+	end
 	local m = treeModel("Rock")
 	for i = 0, rng:NextInteger(1, 2) do
 		local sz = Vector3.new(rng:NextNumber(2, 3.4), rng:NextNumber(1.4, 2.4), rng:NextNumber(2, 3)) * scale
@@ -672,6 +707,26 @@ end
 -- A wooden rail fence from a to b (on the ground at height y): round posts every ~6 studs and two rails, like the
 -- fences round Chop A Forest's areas.
 function HubKit.fence(parent: Instance, a: Vector3, b: Vector3)
+	local VM = voxelModels()
+	if VM.has("S_fence") then
+		-- the Blender fence sections (8 studs each, along their x), stretched to fit the run exactly
+		local f = Instance.new("Folder")
+		f.Name = "Fence"
+		local len = (b - a).Magnitude
+		local n = math.max(1, math.floor(len / 8 + 0.5))
+		local along = (b - a).Unit
+		local yaw = math.atan2(-along.Z, along.X)
+		for i = 0, n - 1 do
+			local mid = a + along * (len * (i + 0.5) / n)
+			local mesh = VM.place(f, "S_fence", mid, { yaw = yaw, collide = true, name = "FenceSection" })
+			if mesh then
+				mesh.Size = Vector3.new(len / n + 0.6, mesh.Size.Y, mesh.Size.Z)
+				mesh.CFrame = CFrame.new(mid) * CFrame.Angles(0, yaw, 0) * CFrame.new(0, mesh.Size.Y / 2, 0) * CFrame.Angles(0, math.pi, 0)
+			end
+		end
+		f.Parent = parent
+		return f
+	end
 	local m = treeModel("Fence")
 	local len = (b - a).Magnitude
 	local n = math.max(1, math.floor(len / 6 + 0.5))

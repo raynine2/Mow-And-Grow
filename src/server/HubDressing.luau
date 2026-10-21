@@ -153,17 +153,68 @@ local function pair(parent: Instance, name: string, x: number, z: number)
 	end
 end
 
--- The lobby plaza (y = 0): spawn at (0, -46) looking north at the party pads (z 40); the walk runs up x = 0 (12 wide)
--- with lantern posts at x +-13; the garage (x 46) and the classes cabin (x -46) face it across z -22.
+-- One of the Blender town pieces (tools/blender/smooth, meshes S_*) standing on `foot`, its front looking toward
+-- `toward`. Nil when the models aren't imported.
+local function piece(parent: Instance, name: string, foot: Vector3, toward: Vector3, collide: boolean?, scale: number?): Instance?
+	local VM = require(script.Parent.VoxelModels)
+	if not VM.has(name) then
+		return nil
+	end
+	local d = toward - foot
+	return VM.place(parent, name, foot, { yaw = math.atan2(-d.X, -d.Z), collide = collide, scale = scale })
+end
+
+-- The lobby (y = 0) as a little town square, like Catch a Brainrot's: spawn at (0, -46) looking north up the main
+-- walk (x = 0) to the party pads (z 40). Two shops and two market stalls by the spawn, the cabins (classes,
+-- garage) on the cross street (z -22), a round plaza with a fountain (0, 4) between two town houses, the rewards
+-- stall and a third stall at the ends of the street at z 26, trees and flowers filling the corners.
 function HubDressing.lobby(world: Instance)
 	if not Config.WORLD_GEN then
 		return
 	end
 	local f = PropKit.folder("Dressing", world)
+	local town = PropKit.folder("Town", f)
 	arch(f, face(Vector3.new(0, 0, -38), Vector3.new(0, 0, -60)), string.upper(Config.GAME_NAME))
-	-- just a bench on each side of the walk, between the lamp posts: the plaza stays open and calm
-	pair(f, "bench", 9.5, -4)
-	pair(f, "bench", 9.5, 15)
+	local c = Vector3.new(0, 0, 4) -- the fountain plaza
+	piece(town, "S_fountain", c, c + Vector3.new(0, 0, -1), true)
+	for _, sx in { -1, 1 } do
+		-- the town houses either side of the plaza, the shops by the spawn, stalls along the walk
+		piece(town, if sx < 0 then "S_house_red" else "S_house_blue", Vector3.new(29 * sx, 0, 5), Vector3.new(0, 0, 5), true)
+		piece(town, if sx < 0 then "S_shop_teal" else "S_shop_red", Vector3.new(29 * sx, 0, -46), Vector3.new(0, 0, -46), true)
+		piece(town, if sx < 0 then "S_stall_blue" else "S_stall_red", Vector3.new(18.5 * sx, 0, -41), Vector3.new(0, 0, -41), true)
+		-- benches facing the fountain, flower beds round the plaza
+		piece(town, "S_bench", Vector3.new(10 * sx, 0, 4), c, true)
+		piece(town, "S_flower_bed", Vector3.new(9 * sx, 0, -9.5), c, true)
+		piece(town, "S_flower_bed", Vector3.new(9 * sx, 0, 17.5), c, true)
+		-- in front of the houses: planters, pots by the door, a mailbox
+		for _, z in { -2.5, 12.5 } do
+			piece(town, "S_planter", Vector3.new(19.6 * sx, 0, z), Vector3.new(0, 0, z), true)
+		end
+		piece(town, "S_pot", Vector3.new(20.2 * sx, 0, 2.2), Vector3.new(0, 0, 2.2), true)
+		piece(town, "S_pot", Vector3.new(20.2 * sx, 0, 7.8), Vector3.new(0, 0, 7.8), true)
+		piece(town, "S_mailbox", Vector3.new(19.4 * sx, 0, 17), Vector3.new(0, 0, 17), true)
+		-- crates and barrels at the shops' sides
+		piece(town, "S_crate_stack", Vector3.new(29 * sx, 0, -57.5), Vector3.new(0, 0, -57.5), true)
+		piece(town, "S_barrel", Vector3.new(26 * sx, 0, -58), Vector3.new(0, 0, -58), true)
+		piece(town, "S_barrel", Vector3.new(37.5 * sx, 0, -36), Vector3.new(0, 0, -36), true)
+		-- trees and bushes behind the houses and in the corners
+		local rng = Random.new(if sx < 0 then 3 else 4)
+		local HubKit = require(script.Parent.HubKit)
+		for _, p in { Vector3.new(45, 0, 2), Vector3.new(56, 0, 12), Vector3.new(44, 0, 15), Vector3.new(57, 0, -2), Vector3.new(56, 0, -56), Vector3.new(46, 0, -58), Vector3.new(57, 0, 56), Vector3.new(30, 0, 56), Vector3.new(16, 0, 57) } do
+			HubKit.tree(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(1.0, 1.25), "meadow", rng)
+		end
+		for _, p in { Vector3.new(38, 0, -1), Vector3.new(38, 0, 12), Vector3.new(22, 0, 56), Vector3.new(50, 0, -50), Vector3.new(36, 0, 58) } do
+			HubKit.bush(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(1.0, 1.3), rng, rng:NextNumber() < 0.5)
+		end
+	end
+	-- the third stall at the east end of the street at z 26 (the rewards stall is at the west end)
+	piece(town, "S_stall_green", Vector3.new(52, 0, 26), Vector3.new(0, 0, 26), true)
+	piece(town, "S_cart", Vector3.new(44, 0, 33), Vector3.new(44, 0, 26), true)
+	-- by the spawn: a well and a cart of flowers; hay by the garage
+	piece(town, "S_well", Vector3.new(-13, 0, -57), Vector3.new(0, 0, -50), true)
+	piece(town, "S_cart", Vector3.new(13, 0, -57), Vector3.new(0, 0, -50), true)
+	piece(town, "S_hay_bale", Vector3.new(52, 0, -42), Vector3.new(0, 0, -42), true)
+	piece(town, "S_hay_bale", Vector3.new(55.5, 0, -44), Vector3.new(0, 0, -44), true)
 	lifeFor(world)
 	hideSpawn(world)
 end

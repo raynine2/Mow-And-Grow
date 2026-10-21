@@ -347,8 +347,27 @@ function Models.loadAll(timeout: number?)
 	local kit = 0
 	if Config.WORLD_GEN then
 		local HubKit = require(script.Parent.HubKit)
+		local VoxelModels = require(script.Parent.VoxelModels)
+		local SmoothOrigins = require(ReplicatedStorage.MowALawn.SmoothOrigins)
 		for _, name in HubKit.NAMES do
-			local m = HubKit.build(name)
+			-- the Blender version (tools/blender/smooth, mesh S_<name>) when it's imported, else built from parts
+			local m: Model? = nil
+			local sname = "S_" .. name
+			if VoxelModels.has(sname) and SmoothOrigins[sname] then
+				m = Instance.new("Model")
+				local model = m :: Model
+				model.Name = name
+				local holder = Instance.new("Folder")
+				local mesh = VoxelModels.place(holder, sname, Vector3.zero) :: MeshPart
+				mesh.CFrame = CFrame.new(SmoothOrigins[sname]) * mesh.CFrame
+				mesh.CanCollide = VOXEL_SOLID[name] == true
+				mesh.CanQuery = mesh.CanCollide
+				mesh.Parent = model
+				holder:Destroy()
+				model.WorldPivot = CFrame.new()
+			else
+				m = HubKit.build(name)
+			end
 			if m then
 				m.Parent = folder
 				local old = templates[name]

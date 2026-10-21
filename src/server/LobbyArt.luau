@@ -58,7 +58,7 @@ end
 local PATHS = {
 	{ Vector2.new(0, -52), Vector2.new(0, 34) },
 	{ Vector2.new(-46, -22), Vector2.new(46, -22) },
-	{ Vector2.new(0, 26), Vector2.new(-42, 26) }, -- to the rewards stall
+	{ Vector2.new(-42, 26), Vector2.new(42, 26) }, -- to the rewards stall, and the market on the east side
 	{ Vector2.new(-44, 42), Vector2.new(44, 42) },
 }
 local function pathDist(p: Vector2): number
@@ -200,7 +200,8 @@ function LobbyArt.build(world: Instance)
 	for _, s in PATHS do
 		table.insert(segments, { a = s[1], b = s[2], width = 12 })
 	end
-	require(script.Parent.HubPaths).lay(world, segments, 0, 11)
+	-- the round plaza with the fountain in the middle of the main walk (server/HubDressing puts the fountain there)
+	require(script.Parent.HubPaths).lay(world, segments, 0, 11, { { centre = Vector2.new(0, 4), radius = 13 } })
 	nature(world)
 	bounds(world)
 	require(script.Parent.WorldGen).lighting()

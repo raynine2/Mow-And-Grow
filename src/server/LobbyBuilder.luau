@@ -121,7 +121,7 @@ end
 -- lanterns along the walk from the spawn to the booths
 function lanterns(world: Instance)
 	local lamps = PropKit.folder("Lanterns", world)
-	for _, z in { -34, -14, 6, 24 } do
+	for _, z in { -34, -14, 24 } do -- (none at z 6: that's the fountain plaza)
 		for _, x in { -13, 13 } do
 			local pos = Vector3.new(x, FLOOR_Y, z)
 			if not Models.place("lantern_post", lamps, CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, z)), 1, true) then

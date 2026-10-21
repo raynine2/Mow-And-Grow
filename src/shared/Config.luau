@@ -822,4 +822,31 @@ Config.NEWS = {
 	},
 }
 
+
+-- In the generated world the areas go by its names (shared/Zones: Sunny Meadow, Golden Wheat Hills...), so the
+-- HUD, the gates' signs and the quests all say the same thing.
+if Config.WORLD_GEN then
+	local Zones = require(script.Parent.Zones)
+	local renames: { [string]: string } = {}
+	for z, def in Config.ZONES do
+		local g = Zones.list[z]
+		if g then
+			renames[def.name] = g.name
+			def.name = g.name
+			def.grassName = g.grassName or def.grassName
+		end
+	end
+	for _, q in Config.QUESTS do
+		for old, new in renames do
+			q.title = string.gsub(q.title, old, new)
+			if q.hint then
+				q.hint = string.gsub(q.hint, old, new)
+			end
+		end
+		if q.hint then
+			q.hint = string.gsub(q.hint, "cleared the lawn", "cleared the first area")
+		end
+	end
+end
+
 return Config

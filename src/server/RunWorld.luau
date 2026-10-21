@@ -159,7 +159,7 @@ local cache: { [number]: { { cf: CFrame, scale: number } } } = {}
 -- clumps nearly touch, like the trees of a Chop A Forest wood.
 function RunWorld.clumpScale(z: number): number
 	local def = Config.ZONES[z]
-	return math.clamp((def and def.spacing or 11) / 6, 1.5, 3)
+	return math.clamp((def and def.spacing or 11) / 6, 1.5, 2.3)
 end
 
 -- Clump spots in zone z: a jittered grid inside every patch disc of World.Patches.Zone<z>, standing on the floor.
@@ -177,7 +177,7 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 		return list
 	end
 	local def = Config.ZONES[z]
-	local spacing = math.max(7, (def and def.spacing or 11) * 0.9)
+	local spacing = math.clamp((def and def.spacing or 11) * 0.9, 7, 13)
 	local scale = RunWorld.clumpScale(z)
 	local rng = Random.new(z * 7919)
 	local ray = RaycastParams.new()

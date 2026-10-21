@@ -6,8 +6,8 @@ local HubPaths = {}
 
 export type Segment = { a: Vector2, b: Vector2, width: number }
 
-local DIRT = Color3.fromRGB(170, 132, 88)
-local DIRT2 = Color3.fromRGB(156, 120, 80)
+local DIRT = Color3.fromRGB(214, 174, 122) -- light: the Ground texture is dark
+local DIRT2 = Color3.fromRGB(198, 160, 110)
 local STONE = Color3.fromRGB(150, 148, 142)
 
 local count = 0

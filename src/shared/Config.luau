@@ -750,6 +750,17 @@ Config.SOUNDS = {
 	slam = { id = "rbxassetid://12221984", volume = 0.6, pitch = 0.7 }, -- collide.wav
 	hit = { id = "rbxassetid://12222046", volume = 0.35, gap = 0.08 }, -- hit.wav
 	hurt = { id = "rbxasset://sounds/ouch.ogg", volume = 0.5 }, -- engine built-in
+	-- Chopping feel (client/HitFx, Fx, LootFx). Pro Sound Effects library sounds (licensed to every Roblox
+	-- experience, creator "ProSoundEffects"), checked loading in Studio on 21 Oct 2026, plus engine built-ins.
+	punch = { id = "rbxassetid://9113535176", volume = 0.45, pitch = 1.35, gap = 0.05 }, -- Body Slam Low End Thump 1
+	rustle = { id = "rbxassetid://9114515257", volume = 0.32, pitch = 1.15, gap = 0.05 }, -- Foliage Crunchy Rustle 1
+	slice = { id = "rbxasset://sounds/swordslash.wav", volume = 0.22, pitch = 1.35, gap = 0.05 }, -- engine built-in
+	swingHand = { id = "rbxassetid://9126047581", volume = 0.3, pitch = 1.1, gap = 0.05 }, -- Synth Air Whoosh Karate Swish 13
+	swingBlade = { id = "rbxassetid://9126283592", volume = 0.3, pitch = 1.2, gap = 0.05 }, -- Wood Swish Ruler Whoosh 17
+	fellCrunch = { id = "rbxassetid://9114518077", volume = 0.45, gap = 0.08 }, -- Foliage Movement 1 (bursting through hedge)
+	fellLand = { id = "rbxassetid://9114515868", volume = 0.5, gap = 0.08 }, -- Foliage Drop 4 (branch drops to dirt)
+	burst = { id = "rbxassetid://9116406610", volume = 0.3, pitch = 1.3, gap = 0.06 }, -- Magic Poofs Thumpy 1
+	pickup = { id = "rbxassetid://9112751731", volume = 0.4, gap = 0.03 }, -- Bubble Bloop High Pitched Cute 6
 	roar = { id = "rbxassetid://9120031442", volume = 0.45, pitch = 1.25 }, -- Thunder With Lion Roar (pitched up)
 	victory = { id = "rbxassetid://12222253", volume = 0.6 }, -- victory.wav
 	engine = { id = "", volume = 0.3 }, -- Roblox has no mower/engine loop; silent until a licensed one is found

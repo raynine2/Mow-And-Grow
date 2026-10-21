@@ -421,27 +421,51 @@ State.on("swing", function()
 end)
 -- Hit-stop: the swing freezes for a few frames on contact, which sells the weight of the blow.
 local frozenUntil = 0
+local recoilAt = -10
 State.on("hitstop", function(duration: number)
 	local now = os.clock()
 	frozenUntil = now + duration
 	swingStart += duration -- resume exactly where it stopped
+	recoilAt = now + duration -- then the hand bounces back off the clump
 end)
 
--- A jab: pull back a touch, snap forward and in toward the middle of the view, hold, come back.
--- `side` mirrors it for the left hand.
+-- After a hit lands: the hand knocks back toward you and up a little, then springs back (a damped spring).
+local function recoilOffset(now: number): CFrame
+	local u = now - recoilAt
+	if u < 0 or u > 0.45 then
+		return CFrame.new()
+	end
+	local r = math.exp(-u * 10) * math.cos(u * 20)
+	return CFrame.new(0, 0.1 * r, 0.5 * r) * CFrame.Angles(math.rad(12 * r), 0, 0)
+end
+
+-- A jab: cock the fist back, whip it forward (speeding up into the hit), a corkscrew turn of the wrist as it
+-- lands just past the target, settle, hold, come back. `side` mirrors it for the left hand. Contact is at
+-- t = 0.34 (HitFx's STRIKE_DELAY / SWING_TIME).
 local function punchOffset(t: number, side: number): CFrame
-	local wind = CFrame.new(0.12 * side, -0.12, 0.4) * CFrame.Angles(math.rad(-14), 0, 0)
-	local strike = CFrame.new(-0.6 * side, 0.4, -1.8) * CFrame.Angles(math.rad(10), math.rad(12 * side), math.rad(-8 * side))
+	local wind = CFrame.new(0.2 * side, -0.2, 0.6) * CFrame.Angles(math.rad(-18), math.rad(-8 * side), math.rad(8 * side))
+	local over = CFrame.new(-0.68 * side, 0.45, -2.05) * CFrame.Angles(math.rad(12), math.rad(14 * side), math.rad(-26 * side))
+	local strike = CFrame.new(-0.6 * side, 0.4, -1.8) * CFrame.Angles(math.rad(10), math.rad(12 * side), math.rad(-20 * side))
 	if t < 0.16 then
-		return CFrame.new():Lerp(wind, t / 0.16)
-	elseif t < 0.36 then
-		local k = (t - 0.16) / 0.2
-		return wind:Lerp(strike, 1 - (1 - k) * (1 - k))
-	elseif t < 0.48 then
+		local k = t / 0.16
+		return CFrame.new():Lerp(wind, 1 - (1 - k) * (1 - k))
+	elseif t < 0.34 then
+		local k = (t - 0.16) / 0.18
+		return wind:Lerp(over, k * k)
+	elseif t < 0.44 then
+		local k = (t - 0.34) / 0.1
+		return over:Lerp(strike, 1 - (1 - k) * (1 - k))
+	elseif t < 0.52 then
 		return strike
 	end
-	local k = (t - 0.48) / 0.52
+	local k = (t - 0.52) / 0.48
 	return strike:Lerp(CFrame.new(), k * k * (3 - 2 * k))
+end
+
+-- The other fist while one punches: drawn in and down a touch (the body turning into the punch).
+local function guardOffset(t: number, side: number): CFrame
+	local e = math.sin(math.pi * math.clamp(t, 0, 1))
+	return CFrame.new(0.08 * side * e, -0.06 * e, 0.3 * e) * CFrame.Angles(math.rad(-8 * e), 0, 0)
 end
 
 local function equippedId(): string?
@@ -563,7 +587,8 @@ RunService.RenderStepped:Connect(function()
 	if t >= frozenUntil then
 		st = (t - swingStart) / SWING_TIME
 	end
-	local swing = if st >= 0 and st <= 1 and not auto then scaled(swingOffset(st), DIST) else CFrame.new()
+	local recoil = scaled(recoilOffset(t), DIST)
+	local swing = if st >= 0 and st <= 1 and not auto then scaled(swingOffset(st), DIST) * recoil else CFrame.new()
 
 	local rightCf, leftCf
 	if id == "PushMower" or id == "LaserMower" then
@@ -574,9 +599,11 @@ RunService.RenderStepped:Connect(function()
 		leftCf = rightCf * CFrame.new(-1.3 * DIST, -0.2 * DIST, 0.9 * DIST)
 	elseif id == "Hands" then
 		-- bare hands: left and right jabs in turn, the other fist stays up like a boxer
-		local jab = if st >= 0 and st <= 1 then scaled(punchOffset(st, punchSide), DIST) else CFrame.new()
-		rightCf = base * REST_R * (if punchSide == 1 then jab else CFrame.new())
-		leftCf = base * REST_L * (if punchSide == -1 then jab else CFrame.new())
+		local active = st >= 0 and st <= 1
+		local jab = if active then scaled(punchOffset(st, punchSide), DIST) * recoil else CFrame.new()
+		local guard = if active then scaled(guardOffset(st, -punchSide), DIST) else CFrame.new()
+		rightCf = base * REST_R * (if punchSide == 1 then jab else guard)
+		leftCf = base * REST_L * (if punchSide == -1 then jab else guard)
 	else
 		rightCf = base * REST_R * swing
 		leftCf = base * REST_L

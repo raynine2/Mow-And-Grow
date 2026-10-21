@@ -33,8 +33,9 @@ end
 
 local lastPlayed: { [string]: number } = {}
 
--- Play a one-shot. `pitchVariation` randomises the pitch a little so repeated sounds don't drone.
-function Sound.play(key: string, pitchVariation: number?)
+-- Play a one-shot. `pitchVariation` randomises the pitch a little so repeated sounds don't drone; `volume`
+-- scales the sound's own volume (a softer copy for other players' hits, say).
+function Sound.play(key: string, pitchVariation: number?, volume: number?)
 	local t = templates[key]
 	if not t then
 		return
@@ -48,19 +49,21 @@ function Sound.play(key: string, pitchVariation: number?)
 	local s = t:Clone()
 	local v = pitchVariation or 0
 	s.PlaybackSpeed = (def.pitch or 1) * (1 + (math.random() * 2 - 1) * v)
+	s.Volume *= volume or 1
 	s.Parent = SoundService
 	s:Play()
 	Debris:AddItem(s, math.max(2, (s.TimeLength > 0 and s.TimeLength or 2) + 0.5))
 end
 
 -- Play a one-shot at an exact pitch (rising coin ticks, combo notes).
-function Sound.playAt(key: string, pitch: number)
+function Sound.playAt(key: string, pitch: number, volume: number?)
 	local t = templates[key]
 	if not t then
 		return
 	end
 	local s = t:Clone()
 	s.PlaybackSpeed = pitch
+	s.Volume *= volume or 1
 	s.Parent = SoundService
 	s:Play()
 	Debris:AddItem(s, math.max(2, (s.TimeLength > 0 and s.TimeLength or 2) + 0.5))

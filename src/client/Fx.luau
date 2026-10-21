@@ -299,9 +299,15 @@ handlers.cut = function(d)
 	local m = Config.mutation(d.mut or "None")
 	local color = m.color or d.color
 	local mine = d.by == player.UserId
-	-- the clump comes apart: splinters, blade bits, tumbling clippings, dust, a ground ring
-	HitFx.play("cut", d.pos, color, mine, nil, Config.ZONES[d.z] and Config.ZONES[d.z].style)
+	-- the clump comes apart: splinters, blade bits, tumbling clippings, dust, a ground ring (sized to the clump;
+	-- the fallen clump itself flashes white and pops where it lies)
+	HitFx.play("cut", d.pos, color, mine, nil, Config.ZONES[d.z] and Config.ZONES[d.z].style, { scale = d.scale, pop = d.model })
+	if not mine and near(d.pos, 60) then
+		Sound.play("fellLand", 0.1, 0.4) -- someone else's clump landing nearby
+	end
 	if mine then
+		Sound.play("fellLand", 0.08)
+		Sound.play("burst", 0.1);
 		(Fx :: any).hideHp()
 		if m.color and (d.mut or "None") ~= "None" then
 			Fx.popWord(d.pos, (m.id or d.mut):upper() .. "!", m.color)
@@ -326,11 +332,16 @@ handlers.fell = function(d)
 	local m = d.model :: Model?
 	local T = d.time or 0.7
 	local land = d.land or d.pos
-	local function impact()
-		handlers.cut({ pos = land, color = d.color, mut = d.mut, z = d.z, by = d.by })
+	local radius = m and m:IsA("Model") and m:GetAttribute("Radius") :: number?
+	local scale = if radius then radius / 1.6 else nil
+	local function impact(popModel: Model?)
+		handlers.cut({ pos = land, color = d.color, mut = d.mut, z = d.z, by = d.by, scale = scale, model = popModel })
 		if near(land, 90) then
-			Fx.shake(if d.by == player.UserId then 0.6 else 0.25, 0.25)
+			Fx.shake(if d.by == player.UserId then 1.2 else 0.25, 0.25)
 		end
+	end
+	if d.by == player.UserId then
+		Sound.play("fellCrunch", 0.08) -- the stems giving way as it starts to go
 	end
 	if not (m and m.Parent and m:IsA("Model")) then
 		task.delay(T, impact)
@@ -353,14 +364,15 @@ handlers.fell = function(d)
 			end
 			return
 		end
-		-- slow at first, then crashing down (ease-in), with a little bounce at the end
-		local angle = math.rad(88) * t * t
+		-- a little rock back toward you first (it's giving way), then slow and crashing down (ease-in)
+		local back = math.rad(6) * math.sin(math.pi * math.clamp(t / 0.28, 0, 1))
+		local angle = math.rad(88) * t ^ 2.2 - back
 		m:PivotTo(CFrame.new(base.Position) * CFrame.fromAxisAngle(axis, angle) * base.Rotation)
 		if t >= 1 then
 			conn:Disconnect()
 			if not done then
 				done = true
-				impact()
+				impact(m)
 				-- gone on our screen at once (the server swaps it for stubble a moment later)
 				for _, p in m:GetDescendants() do
 					if p:IsA("BasePart") then
@@ -456,7 +468,13 @@ handlers.chip = function(d)
 	end
 end
 
+local topRay = RaycastParams.new()
+topRay.FilterType = Enum.RaycastFilterType.Include
+topRay.FilterDescendantsInstances = { workspace.Terrain }
 handlers.topOff = function(d)
+	local world = workspace:FindFirstChild("World")
+	local ground = world and world:FindFirstChild("Ground")
+	topRay.FilterDescendantsInstances = { workspace.Terrain, ground or workspace.Terrain }
 	-- the knocked-off top tumbles away and lands
 	if not near(d.pos, 120) then
 		return
@@ -464,7 +482,12 @@ handlers.topOff = function(d)
 	local p = fxPart(d.size, d.color, CFrame.new(d.pos))
 	p.Material = Enum.Material.Grass
 	local angle = math.random() * math.pi * 2
-	local land = Vector3.new(d.pos.X + math.cos(angle) * 3, 0.3 + d.size.Y / 2, d.pos.Z + math.sin(angle) * 3)
+	local ground = d.pos.Y - 30
+	local hit = workspace:Raycast(Vector3.new(d.pos.X + math.cos(angle) * 3, d.pos.Y + 2, d.pos.Z + math.sin(angle) * 3), Vector3.new(0, -40, 0), topRay)
+	if hit then
+		ground = hit.Position.Y
+	end
+	local land = Vector3.new(d.pos.X + math.cos(angle) * 3, ground + 0.3 + d.size.Y / 2, d.pos.Z + math.sin(angle) * 3)
 	local apex = d.pos:Lerp(land, 0.4) + Vector3.new(0, 2, 0)
 	TweenService:Create(p, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = CFrame.new(apex) * CFrame.Angles(math.rad(60), 0, 0) }):Play()
 	task.delay(0.2, function()
@@ -676,7 +699,7 @@ State.on("swing", function(look: Vector3?)
 	if color then
 		task.delay(0.08, HitFx.slash, color)
 	end
-	Sound.play("whoosh", 0.15)
+	Sound.play(if id == "Hands" then "swingHand" else "swingBlade", 0.15)
 end)
 
 State.on("fx", function(kind, payload)

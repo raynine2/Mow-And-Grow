@@ -165,6 +165,38 @@ Config.ZONES = {
 		boss = { name = "Jungle Titan", hp = 15000000, color = Color3.fromRGB(20, 90, 40), every = 3, radius = 14, gems = 80, coins = 4000000 },
 	},
 }
+-- Boss weapon crate (Chop A Forest v2): a crate parachutes in when a boss appears; opening it gives you your best
+-- gun for the fight (taken away when the boss falls). Damage is a share of the boss's max HP per shot, so every
+-- zone's boss takes about the same time. `product` = bought with Robux, yours in every fight.
+Config.GUNS = {
+	{ id = "Pistol", name = "Glock-18", pct = 0.004, rate = 5, range = 110, color = Color3.fromRGB(60, 60, 70), stats = "SEMI-AUTO - 5 SHOTS/S - 110 STUDS" },
+	{ id = "Rifle", name = "AK-47", product = "GunRifle", pct = 0.005, rate = 9, range = 130, color = Color3.fromRGB(150, 95, 50), stats = "AUTO - 9 SHOTS/S - 130 STUDS" },
+	{ id = "Minigun", name = "Minigun", product = "GunMinigun", pct = 0.004, rate = 20, range = 120, spin = 0.8, color = Color3.fromRGB(90, 95, 110), stats = "SPINS UP, THEN SHREDS - 20 SHOTS/S" },
+}
+function Config.gun(id: string)
+	for _, g in Config.GUNS do
+		if g.id == id then
+			return g
+		end
+	end
+	return nil
+end
+
+-- Day and night in a run. At night Weed Crawlers creep out of the grass and chase players outside the hub; a hit
+-- stuns you. Peaceful Mode (the host's lobby toggle) turns them off, and a peaceful run doesn't set a best time.
+Config.DAY_LENGTH = 420
+Config.NIGHT_LENGTH = 120
+Config.CRAWLERS = {
+	name = "Weed Crawler",
+	maxPerPlayer = 2,
+	maxTotal = 8,
+	every = 8, -- seconds between spawns (per player, while under the cap)
+	speed = 10,
+	hpHits = 2, -- HP = the zone's grass HP x this (tested 20 Oct: 4 was too tanky for bare hands)
+	reward = 8, -- coins = the zone's grass value x this
+	color = Color3.fromRGB(70, 40, 90),
+}
+
 Config.BOSS_HP_PER_EXTRA_PLAYER = 0.6 -- +60% boss HP for every party member after the first
 Config.RUN_COMPLETE_GEMS = 150
 
@@ -542,13 +574,27 @@ function Config.class(id: string)
 	return nil
 end
 
+-- Lucky Restock (Chop A Forest's "x3 LUCK"): rarity weights are multiplied by these.
+Config.LUCKY_MULT = { Epic = 2, Legendary = 3, Mythic = 3, Secret = 3 }
+
+function Config.stockWindow(): number
+	return math.floor(workspace:GetServerTimeNow() / Config.STOCK_WINDOW)
+end
+
 -- The booth stock for a 5-minute window. Same seed on every server, so every lobby shows the same stock.
 function Config.classStock(window: number): { string }
-	local rng = Random.new(window * 7919 + 13)
+	return Config.rollStock(Random.new(window * 7919 + 13), false)
+end
+
+-- Deal Config.STOCK_SLOTS different classes, weighted by rarity (luckier with `lucky`).
+function Config.rollStock(rng: Random, lucky: boolean): { string }
 	local pool = {}
 	for _, c in Config.CLASSES do
 		local w = Config.STOCK_WEIGHTS[c.rarity]
 		if w then
+			if lucky then
+				w *= Config.LUCKY_MULT[c.rarity] or 1
+			end
 			table.insert(pool, { id = c.id, weight = w })
 		end
 	end
@@ -572,6 +618,111 @@ function Config.classStock(window: number): { string }
 		end
 	end
 	return stock
+end
+
+-- The odds shown on every class card: the chance a class is in a deal (normal and Lucky Restock).
+-- Worked out once by dealing 20,000 times with a fixed seed, so every client shows the same numbers.
+Config.CLASS_CHANCE = {} :: { [string]: number }
+Config.CLASS_CHANCE_LUCKY = {} :: { [string]: number }
+do
+	local N = 20000
+	for _, mode in { { Config.CLASS_CHANCE, false }, { Config.CLASS_CHANCE_LUCKY, true } } do
+		local rng = Random.new(424242)
+		local hits = {}
+		for _ = 1, N do
+			for _, id in Config.rollStock(rng, mode[2]) do
+				hits[id] = (hits[id] or 0) + 1
+			end
+		end
+		for id, n in hits do
+			mode[1][id] = n / N
+		end
+	end
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- Pets: garden critters hatched from eggs, owned forever. Up to PET_EQUIP follow you and add their boosts.
+-- Boost keys match Stats: power, sell, speed, luck (all +fractions). `look` tells client/PetFollow how to build it.
+-------------------------------------------------------------------------------------------------------------
+Config.PET_EQUIP = 3
+Config.PET_MAX = 60 -- inventory size
+Config.PETS = {
+	{ id = "Bee", name = "Bumble Bee", rarity = "Common", power = 0.05, look = { kind = "bee", color = Color3.fromRGB(255, 200, 40), accent = Color3.fromRGB(40, 35, 30) } },
+	{ id = "Snail", name = "Garden Snail", rarity = "Common", sell = 0.05, look = { kind = "snail", color = Color3.fromRGB(190, 220, 120), accent = Color3.fromRGB(170, 100, 60) } },
+	{ id = "Bunny", name = "Lawn Bunny", rarity = "Uncommon", speed = 0.08, look = { kind = "bunny", color = Color3.fromRGB(240, 235, 225), accent = Color3.fromRGB(255, 160, 180) } },
+	{ id = "Ladybug", name = "Ladybug", rarity = "Uncommon", luck = 0.10, look = { kind = "bug", color = Color3.fromRGB(230, 50, 45), accent = Color3.fromRGB(30, 25, 25) } },
+	{ id = "Mole", name = "Burrow Mole", rarity = "Rare", power = 0.15, look = { kind = "mole", color = Color3.fromRGB(110, 80, 70), accent = Color3.fromRGB(255, 170, 170) } },
+	{ id = "Hedgehog", name = "Hedgehog", rarity = "Rare", sell = 0.15, look = { kind = "hedgehog", color = Color3.fromRGB(150, 110, 80), accent = Color3.fromRGB(240, 210, 170) } },
+	{ id = "Gnome", name = "Garden Gnome", rarity = "Epic", power = 0.25, sell = 0.10, look = { kind = "gnome", color = Color3.fromRGB(60, 120, 220), accent = Color3.fromRGB(230, 50, 50) } },
+	{ id = "Firefly", name = "Firefly", rarity = "Epic", luck = 0.30, look = { kind = "bee", color = Color3.fromRGB(190, 255, 90), accent = Color3.fromRGB(50, 60, 40), glow = true } },
+	{ id = "GoldenGnome", name = "Golden Gnome", rarity = "Legendary", power = 0.50, speed = 0.15, look = { kind = "gnome", color = Color3.fromRGB(255, 200, 40), accent = Color3.fromRGB(255, 230, 120), glow = true } },
+	-- Golden Egg only
+	{ id = "RoyalBeetle", name = "Royal Beetle", rarity = "Rare", power = 0.20, sell = 0.10, look = { kind = "bug", color = Color3.fromRGB(130, 60, 200), accent = Color3.fromRGB(255, 210, 60) } },
+	{ id = "ThunderHare", name = "Thunder Hare", rarity = "Epic", speed = 0.25, power = 0.25, look = { kind = "bunny", color = Color3.fromRGB(90, 170, 255), accent = Color3.fromRGB(255, 240, 80), glow = true } },
+	{ id = "RainbowButterfly", name = "Rainbow Butterfly", rarity = "Secret", power = 1.0, sell = 0.5, luck = 0.5, speed = 0.2, look = { kind = "butterfly", color = Color3.fromRGB(255, 110, 200), accent = Color3.fromRGB(110, 220, 255), glow = true } },
+}
+Config.PET_STATS = { "power", "sell", "speed", "luck" }
+
+function Config.pet(id: string)
+	for _, p in Config.PETS do
+		if p.id == id then
+			return p
+		end
+	end
+	return nil
+end
+
+-- Eggs. `pets` = { id, weight } (the weights ARE the shown odds, in %). currency gems: bought with gems (1 or 3);
+-- currency robux: the products in `products` (1 / 3 / 10). Hatch Luck passes multiply the weight of every pet
+-- of a `luckRarities` rarity (the window shows the odds with your luck applied).
+Config.EGGS = {
+	{
+		id = "GardenEgg", name = "Garden Egg", currency = "gems", price = 120, color = Color3.fromRGB(120, 200, 80),
+		pets = { { "Bee", 30 }, { "Snail", 26 }, { "Bunny", 16 }, { "Ladybug", 13 }, { "Mole", 6 }, { "Hedgehog", 5 }, { "Gnome", 2 }, { "Firefly", 1.5 }, { "GoldenGnome", 0.5 } },
+	},
+	{
+		id = "GoldenEgg", name = "Golden Egg", currency = "robux", color = Color3.fromRGB(255, 190, 40), exclusive = true,
+		desc = "Exclusive critters only this egg hatches - Rare or better",
+		pets = { { "RoyalBeetle", 42 }, { "ThunderHare", 38 }, { "GoldenGnome", 16 }, { "RainbowButterfly", 4 } },
+		products = { { count = 1, key = "GoldenEgg1" }, { count = 3, key = "GoldenEgg3" }, { count = 10, key = "GoldenEgg10", tag = "BEST VALUE" } },
+	},
+}
+Config.HATCH_LUCK = { pass = 1.5, super = 2 } -- HatchLuck / SuperHatchLuck (they stack: x3)
+Config.HATCH_LUCK_RARITIES = { Epic = true, Legendary = true, Mythic = true, Secret = true }
+
+function Config.egg(id: string)
+	for _, e in Config.EGGS do
+		if e.id == id then
+			return e
+		end
+	end
+	return nil
+end
+
+-- The odds for an egg with a hatch-luck multiplier: { { id, chance 0-1 } } in the egg's order.
+function Config.eggOdds(egg, luck: number): { { any } }
+	local total, rows = 0, {}
+	for _, row in egg.pets do
+		local p = Config.pet(row[1])
+		local w = row[2] * (if p and Config.HATCH_LUCK_RARITIES[p.rarity] then luck else 1)
+		total += w
+		table.insert(rows, { row[1], w })
+	end
+	for _, r in rows do
+		r[2] /= total
+	end
+	return rows
+end
+
+function Config.rollEgg(egg, luck: number, rng: Random): string
+	local pick = rng:NextNumber()
+	for _, r in Config.eggOdds(egg, luck) do
+		pick -= r[2]
+		if pick <= 0 then
+			return r[1]
+		end
+	end
+	return egg.pets[1][1]
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -636,24 +787,80 @@ Config.SOLO_COUNTDOWN = 3
 -- No paid item here has a random result. If one is ever added, give it `paidRandom = true` and show odds.
 -------------------------------------------------------------------------------------------------------------
 Config.PRODUCTS = {
-	Gems150 = { id = 0, robux = 49, gems = 150, name = "150 Gems" },
-	Gems500 = { id = 0, robux = 149, gems = 500, name = "500 Gems" },
-	Gems1500 = { id = 0, robux = 399, gems = 1500, name = "1,500 Gems" },
-	Gems5000 = { id = 0, robux = 999, gems = 5000, name = "5,000 Gems" },
-	TrialMower = { id = 0, robux = 25, mower = "TrialMower", name = "Trial Mower (this run)" },
-	RocketMower = { id = 0, robux = 499, mower = "RocketMower", name = "Rocket Mower" },
-	ClassLawnLegend = { id = 0, robux = 799, class = "LawnLegend", name = "Lawn Legend class" },
-	ClassGoatMan = { id = 0, robux = 1499, class = "GoatMan", name = "Goat Man class" },
+	Gems150 = { id = 3720129180, robux = 49, gems = 150, name = "150 Gems" },
+	Gems500 = { id = 3720129187, robux = 149, gems = 500, name = "500 Gems" },
+	Gems1500 = { id = 3720129195, robux = 399, gems = 1500, name = "1,500 Gems" },
+	Gems5000 = { id = 3720129202, robux = 999, gems = 5000, name = "5,000 Gems" },
+	TrialMower = { id = 3720129209, robux = 25, mower = "TrialMower", name = "Trial Mower (this run)" },
+	RocketMower = { id = 3720129219, robux = 499, mower = "RocketMower", name = "Rocket Mower" },
+	ClassLawnLegend = { id = 3720129226, robux = 799, class = "LawnLegend", name = "Lawn Legend class" },
+	ClassGoatMan = { id = 3720129235, robux = 1499, class = "GoatMan", name = "Goat Man class" },
+	-- Class card deal: deal yourself new cards now (until the next restock). Random result, so the odds are
+	-- shown on every card (Config.CLASS_CHANCE / CLASS_CHANCE_LUCKY).
+	-- guns for the boss crate (yours in every fight)
+	GunRifle = { id = 3720129252, robux = 64, gun = "Rifle", name = "AK-47" },
+	GunMinigun = { id = 3720129260, robux = 320, gun = "Minigun", name = "Minigun" },
+	-- Golden Egg (random result: odds shown on the egg card)
+	GoldenEgg1 = { id = 3720129270, robux = 80, egg = "GoldenEgg", count = 1, paidRandom = true, name = "Golden Egg" },
+	GoldenEgg3 = { id = 3720129278, robux = 224, egg = "GoldenEgg", count = 3, paidRandom = true, name = "3 Golden Eggs" },
+	GoldenEgg10 = { id = 3720129285, robux = 680, egg = "GoldenEgg", count = 10, paidRandom = true, name = "10 Golden Eggs" },
+	ClassRestock = { id = 3720129296, robux = 29, restock = "normal", paidRandom = true, name = "Restock" },
+	ClassLuckyRestock = { id = 3720129304, robux = 99, restock = "lucky", paidRandom = true, name = "Lucky Restock" },
 }
 Config.PRODUCT_ORDER = { "Gems150", "Gems500", "Gems1500", "Gems5000", "TrialMower", "RocketMower", "ClassLawnLegend", "ClassGoatMan" }
 
-Config.PASSES = {
-	DoubleCoins = { id = 0, robux = 299, name = "2x Coins", desc = "Double coins from the shredder" },
-	DoubleGems = { id = 0, robux = 399, name = "2x Gems", desc = "Double gems from everything" },
-	BigBag = { id = 0, robux = 149, name = "Bottomless Sack", desc = "Carry as many bundles as you like" },
-	VIP = { id = 0, robux = 249, name = "VIP", desc = "+15% power, +15% sell, VIP tag" },
+-- Tool products, like Chop A Forest's item popup: ONE TIME = this run only, PERMANENT = every run you play.
+-- { once, forever } in Robux. Each tool gets `once` / `forever` product keys (ToolOnce<Id> / ToolForever<Id>);
+-- set their ids after creating the products on the Creator Dashboard (0 = "Coming soon").
+Config.TOOL_ROBUX = {
+	Scissors = { 16, 64 },
+	Sickle = { 24, 99 },
+	PushMower = { 40, 160 },
+	WeedWhacker = { 60, 240 },
+	MegaScythe = { 99, 399 },
+	LaserMower = { 149, 599 },
 }
-Config.PASS_ORDER = { "DoubleCoins", "DoubleGems", "BigBag", "VIP" }
+-- Developer product ids (made on 19 Oct 2026, universe 10771817013): { once, forever }
+Config.TOOL_PRODUCT_IDS = {
+	Scissors = { 3720125625, 3720125637 },
+	Sickle = { 3720125640, 3720125645 },
+	PushMower = { 3720125653, 3720125660 },
+	WeedWhacker = { 3720125666, 3720125672 },
+	MegaScythe = { 3720125677, 3720125685 },
+	LaserMower = { 3720125692, 3720125694 },
+}
+for _, t in Config.TOOLS do
+	local r = Config.TOOL_ROBUX[t.id]
+	if r then
+		local ids = Config.TOOL_PRODUCT_IDS[t.id] or { 0, 0 }
+		t.once = "ToolOnce" .. t.id
+		t.forever = "ToolForever" .. t.id
+		Config.PRODUCTS[t.once] = { id = ids[1], robux = r[1], tool = t.id, name = t.name .. " (this run)" }
+		Config.PRODUCTS[t.forever] = { id = ids[2], robux = r[2], tool = t.id, forever = true, name = t.name .. " (forever)" }
+	end
+end
+
+function Config.toolIndex(id: string): number?
+	for i, t in Config.TOOLS do
+		if t.id == id then
+			return i
+		end
+	end
+	return nil
+end
+
+-- Chop A Forest's passes, mowed: Infinite Backpack -> Bottomless Sack, 2X Logs -> 2X Clippings.
+-- `tag` is the tilted corner ribbon on the shop card, `color` the card colour.
+Config.PASSES = {
+	BigBag = { id = 2039890718, robux = 149, name = "Bottomless Sack", desc = "Carry as many bundles as you like", tag = "BEST VALUE", color = Color3.fromRGB(150, 80, 230) },
+	DoubleCoins = { id = 2039740721, robux = 299, name = "2x Coins", desc = "Every bundle sells for double", color = Color3.fromRGB(250, 190, 40) },
+	DoubleClippings = { id = 2040790478, robux = 120, name = "2x Clippings", desc = "Every clump you cut drops two bundles", color = Color3.fromRGB(90, 200, 70) },
+	DoubleGems = { id = 2041640383, robux = 399, name = "2x Gems", desc = "Double gems from everything", color = Color3.fromRGB(60, 160, 250) },
+	VIP = { id = 2042072324, robux = 249, name = "VIP", desc = "+15% power, +15% sell, VIP tag", tag = "POPULAR", color = Color3.fromRGB(240, 90, 150) },
+	HatchLuck = { id = 2036909108, robux = 149, name = "Hatch Luck", desc = "Epic+ critters 1.5x more likely from every egg", color = Color3.fromRGB(80, 200, 120) },
+	SuperHatchLuck = { id = 2040568482, robux = 399, name = "Super Hatch Luck", desc = "Epic+ critters 2x more likely (stacks to 3x)", tag = "SUPER", color = Color3.fromRGB(255, 190, 40) },
+}
+Config.PASS_ORDER = { "BigBag", "DoubleCoins", "DoubleClippings", "DoubleGems", "VIP", "HatchLuck", "SuperHatchLuck" }
 
 function Config.productByAssetId(assetId: number)
 	if assetId == 0 then
@@ -680,7 +887,7 @@ Config.SOUNDS = {
 	purchase = { id = "rbxassetid://17208380755", volume = 0.5 }, -- Roblox GUI - Purchase
 	upgrade = { id = "rbxassetid://10066947742", volume = 0.45 }, -- RBLX UI Purchase (SFX)
 	denied = { id = "rbxassetid://17208353912", volume = 0.4, gap = 0.6 }, -- Roblox GUI - Negative
-	click = { id = "rbxassetid://15675059323", volume = 0.35, gap = 0.05 }, -- Roblox_UI_Bright_Click
+	click = { id = "rbxassetid://102855535543930", volume = 1, gap = 0.04 }, -- Creamy Keyboard Sound Effect (Yangz's pick for every UI click; community upload, not Roblox-owned)
 	whoosh = { id = "rbxassetid://15675024286", volume = 0.35, gap = 0.1 }, -- Roblox_UI_Whoosh_01
 	warn = { id = "rbxassetid://15675028888", volume = 0.35 }, -- Roblox_UI_Whoosh_02
 	slam = { id = "rbxassetid://12221984", volume = 0.6, pitch = 0.7 }, -- collide.wav
@@ -704,6 +911,28 @@ Config.ICONS = {
 for name, id in require(script.Parent.IconIds) :: { [string]: string } do
 	Config.ICONS[name] = id
 end
+-- class card art (2D, Store Icons/classart.py, uploaded 21 Oct 2026): UI.icon("class_<ClassId>")
+for id, asset in {
+	WeedPuller = 101974844305588, Gardener = 98013595086200, Groundskeeper = 135381814163967, LawnBaron = 105748382657411,
+	HedgeReaper = 114080642070778, MowerSpecialist = 137232098698423, GrassTitan = 82171403768236,
+	UltimateGardener = 78945880148946, LawnLegend = 84940076053307, GoatMan = 83112863068435,
+} do
+	Config.ICONS["class_" .. id] = "rbxassetid://" .. asset
+end
+-- full-bleed class card pictures (Store Icons/classscene.py, 600 x 400): Config.ICONS.scene_<ClassId>
+for id, asset in {
+	WeedPuller = 85809588456813, Gardener = 94384876404199, Groundskeeper = 117161180323886, LawnBaron = 80765545126396,
+	HedgeReaper = 72516398737049, MowerSpecialist = 133502277849177, GrassTitan = 105467094992747,
+	UltimateGardener = 92680252173020, LawnLegend = 102045731512051, GoatMan = 77353215008538,
+} do
+	Config.ICONS["scene_" .. id] = "rbxassetid://" .. asset
+end
+-- menu tab and side HUD pictures (Store Icons/uiicons.py)
+Config.ICONS.paw = "rbxassetid://111248410488377"
+Config.ICONS.egg = "rbxassetid://133516698228335"
+Config.ICONS.book = "rbxassetid://82956166303568"
+Config.ICONS.clipboard = "rbxassetid://119603392279586"
+Config.ICONS.newspaper = "rbxassetid://74489703623422"
 
 -------------------------------------------------------------------------------------------------------------
 -- Look (bubbly UI on Chop A Forest style wooden boards)
@@ -760,5 +989,8 @@ Config.NEWS = {
 		},
 	},
 }
+
+-- The next event, on the lobby's notice board (server/LobbyKit.eventBoard); the countdown runs to startsAt (UTC).
+Config.EVENT = { title = "HALLOWEEN", name = "???", startsAt = 1792857600, dateText = "OCT 24" } -- 24 Oct 2026 16:00 UTC
 
 return Config

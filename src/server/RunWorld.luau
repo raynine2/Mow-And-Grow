@@ -87,7 +87,31 @@ local function clearVillage(w: Instance)
 	end
 end
 
--- Cobblestone paths across the village between the hub buildings (like the lobby's: server/HubPaths).
+-- The saved world's ground gets Roblox's textured materials instead of flat plastic, like Chop A Forest's:
+-- grass on the areas' floors (snow in the frost area), dirt down the sides, slate on the rocks.
+local function texturedGround(w: Instance)
+	local ground = w:FindFirstChild("Ground")
+	if not ground then
+		return
+	end
+	for _, p in ground:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.TopSurface = Enum.SurfaceType.Smooth
+			local zone = p:GetAttribute("Zone")
+			if p.Name == "Floor" then
+				local id = if typeof(zone) == "number" then Zones.region(zone).id else nil
+				p.Material = if id == "frost" then Enum.Material.Snow elseif id == "ember" then Enum.Material.Basalt else Enum.Material.Grass
+			elseif p.Name == "FloorSide" then
+				p.Material = Enum.Material.Ground
+			elseif p.Name == "Rock" or p.Name == "RockSide" then
+				local c = p.Color
+				p.Material = if c.G > c.R + 0.05 and c.G > c.B then Enum.Material.Grass else Enum.Material.Slate
+			end
+		end
+	end
+end
+
+-- Dirt paths across the village between the hub buildings (like the lobby's: server/HubPaths).
 local PATHS = {
 	{ Vector2.new(0, -78), Vector2.new(0, 30) }, -- spawn -> fountain -> the way north to the meadow
 	{ Vector2.new(-34, -40), Vector2.new(30, -40) }, -- shredder <-> tool shop
@@ -140,6 +164,7 @@ function RunWorld.build()
 	world = w
 	require(script.Parent.WorldGen).lighting()
 	clearVillage(w)
+	texturedGround(w)
 
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
 	paths(w)

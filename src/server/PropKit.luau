@@ -231,9 +231,11 @@ function PropKit.bush(parent: Instance, pos: Vector3, scale: number, color: Colo
 	PropKit.brick(parent, Vector3.new(2.6, 1.4, 2.6) * scale, CFrame.new(pos + Vector3.new(0, 3.1 * scale, 0)), shade(c, 1.1), "Bush")
 end
 
--- The one sign style every world text uses: bold rounded letters in cream (PropKit.TEXT) with a dark brown
+-- The one sign style every world text uses: bold rounded letters (white PropKit.TEXT, orange PropKit.TITLE for
+-- building names) with a dark brown
 -- outline, lit a little by the world so they don't glow, on a part face (SurfaceGui) or floating (BillboardGui).
-PropKit.TEXT = Color3.fromRGB(255, 246, 224)
+PropKit.TEXT = Color3.fromRGB(255, 255, 255)
+PropKit.TITLE = Color3.fromRGB(255, 158, 48) -- building names, like Chop A Forest's orange TOOL SHOP sign
 PropKit.PRICE = Color3.fromRGB(140, 240, 90)
 local TEXT_OUTLINE = Color3.fromRGB(56, 32, 16)
 local function styleLabel(label: TextLabel, color: Color3, stroke: number?)
@@ -441,7 +443,7 @@ function PropKit.cabinSign(parent: Instance, at: CFrame, scale: number, text: st
 	local sign = PropKit.part({
 		size = Vector3.new(14, 3, 0.6) * scale,
 		cf = at * CFrame.new(Vector3.new(0, 10.4, -12.3) * scale),
-		color = Color3.fromRGB(110, 70, 42),
+		color = Color3.fromRGB(78, 50, 32),
 		parent = parent,
 		name = "CabinSign",
 		material = Enum.Material.WoodPlanks,

@@ -1,100 +1,72 @@
--- Stone paths for the hubs, in the chunky, tidy style of Catch a Brainrot: big square sandstone slabs on a 3-stud
--- grid with thin grout lines between them, each slab with a bevelled lighter top, framed by a solid kerb of darker
--- stone blocks; nothing scattered round them, so they read clean. Colours are warm on purpose: the hubs'
--- blue-ish daylight cools them down.
--- HubPaths.lay(parent, segments, y) lays every segment's path (they may cross; slabs are shared).
+-- Paths for the hubs in Chop A Forest's style: worn dirt tracks across the grass (Roblox's Ground material),
+-- with soft, uneven edges where the grass grows over them and the odd stone along the side. Nothing stands up out
+-- of the ground, so they read as part of the lawn.
+-- HubPaths.lay(parent, segments, y) lays every segment's path (they may cross).
 local HubPaths = {}
 
 export type Segment = { a: Vector2, b: Vector2, width: number }
 
-local SLAB = {
-	Color3.fromRGB(240, 206, 150),
-	Color3.fromRGB(232, 196, 138),
-	Color3.fromRGB(246, 216, 166),
-	Color3.fromRGB(226, 188, 130),
-}
-local GROUT = Color3.fromRGB(150, 118, 84)
-local KERB = { Color3.fromRGB(176, 142, 102), Color3.fromRGB(162, 128, 92) }
-
-local G = 3 -- grid step
-local SLAB_SIZE = 2.72 -- leaves a thin grout line
-local SLAB_H = 0.45
-local KERB_H = 0.75
+local DIRT = Color3.fromRGB(170, 132, 88)
+local DIRT2 = Color3.fromRGB(156, 120, 80)
+local STONE = Color3.fromRGB(150, 148, 142)
 
 local count = 0
-local function block(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, collide: boolean?): Part
+local function flat(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, mat: Enum.Material): Part
 	local p = Instance.new("Part")
 	p.Name = name
 	p.Anchored = true
-	p.CanCollide = collide == true
-	p.CanQuery = collide == true
+	p.CanCollide = false
+	p.CanQuery = false
 	p.CanTouch = false
 	p.CastShadow = false
 	p.Size = size
 	p.CFrame = cf
 	p.Color = color
-	p.Material = Enum.Material.SmoothPlastic
+	p.Material = mat
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
 	p.Parent = parent
 	count += 1
-	if count % 400 == 0 then
+	if count % 300 == 0 then
 		task.wait()
 	end
 	return p
-end
-
--- how far p is outside the paths (negative inside)
-local function dist(segments: { Segment }, p: Vector2): number
-	local best = math.huge
-	for _, s in segments do
-		local ab = s.b - s.a
-		local t = math.clamp((p - s.a):Dot(ab) / math.max(ab:Dot(ab), 1e-6), 0, 1)
-		best = math.min(best, (p - (s.a + ab * t)).Magnitude - s.width / 2)
-	end
-	return best
-end
-
--- one slab: a body and a slightly smaller, lighter top (the bevel)
-local function slab(f: Instance, x: number, z: number, y: number, rng: Random)
-	local col = SLAB[rng:NextInteger(1, #SLAB)]
-	local h = SLAB_H + rng:NextNumber(-0.05, 0.05)
-	block(f, "PathSlab", Vector3.new(SLAB_SIZE, h, SLAB_SIZE), CFrame.new(x, y + h / 2, z), col:Lerp(GROUT, 0.25), true)
-	block(f, "PathTop", Vector3.new(SLAB_SIZE - 0.4, 0.08, SLAB_SIZE - 0.4), CFrame.new(x, y + h + 0.04, z), col)
-end
-
-local function kerb(f: Instance, x: number, z: number, y: number, i: number, j: number)
-	block(f, "Kerb", Vector3.new(G, KERB_H, G), CFrame.new(x, y + KERB_H / 2, z), KERB[(i + j) % 2 + 1], true)
-	block(f, "KerbTop", Vector3.new(G - 0.3, 0.08, G - 0.3), CFrame.new(x, y + KERB_H + 0.04, z), KERB[(i + j) % 2 + 1]:Lerp(Color3.new(1, 1, 1), 0.12))
 end
 
 function HubPaths.lay(parent: Instance, segments: { Segment }, y: number, seed: number?)
 	local f = Instance.new("Folder")
 	f.Name = "Paths"
 	local rng = Random.new(seed or 7)
-	-- the grout under the slabs (shows in the thin lines between them)
 	for _, s in segments do
 		local a, b = s.a, s.b
-		local mid = (a + b) / 2
-		local len = (b - a).Magnitude + s.width
-		block(f, "PathGrout", Vector3.new(s.width + 2, 0.2, len), CFrame.lookAt(Vector3.new(mid.X, y + 0.1, mid.Y), Vector3.new(b.X, y + 0.1, b.Y)), GROUT)
-	end
-	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
-	for _, s in segments do
-		for _, p in { s.a, s.b } do
-			minX, maxX = math.min(minX, p.X - s.width), math.max(maxX, p.X + s.width)
-			minZ, maxZ = math.min(minZ, p.Y - s.width), math.max(maxZ, p.Y + s.width)
-		end
-	end
-	for i = math.floor(minX / G), math.ceil(maxX / G) do
-		for j = math.floor(minZ / G), math.ceil(maxZ / G) do
-			local x, z = i * G, j * G
-			local d = dist(segments, Vector2.new(x, z))
-			if d < -1.5 then
-				slab(f, x, z, y, rng)
-			elseif d < 1.5 then
-				kerb(f, x, z, y, i, j)
+		local len = (b - a).Magnitude
+		local dir = (b - a).Unit
+		local side = Vector2.new(-dir.Y, dir.X)
+		local frame = CFrame.lookAt(Vector3.new(a.X, y, a.Y), Vector3.new(b.X, y, b.Y))
+		-- the track itself, running a little past both ends so crossings join up
+		flat(f, "Path", Vector3.new(s.width - 1.2, 0.1, len + s.width - 1.2), frame * CFrame.new(0, 0.05, -len / 2), DIRT, Enum.Material.Ground)
+		-- soft edges: overlapping patches of dirt that wander in and out a little
+		local n = math.floor(len / 2.5)
+		for i = 0, n do
+			local t = i / math.max(n, 1)
+			local p = a + (b - a) * t
+			for _, sgn in { -1, 1 } do
+				local off = (s.width / 2 - 0.6) + rng:NextNumber(-0.5, 0.6)
+				local c = p + side * sgn * off
+				local w = rng:NextNumber(1.6, 3.2)
+				flat(f, "PathEdge", Vector3.new(w, 0.08, rng:NextNumber(2.2, 3.6)), CFrame.new(c.X, y + 0.04, c.Y) * CFrame.Angles(0, math.atan2(dir.X, dir.Y) + rng:NextNumber(-0.35, 0.35), 0), if rng:NextNumber() < 0.5 then DIRT else DIRT2, Enum.Material.Ground)
+				-- now and then a flat stone at the edge
+				if rng:NextNumber() < 0.12 then
+					local st = p + side * sgn * (s.width / 2 + rng:NextNumber(0, 0.8))
+					local r = rng:NextNumber(0.7, 1.3)
+					flat(f, "PathStone", Vector3.new(r * 1.4, 0.3, r), CFrame.new(st.X, y + 0.1, st.Y) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0), STONE, Enum.Material.Slate)
+				end
 			end
+		end
+		-- a few darker worn patches along the middle
+		for _ = 1, math.floor(len / 12) do
+			local p = a + (b - a) * rng:NextNumber(0.05, 0.95) + side * rng:NextNumber(-s.width / 5, s.width / 5)
+			flat(f, "PathWear", Vector3.new(rng:NextNumber(2, 3.5), 0.11, rng:NextNumber(3, 5)), CFrame.new(p.X, y + 0.06, p.Y) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0), DIRT2, Enum.Material.Ground)
 		end
 	end
 	f.Parent = parent

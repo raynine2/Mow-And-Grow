@@ -85,7 +85,7 @@ local function toolShop(m: Instance, info)
 		PropKit.stall(m, CFrame.new(28, 0, -55) * CFrame.Angles(0, math.rad(90), 0), "TOOL SHOP", Color3.fromRGB(255, 80, 80), "Tools")
 		return
 	end
-	PropKit.cabinSign(shop, at, 1, "TOOL SHOP", PropKit.TEXT)
+	PropKit.cabinSign(shop, at, 1, "TOOL SHOP", PropKit.TITLE)
 	for i = 2, #Config.TOOLS do
 		local spot = FRAME_SPOTS[i - 1]
 		if spot then
@@ -108,7 +108,7 @@ local function bagStand(m: Instance)
 		PropKit.stall(stand, at, "BAGS", Color3.fromRGB(90, 190, 90), "Bags")
 		return
 	end
-	PropKit.facePanel(stand, at, Vector3.new(0, 10.6, 0.9), Vector2.new(9.4, 2.2), "BAGS & GEAR", PropKit.TEXT)
+	PropKit.facePanel(stand, at, Vector3.new(0, 10.6, 0.9), Vector2.new(9.4, 2.2), "BAGS & GEAR", PropKit.TITLE)
 	PropKit.collider(stand, at, Vector3.new(0, 3.7, 0.7), Vector3.new(14, 7.4, 3))
 	-- the bags on their stumps (model studs: stump tops at y 2, z -4.5), each with its price in front
 	for i, bag in Config.BAGS do
@@ -149,7 +149,7 @@ local function garageBay(m: Instance, info)
 	local at = CFrame.lookAt(pos, pos + Vector3.xAxis)
 	local g = PropKit.folder("Garage", m)
 	if Models.place("party_booth", g, at, 1.1, true) then
-		PropKit.facePanel(g, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "GARAGE", PropKit.TEXT, 1.1)
+		PropKit.facePanel(g, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "GARAGE", PropKit.TITLE, 1.1)
 		for _, x in { -7.2, 7.2 } do
 			PropKit.collider(g, at, Vector3.new(x, 5, 6.6), Vector3.new(1.4, 10, 1.4), 1.1)
 			PropKit.collider(g, at, Vector3.new(x, 1.2, 0), Vector3.new(0.8, 2.4, 14), 1.1)
@@ -207,7 +207,7 @@ local function shredder(m: Instance, info): boolean
 	-- the 2X COINS board next to the machine (opens the store)
 	local signAt = CFrame.lookAt(Vector3.new(-38, FLOOR_Y, -50), Vector3.new(-6, FLOOR_Y, -68))
 	if Models.place("start_sign", s, signAt, 0.45, true) then
-		PropKit.facePanel(s, signAt, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "2X COINS", PropKit.TEXT, 0.45)
+		PropKit.facePanel(s, signAt, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "2X COINS", PropKit.TITLE, 0.45)
 		PropKit.facePanel(s, signAt, Vector3.new(0, 6.1, -0.62), Vector2.new(27, 1.5), "BUY!", PropKit.PRICE, 0.45)
 		PropKit.prompt(promptSpot(s, signAt * CFrame.new(0, 3, -1.5), "CoinsSign"), "Open", "2x Coins", "Store", 10)
 	end

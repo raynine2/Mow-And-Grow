@@ -83,7 +83,7 @@ local function arch(parent: Instance, cf: CFrame, text: string)
 	if not put(parent, "welcome_arch", cf) then
 		return
 	end
-	PropKit.facePanel(parent, cf, Vector3.new(0, 15, -0.05), Vector2.new(17, 3.4), text, PropKit.TEXT)
+	PropKit.facePanel(parent, cf, Vector3.new(0, 14.7, -0.72), Vector2.new(17, 3.6), text, PropKit.TITLE)
 	-- the pillars are solid; the way under the arch stays open
 	for _, x in { -11, 11 } do
 		PropKit.collider(parent, cf, Vector3.new(x, 9, -0.5), Vector3.new(4, 18, 3))

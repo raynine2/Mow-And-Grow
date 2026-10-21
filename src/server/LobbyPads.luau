@@ -338,7 +338,7 @@ function LobbyPads.startBoard(parent: Instance, at: CFrame, title: string, subti
 	gui.LightInfluence = 0.6
 	gui.Parent = board
 	-- just the title, big and clean (the pads' signs say the rest)
-	label(gui, title, UDim2.fromScale(0.88, 0.74), UDim2.fromScale(0.06, 0.13), PropKit.TEXT, 5)
+	label(gui, title, UDim2.fromScale(0.88, 0.74), UDim2.fromScale(0.06, 0.13), PropKit.TITLE, 5)
 	m.Parent = parent
 end
 

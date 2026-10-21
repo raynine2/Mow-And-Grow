@@ -343,6 +343,24 @@ function Models.loadAll(timeout: number?)
 	if voxels > 0 then
 		print(("[Models] %d voxel props in use"):format(voxels))
 	end
+	-- the hub buildings and props built from parts in Chop A Forest's style (server/HubKit) replace those
+	local kit = 0
+	if Config.WORLD_GEN then
+		local HubKit = require(script.Parent.HubKit)
+		for _, name in HubKit.NAMES do
+			local m = HubKit.build(name)
+			if m then
+				m.Parent = folder
+				local old = templates[name]
+				if old then
+					old:Destroy()
+				end
+				templates[name] = m
+				kit += 1
+			end
+		end
+		print(("[Models] %d hub models built from parts (HubKit)"):format(kit))
+	end
 end
 
 function Models.has(name: string): boolean

@@ -1,5 +1,5 @@
 -- The lobby in the generated world's style (Config.WORLD_GEN): instead of the Terrain clearing, a voxel island
--- like the run's valleys. A flat plaza (y = 0, where the lobby buildings stand) with warm studded paths between
+-- like the run's valleys. A flat grass plaza (y = 0, where the lobby buildings stand) with dirt paths between
 -- the spawn, the party pads and the cabins; grass terraces rising in 2-stud steps toward a ring of big voxel
 -- trees (server/VoxelModels); a rock cliff down to the sea; the meadow's windmill turning on the hill behind the
 -- party pads; bushes, rocks, flowers and grass blades everywhere; WorldGen's lighting.
@@ -19,6 +19,7 @@ local SEA = -6
 
 local MEADOW = Zones.list[1].palette
 local SAND = Color3.fromRGB(226, 200, 140)
+local LAWN = Color3.fromRGB(104, 172, 66) -- Chop A Forest's lawn: Roblox's Grass material in a soft green
 
 local count = 0
 local function tick()
@@ -90,11 +91,11 @@ end
 
 local function colorAt(x: number, z: number, h: number): (Color3, boolean)
 	if h == 0 then
-		-- (the paths themselves are cobblestones laid on top: server/HubPaths)
-		return if hash(x // 16, z // 16, 3) < 0.5 then MEADOW.ground else MEADOW.ground2, false
+		-- one even lawn (the dirt paths are laid on top: server/HubPaths)
+		return LAWN, false
 	end
-	local base = if (h // 2) % 2 == 0 then MEADOW.ground else MEADOW.ground2
-	return base:Lerp(Color3.new(0, 0, 0), math.min(0.25, h * 0.012)), false
+	local base = if (h // 2) % 2 == 0 then LAWN else LAWN:Lerp(MEADOW.ground2, 0.5)
+	return base:Lerp(Color3.new(0, 0, 0), math.min(0.2, h * 0.01)), false
 end
 
 -- The ground: rows of same-height, same-colour cells merged into long blocks (a studded top on a dirt body).
@@ -115,10 +116,11 @@ local function ground(world: Instance)
 			local x1 = iEnd * CELL
 			local w = x1 - x0
 			local h = runH :: number
-			local top = block(f, "Floor", Vector3.new(w, 1.2, CELL), CFrame.new((x0 + x1) / 2, h - 0.6, z), runC :: Color3, true)
-			top.Material = if runPath then Enum.Material.Plastic else Enum.Material.SmoothPlastic
-			top.TopSurface = if runPath then Enum.SurfaceType.Studs else Enum.SurfaceType.Smooth
-			block(f, "FloorSide", Vector3.new(w, h - 1.2 - FLOOR, CELL), CFrame.new((x0 + x1) / 2, (h - 1.2 + FLOOR) / 2, z), if h > 4 then MEADOW.rock:Lerp(Color3.new(0, 0, 0), 0.1) else side)
+			-- textured grass on top (no studs), dirt or rock below, like Chop A Forest's ground
+			local top = block(f, "Floor", Vector3.new(w, 1.2, CELL), CFrame.new((x0 + x1) / 2, h - 0.6, z), runC :: Color3, false)
+			top.Material = Enum.Material.Grass
+			local body = block(f, "FloorSide", Vector3.new(w, h - 1.2 - FLOOR, CELL), CFrame.new((x0 + x1) / 2, (h - 1.2 + FLOOR) / 2, z), if h > 4 then MEADOW.rock:Lerp(Color3.new(0, 0, 0), 0.1) else side)
+			body.Material = if h > 4 then Enum.Material.Slate else Enum.Material.Ground
 			runStart = nil
 		end
 		for i = -n, n do

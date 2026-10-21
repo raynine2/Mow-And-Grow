@@ -154,7 +154,7 @@ local function classCabin(world: Instance): TextLabel
 	if not cabin(m, at, 1) then
 		return oldClassBooth(world)
 	end
-	cabinSign(m, at, 1, "CLASSES", PropKit.TEXT)
+	cabinSign(m, at, 1, "CLASSES", PropKit.TITLE)
 	outline(m, at, Vector3.new(0, 0, -16), 16, 6, purple)
 	local board = PropKit.part({ size = Vector3.new(14, 6.4, 0.3), cf = at * CFrame.new(0, 5.8, 9.3), color = Color3.fromRGB(44, 30, 60), parent = m, name = "StockBoard" })
 	local label = PropKit.surfaceText(board, "Classes in stock", Color3.new(1, 1, 1))
@@ -190,7 +190,7 @@ local function garageCabin(world: Instance)
 		oldGarage(world)
 		return
 	end
-	cabinSign(m, at, s, "GARAGE", PropKit.TEXT)
+	cabinSign(m, at, s, "GARAGE", PropKit.TITLE)
 	local spot = at * CFrame.new(0, 0, -18 * s)
 	local floor: BasePart
 	if Models.place("turntable", m, spot, 1) then
@@ -233,7 +233,7 @@ local function rewardsStall(world: Instance)
 		oldRewardsChest(world)
 		return
 	end
-	PropKit.facePanel(m, at, Vector3.new(0, 13.5, -0.6), Vector2.new(16, 3), "REWARDS", PropKit.TEXT)
+	PropKit.facePanel(m, at, Vector3.new(0, 13.5, -0.6), Vector2.new(16, 3), "REWARDS", PropKit.TITLE)
 	-- seen from the front the daily bay is on the left (+X), the group bay on the right
 	local daily = ("DAILY REWARD\n+%d Gems\nEvery %d hours"):format(Config.DAILY_GEMS, Config.DAILY_COOLDOWN // 3600)
 	PropKit.facePanel(m, at, Vector3.new(3.9, 6.6, 2.3), Vector2.new(6, 3.4), daily, Color3.new(1, 1, 1))
@@ -259,7 +259,7 @@ local function leaderboard(world: Instance): TextLabel
 	local s = 1.25
 	local body: TextLabel
 	if Models.place("leaderboard", m, at, s, true) then
-		PropKit.facePanel(m, at, Vector3.new(0, 10.65, -0.39), Vector2.new(10, 1.3), "TOP MOWERS", PropKit.TEXT, s)
+		PropKit.facePanel(m, at, Vector3.new(0, 10.65, -0.39), Vector2.new(10, 1.3), "TOP MOWERS", PropKit.TITLE, s)
 		body = PropKit.facePanel(m, at, Vector3.new(0, 6.6, -0.34), Vector2.new(9.6, 6.2), "", Color3.new(1, 1, 1), s)
 		PropKit.collider(m, at, Vector3.new(0, 7, 0), Vector3.new(13, 14, 1.6), s)
 	else
@@ -281,7 +281,7 @@ local function bestTimesBoard(world: Instance): TextLabel?
 	if not Models.place("trophy_board", m, at, s, true) then
 		return nil
 	end
-	PropKit.facePanel(m, at, Vector3.new(0, 10.9, -0.3), Vector2.new(10.4, 1.6), "BEST TIMES", PropKit.TEXT, s)
+	PropKit.facePanel(m, at, Vector3.new(0, 10.9, -0.3), Vector2.new(10.4, 1.6), "BEST TIMES", PropKit.TITLE, s)
 	local body = PropKit.facePanel(m, at, Vector3.new(0, 6.3, -0.3), Vector2.new(10.2, 6.6), "", Color3.new(1, 1, 1), s)
 	body.TextXAlignment = Enum.TextXAlignment.Left
 	body.TextYAlignment = Enum.TextYAlignment.Top

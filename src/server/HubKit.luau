@@ -554,6 +554,105 @@ local function mowerStatue(m: Model)
 end
 
 -------------------------------------------------------------------------------------------------------------
+-- trees, bushes and rocks like Chop A Forest's: a round trunk with root flares and a canopy of chunky blocks
+-- turned every which way, in two or three shades
+-------------------------------------------------------------------------------------------------------------
+local CANOPY = {
+	meadow = { Color3.fromRGB(78, 150, 58), Color3.fromRGB(98, 172, 66), Color3.fromRGB(122, 188, 78) },
+	blossom = { Color3.fromRGB(244, 164, 204), Color3.fromRGB(250, 190, 222), Color3.fromRGB(236, 140, 186) },
+	autumn = { Color3.fromRGB(232, 150, 52), Color3.fromRGB(222, 104, 44), Color3.fromRGB(244, 194, 70) },
+	pine = { Color3.fromRGB(46, 112, 66), Color3.fromRGB(58, 128, 74), Color3.fromRGB(40, 98, 58) },
+}
+local TRUNK = Color3.fromRGB(118, 80, 50)
+
+local function treeModel(name: string): Model
+	local m = Instance.new("Model")
+	m.Name = name
+	return m
+end
+
+-- A tree standing at `foot` (scale 1 is about 15 studs tall). kind: meadow, blossom, autumn or pine.
+function HubKit.tree(parent: Instance, foot: Vector3, scale: number, kind: string, rng: Random): Model
+	local m = treeModel("Tree")
+	local k = scale
+	local base = CFrame.new(foot) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	local cols = CANOPY[kind] or CANOPY.meadow
+	local trunkH = (if kind == "pine" then 5 else 7.5) * k
+	local trunk = P(m, "Trunk", Vector3.new(trunkH, 1.7 * k, 1.7 * k), base * CFrame.new(0, trunkH / 2, 0) * UP, TRUNK, M.Wood, { shape = Enum.PartType.Cylinder, collide = true })
+	trunk.CanQuery = false
+	-- root flares: four wedges sloping down and out
+	for i = 0, 3 do
+		local w = Instance.new("WedgePart")
+		w.Name = "Root"
+		w.Anchored = true
+		w.CanCollide = false
+		w.CanQuery = false
+		w.CanTouch = false
+		w.Size = Vector3.new(0.8 * k, 1.4 * k, 1.3 * k)
+		w.CFrame = base * CFrame.Angles(0, i * math.pi / 2, 0) * CFrame.new(0, 0.7 * k, 1.35 * k) * CFrame.Angles(0, math.pi, 0)
+		w.Color = TRUNK
+		w.Material = M.Wood
+		w.Parent = m
+	end
+	if kind == "pine" then
+		-- stacked square tiers, each turned 45 degrees from the last, getting smaller toward the top
+		local y = trunkH * 0.55
+		for t = 0, 4 do
+			local s = (8.4 - t * 1.55) * k
+			local h = 2.6 * k
+			P(m, "Leaves", Vector3.new(s, h, s), base * CFrame.new(0, y + h / 2, 0) * CFrame.Angles(0, (t % 2) * math.pi / 4, 0), cols[(t % 3) + 1], M.SmoothPlastic)
+			y += h * 0.78
+		end
+		P(m, "Leaves", Vector3.new(1.4 * k, 1.8 * k, 1.4 * k), base * CFrame.new(0, y + 0.9 * k, 0), cols[1], M.SmoothPlastic)
+	else
+		-- the canopy: a big middle block and a ring of smaller ones round it, all turned a little
+		local cy = trunkH + 2.2 * k
+		P(m, "Leaves", Vector3.new(7, 5.6, 7) * k, base * CFrame.new(0, cy, 0) * CFrame.Angles(rng:NextNumber(-0.25, 0.25), rng:NextNumber(0, 1.5), rng:NextNumber(-0.25, 0.25)), cols[1], M.SmoothPlastic)
+		for i = 0, 5 do
+			local a = i / 6 * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
+			local r = rng:NextNumber(2.4, 3.4) * k
+			local sz = rng:NextNumber(3.6, 5) * k
+			local off = Vector3.new(math.cos(a) * r, rng:NextNumber(-1.4, 1.8) * k, math.sin(a) * r)
+			P(m, "Leaves", Vector3.new(sz, sz * 0.85, sz), base * CFrame.new(Vector3.new(0, cy, 0) + off) * CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(0, 1.5), rng:NextNumber(-0.5, 0.5)), cols[(i % 3) + 1], M.SmoothPlastic)
+		end
+		P(m, "Leaves", Vector3.new(4.4, 3.6, 4.4) * k, base * CFrame.new(0, cy + 3 * k, 0) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 1.5), rng:NextNumber(-0.3, 0.3)), cols[2], M.SmoothPlastic)
+	end
+	m.Parent = parent
+	return m
+end
+
+-- a bush: a few chunky green blocks
+function HubKit.bush(parent: Instance, foot: Vector3, scale: number, rng: Random, flowers: boolean?): Model
+	local m = treeModel("Bush")
+	local cols = CANOPY.meadow
+	for i = 0, 3 do
+		local sz = rng:NextNumber(2.2, 3.2) * scale
+		local off = Vector3.new(rng:NextNumber(-1.2, 1.2), sz * 0.4, rng:NextNumber(-1.2, 1.2)) * Vector3.new(scale, 1, scale)
+		P(m, "Leaves", Vector3.new(sz, sz * 0.8, sz), CFrame.new(foot + off) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 1.5), rng:NextNumber(-0.3, 0.3)), cols[(i % 3) + 1], M.SmoothPlastic, { collide = i == 0 })
+	end
+	if flowers then
+		for i = 0, 3 do
+			local off = Vector3.new(rng:NextNumber(-1.4, 1.4) * scale, 2.2 * scale, rng:NextNumber(-1.4, 1.4) * scale)
+			P(m, "Flower", Vector3.new(0.5, 0.5, 0.5), CFrame.new(foot + off), FLOWERS[(i % #FLOWERS) + 1], M.SmoothPlastic, { shape = Enum.PartType.Ball, shadow = false })
+		end
+	end
+	m.Parent = parent
+	return m
+end
+
+-- a rock: two or three grey slabs leaning together
+function HubKit.rock(parent: Instance, foot: Vector3, scale: number, rng: Random): Model
+	local m = treeModel("Rock")
+	for i = 0, rng:NextInteger(1, 2) do
+		local sz = Vector3.new(rng:NextNumber(2, 3.4), rng:NextNumber(1.4, 2.4), rng:NextNumber(2, 3)) * scale
+		local off = Vector3.new(rng:NextNumber(-1, 1) * scale, sz.Y * 0.35, rng:NextNumber(-1, 1) * scale)
+		P(m, "Rock", sz, CFrame.new(foot + off) * CFrame.Angles(rng:NextNumber(-0.3, 0.3), rng:NextNumber(0, 3), rng:NextNumber(-0.3, 0.3)), if i % 2 == 0 then STONE else STONE2, M.Slate, { collide = i == 0 })
+	end
+	m.Parent = parent
+	return m
+end
+
+-------------------------------------------------------------------------------------------------------------
 local BUILDERS: { [string]: (Model) -> () } = {
 	log_cabin = logCabin,
 	shredder = shredder,

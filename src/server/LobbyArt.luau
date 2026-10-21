@@ -1,13 +1,10 @@
--- The lobby in the generated world's style (Config.WORLD_GEN): instead of the Terrain clearing, a voxel island
--- like the run's valleys. A flat grass plaza (y = 0, where the lobby buildings stand) with dirt paths between
--- the spawn, the party pads and the cabins; grass terraces rising in 2-stud steps toward a ring of big voxel
--- trees (server/VoxelModels); a rock cliff down to the sea; the meadow's windmill turning on the hill behind the
--- party pads; bushes, rocks, flowers and grass blades everywhere; WorldGen's lighting.
+-- The lobby in Chop A Forest's style (Config.WORLD_GEN): a flat island of textured grass with dirt paths between
+-- the spawn, the party pads and the cabins, a hedge of bushes and rocks round the plaza, a thick wood of
+-- part-built trees all round (server/HubKit), a cliff down to the sea, and WorldGen's lighting.
 -- LobbyBuilder calls LobbyArt.build(world) in place of its Terrain ground and forest.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
-local VoxelModels = require(script.Parent.VoxelModels)
 
 local LobbyArt = {}
 
@@ -85,8 +82,8 @@ local function heightAt(x: number, z: number): number?
 	if d + wob > REACH - 8 then
 		return nil
 	end
-	local rise = (d - CLEARING) / 9 + (math.sin(x * 0.05) + math.cos(z * 0.043)) * 1.2
-	return math.clamp(math.floor(rise) * 2, 2, 22)
+	-- flat grass all the way to the cliff, like Chop A Forest's clearing in the woods (no blocky terraces)
+	return 0
 end
 
 local function colorAt(x: number, z: number, h: number): (Color3, boolean)
@@ -156,30 +153,25 @@ local function groundY(world: Instance, x: number, z: number): number?
 	return hit and hit.Position.Y
 end
 
--- Big voxel trees on the terraces all round, bushes and rocks along the plaza's edge, the windmill on the hill.
+-- A thick wood of part-built trees all round (server/HubKit), bushes and rocks along the plaza's edge.
 local function nature(world: Instance)
 	local f = Instance.new("Folder")
 	f.Name = "Visuals"
 	f.Parent = world
 	local rng = Random.new(31)
-	local kinds = { "meadow", "meadow", "meadow", "blossom", "pine", "wheat" }
+	local HubKit = require(script.Parent.HubKit)
+	local kinds = { "meadow", "meadow", "meadow", "blossom", "pine", "autumn" }
 	local step = 20
 	for x = -REACH, REACH, step do
 		for z = -REACH, REACH, step do
 			local px, pz = x + rng:NextNumber(-6, 6), z + rng:NextNumber(-6, 6)
 			local d = math.max(math.abs(px), math.abs(pz))
-			-- keep the windmill's hill open
-			local nearMill = Vector2.new(px - 52, pz - 132).Magnitude < 58
-			if d > CLEARING + 12 and d < REACH - 22 and not nearMill and rng:NextNumber() < 0.85 then
+			if d > CLEARING + 12 and d < REACH - 22 and rng:NextNumber() < 0.85 then
 				local y = groundY(world, px, pz)
 				if y then
 					local kind = kinds[rng:NextInteger(1, #kinds)]
-					local scale = rng:NextNumber(1.0, 1.5) * (if d < CLEARING + 30 then 0.9 else 1.15)
-					local name = "Tree_" .. kind .. "_" .. rng:NextInteger(1, 3)
-					local foot = Vector3.new(px, y, pz)
-					if VoxelModels.place(f, name, foot, { scale = scale, yaw = rng:NextInteger(0, 3) * math.pi / 2 }) then
-						VoxelModels.blocker(f, Vector3.new(4.8 * scale, 20 * scale, 4.8 * scale), CFrame.new(foot + Vector3.new(0, 10 * scale, 0)))
-					end
+					local scale = rng:NextNumber(1.1, 1.6) * (if d < CLEARING + 30 then 0.95 else 1.2)
+					HubKit.tree(f, Vector3.new(px, y, pz), scale, kind, rng)
 					tick()
 				end
 			end
@@ -191,57 +183,11 @@ local function nature(world: Instance)
 			if math.abs(t) > 10 and rng:NextNumber() < 0.8 then
 				local y = groundY(world, sideP.X, sideP.Y)
 				if y then
-					local isRock = rng:NextNumber() < 0.2
-					local name = if isRock then "Rock_meadow" .. (if rng:NextNumber() < 0.4 then "_big" else "") elseif rng:NextNumber() < 0.25 then "Bush_blossom" else "Bush_meadow"
-					VoxelModels.place(f, name, Vector3.new(sideP.X, y - 0.2, sideP.Y), { scale = rng:NextNumber(0.8, 1.2), yaw = rng:NextInteger(0, 3) * math.pi / 2, collide = true })
-				end
-			end
-		end
-	end
-	-- the windmill on the hill behind the party pads, sails turning (client/Fx spins parts with Spin)
-	local my = groundY(world, 52, 132)
-	if my and VoxelModels.has("Landmark_windmill") then
-		local k = 1.15
-		local foot = Vector3.new(52, my, 132)
-		local body = VoxelModels.place(f, "Landmark_windmill", foot, { scale = k, yaw = math.pi + 0.5, collide = true }) :: MeshPart
-		local sails = VoxelModels.place(f, "Landmark_windmill_sails", foot, { scale = k })
-		if sails then
-			sails.CFrame = body.CFrame * CFrame.new(0, -body.Size.Y / 2 + 25.8 * k, 14.4 * k)
-			sails:SetAttribute("Spin", 0.5)
-			sails:SetAttribute("SpinAxis", "Z")
-		end
-	end
-end
-
--- Flowers and grass blades on the grass (not on the paths), like the valleys' ground cover.
-local FLOWERS = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 220, 50), Color3.fromRGB(255, 120, 180), Color3.fromRGB(120, 180, 255) }
-local function cover(world: Instance)
-	local f = Instance.new("Folder")
-	f.Name = "Cover"
-	f.Parent = world
-	local blade = MEADOW.grass[2]
-	for x = -REACH + 4, REACH - 4, 6 do
-		for z = -REACH + 4, REACH - 4, 6 do
-			local r = hash(x, z, 9)
-			if r < 0.42 then
-				local px, pz = x + (hash(x, z, 1) - 0.5) * 4, z + (hash(x, z, 2) - 0.5) * 4
-				local h = heightAt(px, pz)
-				if h and not (h == 0 and pathDist(Vector2.new(px, pz)) < 9) then
-					local d = math.max(math.abs(px), math.abs(pz))
-					-- the plaza itself stays clean grass; flowers and blades only out on the terraces
-					local busy = h == 0 and d < CLEARING + 2
-					if not busy then
-						if r < 0.08 then
-							local col = FLOWERS[1 + math.floor(hash(x, z, 4) * #FLOWERS)]
-							deco(block(f, "Stem", Vector3.new(0.3, 1.2, 0.3), CFrame.new(px, h + 0.6, pz), Color3.fromRGB(60, 150, 50)))
-							deco(block(f, "Flower", Vector3.new(0.9, 0.5, 0.9), CFrame.new(px, h + 1.3, pz), col, true))
-						else
-							for k = 1, 2 do
-								local ox, oz = (hash(x + k, z, 5) - 0.5) * 2, (hash(x, z + k, 6) - 0.5) * 2
-								local bh = 0.8 + hash(x, z, 7 + k) * 1.2
-								deco(block(f, "Blade", Vector3.new(0.35, bh, 0.35), CFrame.new(px + ox, h + bh / 2, pz + oz), blade:Lerp(Color3.new(1, 1, 0.6), hash(x, z, k) * 0.15)))
-							end
-						end
+					local foot = Vector3.new(sideP.X, y, sideP.Y)
+					if rng:NextNumber() < 0.2 then
+						HubKit.rock(f, foot, rng:NextNumber(0.8, 1.2), rng)
+					else
+						HubKit.bush(f, foot, rng:NextNumber(0.9, 1.3), rng, rng:NextNumber() < 0.3)
 					end
 				end
 			end
@@ -269,7 +215,6 @@ function LobbyArt.build(world: Instance)
 	end
 	require(script.Parent.HubPaths).lay(world, segments, 0, 11)
 	nature(world)
-	cover(world)
 	bounds(world)
 	require(script.Parent.WorldGen).lighting()
 end

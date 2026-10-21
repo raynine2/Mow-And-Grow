@@ -124,9 +124,12 @@ task.spawn(function()
 end)
 
 RunService.RenderStepped:Connect(function()
+	outline.Enabled = target ~= nil
 	if not target then
 		for _, p in arrow:GetChildren() do
-			(p :: BasePart).Transparency = 1
+			if p:IsA("BasePart") then
+				p.Transparency = 1
+			end
 		end
 		return
 	end
@@ -134,6 +137,9 @@ RunService.RenderStepped:Connect(function()
 	local bob = math.abs(math.sin(t * 3.2)) * 1.6
 	local base = CFrame.new(target + Vector3.new(0, 7 + bob, 0)) * CFrame.Angles(0, t * 1.5, 0)
 	for _, p in arrow:GetChildren() do
+		if not p:IsA("BasePart") then
+			continue -- the outline Highlight
+		end
 		local part = p :: BasePart
 		if part == ring then
 			local s = 7 + math.sin(t * 4) * 1

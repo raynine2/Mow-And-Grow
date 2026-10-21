@@ -200,7 +200,7 @@ function RunWorld.build()
 	require(script.Parent.WorldGen).lighting()
 	clearVillage(w)
 	texturedGround(w)
-	partNature(w)
+	-- (the saved world keeps its voxel trees, bushes and rocks: partNature would swap them for part-built ones)
 
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
 	paths(w)

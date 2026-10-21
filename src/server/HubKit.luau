@@ -603,10 +603,22 @@ end
 -- A tree standing at `foot` (scale 1 is about 15 studs tall). kind: meadow, blossom, autumn, pine, swamp, frost,
 -- ember. The Blender tree (a MeshPart named Tree_<kind>, which client/Life sways) with an invisible trunk
 -- blocker, or a part-built one when the models aren't imported.
+-- The voxel trees, bushes and rocks (tools/blender/voxel, the world's own: Tree_<area>_1..3, Bush_<area>,
+-- Rock_<area>[_big]) come first: that's the look of the trees everywhere.
+local VOXEL_AREA = { meadow = "meadow", blossom = "blossom", autumn = "wheat", pine = "pine", swamp = "swamp", frost = "frost", ember = "ember" }
+local USE_SMOOTH_NATURE = false -- the smooth cartoon trees (tools/blender/smooth) instead of the voxel ones
+
 function HubKit.tree(parent: Instance, foot: Vector3, scale: number, kind: string, rng: Random): Instance
 	local list = SMOOTH_TREES[kind] or SMOOTH_TREES.meadow
 	local VM = voxelModels()
-	if VM.has(list[1]) then
+	local vname = "Tree_" .. (VOXEL_AREA[kind] or "meadow") .. "_" .. rng:NextInteger(1, 3)
+	if not USE_SMOOTH_NATURE and VM.has(vname) then
+		local s = scale * 0.75 -- (a voxel tree is about 43 studs tall at its own size)
+		local mesh = VM.place(parent, vname, foot, { scale = s, yaw = rng:NextInteger(0, 3) * math.pi / 2 })
+		VM.blocker(parent, Vector3.new(4.8 * s, 20 * s, 4.8 * s), CFrame.new(foot + Vector3.new(0, 10 * s, 0)))
+		return mesh :: Instance
+	end
+	if USE_SMOOTH_NATURE and VM.has(list[1]) then
 		local name = list[rng:NextInteger(1, #list)]
 		local mesh = VM.place(parent, name, foot, { scale = scale, yaw = rng:NextNumber(0, math.pi * 2), name = "Tree_" .. kind })
 		VM.blocker(parent, Vector3.new(1.8, 9, 1.8) * scale, CFrame.new(foot + Vector3.new(0, 4.5 * scale, 0)))
@@ -666,8 +678,12 @@ end
 -- a bush: a few chunky green blocks
 function HubKit.bush(parent: Instance, foot: Vector3, scale: number, rng: Random, flowers: boolean?, kind: string?): Instance
 	local VM = voxelModels()
+	local vname = "Bush_" .. (VOXEL_AREA[kind or "meadow"] or "meadow")
+	if not USE_SMOOTH_NATURE and VM.has(vname) then
+		return VM.place(parent, vname, foot - Vector3.new(0, 0.2, 0), { scale = scale * 0.6, yaw = rng:NextInteger(0, 3) * math.pi / 2, collide = true }) :: Instance
+	end
 	local sname = if flowers and (kind == nil or kind == "meadow") then "S_bush_2" else (SMOOTH_BUSHES[kind or "meadow"] or "S_bush_1")
-	if VM.has(sname) then
+	if USE_SMOOTH_NATURE and VM.has(sname) then
 		return VM.place(parent, sname, foot, { scale = scale, yaw = rng:NextNumber(0, math.pi * 2), name = "Bush_" .. (kind or "meadow"), collide = true }) :: Instance
 	end
 	local m = treeModel("Bush")
@@ -690,8 +706,12 @@ end
 -- a rock: two or three grey slabs leaning together
 function HubKit.rock(parent: Instance, foot: Vector3, scale: number, rng: Random): Instance
 	local VM = voxelModels()
+	local vname = if rng:NextNumber() < 0.4 then "Rock_meadow_big" else "Rock_meadow"
+	if not USE_SMOOTH_NATURE and VM.has(vname) then
+		return VM.place(parent, vname, foot, { scale = scale * 0.45, yaw = rng:NextInteger(0, 3) * math.pi / 2, collide = true }) :: Instance
+	end
 	local sname = if rng:NextNumber() < 0.4 then "S_rock_2" else "S_rock_1"
-	if VM.has(sname) then
+	if USE_SMOOTH_NATURE and VM.has(sname) then
 		return VM.place(parent, sname, foot, { scale = scale * 0.8, yaw = rng:NextNumber(0, math.pi * 2), name = "Rock", collide = true }) :: Instance
 	end
 	local m = treeModel("Rock")

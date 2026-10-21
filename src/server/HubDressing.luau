@@ -201,7 +201,7 @@ function HubDressing.lobby(world: Instance)
 		local rng = Random.new(if sx < 0 then 3 else 4)
 		local HubKit = require(script.Parent.HubKit)
 		for _, p in { Vector3.new(45, 0, 2), Vector3.new(56, 0, 12), Vector3.new(44, 0, 15), Vector3.new(57, 0, -2), Vector3.new(56, 0, -56), Vector3.new(46, 0, -58), Vector3.new(57, 0, 56), Vector3.new(30, 0, 56), Vector3.new(16, 0, 57) } do
-			HubKit.tree(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(1.0, 1.25), "meadow", rng)
+			HubKit.tree(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(0.75, 0.9), "meadow", rng)
 		end
 		for _, p in { Vector3.new(38, 0, -1), Vector3.new(38, 0, 12), Vector3.new(22, 0, 56), Vector3.new(50, 0, -50), Vector3.new(36, 0, 58) } do
 			HubKit.bush(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(1.0, 1.3), rng, rng:NextNumber() < 0.5)
@@ -260,7 +260,7 @@ function yard(world: Instance, f: Instance)
 					local near = workspace:Raycast(Vector3.new(px + 5, 40, pz + 5), Vector3.new(0, -60, 0), ray)
 					local near2 = workspace:Raycast(Vector3.new(px - 5, 40, pz - 5), Vector3.new(0, -60, 0), ray)
 					if near and near2 and math.abs(near.Position.Y) < 1 and math.abs(near2.Position.Y) < 1 then
-						HubKit.tree(trees, hit.Position, rng:NextNumber(1.3, 1.55), "meadow", rng)
+						HubKit.tree(trees, hit.Position, rng:NextNumber(1.0, 1.25), "meadow", rng)
 					end
 				end
 			end

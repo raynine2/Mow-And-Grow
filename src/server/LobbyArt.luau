@@ -165,7 +165,7 @@ local function nature(world: Instance)
 	for _, side in { { Vector3.new(-e, 0, -e), Vector3.new(e, 0, -e) }, { Vector3.new(e, 0, -e), Vector3.new(e, 0, e) }, { Vector3.new(e, 0, e), Vector3.new(-e, 0, e) }, { Vector3.new(-e, 0, e), Vector3.new(-e, 0, -e) } } do
 		HubKit.fence(f, side[1], side[2])
 	end
-	local step = 15
+	local step = 20 -- (voxel trees are wide)
 	for x = -REACH, REACH, step do
 		for z = -REACH, REACH, step do
 			local px, pz = x + rng:NextNumber(-3, 3), z + rng:NextNumber(-3, 3)
@@ -174,7 +174,7 @@ local function nature(world: Instance)
 				local y = groundY(world, px, pz)
 				if y then
 					local kind = if d > CLEARING + 40 and rng:NextNumber() < 0.45 then "pine" else "meadow"
-					HubKit.tree(f, Vector3.new(px, y, pz), rng:NextNumber(1.35, 1.6), kind, rng)
+					HubKit.tree(f, Vector3.new(px, y, pz), rng:NextNumber(1.3, 1.8), kind, rng)
 					tick()
 				end
 			end

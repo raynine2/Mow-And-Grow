@@ -1,7 +1,9 @@
--- First-person hands, like Chop A Forest's: your avatar's ACTUAL arms (copies of its own arm parts, with its skin
--- colour and shirt sleeves) held up in front of the camera, holding the current tool. Each frame they're laid out
--- to where the hands should be (idle sway, walk bob, a swing on every hit, jabs with bare hands, a buzz for auto
--- tools). Only this client sees them. Brick fists in the avatar's colours are the fallback for a rig without arms.
+-- First-person hands, like Chop A Forest's: chunky brick arms in your avatar's skin colour (a cuff in its shirt /
+-- torso colour) held up from the bottom corners of the screen, holding the current tool. Each frame they're laid
+-- out to where the hands should be (idle sway, walk bob, a swing on every hit, jabs with bare hands, a buzz for auto
+-- tools). Only this client sees them.
+-- (They used to be copies of the avatar's own arm meshes, but avatar bodies vary too much - bulky packages,
+-- scaled rigs - and came out huge and glitchy; simple bricks always have the same, right proportions.)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -18,6 +20,16 @@ local DARK = Color3.fromRGB(45, 45, 55)
 
 local root = Instance.new("Model")
 root.Name = "ViewModel"
+
+-- Proportions. The arm and tool pieces below are drawn at their old (big) size and shrunk by HAND / TOOL; the poses
+-- are pulled toward the camera by DIST. A fist ends up ~13 degrees across: clearly there, never in the way, and
+-- close enough that it doesn't dip into grass clumps and walls.
+local HAND = 0.42
+local TOOL = 0.5
+local DIST = 0.66
+local function scaled(cf: CFrame, k: number): CFrame
+	return CFrame.new(cf.Position * k) * cf.Rotation
+end
 
 local function part(parent: Instance, size: Vector3, color: Color3, material: Enum.Material?): Part
 	local p = Instance.new("Part")
@@ -45,7 +57,7 @@ end
 local function arm(side: number): { Piece }
 	local pieces = {}
 	local function add(size: Vector3, offset: CFrame, role: string)
-		table.insert(pieces, { part = part(root, size, SKIN), offset = offset, role = role })
+		table.insert(pieces, { part = part(root, size * HAND, SKIN), offset = scaled(offset, HAND), role = role })
 	end
 	add(Vector3.new(1.35, 1.35, 3.2), CFrame.new(0, -0.05, 2.1), "arm") -- forearm back toward the camera
 	add(Vector3.new(1.6, 1.5, 1.55), CFrame.new(0, 0, 0), "hand") -- the fist
@@ -53,30 +65,38 @@ local function arm(side: number): { Piece }
 	add(Vector3.new(1.62, 0.42, 0.5), CFrame.new(0, -0.08, -0.62), "hand") -- curled fingers
 	add(Vector3.new(1.62, 0.36, 0.45), CFrame.new(0, -0.5, -0.56), "shade") -- bottom row
 	add(Vector3.new(0.5, 0.55, 1.05), CFrame.new(-0.78 * side, 0.15, -0.15), "hand") -- thumb
+	add(Vector3.new(1.55, 1.55, 1.2), CFrame.new(0, -0.05, 4.2), "sleeve") -- the cuff of the sleeve
+	add(Vector3.new(1.7, 1.7, 3), CFrame.new(0, -0.05, 6.3), "sleeve") -- the sleeve, out of view
 	return pieces
 end
 local rightArm = arm(1)
 local leftArm = arm(-1)
 
 -- The avatar's own colours: R15 hands / lower arms, R6 arms, else Body Colors.
-local function avatarColors(char: Model): (Color3?, Color3?)
+local function avatarColors(char: Model): (Color3?, Color3?, Color3?)
 	local hand = char:FindFirstChild("RightHand") or char:FindFirstChild("Right Arm")
 	local lower = char:FindFirstChild("RightLowerArm") or hand
+	local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+	local shirt = if torso and torso:IsA("BasePart") then torso.Color else nil
 	if hand and hand:IsA("BasePart") and lower and lower:IsA("BasePart") then
-		return hand.Color, lower.Color
+		return hand.Color, lower.Color, shirt
 	end
 	local bc = char:FindFirstChildOfClass("BodyColors")
 	if bc then
-		return bc.RightArmColor3, bc.RightArmColor3
+		return bc.RightArmColor3, bc.RightArmColor3, bc.TorsoColor3
 	end
-	return nil, nil
+	return nil, nil, nil
 end
 
 local lastSkin: Color3? = nil
-local function paintArms(handColor: Color3, armColor: Color3)
+local function paintArms(handColor: Color3, armColor: Color3, sleeveColor: Color3?)
+	local sleeve = sleeveColor or Color3.fromRGB(70, 130, 220)
 	for _, pieces in { rightArm, leftArm } do
 		for _, pc in pieces do
-			pc.part.Color = if pc.role == "arm" then armColor elseif pc.role == "shade" then shade(handColor, 0.88) else handColor
+			pc.part.Color = if pc.role == "sleeve" then sleeve
+				elseif pc.role == "arm" then armColor
+				elseif pc.role == "shade" then shade(handColor, 0.88)
+				else handColor
 		end
 	end
 end
@@ -86,10 +106,10 @@ task.spawn(function()
 	while true do
 		local char = player.Character
 		if char then
-			local handColor, armColor = avatarColors(char)
+			local handColor, armColor, sleeveColor = avatarColors(char)
 			if handColor and armColor and handColor ~= lastSkin then
 				lastSkin = handColor
-				paintArms(handColor, armColor)
+				paintArms(handColor, armColor, sleeveColor)
 			end
 		end
 		task.wait(1)
@@ -101,8 +121,8 @@ local tools: { [string]: { Piece } } = {}
 local function tool(id: string, build: (add: (Vector3, CFrame, Color3, Enum.Material?) -> Part) -> ())
 	local pieces = {}
 	build(function(size, offset, color, material)
-		local p = part(root, size, color, material)
-		table.insert(pieces, { part = p, offset = offset })
+		local p = part(root, size * TOOL, color, material)
+		table.insert(pieces, { part = p, offset = scaled(offset, TOOL) })
 		return p
 	end)
 	tools[id] = pieces
@@ -167,6 +187,7 @@ local function modelFor(id: string?): Model?
 				p.CastShadow = false
 			end
 		end
+		m:ScaleTo(TOOL)
 		m.Parent = root
 		heldModel = m
 	end
@@ -335,10 +356,10 @@ end
 -- fists a little further off and tipped up, so you see the knuckles and the forearms run down to the screen's
 -- bottom corners (like Chop A Forest), not the flat tops of the forearms
 -- (with the real arms only the position matters: the arm points from the shoulder at it)
-local REST_R = CFrame.new(1.45, -1.5, -4.1) * CFrame.Angles(math.rad(30), math.rad(12), 0)
-local REST_L = CFrame.new(-1.5, -1.6, -4.2) * CFrame.Angles(math.rad(26), math.rad(-12), 0)
-local PUSH_R = CFrame.new(1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
-local PUSH_L = CFrame.new(-1.25, -1.7, -2.2) * CFrame.Angles(math.rad(-25), 0, 0)
+local REST_R = scaled(CFrame.new(1.55, -1.45, -4.1) * CFrame.Angles(math.rad(24), math.rad(14), 0), DIST)
+local REST_L = scaled(CFrame.new(-1.6, -1.55, -4.2) * CFrame.Angles(math.rad(20), math.rad(-14), 0), DIST)
+local PUSH_R = scaled(CFrame.new(1.25, -1.7, -2.6) * CFrame.Angles(math.rad(-25), 0, 0), DIST)
+local PUSH_L = scaled(CFrame.new(-1.25, -1.7, -2.6) * CFrame.Angles(math.rad(-25), 0, 0), DIST)
 local TWO_HANDED = { PushMower = true, LaserMower = true, WeedWhacker = true, MegaScythe = true }
 
 local stepPhase = 0
@@ -494,7 +515,7 @@ RunService.RenderStepped:Connect(function()
 	if t >= frozenUntil then
 		st = (t - swingStart) / SWING_TIME
 	end
-	local swing = if st >= 0 and st <= 1 and not auto then swingOffset(st) else CFrame.new()
+	local swing = if st >= 0 and st <= 1 and not auto then scaled(swingOffset(st), DIST) else CFrame.new()
 
 	local rightCf, leftCf
 	if id == "PushMower" or id == "LaserMower" then
@@ -502,17 +523,17 @@ RunService.RenderStepped:Connect(function()
 		leftCf = base * PUSH_L * buzz
 	elseif twoHanded then
 		rightCf = base * REST_R * swing * buzz
-		leftCf = rightCf * CFrame.new(-1.3, -0.2, 0.9)
+		leftCf = rightCf * CFrame.new(-1.3 * DIST, -0.2 * DIST, 0.9 * DIST)
 	elseif id == "Hands" then
 		-- bare hands: left and right jabs in turn, the other fist stays up like a boxer
-		local jab = if st >= 0 and st <= 1 then punchOffset(st, punchSide) else CFrame.new()
+		local jab = if st >= 0 and st <= 1 then scaled(punchOffset(st, punchSide), DIST) else CFrame.new()
 		rightCf = base * REST_R * (if punchSide == 1 then jab else CFrame.new())
 		leftCf = base * REST_L * (if punchSide == -1 then jab else CFrame.new())
 	else
 		rightCf = base * REST_R * swing
 		leftCf = base * REST_L
 	end
-	local set = armsFor(char)
+	local set = nil :: ArmSet? -- (the avatar-arm copies are off: see the top of this file)
 	if set then
 		-- the real arms: hide the brick fists and lay the avatar's own arms out to the fist spots
 		for _, pieces in { rightArm, leftArm } do
@@ -538,7 +559,7 @@ RunService.RenderStepped:Connect(function()
 
 	local held = modelFor(id)
 	if held then
-		held:PivotTo(rightCf * CFrame.new(0, 0.1, -0.2))
+		held:PivotTo(rightCf * CFrame.new(0, 0.1 * HAND, -0.2 * HAND))
 		for _, part in held:GetDescendants() do
 			if part:IsA("BasePart") then
 				part.Transparency = 0
@@ -547,7 +568,7 @@ RunService.RenderStepped:Connect(function()
 	end
 	for toolId, pieces in tools do
 		if toolId == id and not held then
-			local grip = if id == "PushMower" or id == "LaserMower" then rightCf * CFrame.new(0, 0, -0.1) else rightCf * CFrame.new(0, 0, -0.3)
+			local grip = if id == "PushMower" or id == "LaserMower" then rightCf * CFrame.new(0, 0, -0.1 * HAND) else rightCf * CFrame.new(0, 0, -0.3 * HAND)
 			for _, pc in pieces do
 				local cf = grip * pc.offset
 				if pc.part:GetAttribute("Spin") then

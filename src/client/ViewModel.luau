@@ -79,8 +79,8 @@ lamp.Name = "HandLight"
 lamp.Transparency = 1
 local handLight = Instance.new("PointLight")
 handLight.Color = Color3.fromRGB(255, 240, 220)
-handLight.Brightness = 1.6
-handLight.Range = 5
+handLight.Brightness = 5
+handLight.Range = 4.5 -- reaches the hands, not the ground below them
 handLight.Shadows = false
 handLight.Parent = lamp
 
@@ -521,7 +521,7 @@ RunService.RenderStepped:Connect(function()
 	end
 	local sway = CFrame.new(swayYaw * 1.4, swayPitch * 1.2, 0) * CFrame.Angles(swayPitch, swayYaw, swayYaw * 0.6)
 	local base = cam.CFrame * bob * sway
-	lamp.CFrame = cam.CFrame * CFrame.new(0, 0.3, -0.6)
+	lamp.CFrame = cam.CFrame * CFrame.new(0, 0.5, -1.2) -- above the hands: lights the tops you see
 	handLight.Enabled = true
 
 	local id = equippedId()

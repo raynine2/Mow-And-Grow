@@ -463,13 +463,17 @@ function WorldArt.decorate(world: Instance, plan: any)
 						local k = if hash(i, j, 12) < 0.5 then 1.09 else 0.92
 						deco(blk(f, Vector3.new(C, 0.12, C), CFrame.new(v3(p, c.h + 0.06)), shade(base, k)))
 					end
-					-- little grass tufts
-					if r1 > 0.93 and patchFree(p, 2) then
+					-- ground cover: clumps of thin tall blades all over the floor (not on the mowing patches),
+					-- so the ground reads as lush grass like the reference, not a flat green plate
+					local rc = hash(i, j, 19)
+					if rc < 0.3 and patchFree(p, 0) and not onCorridor(p) then
 						local g = def.palette.grass
-						for t = 1, 3 do
-							local h = 0.8 + hash(i, j, 20 + t) * 1.2
-							local off = Vector2.new(hash(i, j, 30 + t) * 6 - 3, hash(i, j, 40 + t) * 6 - 3)
-							deco(blk(f, Vector3.new(0.6, h, 0.6), CFrame.new(v3(p + off, c.h + h / 2)), shade(g[1 + (t % #g)], 0.85)))
+						local base = Vector2.new(hash(i, j, 30) * 5 - 2.5, hash(i, j, 40) * 5 - 2.5)
+						for t = 1, 4 do
+							local h = 1.6 + hash(i, j, 20 + t) * 2.4
+							local off = base + Vector2.new(hash(i, j, 31 + t) * 1.6 - 0.8, hash(i, j, 41 + t) * 1.6 - 0.8)
+							local lean = CFrame.Angles((hash(i, j, 51 + t) - 0.5) * 0.5, hash(i, j, 61 + t) * 3, (hash(i, j, 71 + t) - 0.5) * 0.5)
+							deco(blk(f, Vector3.new(0.35, h, 0.35), CFrame.new(v3(p + off, c.h)) * lean * CFrame.new(0, h / 2, 0), shade(g[1 + (t % #g)], 0.62 + hash(i, j, 81 + t) * 0.2)))
 						end
 					end
 					-- flowers
@@ -583,7 +587,7 @@ function WorldArt.decorate(world: Instance, plan: any)
 						end
 					end
 				end
-				local size = if front then 1.15 + R() * 0.4 else 1.3 + R() * 0.5
+				local size = if front then 1.5 + R() * 0.7 else 1.6 + R() * 0.6
 				treeFor(c.near, folderFor(c.near), v3(p, c.h), size, R, front)
 			end
 		end
@@ -594,23 +598,24 @@ function WorldArt.decorate(world: Instance, plan: any)
 	for zi, def in Zones.list do
 		local f = folderFor(zi)
 		local placed = 0
-		for _ = 1, 140 do
-			if placed >= 14 then
+		for _ = 1, 200 do
+			if placed >= 16 then
 				break
 			end
 			local ang = R() * math.pi * 2
 			local p = def.center + Vector2.new(math.cos(ang), math.sin(ang)) * math.sqrt(R()) * def.radius * 0.85
 			local i, j = plan.cellAt(p)
 			local c = plan.get(i, j)
-			if c and c.kind == "zone" and c.region == zi and patchFree(p, 8) and not onCorridor(p) and (p - def.landmark.at).Magnitude > 30 then
+			if c and c.kind == "zone" and c.region == zi and patchFree(p, 6) and not onCorridor(p) and (p - def.landmark.at).Magnitude > 40 then
 				placed += 1
-				if placed % 3 == 0 then
+				if placed % 4 == 0 then
 					local s = 2 + R() * 2.5
 					local g = shade(def.palette.rock, 1.25)
 					blk(f, Vector3.new(s * 1.4, s, s * 1.2), CFrame.new(v3(p, c.h + s * 0.45)) * CFrame.Angles(0, R() * 3, 0), g)
 					deco(blk(f, Vector3.new(s * 0.7, s * 0.6, s * 0.7), CFrame.new(v3(p + Vector2.new(s * 0.8, s * 0.5), c.h + s * 0.25)), shade(g, 0.9)))
 				else
-					treeFor(zi, f, v3(p, c.h), 0.8 + R() * 0.4, R, true)
+					-- giants: the trees inside an area tower over the grass like in the reference
+					treeFor(zi, f, v3(p, c.h), 1.8 + R() * 1, R, true)
 				end
 			end
 		end

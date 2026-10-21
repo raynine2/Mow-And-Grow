@@ -3,6 +3,9 @@
 -- out exactly like the voxel prop it replaces (origin at the middle of its footprint on the ground, front = -Z),
 -- so the builders' colliders, sign panels and prompts still line up. server/Models uses HubKit.build(name) as
 -- the template for each name in HubKit.NAMES when Config.WORLD_GEN is on.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Config = require(ReplicatedStorage.MowALawn.Config)
+
 local HubKit = {}
 
 local M = Enum.Material
@@ -331,7 +334,9 @@ local function bagStand(m: Model)
 		wallLantern(m, Vector3.new(x, 7.2, -6.2), -Vector3.zAxis)
 	end
 	awning(m, 7.8, 9.8, 2.4, 8.4, -6.8, RED, WHITE)
-	board(m, Vector3.new(0, 10.6, 1.25), 10, 2.6)
+	if Config.HUB_SIGNS then
+		board(m, Vector3.new(0, 10.6, 1.25), 10, 2.6)
+	end
 	for _, x in { -5, 0, 5 } do
 		post(m, Vector3.new(x, 0, -4.5), 1.3, 2, LOG2, M.Wood)
 		P(m, "StumpTop", Vector3.new(0.06, 2.4, 2.4), CFrame.new(x, 2.02, -4.5) * UP, LOG_END, M.Wood, { shape = Enum.PartType.Cylinder })
@@ -351,14 +356,16 @@ local function rewardsStall(m: Model)
 		P(m, "CounterTop", Vector3.new(4.6, 0.3, 3), CFrame.new(x, 3.75, -3.1), PLANK_DARK, M.Wood)
 	end
 	awning(m, 9.4, 11.4, 3.2, 9.8, -4.3, Color3.fromRGB(60, 170, 172), WHITE)
-	board(m, Vector3.new(0, 13.5, -0.4), 16.6, 3.4)
+	if Config.HUB_SIGNS then
+		board(m, Vector3.new(0, 13.5, -0.4), 16.6, 3.4)
+	end
 	-- presents on the counters, a gold star over the board
 	for i, x in { -4.4, -2.4, 2.6, 4.2 } do
 		local c = ({ RED, Color3.fromRGB(70, 140, 230), Color3.fromRGB(150, 110, 230), Color3.fromRGB(80, 180, 80) })[i]
 		P(m, "Present", Vector3.new(1.3, 1.2, 1.3), CFrame.new(x, 4.5, -3.1) * CFrame.Angles(0, 0.3 * i, 0), c, M.SmoothPlastic)
 		P(m, "Ribbon", Vector3.new(1.34, 1.24, 0.25), CFrame.new(x, 4.5, -3.1) * CFrame.Angles(0, 0.3 * i, 0), GOLD, M.SmoothPlastic, { shadow = false })
 	end
-	P(m, "Star", Vector3.new(0.5, 2.2, 2.2), CFrame.new(0, 16.4, -0.4) * CFrame.Angles(0, math.rad(90), 0), GOLD, M.SmoothPlastic, { shape = Enum.PartType.Cylinder })
+	P(m, "Star", Vector3.new(0.5, 2.2, 2.2), CFrame.new(0, if Config.HUB_SIGNS then 16.4 else 12.8, -0.4) * CFrame.Angles(0, math.rad(90), 0), GOLD, M.SmoothPlastic, { shape = Enum.PartType.Cylinder })
 end
 
 -- the run's garage bay (party_booth, 16.9 x 12.4 x 16.4): open front (-Z), sign on the back wall (y 5..9, z ~6)
@@ -377,7 +384,9 @@ local function garageBay(m: Model)
 		local x = -8 + i * 2
 		P(m, "Roof", Vector3.new(2.05, 0.35, 15.6), CFrame.new(x, 10.4 + (i % 2) * 0.12, 0) * CFrame.Angles(math.rad(-4), 0, 0), Color3.fromRGB(70, 130, 190), M.CorrodedMetal)
 	end
-	board(m, Vector3.new(0, 7, 6.2), 11, 4.4)
+	if Config.HUB_SIGNS then
+		board(m, Vector3.new(0, 7, 6.2), 11, 4.4)
+	end
 	-- a tyre stack, an oil drum and a workbench at the back corners
 	for k = 0, 2 do
 		P(m, "Tyre", Vector3.new(0.8, 2.2, 2.2), CFrame.new(5.6, 0.7 + k * 0.82, 4.6) * UP, BLACK, M.Rubber, { shape = Enum.PartType.Cylinder })

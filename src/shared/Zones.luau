@@ -79,7 +79,8 @@ Zones.list = {
 			rare = C(255, 214, 40),
 			accent = C(84, 202, 53),
 		},
-		lighting = { clock = 17.4, ambient = C(96, 128, 140), outdoor = C(112, 146, 160), brightness = 2, tint = C(240, 255, 236), saturation = 0.32, contrast = 0.2, fog = C(150, 210, 235), haze = 1, density = 0.3, sunRays = 0.06, bloom = 1.1 },
+		-- (the hubs use this too) midday sun: short, soft shadows and even light, like Chop A Forest's yard
+		lighting = { clock = 14, ambient = C(120, 126, 130), outdoor = C(136, 142, 146), brightness = 2.2, tint = C(255, 252, 244), saturation = 0.32, contrast = 0.2, fog = C(186, 220, 240), haze = 0.7, density = 0.24, sunRays = 0.04, bloom = 1.1 },
 	},
 	{
 		id = "wheat",

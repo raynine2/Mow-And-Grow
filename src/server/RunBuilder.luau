@@ -111,7 +111,9 @@ local function toolShop(m: Instance, info)
 		PropKit.stall(m, CFrame.new(28, 0, -55) * CFrame.Angles(0, math.rad(90), 0), "TOOL SHOP", Color3.fromRGB(255, 80, 80), "Tools")
 		return
 	end
-	PropKit.cabinSign(shop, at, 1, "TOOL SHOP", PropKit.TITLE)
+	if Config.HUB_SIGNS then
+		PropKit.cabinSign(shop, at, 1, "TOOL SHOP", PropKit.TITLE)
+	end
 	for i = 2, #Config.TOOLS do
 		local spot = FRAME_SPOTS[i - 1]
 		if spot then
@@ -133,7 +135,9 @@ local function bagStand(m: Instance)
 		PropKit.stall(stand, at, "BAGS", Color3.fromRGB(90, 190, 90), "Bags")
 		return
 	end
-	PropKit.facePanel(stand, at, Vector3.new(0, 10.6, 0.9), Vector2.new(9.4, 2.2), "BAGS & GEAR", PropKit.TITLE)
+	if Config.HUB_SIGNS then
+		PropKit.facePanel(stand, at, Vector3.new(0, 10.6, 0.9), Vector2.new(9.4, 2.2), "BAGS & GEAR", PropKit.TITLE)
+	end
 	PropKit.collider(stand, at, Vector3.new(0, 3.7, 0.7), Vector3.new(14, 7.4, 3))
 	-- the bags on their stumps (model studs: stump tops at y 2, z -4.5), each with its price in front
 	for i, bag in Config.BAGS do
@@ -162,7 +166,9 @@ local function gasPump(parent: Instance, pos: Vector3, info, facing: Vector3?)
 		PropKit.brick(parent, Vector3.new(3.4, 1, 2.8), cf * CFrame.new(0, 6.5, 0), Color3.fromRGB(255, 255, 255), "PumpTop")
 		PropKit.brick(parent, Vector3.new(2, 1.4, 0.4), cf * CFrame.new(0, 4.6, -1.3), Color3.fromRGB(40, 40, 50), "PumpScreen")
 	end
-	PropKit.billboard(body, "GAS", PropKit.TEXT, Vector2.new(5, 2), Vector3.new(0, 5, 0), 120)
+	if Config.HUB_SIGNS then
+		PropKit.billboard(body, "GAS", PropKit.TEXT, Vector2.new(5, 2), Vector3.new(0, 5, 0), 120)
+	end
 	local prompt = PropKit.prompt(body, "Refuel", "Gas Pump", nil, 14)
 	prompt:SetAttribute("Pump", true)
 	table.insert(info.pumps, { pos = pos, prompt = prompt })
@@ -174,7 +180,9 @@ local function garageBay(m: Instance, info)
 	local pos = at.Position
 	local g = PropKit.folder("Garage", m)
 	if Models.place("party_booth", g, at, 1.1, true) then
-		PropKit.facePanel(g, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "GARAGE", PropKit.TITLE, 1.1)
+		if Config.HUB_SIGNS then
+			PropKit.facePanel(g, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "GARAGE", PropKit.TITLE, 1.1)
+		end
 		for _, x in { -7.2, 7.2 } do
 			PropKit.collider(g, at, Vector3.new(x, 5, 6.6), Vector3.new(1.4, 10, 1.4), 1.1)
 			PropKit.collider(g, at, Vector3.new(x, 1.2, 0), Vector3.new(0.8, 2.4, 14), 1.1)
@@ -211,7 +219,9 @@ local function shredderAt(parent: Instance, info, at: CFrame, name: string): boo
 		PropKit.pad(s, sellPos, 6, Color3.fromRGB(80, 220, 80))
 	end
 	local holder = promptSpot(s, CFrame.new(sellPos + Vector3.new(0, 1, 0)), "SellLabel")
-	PropKit.billboard(holder, "DROP BUNDLES", PropKit.TEXT, Vector2.new(12, 2.6), Vector3.new(0, 5, 0), 120)
+	if Config.HUB_SIGNS then
+		PropKit.billboard(holder, "DROP BUNDLES", PropKit.TEXT, Vector2.new(12, 2.6), Vector3.new(0, 5, 0), 120)
+	end
 	info.sellPads = info.sellPads or {}
 	table.insert(info.sellPads, { pos = sellPos, radius = 7, mouth = mouth, out = out })
 	if not info.sellPos then
@@ -230,7 +240,7 @@ local function shredder(m: Instance, info): boolean
 	local s = m:FindFirstChild("Shredder") :: Instance
 	-- the 2X COINS board next to the machine (opens the store)
 	local signAt = spotAt("coinsSign")
-	if Models.place("start_sign", s, signAt, 0.45, true) then
+	if Config.HUB_SIGNS and Models.place("start_sign", s, signAt, 0.45, true) then
 		PropKit.facePanel(s, signAt, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "2X COINS", PropKit.TITLE, 0.45)
 		PropKit.facePanel(s, signAt, Vector3.new(0, 6.1, -0.62), Vector2.new(27, 1.5), "BUY!", PropKit.PRICE, 0.45)
 		PropKit.prompt(promptSpot(s, signAt * CFrame.new(0, 3, -1.5), "CoinsSign"), "Open", "2x Coins", "Store", 10)

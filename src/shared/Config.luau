@@ -288,6 +288,9 @@ end
 -- and gate positions come from attributes WorldGen puts on Workspace.World (GatePos<z>, GateEntry<z>).
 -------------------------------------------------------------------------------------------------------------
 Config.WORLD_GEN = true
+-- Name signs on the hub buildings (shop boards, the arches, START A RUN, floating DROP BUNDLES / GAS labels).
+-- Off: the buildings speak for themselves and their prompts name them. Price tags and the score boards stay.
+Config.HUB_SIGNS = false
 
 do
 	local Zones = require(script.Parent.Zones)

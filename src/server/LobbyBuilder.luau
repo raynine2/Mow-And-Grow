@@ -154,7 +154,9 @@ local function classCabin(world: Instance): TextLabel
 	if not cabin(m, at, 1) then
 		return oldClassBooth(world)
 	end
-	cabinSign(m, at, 1, "CLASSES", PropKit.TITLE)
+	if Config.HUB_SIGNS then
+		cabinSign(m, at, 1, "CLASSES", PropKit.TITLE)
+	end
 	outline(m, at, Vector3.new(0, 0, -16), 16, 6, purple)
 	local board = PropKit.part({ size = Vector3.new(14, 6.4, 0.3), cf = at * CFrame.new(0, 5.8, 9.3), color = Color3.fromRGB(44, 30, 60), parent = m, name = "StockBoard" })
 	local label = PropKit.surfaceText(board, "Classes in stock", Color3.new(1, 1, 1))
@@ -190,7 +192,9 @@ local function garageCabin(world: Instance)
 		oldGarage(world)
 		return
 	end
-	cabinSign(m, at, s, "GARAGE", PropKit.TITLE)
+	if Config.HUB_SIGNS then
+		cabinSign(m, at, s, "GARAGE", PropKit.TITLE)
+	end
 	local spot = at * CFrame.new(0, 0, -18 * s)
 	local floor: BasePart
 	if Models.place("turntable", m, spot, 1) then
@@ -233,7 +237,9 @@ local function rewardsStall(world: Instance)
 		oldRewardsChest(world)
 		return
 	end
-	PropKit.facePanel(m, at, Vector3.new(0, 13.5, -0.6), Vector2.new(16, 3), "REWARDS", PropKit.TITLE)
+	if Config.HUB_SIGNS then
+		PropKit.facePanel(m, at, Vector3.new(0, 13.5, -0.6), Vector2.new(16, 3), "REWARDS", PropKit.TITLE)
+	end
 	-- seen from the front the daily bay is on the left (+X), the group bay on the right
 	local daily = ("DAILY REWARD\n+%d Gems\nEvery %d hours"):format(Config.DAILY_GEMS, Config.DAILY_COOLDOWN // 3600)
 	PropKit.facePanel(m, at, Vector3.new(3.9, 6.6, 2.3), Vector2.new(6, 3.4), daily, Color3.new(1, 1, 1))
@@ -290,6 +296,9 @@ local function bestTimesBoard(world: Instance): TextLabel?
 end
 
 local function startBoard(m: Instance)
+	if not Config.HUB_SIGNS then
+		return
+	end
 	-- hanging high over the bays' status lines, like the START A RUN board in Chop A Forest's lobby
 	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + 26, 58), Vector3.new(0, FLOOR_Y + 26, 0))
 	local sub = ("Step on a pad  -  play solo or bring up to %d friends"):format(Config.PARTY_MAX - 1)

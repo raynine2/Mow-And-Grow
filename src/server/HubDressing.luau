@@ -82,6 +82,9 @@ end
 
 -- The welcome arch with a line of text on its board.
 local function arch(parent: Instance, cf: CFrame, text: string)
+	if not Config.HUB_SIGNS then
+		return -- the arches are mostly their sign board
+	end
 	if not put(parent, "welcome_arch", cf) then
 		return
 	end

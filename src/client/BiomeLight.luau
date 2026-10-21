@@ -87,21 +87,25 @@ end
 
 local current: Look? = nil
 
+-- Every preset goes through a softer grade, like Chop A Forest's clean daylight: much less saturation and
+-- contrast (they made greens neon and shade near black), ambient light pulled toward neutral (no blue cast), a
+-- gentler bloom.
+local NEUTRAL = Color3.fromRGB(140, 140, 140)
 local function apply(l: Look)
 	effects()
 	Lighting.ClockTime = l.clock
-	Lighting.Ambient = l.ambient
-	Lighting.OutdoorAmbient = l.outdoor
+	Lighting.Ambient = l.ambient:Lerp(NEUTRAL, 0.45)
+	Lighting.OutdoorAmbient = l.outdoor:Lerp(NEUTRAL, 0.45)
 	Lighting.Brightness = l.brightness
 	color.TintColor = l.tint
-	color.Saturation = l.saturation
-	color.Contrast = l.contrast
+	color.Saturation = l.saturation * 0.4
+	color.Contrast = l.contrast * 0.3
 	atmosphere.Color = l.fog
 	atmosphere.Decay = l.fog:Lerp(Color3.new(0, 0, 0), 0.35)
 	atmosphere.Haze = l.haze
 	atmosphere.Density = l.density
 	rays.Intensity = l.sunRays
-	bloom.Intensity = l.bloom
+	bloom.Intensity = l.bloom * 0.45
 end
 
 -- Off while something else owns the lighting (the lobby, the class room, a cutscene): set the attribute

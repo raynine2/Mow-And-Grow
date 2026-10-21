@@ -540,17 +540,17 @@ function WorldGen.lighting()
 			c:Destroy()
 		end
 	end
-	L.ClockTime = 17.4
+	L.ClockTime = 14
 	L.GeographicLatitude = 22
 	L.Brightness = 2
 	L.ExposureCompensation = -0.1
-	L.Ambient = Color3.fromRGB(96, 128, 140)
-	L.OutdoorAmbient = Color3.fromRGB(112, 146, 160)
+	L.Ambient = Color3.fromRGB(130, 133, 135)
+	L.OutdoorAmbient = Color3.fromRGB(138, 141, 143)
 	L.ColorShift_Top = Color3.fromRGB(255, 230, 190) -- warm sunlight
 	L.ColorShift_Bottom = Color3.fromRGB(90, 120, 200) -- cool bounce light
 	L.EnvironmentDiffuseScale = 1
 	L.EnvironmentSpecularScale = 1
-	L.ShadowSoftness = 0.35 -- soft, readable shadows like Catch a Brainrot
+	L.ShadowSoftness = 0.5 -- soft, readable shadows
 	L.GlobalShadows = true
 	local atm = Instance.new("Atmosphere")
 	atm.Density = 0.3
@@ -562,14 +562,14 @@ function WorldGen.lighting()
 	atm.Parent = L
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "Grade"
-	cc.Saturation = 0.32
-	cc.Contrast = 0.2
+	cc.Saturation = 0.13
+	cc.Contrast = 0.06
 	cc.Brightness = 0.02
-	cc.TintColor = Color3.fromRGB(240, 255, 236)
+	cc.TintColor = Color3.fromRGB(255, 252, 244)
 	cc.Parent = L
 	local bl = Instance.new("BloomEffect")
 	bl.Name = "Glow"
-	bl.Intensity = 1.1
+	bl.Intensity = 0.5
 	bl.Threshold = 0.8
 	bl.Size = 36
 	bl.Parent = L

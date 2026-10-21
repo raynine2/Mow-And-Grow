@@ -1,8 +1,8 @@
 -- A world that moves (client): the wind you can see.
---   * Trees and bushes near you sway in the breeze, gusts rolling through them (the voxel MeshParts the server
---     placed: Tree_*, Bush_*, the giant cherry and pine). Each one turns a little about its foot and always goes
---     back to where the server put it.
---   * Wind ribbons: white streaks that curl through the air past you, the classic cartoon gust.
+--   * Trees and bushes near you sway in the breeze, gusts rolling through them: the part-built ones (server/HubKit
+--     Tree / Bush models) move their leaves about the top of the trunk, the voxel MeshParts (Tree_*, Bush_*, the
+--     giant cherry and pine) turn about their foot. Everything always goes back to where the server put it.
+--   * Wind ribbons: faint white streaks that curl through the air past you now and then.
 --   * Leaves (petals, snowflakes, embers... by area) drift down from the canopy around you.
 --   * A flock of birds flaps across the sky now and then.
 -- Works in the lobby and in runs. Capped and cheap: nothing collides, nothing blocks clicks.
@@ -20,7 +20,7 @@ local player = Players.LocalPlayer
 
 local WIND = Vector3.new(0.8, 0, 0.6).Unit -- where the wind blows to
 local SWAY_RADIUS = 170
-local SWAY_BUDGET = 160 -- swaying things moved per frame at most
+local SWAY_BUDGET = 700 -- swaying parts moved per frame at most (a part-built tree is about six leaf blocks)
 
 local folder = Instance.new("Folder")
 folder.Name = "Life"
@@ -58,7 +58,35 @@ local function swayAmp(name: string): number?
 	return nil
 end
 
+-- A part-built tree or bush (server/HubKit: a Model named Tree or Bush): its leaves sway together about the top
+-- of the trunk (a bush's about its foot), the trunk stays put.
+local function trackModel(m: Model)
+	local trunk = m:FindFirstChild("Trunk") :: BasePart?
+	local pivot: Vector3
+	local amp: number
+	if trunk then
+		pivot = trunk.Position + Vector3.new(0, trunk.Size.X / 2, 0) -- a trunk is an upright cylinder: its length is X
+		amp = math.rad(2.2) * math.clamp(4 / trunk.Size.Y, 0.45, 1.2) -- thick (big) trees move less
+	else
+		local cf, size = m:GetBoundingBox()
+		pivot = cf.Position - Vector3.new(0, size.Y / 2, 0)
+		amp = math.rad(3.5)
+	end
+	local phase = (pivot.X * 0.37 + pivot.Z * 0.71) % (math.pi * 2)
+	for _, p in m:GetChildren() do
+		if p:IsA("BasePart") and not sways[p] and (p.Name == "Leaves" or p.Name == "Flower") then
+			local s: Sway = { part = p, base = p.CFrame, foot = pivot, amp = amp, phase = phase }
+			sways[p] = s
+			table.insert(swayList, s)
+		end
+	end
+end
+
 local function track(d: Instance)
+	if d:IsA("Model") and (d.Name == "Tree" or d.Name == "Bush") then
+		trackModel(d)
+		return
+	end
 	if not d:IsA("BasePart") or sways[d] or not (d:IsA("MeshPart") or d.Name == "BuntingFlag") then
 		return
 	end
@@ -122,8 +150,13 @@ local function swayStep(at: Vector3, t: number)
 		end
 		-- someone else moved it (a rebuilt world, a cutscene): take its new place as home
 		if s.last and (p.Position - s.last.Position).Magnitude > 0.5 then
+			local shift = p.Position - s.last.Position
 			s.base = p.CFrame
-			s.foot = if p.Name == "BuntingFlag" then p.Position + Vector3.new(0, p.Size.Y / 2, 0) else (p.CFrame * CFrame.new(0, -p.Size.Y / 2, 0)).Position
+			if p.Name == "Leaves" or p.Name == "Flower" then
+				s.foot += shift -- part of a tree that moved: keep its pivot with it
+			else
+				s.foot = if p.Name == "BuntingFlag" then p.Position + Vector3.new(0, p.Size.Y / 2, 0) else (p.CFrame * CFrame.new(0, -p.Size.Y / 2, 0)).Position
+			end
 		end
 		local d = (s.foot - at).Magnitude
 		local cf: CFrame
@@ -162,19 +195,19 @@ local function makeRibbon(): Ribbon
 	p.Size = Vector3.new(0.2, 0.2, 0.2)
 	p.CFrame = CFrame.new(0, -500, 0)
 	local a0 = Instance.new("Attachment")
-	a0.Position = Vector3.new(0, 0.12, 0)
+	a0.Position = Vector3.new(0, 0.07, 0)
 	a0.Parent = p
 	local a1 = Instance.new("Attachment")
-	a1.Position = Vector3.new(0, -0.12, 0)
+	a1.Position = Vector3.new(0, -0.07, 0)
 	a1.Parent = p
 	local tr = Instance.new("Trail")
 	tr.Attachment0 = a0
 	tr.Attachment1 = a1
-	tr.Lifetime = 0.9
-	tr.LightEmission = 0.6
+	tr.Lifetime = 0.7
+	tr.LightEmission = 0
 	tr.FaceCamera = true
 	tr.Color = ColorSequence.new(Color3.new(1, 1, 1))
-	tr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
+	tr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.15, 0.6), NumberSequenceKeypoint.new(1, 1) })
 	tr.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.2) })
 	tr.Enabled = false
 	tr.Parent = p
@@ -182,7 +215,7 @@ local function makeRibbon(): Ribbon
 	return { part = p, trail = tr, start = Vector3.zero, t0 = 0, life = 0, curl = 0, seed = 0, active = false }
 end
 
-for _ = 1, 5 do
+for _ = 1, 3 do
 	table.insert(ribbons, makeRibbon())
 end
 

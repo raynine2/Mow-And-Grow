@@ -54,7 +54,7 @@ local function toolFrame(parent: Instance, cabinAt: CFrame, tool, spot)
 		PropKit.brick(parent, Vector3.new(6, 5, 0.3) * s, cf * CFrame.new(Vector3.new(0, 3.6, 0) * s), Color3.fromRGB(232, 176, 112), "ToolBoard", Enum.Material.WoodPlanks)
 		PropKit.brick(parent, Vector3.new(5.4, 1.6, 0.4) * s, cf * CFrame.new(Vector3.new(0, 0.8, -0.3) * s), Color3.fromRGB(62, 42, 30), "PriceBoard", Enum.Material.Wood)
 	end
-	PropKit.facePanel(parent, cf, Vector3.new(0, 0.82, -0.57), Vector2.new(5.4, 1.5), "$" .. Format.commas(tool.cost), Color3.fromRGB(120, 255, 90), s)
+	PropKit.facePanel(parent, cf, Vector3.new(0, 0.82, -0.57), Vector2.new(5.4, 1.5), "$" .. Format.commas(tool.cost), PropKit.PRICE, s)
 	local onFloor = tool.id == "PushMower" or tool.id == "LaserMower"
 	local name = TOOL_MODEL[tool.id]
 	if onFloor then
@@ -85,7 +85,7 @@ local function toolShop(m: Instance, info)
 		PropKit.stall(m, CFrame.new(28, 0, -55) * CFrame.Angles(0, math.rad(90), 0), "TOOL SHOP", Color3.fromRGB(255, 80, 80), "Tools")
 		return
 	end
-	PropKit.cabinSign(shop, at, 1, "TOOL SHOP", Color3.fromRGB(255, 120, 70))
+	PropKit.cabinSign(shop, at, 1, "TOOL SHOP", PropKit.TEXT)
 	for i = 2, #Config.TOOLS do
 		local spot = FRAME_SPOTS[i - 1]
 		if spot then
@@ -108,7 +108,7 @@ local function bagStand(m: Instance)
 		PropKit.stall(stand, at, "BAGS", Color3.fromRGB(90, 190, 90), "Bags")
 		return
 	end
-	PropKit.facePanel(stand, at, Vector3.new(0, 10.6, 0.9), Vector2.new(9.4, 2.2), "BAGS & GEAR", Color3.fromRGB(255, 240, 200))
+	PropKit.facePanel(stand, at, Vector3.new(0, 10.6, 0.9), Vector2.new(9.4, 2.2), "BAGS & GEAR", PropKit.TEXT)
 	PropKit.collider(stand, at, Vector3.new(0, 3.7, 0.7), Vector3.new(14, 7.4, 3))
 	-- the bags on their stumps (model studs: stump tops at y 2, z -4.5), each with its price in front
 	for i, bag in Config.BAGS do
@@ -116,7 +116,7 @@ local function bagStand(m: Instance)
 		if x then
 			PropKit.collider(stand, at, Vector3.new(x, 1, -4.5), Vector3.new(2.7, 2, 2.7))
 			Models.place(bag.model, stand, at * CFrame.new(x, 2, -4.5), 1.1, true)
-			PropKit.facePanel(stand, at, Vector3.new(x, 1, -5.85), Vector2.new(2.6, 0.9), "$" .. Format.short(bag.cost), Color3.fromRGB(120, 255, 90))
+			PropKit.facePanel(stand, at, Vector3.new(x, 1, -5.85), Vector2.new(2.6, 0.9), "$" .. Format.short(bag.cost), PropKit.PRICE)
 		end
 	end
 	Models.place("bag_infinite", stand, at * CFrame.new(0, 3.53, -0.6), 0.75, true)
@@ -137,7 +137,7 @@ local function gasPump(parent: Instance, pos: Vector3, info, facing: Vector3?)
 		PropKit.brick(parent, Vector3.new(3.4, 1, 2.8), cf * CFrame.new(0, 6.5, 0), Color3.fromRGB(255, 255, 255), "PumpTop")
 		PropKit.brick(parent, Vector3.new(2, 1.4, 0.4), cf * CFrame.new(0, 4.6, -1.3), Color3.fromRGB(40, 40, 50), "PumpScreen")
 	end
-	PropKit.billboard(body, "GAS", Color3.fromRGB(255, 230, 80), Vector2.new(5, 2), Vector3.new(0, 5, 0), 120)
+	PropKit.billboard(body, "GAS", PropKit.TEXT, Vector2.new(5, 2), Vector3.new(0, 5, 0), 120)
 	local prompt = PropKit.prompt(body, "Refuel", "Gas Pump", nil, 14)
 	prompt:SetAttribute("Pump", true)
 	table.insert(info.pumps, { pos = pos, prompt = prompt })
@@ -149,7 +149,7 @@ local function garageBay(m: Instance, info)
 	local at = CFrame.lookAt(pos, pos + Vector3.xAxis)
 	local g = PropKit.folder("Garage", m)
 	if Models.place("party_booth", g, at, 1.1, true) then
-		PropKit.facePanel(g, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "GARAGE", Color3.fromRGB(255, 150, 50), 1.1)
+		PropKit.facePanel(g, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "GARAGE", PropKit.TEXT, 1.1)
 		for _, x in { -7.2, 7.2 } do
 			PropKit.collider(g, at, Vector3.new(x, 5, 6.6), Vector3.new(1.4, 10, 1.4), 1.1)
 			PropKit.collider(g, at, Vector3.new(x, 1.2, 0), Vector3.new(0.8, 2.4, 14), 1.1)
@@ -186,7 +186,7 @@ local function shredderAt(parent: Instance, info, at: CFrame, name: string): boo
 		PropKit.pad(s, sellPos, 6, Color3.fromRGB(80, 220, 80))
 	end
 	local holder = promptSpot(s, CFrame.new(sellPos + Vector3.new(0, 1, 0)), "SellLabel")
-	PropKit.billboard(holder, "DROP BUNDLES", Color3.fromRGB(255, 230, 80), Vector2.new(12, 2.6), Vector3.new(0, 5, 0), 120)
+	PropKit.billboard(holder, "DROP BUNDLES", PropKit.TEXT, Vector2.new(12, 2.6), Vector3.new(0, 5, 0), 120)
 	info.sellPads = info.sellPads or {}
 	table.insert(info.sellPads, { pos = sellPos, radius = 7, mouth = mouth, out = out })
 	if not info.sellPos then
@@ -207,8 +207,8 @@ local function shredder(m: Instance, info): boolean
 	-- the 2X COINS board next to the machine (opens the store)
 	local signAt = CFrame.lookAt(Vector3.new(-38, FLOOR_Y, -50), Vector3.new(-6, FLOOR_Y, -68))
 	if Models.place("start_sign", s, signAt, 0.45, true) then
-		PropKit.facePanel(s, signAt, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "2X COINS", Color3.fromRGB(255, 214, 60), 0.45)
-		PropKit.facePanel(s, signAt, Vector3.new(0, 6.1, -0.62), Vector2.new(27, 1.5), "BUY!", Color3.fromRGB(120, 255, 90), 0.45)
+		PropKit.facePanel(s, signAt, Vector3.new(0, 9.3, -0.62), Vector2.new(27, 4), "2X COINS", PropKit.TEXT, 0.45)
+		PropKit.facePanel(s, signAt, Vector3.new(0, 6.1, -0.62), Vector2.new(27, 1.5), "BUY!", PropKit.PRICE, 0.45)
 		PropKit.prompt(promptSpot(s, signAt * CFrame.new(0, 3, -1.5), "CoinsSign"), "Open", "2x Coins", "Store", 10)
 	end
 	return true
@@ -252,7 +252,7 @@ local function hub(world: Instance, info)
 	-- coin chute
 	PropKit.brick(s, Vector3.new(4, 3, 4), base * CFrame.new(0, 1.5, -6.5), Color3.fromRGB(60, 60, 70), "Chute")
 	PropKit.brick(s, Vector3.new(6, 1, 3), base * CFrame.new(0, 0.5, -9), Color3.fromRGB(255, 205, 50), "CoinTray")
-	local sign = PropKit.sign(s, base * CFrame.new(0, 6, -5.2), Vector3.new(12, 3, 0.6), "SHREDDER", Color3.fromRGB(80, 200, 80))
+	local sign = PropKit.sign(s, base * CFrame.new(0, 6, -5.2), Vector3.new(12, 3, 0.6), "SHREDDER", Color3.fromRGB(80, 200, 80), PropKit.TEXT)
 	sign.Name = "ShredderSign"
 	local sellPos = (base * CFrame.new(0, 0, -13)).Position
 	PropKit.pad(s, sellPos, 6, Color3.fromRGB(80, 220, 80), "SELL BUNDLES")
@@ -620,7 +620,7 @@ local function fences(world: Instance, info)
 		local need = Config.ZONES[g.b - 1]
 		local text = if need then "LOCKED\nMow the " .. need.name else "LOCKED"
 		if Models.place("gate", model, gateAt, scale, true) then
-			PropKit.facePanel(model, gateAt, Vector3.new(0, 5.3, -2.3), Vector2.new(15.6, 4), text, Color3.fromRGB(255, 235, 120), scale)
+			PropKit.facePanel(model, gateAt, Vector3.new(0, 5.3, -2.3), Vector2.new(15.6, 4), text, PropKit.TEXT, scale)
 		else
 			local logColor = Color3.fromRGB(125, 80, 50)
 			for x = -w / 2 + 1.5, w / 2 - 1.5, 3 do
@@ -630,7 +630,7 @@ local function fences(world: Instance, info)
 				log.Name = "GateLog"
 			end
 			local sign = PropKit.brick(model, Vector3.new(w + 2, 4.2, 0.6), gateAt * CFrame.new(0, 6.5, -2.3), Color3.fromRGB(200, 160, 105), "GateSign", Enum.Material.WoodPlanks)
-			PropKit.surfaceText(sign, text, Color3.fromRGB(255, 235, 120))
+			PropKit.surfaceText(sign, text, PropKit.TEXT)
 		end
 		local up = g.pos + Vector3.new(0, FENCE_H / 2, 0)
 		PropKit.wall(model, Vector3.new(w + 2, FENCE_H, 2), CFrame.lookAt(up, up + back)).Name = "GateWall"
@@ -676,7 +676,7 @@ local function areaArch(parent: Instance, z: number)
 		local chain = PropKit.brick(parent, Vector3.new(0.2, 1.4, 0.2), at * CFrame.new(x, H - 0.9, -0.2), Color3.fromRGB(70, 70, 76), "Chain", Enum.Material.Metal)
 		chain.CanCollide = false
 	end
-	local label = PropKit.surfaceText(board, def.name, Color3.fromRGB(255, 236, 190))
+	local label = PropKit.surfaceText(board, def.name, PropKit.TEXT)
 	label.Size = UDim2.fromScale(0.94, 0.86)
 	label.Position = UDim2.fromScale(0.03, 0.07)
 end
@@ -818,7 +818,7 @@ local function areaProps(world: Instance, z: number, info)
 			local machine = k.pos - Vector3.xAxis * 8
 			if shredderAt(m, info, CFrame.lookAt(machine, machine - Vector3.xAxis), "DropOff") then
 				local holder = promptSpot(m, CFrame.new(machine + Vector3.new(0, 1, 0)), "DropOffLabel")
-				PropKit.billboard(holder, "DROP-OFF", Color3.fromRGB(120, 255, 90), Vector2.new(10, 2.4), Vector3.new(0, 15, 0), 220)
+				PropKit.billboard(holder, "DROP-OFF", PropKit.TEXT, Vector2.new(10, 2.4), Vector3.new(0, 15, 0), 220)
 			end
 			gasPump(m, k.pos + Vector3.new(4, 0, 15), info, Vector3.zAxis)
 		end

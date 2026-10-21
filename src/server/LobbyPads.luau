@@ -1,7 +1,7 @@
 -- The lobby's party pads, built like Chop A Forest's: a long wooden deck with four bays, each bay a glowing neon
 -- frame on the planks with soft wisps rising off it (green while open, blue while a party is starting), a roofed
--- sign behind it with a painting of the lawn, "THE LAWN", the party number and an OPEN / STARTING tag, and a
--- "Touch to create a party 0/4" line floating above. Lanterns stand between the bays.
+-- sign behind it with a painting of the lawn, one big word (SOLO / PARTY) and an OPEN / STARTING tag, and one short
+-- line ("0/4", "starting in 3") floating above. Lanterns stand between the bays.
 -- Also the glowing floor frames used in front of the lobby's stalls (LobbyPads.glow).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
@@ -261,8 +261,7 @@ local function sign(parent: Instance, at: CFrame, title: string, sub: string, ma
 	gui.Face = Enum.NormalId.Front
 	gui.PixelsPerStud = 26
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.LightInfluence = 0.25
-	gui.Brightness = 1.4
+	gui.LightInfluence = 0.6
 	gui.Parent = board
 	-- the board's front faces at.LookVector: Front of a part is its -Z, and the part's CFrame is `at` turned
 	-- the same way, so the face looks where the sign looks
@@ -272,31 +271,30 @@ local function sign(parent: Instance, at: CFrame, title: string, sub: string, ma
 	paper.Rotation = 90
 	paper.Parent = bg
 	painting(bg)
-	label(bg, title, UDim2.fromScale(0.94, 0.19), UDim2.fromScale(0.03, 0.52), CREAM, 3)
-	local number = label(bg, sub, UDim2.fromScale(0.7, 0.1), UDim2.fromScale(0.15, 0.7), Color3.fromRGB(255, 214, 90), 2)
-	local pillBox = frame(bg, UDim2.fromScale(0.56, 0.12), UDim2.fromScale(0.22, 0.81), OPEN, 16)
+	-- one big word (SOLO / PARTY) and the state pill under it; nothing else, so it reads at a glance
+	local number = label(bg, title, UDim2.fromScale(0.9, 0.24), UDim2.fromScale(0.05, 0.53), CREAM, 4)
+	local pillBox = frame(bg, UDim2.fromScale(0.6, 0.13), UDim2.fromScale(0.2, 0.81), OPEN, 16)
 	local ps = Instance.new("UIStroke")
 	ps.Thickness = 2
 	ps.Color = Color3.fromRGB(30, 60, 40)
 	ps.Parent = pillBox
 	local pill = label(pillBox, "OPEN", UDim2.fromScale(0.9, 0.8), UDim2.fromScale(0.05, 0.1), Color3.new(1, 1, 1), 1.5)
-	label(bg, "👤 " .. maxText, UDim2.fromScale(0.5, 0.06), UDim2.fromScale(0.25, 0.935), Color3.fromRGB(110, 70, 40), 0)
 	m.Parent = parent
 	return { pill = pill, pillBox = pillBox, number = number }
 end
 
--- The floating "Touch to create a party" / "0/4" text above a bay.
+-- The one short floating line above a bay: "0/4", "Starting in 3"... (`bottom` is kept for the callers; it is the
+-- same label).
 local function statusTag(parent: Instance, pos: Vector3): (TextLabel, TextLabel)
 	local holder = PropKit.part({ size = Vector3.one, cf = CFrame.new(pos), color = Color3.new(1, 1, 1), parent = parent, transparency = 1, collide = false, name = "PadStatus" })
 	holder.CanQuery = false
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromScale(14, 3.4)
-	gui.LightInfluence = 0
+	gui.Size = UDim2.fromScale(10, 1.8)
+	gui.LightInfluence = 0.6
 	gui.MaxDistance = 140
 	gui.Parent = holder
-	local top = label(gui, "Touch to create a party", UDim2.fromScale(1, 0.5), UDim2.fromScale(0, 0), Color3.new(1, 1, 1), 2)
-	local bottom = label(gui, "0/4", UDim2.fromScale(1, 0.45), UDim2.fromScale(0, 0.52), Color3.new(1, 1, 1), 2)
-	return top, bottom
+	local line = label(gui, "0/4", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), CREAM, 2.5)
+	return line, line
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -337,15 +335,10 @@ function LobbyPads.startBoard(parent: Instance, at: CFrame, title: string, subti
 	gui.Face = Enum.NormalId.Front
 	gui.PixelsPerStud = 14 -- low enough that the title can grow past Roblox's 100 px TextScaled cap
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.LightInfluence = 0.15
-	gui.Brightness = 1.3
+	gui.LightInfluence = 0.6
 	gui.Parent = board
-	local t = label(gui, title, UDim2.fromScale(0.9, 0.6), UDim2.fromScale(0.05, 0.06), Color3.new(1, 1, 1), 5)
-	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(Color3.fromRGB(255, 236, 150), Color3.fromRGB(255, 186, 50))
-	g.Rotation = 90
-	g.Parent = t
-	label(gui, subtitle, UDim2.fromScale(0.86, 0.22), UDim2.fromScale(0.07, 0.7), CREAM, 2.5)
+	-- just the title, big and clean (the pads' signs say the rest)
+	label(gui, title, UDim2.fromScale(0.88, 0.74), UDim2.fromScale(0.06, 0.13), PropKit.TEXT, 5)
 	m.Parent = parent
 end
 
@@ -391,8 +384,8 @@ function LobbyPads.build(parent: Instance, centre: Vector3, facing: Vector3): { 
 		-- the guide arrow points new players at the first bay ("PadInfo1")
 		local marker = PropKit.part({ size = Vector3.one, cf = CFrame.new(pos + Vector3.new(0, 1, 0)), color = OPEN, parent = m, transparency = 1, collide = false, name = "PadInfo" .. i })
 		marker.CanQuery = false
-		local handles = sign(m, back * CFrame.new(x, DECK_H, DEPTH / 2 + 1.3), "THE LAWN", if solo then "SOLO" else "PARTY " .. (i - 1), "up to " .. maxN)
-		local top, bottom = statusTag(m, (back * CFrame.new(x, DECK_H + 17, DEPTH / 2 + 1.3)).Position)
+		local handles = sign(m, back * CFrame.new(x, DECK_H, DEPTH / 2 + 1.3), if solo then "SOLO" else "PARTY", "", "")
+		local top = statusTag(m, (back * CFrame.new(x, DECK_H + 15.2, DEPTH / 2 + 1.3)).Position)
 		-- lanterns between the bays, at the front
 		if i < count then
 			local lx = x - BAY / 2 - GAP / 2
@@ -417,15 +410,14 @@ function LobbyPads.build(parent: Instance, centre: Vector3, facing: Vector3): { 
 				-- down; "teleporting". `limit` is the party size the host picked.
 				local cap = limit or maxN
 				if newState == "open" then
-					top.Text = if solo then "Touch to play solo" else "Touch to create a party"
+					top.Text = ("%d/%d"):format(n, cap)
 				elseif newState == "creating" then
-					top.Text = (who or "Someone") .. " is creating a party..."
+					top.Text = (who or "Someone") .. " is setting up"
 				elseif newState == "starting" then
-					top.Text = ("Teleporting in %d..."):format(left or 0)
+					top.Text = ("%d/%d  -  starting in %d"):format(n, cap, left or 0)
 				else
 					top.Text = "Teleporting..."
 				end
-				bottom.Text = if newState == "creating" then "-/-" else ("%d/%d"):format(n, cap)
 				if newState ~= state then
 					state = newState
 					local busy = newState ~= "open"

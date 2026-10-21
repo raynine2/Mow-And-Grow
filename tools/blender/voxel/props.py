@@ -35,7 +35,11 @@ TEAL = [(40, 150, 150), (60, 184, 176)]
 PURPLE = [(110, 70, 170), (140, 96, 206)]
 BLUE = [(50, 110, 200), (70, 140, 230)]
 PINK = [(240, 110, 170), (255, 150, 200)]
-BOARD = (40, 34, 46)  # the dark face the game writes text on
+
+
+def BOARD(x, y, z):
+    """The face the game writes sign text on: warm wooden planks (cream letters with a dark outline sit on it)."""
+    return (112, 72, 42) if (y // 2) % 2 else (104, 66, 38)
 
 
 def rng_at(*k):

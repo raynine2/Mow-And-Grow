@@ -6,7 +6,6 @@ local Models = require(script.Parent.Models)
 
 local PropKit = {}
 
-local OUTLINE = Config.UI.outline
 
 function PropKit.folder(name: string, parent: Instance): Folder
 	local f = Instance.new("Folder")
@@ -232,30 +231,39 @@ function PropKit.bush(parent: Instance, pos: Vector3, scale: number, color: Colo
 	PropKit.brick(parent, Vector3.new(2.6, 1.4, 2.6) * scale, CFrame.new(pos + Vector3.new(0, 3.1 * scale, 0)), shade(c, 1.1), "Bush")
 end
 
--- Big bubbly text label: on a part face (SurfaceGui) or floating (BillboardGui).
-local function styleLabel(label: TextLabel, color: Color3)
+-- The one sign style every world text uses: bold rounded letters in cream (PropKit.TEXT) with a dark brown
+-- outline, lit a little by the world so they don't glow, on a part face (SurfaceGui) or floating (BillboardGui).
+PropKit.TEXT = Color3.fromRGB(255, 246, 224)
+PropKit.PRICE = Color3.fromRGB(140, 240, 90)
+local TEXT_OUTLINE = Color3.fromRGB(56, 32, 16)
+local function styleLabel(label: TextLabel, color: Color3, stroke: number?)
 	label.BackgroundTransparency = 1
 	label.Font = Config.UI.font
 	label.TextScaled = true
 	label.TextColor3 = color
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = OUTLINE
-	stroke.Thickness = 3
-	stroke.Parent = label
+	label.LineHeight = 0.95
+	local s = Instance.new("UIStroke")
+	s.Color = TEXT_OUTLINE
+	s.Thickness = stroke or 3
+	s.LineJoinMode = Enum.LineJoinMode.Round
+	s.Parent = label
 end
 
 function PropKit.surfaceText(part: BasePart, text: string, color: Color3?, face: Enum.NormalId?): TextLabel
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = face or Enum.NormalId.Front
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 40
-	gui.LightInfluence = 0
+	-- a one-line title fills its face: TextScaled stops at 100 px, so fewer pixels per stud on tall faces
+	local faceH = if gui.Face == Enum.NormalId.Top or gui.Face == Enum.NormalId.Bottom then part.Size.Z else part.Size.Y
+	local oneLine = text ~= "" and not string.find(text, "\n")
+	gui.PixelsPerStud = if oneLine then math.clamp(110 / math.max(faceH, 0.1), 12, 60) else 40
+	gui.LightInfluence = 0.6
 	gui.Parent = part
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(0.92, 0.8)
 	label.Position = UDim2.fromScale(0.04, 0.1)
 	label.Text = text
-	styleLabel(label, color or Color3.new(1, 1, 1))
+	styleLabel(label, color or PropKit.TEXT, if oneLine then 5 else 3)
 	label.Parent = gui
 	return label
 end
@@ -266,14 +274,14 @@ function PropKit.billboard(adornee: Instance, text: string, color: Color3?, size
 	gui.Size = UDim2.fromScale(s.X, s.Y)
 	gui.StudsOffsetWorldSpace = offset or Vector3.new(0, 4, 0)
 	gui.AlwaysOnTop = false
-	gui.LightInfluence = 0
+	gui.LightInfluence = 0.6
 	gui.MaxDistance = maxDist or 200
 	gui.Adornee = if adornee:IsA("BasePart") or adornee:IsA("Model") or adornee:IsA("Attachment") then adornee :: any else nil
 	gui.Parent = adornee
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.Text = text
-	styleLabel(label, color or Color3.new(1, 1, 1))
+	styleLabel(label, color or PropKit.TEXT)
 	label.Parent = gui
 	return label
 end

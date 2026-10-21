@@ -12,6 +12,8 @@ local PropKit = require(script.Parent.PropKit)
 
 local HubDressing = {}
 
+local yard: (Instance, Instance) -> ()
+
 local FLAG_COLORS = {
 	Color3.fromRGB(232, 72, 66),
 	Color3.fromRGB(255, 210, 60),
@@ -163,6 +165,55 @@ function HubDressing.lobby(world: Instance)
 	hideSpawn(world)
 end
 
+-- The village yard: a wooden fence round the buildings (open at the north for the walk to the arch) and rows of
+-- trees filling the floor between the fence and the stone walls, so the yard feels enclosed, like the lobby's.
+local YARD = { minX = -54, maxX = 54, minZ = -90, maxZ = 28, gate = 12 }
+function yard(world: Instance, f: Instance)
+	local HubKit = require(script.Parent.HubKit)
+	local y = 0
+	local c = {
+		Vector3.new(YARD.minX, y, YARD.minZ),
+		Vector3.new(YARD.maxX, y, YARD.minZ),
+		Vector3.new(YARD.maxX, y, YARD.maxZ),
+		Vector3.new(YARD.gate, y, YARD.maxZ),
+		Vector3.new(-YARD.gate, y, YARD.maxZ),
+		Vector3.new(YARD.minX, y, YARD.maxZ),
+	}
+	HubKit.fence(f, c[1], c[2])
+	HubKit.fence(f, c[2], c[3])
+	HubKit.fence(f, c[3], c[4])
+	HubKit.fence(f, c[5], c[6])
+	HubKit.fence(f, c[6], c[1])
+	-- trees on the village floor outside the fence (only where the ground is the floor's height)
+	local ground = world:FindFirstChild("Ground")
+	if not ground then
+		return
+	end
+	local ray = RaycastParams.new()
+	ray.FilterType = Enum.RaycastFilterType.Include
+	ray.FilterDescendantsInstances = { ground }
+	local rng = Random.new(9)
+	local trees = PropKit.folder("YardTrees", f)
+	for x = -150, 150, 14 do
+		for z = -170, 80, 14 do
+			local px, pz = x + rng:NextNumber(-2.5, 2.5), z + rng:NextNumber(-2.5, 2.5)
+			local outside = px < YARD.minX - 6 or px > YARD.maxX + 6 or pz < YARD.minZ - 6 or pz > YARD.maxZ + 6
+			local stairs = math.abs(px) < 16 and pz > YARD.maxZ - 4
+			if outside and not stairs then
+				local hit = workspace:Raycast(Vector3.new(px, 40, pz), Vector3.new(0, -60, 0), ray)
+				-- on the floor, and not right against a wall (a wall shows as a higher hit close by)
+				if hit and math.abs(hit.Position.Y) < 1 and hit.Normal.Y > 0.9 then
+					local near = workspace:Raycast(Vector3.new(px + 5, 40, pz + 5), Vector3.new(0, -60, 0), ray)
+					local near2 = workspace:Raycast(Vector3.new(px - 5, 40, pz - 5), Vector3.new(0, -60, 0), ray)
+					if near and near2 and math.abs(near.Position.Y) < 1 and math.abs(near2.Position.Y) < 1 then
+						HubKit.tree(trees, hit.Position, rng:NextNumber(1.3, 1.55), "meadow", rng)
+					end
+				end
+			end
+		end
+	end
+end
+
 -- The run's village (y = 0): a main walk from the spawn (0, -74) north past the fountain (0, 0) to the arch; tool
 -- shop and garage on its west side, bag stand and shredder on the east (server/RunBuilder SPOT).
 function HubDressing.village(world: Instance)
@@ -181,6 +232,7 @@ function HubDressing.village(world: Instance)
 	for _, z in { -60, -36 } do
 		put(f, "hay_bale", face(Vector3.new(33, 0, z), Vector3.new(0, 0, z)))
 	end
+	yard(world, f)
 	lifeFor(world)
 	hideSpawn(world)
 end

@@ -19,6 +19,7 @@ import mathutils
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import kit  # noqa: E402
 import models  # noqa: E402
+import props  # noqa: E402
 
 args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
 OUT = os.path.abspath(args[0])
@@ -32,8 +33,16 @@ kit.clear_scene()
 atlas = kit.Atlas()
 objects = {}
 sizes = {}
-for name, (fn, kw) in models.catalogue().items():
+origins = {}
+catalogue = models.catalogue()
+for pname, pfn in props.PROPS.items():
+    catalogue["Prop_" + pname] = (pfn, {})
+for name, (fn, kw) in catalogue.items():
     vox, pal, vs = fn(**kw)
+    if name.startswith("Prop_"):
+        xs = [p[0] for p in vox]; ys = [p[1] for p in vox]; zs = [p[2] for p in vox]
+        adj = props.ADJUST.get(name[5:], (0, 0, 0))
+        origins[name] = ((min(xs) + max(xs) + 1) / 2 * vs + adj[0], min(ys) * vs + adj[1], (min(zs) + max(zs) + 1) / 2 * vs + adj[2])
     builder = kit.build_columns if name.startswith(("Clump", "Stubble")) else kit.build_shared
     obj, size = builder(name, vox, pal, atlas, voxel_size=vs)
     objects[name] = obj
@@ -65,11 +74,36 @@ bpy.ops.export_scene.fbx(
     object_types={"MESH"},
 )
 
+# the props on their own too (import just these when only they changed)
+bpy.ops.object.select_all(action="DESELECT")
+for name, obj in objects.items():
+    obj.select_set(name.startswith("Prop_"))
+bpy.ops.export_scene.fbx(
+    filepath=os.path.join(OUT, "MowProps.fbx"),
+    use_selection=True,
+    apply_unit_scale=True,
+    global_scale=1.0,
+    axis_forward="-Z",
+    axis_up="Y",
+    path_mode="COPY",
+    embed_textures=True,
+    mesh_smooth_type="FACE",
+    object_types={"MESH"},
+)
+
 with open(os.path.join(OUT, "ModelSizes.luau"), "w") as f:
     f.write("-- Made by tools/blender/voxel/build_all.py: each Blender model's size in studs (x = width, y = height,\n")
     f.write("-- z = depth). The game sets MeshPart.Size from this, so the import scale in Studio doesn't matter.\n")
     f.write("return {\n")
     for name, (x, y, z) in sizes.items():
+        f.write(f'\t{name} = Vector3.new({x:.2f}, {y:.2f}, {z:.2f}),\n')
+    f.write("}\n")
+
+with open(os.path.join(OUT, "ModelOrigins.luau"), "w") as f:
+    f.write("-- Made by tools/blender/voxel/build_all.py: where each voxel prop's footprint middle (at its lowest point)\n")
+    f.write("-- sits relative to the origin of the toy model it replaces, in studs (front = -Z). server/Models uses it.\n")
+    f.write("return {\n")
+    for name, (x, y, z) in origins.items():
         f.write(f'\t{name} = Vector3.new({x:.2f}, {y:.2f}, {z:.2f}),\n')
     f.write("}\n")
 
@@ -135,6 +169,10 @@ if RENDER:
         names = [n for n in objects if n.split("_")[1] == area and not n.startswith("Landmark")]
         order = [n for n in names if n.startswith("Tree")] + [n for n in names if not n.startswith("Tree")]
         preview(area, order, os.path.join(OUT, f"preview_{area}.png"))
+    if not ONLY or "props" in ONLY:
+        names = ["Prop_" + n for n in props.PROPS]
+        preview("props1", names[:6], os.path.join(OUT, "preview_props1.png"))
+        preview("props2", names[6:], os.path.join(OUT, "preview_props2.png"))
     if not ONLY:
         lms = ["Landmark_" + models.LANDMARKS[a] for a in models.AREAS]
         preview("landmarks1", ["Landmark_windmill", "Landmark_windmill_sails"] + lms[1:4], os.path.join(OUT, "preview_landmarks1.png"))

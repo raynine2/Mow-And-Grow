@@ -568,7 +568,7 @@ local CANOPY = {
 }
 -- which canopy shape each palette uses
 local PINE_SHAPED = { pine = true, frost = true }
-local TRUNK = Color3.fromRGB(118, 80, 50)
+local TRUNK = Color3.fromRGB(158, 112, 72) -- light: Wood darkens it, and trunks stand in the canopy's shade
 
 local function treeModel(name: string): Model
 	local m = Instance.new("Model")

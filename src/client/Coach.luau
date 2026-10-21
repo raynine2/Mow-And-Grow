@@ -1,6 +1,7 @@
 -- The first two minutes, impossible to get lost in. Until you've bought your first upgrade (Hold) in your first
 -- run, a card at the bottom of the screen gives you one step at a time, and the world points at it:
---   1. PUNCH THE GRASS      the nearest clump glows and the yellow arrow (client/Guide) floats over it
+--   1. PUNCH THE GRASS      the nearest clump glows and the yellow arrow (client/Guide) floats over it (with the
+--                           dotted trail leading there when it's far, like from the village)
 --   2. PICK UP YOUR GRASS   the arrow over your bundles on the ground
 --   3. FILL YOUR BAG        back to the nearest clump, with your bag count on the card
 --   4. SELL YOUR GRASS      the arrow over the shredder and a flowing dotted trail on the ground to it
@@ -147,7 +148,13 @@ local function pick(): Step?
 	local function clumpStep(id: string, title: string, sub: string): Step
 		local m = nearestClump(here, run.zone or 1)
 		local h = if m then (m:GetAttribute("Height") :: number? or 6) else 0
-		return { id = id, title = title, sub = sub, target = if m then m:GetPivot().Position else nil, lift = h + 2, clump = m }
+		local at = if m then m:GetPivot().Position else nil
+		-- far from the grass (you spawn in the village): the trail leads the way
+		local far = at ~= nil and Vector3.new(at.X - here.X, 0, at.Z - here.Z).Magnitude > 40
+		if far then
+			sub = "Follow the trail to the grass, then " .. sub:sub(1, 1):lower() .. sub:sub(2)
+		end
+		return { id = id, title = title, sub = sub, target = at, lift = h + 2, clump = m, trail = far }
 	end
 	if (stats.cut or 0) == 0 and run.carry == 0 and (run.ground or 0) == 0 then
 		return clumpStep("punch", "PUNCH THE GRASS", if touch then "Aim at a clump and tap to chop it down" else "Aim at a clump and click to chop it down")

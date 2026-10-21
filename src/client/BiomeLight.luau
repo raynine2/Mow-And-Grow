@@ -21,13 +21,14 @@ local function ensure(className: string, name: string): Instance
 	return e
 end
 
-local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or ensure("Atmosphere", "BiomeAtmosphere") :: Atmosphere
-local bloom = ensure("BloomEffect", "BiomeBloom") :: BloomEffect
-local color = ensure("ColorCorrectionEffect", "BiomeColor") :: ColorCorrectionEffect
-local rays = ensure("SunRaysEffect", "BiomeSun") :: SunRaysEffect
-bloom.Threshold = 0.92 -- only neon and very bright things glow
-bloom.Size = 26
-rays.Spread = 0.6
+-- the effects server/WorldGen puts in Lighting (made here if the place doesn't have them)
+local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere") or ensure("Atmosphere", "Atmosphere") :: Atmosphere
+local bloom = ensure("BloomEffect", "Glow") :: BloomEffect
+local color = ensure("ColorCorrectionEffect", "Grade") :: ColorCorrectionEffect
+local rays = ensure("SunRaysEffect", "Rays") :: SunRaysEffect
+bloom.Threshold = 0.8 -- neon and very bright things glow
+bloom.Size = 36
+rays.Spread = 0.7
 
 type Look = { [string]: any }
 

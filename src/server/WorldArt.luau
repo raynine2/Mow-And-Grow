@@ -143,9 +143,9 @@ local function treeFor(zi: number, parent: Instance, at: Vector3, size: number, 
 	elseif id == "wheat" then
 		roundTree(parent, at, size, { Color3.fromRGB(238, 150, 46), Color3.fromRGB(250, 178, 60), Color3.fromRGB(255, 206, 90), Color3.fromRGB(206, 112, 36) }, TRUNK, R)
 	elseif id == "swamp" then
-		roundTree(parent, at, size, { Color3.fromRGB(86, 120, 50), Color3.fromRGB(104, 140, 60), Color3.fromRGB(130, 164, 72), Color3.fromRGB(64, 92, 40) }, Color3.fromRGB(80, 60, 50), R)
+		roundTree(parent, at, size, { Color3.fromRGB(58, 103, 36), Color3.fromRGB(72, 120, 43), Color3.fromRGB(92, 141, 52), Color3.fromRGB(43, 79, 29) }, Color3.fromRGB(80, 60, 50), R)
 	else
-		roundTree(parent, at, size, { Color3.fromRGB(40, 150, 62), Color3.fromRGB(54, 172, 72), Color3.fromRGB(84, 200, 86), Color3.fromRGB(30, 118, 54) }, TRUNK, R)
+		roundTree(parent, at, size, { Color3.fromRGB(23, 129, 63), Color3.fromRGB(34, 148, 72), Color3.fromRGB(60, 172, 82), Color3.fromRGB(17, 101, 55) }, TRUNK, R)
 	end
 end
 
@@ -223,7 +223,7 @@ local function landmark(parent: Instance, zi: number, base: number)
 		-- cauldron
 		local caul = at + Vector3.new(12, 0, -12)
 		blk(m, Vector3.new(6, 4, 6), CFrame.new(caul + Vector3.new(0, 2, 0)), Color3.fromRGB(40, 40, 50))
-		blk(m, Vector3.new(5, 0.4, 5), CFrame.new(caul + Vector3.new(0, 4, 0)), Color3.fromRGB(120, 255, 90), Enum.Material.Neon)
+		blk(m, Vector3.new(5, 0.4, 5), CFrame.new(caul + Vector3.new(0, 4, 0)), Color3.fromRGB(61, 219, 60), Enum.Material.Neon)
 	elseif l.kind == "icespire" then
 		for k = 0, 9 do
 			local w = 16 - k * 1.4
@@ -276,8 +276,8 @@ local AMBIENT = {
 	pollen = { color = { Color3.fromRGB(255, 250, 190), Color3.fromRGB(255, 230, 120) }, size = 0.35, rate = 30, life = 7, speed = 0.6, acc = Vector3.new(0, 0.2, 0), glow = 1, up = 3 },
 	dust = { color = { Color3.fromRGB(255, 230, 160), Color3.fromRGB(240, 200, 120) }, size = 0.3, rate = 36, life = 8, speed = 1, acc = Vector3.new(0.6, 0.1, 0), glow = 0.6, up = 3 },
 	petals = { color = { Color3.fromRGB(255, 170, 210), Color3.fromRGB(255, 220, 236) }, size = 0.55, rate = 40, life = 9, speed = 0.8, acc = Vector3.new(0.4, -1.2, 0), glow = 0.2, up = 26 },
-	fireflies = { color = { Color3.fromRGB(220, 255, 120), Color3.fromRGB(160, 255, 140) }, size = 0.45, rate = 26, life = 6, speed = 0.5, acc = Vector3.new(0, 0.1, 0), glow = 1, up = 3, blink = true },
-	bubbles = { color = { Color3.fromRGB(200, 255, 170), Color3.fromRGB(220, 170, 255) }, size = 0.6, rate = 26, life = 5, speed = 1, acc = Vector3.new(0, 1.2, 0), glow = 0.6, up = 1 },
+	fireflies = { color = { Color3.fromRGB(162, 219, 89), Color3.fromRGB(109, 219, 109) }, size = 0.45, rate = 26, life = 6, speed = 0.5, acc = Vector3.new(0, 0.1, 0), glow = 1, up = 3, blink = true },
+	bubbles = { color = { Color3.fromRGB(152, 219, 137), Color3.fromRGB(220, 170, 255) }, size = 0.6, rate = 26, life = 5, speed = 1, acc = Vector3.new(0, 1.2, 0), glow = 0.6, up = 1 },
 	snow = { color = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(220, 240, 255) }, size = 0.55, rate = 120, life = 10, speed = 1, acc = Vector3.new(0.3, -3, 0), glow = 0.5, up = 40 },
 	embers = { color = { Color3.fromRGB(255, 160, 50), Color3.fromRGB(255, 80, 30) }, size = 0.35, rate = 60, life = 6, speed = 1.5, acc = Vector3.new(0, 3, 0), glow = 1, up = 1 },
 	sparkles = { color = { Color3.fromRGB(200, 160, 255), Color3.fromRGB(120, 240, 255) }, size = 0.7, rate = 40, life = 4, speed = 0.3, acc = Vector3.zero, glow = 1, up = 6, blink = true },

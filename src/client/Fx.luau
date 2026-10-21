@@ -18,6 +18,7 @@ local FxIds = require(ReplicatedStorage.MowALawn:WaitForChild("FxIds")) :: { [st
 local SellFx = require(script.Parent.SellFx)
 local Confetti = require(script.Parent.Confetti)
 local BossFx = require(script.Parent.BossFx)
+local Moments = require(script.Parent.Moments)
 
 local Fx = {}
 local player = Players.LocalPlayer
@@ -531,7 +532,7 @@ handlers.reveal = function(d)
 	end
 	HitFx.play("reveal", d.pos, m.color, true)
 	Fx.floatText(d.pos + Vector3.new(0, 2, 0), m.id:upper() .. "!", m.color, 1.25)
-	Sound.play("reveal")
+	Moments.reveal(d) -- the light pillar, the chime, and for a rare find of yours the slow-motion beat
 end
 
 handlers.gems = function(d)
@@ -595,6 +596,10 @@ end
 
 -- personal boss reward: under the "BOSS DEFEATED!" card, or its own banner if that isn't up
 handlers.reward = function(d)
+	if d.kind == "area" then
+		Moments.areaCleared(d) -- the reward card, counting up, confetti and a fanfare
+		return
+	end
 	if BossFx.reward(d) then
 		return
 	end

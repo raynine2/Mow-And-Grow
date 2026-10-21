@@ -389,7 +389,7 @@ local function query(pos: Vector3, radius: number): { Patch }
 	return out
 end
 
-local function reveal(p: Patch, luck: number)
+local function reveal(p: Patch, luck: number, by: Player?)
 	local mut = Config.rollMutation(rng, luck)
 	p.mut = mut
 	if mut == "None" then
@@ -424,7 +424,7 @@ local function reveal(p: Patch, luck: number)
 	sparkle.EmissionDirection = Enum.NormalId.Top
 	sparkle.Parent = p.part
 	p.part:SetAttribute("Mutation", mut)
-	Net.all("Fx", "reveal", { pos = p.part.Position, mut = mut })
+	Net.all("Fx", "reveal", { pos = p.part.Position, mut = mut, by = by and by.UserId })
 end
 
 -- How tall a clump stands (studs), for where hits land and how far it falls.
@@ -490,7 +490,7 @@ end
 -- `from`: where the hit comes from (the cutter); the notch faces it and the clump falls away from it.
 local function damagePatch(player: Player, p: Patch, amount: number, luck: number, from: Vector3): boolean
 	if p.mut == nil then
-		reveal(p, luck)
+		reveal(p, luck, player)
 	end
 	p.hp = math.max(0, p.hp - amount)
 	if p.hp <= 0 then

@@ -109,6 +109,28 @@ function CameraView.kick(amount: number)
 	kickAmount = math.max(kickAmount, amount)
 end
 
+-- A slow push-in of `amount` degrees: eases in over `inTime`, holds `hold` seconds, eases back out over
+-- `outTime` (a rare reveal's slow-motion beat). A newer focus replaces an older one.
+local focusAmount, focusStart, focusIn, focusHold, focusOut = 0, -10, 0.1, 0, 0.1
+function CameraView.focus(amount: number, inTime: number, hold: number, outTime: number)
+	focusAmount, focusStart, focusIn, focusHold, focusOut = amount, os.clock(), inTime, hold, outTime
+end
+local function focusNow(): number
+	local t = os.clock() - focusStart
+	if t < 0 or t > focusIn + focusHold + focusOut then
+		return 0
+	end
+	local k
+	if t < focusIn then
+		k = t / focusIn
+	elseif t < focusIn + focusHold then
+		k = 1
+	else
+		k = 1 - (t - focusIn - focusHold) / focusOut
+	end
+	return focusAmount * k * k * (3 - 2 * k)
+end
+
 -- Shake the view with `power` (about 1 = light, 6 = huge) for `time` seconds.
 function CameraView.shake(power: number, time: number)
 	shakeUntil = math.max(shakeUntil, os.clock() + time)
@@ -164,7 +186,7 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 	local target = base + SPEED_FOV * math.clamp((speed - 8) / 30, 0, 1)
 	fovNow += (target - fovNow) * math.min(1, dt * 6)
 	kickAmount *= math.exp(-dt * 11)
-	cam.FieldOfView = fovNow - kickAmount
+	cam.FieldOfView = fovNow - kickAmount - focusNow()
 
 	-- offset: head bob (first person, walking on the ground), landing dip, shake
 	local walk = if first and onGround and not hum.SeatPart then math.clamp(speed / 16, 0, 1.3) else 0

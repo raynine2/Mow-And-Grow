@@ -968,6 +968,16 @@ Config.SOUNDS = {
 	fellLand = { id = "rbxassetid://9114515868", volume = 0.5, gap = 0.08 }, -- Foliage Drop 4 (branch drops to dirt)
 	burst = { id = "rbxassetid://9116406610", volume = 0.3, pitch = 1.3, gap = 0.06 }, -- Magic Poofs Thumpy 1
 	pickup = { id = "rbxassetid://9112751731", volume = 0.4, gap = 0.03 }, -- Bubble Bloop High Pitched Cute 6
+	-- a rare grass reveal (client/Moments): a magic chime, pitched up for the rarer mutations
+	rareChime = { id = "rbxassetid://9116394545", volume = 0.6, gap = 0.1 }, -- Magic Glows Soft Clusters Of Chiming Hits 1
+	-- footsteps (client/Soundscape): the store's grass/dirt footsteps are all unlicensed uploads, so a step is a
+	-- light foliage rustle (on grass) over a soft heel thud (the engine's landing sound, pitched up)
+	stepGrass = { id = "rbxassetid://9114517148", volume = 0.14, pitch = 1.3, gap = 0.12 }, -- Foliage Drop 5
+	stepThud = { id = "rbxasset://sounds/action_jump_land.mp3", volume = 0.12, pitch = 1.35, gap = 0.12 }, -- engine built-in
+	-- ambience loops (client/Soundscape), very quiet under the music
+	ambBirds = { id = "rbxassetid://9112832297", volume = 0.22 }, -- Mountain Birds 2 (light, distant)
+	ambWind = { id = "rbxassetid://9112777807", volume = 0.16 }, -- Farmland Presence 1 (wind through vines, insects)
+	ambJungle = { id = "rbxassetid://9112805601", volume = 0.22 }, -- Jungle Birds Ambience 2 (loop)
 	roar = { id = "rbxassetid://9120031442", volume = 0.45, pitch = 1.25 }, -- Thunder With Lion Roar (pitched up)
 	victory = { id = "rbxassetid://12222253", volume = 0.6 }, -- victory.wav
 	engine = { id = "", volume = 0.3 }, -- Roblox has no mower/engine loop; silent until a licensed one is found

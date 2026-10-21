@@ -11,6 +11,7 @@ require(modules:WaitForChild("PetsWindow")) -- EGGS / PETS window + hatching
 require(modules:WaitForChild("PetIndex")) -- the PETS window's INDEX tab
 require(modules:WaitForChild("NightGun")) -- boss guns, day/night, crawlers, Peaceful toggle
 require(modules:WaitForChild("ViewModel"))
+require(modules:WaitForChild("Soundscape")) -- footsteps, birds and breeze
 require(modules:WaitForChild("Fx"))
 require(modules:WaitForChild("Input"))
 require(modules:WaitForChild("Guide"))

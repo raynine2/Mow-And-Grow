@@ -171,7 +171,7 @@ local function onAreaCleared(z: number)
 			data.gems += gems
 			data.run.coins += def.coins
 			PlayerData.changed(p)
-			Net.send(p, "Fx", "reward", { coins = def.coins, gems = gems, title = Config.ZONES[z].name:upper() .. " CLEARED!" })
+			Net.send(p, "Fx", "reward", { kind = "area", coins = def.coins, gems = gems, title = Config.ZONES[z].name:upper() .. " CLEARED!" })
 		end
 	end
 	Field.clearStubble(z)

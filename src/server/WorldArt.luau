@@ -523,8 +523,8 @@ function WorldArt.decorate(world: Instance, plan: any)
 
 	-- 1c) studded paths from each gate into the middle of its area, with darker border tiles
 	local PATH = {
-		meadow = Color3.fromRGB(226, 170, 98),
-		wheat = Color3.fromRGB(200, 140, 80),
+		meadow = Color3.fromRGB(248, 184, 96),
+		wheat = Color3.fromRGB(214, 140, 70),
 		blossom = Color3.fromRGB(236, 220, 200),
 		pine = Color3.fromRGB(150, 130, 110),
 		swamp = Color3.fromRGB(140, 104, 70),
@@ -553,7 +553,7 @@ function WorldArt.decorate(world: Instance, plan: any)
 					if cc and cc.kind == "zone" then
 						local border = math.abs(k) == 2
 						if not (border and hash(ci + k, cj + math.floor(d), 71) < 0.35) then
-							local tile = blk(f, Vector3.new(3.1, 0.3, 3.1), CFrame.new(v3(q, cc.h + 0.15)), if border then shade(col, 0.72) else (if hash(math.floor(d), k, 72) < 0.5 then col else shade(col, 0.94)), Enum.Material.Plastic, true)
+							local tile = blk(f, Vector3.new(3.1, 0.3, 3.1), CFrame.new(v3(q, cc.h + 0.15)), if border then shade(col, 0.62) else (if hash(math.floor(d), k, 72) < 0.5 then col else shade(col, 0.94)), Enum.Material.Plastic, true)
 							deco(tile)
 						end
 					end

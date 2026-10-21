@@ -54,22 +54,88 @@ end
 -------------------------------------------------------------------------------------------------------------
 local TRUNK = Color3.fromRGB(112, 68, 42)
 
--- A round canopy of cubes: dark underneath, bright on top (meadow, wheat, blossom, swamp).
-local function roundTree(parent: Instance, at: Vector3, size: number, leaves: { Color3 }, trunk: Color3, R: () -> number)
+local FACES = { "TopSurface", "BottomSurface", "LeftSurface", "RightSurface", "FrontSurface", "BackSurface" }
+-- Studs on every face: the toy-brick grid Catch a Brainrot's leaves and bark show up close.
+local function studAll(p: BasePart): BasePart
+	for _, f in FACES do
+		(p :: any)[f] = STUDS
+	end
+	p.Material = Enum.Material.Plastic
+	return p
+end
+WorldArt.studAll = studAll
+
+-- A voxel ball: horizontal slices of a sphere on a `v`-stud grid, each slice merged into a few rectangles.
+-- `shades` = { dark, mid, light }: the bottom of the ball is dark, the top light; `lift` (0..1) brightens a ball
+-- that sits high in the canopy. `half`: only the top half (a bush mound).
+local function lump(parent: Instance, c: Vector3, r: number, v: number, shades: { Color3 }, lift: number, half: boolean?, solid: boolean?)
+	for y = -r + v / 2, r - v / 2, v do
+		if half and y < -v / 2 then
+			continue
+		end
+		local rs = math.sqrt(math.max(0, r * r - y * y))
+		local n = math.floor(rs / v + 0.35)
+		if n >= 1 then
+			local band = math.clamp((y + r) / (2 * r) + lift * 0.35, 0, 1)
+			local col = if band > 0.68 then shades[3] elseif band > 0.34 then shades[2] else shades[1]
+			local rows = {}
+			for k = -n, n - 1 do
+				local z = (k + 0.5) * v
+				local hw = math.sqrt(math.max(0, rs * rs - z * z))
+				local m = math.floor(hw / v + 0.35)
+				if m >= 1 then
+					table.insert(rows, { z = z, m = m })
+				end
+			end
+			local i = 1
+			while i <= #rows do
+				local j = i
+				while j + 1 <= #rows and rows[j + 1].m == rows[i].m do
+					j += 1
+				end
+				local z0, z1 = rows[i].z - v / 2, rows[j].z + v / 2
+				local p = studAll(blk(parent, Vector3.new(rows[i].m * 2 * v, v, z1 - z0), CFrame.new(c + Vector3.new(0, y, (z0 + z1) / 2)), col))
+				p.CanCollide = solid == true
+				p.CanQuery = false
+				p.CanTouch = false
+				p.CastShadow = y > 0
+				i = j + 1
+			end
+		end
+	end
+end
+WorldArt.lump = lump
+
+-- A big tree in the Catch a Brainrot style: a thick trunk with roots and branches, and a canopy of voxel
+-- balls (dark underneath, light on top). `fine`: small voxels (near the player); otherwise big voxels (the
+-- back rows of the forest, seen from far).
+local function roundTree(parent: Instance, at: Vector3, size: number, leaves: { Color3 }, trunk: Color3, R: () -> number, fine: boolean?)
 	local m = Instance.new("Model")
 	m.Name = "Tree"
-	local trunkH = 10 * size
-	blk(m, Vector3.new(3.2 * size, trunkH, 3.2 * size), CFrame.new(at + Vector3.new(0, trunkH / 2, 0)), trunk)
-	blk(m, Vector3.new(5 * size, 1.6 * size, 1.6 * size), CFrame.new(at + Vector3.new(2.2 * size, trunkH * 0.62, 0)), trunk)
-	local top = at + Vector3.new(0, trunkH + 3 * size, 0)
-	for _ = 1, 16 do
-		local u = Vector3.new(R() * 2 - 1, R() * 1.7 - 0.7, R() * 2 - 1)
-		if u.Magnitude > 1.1 then
-			u = u.Unit * 1.1
+	local s = size
+	local h = 15 * s
+	studAll(blk(m, Vector3.new(4 * s, h, 4 * s), CFrame.new(at + Vector3.new(0, h / 2, 0)), trunk))
+	if fine then
+		studAll(blk(m, Vector3.new(3 * s, h * 0.5, 3 * s), CFrame.new(at + Vector3.new(1.2 * s, h * 0.72, 0.8 * s)), shade(trunk, 0.88)))
+		for k = 1, 4 do
+			local a = k * math.pi / 2 + R()
+			studAll(deco(blk(m, Vector3.new(2 * s, 2 * s, 5 * s), CFrame.new(at + Vector3.new(math.cos(a) * 2.6 * s, 1 * s, math.sin(a) * 2.6 * s)) * CFrame.Angles(0, -a + math.pi / 2, 0), trunk)))
 		end
-		local s = (4.5 + R() * 3) * size
-		local c = if u.Y > 0.45 then leaves[3] elseif u.Y < -0.25 then leaves[4] else leaves[1 + math.floor(R() * 2)]
-		deco(blk(m, Vector3.new(s, s * 0.9, s), CFrame.new(top + Vector3.new(u.X * 7, u.Y * 4.5, u.Z * 7) * size), c)).CanCollide = false
+		for _, b in { { 1, 0.2 }, { -0.8, -0.6 } } do
+			local dir = Vector3.new(b[1], 0.9, b[2]).Unit
+			local mid = at + Vector3.new(0, h * 0.7, 0) + dir * 4 * s
+			studAll(deco(blk(m, Vector3.new(2 * s, 2 * s, 9 * s), CFrame.lookAt(mid, mid + dir), trunk)))
+		end
+	end
+	local shades = { leaves[4], leaves[1], leaves[3] }
+	local top = at + Vector3.new(0, h + 4 * s, 0)
+	local v = if fine then 1.6 * s else 2.8 * s
+	lump(m, top, 8 * s, v, shades, 0.25)
+	local balls = if fine then 6 else 4
+	for k = 1, balls do
+		local a = k / balls * math.pi * 2 + (R() - 0.5) * 0.6
+		local dy = (R() * 5 - 3) * s
+		lump(m, top + Vector3.new(math.cos(a) * 7 * s, dy, math.sin(a) * 7 * s), (5 + R() * 1.8) * s, v, shades, math.clamp(dy / (6 * s) + 0.2, 0, 1))
 	end
 	m.Parent = parent
 end
@@ -86,7 +152,7 @@ local function pineTree(parent: Instance, at: Vector3, size: number, leaves: { C
 		local w = (14 - k * 2) * size
 		local h = 3.2 * size
 		local c = leaves[1 + (k % 2)]
-		deco(blk(m, Vector3.new(w, h, w), CFrame.new(at + Vector3.new(0, y + h / 2, 0)) * CFrame.Angles(0, (k % 2) * math.rad(45) + R() * 0.1, 0), c))
+		studAll(deco(blk(m, Vector3.new(w, h, w), CFrame.new(at + Vector3.new(0, y + h / 2, 0)) * CFrame.Angles(0, (k % 2) * math.rad(45) + R() * 0.1, 0), c)))
 		if snow then
 			deco(blk(m, Vector3.new(w * 0.8, 0.8 * size, w * 0.8), CFrame.new(at + Vector3.new(0, y + h + 0.4 * size, 0)) * CFrame.Angles(0, (k % 2) * math.rad(45), 0), Color3.fromRGB(245, 250, 255)))
 		end
@@ -127,7 +193,7 @@ local function crystalTree(parent: Instance, at: Vector3, size: number, cols: { 
 	m.Parent = parent
 end
 
-local function treeFor(zi: number, parent: Instance, at: Vector3, size: number, R: () -> number)
+local function treeFor(zi: number, parent: Instance, at: Vector3, size: number, R: () -> number, fine: boolean?)
 	local def = Zones.region(zi)
 	local id = def.id
 	if id == "pine" then
@@ -139,13 +205,13 @@ local function treeFor(zi: number, parent: Instance, at: Vector3, size: number, 
 	elseif id == "isles" then
 		crystalTree(parent, at, size, { Color3.fromRGB(190, 140, 255), Color3.fromRGB(110, 240, 255), Color3.fromRGB(255, 140, 240) }, R)
 	elseif id == "blossom" then
-		roundTree(parent, at, size, { Color3.fromRGB(255, 150, 200), Color3.fromRGB(255, 176, 214), Color3.fromRGB(255, 214, 234), Color3.fromRGB(226, 110, 160) }, Color3.fromRGB(110, 70, 60), R)
+		roundTree(parent, at, size, { Color3.fromRGB(255, 150, 200), Color3.fromRGB(255, 176, 214), Color3.fromRGB(255, 214, 234), Color3.fromRGB(226, 110, 160) }, Color3.fromRGB(110, 70, 60), R, fine)
 	elseif id == "wheat" then
-		roundTree(parent, at, size, { Color3.fromRGB(238, 150, 46), Color3.fromRGB(250, 178, 60), Color3.fromRGB(255, 206, 90), Color3.fromRGB(206, 112, 36) }, TRUNK, R)
+		roundTree(parent, at, size, { Color3.fromRGB(238, 150, 46), Color3.fromRGB(250, 178, 60), Color3.fromRGB(255, 206, 90), Color3.fromRGB(206, 112, 36) }, TRUNK, R, fine)
 	elseif id == "swamp" then
-		roundTree(parent, at, size, { Color3.fromRGB(58, 103, 36), Color3.fromRGB(72, 120, 43), Color3.fromRGB(92, 141, 52), Color3.fromRGB(43, 79, 29) }, Color3.fromRGB(80, 60, 50), R)
+		roundTree(parent, at, size, { Color3.fromRGB(58, 103, 36), Color3.fromRGB(72, 120, 43), Color3.fromRGB(92, 141, 52), Color3.fromRGB(43, 79, 29) }, Color3.fromRGB(80, 60, 50), R, fine)
 	else
-		roundTree(parent, at, size, { Color3.fromRGB(23, 129, 63), Color3.fromRGB(34, 148, 72), Color3.fromRGB(60, 172, 82), Color3.fromRGB(17, 101, 55) }, TRUNK, R)
+		roundTree(parent, at, size, { Color3.fromRGB(23, 129, 63), Color3.fromRGB(34, 148, 72), Color3.fromRGB(60, 172, 82), Color3.fromRGB(17, 101, 55) }, TRUNK, R, fine)
 	end
 end
 
@@ -422,18 +488,103 @@ function WorldArt.decorate(world: Instance, plan: any)
 	end
 	task.wait()
 
+	-- 1b) voxel bushes along each area's edge, at the foot of the forest
+	local BUSH = {
+		meadow = { Color3.fromRGB(26, 118, 56), Color3.fromRGB(40, 152, 66), Color3.fromRGB(70, 190, 82) },
+		wheat = { Color3.fromRGB(190, 110, 30), Color3.fromRGB(226, 150, 46), Color3.fromRGB(250, 196, 80) },
+		blossom = { Color3.fromRGB(60, 140, 76), Color3.fromRGB(80, 170, 90), Color3.fromRGB(255, 170, 214) },
+		pine = { Color3.fromRGB(20, 92, 66), Color3.fromRGB(34, 120, 86), Color3.fromRGB(60, 156, 110) },
+		swamp = { Color3.fromRGB(46, 76, 30), Color3.fromRGB(70, 104, 42), Color3.fromRGB(110, 140, 60) },
+		frost = { Color3.fromRGB(150, 196, 230), Color3.fromRGB(200, 228, 250), Color3.fromRGB(250, 252, 255) },
+		ember = { Color3.fromRGB(40, 30, 36), Color3.fromRGB(60, 46, 52), Color3.fromRGB(255, 110, 40) },
+		isles = { Color3.fromRGB(100, 70, 200), Color3.fromRGB(150, 110, 240), Color3.fromRGB(110, 230, 255) },
+	}
+	for i = 1, plan.nx do
+		for j = 1, plan.nz do
+			local c = plan.cells[i][j]
+			if c.kind == "zone" and c.region and c.region > 0 and hash(i, j, 61) < 0.32 then
+				local edge = false
+				for _, dv in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+					local o = plan.get(i + dv[1], j + dv[2])
+					if o and o.kind == "rock" then
+						edge = true
+					end
+				end
+				local p = plan.centre(i, j)
+				if edge and patchFree(p, 3) and not onCorridor(p) then
+					local id = Zones.list[c.region].id
+					local r = 2.4 + hash(i, j, 62) * 1.8
+					lump(folderFor(c.region), v3(p, c.h), r, 1.2, BUSH[id] or BUSH.meadow, 0.2, true, true)
+				end
+			end
+		end
+	end
+	task.wait()
+
+	-- 1c) studded paths from each gate into the middle of its area, with darker border tiles
+	local PATH = {
+		meadow = Color3.fromRGB(226, 170, 98),
+		wheat = Color3.fromRGB(200, 140, 80),
+		blossom = Color3.fromRGB(236, 220, 200),
+		pine = Color3.fromRGB(150, 130, 110),
+		swamp = Color3.fromRGB(140, 104, 70),
+		frost = Color3.fromRGB(170, 214, 250),
+		ember = Color3.fromRGB(46, 40, 44),
+		isles = Color3.fromRGB(200, 180, 255),
+	}
+	for _, cor in plan.corridors do
+		local def = Zones.list[cor.zone]
+		if not def.floating then
+			local f = folderFor(cor.zone)
+			local from = cor.b
+			local to = def.center
+			local dir = (to - from).Unit
+			local side = Vector2.new(-dir.Y, dir.X)
+			local len = (to - from).Magnitude - 24
+			local col = PATH[def.id] or PATH.meadow
+			local bend = (hash(cor.zone, 3, 7) - 0.5) * 0.5
+			for d = 0, len, 3.2 do
+				local wob = math.sin(d / 26 + cor.zone) * 6 + bend * d * 0.15
+				local mid = from + dir * d + side * wob
+				for k = -2, 2 do
+					local q = mid + side * (k * 3.2)
+					local ci, cj = plan.cellAt(q)
+					local cc = plan.get(ci, cj)
+					if cc and cc.kind == "zone" then
+						local border = math.abs(k) == 2
+						if not (border and hash(ci + k, cj + math.floor(d), 71) < 0.35) then
+							local tile = blk(f, Vector3.new(3.1, 0.3, 3.1), CFrame.new(v3(q, cc.h + 0.15)), if border then shade(col, 0.72) else (if hash(math.floor(d), k, 72) < 0.5 then col else shade(col, 0.94)), Enum.Material.Plastic, true)
+							deco(tile)
+						end
+					end
+				end
+			end
+		end
+	end
+	task.wait()
+
 	-- 2) the forest wall: big trees on the wooded plateau around every area
 	local R = WorldPlan.rng(4242)
-	local spacing = 17
+	local spacing = 19
 	local B = Zones.BOUNDS
 	for x = B.minX, B.maxX, spacing do
 		for z = B.minZ, B.maxZ, spacing do
 			local p = Vector2.new(x + (R() - 0.5) * 10, z + (R() - 0.5) * 10)
 			local i, j = plan.cellAt(p)
 			local c = plan.get(i, j)
-			if c and c.kind == "rock" and c.forest and R() < 0.82 and not onCorridor(p) then
-				local size = 1.15 + R() * 0.75
-				treeFor(c.near, folderFor(c.near), v3(p, c.h), size, R)
+			if c and c.kind == "rock" and c.forest and R() < 0.85 and not onCorridor(p) then
+				-- is this tree in the front rows (a zone floor within 2 columns)?
+				local front = false
+				for di = -2, 2 do
+					for dj = -2, 2 do
+						local o = plan.get(i + di, j + dj)
+						if o and o.kind == "zone" then
+							front = true
+						end
+					end
+				end
+				local size = if front then 0.95 + R() * 0.35 else 1.2 + R() * 0.5
+				treeFor(c.near, folderFor(c.near), v3(p, c.h), size, R, front)
 			end
 		end
 	end
@@ -459,7 +610,7 @@ function WorldArt.decorate(world: Instance, plan: any)
 					blk(f, Vector3.new(s * 1.4, s, s * 1.2), CFrame.new(v3(p, c.h + s * 0.45)) * CFrame.Angles(0, R() * 3, 0), g)
 					deco(blk(f, Vector3.new(s * 0.7, s * 0.6, s * 0.7), CFrame.new(v3(p + Vector2.new(s * 0.8, s * 0.5), c.h + s * 0.25)), shade(g, 0.9)))
 				else
-					treeFor(zi, f, v3(p, c.h), 0.9 + R() * 0.5, R)
+					treeFor(zi, f, v3(p, c.h), 0.8 + R() * 0.4, R, true)
 				end
 			end
 		end

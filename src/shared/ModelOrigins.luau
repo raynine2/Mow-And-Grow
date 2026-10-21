@@ -2,13 +2,13 @@
 -- sits relative to the origin of the toy model it replaces, in studs (front = -Z). server/Models uses it.
 return {
 	Prop_log_cabin = Vector3.new(0.00, -1.50, -0.50),
-	Prop_log_cabin__detail = Vector3.new(0.00, -0.50, -2.75),
+	Prop_log_cabin__detail = Vector3.new(0.00, -0.50, -2.50),
 	Prop_bag_stand = Vector3.new(0.50, 0.00, -1.50),
 	Prop_rewards_stall = Vector3.new(0.25, 0.00, -1.75),
-	Prop_lantern_post = Vector3.new(0.00, 0.00, -1.00),
+	Prop_lantern_post = Vector3.new(0.00, 0.00, -1.12),
 	Prop_gas_pump = Vector3.new(0.25, 0.00, -0.12),
-	Prop_leaderboard = Vector3.new(0.00, 0.00, -0.25),
-	Prop_trophy_board = Vector3.new(0.00, 0.00, 0.00),
+	Prop_leaderboard = Vector3.new(0.00, 0.00, 0.00),
+	Prop_trophy_board = Vector3.new(0.00, 0.00, 0.25),
 	Prop_party_booth = Vector3.new(0.00, 0.00, 0.50),
 	Prop_party_booth__detail = Vector3.new(0.00, 1.00, 0.25),
 	Prop_shredder = Vector3.new(0.00, 0.00, 0.00),
@@ -20,8 +20,8 @@ return {
 	Prop_bench = Vector3.new(0.00, 0.00, 0.25),
 	Prop_signpost = Vector3.new(0.12, 0.00, 1.38),
 	Prop_welcome_arch = Vector3.new(0.00, 0.00, 0.00),
-	Prop_welcome_arch__detail = Vector3.new(0.00, 2.00, -0.25),
-	Prop_mower_statue = Vector3.new(0.25, 0.00, 0.25),
+	Prop_welcome_arch__detail = Vector3.new(-0.25, 8.00, -2.50),
+	Prop_mower_statue = Vector3.new(0.00, 0.00, 0.75),
 	Prop_wheelbarrow = Vector3.new(0.00, -0.50, 0.25),
 	Prop_hay_bale = Vector3.new(0.00, 0.00, 0.00),
 }

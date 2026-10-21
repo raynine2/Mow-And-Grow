@@ -60,7 +60,7 @@ end
 local PATHS = {
 	{ Vector2.new(0, -52), Vector2.new(0, 34) },
 	{ Vector2.new(-46, -22), Vector2.new(46, -22) },
-	{ Vector2.new(0, 10), Vector2.new(-48, 24) },
+	{ Vector2.new(0, 26), Vector2.new(-42, 26) }, -- to the rewards stall
 	{ Vector2.new(-44, 42), Vector2.new(44, 42) },
 }
 local function pathDist(p: Vector2): number
@@ -226,8 +226,8 @@ local function cover(world: Instance)
 				local h = heightAt(px, pz)
 				if h and not (h == 0 and pathDist(Vector2.new(px, pz)) < 9) then
 					local d = math.max(math.abs(px), math.abs(pz))
-					-- keep the plaza around the buildings tidy
-					local busy = h == 0 and d < CLEARING - 6 and (math.abs(px) < 14 or pz > 28 or (math.abs(px) > 34 and pz < -4))
+					-- the plaza itself stays clean grass; flowers and blades only out on the terraces
+					local busy = h == 0 and d < CLEARING + 2
 					if not busy then
 						if r < 0.08 then
 							local col = FLOWERS[1 + math.floor(hash(x, z, 4) * #FLOWERS)]

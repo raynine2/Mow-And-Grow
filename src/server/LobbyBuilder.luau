@@ -229,7 +229,7 @@ end
 local function rewardsStall(world: Instance)
 	local m = PropKit.folder("FreeRewards", world)
 	local pos = Vector3.new(-50, FLOOR_Y, 26)
-	local at = CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, 16))
+	local at = CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, 26)) -- square to the path that leads to it
 	if not Models.place("rewards_stall", m, at, 1, true) then
 		oldRewardsChest(world)
 		return

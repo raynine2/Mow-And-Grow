@@ -1,6 +1,6 @@
 -- Stone paths for the hubs, in the chunky, tidy style of Catch a Brainrot: big square sandstone slabs on a 3-stud
 -- grid with thin grout lines between them, each slab with a bevelled lighter top, framed by a solid kerb of darker
--- stone blocks, and grass tufts growing up along the outside of the kerb. Colours are warm on purpose: the hubs'
+-- stone blocks; nothing scattered round them, so they read clean. Colours are warm on purpose: the hubs'
 -- blue-ish daylight cools them down.
 -- HubPaths.lay(parent, segments, y) lays every segment's path (they may cross; slabs are shared).
 local HubPaths = {}
@@ -15,8 +15,6 @@ local SLAB = {
 }
 local GROUT = Color3.fromRGB(150, 118, 84)
 local KERB = { Color3.fromRGB(176, 142, 102), Color3.fromRGB(162, 128, 92) }
-local GRASS = { Color3.fromRGB(70, 168, 56), Color3.fromRGB(96, 190, 66) }
-local FLOWER = { Color3.fromRGB(255, 236, 90), Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 130, 170) }
 
 local G = 3 -- grid step
 local SLAB_SIZE = 2.72 -- leaves a thin grout line
@@ -70,19 +68,6 @@ local function kerb(f: Instance, x: number, z: number, y: number, i: number, j: 
 	block(f, "KerbTop", Vector3.new(G - 0.3, 0.08, G - 0.3), CFrame.new(x, y + KERB_H + 0.04, z), KERB[(i + j) % 2 + 1]:Lerp(Color3.new(1, 1, 1), 0.12))
 end
 
--- grass tufts (and the odd flower) just outside the kerb
-local function tufts(f: Instance, x: number, z: number, y: number, rng: Random)
-	for _ = 1, rng:NextInteger(2, 4) do
-		local h = rng:NextNumber(0.6, 1.3)
-		block(f, "GrassTuft", Vector3.new(0.35, h, 0.35), CFrame.new(x + rng:NextNumber(-1.2, 1.2), y + h / 2, z + rng:NextNumber(-1.2, 1.2)), GRASS[rng:NextInteger(1, #GRASS)])
-	end
-	if rng:NextNumber() < 0.25 then
-		local fx, fz = x + rng:NextNumber(-1, 1), z + rng:NextNumber(-1, 1)
-		block(f, "FlowerStem", Vector3.new(0.2, 1.1, 0.2), CFrame.new(fx, y + 0.55, fz), GRASS[1])
-		block(f, "Flower", Vector3.new(0.6, 0.35, 0.6), CFrame.new(fx, y + 1.2, fz), FLOWER[rng:NextInteger(1, #FLOWER)])
-	end
-end
-
 function HubPaths.lay(parent: Instance, segments: { Segment }, y: number, seed: number?)
 	local f = Instance.new("Folder")
 	f.Name = "Paths"
@@ -109,8 +94,6 @@ function HubPaths.lay(parent: Instance, segments: { Segment }, y: number, seed: 
 				slab(f, x, z, y, rng)
 			elseif d < 1.5 then
 				kerb(f, x, z, y, i, j)
-			elseif d < 4.5 and rng:NextNumber() < 0.45 then
-				tufts(f, x, z, y, rng)
 			end
 		end
 	end

@@ -262,13 +262,6 @@ def cabin():
             d.box((x, S(1), z), (x, S(3) - 1, z), DARKWOOD[2])
     for x in list(range(S(-14), S(-6), 3)) + list(range(S(5), S(14), 3)):
         d.box((x, S(1), S(-13)), (x, S(3) - 1, S(-13)), DARKWOOD[2])
-    # leaves and flowers along the foundation's front
-    for x in range(S(-14), S(14)):
-        r = rng_at("mf", x)
-        if r.random() < 0.35 and not S(-4) <= x <= S(4):
-            d.put((x, 0, S(-13) - 1), LEAF[r.randint(0, 2)])
-            if r.random() < 0.45:
-                d.put((x, 1, S(-13) - 1), FLOWERS[r.randint(0, 4)])
     return {"": structure, "detail": d.out()}
 
 
@@ -368,13 +361,6 @@ def lantern_post():
     v = V(0.25)
     v.box((-5, 0, -5), (4, 2, 4), stones)
     v.box((-4, 3, -4), (3, 6, 3), lambda x, y, z: STONE[3] if y == 6 else STONE[2])
-    for x in range(-5, 5):
-        for z in (-6, 5):
-            r = rng_at("lf", x, z)
-            if r.random() < 0.6:
-                v.put((x, 0, z), LEAF[r.randint(0, 2)])
-                if r.random() < 0.5:
-                    v.put((x, 1, z), FLOWERS[r.randint(0, 4)])
     v.box((-2, 7, -2), (1, 30, 1), lambda x, y, z: DARKWOOD[2] if (y // 3) % 2 else DARKWOOD[1])
     for y in (11, 19, 27):
         v.box((-3, y, -3), (2, y, 2), IRON[2])
@@ -439,12 +425,6 @@ def board(width, height, depth, top_fn=None):
     v.box((-hw + 2, S(2.4) - 1, -2), (hw - 3, S(2.4) - 1, 0), DARKWOOD[2])
     v.box((-hw + 2, face_top + 1, -2), (hw - 3, face_top + 2, 0), DARKWOOD[2])
     v.box((-hw + 2, face_top + 3, -1), (hw - 3, face_top + 3, -1), GOLD[1])
-    for x in range(-hw, hw):
-        r = rng_at("bf", x, width)
-        if r.random() < 0.5:
-            v.put((x, 0, -S(depth / 2) - 1), LEAF[r.randint(0, 2)])
-            if r.random() < 0.5:
-                v.put((x, 1, -S(depth / 2) - 1), FLOWERS[r.randint(0, 4)])
     if top_fn:
         top_fn(v, face_top)
     return v.out()
@@ -657,39 +637,29 @@ def signpost():
 
 
 def welcome_arch():
-    """A big wooden arch over the path (24 wide, 21 high): log pillars on stone feet, a beam framing a sign board
-    (the game writes on a panel just in front of it, centred at y 14.5, z -1.1), a little shingle roof, banners,
-    lanterns, vines and flowers climbing the pillars."""
+    """A big wooden arch over the path (24 wide, 21 high), kept clean and chunky: square banded wooden pillars on
+    stepped stone feet with stone caps, a beam framing a sign board (the game writes on a panel just in front of it,
+    centred at y 14.5, z -1.1) with gold trim, a shingle roof and two lanterns hanging under it."""
     v = V(1.0)
-    for x in (-12, 10):
-        v.box((x - 1, 0, -2), (x + 2, 2, 1), stones)
-        v.box((x, 3, -1), (x + 1, 17, 0), logs_h)
-    v.box((-14, 12, -1), (13, 12, 0), DARKWOOD[2])
-    v.box((-14, 17, -1), (13, 17, 0), DARKWOOD[2])
+    for x0 in (-14, 9):
+        v.box((x0, 0, -3), (x0 + 5, 1, 2), stones)
+        v.box((x0 + 1, 2, -2), (x0 + 4, 2, 1), lambda x, y, z: STONE[3])
+        v.box((x0 + 1, 3, -2), (x0 + 4, 16, 1), lambda x, y, z: IRON[1] if y in (5, 10) else (DARKWOOD[1] if (x + z) % 2 else DARKWOOD[2]))
+    v.box((-15, 11, -2), (14, 12, 1), DARKWOOD[2])
+    v.box((-15, 17, -2), (14, 17, 1), DARKWOOD[2])
+    v.box((-15, 11, -3), (14, 11, -3), GOLD[1])
     v.box((-9, 13, 0), (8, 16, 0), BOARD)
     for k in range(3):
-        v.box((-15 + k, 18 + k, -2 + k), (14 - k, 18 + k, 1 - k), shingles(ROOF_RED))
+        v.box((-16 + k, 18 + k, -3 + k), (15 - k, 18 + k, 2 - k), shingles(ROOF_RED))
     d = V(0.5)
-    for (x, col) in ((-22, CLOTH_RED), (-14, GOLD), (12, GOLD), (20, CLOTH_RED)):
-        d.box((x, 13, -3), (x + 3, 23, -3), col[1])
-        d.box((x, 21, -3), (x + 3, 21, -3), col[0])
-        d.box((x + 1, 12, -3), (x + 2, 12, -3), col[1])
-    for x in (-18, 17):
-        d.box((x, 22, -3), (x, 23, -3), IRON[0])
-        lantern(d, x, 18, -3, 1)
-    for x0 in (-24, 20):
-        for y in range(4, 34):
-            for (dx, dz) in ((-1, -3), (4, -3), (-1, 1), (4, 1)):
-                r = rng_at("vine", x0, y, dx, dz)
-                if r.random() < 0.45:
-                    d.put((x0 + dx, y, dz), LEAF[r.randint(0, 2)])
-                    if r.random() < 0.18:
-                        d.put((x0 + dx, y, dz - (1 if dz < 0 else -1)), FLOWERS[r.randint(0, 4)])
+    for x in (-15, 14):
+        d.box((x, 21, -5), (x, 23, -5), IRON[0])
+        lantern(d, x, 17, -5, 1)
     return {"": v.out(), "detail": d.out()}
 
 
 def mower_statue():
-    """The plaza's centrepiece: a golden push mower on a stepped stone plinth with flowers round its foot."""
+    """The plaza's centrepiece: a golden push mower on a stepped stone plinth."""
     v = V(0.5)
     v.box((-8, 0, -8), (7, 1, 7), stones)
     v.box((-6, 2, -6), (5, 5, 5), stones)
@@ -704,15 +674,6 @@ def mower_statue():
         v.put((-3, y + 3 + t, 4 + t // 2), GOLD[1])
         v.put((2, y + 3 + t, 4 + t // 2), GOLD[1])
     v.box((-4, y + 15, 10), (3, y + 15, 10), GOLD[2])
-    for k in range(10):
-        r = rng_at("clip", k)
-        v.put((r.randint(-7, 6), y + r.randint(1, 5), r.randint(-10, -6)), LEAF[r.randint(0, 2)])
-    for x in range(-9, 9):
-        for z in (-9, 8):
-            r = rng_at("pf", x, z)
-            if r.random() < 0.6:
-                v.put((x, 0, z), LEAF[1])
-                v.put((x, 1, z), FLOWERS[r.randint(0, 4)])
     return v.out()
 
 

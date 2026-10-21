@@ -93,11 +93,13 @@ local PATHS = {
 	{ Vector2.new(-34, -40), Vector2.new(30, -40) }, -- shredder <-> tool shop
 	{ Vector2.new(-30, -64), Vector2.new(28, -64) }, -- garage <-> bag stand
 }
+local SQUARE = { Vector2.new(0, -3), Vector2.new(0, 3), 30 } -- the paved square round the fountain
 local function paths(w: Instance)
 	local segments = {}
 	for _, s in PATHS do
 		table.insert(segments, { a = s[1], b = s[2], width = 11 })
 	end
+	table.insert(segments, { a = SQUARE[1], b = SQUARE[2], width = SQUARE[3] })
 	require(script.Parent.HubPaths).lay(w, segments, 0, 5)
 end
 

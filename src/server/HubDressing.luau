@@ -1,6 +1,6 @@
 -- The hubs' "umph" (Config.WORLD_GEN): the voxel dressing round the buildings of the lobby plaza and the run's
--- village - a welcome arch with the game's name, a golden mower statue, benches, planters, a signpost, crates,
--- barrels, a wheelbarrow and hay - plus strings of bunting flags over the paths (client/Life sways them), smoke
+-- village - a welcome arch with the game's name, a golden mower statue, benches, planters, crates and barrels and
+-- hay, set out in mirrored pairs - plus strings of bunting flags over the paths (client/Life sways them), smoke
 -- from the cabins' chimneys and a warm light in every lantern. Everything uses server/Models (the voxel props from
 -- tools/blender/voxel/props.py); anything not imported is simply skipped.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -141,39 +141,44 @@ local function lifeFor(world: Instance)
 	end
 end
 
--- The lobby plaza (y = 0): spawn at (0, -46) looking north at the party pads (z 40); cabins at x +-46, z -22.
+-- Props stand in pairs, mirrored across the walk, square to it and off the paving: the plaza reads planned, not
+-- scattered.
+local function pair(parent: Instance, name: string, x: number, z: number)
+	for _, sx in { -1, 1 } do
+		put(parent, name, face(Vector3.new(x * sx, 0, z), Vector3.new(0, 0, z)))
+	end
+end
+
+-- The lobby plaza (y = 0): spawn at (0, -46) looking north at the party pads (z 40); the walk runs up x = 0 (12 wide)
+-- with lantern posts at x +-13; the garage (x 46) and the classes cabin (x -46) face it across z -22.
 function HubDressing.lobby(world: Instance)
 	if not Config.WORLD_GEN then
 		return
 	end
 	local f = PropKit.folder("Dressing", world)
 	arch(f, face(Vector3.new(0, 0, -38), Vector3.new(0, 0, -60)), string.upper(Config.GAME_NAME))
-	put(f, "mower_statue", face(Vector3.new(26, 0, 4), Vector3.new(0, 0, 4)), 1)
-	for _, p in { Vector3.new(-9.5, 0, -24), Vector3.new(9.5, 0, -24), Vector3.new(-9.5, 0, 16), Vector3.new(9.5, 0, 16) } do
-		put(f, "bench", face(p, Vector3.new(0, 0, p.Z)))
+	put(f, "mower_statue", face(Vector3.new(26, 0, 6), Vector3.new(0, 0, 6)), 1)
+	-- a bench between two planters on each side, twice along the walk
+	for _, z in { -4, 15 } do
+		pair(f, "bench", 9.5, z)
+		pair(f, "planter", 9.5, z - 5.5)
+		pair(f, "planter", 9.5, z + 5.5)
 	end
-	for _, p in { Vector3.new(-9, 0, -4), Vector3.new(9, 0, -4), Vector3.new(-9, 0, 30), Vector3.new(9, 0, 30) } do
-		put(f, "planter", face(p, Vector3.new(0, 0, p.Z)))
+	-- crates and barrels tucked against the cabins' front corners
+	for _, sx in { -1, 1 } do
+		put(f, "crate_stack", face(Vector3.new(33 * sx, 0, -38), Vector3.new(0, 0, -38)))
+		put(f, "barrel", face(Vector3.new(29.5 * sx, 0, -39), Vector3.new(0, 0, -39)))
 	end
-	put(f, "signpost", face(Vector3.new(7, 0, -16), Vector3.new(0, 0, 0)))
-	put(f, "wheelbarrow", face(Vector3.new(31, 0, -36), Vector3.new(20, 0, -30)))
-	put(f, "hay_bale", face(Vector3.new(37, 0, -41), Vector3.new(30, 0, -30)))
-	put(f, "crate_stack", face(Vector3.new(-31, 0, -37), Vector3.new(-20, 0, -30)))
-	put(f, "barrel", face(Vector3.new(-35, 0, -40), Vector3.new(0, 0, 0)))
-	put(f, "barrel", face(Vector3.new(-33, 0, -42), Vector3.new(0, 0, 0)))
-	put(f, "crate_stack", face(Vector3.new(-38, 0, 30), Vector3.new(-30, 0, 20)))
-	-- bunting over the main walk, from the lantern posts, and across the arch
+	-- bunting straight across the walk between the lantern posts
 	for _, z in { -14, 6, 24 } do
 		bunting(f, Vector3.new(-13, 7.6, z), Vector3.new(13, 7.6, z), 1.4)
 	end
-	bunting(f, Vector3.new(-13, 7.6, -34), Vector3.new(-12, 17.5, -38), 0.6)
-	bunting(f, Vector3.new(13, 7.6, -34), Vector3.new(12, 17.5, -38), 0.6)
 	lifeFor(world)
 	hideSpawn(world)
 end
 
 -- The run's village (y = 0): spawn at (0, -68) looking north, shredder (-24, -36), tool shop (24, -40), bag stand
--- (28, -68), garage (-30, -64), fountain (0, 0), the way to the first area north of it.
+-- (28, -68), garage (-30, -64), the fountain (0, 0) in a paved square, the way to the first area north of it.
 function HubDressing.village(world: Instance)
 	if not Config.WORLD_GEN then
 		return
@@ -181,29 +186,22 @@ function HubDressing.village(world: Instance)
 	local f = PropKit.folder("Dressing", world)
 	local first = Zones.list[1]
 	arch(f, face(Vector3.new(0, 0, 22), Vector3.new(0, 0, 0)), string.upper(first.name) .. "  >")
-	put(f, "mower_statue", face(Vector3.new(16, 0, -20), Vector3.new(0, 0, -20)), 1)
-	for _, p in { Vector3.new(-11, 0, 0), Vector3.new(11, 0, 0), Vector3.new(0, 0, -12) } do
-		put(f, "bench", face(p, Vector3.new(0, 0, 0)))
+	put(f, "mower_statue", face(Vector3.new(18, 0, -20), Vector3.new(0, 0, -20)), 1)
+	-- benches on the fountain square, facing the fountain
+	pair(f, "bench", 11, 0)
+	pair(f, "planter", 11, -5.5)
+	pair(f, "planter", 11, 5.5)
+	-- lantern posts in pairs along the walk, bunting strung between them
+	for _, z in { -52, -26 } do
+		pair(f, "lantern_post", 9.5, z)
+		bunting(f, Vector3.new(-9.5, 7.6, z), Vector3.new(9.5, 7.6, z), 1.2)
 	end
-	for _, p in { Vector3.new(-7, 0, -56), Vector3.new(7, 0, -56), Vector3.new(-7, 0, -26), Vector3.new(7, 0, -26) } do
-		put(f, "planter", face(p, Vector3.new(0, 0, p.Z)))
-	end
-	put(f, "signpost", face(Vector3.new(6, 0, -46), Vector3.new(0, 0, -40)))
-	put(f, "crate_stack", face(Vector3.new(-36, 0, -27), Vector3.new(-24, 0, -36)))
-	put(f, "barrel", face(Vector3.new(-38, 0, -31), Vector3.new(0, 0, 0)))
-	put(f, "barrel", face(Vector3.new(-37, 0, -34), Vector3.new(0, 0, 0)))
-	put(f, "wheelbarrow", face(Vector3.new(-12, 0, -52), Vector3.new(-24, 0, -40)))
-	put(f, "hay_bale", face(Vector3.new(40, 0, -72), Vector3.new(28, 0, -68)))
-	put(f, "hay_bale", face(Vector3.new(40, 0, -63), Vector3.new(28, 0, -68)))
-	-- bunting over the main walk on log poles, and from the arch
-	for _, z in { -52, -30 } do
-		for _, x in { -8, 8 } do
-			put(f, "lantern_post", face(Vector3.new(x, 0, z), Vector3.new(0, 0, z)))
-		end
-		bunting(f, Vector3.new(-8, 7.6, z), Vector3.new(8, 7.6, z), 1.2)
-	end
-	bunting(f, Vector3.new(-8, 7.6, -30), Vector3.new(-11, 17.5, 22), 2.5)
-	bunting(f, Vector3.new(8, 7.6, -30), Vector3.new(11, 17.5, 22), 2.5)
+	-- crates and barrels by the shredder, hay by the bag stand
+	put(f, "crate_stack", face(Vector3.new(-37, 0, -28), Vector3.new(-24, 0, -28)))
+	put(f, "barrel", face(Vector3.new(-37, 0, -32), Vector3.new(0, 0, -32)))
+	put(f, "barrel", face(Vector3.new(-37, 0, -35), Vector3.new(0, 0, -35)))
+	put(f, "hay_bale", face(Vector3.new(40, 0, -72), Vector3.new(28, 0, -72)))
+	put(f, "hay_bale", face(Vector3.new(40, 0, -63), Vector3.new(28, 0, -63)))
 	lifeFor(world)
 	hideSpawn(world)
 end

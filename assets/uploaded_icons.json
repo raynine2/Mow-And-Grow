@@ -488,5 +488,23 @@
   "image": 138987550109514,
   "sha": "3dfb71cdd1e32182ab0f41b79c8e545b2bf524c26586fff394d5c976e37185b0",
   "via": "forgegui"
+ },
+ "logo": {
+  "id": 88064545862956,
+  "image": 88064545862956,
+  "sha": "00aefaff88d387a77e02e199b2394a23d55c83a357d8969ceb801dbf08548837",
+  "via": "forgegui"
+ },
+ "glow_soft": {
+  "id": 112432353761585,
+  "image": 112432353761585,
+  "sha": "b3cb91f73e9b927d0e733381f4640bed556bd5b3acbf14331aceb67ab7fadecf",
+  "via": "forgegui"
+ },
+ "sparkle": {
+  "id": 114788125499328,
+  "image": 114788125499328,
+  "sha": "9bb564f813e963a0863a274995f18a4cf6e33d2ac21b427b8a6cc88404c224de",
+  "via": "forgegui"
  }
 }

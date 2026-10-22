@@ -319,5 +319,17 @@
  "wax_seal": {
   "forge": "42c8a835-b84c-4364-b976-bd12044b203a",
   "roblox": 138987550109514
+ },
+ "logo": {
+  "forge": "ef5896d4-8a38-4460-b182-4da990f4d310",
+  "roblox": 88064545862956
+ },
+ "glow_soft": {
+  "forge": "4615cade-e9d3-4b85-b03a-33df38e314c2",
+  "roblox": 112432353761585
+ },
+ "sparkle": {
+  "forge": "fe89f14c-0159-4539-a292-18d443efa214",
+  "roblox": 114788125499328
  }
 }

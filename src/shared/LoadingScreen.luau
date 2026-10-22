@@ -1,9 +1,9 @@
 -- The loading screen. Over the ForgeGUI meadow painting (or a deep green-to-blue sky until it has loaded): the
--- game's name in big chunky letters on a slowly turning sunburst with daisies either side, and the progress bar is a
--- strip of tall grass that a little push mower mows from left to right as the game loads, clippings flying, the
--- mowed part in light/dark lawn stripes, the percentage riding above the mower. Under it a line that changes every
--- couple of seconds (tips and silly jobs: "Sharpening the blades..."), and your avatar's face and name in the
--- corner. Pollen drifts up the screen.
+-- drawn MOW A LAWN logo (ForgeGUI, grass growing out of the letters) popping in on a soft warm glow with a drop
+-- shadow and a few twinkling sparkles, and the progress bar is a strip of tall grass that a little push mower mows
+-- from left to right as the game loads, clippings flying, the mowed part in light/dark lawn stripes, the percentage
+-- riding above the mower. Under it a pill with a line that changes every couple of seconds (tips and silly jobs:
+-- "Sharpening the blades..."), and your avatar's face and name in the corner.
 -- Self-contained (no client modules): the boot script in ReplicatedFirst uses it on arrival, client/Loading before a
 -- teleport. Pictures come from IconIds; anything not loaded yet simply isn't drawn (the shapes still work).
 -- Progress: LoadingScreen.setProgress(gui, 0..1); between calls it creeps forward on its own up to `cap`, so it
@@ -87,22 +87,48 @@ local function text(parent: Instance, t: string, size: UDim2, pos: UDim2, stroke
 	return l
 end
 
--- the title: big white-to-lime letters with a thick brown outline, on turning rays, a daisy either side
-local function title(stage: Frame): (TextLabel, ImageLabel, { ImageLabel })
-	local rays = img(stage, "ui_rays", UDim2.fromOffset(620, 620), UDim2.fromOffset(640, 236))
-	rays.ImageColor3 = Color3.fromRGB(255, 236, 140)
-	rays.ImageTransparency = 0.55
-	local t = text(stage, string.upper(gameName), UDim2.fromOffset(900, 150), UDim2.fromOffset(640, 230), 9)
-	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(196, 250, 120))
-	g.Rotation = 90
-	g.Parent = t
-	t.Rotation = -3
-	local daisies = {
-		img(stage, "daisy", UDim2.fromOffset(130, 130), UDim2.fromOffset(150, 250)),
-		img(stage, "daisy", UDim2.fromOffset(110, 110), UDim2.fromOffset(1130, 200)),
-	}
-	return t, rays, daisies
+-- the title: the drawn logo (or big chunky letters while it isn't uploaded) on a soft warm glow, with a drop shadow,
+-- and sparkles twinkling around it
+local LOGO = Vector2.new(660, 436) -- (the picture is 955 x 631)
+local SPARKLES = { { 318, 112, 40 }, { 968, 96, 34 }, { 1010, 318, 46 }, { 262, 330, 30 }, { 740, 30, 26 }, { 520, 418, 24 } }
+type Title = { logo: GuiObject, pop: UIScale, glows: { ImageLabel }, sparkles: { ImageLabel } }
+local function title(stage: Frame): Title
+	local glows = {}
+	for _, gl in { { 1040, 640, Color3.fromRGB(255, 226, 140), 0.3 }, { 620, 380, Color3.new(1, 1, 1), 0.5 } } do
+		local g = img(stage, "glow_soft", UDim2.fromOffset(gl[1], gl[2]), UDim2.fromOffset(640, 236))
+		g.ScaleType = Enum.ScaleType.Stretch
+		g.ImageColor3 = gl[3]
+		g.ImageTransparency = gl[4]
+		table.insert(glows, g)
+	end
+	local logo: GuiObject
+	if IconIds.logo then
+		local shadow = img(stage, "logo", UDim2.fromOffset(LOGO.X, LOGO.Y), UDim2.fromOffset(648, 248))
+		shadow.Name = "LogoShadow"
+		shadow.ImageColor3 = Color3.fromRGB(20, 30, 10)
+		shadow.ImageTransparency = 0.55
+		logo = img(stage, "logo", UDim2.fromOffset(LOGO.X, LOGO.Y), UDim2.fromOffset(640, 236))
+		-- (the shadow follows the logo's pop and breath: its own scale is set to the same value each frame)
+		Instance.new("UIScale").Parent = shadow
+	else
+		local t = text(stage, string.upper(gameName), UDim2.fromOffset(900, 150), UDim2.fromOffset(640, 230), 9)
+		local g = Instance.new("UIGradient")
+		g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(196, 250, 120))
+		g.Rotation = 90
+		g.Parent = t
+		t.Rotation = -3
+		logo = t
+	end
+	local pop = Instance.new("UIScale")
+	pop.Scale = 0.35
+	pop.Parent = logo
+	local sparkles = {}
+	for i, sp in SPARKLES do
+		local s = img(stage, "sparkle", UDim2.fromOffset(sp[3], sp[3]), UDim2.fromOffset(sp[1], sp[2]))
+		s.ImageColor3 = if i % 2 == 0 then Color3.fromRGB(255, 240, 170) else Color3.new(1, 1, 1)
+		table.insert(sparkles, s)
+	end
+	return { logo = logo, pop = pop, glows = glows, sparkles = sparkles }
 end
 
 -- the lane: uncut tall grass on the right of the mower, mowed stripes on the left of it
@@ -148,7 +174,7 @@ local function lane(stage: Frame): Lane
 		mower = frame(stage, UDim2.fromOffset(60, 44), UDim2.fromOffset(LANE_X, LANE_Y + LANE_H - 6), Color3.fromRGB(230, 70, 60), 12)
 		mower.AnchorPoint = Vector2.new(0.5, 1)
 	end
-	local pct = text(stage, "0%", UDim2.fromOffset(110, 40), UDim2.fromOffset(LANE_X, LANE_Y - 50), 4)
+	local pct = text(stage, "0%", UDim2.fromOffset(96, 34), UDim2.fromOffset(LANE_X, LANE_Y - 50), 3.5)
 	return { mowed = mowed, uncut = uncut, grass = grass, mower = mower, pct = pct }
 end
 
@@ -210,7 +236,7 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	shade.Name = "Shade"
 	local sg = Instance.new("UIGradient")
 	sg.Rotation = 90
-	sg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.75), NumberSequenceKeypoint.new(0.55, 0.6), NumberSequenceKeypoint.new(1, 0.15) })
+	sg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.92), NumberSequenceKeypoint.new(0.5, 0.75), NumberSequenceKeypoint.new(1, 0.2) })
 	sg.Parent = shade
 
 	-- everything else on a 1280 x 720 stage, fitted to the screen
@@ -230,20 +256,18 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	end
 	refit()
 
-	-- pollen drifting up
-	local pollen: { { f: Frame, x: number, speed: number, phase: number } } = {}
-	for i = 1, 22 do
-		local p = frame(stage, UDim2.fromOffset(6, 6), UDim2.fromOffset(0, 0), if i % 3 == 0 then Color3.fromRGB(255, 236, 140) else WHITE, 3)
-		p.BackgroundTransparency = 0.35
-		table.insert(pollen, { f = p, x = math.random(20, 1260), speed = math.random(18, 46), phase = math.random() * 720 })
-	end
-
-	local titleText, rays, daisies = title(stage)
+	local T = title(stage)
 	local L = lane(stage)
-	local line = text(stage, LINES[1] .. "...", UDim2.fromOffset(820, 34), UDim2.fromOffset(640, LANE_Y + LANE_H + 46), 3)
+	-- the changing line, in a dark see-through pill under the lane
+	local linePill = frame(stage, UDim2.fromOffset(600, 42), UDim2.fromOffset(640, LANE_Y + LANE_H + 44), Color3.fromRGB(30, 20, 8), 21)
+	linePill.AnchorPoint = Vector2.new(0.5, 0.5)
+	linePill.BackgroundTransparency = 0.4
+	local line = text(linePill, LINES[1] .. "...", UDim2.new(1, -40, 0, 26), UDim2.fromScale(0.5, 0.5), 2)
 
-	-- you, bottom left
-	local face = frame(stage, UDim2.fromOffset(86, 86), UDim2.fromOffset(34, 610), WHITE, 43)
+	-- you, bottom left, on the same kind of pill
+	local youPill = frame(stage, UDim2.fromOffset(290, 64), UDim2.fromOffset(28, 630), Color3.fromRGB(30, 20, 8), 32)
+	youPill.BackgroundTransparency = 0.4
+	local face = frame(stage, UDim2.fromOffset(76, 76), UDim2.fromOffset(22, 624), WHITE, 38)
 	local fs = Instance.new("UIStroke")
 	fs.Thickness = 4
 	fs.Color = INK
@@ -258,7 +282,7 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	local pc = Instance.new("UICorner")
 	pc.CornerRadius = UDim.new(0.5, 0)
 	pc.Parent = photo
-	local name = text(stage, if player then player.DisplayName else "", UDim2.fromOffset(300, 32), UDim2.fromOffset(134, 653), 3)
+	local name = text(stage, if player then player.DisplayName else "", UDim2.fromOffset(200, 28), UDim2.fromOffset(108, 662), 2.5)
 	name.AnchorPoint = Vector2.new(0, 0.5)
 	name.TextXAlignment = Enum.TextXAlignment.Left
 	if player then
@@ -275,7 +299,7 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	-- fetch the pictures first, ahead of the rest of the game (they show as soon as they arrive)
 	task.spawn(function()
 		local list = {}
-		for _, k in { "scene_lawn", "ui_grass", "pushmower", "daisy", "ui_rays" } do
+		for _, k in { "logo", "scene_lawn", "glow_soft", "ui_grass", "pushmower", "sparkle" } do
 			if IconIds[k] then
 				table.insert(list, IconIds[k])
 			end
@@ -321,15 +345,29 @@ function LoadingScreen.build(player: Player?): ScreenGui
 			lastClip = t
 			clipping(stage, Vector2.new(LANE_X + x - 20, LANE_Y + LANE_H - 20))
 		end
-		-- title breathes, rays turn, daisies sway
-		titleText.Size = UDim2.fromOffset(900 + math.sin(t * 2) * 14, 150 + math.sin(t * 2) * 3)
-		rays.Rotation = t * 10
-		for i, d in daisies do
-			d.Rotation = math.sin(t * 1.6 + i) * 8
+		-- the logo pops in (Back ease over 0.7 s), then breathes and rocks a little; the glow pulses; sparkles twinkle
+		local k = math.clamp(t / 0.7, 0, 1)
+		local back = 1 + 2.2 * (k - 1) ^ 3 + 1.2 * (k - 1) ^ 2 -- 0 -> overshoot -> 1
+		local scale = (0.35 + 0.65 * back) * (1 + 0.015 * math.sin(t * 2.2))
+		T.pop.Scale = scale
+		T.logo.Rotation = math.sin(t * 1.3) * 1.2
+		local shadow = stage:FindFirstChild("LogoShadow") :: ImageLabel?
+		if shadow then
+			(shadow:FindFirstChildOfClass("UIScale") :: UIScale).Scale = scale
+			shadow.Rotation = T.logo.Rotation
 		end
-		for _, p in pollen do
-			local y = 720 - ((p.phase + t * p.speed) % 760)
-			p.f.Position = UDim2.fromOffset(p.x + math.sin(t + p.phase) * 14, y)
+		for i, g in T.glows do
+			local base = if i == 1 then Vector2.new(1040, 640) else Vector2.new(620, 380)
+			local pulse = 1 + 0.04 * math.sin(t * 1.7 + i)
+			g.Size = UDim2.fromOffset(base.X * pulse * math.min(1, k * 1.4), base.Y * pulse * math.min(1, k * 1.4))
+		end
+		for i, s in T.sparkles do
+			local ph = (t * 0.8 + i * 0.37) % 1.6 -- each one flashes for ~0.6 s, then rests
+			local a = if ph < 0.6 then math.sin(ph / 0.6 * math.pi) else 0
+			local sz = SPARKLES[i][3] * (0.4 + 0.6 * a)
+			s.Size = UDim2.fromOffset(sz, sz)
+			s.ImageTransparency = 1 - a
+			s.Rotation = t * 40 + i * 30
 		end
 		-- the changing line, with ticking dots
 		if t - lineAt > 2.6 then

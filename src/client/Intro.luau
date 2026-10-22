@@ -134,6 +134,8 @@ type Plan = {
 	mayorAt: Vector3,
 	m0: Vector3,
 	m1: Vector3,
+	thick: Vector3, -- the middle of the thickest patch of grass near the way in
+	dirK: Vector3, -- from the way in toward it
 	areaName: string,
 }
 
@@ -165,15 +167,34 @@ local function clearance(a: Vector3, b: Vector3, spots: { Vector3 }): number
 	return best
 end
 
--- The low dolly through the meadow: pick the line with the most room between the stalks.
-local function meadowLine(entry: Vector3, dirIn: Vector3): (Vector3, Vector3)
-	local side = dirIn:Cross(UP)
-	local spots = clumpSpots()
-	local bestA, bestB, bestRoom = entry + dirIn * 20, entry + dirIn * 34, -1
-	for _, dist in { 18, 26, 34 } do
-		for off = -14, 14, 3.5 do
-			local a = entry + dirIn * dist + side * off
-			local b = a + dirIn * 14
+-- The thickest patch of grass near the way in: the clump with the most neighbours (closer ones win ties),
+-- and the middle of that bunch.
+local function thickest(spots: { Vector3 }, entry: Vector3): Vector3?
+	local best, bestScore = nil, -math.huge
+	for _, a in spots do
+		local n, sum = 0, Vector3.zero
+		for _, b in spots do
+			if (flat(a - b)).Magnitude < 22 then
+				n += 1
+				sum += b
+			end
+		end
+		local score = n - (a - entry).Magnitude * 0.02
+		if score > bestScore then
+			best, bestScore = sum / n, score
+		end
+	end
+	return best
+end
+
+-- The low dolly into that patch: pick the line with the most room between the stalks.
+local function meadowLine(thick: Vector3, dirK: Vector3, spots: { Vector3 }): (Vector3, Vector3)
+	local side = dirK:Cross(UP)
+	local bestA, bestB, bestRoom = thick - dirK * 16, thick - dirK * 2, -1
+	for _, back in { 20, 16, 12 } do
+		for off = -12, 12, 3 do
+			local a = thick - dirK * back + side * off
+			local b = a + dirK * 14
 			local room = clearance(a, b, spots)
 			if room > bestRoom + 0.5 then
 				bestA, bestB, bestRoom = a, b, room
@@ -196,7 +217,16 @@ local function plan(): Plan
 	local fwd = unit(flat(gate - hub), Vector3.zAxis)
 	local dirIn = unit(flat(Config.zoneCentre(1) - entry), fwd)
 	local cast = IntroCast.ground(hub:Lerp(gate, 0.42))
-	local m0, m1 = meadowLine(entry, dirIn)
+	local spots = {}
+	for _, at in clumpSpots() do
+		if (at - entry).Magnitude < 220 then
+			table.insert(spots, at)
+		end
+	end
+	local thick = thickest(spots, entry) or (entry + dirIn * 60)
+	thick = IntroCast.ground(thick)
+	local dirK = unit(flat(thick - entry), dirIn)
+	local m0, m1 = meadowLine(thick, dirK, spots)
 	local def = Config.ZONES[1]
 	return {
 		hub = hub,
@@ -209,6 +239,8 @@ local function plan(): Plan
 		mayorAt = cast + fwd * 11,
 		m0 = m0,
 		m1 = m1,
+		thick = thick,
+		dirK = dirK,
 		areaName = if def and def.name then def.name else "Area 1",
 	}
 end
@@ -264,18 +296,18 @@ local function meadowShots(P: Plan): boolean
 	Sound.play("whoosh", 0.1, 0.3)
 	local ok = run(3.0, function(k)
 		local p = P.m0:Lerp(P.m1, k * 0.5 + ease(k) * 0.5)
-		local look = p + P.dirIn * 20 + UP * (2.5 + k * 2)
+		local look = p + P.dirK * 20 + UP * (2.5 + k * 2)
 		return CFrame.lookAt(p, look) * CFrame.Angles(0, 0, math.sin(k * math.pi) * 0.05), 62
 	end)
 	if not ok then
 		return false
 	end
-	local top = P.entry - P.dirIn * 6 + UP * 44
-	local far = P.entry + P.dirIn * 90
+	local top = P.thick - P.dirK * 34 + UP * 38
+	local far = P.thick + P.dirK * 40
 	return run(2.6, function(k)
 		local e = ease(k)
-		local p = P.m1:Lerp(top, e) + P.dirIn * (math.sin(e * math.pi) * 4)
-		local look = (P.m1 + P.dirIn * 20 + UP * 4.5):Lerp(far, e)
+		local p = P.m1:Lerp(top, e)
+		local look = (P.m1 + P.dirK * 20 + UP * 4.5):Lerp(far, e)
 		return CFrame.lookAt(p, look), 62 + e * 8
 	end)
 end
@@ -295,7 +327,7 @@ local function partyShots(P: Plan, actors: { IntroCast.Actor }): boolean
 	local len = math.clamp(1.25 * n + 1.8, 3.2, 7)
 	return run(len, function(k)
 		local along = flat(a):Lerp(flat(b), ease(k))
-		local p = Vector3.new(along.X, headY, along.Z) + P.fwd * 6.2
+		local p = Vector3.new(along.X, headY, along.Z) + P.fwd * 7.8
 		local look = Vector3.new(along.X, headY - 0.25, along.Z) - P.right * 0.4
 		-- each actor reacts as the camera reaches them
 		for i, actor in actors do
@@ -307,7 +339,7 @@ local function partyShots(P: Plan, actors: { IntroCast.Actor }): boolean
 				Sound.playAt("pickup", 0.9 + i * 0.08, 0.25)
 			end
 		end
-		return CFrame.lookAt(p, look), 48
+		return CFrame.lookAt(p, look), 44
 	end)
 end
 
@@ -332,9 +364,9 @@ local function mayorShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: string
 	IntroUi.say(MAYOR, "Long ago, this valley was the tidiest lawn in the land...", 34)
 	ok = run(3.8, function(k)
 		local e = ease(k)
-		local side = P.dirIn:Cross(UP)
-		local p = (P.gate + UP * 24 - P.dirIn * 4 - side * 14):Lerp(P.entry + P.dirIn * 26 + UP * 18 + side * 10, e)
-		return CFrame.lookAt(p, P.entry + P.dirIn * 75), 58
+		local side = P.dirK:Cross(UP)
+		local p = (P.thick - P.dirK * 46 + UP * 26 - side * 14):Lerp(P.thick - P.dirK * 26 + UP * 20 + side * 10, e)
+		return CFrame.lookAt(p, P.thick + P.dirK * 25), 58
 	end)
 	flashback(false)
 	if not ok then
@@ -344,11 +376,11 @@ local function mayorShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: string
 	IntroUi.say(MAYOR, "Then the grass came back... and it NEVER stopped growing!")
 	Sound.playAt("rustle", 0.55, 0.7)
 	shake(1.2, 3)
-	local subject = P.entry + P.dirIn * 14 + UP * 4
+	local subject = P.thick + UP * 4
 	local width = 2 * 16 * math.tan(math.rad(37))
 	ok = run(3.0, function(k)
 		local d = 16 + ease(k) * 26
-		local p = subject - P.dirIn * d + UP * (1 + k * 1.5)
+		local p = subject - P.dirK * d + UP * (1 + k * 1.5)
 		local fov = math.deg(2 * math.atan(width / (2 * d)))
 		return CFrame.lookAt(p, subject + UP * 2), fov
 	end)
@@ -409,7 +441,7 @@ end
 local function homeShot(): boolean
 	IntroUi.fade(0, 0.3)
 	task.wait(0.32)
-	IntroCast.cleanup()
+	IntroCast.clearSet() -- the characters stay hidden until the end, so your own head isn't in the shot
 	local char = player.Character
 	local head = char and char:FindFirstChild("Head") :: BasePart?
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -513,7 +545,8 @@ local function play()
 	-- the black cover is up: stream in the far-off places the camera visits
 	local entry = Config.zoneEntry(1)
 	local hub = Config.zoneCentre(0)
-	streamIn({ entry, entry + (Config.zoneCentre(1) - entry).Unit * 40, hub:Lerp(entry, 0.4) })
+	local inward = (Config.zoneCentre(1) - entry).Unit
+	streamIn({ entry, entry + inward * 50, entry + inward * 110, hub:Lerp(entry, 0.4) })
 	if not playing then
 		return
 	end

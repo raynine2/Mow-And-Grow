@@ -515,13 +515,18 @@ function IntroCast.hideGrass(on: boolean)
 	end
 end
 
-function IntroCast.cleanup()
-	IntroCast.hideCharacters(false)
-	IntroCast.hideGrass(false)
+-- Take the actors and props away (the hidden characters and grass stay as they are).
+function IntroCast.clearSet()
 	if set then
 		set:Destroy()
 		set = nil
 	end
+end
+
+function IntroCast.cleanup()
+	IntroCast.hideCharacters(false)
+	IntroCast.hideGrass(false)
+	IntroCast.clearSet()
 end
 
 return IntroCast

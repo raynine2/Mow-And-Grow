@@ -101,39 +101,33 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- motion
 -------------------------------------------------------------------------------------------------------------
-local function juice(obj: GuiObject): UIScale
-	local s = obj:FindFirstChild("Bounce") :: UIScale?
+-- Skin's own scales are named "Pop": UI's juice engine (one UIScale per object it drives every frame for the click
+-- squash, hover grow and idle breath) skips those, so the two never fight over the same scale.
+local function popScale(obj: GuiObject): UIScale
+	local s = obj:FindFirstChild("Pop") :: UIScale?
 	if not s then
 		local n = Instance.new("UIScale")
-		n.Name = "Bounce"
+		n.Name = "Pop"
 		n.Parent = obj
 		s = n
 	end
 	return s :: UIScale
 end
 
--- Hover grows it a little and tips it, pressing squashes it, letting go springs it back.
+-- Hover grows it and tips the art a little; the click squash and click sound come from UI (every button gets them).
 function Skin.press(button: GuiButton, target: GuiObject?)
 	local obj = target or button
-	local s = juice(obj)
-	local hovered = false
-	local function to(scale: number, rot: number, t: number, style: Enum.EasingStyle?)
-		TweenService:Create(s, TweenInfo.new(t, style or Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = scale }):Play()
-		TweenService:Create(obj, TweenInfo.new(t, Enum.EasingStyle.Quad), { Rotation = rot }):Play()
+	local function tilt(rot: number)
+		TweenService:Create(obj, TweenInfo.new(0.18, Enum.EasingStyle.Quad), { Rotation = rot }):Play()
+	end
+	if UI.hoverGrow then
+		UI.hoverGrow(button, 1.08)
 	end
 	button.MouseEnter:Connect(function()
-		hovered = true
-		to(1.08, -3, 0.18)
+		tilt(-3)
 	end)
 	button.MouseLeave:Connect(function()
-		hovered = false
-		to(1, 0, 0.18)
-	end)
-	button.MouseButton1Down:Connect(function()
-		to(0.9, 0, 0.08, Enum.EasingStyle.Quad)
-	end)
-	button.MouseButton1Up:Connect(function()
-		to(if hovered then 1.08 else 1, if hovered then -3 else 0, 0.3)
+		tilt(0)
 	end)
 end
 
@@ -254,7 +248,7 @@ function Skin.dot(parent: GuiObject, pos: UDim2, size: number?): Frame
 	local d = UI.frame({ size = UDim2.fromOffset(size or 22, size or 22), pos = pos, anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(232, 69, 60), parent = parent, radius = 999, outline = 3, name = "Dot" })
 	;(d:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(90, 20, 16)
 	d.ZIndex = parent.ZIndex + 8
-	local s = juice(d)
+	local s = popScale(d)
 	TweenService:Create(s, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.25 }):Play()
 	d.Visible = false
 	return d
@@ -282,7 +276,7 @@ end
 
 -- Pop an object in from nothing (a window, a card), with an overshoot.
 function Skin.popIn(obj: GuiObject, delay: number?)
-	local s = juice(obj)
+	local s = popScale(obj)
 	s.Scale = 0.3
 	task.delay(delay or 0, function()
 		TweenService:Create(s, TweenInfo.new(0.38, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()

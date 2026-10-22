@@ -1,12 +1,20 @@
--- The class room (client only), like Chop A Forest's class screen: while the CLASSES window is open the camera cuts
--- to a dark magic room high above the map, with your avatar (a clone, playing its idle) on a glowing, turning
--- rune circle in front of a purple-roofed log cabin: candles with toon flames, a bubbling cauldron, pink
--- crystals, purple sparkles and an aura in the picked card's rarity colour. Built once on first open, taken
--- out of the world while closed. Particle rates follow VFXLib's Budget (phones get fewer).
+-- The class room (client only), SPACE edition: while the CLASSES window is open the camera cuts to deep space high
+-- above the map. Your avatar (a clone) floats there in a zero-g pose, flying forward through the stars:
+--   * a star-box all round (six far walls painted with stars and slowly turning nebulae), two planets (one ringed)
+--     and a moon turning in the distance, asteroids tumbling past
+--   * warp streaks and dust rushing past the avatar, a comet tail of its card's colour streaming behind it; no
+--     platform - it floats free
+--   * the body is alive (the organic-animation notes): torso leads, chest / arms / head / legs follow on lagged sines,
+--     a slow bob, sway and roll, and now and then a slow showy turn
+--   * a cinematic camera: always drifting a little (handheld noise), and every 9-13 s it glides (3 s Sine InOut) to
+--     another framing - front, three-quarter low, three-quarter high, a low hero shot. Never a cut, never fast.
+-- Lighting is changed locally while the room shows (night, cool ambient, no haze / sun rays) and put back on close.
+-- Particle rates follow VFXLib's Budget (phones get fewer).
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local VFX = require(ReplicatedStorage:WaitForChild("VFXLib"))
 
@@ -15,16 +23,25 @@ local ClassRoom = {}
 local player = Players.LocalPlayer
 local Tex = VFX.Assets.Tex
 local Budget = VFX.Budget
-local ORIGIN = CFrame.new(0, 1400, 0) -- the room's floor centre; the avatar faces -Z (toward the camera)
+local ORIGIN = CFrame.new(0, 1400, 0) -- the room's centre; the avatar faces -Z (toward the camera)
+local FLOAT = Vector3.new(0, 4.4, 0) -- where the avatar's middle floats
 
 local room: Model? = nil
 local avatar: Model? = nil
 local aura: { ParticleEmitter } = {}
+local tail: { ParticleEmitter } = {}
 local auraLight: PointLight? = nil
 local rune: ImageLabel? = nil
+local halo: BasePart? = nil
 local grade: ColorCorrectionEffect? = nil
-local spin: RBXScriptConnection? = nil
+local blur: DepthOfFieldEffect? = nil
+local step: RBXScriptConnection? = nil
 local shown = false
+local openToken = 0
+local spinners: { { inst: Instance, speed: Vector3 } } = {} -- planets / asteroids turning each frame
+local drifters: { { part: BasePart, img: ImageLabel?, vel: Vector3, spin: Vector3 } } = {}
+local nebulae: { GuiObject } = {}
+local savedLighting: { [Instance]: { [string]: any } } = {}
 
 local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
@@ -79,237 +96,275 @@ local function light(parent: Instance, color: Color3, range: number, brightness:
 	return l
 end
 
--- A candle (bottom at `x, z`): wax, a toon flame, sometimes a warm light.
-local function candle(m: Instance, x: number, z: number, h: number, lit: boolean)
-	local wax = part(m, Vector3.new(h, 0.9, 0.9), CFrame.new(x, 1 + h / 2, z) * CFrame.Angles(0, 0, math.rad(90)), rgb(246, 238, 226), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-	local tip = Instance.new("Attachment")
-	tip.Position = Vector3.new(h / 2 + 0.35, 0, 0)
-	tip.Parent = wax
-	emitter(tip, {
-		Texture = Tex.FlameToon4x4, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
-		FlipbookFramerate = NumberRange.new(24), Color = ColorSequence.new(rgb(255, 214, 120), rgb(255, 140, 40)), LightEmission = 1,
-		Size = NumberSequence.new(0.7), Lifetime = NumberRange.new(0.45), Speed = NumberRange.new(0), Rate = 3, LockedToPart = true,
-	})
-	if lit then
-		light(wax, rgb(255, 180, 110), 10, 1.2)
+-- A glow sprite that always faces the camera (nebula puffs, planet atmospheres, star flares).
+local function glowBoard(parent: BasePart, size: number, color: Color3, transparency: number, image: string?): ImageLabel
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromScale(size, size)
+	bb.LightInfluence = 0
+	bb.AlwaysOnTop = false
+	bb.MaxDistance = 100000
+	bb.Parent = parent
+	local img = Instance.new("ImageLabel")
+	img.BackgroundTransparency = 1
+	img.Image = image or Tex.Glow
+	img.ImageColor3 = color
+	img.ImageTransparency = transparency
+	img.Size = UDim2.fromScale(1, 1)
+	img.Parent = bb
+	return img
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- the star-box: six far walls, each painted with stars (a few bright ones flare) and soft nebula clouds
+-------------------------------------------------------------------------------------------------------------
+local FACES = {
+	{ CFrame.new(0, 0, 460), Vector3.new(1000, 1000, 2), Enum.NormalId.Front }, -- behind the avatar (the main view)
+	{ CFrame.new(0, 0, -460), Vector3.new(1000, 1000, 2), Enum.NormalId.Back },
+	{ CFrame.new(460, 0, 0), Vector3.new(2, 1000, 1000), Enum.NormalId.Left },
+	{ CFrame.new(-460, 0, 0), Vector3.new(2, 1000, 1000), Enum.NormalId.Right },
+	{ CFrame.new(0, 460, 0), Vector3.new(1000, 2, 1000), Enum.NormalId.Bottom },
+	{ CFrame.new(0, -460, 0), Vector3.new(1000, 2, 1000), Enum.NormalId.Top },
+}
+local NEBULA = { rgb(130, 60, 255), rgb(40, 190, 255), rgb(255, 80, 200), rgb(90, 80, 255), rgb(60, 230, 200) }
+
+local function starWall(m: Instance, i: number, rng: Random)
+	local f = FACES[i]
+	local wall = part(m, f[2], f[1], rgb(4, 3, 12))
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = f[3]
+	gui.LightInfluence = 0
+	gui.Brightness = 1.6
+	gui.CanvasSize = Vector2.new(1400, 1400)
+	gui.Parent = wall
+	-- a deep violet glow over the main wall, darker at the rim (the "sky" isn't flat black)
+	local base = Instance.new("Frame")
+	base.BorderSizePixel = 0
+	base.Size = UDim2.fromScale(1, 1)
+	base.BackgroundColor3 = Color3.new(1, 1, 1)
+	local bg = Instance.new("UIGradient")
+	bg.Color = ColorSequence.new(rgb(26, 14, 60), rgb(4, 3, 14))
+	bg.Rotation = if i == 1 then 90 else rng:NextInteger(0, 360)
+	bg.Parent = base
+	base.Parent = gui
+	-- nebula clouds: big soft glows and a faint plasma texture, each slowly turning and breathing
+	for k = 1, if i == 1 then 6 else 3 do
+		local c = NEBULA[rng:NextInteger(1, #NEBULA)]
+		local sz = rng:NextInteger(500, 1100)
+		local neb = Instance.new("ImageLabel")
+		neb.BackgroundTransparency = 1
+		neb.Image = if k % 3 == 0 then Tex.VS_Plasma else Tex.Glow
+		neb.ImageColor3 = c
+		neb.ImageTransparency = if k % 3 == 0 then 0.82 else 0.62
+		neb.Size = UDim2.fromOffset(sz, sz * rng:NextNumber(0.55, 0.9))
+		neb.Position = UDim2.fromOffset(rng:NextInteger(100, 1300), rng:NextInteger(150, 1250))
+		neb.AnchorPoint = Vector2.new(0.5, 0.5)
+		neb.Rotation = rng:NextInteger(0, 360)
+		neb.Parent = gui
+		table.insert(nebulae, neb)
+		TweenService:Create(neb, TweenInfo.new(rng:NextNumber(5, 9), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { ImageTransparency = math.min(0.95, neb.ImageTransparency + 0.12) }):Play()
 	end
+	-- stars: many tiny dots, a few bright twinkling flares
+	for _ = 1, if i == 1 then 260 else 150 do
+		local d = Instance.new("Frame")
+		d.BorderSizePixel = 0
+		local s = if rng:NextNumber() < 0.85 then rng:NextInteger(2, 3) else rng:NextInteger(4, 5)
+		d.Size = UDim2.fromOffset(s, s)
+		d.Position = UDim2.fromOffset(rng:NextInteger(0, 1400), rng:NextInteger(0, 1400))
+		d.BackgroundColor3 = if rng:NextNumber() < 0.2 then rgb(190, 215, 255) elseif rng:NextNumber() < 0.15 then rgb(255, 225, 200) else Color3.new(1, 1, 1)
+		d.BackgroundTransparency = rng:NextNumber(0, 0.45)
+		local cr = Instance.new("UICorner")
+		cr.CornerRadius = UDim.new(1, 0)
+		cr.Parent = d
+		d.Parent = gui
+	end
+	for _ = 1, if i == 1 then 14 else 6 do
+		local fl = Instance.new("ImageLabel")
+		fl.BackgroundTransparency = 1
+		fl.Image = Tex.Star4
+		fl.ImageColor3 = if rng:NextNumber() < 0.5 then rgb(210, 225, 255) else rgb(255, 230, 250)
+		local s = rng:NextInteger(14, 28)
+		fl.Size = UDim2.fromOffset(s, s)
+		fl.AnchorPoint = Vector2.new(0.5, 0.5)
+		fl.Position = UDim2.fromOffset(rng:NextInteger(40, 1360), rng:NextInteger(40, 1360))
+		fl.Parent = gui
+		TweenService:Create(fl, TweenInfo.new(rng:NextNumber(0.8, 1.8), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, rng:NextNumber(0, 1.5)), { ImageTransparency = 0.85, Size = UDim2.fromOffset(s * 0.4, s * 0.4), Rotation = 45 }):Play()
+	end
+end
+
+-- hand-painted sprites (outlined, cel-shaded, same style as the UI icons) uploaded from the art pipeline
+local SPRITE = {
+	giant = "rbxassetid://76815913357075",
+	amber = "rbxassetid://133565391461599",
+	moon = "rbxassetid://98933430752834",
+	rocks = { "rbxassetid://128375906315387", "rbxassetid://84229473249758", "rbxassetid://84362739504731" },
+}
+
+-- a camera-facing painted sprite on an invisible anchor part; depth-tested so rings and rocks pass in front/behind
+local function sprite(p: BasePart, image: string, studs: number): ImageLabel
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromScale(studs, studs)
+	bb.LightInfluence = 0
+	bb.Brightness = 1
+	bb.AlwaysOnTop = false
+	bb.MaxDistance = 2000
+	bb.Adornee = p
+	bb.Parent = p
+	local img = Instance.new("ImageLabel")
+	img.BackgroundTransparency = 1
+	img.Image = image
+	img.Size = UDim2.fromScale(1, 1)
+	img.AnchorPoint = Vector2.new(0.5, 0.5)
+	img.Position = UDim2.fromScale(0.5, 0.5)
+	img.ScaleType = Enum.ScaleType.Fit
+	img.Parent = bb
+	return img
+end
+
+local function planet(m: Instance, pos: Vector3, size: number, image: string, atmo: Color3, ringed: boolean, spin: number)
+	local p = part(m, Vector3.one, CFrame.new(pos), Color3.new(1, 1, 1))
+	p.Transparency = 1
+	sprite(p, image, size / 0.92) -- the painted disc fills 92% of its square
+	glowBoard(p, size * 1.9, atmo, 0.55)
+	if ringed then
+		local ring = part(m, Vector3.new(size * 2.6, 0.2, size * 2.6), CFrame.new(pos) * CFrame.Angles(math.rad(-18), 0, math.rad(14)), Color3.new(1, 1, 1))
+		ring.Transparency = 1
+		for _, face in { Enum.NormalId.Top, Enum.NormalId.Bottom } do
+			local rg = Instance.new("SurfaceGui")
+			rg.Face = face
+			rg.LightInfluence = 0
+			rg.Brightness = 1.4
+			rg.CanvasSize = Vector2.new(512, 512)
+			rg.Parent = ring
+			for k, tr in { 0.25, 0.5 } do
+				local img = Instance.new("ImageLabel")
+				img.BackgroundTransparency = 1
+				img.Image = Tex.RingThin
+				img.ImageColor3 = if k == 1 then rgb(220, 200, 255) else rgb(255, 200, 160)
+				img.ImageTransparency = tr
+				img.Size = UDim2.fromScale(1 - (k - 1) * 0.16, 1 - (k - 1) * 0.16)
+				img.Position = UDim2.fromScale(0.5, 0.5)
+				img.AnchorPoint = Vector2.new(0.5, 0.5)
+				img.Parent = rg
+			end
+		end
+		table.insert(spinners, { inst = ring, speed = Vector3.new(0, 0.05, 0) })
+	end
+	return p -- the painted sprite carries its own lighting, so the body itself doesn't spin
+end
+
+local function rock(m: Instance, rng: Random, pos: Vector3, s: number)
+	local main = part(m, Vector3.one, CFrame.new(pos), Color3.new(1, 1, 1))
+	main.Transparency = 1
+	local img = sprite(main, SPRITE.rocks[rng:NextInteger(1, #SPRITE.rocks)], s * 1.25)
+	img.Rotation = rng:NextInteger(0, 359)
+	-- far rocks sink into the violet haze a little
+	local haze = math.clamp((pos.Z - 40) / 100, 0, 1)
+	img.ImageColor3 = Color3.new(1, 1, 1):Lerp(rgb(150, 130, 210), haze * 0.6)
+	img.ImageTransparency = haze * 0.25
+	table.insert(drifters, {
+		part = main,
+		img = img,
+		vel = Vector3.new(rng:NextNumber(-1.2, 1.2), rng:NextNumber(-0.3, 0.3), rng:NextNumber(-6, -2.5)), -- drifting toward the camera: we fly through them
+		spin = Vector3.new(rng:NextNumber(-0.6, 0.6), rng:NextNumber(-0.6, 0.6), rng:NextNumber(-0.6, 0.6)),
+	})
 end
 
 local function build()
 	local m = Instance.new("Model")
 	m.Name = "ClassRoom"
-	local dark = rgb(14, 10, 26)
-	-- night: a dark grassy floor, a box that hides the sky, and dark pines behind the cabin
-	part(m, Vector3.new(140, 1, 110), CFrame.new(0, 0, 10), rgb(34, 46, 40), Enum.Material.Grass)
-	part(m, Vector3.new(140, 1, 110), CFrame.new(0, 70, 10), dark)
-	for _, x in { -70, 70 } do
-		part(m, Vector3.new(1, 70, 110), CFrame.new(x, 35, 10), dark)
-	end
-	part(m, Vector3.new(140, 70, 1), CFrame.new(0, 35, 64), dark)
-	part(m, Vector3.new(140, 70, 1), CFrame.new(0, 35, -44), dark)
-	local pineRng = Random.new(3)
-	for i = 0, 11 do
-		local x = -44 + i * 8 + pineRng:NextNumber(-2, 2)
-		if math.abs(x) < 14 then
-			continue
-		end
-		local z, h = pineRng:NextNumber(14, 30), pineRng:NextNumber(16, 26)
-		part(m, Vector3.new(1.4, h * 0.3, 1.4), CFrame.new(x, h * 0.15, z), rgb(36, 26, 34), Enum.Material.Wood)
-		for t = 0, 3 do
-			local w = (1 - t / 4) * h * 0.42 + 1.5
-			part(m, Vector3.new(w, h * 0.26, w), CFrame.new(x, h * 0.3 + t * h * 0.19, z) * CFrame.Angles(0, t * 0.7, 0), rgb(30, 44, 52), Enum.Material.Grass)
-		end
+	local rng = Random.new(2026)
+	for i = 1, #FACES do
+		starWall(m, i, rng)
 	end
 
-	-- the little log cabin right behind the circle: log walls with big log ends, a purple A-frame roof with logs in
-	-- the gable, two star banners and a glowing teal window
-	local logC, endC, z0 = rgb(150, 104, 76), rgb(214, 172, 124), 8.5
-	part(m, Vector3.new(21, 8.4, 0.6), CFrame.new(0, 4.2, z0 + 0.7), rgb(70, 46, 40), Enum.Material.WoodPlanks)
-	for i = 0, 6 do
-		local y = 0.6 + i * 1.2
-		part(m, Vector3.new(22.5, 1.2, 1.2), CFrame.new(0, y, z0), logC, Enum.Material.Wood, Enum.PartType.Cylinder)
-		for _, x in { -11.4, 11.4 } do
-			part(m, Vector3.new(0.3, 1.25, 1.25), CFrame.new(x, y, z0), endC, Enum.Material.Wood, Enum.PartType.Cylinder)
+	-- planets: a big ringed violet giant upper left, a small amber one lower right with a moon
+	planet(m, Vector3.new(-170, 90, 380), 150, SPRITE.giant, rgb(150, 110, 255), true, 0.03)
+	planet(m, Vector3.new(190, -40, 360), 54, SPRITE.amber, rgb(255, 160, 90), false, 0.06)
+	planet(m, Vector3.new(232, 0, 330), 14, SPRITE.moon, rgb(200, 210, 255), false, 0.1)
+
+	-- asteroids drifting through, near and far
+	for _ = 1, 16 do
+		local far = rng:NextNumber() < 0.6
+		local pos = Vector3.new(rng:NextNumber(-70, 70), rng:NextNumber(-25, 35), rng:NextNumber(if far then 40 else 12, if far then 140 else 40))
+		if math.abs(pos.X) < 12 and math.abs(pos.Y - 4) < 9 then
+			pos += Vector3.new(if pos.X < 0 then -16 else 16, 0, 0) -- keep the avatar clear
 		end
-	end
-	for i = 0, 4 do
-		local hw = 10.5 * (1 - (i + 0.6) / 5.4)
-		part(m, Vector3.new(hw * 2, 1.1, 1.1), CFrame.new(0, 8.95 + i * 1.1, z0), logC, Enum.Material.Wood, Enum.PartType.Cylinder)
-	end
-	local pitch = math.atan(6.4 / 12.6)
-	local slabLen = math.sqrt(12.6 ^ 2 + 6.4 ^ 2) + 0.6
-	for side = -1, 1, 2 do
-		local cf = CFrame.new(side * 6.3, 11.4, z0 + 5) * CFrame.Angles(0, 0, -side * pitch)
-		part(m, Vector3.new(slabLen, 0.9, 13), cf, rgb(108, 66, 196), Enum.Material.RoofShingles)
-		part(m, Vector3.new(slabLen, 0.7, 0.7), cf * CFrame.new(0, -0.1, -6.6), rgb(60, 40, 30), Enum.Material.Wood)
-	end
-	part(m, Vector3.new(1.3, 1.3, 13.4), CFrame.new(0, 14.5, z0 + 5), rgb(60, 40, 30), Enum.Material.Wood)
-	part(m, Vector3.new(4, 6.4, 0.3), CFrame.new(0, 3.6, z0 - 0.75), rgb(56, 36, 30), Enum.Material.WoodPlanks)
-	local win = part(m, Vector3.new(3, 2.8, 0.25), CFrame.new(-6.2, 3.8, z0 - 0.75), rgb(70, 220, 190), Enum.Material.Neon)
-	light(win, rgb(70, 220, 190), 10, 0.9)
-	part(m, Vector3.new(3.8, 3.6, 0.3), CFrame.new(-6.2, 3.8, z0 - 0.65), rgb(72, 46, 110), Enum.Material.Wood)
-	for _, x in { -5.2, 5.2 } do
-		local banner = part(m, Vector3.new(3.2, 4.6, 0.15), CFrame.new(x, 8.6, z0 - 0.85), rgb(40, 20, 80), Enum.Material.Fabric)
-		part(m, Vector3.new(3.6, 0.25, 0.25), CFrame.new(x, 10.95, z0 - 0.85), rgb(220, 170, 70), Enum.Material.Metal)
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = Enum.NormalId.Front
-		gui.LightInfluence = 0
-		gui.Brightness = 2.5
-		gui.CanvasSize = Vector2.new(100, 144)
-		gui.Parent = banner
-		for k = 1, 6 do -- a starry fabric
-			local dot = Instance.new("Frame")
-			dot.BorderSizePixel = 0
-			dot.BackgroundColor3 = rgb(200, 170, 255)
-			dot.BackgroundTransparency = 0.4
-			dot.Size = UDim2.fromOffset(4, 4)
-			dot.Position = UDim2.fromOffset((k * 37) % 92 + 4, (k * 53) % 130 + 6)
-			dot.Parent = gui
-		end
-		local star = Instance.new("ImageLabel")
-		star.BackgroundTransparency = 1
-		star.Image = Tex.Star4
-		star.ImageColor3 = rgb(255, 214, 90)
-		star.Size = UDim2.fromOffset(84, 84)
-		star.Position = UDim2.fromScale(0.5, 0.45)
-		star.AnchorPoint = Vector2.new(0.5, 0.5)
-		star.Parent = gui
+		rock(m, rng, pos, rng:NextNumber(if far then 3 else 1.2, if far then 9 else 3))
 	end
 
-	-- the octagon stone platform with a step, and the rune circle on it (an image that turns slowly)
-	for _, a in { 0, math.rad(45) } do
-		part(m, Vector3.new(15.5, 1.3, 15.5), CFrame.new(0, 1, 0) * CFrame.Angles(0, a, 0), rgb(96, 90, 116), Enum.Material.Slate)
-		part(m, Vector3.new(19, 0.7, 19), CFrame.new(0, 0.35, 0) * CFrame.Angles(0, a, 0), rgb(70, 64, 88), Enum.Material.Slate)
-	end
-	local runePart = part(m, Vector3.new(14, 0.1, 14), CFrame.new(0, 1.7, 0), Color3.new(1, 1, 1))
-	runePart.Transparency = 1
-	local rg = Instance.new("SurfaceGui")
-	rg.Face = Enum.NormalId.Top
-	rg.LightInfluence = 0
-	rg.Brightness = 3
-	rg.CanvasSize = Vector2.new(512, 512)
-	rg.Parent = runePart
-	local glow = Instance.new("ImageLabel")
-	glow.BackgroundTransparency = 1
-	glow.Image = Tex.Glow
-	glow.ImageColor3 = rgb(190, 90, 255)
-	glow.ImageTransparency = 0.35
-	glow.Size = UDim2.fromScale(1.15, 1.15)
-	glow.Position = UDim2.fromScale(-0.075, -0.075)
-	glow.Parent = rg
-	local img = Instance.new("ImageLabel")
-	img.BackgroundTransparency = 1
-	img.Image = Tex.RuneCircle
-	img.ImageColor3 = rgb(215, 130, 255)
-	img.Size = UDim2.fromScale(1, 1)
-	img.Parent = rg
-	rune = img
-	light(runePart, rgb(200, 110, 255), 16, 2.2)
-
-	-- candles round the platform's edge (none between the camera and the avatar)
-	for i = 0, 11 do
-		local a = i / 12 * math.pi * 2 + 0.2
-		local x, z = math.cos(a) * 7.6, math.sin(a) * 7.6
-		if z > -3 or math.abs(x) > 5 then
-			candle(m, x, z, 0.9 + (i % 3) * 0.6, i % 4 == 0)
-		end
-	end
-
-	-- the cauldron on its tripod (screen left: the camera looks along +Z, so +X is on the left) with green smoke, and a table of potions behind it
-	local pot = part(m, Vector3.new(5, 4, 5), CFrame.new(12.5, 2.6, 3), rgb(30, 28, 36), Enum.Material.Metal, Enum.PartType.Ball)
-	part(m, Vector3.new(0.4, 4.4, 4.4), CFrame.new(12.5, 4.4, 3) * CFrame.Angles(0, 0, math.rad(90)), rgb(40, 38, 46), Enum.Material.Metal, Enum.PartType.Cylinder)
-	part(m, Vector3.new(0.3, 3.8, 3.8), CFrame.new(12.5, 4.5, 3) * CFrame.Angles(0, 0, math.rad(90)), rgb(90, 255, 130), Enum.Material.Neon, Enum.PartType.Cylinder)
-	for k = 0, 2 do
-		local a = k * math.pi * 2 / 3
-		part(m, Vector3.new(0.35, 3, 0.35), CFrame.new(12.5 + math.cos(a) * 2, 1.3, 3 + math.sin(a) * 2) * CFrame.Angles(math.cos(a) * 0.3, 0, math.sin(a) * 0.3), rgb(30, 28, 36), Enum.Material.Metal)
-	end
-	local brew = Instance.new("Attachment")
-	brew.Position = Vector3.new(0, 2.1, 0)
-	brew.Parent = pot
-	emitter(brew, {
-		Texture = Tex.SmokePuff4x4, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
-		Color = ColorSequence.new(rgb(120, 255, 150)), LightEmission = 0.5, Size = seq(0, 1.5, 1, 5), Transparency = seq(0, 0.25, 1, 1),
-		Lifetime = NumberRange.new(2, 3), Speed = NumberRange.new(1.5, 3), SpreadAngle = Vector2.new(15, 15), Rate = Budget.Rate(4),
-		EmissionDirection = Enum.NormalId.Top, Acceleration = Vector3.new(-0.6, 0, 0),
+	-- warp streaks + dust rushing past (the avatar flies toward us, so the streaks come from behind it)
+	local warp = part(m, Vector3.new(120, 70, 1), CFrame.new(0, 5, 120), Color3.new(1, 1, 1))
+	warp.Transparency = 1
+	emitter(warp, {
+		Texture = Tex.Spark, Shape = Enum.ParticleEmitterShape.Box, EmissionDirection = Enum.NormalId.Front,
+		Orientation = Enum.ParticleOrientation.VelocityParallel, Color = ColorSequence.new(rgb(200, 210, 255), Color3.new(1, 1, 1)),
+		LightEmission = 1, Size = seq(0, 0.1, 1, 0.35), Transparency = seq(0, 1, 0.15, 0.25, 0.85, 0.3, 1, 1),
+		Lifetime = NumberRange.new(1.6, 2.2), Speed = NumberRange.new(70, 110), Rate = Budget.Rate(26),
 	})
-	light(pot, rgb(110, 255, 140), 12, 1.6)
-	part(m, Vector3.new(5, 0.3, 2.2), CFrame.new(15.5, 2.4, 6.5), rgb(110, 74, 48), Enum.Material.WoodPlanks)
-	for _, x in { 17.6, 13.4 } do
-		part(m, Vector3.new(0.3, 2.3, 0.3), CFrame.new(x, 1.15, 6.5), rgb(80, 52, 34), Enum.Material.Wood)
-	end
-	for k, c in { rgb(255, 120, 220), rgb(120, 220, 255), rgb(255, 230, 120) } do
-		local x = 13.8 + k * 1.3
-		local bottle = part(m, Vector3.new(0.9, 1.4, 0.9), CFrame.new(x, 3.25, 6.5), rgb(235, 240, 255), Enum.Material.Glass)
-		bottle.Transparency = 0.35
-		part(m, Vector3.new(0.7, 0.8, 0.7), CFrame.new(x, 3.05, 6.5), c, Enum.Material.Neon)
-		part(m, Vector3.new(0.35, 0.5, 0.35), CFrame.new(x, 4.2, 6.5), rgb(235, 240, 255), Enum.Material.Glass).Transparency = 0.35
-	end
-
-	-- pink crystals (screen right)
-	local crystalRng = Random.new(5)
-	for i = 1, 7 do
-		local h = crystalRng:NextNumber(2.5, 6.5)
-		local c = part(m, Vector3.new(1.2, h, 1.2), CFrame.new(-11.5 + crystalRng:NextNumber(-2.5, 2), h * 0.45, 4 + crystalRng:NextNumber(-2, 2)) * CFrame.Angles(crystalRng:NextNumber(-0.45, 0.45), crystalRng:NextNumber(0, 3), crystalRng:NextNumber(-0.45, 0.45)), rgb(240, 120, 235), Enum.Material.Neon)
-		c.Transparency = 0.12
-		if i == 1 then
-			light(c, rgb(240, 110, 230), 12, 1.6)
-		end
-	end
-
-	-- sparkles and motes in the air
-	local air = part(m, Vector3.new(32, 13, 16), CFrame.new(0, 7, 2), Color3.new(1, 1, 1))
-	air.Transparency = 1
-	emitter(air, {
-		Texture = Tex.Star4, Shape = Enum.ParticleEmitterShape.Box, ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
-		Color = ColorSequence.new(rgb(230, 180, 255), Color3.new(1, 1, 1)), LightEmission = 1, Size = seq(0, 0, 0.5, 0.45, 1, 0),
-		Lifetime = NumberRange.new(1.5, 2.5), Speed = NumberRange.new(0.2, 0.8), Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-60, 60),
-		Rate = Budget.Rate(9),
-	})
-	emitter(air, {
-		Texture = Tex.Glow, Shape = Enum.ParticleEmitterShape.Box, ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
-		Color = ColorSequence.new(rgb(200, 150, 255)), LightEmission = 0.8, Size = seq(0, 0.12, 0.5, 0.25, 1, 0.08), Transparency = seq(0, 1, 0.3, 0.3, 1, 1),
-		Lifetime = NumberRange.new(4, 7), Speed = NumberRange.new(0.3, 0.8), SpreadAngle = Vector2.new(180, 180), Rate = Budget.Rate(10),
+	local dust = part(m, Vector3.new(70, 40, 1), CFrame.new(0, 5, 60), Color3.new(1, 1, 1))
+	dust.Transparency = 1
+	emitter(dust, {
+		Texture = Tex.Glow, Shape = Enum.ParticleEmitterShape.Box, EmissionDirection = Enum.NormalId.Front,
+		Color = ColorSequence.new(rgb(190, 170, 255)), LightEmission = 0.8, Size = seq(0, 0.12, 1, 0.3), Transparency = seq(0, 1, 0.2, 0.35, 1, 1),
+		Lifetime = NumberRange.new(4, 6), Speed = NumberRange.new(12, 22), Rate = Budget.Rate(18),
 	})
 
-	-- the aura round the avatar (recoloured per card)
-	local core = part(m, Vector3.new(2.2, 4.6, 1.4), CFrame.new(0, 4.3, 0.4), Color3.new(1, 1, 1))
+	-- (no platform under the avatar: it floats free in space)
+
+	-- the aura round the avatar (recoloured per card) and a comet tail streaming out behind it
+	local core = part(m, Vector3.new(2.2, 4.6, 1.4), CFrame.new(FLOAT + Vector3.new(0, 0, 0.4)), Color3.new(1, 1, 1))
 	core.Transparency = 1
+	core.Name = "AuraCore"
 	table.insert(aura, emitter(core, {
 		Texture = Tex.Glow, Shape = Enum.ParticleEmitterShape.Box, Color = ColorSequence.new(rgb(170, 90, 255)), LightEmission = 1,
 		Size = seq(0, 0.5, 0.5, 0.9, 1, 0), Transparency = seq(0, 0.8, 0.4, 0.7, 1, 1), Lifetime = NumberRange.new(0.8, 1.3),
-		Speed = NumberRange.new(2, 3.5), EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(6, 6), Rate = Budget.Rate(8),
+		Speed = NumberRange.new(2, 3.5), EmissionDirection = Enum.NormalId.Back, SpreadAngle = Vector2.new(10, 10), Rate = Budget.Rate(10),
 	}))
 	table.insert(aura, emitter(core, {
 		Texture = Tex.Spark, Shape = Enum.ParticleEmitterShape.Box, Color = ColorSequence.new(Color3.new(1, 1, 1)), LightEmission = 1,
 		Orientation = Enum.ParticleOrientation.VelocityParallel, Size = seq(0, 0.2, 1, 0), Lifetime = NumberRange.new(0.5, 0.9),
-		Speed = NumberRange.new(4, 8), EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(8, 8), Rate = Budget.Rate(6),
+		Speed = NumberRange.new(6, 10), EmissionDirection = Enum.NormalId.Back, SpreadAngle = Vector2.new(8, 8), Rate = Budget.Rate(8),
 	}))
-	auraLight = light(core, rgb(170, 90, 255), 7, 0.9) -- a rim on the avatar, not a wash over the cabin
+	table.insert(tail, emitter(core, {
+		Texture = Tex.Glow, Color = ColorSequence.new(rgb(170, 90, 255)), LightEmission = 1, EmissionDirection = Enum.NormalId.Back,
+		Size = seq(0, 1.6, 1, 0.2), Transparency = seq(0, 0.55, 1, 1), Lifetime = NumberRange.new(1.2, 1.6), Speed = NumberRange.new(9, 12),
+		SpreadAngle = Vector2.new(4, 4), Rate = Budget.Rate(24), Drag = 1,
+	}))
+	auraLight = light(core, rgb(170, 90, 255), 8, 1)
 
-	-- a soft key light from the camera side so the avatar reads
-	local key = part(m, Vector3.one, CFrame.new(0, 8, -8), Color3.new(1, 1, 1))
-	key.Transparency = 1
-	light(key, rgb(255, 230, 255), 18, 1.4)
+	-- lights: a soft key from the camera side, a violet rim back-left, a cyan rim back-right, a warm planet bounce
+	local function lamp(pos: Vector3, color: Color3, range: number, brightness: number)
+		local p = part(m, Vector3.one, CFrame.new(pos), Color3.new(1, 1, 1))
+		p.Transparency = 1
+		light(p, color, range, brightness)
+	end
+	lamp(Vector3.new(0, 9, -9), rgb(255, 235, 255), 16, 1.1)
+	lamp(Vector3.new(-6, 8, 5), rgb(160, 90, 255), 12, 2.2)
+	lamp(Vector3.new(6, 6, 5), rgb(60, 210, 255), 12, 1.8)
+	lamp(Vector3.new(4, -2, -2), rgb(255, 150, 90), 9, 0.6)
+
 	room = m
 	return m
 end
 
--- A copy of your character on the circle, playing your idle animation.
+-------------------------------------------------------------------------------------------------------------
+-- the floating avatar: a clone of your character, no animation tracks - its joints are posed every frame
+-------------------------------------------------------------------------------------------------------------
+type Joint = { motor: any, base: CFrame } -- a Motor6D, or an AnimationConstraint on avatars with the joint upgrade
+local joints: { [string]: Joint } = {}
+local avatarHeight = 3
+local spinT = -1 -- os.clock() when a showy turn started (-1 = none)
+local nextSpin = 0
+
 local function placeAvatar()
 	if avatar then
 		avatar:Destroy()
 		avatar = nil
 	end
+	table.clear(joints)
 	local char = player.Character
 	if not char or not room then
 		return
-	end
-	local idleId: string? = nil
-	local animate = char:FindFirstChild("Animate")
-	local idle = animate and animate:FindFirstChild("idle")
-	local a1 = idle and idle:FindFirstChildWhichIsA("Animation")
-	if a1 then
-		idleId = (a1 :: Animation).AnimationId
 	end
 	local was = char.Archivable
 	char.Archivable = true
@@ -321,7 +376,7 @@ local function placeAvatar()
 		return
 	end
 	for _, d in clone:GetDescendants() do
-		if d:IsA("BaseScript") or d:IsA("Sound") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("BillboardGui") then
+		if d:IsA("BaseScript") or d:IsA("Sound") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("BillboardGui") or d:IsA("Animator") then
 			d:Destroy()
 		elseif d:IsA("BasePart") then
 			d.CanCollide = false
@@ -336,21 +391,164 @@ local function placeAvatar()
 	local hum = clone:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		hum.PlatformStand = true
 	end
-	local height = if hum and hum.RigType == Enum.HumanoidRigType.R15 then hum.HipHeight + 1.6 else 3
-	clone:PivotTo(ORIGIN * CFrame.new(0, 1.65 + height, 0)) -- facing -Z: toward the camera
+	avatarHeight = if hum and hum.RigType == Enum.HumanoidRigType.R15 then 2.6 else 3
+	for _, d in clone:GetDescendants() do
+		if d:IsA("Motor6D") or d:IsA("AnimationConstraint") then
+			joints[d.Name] = { motor = d, base = (d :: any).Transform }
+		end
+	end
 	clone.Parent = room
 	avatar = clone
-	if hum and idleId then
-		local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
-		local anim = Instance.new("Animation")
-		anim.AnimationId = idleId
-		pcall(function()
-			local track = (animator :: Animator):LoadAnimation(anim)
-			track.Looped = true
-			track:Play()
-		end)
+	nextSpin = os.clock() + 7
+end
+
+-- one smooth wave: sin with a period and a phase lag (the overlap that makes it organic)
+local function wave(t: number, period: number, lag: number): number
+	return math.sin((t - lag) / period * math.pi * 2)
+end
+
+local function poseJoint(name: string, cf: CFrame)
+	local j = joints[name]
+	if j then
+		j.motor.Transform = cf
 	end
+end
+
+local function animateAvatar(t: number)
+	local a = avatar
+	if not a then
+		return
+	end
+	local hrp = a:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not hrp then
+		return
+	end
+	-- the body: bob 0.35 studs (3.2 s), lean toward us as it flies, yaw sway, pitch / roll drift
+	local bob = wave(t, 3.2, 0) * 0.35
+	local yaw = math.rad(11) * wave(t, 9, 0.6)
+	local pitch = math.rad(-9) + math.rad(4) * wave(t, 5.3, 1.1) -- leaning forward = flying at the camera
+	local roll = math.rad(4) * wave(t, 6.1, 2.3)
+	-- now and then (every 14-20 s) a slow showy turn: a full 360 on the spot, Quint InOut over 1.8 s
+	if spinT < 0 and t > nextSpin then
+		spinT = t
+	end
+	local turn = 0
+	if spinT >= 0 then
+		local k = math.clamp((t - spinT) / 1.8, 0, 1)
+		turn = TweenService:GetValue(k, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut) * math.pi * 2
+		if k >= 1 then
+			spinT = -1
+			nextSpin = t + 14 + math.random() * 6
+		end
+	end
+	hrp.CFrame = ORIGIN * CFrame.new(FLOAT + Vector3.new(0, bob - avatarHeight + 3, 0)) * CFrame.Angles(0, yaw + turn, 0) * CFrame.Angles(pitch, 0, roll)
+	-- R15: torso leads, chest +0.15 s, arms / head +0.3 s, legs +0.45 s (each on its own period, so it never loops visibly)
+	local br = wave(t, 3.6, 0)
+	poseJoint("Waist", CFrame.Angles(math.rad(4) + math.rad(2.5) * br, math.rad(3) * wave(t, 7, 0.15), 0))
+	poseJoint("Neck", CFrame.Angles(math.rad(-6) + math.rad(3) * wave(t, 4.4, 0.3), math.rad(7) * wave(t, 8, 0.4), math.rad(2) * wave(t, 5, 0.3)))
+	poseJoint("LeftShoulder", CFrame.Angles(math.rad(12) + math.rad(6) * wave(t, 3.4, 0.3), 0, math.rad(-28) + math.rad(7) * wave(t, 4.1, 0.35)))
+	poseJoint("RightShoulder", CFrame.Angles(math.rad(8) + math.rad(6) * wave(t, 3.7, 0.45), 0, math.rad(30) + math.rad(7) * wave(t, 4.3, 0.2)))
+	poseJoint("LeftElbow", CFrame.Angles(math.rad(22) + math.rad(6) * wave(t, 3.4, 0.5), 0, 0))
+	poseJoint("RightElbow", CFrame.Angles(math.rad(16) + math.rad(6) * wave(t, 3.7, 0.65), 0, 0))
+	poseJoint("LeftWrist", CFrame.Angles(math.rad(8) * wave(t, 3.4, 0.7), 0, 0))
+	poseJoint("RightWrist", CFrame.Angles(math.rad(8) * wave(t, 3.7, 0.85), 0, 0))
+	poseJoint("LeftHip", CFrame.Angles(math.rad(26) + math.rad(7) * wave(t, 3.9, 0.45), 0, math.rad(-5)))
+	poseJoint("RightHip", CFrame.Angles(math.rad(8) + math.rad(7) * wave(t, 4.2, 0.6), 0, math.rad(5)))
+	poseJoint("LeftKnee", CFrame.Angles(math.rad(-48) + math.rad(8) * wave(t, 3.9, 0.7), 0, 0))
+	poseJoint("RightKnee", CFrame.Angles(math.rad(-22) + math.rad(8) * wave(t, 4.2, 0.85), 0, 0))
+	poseJoint("LeftAnkle", CFrame.Angles(math.rad(-14), 0, 0))
+	poseJoint("RightAnkle", CFrame.Angles(math.rad(-10), 0, 0))
+	-- R6 (the joints live in the Torso with turned C0s, so only small safe drifts)
+	poseJoint("Left Shoulder", CFrame.Angles(0, 0, math.rad(-18) + math.rad(6) * wave(t, 3.4, 0.3)))
+	poseJoint("Right Shoulder", CFrame.Angles(0, 0, math.rad(18) + math.rad(6) * wave(t, 3.7, 0.45)))
+	poseJoint("Left Hip", CFrame.Angles(0, 0, math.rad(-8) + math.rad(5) * wave(t, 3.9, 0.45)))
+	poseJoint("Right Hip", CFrame.Angles(0, 0, math.rad(6) + math.rad(5) * wave(t, 4.2, 0.6)))
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- the camera: framings it glides between (positions relative to the room centre, looking at the avatar)
+-------------------------------------------------------------------------------------------------------------
+local SHOTS = {
+	{ pos = Vector3.new(0, 4.8, -15), look = Vector3.new(0, 4.2, 0), fov = 56 }, -- front (the one the screen opens on)
+	{ pos = Vector3.new(-6.5, 2.6, -13.2), look = Vector3.new(0, 4.6, 0), fov = 54 }, -- three-quarter, low, from the left
+	{ pos = Vector3.new(6.8, 7.4, -12.6), look = Vector3.new(0, 4.0, 0), fov = 55 }, -- three-quarter, high, from the right
+	{ pos = Vector3.new(1.6, 2.4, -12.4), look = Vector3.new(0, 5.0, 0), fov = 52 }, -- low hero shot, a touch closer
+}
+local GLIDE = 3 -- seconds a move between framings takes (Sine InOut)
+local camFrom, camTo = 1, 1
+local camMoveStart, camNext = 0, 0
+
+local function shotCF(s): (CFrame, number)
+	return ORIGIN * CFrame.lookAt(s.pos, s.look), s.fov
+end
+
+local function updateCamera(t: number)
+	if t > camNext then
+		camFrom = camTo
+		local n = camTo
+		while n == camTo do
+			n = math.random(1, #SHOTS)
+		end
+		camTo = n
+		camMoveStart = t
+		camNext = t + GLIDE + 9 + math.random() * 4
+	end
+	local k = math.clamp((t - camMoveStart) / GLIDE, 0, 1)
+	k = TweenService:GetValue(k, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+	local a, fa = shotCF(SHOTS[camFrom])
+	local b, fb = shotCF(SHOTS[camTo])
+	local cf = a:Lerp(b, k)
+	-- always alive: a slow orbit drift and a little handheld noise (never more than a few tenths of a stud)
+	local drift = CFrame.new(math.sin(t * 0.21) * 0.6, math.sin(t * 0.17 + 1) * 0.25, 0)
+	local shake = CFrame.Angles(math.noise(t * 0.35, 0.5) * 0.01, math.noise(0.5, t * 0.35) * 0.012, math.noise(t * 0.3, 7.7) * 0.008)
+	local cam = workspace.CurrentCamera
+	cam.CameraType = Enum.CameraType.Scriptable
+	cam.FieldOfView = fa + (fb - fa) * k
+	cam.CFrame = cf * drift * shake
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- local lighting while the room shows (put back exactly on close)
+-------------------------------------------------------------------------------------------------------------
+local function setLit(inst: Instance, props: { [string]: any })
+	local saved = savedLighting[inst] or {}
+	for k, v in props do
+		if saved[k] == nil then
+			saved[k] = (inst :: any)[k]
+		end
+		(inst :: any)[k] = v
+	end
+	savedLighting[inst] = saved
+end
+
+local function spaceLighting()
+	setLit(Lighting, { ClockTime = 0, Brightness = 0, Ambient = rgb(70, 60, 110), OutdoorAmbient = rgb(55, 45, 100), FogEnd = 100000, FogStart = 99999 })
+	for _, c in Lighting:GetChildren() do
+		if c:IsA("Atmosphere") then
+			setLit(c, { Density = 0, Haze = 0, Glare = 0 })
+		elseif c:IsA("SunRaysEffect") then
+			setLit(c, { Enabled = false })
+		elseif c:IsA("BloomEffect") then
+			setLit(c, { Intensity = 1.1, Size = 30, Threshold = 0.85 })
+		elseif c:IsA("Sky") then
+			setLit(c, { StarCount = 3000, CelestialBodiesShown = false })
+		end
+	end
+end
+
+local function restoreLighting()
+	for inst, props in savedLighting do
+		if inst.Parent then
+			for k, v in props do
+				pcall(function()
+					(inst :: any)[k] = v
+				end)
+			end
+		end
+	end
+	table.clear(savedLighting)
 end
 
 -- Show the room and point the camera at the avatar. `color` = the picked card's rarity colour.
@@ -358,30 +556,79 @@ function ClassRoom.show(color: Color3?)
 	local m = room or build()
 	m.Parent = workspace
 	placeAvatar()
-	ClassRoom.setAura(color or Color3.fromRGB(170, 90, 255))
-	-- the avatar sits in the middle of the screen, a little low, between the left panel and the big card. The
-	-- game's own camera code runs every frame, so the room camera is set again right after it.
-	local view = ORIGIN * CFrame.lookAt(Vector3.new(0, 6.6, -16.5), Vector3.new(0, 5.6, 0))
+	ClassRoom.setAura(color or rgb(170, 90, 255))
+	spaceLighting()
+	local t0 = os.clock()
+	camFrom, camTo, camMoveStart, camNext = 1, 1, 0, 9 + math.random() * 3
 	RunService:BindToRenderStep("ClassRoomCamera", Enum.RenderPriority.Camera.Value + 2, function()
-		local cam = workspace.CurrentCamera
-		cam.CameraType = Enum.CameraType.Scriptable
-		cam.FieldOfView = 52
-		cam.CFrame = view
+		updateCamera(os.clock() - t0)
 	end)
 	if not grade then
 		local g = Instance.new("ColorCorrectionEffect")
 		g.Name = "ClassRoomGrade"
-		g.TintColor = rgb(240, 225, 255)
-		g.Saturation = 0.15
-		g.Contrast = 0.1
 		grade = g
 	end
-	(grade :: ColorCorrectionEffect).Parent = Lighting
-	if not spin then
-		spin = RunService.RenderStepped:Connect(function(dt)
+	local g = grade :: ColorCorrectionEffect
+	g.Parent = Lighting
+	-- the lights come on in steps, like Chop A Forest's: cold dark blue, dark purple at 0.45 s, full at 0.65 s
+	g.TintColor, g.Saturation, g.Contrast, g.Brightness = rgb(150, 165, 230), -0.45, 0, -0.08
+	openToken += 1
+	local token = openToken
+	task.delay(0.45, function()
+		if token == openToken and shown then
+			g.TintColor, g.Saturation, g.Brightness = rgb(200, 130, 220), -0.15, -0.12
+		end
+	end)
+	task.delay(0.65, function()
+		if token == openToken and shown then
+			TweenService:Create(g, TweenInfo.new(0.06), { TintColor = rgb(235, 228, 255), Saturation = 0.2, Contrast = 0.12, Brightness = 0.02 }):Play()
+		end
+	end)
+	if not blur then -- the far star-box softens; the avatar stays sharp
+		local b = Instance.new("DepthOfFieldEffect")
+		b.Name = "ClassRoomBlur"
+		b.FocusDistance = 14
+		b.InFocusRadius = 12
+		b.FarIntensity = 0.18
+		b.NearIntensity = 0
+		blur = b
+	end
+	(blur :: DepthOfFieldEffect).Parent = Lighting
+	if not step then
+		local last = os.clock()
+		step = RunService.RenderStepped:Connect(function()
+			local now = os.clock()
+			local dt = math.min(now - last, 0.1)
+			last = now
+			local t = now - t0
 			if rune then
-				rune.Rotation = (rune.Rotation + dt * 8) % 360
+				rune.Rotation = (rune.Rotation + dt * 14) % 360
 			end
+			for _, s in spinners do
+				local p = s.inst :: BasePart
+				p.CFrame = p.CFrame * CFrame.Angles(s.speed.X * dt, s.speed.Y * dt, s.speed.Z * dt)
+			end
+			for _, d in drifters do
+				local p = d.part
+				local pos = p.Position + d.vel * dt
+				local rel = ORIGIN:PointToObjectSpace(pos)
+				if rel.Z < -30 then -- flown past the camera: send it back out far behind the avatar
+					pos = ORIGIN * Vector3.new(rel.X, rel.Y, 140)
+				end
+				p.CFrame = CFrame.new(pos)
+				if d.img then
+					d.img.Rotation = (d.img.Rotation + d.spin.Z * dt * 40) % 360 -- tumble
+				end
+			end
+			if halo and avatar then
+				-- the halo follows the avatar's bob a little behind it
+				local hrp = avatar:FindFirstChild("HumanoidRootPart") :: BasePart?
+				if hrp then
+					local y = ORIGIN:PointToObjectSpace(hrp.Position).Y - avatarHeight - 0.8
+					halo.CFrame = ORIGIN * CFrame.new(0, y, 0)
+				end
+			end
+			animateAvatar(t)
 		end)
 	end
 	shown = true
@@ -393,8 +640,31 @@ function ClassRoom.setAura(color: Color3)
 			e.Color = ColorSequence.new(color)
 		end
 	end
+	for _, e in tail do
+		e.Color = ColorSequence.new(color, Color3.new(1, 1, 1))
+	end
 	if auraLight then
 		auraLight.Color = color
+	end
+end
+
+-- the avatar flashes a colour (a rare card landing): aura and tail burst, its light blooms, then settles
+function ClassRoom.pulse(color: Color3)
+	if not shown then
+		return
+	end
+	ClassRoom.setAura(color)
+	for _, e in aura do
+		e:Emit(14)
+	end
+	for _, e in tail do
+		e:Emit(20)
+	end
+	if auraLight then
+		local l = auraLight
+		l.Brightness = 4
+		l.Range = 14
+		TweenService:Create(l, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 1, Range = 8 }):Play()
 	end
 end
 
@@ -404,9 +674,9 @@ function ClassRoom.hide()
 	end
 	shown = false
 	RunService:UnbindFromRenderStep("ClassRoomCamera")
-	if spin then
-		spin:Disconnect()
-		spin = nil
+	if step then
+		step:Disconnect()
+		step = nil
 	end
 	if room then
 		room.Parent = nil
@@ -418,6 +688,10 @@ function ClassRoom.hide()
 	if grade then
 		grade.Parent = nil
 	end
+	if blur then
+		blur.Parent = nil
+	end
+	restoreLighting()
 	local cam = workspace.CurrentCamera
 	cam.FieldOfView = 70
 	cam.CameraType = Enum.CameraType.Custom

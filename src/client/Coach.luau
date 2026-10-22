@@ -181,17 +181,48 @@ end
 -------------------------------------------------------------------------------------------------------------
 local card = Instance.new("CanvasGroup")
 card.Name = "Coach"
-card.AnchorPoint = Vector2.new(0.5, 1)
-card.Position = UDim2.new(0.5, 0, 1, -140)
+card.AnchorPoint = Vector2.new(0.5, 0.5) -- placed every frame (see placeCard): big at the bottom, then docked top left
+card.Position = UDim2.new(0.5, 0, 1, -196)
 card.Size = UDim2.fromOffset(620, 150)
 card.BackgroundTransparency = 1
 card.GroupTransparency = 1
 card.Visible = false
 card.ZIndex = 20
+card:SetAttribute("StackBase", 150) -- UI's bottom stack tells us our slot here instead of moving us
+card:SetAttribute("Dock", 0)
 card.Parent = UI.gui
 -- the hanging wooden sign (ui_banner art), a picture of what this step is about, "STEP 2/5", title and why
 local sign, face = Skin.frame(card, "ui_banner", Vector2.new(620, 150), { name = "Sign" })
 sign.ZIndex = 20
+-- the sign fades away as the card docks, so up by the quest it's just the picture and the text
+local woodParts: { { inst: GuiObject, bg: number, img: number? } } = {}
+for _, d in { sign, table.unpack(sign:GetDescendants()) } do
+	if d:IsA("GuiObject") and d ~= face and not d:IsDescendantOf(face) then
+		table.insert(woodParts, { inst = d, bg = d.BackgroundTransparency, img = if d:IsA("ImageLabel") then d.ImageTransparency else nil })
+	end
+end
+local woodStrokes: { { inst: UIStroke, t: number } } = {}
+for _, d in sign:GetDescendants() do
+	if d:IsA("UIStroke") and not d:IsDescendantOf(face) then
+		table.insert(woodStrokes, { inst = d, t = d.Transparency })
+	end
+end
+local woodFade = -1
+local function fadeWood(a: number)
+	if math.abs(a - woodFade) < 0.01 then
+		return
+	end
+	woodFade = a
+	for _, w in woodParts do
+		w.inst.BackgroundTransparency = w.bg + (1 - w.bg) * a
+		if w.img then
+			(w.inst :: ImageLabel).ImageTransparency = w.img + (1 - w.img) * a
+		end
+	end
+	for _, s in woodStrokes do
+		s.inst.Transparency = s.t + (1 - s.t) * a
+	end
+end
 local pic = Instance.new("Frame")
 pic.Name = "Pic"
 pic.BackgroundTransparency = 1
@@ -207,6 +238,64 @@ local sub = UI.text(face, "", UDim2.new(1, -104, 0, 22), { pos = UDim2.fromOffse
 local scale = Instance.new("UIScale")
 scale.Parent = card
 local STEP_ICON = { punch = "hands", collect = "bundle", fill = "backpack", sell = "coin", upgrade = "upgrade" }
+
+-- A new step shows big at the bottom for a few seconds, then shrinks and glides up under the quest tracker
+-- (top left) so it never sits on top of a menu. Opening any window docks it straight away.
+local CARD_W, CARD_H = 620, 150
+local BIG_FOR = 4.5 -- seconds a new step stays big at the bottom
+local DOCK_SCALE = 0.6
+local pop = Instance.new("NumberValue") -- the pop-in bounce
+pop.Value = 1
+local dock = Instance.new("NumberValue") -- 0 = big at the bottom, 1 = docked under the quest
+local dockGoal = 0
+local bigUntil = 0
+
+local function setDock(goal: number)
+	if goal == dockGoal then
+		return
+	end
+	dockGoal = goal
+	TweenService:Create(dock, TweenInfo.new(if goal == 1 then 0.55 else 0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut), { Value = goal }):Play()
+end
+
+local questFrame: GuiObject? = nil
+local function findQuest(): GuiObject?
+	if questFrame and questFrame.Parent then
+		return questFrame
+	end
+	local hud = UI.gui:FindFirstChild("Hud")
+	local q = hud and hud:FindFirstChild("Quest")
+	questFrame = if q and q:IsA("GuiObject") then q else nil
+	return questFrame
+end
+
+local function guiScale(): number
+	local s = UI.gui:FindFirstChildOfClass("UIScale")
+	return if s then s.Scale else 1
+end
+
+local function placeCard()
+	local s = guiScale()
+	local view = UI.gui.AbsoluteSize / s -- screen size in the gui's own (unscaled) units
+	local base = card:GetAttribute("StackBase") :: number? or 150
+	local bigCenter = Vector2.new(view.X / 2, view.Y - base - CARD_H / 2)
+	local q = findQuest()
+	local left, top = 22, 74 + 100
+	if q then
+		local o = UI.gui.AbsolutePosition -- the gui ignores the top bar inset, so its origin sits above the screen's
+		local qp = q.AbsolutePosition - o
+		left = qp.X / s
+		-- under the quest; with no quest showing, take its place
+		top = if q.Visible then (qp.Y + q.AbsoluteSize.Y) / s else qp.Y / s
+	end
+	local dockCenter = Vector2.new(left + CARD_W * DOCK_SCALE / 2, top + 6 + CARD_H * DOCK_SCALE / 2)
+	local a = dock.Value
+	card:SetAttribute("Dock", a)
+	fadeWood(a)
+	local c = bigCenter:Lerp(dockCenter, a)
+	card.Position = UDim2.fromOffset(c.X, c.Y)
+	scale.Scale = pop.Value * (1 + (DOCK_SCALE - 1) * a)
+end
 
 local ORDER = { punch = 1, collect = 2, fill = 3, sell = 4, upgrade = 5 }
 local shownId: string? = nil
@@ -235,8 +324,13 @@ local function showCard(step: Step?)
 		Skin.popIn(pic, 0.12)
 		card.Visible = true
 		TweenService:Create(card, TweenInfo.new(0.2), { GroupTransparency = 0 }):Play()
-		scale.Scale = 0.6
-		TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		-- each new step gets its moment big at the bottom (unless a menu is open), then docks
+		bigUntil = os.clock() + BIG_FOR
+		if not UI.anyOpen() then
+			setDock(0)
+		end
+		pop.Value = 0.6
+		TweenService:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Value = 1 }):Play()
 		if not first then
 			Sound.play("pickup", 0.05) -- a little "next!"
 		end
@@ -424,6 +518,11 @@ end)
 RunService.RenderStepped:Connect(function()
 	local s = step
 	local t = os.clock()
+	-- the card: big for a moment, then docked under the quest (straight away while a menu is open)
+	if card.Visible then
+		setDock(if UI.anyOpen() or t > bigUntil then 1 else 0)
+		placeCard()
+	end
 	-- the clump glow
 	if s and s.clump and s.clump.Parent then
 		glow.Adornee = s.clump

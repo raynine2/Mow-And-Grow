@@ -8,6 +8,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
@@ -22,14 +23,15 @@ local W = UI.wood
 local player = Players.LocalPlayer
 
 local BIG_REVEAL = { Legendary = true, Mythic = true, Secret = true }
+local SHINE = { Epic = true, Legendary = true, Mythic = true, Secret = true }
 local STATS = {
-	{ key = "power", label = "Power", pct = true },
+	{ key = "power", label = "Mow power", pct = true },
 	{ key = "speed", label = "Walk speed", pct = true },
 	{ key = "sell", label = "Sell price", pct = true },
 	{ key = "luck", label = "Mutation luck", pct = true },
-	{ key = "carry", label = "Carry", pct = false },
+	{ key = "carry", label = "Bundles carried", pct = false },
 }
-local STAT_ICON = { power = "upgrade", speed = "clover", sell = "coin", luck = "clover", carry = "backpack" }
+local STAT_ICON = { power = "upgrade", speed = "stopwatch", sell = "coin", luck = "clover", carry = "backpack" }
 
 local function statText(s, v: number?): string
 	if not v or v == 0 then
@@ -62,7 +64,7 @@ end
 local VFX = require(ReplicatedStorage:WaitForChild("VFXLib"))
 local ClassRoom = require(script.Parent.ClassRoom)
 local Tex = VFX.Assets.Tex
-local NAVY = Color3.fromRGB(30, 20, 58)
+local NAVY = Color3.fromRGB(18, 14, 48)
 local GOLD = Color3.fromRGB(255, 200, 80)
 local STAR_IMG = "rbxassetid://97457865936415" -- white 5-point star with a navy outline (tinted), Store Icons/ClassArt/UIStar.png
 local RARITY_STARS = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6, Secret = 7 }
@@ -74,6 +76,65 @@ local PRISM = ColorSequence.new({
 	ColorSequenceKeypoint.new(0.7, Color3.fromRGB(70, 200, 255)),
 	ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 230, 140)),
 })
+-- SPACE THEME. Panels are deep-space glass (violet to near-black, a few stars inside) with a slowly turning
+-- energy rim (cyan -> violet -> pink); rarity rims turn too (Legendary gold shimmer, Mythic/Secret rainbow), per
+-- the UI-motion notes: gradient drift / rotation 4-6 s Linear, shine sweep 0.8 s then rest, slow 12-20 s rays.
+local ENERGY = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(90, 220, 255)),
+	ColorSequenceKeypoint.new(0.35, Color3.fromRGB(160, 120, 255)),
+	ColorSequenceKeypoint.new(0.7, Color3.fromRGB(255, 120, 220)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(90, 220, 255)),
+})
+local GOLD_SHIMMER = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 170, 40)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 250, 200)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 170, 40)),
+})
+local RAINBOW = ColorSequence.new({ -- first colour = last colour, so the turn never seams
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 80, 120)),
+	ColorSequenceKeypoint.new(0.17, Color3.fromRGB(255, 180, 60)),
+	ColorSequenceKeypoint.new(0.33, Color3.fromRGB(240, 255, 90)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 255, 160)),
+	ColorSequenceKeypoint.new(0.67, Color3.fromRGB(80, 200, 255)),
+	ColorSequenceKeypoint.new(0.83, Color3.fromRGB(170, 110, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 80, 120)),
+})
+local spinners: { UIGradient } = {} -- turned every frame while the screen is open (one full turn per 5 s)
+local function energyRim(g: GuiObject, thickness: number?, seq: ColorSequence?): UIStroke
+	local s = g:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+	s.Color = Color3.new(1, 1, 1)
+	s.Thickness = thickness or s.Thickness
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = g
+	local gr = s:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+	gr.Color = seq or ENERGY
+	gr.Parent = s
+	table.insert(spinners, gr)
+	return s
+end
+-- deep-space glass: a violet-to-black fill with a sprinkle of tiny stars inside
+local starRng = Random.new(77)
+local function glass(g: GuiObject, top: Color3?, bottom: Color3?, stars: number?)
+	g.BackgroundColor3 = Color3.new(1, 1, 1)
+	local gr = g:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+	gr.Color = ColorSequence.new(top or Color3.fromRGB(40, 26, 92), bottom or Color3.fromRGB(10, 8, 30))
+	gr.Rotation = 90
+	gr.Parent = g
+	g.BackgroundTransparency = 0.06
+	for _ = 1, stars or 8 do
+		local d = Instance.new("Frame")
+		d.Name = "Star"
+		d.BorderSizePixel = 0
+		d.BackgroundColor3 = Color3.new(1, 1, 1)
+		local sz = starRng:NextInteger(2, 3)
+		d.Size = UDim2.fromOffset(sz, sz)
+		d.Position = UDim2.fromScale(starRng:NextNumber(0.04, 0.96), starRng:NextNumber(0.06, 0.94))
+		d.BackgroundTransparency = starRng:NextNumber(0.35, 0.75)
+		UI.corner(d, 2)
+		d.Parent = g
+		TweenService:Create(d, TweenInfo.new(starRng:NextNumber(0.9, 1.8), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, starRng:NextNumber(0, 1.5)), { BackgroundTransparency = 0.95 }):Play()
+	end
+end
 -- each class's picture: its card art (Config.ICONS class_<Id>, a fist gripping the class's tool)
 local CLASS_ART = setmetatable({}, { __index = function(_, id)
 	return "class_" .. id
@@ -103,7 +164,7 @@ holder.Parent = UI.gui
 
 -- soft dark edges so the panels read over the room (they reach past the 1280 x 720 box on wide screens)
 for _, side in { { 0, 0 }, { 1, 180 } } do
-	local v = UI.frame({ size = UDim2.new(0, 900, 2, 0), pos = UDim2.new(side[1], if side[1] == 0 then -480 else 480, 0.5, 0), anchor = Vector2.new(side[1], 0.5), color = Color3.fromRGB(8, 4, 18), parent = holder, radius = 0, outline = 0, name = "Shade" })
+	local v = UI.frame({ size = UDim2.new(0, 900, 2, 0), pos = UDim2.new(side[1], if side[1] == 0 then -480 else 480, 0.5, 0), anchor = Vector2.new(side[1], 0.5), color = Color3.fromRGB(4, 2, 14), parent = holder, radius = 0, outline = 0, name = "Shade" })
 	local g = Instance.new("UIGradient")
 	g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.55, 0.5), NumberSequenceKeypoint.new(1, 1) })
 	g.Rotation = side[2]
@@ -114,6 +175,57 @@ local fg = Instance.new("UIGradient")
 fg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.25) })
 fg.Rotation = 90
 fg.Parent = floorShade
+
+-- Chop A Forest's class screen is drawn smaller than our other windows: each block keeps its layout and is scaled
+-- down round its anchor to that screen's size and spot.
+local function shrink(g: GuiObject, s: number): GuiObject
+	UI.scaleBase(g, s) -- through UI's juice, so the hover grow / click squash / breath scale round this size
+	return g
+end
+
+-- Chop A Forest's open, measured off a 120 fps capture: every block slides in from its own edge with a Back
+-- overshoot (~10% past, then settles) - top drops 140 px, left comes 310 px, right 330 px, bottom rises 190 px,
+-- starting 0 / 0.03 / 0.08 / 0.11 s in, ~0.5 s each. Nothing pops or squashes.
+local OPEN = {
+	top = { dx = 0, dy = -140, delay = 0, time = 0.52 },
+	left = { dx = -310, dy = 0, delay = 0.03, time = 0.5 },
+	right = { dx = 330, dy = 0, delay = 0.08, time = 0.48 },
+	bottom = { dx = 0, dy = 190, delay = 0.11, time = 0.55 },
+}
+local slideIns: { { obj: GuiObject, home: UDim2, side: string } } = {}
+local slideDone = 0 -- os.clock() when the last slide lands (the big card's float waits for it)
+local function slideFrom(obj: GuiObject, side: string)
+	table.insert(slideIns, { obj = obj, home = obj.Position, side = side })
+end
+local function playSlideIns()
+	for _, s in slideIns do
+		local o = OPEN[s.side]
+		s.obj.Position = s.home + UDim2.fromOffset(o.dx, o.dy)
+		TweenService:Create(s.obj, TweenInfo.new(o.time, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, o.delay), { Position = s.home }):Play()
+	end
+	slideDone = os.clock() + 0.7
+end
+
+-- Roblox's own Robux icon: the private-use glyph U+E002 that Roblox's fonts draw as the current Robux mark
+local function robuxGlyph(parent: Instance, size: number, pos: UDim2, anchor: Vector2?): TextLabel
+	local t = Instance.new("TextLabel")
+	t.Name = "Robux"
+	t.BackgroundTransparency = 1
+	t.Text = utf8.char(0xE002)
+	t.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+	t.TextColor3 = Color3.new(1, 1, 1)
+	t.TextScaled = true
+	t.Size = UDim2.fromOffset(size, size)
+	t.Position = pos
+	t.AnchorPoint = anchor or Vector2.zero
+	local s = Instance.new("UIStroke")
+	s.Thickness = 2
+	s.Color = Color3.fromRGB(20, 30, 60)
+	s.Transparency = 0.2
+	s.Parent = t
+	t.Parent = parent
+	return t
+end
 
 -- twinkling sparkles round the screen
 local function twinkle(parent: Instance, pos: UDim2, size: number, color: Color3)
@@ -136,11 +248,23 @@ end
 local titleBox = Instance.new("Frame")
 titleBox.BackgroundTransparency = 1
 titleBox.Size = UDim2.fromOffset(420, 80)
-titleBox.Position = UDim2.fromOffset(640, 6)
+titleBox.Position = UDim2.fromOffset(610, 64)
 titleBox.AnchorPoint = Vector2.new(0.5, 0)
 titleBox.Parent = holder
-UI.text(titleBox, "CL", UDim2.fromOffset(170, 80), { pos = UDim2.fromOffset(28, 0), align = Enum.TextXAlignment.Right, stroke = 5 })
-UI.text(titleBox, "SSES", UDim2.fromOffset(190, 80), { pos = UDim2.fromOffset(238, 0), align = Enum.TextXAlignment.Left, stroke = 5 })
+shrink(titleBox, 0.62)
+for _, t in {
+	UI.text(titleBox, "CL", UDim2.fromOffset(170, 80), { pos = UDim2.fromOffset(28, 0), align = Enum.TextXAlignment.Right, stroke = 5 }),
+	UI.text(titleBox, "SSES", UDim2.fromOffset(190, 80), { pos = UDim2.fromOffset(238, 0), align = Enum.TextXAlignment.Left, stroke = 5 }),
+} do
+	local g = Instance.new("UIGradient") -- starlight: white fading to a pale cosmic blue
+	g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(175, 205, 255))
+	g.Rotation = 90
+	g.Parent = t
+	local st = t:FindFirstChildOfClass("UIStroke")
+	if st then
+		st.Color = Color3.fromRGB(16, 10, 44)
+	end
+end
 -- the A: a glowing gold four-point sparkle
 local titleGlow = Instance.new("ImageLabel")
 titleGlow.BackgroundTransparency = 1
@@ -158,24 +282,83 @@ titleStar.Size = UDim2.fromOffset(64, 64)
 titleStar.Position = UDim2.fromOffset(218, 42)
 titleStar.AnchorPoint = Vector2.new(0.5, 0.5)
 titleStar.Parent = titleBox
-TweenService:Create(titleGlow, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { ImageTransparency = 0.6, Size = UDim2.fromOffset(90, 90) }):Play()
-TweenService:Create(titleStar, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Size = UDim2.fromOffset(54, 54), Rotation = 15 }):Play()
+-- (the star holds still - in Chop A Forest only the timer's moon moves up here)
 
--- NEW CARDS IN (moon, label, time, bar)
-local timerPill = UI.frame({ size = UDim2.fromOffset(280, 66), pos = UDim2.fromOffset(628, 92), anchor = Vector2.new(1, 0), color = NAVY, parent = holder, radius = 16, outline = 4, name = "Timer" })
-;(timerPill:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(110, 70, 190)
-UI.gradient(timerPill, NAVY)
-UI.icon(timerPill, "moon", 70, UDim2.fromOffset(-30, -8)).ZIndex = 3
-UI.text(timerPill, "NEW CARDS IN", UDim2.fromOffset(130, 22), { pos = UDim2.fromOffset(52, 8), align = Enum.TextXAlignment.Left, stroke = 1.5 })
-local timerText = UI.text(timerPill, "5:00", UDim2.fromOffset(80, 32), { pos = UDim2.new(1, -12, 0, 4), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 2.5 })
-local timerTrack = UI.frame({ size = UDim2.new(1, -66, 0, 12), pos = UDim2.fromOffset(52, 42), color = Color3.fromRGB(56, 40, 86), parent = timerPill, radius = 6, outline = 0 })
-local timerFill = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.fromRGB(220, 100, 255), parent = timerTrack, radius = 6, outline = 0 })
-UI.gradient(timerFill, Color3.fromRGB(220, 100, 255))
+-- NEW CARDS IN (rocket crest, label, big time, gradient bar) - same layout as the Chop A Forest pill, rocket instead of the moon
+local TIMER_INK = Color3.fromRGB(16, 9, 34)
+local timerPill = UI.frame({ size = UDim2.fromOffset(280, 66), pos = UDim2.fromOffset(621, 112), anchor = Vector2.new(1, 0), color = Color3.fromRGB(70, 44, 124), parent = holder, radius = 16, outline = 4, name = "Timer" })
+do
+	local st = timerPill:FindFirstChildOfClass("UIStroke")
+	if st then
+		st.Color = TIMER_INK
+		st.Thickness = 4
+	end
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(150, 140, 175))
+	g.Rotation = 90
+	g.Parent = timerPill
+	-- a soft top highlight, like the reference's lighter upper half
+	local hi = Instance.new("Frame")
+	hi.Name = "Highlight"
+	hi.BorderSizePixel = 0
+	hi.BackgroundColor3 = Color3.new(1, 1, 1)
+	hi.BackgroundTransparency = 0.9
+	hi.Size = UDim2.new(1, -12, 0.42, 0)
+	hi.Position = UDim2.fromOffset(6, 4)
+	hi.Parent = timerPill
+	local hc = Instance.new("UICorner")
+	hc.CornerRadius = UDim.new(0, 11)
+	hc.Parent = hi
+end
+local timerMoon = Instance.new("ImageLabel") -- (kept the name: the rocket crest)
+timerMoon.Name = "RocketCrest"
+timerMoon.BackgroundTransparency = 1
+timerMoon.Image = "rbxassetid://102986510663506"
+timerMoon.ScaleType = Enum.ScaleType.Fit
+timerMoon.Size = UDim2.fromOffset(104, 104)
+timerMoon.Position = UDim2.fromOffset(-56, -22)
+timerMoon.ZIndex = 5
+timerMoon.Parent = timerPill
+UI.breathe(timerMoon, 0.03, 2 * math.pi / 1.05) -- the crest pulses +-3% about once a second
+local timerLabel = UI.text(timerPill, "NEW CARDS IN", UDim2.fromOffset(130, 22), { pos = UDim2.fromOffset(52, 9), align = Enum.TextXAlignment.Left, stroke = 2 })
+local timerText = UI.text(timerPill, "5:00", UDim2.fromOffset(96, 36), { pos = UDim2.new(1, -12, 0, 2), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 3 })
+for _, t in { timerLabel, timerText } do
+	local s = t:FindFirstChildOfClass("UIStroke")
+	if s then
+		s.Color = TIMER_INK
+	end
+end
+local timerTrack = UI.frame({ size = UDim2.new(1, -64, 0, 14), pos = UDim2.fromOffset(50, 41), color = Color3.fromRGB(24, 14, 48), parent = timerPill, radius = 7, outline = 2 })
+do
+	local st = timerTrack:FindFirstChildOfClass("UIStroke")
+	if st then
+		st.Color = TIMER_INK
+		st.Thickness = 2
+	end
+end
+local timerFill = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.new(1, 1, 1), parent = timerTrack, radius = 7, outline = 0 })
+do
+	local g = Instance.new("UIGradient") -- purple to pink, left to right
+	g.Color = ColorSequence.new(Color3.fromRGB(140, 80, 255), Color3.fromRGB(255, 105, 215))
+	g.Parent = timerFill
+	local shine = Instance.new("Frame") -- glossy strip along the top of the fill
+	shine.BorderSizePixel = 0
+	shine.BackgroundColor3 = Color3.new(1, 1, 1)
+	shine.BackgroundTransparency = 0.6
+	shine.Size = UDim2.new(1, -8, 0, 3)
+	shine.Position = UDim2.fromOffset(4, 2)
+	shine.Parent = timerFill
+	local sc = Instance.new("UICorner")
+	sc.CornerRadius = UDim.new(1, 0)
+	sc.Parent = shine
+end
+shrink(timerPill, 0.66)
 
 -- gems, with a + that opens the shop
-local gemBox = UI.frame({ size = UDim2.fromOffset(240, 66), pos = UDim2.fromOffset(652, 92), color = NAVY, parent = holder, radius = 16, outline = 4, name = "Gems" })
-;(gemBox:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(110, 70, 190)
-UI.gradient(gemBox, NAVY)
+local gemBox = UI.frame({ size = UDim2.fromOffset(240, 66), pos = UDim2.fromOffset(638, 112), color = NAVY, parent = holder, radius = 16, outline = 4, name = "Gems" })
+glass(gemBox, nil, nil, 5)
+energyRim(gemBox, 3)
+shrink(gemBox, 0.66)
 UI.icon(gemBox, "gem", 62, UDim2.fromOffset(-6, 2)).ZIndex = 3
 local gemText = UI.text(gemBox, "0", UDim2.fromOffset(110, 34), { pos = UDim2.fromOffset(64, 6), align = Enum.TextXAlignment.Left, stroke = 2.5 })
 UI.text(gemBox, "gems", UDim2.fromOffset(60, 18), { pos = UDim2.fromOffset(64, 40), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(190, 180, 220), stroke = 1 })
@@ -183,68 +366,71 @@ local plus = UI.button(gemBox, "+", C.green, UDim2.fromOffset(48, 48), function(
 	UI.open("Store")
 end, { pos = UDim2.new(1, -10, 0.5, 0), anchor = Vector2.new(1, 0.5), name = "More" })
 plus.ZIndex = 4
-UI.closeButton(holder, UDim2.fromOffset(112, 30), function()
+local closeBtn = shrink(UI.closeButton(holder, UDim2.fromOffset(156, 70), function()
 	UI.close()
-end)
+end), 0.6)
+slideFrom(titleBox, "top")
+slideFrom(timerPill, "top")
+slideFrom(gemBox, "top")
+slideFrom(closeBtn, "top")
 
 -- VS YOUR CLASS
-local vs = UI.frame({ size = UDim2.fromOffset(360, 214), pos = UDim2.fromOffset(40, 112), color = NAVY, parent = holder, radius = 18, outline = 4, name = "VsCard" })
-;(vs:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = GOLD
-local vsGrad = Instance.new("UIGradient")
-vsGrad.Color = ColorSequence.new(Color3.fromRGB(56, 32, 100), Color3.fromRGB(24, 14, 46))
-vsGrad.Rotation = 90
-vsGrad.Parent = vs
+local vs = UI.frame({ size = UDim2.fromOffset(360, 272), pos = UDim2.fromOffset(118, 124), color = Color3.new(1, 1, 1), parent = holder, radius = 18, outline = 4, name = "VsCard" })
+glass(vs, Color3.fromRGB(46, 28, 104), Color3.fromRGB(12, 8, 34), 14)
+energyRim(vs, 4)
+shrink(vs, 0.667)
+slideFrom(vs, "left")
 UI.text(vs, "VS YOUR CLASS", UDim2.fromOffset(240, 28), { pos = UDim2.fromOffset(16, 10), align = Enum.TextXAlignment.Left, color = GOLD, stroke = 2 })
 local vsNames = UI.text(vs, "", UDim2.new(1, -32, 0, 18), { pos = UDim2.fromOffset(16, 38), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(190, 180, 220), stroke = 1 })
 local vsRows = Instance.new("Frame")
 vsRows.BackgroundTransparency = 1
-vsRows.Size = UDim2.new(1, -28, 0, 108)
+vsRows.Size = UDim2.new(1, -28, 0, 172) -- up to five rows, like Chop A Forest's
 vsRows.Position = UDim2.fromOffset(14, 62)
 vsRows.Parent = vs
 local vsLayout = Instance.new("UIListLayout")
 vsLayout.Padding = UDim.new(0, 4)
 vsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 vsLayout.Parent = vsRows
-local vsQuote = UI.text(vs, "", UDim2.new(1, -32, 0, 30), { pos = UDim2.fromOffset(16, 176), align = Enum.TextXAlignment.Left, stroke = 1.5, textSize = 14 })
+local vsQuote = UI.text(vs, "", UDim2.new(1, -32, 0, 30), { pos = UDim2.fromOffset(16, 236), align = Enum.TextXAlignment.Left, stroke = 1.5, textSize = 14 })
 vsQuote.Font = Enum.Font.FredokaOne
 
 -- RESTOCK / LUCKY RESTOCK: a big glossy button with an icon, a title, a line and a dark Robux chip
 local function restockButton(y: number, color: Color3, title: string, line: string, productKey: string, lucky: boolean): TextButton
 	local p = Config.PRODUCTS[productKey]
-	local b = UI.button(holder, "", color, UDim2.fromOffset(360, 74), function()
+	local b = UI.button(holder, "", color, UDim2.fromOffset(360, 52), function()
 		State.fire("Prompt", "product", productKey)
-	end, { pos = UDim2.fromOffset(40, y), name = productKey })
+	end, { pos = UDim2.fromOffset(118, y), name = productKey })
 	local z = b.ZIndex + 1
 	if lucky then
-		UI.icon(b, "clover", 52, UDim2.fromOffset(10, 10)).ZIndex = z
+		UI.icon(b, "clover", 40, UDim2.fromOffset(12, 4)).ZIndex = z
 	else
-		local ring = UI.frame({ size = UDim2.fromOffset(40, 40), pos = UDim2.fromOffset(16, 16), color = Color3.new(1, 1, 1), parent = b, radius = 999, outline = 5, name = "Ring" })
+		local ring = UI.frame({ size = UDim2.fromOffset(30, 30), pos = UDim2.fromOffset(16, 9), color = Color3.new(1, 1, 1), parent = b, radius = 999, outline = 5, name = "Ring" })
 		ring.BackgroundTransparency = 1
 		ring.ZIndex = z
 		local s = ring:FindFirstChildOfClass("UIStroke") :: UIStroke
 		s.Color = Color3.new(1, 1, 1)
-		local head = UI.frame({ size = UDim2.fromOffset(14, 14), pos = UDim2.fromOffset(30, 4), color = Color3.new(1, 1, 1), parent = b, radius = 2, outline = 0, name = "Arrow" })
+		local head = UI.frame({ size = UDim2.fromOffset(11, 11), pos = UDim2.fromOffset(26, 3), color = Color3.new(1, 1, 1), parent = b, radius = 2, outline = 0, name = "Arrow" })
 		head.Rotation = 45
 		head.ZIndex = z
 	end
-	UI.text(b, title, UDim2.fromOffset(if lucky then 132 else 190, 30), { pos = UDim2.fromOffset(72, 9), align = Enum.TextXAlignment.Left, stroke = 3 }).ZIndex = z
-	UI.text(b, line, UDim2.fromOffset(200, 18), { pos = UDim2.fromOffset(72, 42), align = Enum.TextXAlignment.Left, stroke = 1.5 }).ZIndex = z
+	UI.text(b, title, UDim2.fromOffset(if lucky then 132 else 190, 26), { pos = UDim2.fromOffset(60, 3), align = Enum.TextXAlignment.Left, stroke = 3 }).ZIndex = z
+	UI.text(b, line, UDim2.fromOffset(200, 15), { pos = UDim2.fromOffset(60, 30), align = Enum.TextXAlignment.Left, stroke = 1.5 }).ZIndex = z
 	if lucky then
-		local tagBox = UI.frame({ size = UDim2.fromOffset(62, 24), pos = UDim2.fromOffset(206, 12), color = Color3.new(1, 1, 1), parent = b, radius = 13, outline = 2, name = "Luck" })
+		local tagBox = UI.frame({ size = UDim2.fromOffset(58, 22), pos = UDim2.fromOffset(194, 6), color = Color3.new(1, 1, 1), parent = b, radius = 13, outline = 2, name = "Luck" })
 		tagBox.Rotation = -6
 		tagBox.ZIndex = z
 		local t = UI.text(tagBox, "x3 LUCK", UDim2.new(1, -6, 1, -4), { pos = UDim2.fromOffset(3, 2), color = Color3.fromRGB(40, 120, 40), stroke = 0 })
 		t.ZIndex = z + 1
 	end
-	local chip = UI.frame({ size = UDim2.fromOffset(78, 44), pos = UDim2.new(1, -10, 0.5, -3), anchor = Vector2.new(1, 0.5), color = UI.shade(color, 0.45), parent = b, radius = 12, outline = 2, name = "Price" })
+	local chip = UI.frame({ size = UDim2.fromOffset(74, 38), pos = UDim2.new(1, -8, 0.5, -3), anchor = Vector2.new(1, 0.5), color = UI.shade(color, 0.45), parent = b, radius = 12, outline = 2, name = "Price" })
 	chip.ZIndex = z
-	UI.icon(chip, "robux", 24, UDim2.fromOffset(8, 10)).ZIndex = z + 1
-	UI.text(chip, tostring(if p then p.robux else 0), UDim2.new(1, -40, 1, -12), { pos = UDim2.fromOffset(36, 6), stroke = 2 }).ZIndex = z + 1
+	robuxGlyph(chip, 24, UDim2.fromOffset(8, 7)).ZIndex = z + 1
+	UI.text(chip, tostring(if p then p.robux else 0), UDim2.new(1, -38, 1, -10), { pos = UDim2.fromOffset(34, 5), stroke = 2 }).ZIndex = z + 1
+	shrink(b, 0.667)
 	return b
 end
-restockButton(338, Color3.fromRGB(50, 140, 245), "RESTOCK", "Deal new cards now", "ClassRestock", false)
-restockButton(422, Color3.fromRGB(70, 190, 80), "LUCKY RESTOCK", "Rare cards 3x more likely", "ClassLuckyRestock", true)
-UI.text(holder, "Every card shows its chance to be dealt", UDim2.fromOffset(300, 18), { pos = UDim2.fromOffset(372, 520), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(200, 190, 225), stroke = 1 })
+slideFrom(restockButton(312, Color3.fromRGB(50, 140, 245), "RESTOCK", "Deal new cards now", "ClassRestock", false), "left")
+slideFrom(restockButton(354, Color3.fromRGB(70, 190, 80), "LUCKY RESTOCK", "Rare cards 3x more likely", "ClassLuckyRestock", true), "left")
 
 -- the picked class's big card (right)
 local cardGlow = Instance.new("ImageLabel")
@@ -252,14 +438,45 @@ cardGlow.Name = "CardGlow"
 cardGlow.BackgroundTransparency = 1
 cardGlow.Image = Tex.Glow
 cardGlow.ImageTransparency = 0.15
-cardGlow.Size = UDim2.fromOffset(520, 680)
-cardGlow.Position = UDim2.fromOffset(1092, 286)
+cardGlow.Size = UDim2.fromOffset(494, 646)
+cardGlow.Position = UDim2.fromOffset(992, 282)
 cardGlow.AnchorPoint = Vector2.new(0.5, 0.5)
 cardGlow.Parent = holder
-TweenService:Create(cardGlow, TweenInfo.new(1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { ImageTransparency = 0.45, Size = UDim2.fromOffset(480, 640) }):Play()
-local detail = UI.frame({ size = UDim2.fromOffset(310, 460), pos = UDim2.fromOffset(1248, 56), anchor = Vector2.new(1, 0), color = W.blue, parent = holder, radius = 20, outline = 6, name = "Detail" })
+TweenService:Create(cardGlow, TweenInfo.new(1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { ImageTransparency = 0.45, Size = UDim2.fromOffset(456, 608) }):Play()
+local detail = UI.frame({ size = UDim2.fromOffset(310, 460), pos = UDim2.fromOffset(1139, 64), anchor = Vector2.new(1, 0), color = W.blue, parent = holder, radius = 20, outline = 6, name = "Detail" })
 local detailStroke = detail:FindFirstChildOfClass("UIStroke") :: UIStroke
 local detailGrad = UI.gradient(detail, W.blue)
+shrink(detail, 0.95)
+-- the rarity rim turns (Legendary gold shimmer, Mythic / Secret rainbow); refresh switches it on per card
+local detailRimGrad = Instance.new("UIGradient")
+detailRimGrad.Enabled = false
+detailRimGrad.Parent = detailStroke
+table.insert(spinners, detailRimGrad)
+-- a shine sweeps across the card every 3 s (0.8 s Linear, then rests)
+local cardShine = Instance.new("Frame")
+cardShine.Name = "Shine"
+cardShine.BorderSizePixel = 0
+cardShine.BackgroundColor3 = Color3.new(1, 1, 1)
+cardShine.Size = UDim2.fromScale(1, 1)
+cardShine.ZIndex = 20
+UI.corner(cardShine, 20)
+cardShine.Parent = detail
+local shineGrad = Instance.new("UIGradient")
+shineGrad.Rotation = 25
+shineGrad.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.4, 1), NumberSequenceKeypoint.new(0.5, 0.72), NumberSequenceKeypoint.new(0.6, 1), NumberSequenceKeypoint.new(1, 1) })
+shineGrad.Offset = Vector2.new(-1, 0)
+shineGrad.Parent = cardShine
+task.spawn(function()
+	while true do
+		shineGrad.Offset = Vector2.new(-1, 0)
+		if holder.Visible then
+			TweenService:Create(shineGrad, TweenInfo.new(0.8, Enum.EasingStyle.Linear), { Offset = Vector2.new(1, 0) }):Play()
+		end
+		task.wait(3)
+	end
+end)
+slideFrom(detail, "right")
+slideFrom(cardGlow, "right")
 -- hazard stripes along the top and the bottom (Epic and rarer)
 local stripes: { Frame } = {}
 for _, y in { 8, 448 } do
@@ -291,7 +508,7 @@ for i = 1, 7 do
 	table.insert(starIcons, s)
 end
 -- the picture: a bright panel with turning rays, a glow and the class's tool
-local artPanel = UI.frame({ size = UDim2.new(1, -36, 0, 122), pos = UDim2.fromOffset(18, 106), color = Color3.fromRGB(120, 180, 255), parent = detail, radius = 14, outline = 4, name = "Art" })
+local artPanel = UI.frame({ size = UDim2.new(1, -36, 0, 100), pos = UDim2.fromOffset(18, 106), color = Color3.fromRGB(120, 180, 255), parent = detail, radius = 14, outline = 4, name = "Art" })
 artPanel.ClipsDescendants = true
 ;(artPanel:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(30, 20, 50)
 local raysBox = Instance.new("Frame")
@@ -325,26 +542,27 @@ artHolder.Size = UDim2.fromScale(1, 1)
 artHolder.Parent = artPanel
 twinkle(artPanel, UDim2.fromScale(0.82, 0.22), 30, Color3.new(1, 1, 1))
 twinkle(artPanel, UDim2.fromScale(0.16, 0.7), 22, Color3.new(1, 1, 1))
-local rarityPill = UI.frame({ size = UDim2.fromOffset(150, 30), pos = UDim2.new(0.5, 0, 0, 212), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(30, 20, 50), parent = detail, radius = 15, outline = 3, name = "Rarity" })
+local rarityPill = UI.frame({ size = UDim2.fromOffset(150, 30), pos = UDim2.new(0.5, 0, 0, 192), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(30, 20, 50), parent = detail, radius = 15, outline = 3, name = "Rarity" })
 ;(rarityPill:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.new(1, 1, 1)
 local rarityText = UI.text(rarityPill, "", UDim2.new(1, -10, 1, -6), { pos = UDim2.fromOffset(5, 3), stroke = 1.5 })
 local detState = UI.text(detail, "", UDim2.new(1, -24, 0, 0), { pos = UDim2.fromOffset(12, 0), stroke = 1.5 })
 detState.Visible = false
 local perkRows = Instance.new("Frame")
 perkRows.BackgroundTransparency = 1
-perkRows.Size = UDim2.new(1, -36, 0, 90)
-perkRows.Position = UDim2.fromOffset(18, 250)
+perkRows.Size = UDim2.new(1, -36, 0, 126)
+perkRows.Position = UDim2.fromOffset(18, 224)
 perkRows.Parent = detail
 local perkLayout = Instance.new("UIListLayout")
-perkLayout.Padding = UDim.new(0, 4)
+perkLayout.Padding = UDim.new(0, 3)
 perkLayout.SortOrder = Enum.SortOrder.LayoutOrder
 perkLayout.Parent = perkRows
-local detQuote = UI.text(detail, "", UDim2.new(1, -36, 0, 30), { pos = UDim2.fromOffset(18, 340), stroke = 1.5, textSize = 13 })
-local detOdds = UI.text(detail, "", UDim2.new(1, -28, 0, 18), { pos = UDim2.fromOffset(14, 370), stroke = 1.5, textSize = 13 })
-local gemBtn = UI.button(detail, "BUY", C.purple, UDim2.fromOffset(134, 52), function() end, { pos = UDim2.new(0, 16, 1, -16), anchor = Vector2.new(0, 1), name = "GemBuy" })
-local robuxBtn = UI.button(detail, "R$ 0", C.green, UDim2.fromOffset(134, 52), function() end, { pos = UDim2.new(1, -16, 1, -16), anchor = Vector2.new(1, 1), name = "RobuxBuy" })
+local detQuote = UI.text(detail, "", UDim2.new(1, -36, 0, 26), { pos = UDim2.fromOffset(18, 350), stroke = 1.5, textSize = 12 })
+local detOdds = UI.text(detail, "", UDim2.new(1, -28, 0, 16), { pos = UDim2.fromOffset(14, 376), stroke = 1.5, textSize = 12 })
+local gemBtn = UI.button(detail, "BUY", C.purple, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(0, 16, 1, -14), anchor = Vector2.new(0, 1), name = "GemBuy" })
+local robuxBtn = UI.button(detail, "R$ 0", C.green, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(1, -16, 1, -14), anchor = Vector2.new(1, 1), name = "RobuxBuy" })
 local gemIcon = UI.icon(gemBtn, "gem", 32, UDim2.new(0, 10, 0.5, -3), Vector2.new(0, 0.5))
-local robuxIcon = UI.icon(robuxBtn, "robux", 28, UDim2.new(0, 12, 0.5, -3), Vector2.new(0, 0.5))
+local robuxIcon = robuxGlyph(robuxBtn, 28, UDim2.new(0, 12, 0.5, -3), Vector2.new(0, 0.5))
+robuxIcon.ZIndex = robuxBtn.ZIndex + 1
 -- a green tick in a white ring for EQUIPPED
 local tick = UI.frame({ size = UDim2.fromOffset(30, 30), pos = UDim2.new(0, 14, 0.5, -3), anchor = Vector2.new(0, 0.5), color = Color3.fromRGB(60, 200, 90), parent = gemBtn, radius = 999, outline = 3, name = "Tick" })
 ;(tick:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.new(1, 1, 1)
@@ -364,8 +582,12 @@ end
 
 -- STOCK / OWNED tabs and the card carousel
 local tab = "stock"
-local stockTab = UI.button(holder, "STOCK", C.orange, UDim2.fromOffset(140, 46), function() end, { pos = UDim2.fromOffset(40, 506), name = "StockTab" })
-local ownedTab = UI.button(holder, "OWNED", Color3.fromRGB(110, 70, 190), UDim2.fromOffset(180, 46), function() end, { pos = UDim2.fromOffset(190, 506), name = "OwnedTab" })
+local stockTab = UI.button(holder, "STOCK", C.orange, UDim2.fromOffset(140, 46), function() end, { pos = UDim2.fromOffset(133, 454), name = "StockTab" })
+local ownedTab = UI.button(holder, "OWNED", Color3.fromRGB(110, 70, 190), UDim2.fromOffset(180, 46), function() end, { pos = UDim2.fromOffset(231, 454), name = "OwnedTab" })
+shrink(stockTab, 0.667)
+shrink(ownedTab, 0.667)
+slideFrom(stockTab, "bottom")
+slideFrom(ownedTab, "bottom")
 UI.icon(stockTab, "moon", 38, UDim2.new(0, 2, 0.5, -3), Vector2.new(0, 0.5))
 ;(stockTab:FindFirstChild("Label") :: TextLabel).Position = UDim2.fromOffset(22, 3)
 local ownedTick = UI.frame({ size = UDim2.fromOffset(28, 28), pos = UDim2.new(0, 8, 0.5, -3), anchor = Vector2.new(0, 0.5), color = Color3.fromRGB(60, 200, 90), parent = ownedTab, radius = 999, outline = 2, name = "Tick" })
@@ -381,17 +603,20 @@ row.Name = "Cards"
 row.BackgroundTransparency = 1
 row.BorderSizePixel = 0
 row.Size = UDim2.fromOffset(1220, 170)
-row.Position = UDim2.fromOffset(30, 552)
+row.AnchorPoint = Vector2.new(0.5, 0)
+row.Position = UDim2.fromOffset(636, 503)
+shrink(row, 0.9)
 row.ScrollBarThickness = 6
 row.ScrollingDirection = Enum.ScrollingDirection.X
 row.AutomaticCanvasSize = Enum.AutomaticSize.X
 row.CanvasSize = UDim2.new()
 row.ClipsDescendants = false
 row.Parent = holder
+slideFrom(row, "bottom")
 local rowLayout = Instance.new("UIListLayout")
 rowLayout.FillDirection = Enum.FillDirection.Horizontal
 rowLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-rowLayout.Padding = UDim.new(0, 8)
+rowLayout.Padding = UDim.new(0, 2)
 rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
 rowLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 rowLayout.Parent = row
@@ -417,6 +642,31 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	slot.Size = UDim2.fromOffset(112, 162)
 	slot.LayoutOrder = order
 	slot.Parent = row
+	-- Epic and rarer cards in the deal shine: slow gold rays turning behind them (Chop A Forest's rare-card shine)
+	if inStock and not owned and SHINE[c.rarity] then
+		local rays = Instance.new("Frame")
+		rays.Name = "Shine"
+		rays.BackgroundTransparency = 1
+		rays.Size = UDim2.fromOffset(170, 170)
+		rays.Position = UDim2.fromOffset(56, if picked then 70 else 86)
+		rays.AnchorPoint = Vector2.new(0.5, 0.5)
+		rays.Parent = slot
+		for i = 0, 5 do
+			local r = Instance.new("Frame")
+			r.BorderSizePixel = 0
+			r.BackgroundColor3 = Color3.fromRGB(255, 214, 90)
+			r.Size = UDim2.new(0, 22, 1, 0)
+			r.Position = UDim2.fromScale(0.5, 0.5)
+			r.AnchorPoint = Vector2.new(0.5, 0.5)
+			r.Rotation = i * 30
+			local g = Instance.new("UIGradient")
+			g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.35), NumberSequenceKeypoint.new(1, 1) })
+			g.Rotation = 90
+			g.Parent = r
+			r.Parent = rays
+		end
+		TweenService:Create(rays, TweenInfo.new(360 / 28, Enum.EasingStyle.Linear, Enum.EasingDirection.In, -1), { Rotation = 360 }):Play()
+	end
 	if picked then
 		local glow = Instance.new("ImageLabel")
 		glow.Name = "Glow"
@@ -425,7 +675,7 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 		glow.ImageColor3 = rc
 		glow.ImageTransparency = 0.2
 		glow.Size = UDim2.fromOffset(200, 240)
-		glow.Position = UDim2.fromOffset(56, 86)
+		glow.Position = UDim2.fromOffset(56, 70)
 		glow.AnchorPoint = Vector2.new(0.5, 0.5)
 		glow.Parent = slot
 	end
@@ -434,7 +684,10 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	b.Text = ""
 	b.AutoButtonColor = false
 	b.AnchorPoint = Vector2.new(0.5, 0)
-	b.Position = UDim2.fromOffset(56, 16) -- room above for the chance chip
+	-- room above for the chance chip; the picked card sits 16 px higher than the rest (Chop A Forest's)
+	local baseY = if picked then 0 else 16
+	b:SetAttribute("BaseY", baseY)
+	b.Position = UDim2.fromOffset(56, baseY)
 	b.Size = UDim2.fromOffset(104, 140)
 	b.BackgroundColor3 = rc
 	b.ClipsDescendants = false
@@ -458,11 +711,11 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	nameBar.BackgroundTransparency = 0.35
 	UI.text(nameBar, c.name, UDim2.new(1, -6, 1, -4), { pos = UDim2.fromOffset(3, 2), stroke = 1.5 })
 	local equipped = owned and d.class == c.id
-	local state = if owned then (if equipped then "EQUIPPED" else "YOURS") elseif c.gems <= 0 then "FREE" elseif inStock then Format.short(c.gems) else "SOLD OUT"
-	local pillColor = if equipped then Color3.fromRGB(255, 196, 40) elseif owned then C.green elseif inStock then Color3.fromRGB(80, 200, 70) else Color3.fromRGB(44, 38, 60)
+	local state = if owned then (if equipped then "EQUIPPED" else "YOURS") elseif c.gems <= 0 then "FREE" else Format.short(c.gems) -- out of stock: still its price, the card dimmed
+	local pillColor = if equipped then Color3.fromRGB(255, 196, 40) elseif owned then C.green elseif inStock then Color3.fromRGB(80, 200, 70) else Color3.fromRGB(34, 28, 58)
 	local pill = UI.frame({ size = UDim2.new(1, -12, 0, 26), pos = UDim2.new(0.5, 0, 1, -6), anchor = Vector2.new(0.5, 1), color = pillColor, parent = b, radius = 8, outline = 2 })
 	UI.gradient(pill, pillColor)
-	local gemPrice = not owned and inStock and c.gems > 0
+	local gemPrice = not owned and c.gems > 0
 	if gemPrice then
 		UI.icon(pill, "gem", 20, UDim2.fromOffset(8, 3))
 	end
@@ -476,17 +729,28 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 		local shade = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.fromRGB(10, 6, 20), parent = b, radius = 14, outline = 0, name = "Dim" })
 		shade.BackgroundTransparency = 0.45
 	end
-	-- the face-down side, shown while the cards are being dealt
-	local back = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.fromRGB(90, 50, 170), parent = b, radius = 14, outline = 3, name = "Back" })
-	UI.gradient(back, Color3.fromRGB(95, 55, 175))
-	local q = Instance.new("ImageLabel")
-	q.BackgroundTransparency = 1
-	q.Image = Tex.Star4
-	q.ImageColor3 = Color3.fromRGB(255, 210, 250)
-	q.Size = UDim2.fromOffset(56, 56)
-	q.Position = UDim2.fromScale(0.5, 0.5)
-	q.AnchorPoint = Vector2.new(0.5, 0.5)
-	q.Parent = back
+	-- the face-down side, shown while the cards are being dealt: deep purple, a glowing moon, the class's name
+	local back = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.new(1, 1, 1), parent = b, radius = 14, outline = 3, name = "Back" })
+	back.ZIndex = 8
+	;(back:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(150, 110, 230)
+	local bgr = Instance.new("UIGradient")
+	bgr.Color = ColorSequence.new(Color3.fromRGB(104, 62, 196), Color3.fromRGB(58, 30, 120)) -- on white, the real colours
+	bgr.Rotation = 90
+	bgr.Parent = back
+	local moonGlow = Instance.new("ImageLabel")
+	moonGlow.BackgroundTransparency = 1
+	moonGlow.Image = Tex.Glow
+	moonGlow.ImageColor3 = Color3.fromRGB(200, 170, 255)
+	moonGlow.ImageTransparency = 0.35
+	moonGlow.Size = UDim2.fromOffset(84, 84)
+	moonGlow.Position = UDim2.new(0.5, 0, 0, 46)
+	moonGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+	moonGlow.ZIndex = 9
+	moonGlow.Parent = back
+	local moon = UI.icon(back, "moon", 40, UDim2.new(0.5, 0, 0, 46), Vector2.new(0.5, 0.5))
+	moon.ZIndex = 10
+	local backName = UI.text(back, c.name, UDim2.new(1, -10, 0, 30), { pos = UDim2.fromOffset(5, 80), stroke = 1.5, textSize = 13 })
+	backName.ZIndex = 10
 	back.Visible = false
 	if picked then
 		local grow = Instance.new("UIScale")
@@ -503,39 +767,149 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	return b
 end
 
--- Turn the cards over one at a time, left to right ("DEALING").
-local function dealAnimation(ids: { string })
-	local list = {}
+-- A new deal, timed off Chop A Forest at 120 fps:
+--   * every card you don't own turns face down at once (moon backs), the timer reads DEALING
+--   * a hop wave runs along the backs for 1.4 s: each card lifts 7 px and drops (0.3 s up, 0.3 s rest),
+--     the next card 0.075 s later, so a ripple keeps travelling left to right
+--   * then the cards turn over one at a time, left to right, 0.1 - 0.4 s apart: the face swaps in at once,
+--     22 px high and at 90% size, and settles into place over 0.25 s (sine out); a rare one's gold rays come on
+-- Returns how long it all takes.
+local WAVE_TIME, WAVE_LAG, WAVE_PERIOD, WAVE_LIFT = 1.4, 0.075, 0.6, 7
+local dealingUntil = 0
+local dealWave: RBXScriptConnection? = nil
+local function flipUp(b: GuiObject, i: number)
+	if not b.Parent then
+		return
+	end
+	local back = b:FindFirstChild("Back") :: GuiObject?
+	if back then
+		back.Visible = false
+	end
+	local chip = b:FindFirstChild("Chance") :: GuiObject?
+	if chip then
+		chip.Visible = true
+	end
+	local slot = b.Parent :: GuiObject
+	local shine = slot:FindFirstChild("Shine") :: GuiObject?
+	if shine then
+		shine.Visible = true
+		Sound.play("purchase")
+	end
+	local baseY = (b:GetAttribute("BaseY") :: number?) or 16
+	b.Position = UDim2.fromOffset(56, baseY - 22)
+	local info = TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+	TweenService:Create(b, info, { Position = UDim2.fromOffset(56, baseY) }):Play()
+	UI.dropIn(b, 0.9, 0.25) -- 90% -> its own size, through UI's juice so it keeps the picked card's 1.06
+	Sound.playAt("click", 0.95 + i * 0.04)
+end
+local function dealAnimation(_ids: { string }): number
+	local d = State.data
+	local list: { GuiObject } = {}
 	for _, c in Config.CLASSES do
 		local b = cardsByClass[c.id]
-		if b and table.find(ids, c.id) then
+		if b and b:FindFirstChild("Back") and not (d and table.find(d.classes, c.id)) then
 			table.insert(list, b)
 		end
 	end
 	for _, b in list do
 		(b:FindFirstChild("Back") :: GuiObject).Visible = true
+		local chip = b:FindFirstChild("Chance") :: GuiObject?
+		if chip then
+			chip.Visible = false -- the backs carry no odds chip
+		end
+		local shine = (b.Parent :: Instance):FindFirstChild("Shine") :: GuiObject?
+		if shine then
+			shine.Visible = false
+		end
 	end
 	timerText.Text = "DEALING"
-	for i, b in list do
-		task.delay(0.25 + (i - 1) * 0.15, function()
-			if not b.Parent then
-				return
-			end
-			local full = b.Size
-			local close = TweenService:Create(b, TweenInfo.new(0.09, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = UDim2.fromOffset(0, full.Y.Offset) })
-			close:Play()
-			close.Completed:Wait()
-			local back = b:FindFirstChild("Back") :: GuiObject?
-			if back then
-				back.Visible = false
-			end
-			Sound.play("click")
-			TweenService:Create(b, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = full }):Play()
-		end)
+	if dealWave then
+		dealWave:Disconnect()
 	end
+	local t0 = os.clock()
+	dealWave = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - t0
+		for i, b in list do
+			local back = b:FindFirstChild("Back") :: GuiObject?
+			if not (back and back.Visible) then
+				continue
+			end
+			local baseY = (b:GetAttribute("BaseY") :: number?) or 16
+			local lift = 0
+			if t < WAVE_TIME then
+				local ph = ((t - (i - 1) * WAVE_LAG) / WAVE_PERIOD) % 1 -- 0..1 through this card's cycle
+				if ph < 0.5 then
+					lift = math.sin(ph * 2 * math.pi) * WAVE_LIFT -- up and back down in the first half
+				end
+			end
+			b.Position = UDim2.fromOffset(56, baseY - lift)
+		end
+	end)
+	local at, last = WAVE_TIME, WAVE_TIME
+	for i, b in list do
+		task.delay(at, function()
+			flipUp(b, i)
+		end)
+		last = at
+		at += 0.1 + math.random() * 0.3
+	end
+	local total = last + 0.1 -- the rare reveal comes 0.1 s after the last card turns
+	dealingUntil = os.clock() + total + 0.3 -- the timer reads DEALING (bar near empty) until the deal is done
+	task.delay(total, function()
+		if dealWave then
+			dealWave:Disconnect()
+			dealWave = nil
+		end
+	end)
+	return total
 end
 
--- Full-screen reveal: white flash, a dark overlay in the rarity colour, the card in front of turning rays.
+-- The banner that drops in at the top when a rare card is dealt (Chop A Forest's "... is IN STOCK at the class
+-- stand!"): it comes down from off screen with a Back overshoot (~12 px past) in 0.32 s, as the backs go down.
+local stockToastFrame: Frame? = nil
+local function stockToast(c)
+	if stockToastFrame then
+		stockToastFrame:Destroy()
+	end
+	local rc = if c.rarity == "Secret" then Color3.fromRGB(200, 110, 255) else Config.RARITY_COLORS[c.rarity]
+	local f = UI.frame({ size = UDim2.fromOffset(360, 68), pos = UDim2.new(0.5, 0, 0, -110), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(24, 16, 30), parent = UI.gui, radius = 10, outline = 2, name = "StockToast" })
+	;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(230, 170, 60)
+	f.BackgroundTransparency = 0.05
+	f.ZIndex = 70
+	stockToastFrame = f
+	local art = Instance.new("ImageLabel")
+	art.BackgroundColor3 = UI.shade(rc, 0.8)
+	art.Image = Config.ICONS["scene_" .. c.id] or ""
+	art.ScaleType = Enum.ScaleType.Crop
+	art.Size = UDim2.fromOffset(118, 44)
+	art.Position = UDim2.fromOffset(-6, 4)
+	art.ZIndex = 71
+	UI.corner(art, 6)
+	art.Parent = f
+	local hex = string.format("#%02x%02x%02x", math.floor(rc.R * 255), math.floor(rc.G * 255), math.floor(rc.B * 255))
+	local line = UI.text(f, ('<font color="%s">%s</font> is IN STOCK at the class stand!'):format(hex, c.name), UDim2.new(1, -128, 0, 36), { pos = UDim2.fromOffset(120, 4), align = Enum.TextXAlignment.Left, stroke = 1.5 })
+	line.RichText = true
+	line.TextWrapped = true
+	line.ZIndex = 71
+	local left = Config.STOCK_WINDOW - (workspace:GetServerTimeNow() % Config.STOCK_WINDOW)
+	local sub = UI.text(f, string.upper(c.rarity) .. " · restocks in " .. Format.clock(left), UDim2.new(1, -128, 0, 16), { pos = UDim2.fromOffset(120, 44), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(220, 210, 240), stroke = 1.2 })
+	sub.ZIndex = 71
+	TweenService:Create(f, TweenInfo.new(0.32, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0.5, 0, 0, 18) }):Play()
+	task.delay(10, function()
+		if f.Parent then
+			TweenService:Create(f, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Position = UDim2.new(0.5, 0, 0, -110) }):Play()
+			task.wait(0.32)
+			f:Destroy()
+		end
+	end)
+end
+
+-- The full-screen reveal, timed off Chop A Forest at 120 fps:
+--   0.00 s  a white flash (90%) over everything, fading out linearly in 0.5 s onto a dark purple dim (85%)
+--           the card pops from 30% size: Back out over 0.65 s (peaks ~107% at 0.37 s, settles by 0.65 s)
+--           16 gold rays behind it fade in from 0.15 s and turn 28 degrees a second
+--   2.30 s  the card shrinks straight down to nothing in place (linear, 0.43 s) while the dim, the rays and the
+--           words fade out (linear, 0.5 s); the avatar flashes the card's colour
 local function reveal(c, line: string, confetti: boolean)
 	local rc = Config.RARITY_COLORS[c.rarity]
 	local root = Instance.new("Frame")
@@ -546,40 +920,41 @@ local function reveal(c, line: string, confetti: boolean)
 	root.AnchorPoint = Vector2.new(0.5, 0.5)
 	root.ZIndex = 60
 	root.Parent = UI.gui
-	local tint = UI.frame({ size = UDim2.fromScale(4, 4), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = UI.shade(rc, 0.3), parent = root, radius = 0, outline = 0, name = "Tint" })
+	local fades: { { inst: Instance, prop: string } } = {}
+	local tint = UI.frame({ size = UDim2.fromScale(4, 4), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(22, 6, 42), parent = root, radius = 0, outline = 0, name = "Tint" })
 	tint.BackgroundTransparency = 0.15
+	table.insert(fades, { inst = tint, prop = "BackgroundTransparency" })
+	local CX, CY = 640, 336 -- the card's centre in the 1280 x 720 screen
 	local rays = Instance.new("Frame")
+	rays.Name = "Rays"
 	rays.BackgroundTransparency = 1
-	rays.Size = UDim2.fromOffset(620, 620)
-	rays.Position = UDim2.fromScale(0.5, 0.46)
+	rays.Size = UDim2.fromOffset(860, 860)
+	rays.Position = UDim2.fromOffset(CX, CY)
 	rays.AnchorPoint = Vector2.new(0.5, 0.5)
 	rays.Parent = root
-	for i = 0, 11 do
+	local rayBars: { Frame } = {}
+	for i = 0, 7 do -- 8 bars through the centre = 16 rays
 		local r = Instance.new("Frame")
 		r.BorderSizePixel = 0
-		r.BackgroundColor3 = UI.shade(rc, 1.4)
-		r.BackgroundTransparency = 0.4
-		r.Size = UDim2.new(0, 46, 1, 0)
+		r.BackgroundColor3 = Color3.fromRGB(255, 200, 70)
+		r.BackgroundTransparency = 1
+		r.Size = UDim2.new(0, 64, 1, 0)
 		r.Position = UDim2.fromScale(0.5, 0.5)
 		r.AnchorPoint = Vector2.new(0.5, 0.5)
-		r.Rotation = i * 15
+		r.Rotation = i * 22.5
 		local g = Instance.new("UIGradient")
-		g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) })
+		g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.22, 0.9), NumberSequenceKeypoint.new(0.4, 0.35), NumberSequenceKeypoint.new(0.5, 0.2), NumberSequenceKeypoint.new(0.6, 0.35), NumberSequenceKeypoint.new(0.78, 0.9), NumberSequenceKeypoint.new(1, 1) })
 		g.Rotation = 90
 		g.Parent = r
 		r.Parent = rays
+		table.insert(rayBars, r)
+		TweenService:Create(r, TweenInfo.new(0.3, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, 0, false, 0.15), { BackgroundTransparency = 0.35 }):Play()
+		table.insert(fades, { inst = r, prop = "BackgroundTransparency" })
 	end
-	TweenService:Create(rays, TweenInfo.new(10, Enum.EasingStyle.Linear), { Rotation = 360 }):Play()
-	local halo = Instance.new("ImageLabel")
-	halo.BackgroundTransparency = 1
-	halo.Image = Tex.Glow
-	halo.ImageColor3 = if c.rarity == "Secret" then Color3.fromRGB(220, 120, 255) else UI.shade(rc, 1.3)
-	halo.Size = UDim2.fromOffset(520, 620)
-	halo.Position = UDim2.fromScale(0.5, 0.46)
-	halo.AnchorPoint = Vector2.new(0.5, 0.5)
-	halo.Parent = root
-	local big = UI.frame({ size = UDim2.fromOffset(240, 310), pos = UDim2.fromScale(0.5, 0.46), anchor = Vector2.new(0.5, 0.5), color = rc, parent = root, radius = 18, outline = 5, name = "Card" })
-	;(big:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.new(1, 1, 1)
+	local spin = TweenService:Create(rays, TweenInfo.new(360 / 28, Enum.EasingStyle.Linear, Enum.EasingDirection.In, -1), { Rotation = 360 })
+	spin:Play()
+	local big = UI.frame({ size = UDim2.fromOffset(174, 240), pos = UDim2.fromOffset(CX, CY), anchor = Vector2.new(0.5, 0.5), color = rc, parent = root, radius = 14, outline = 4, name = "Card" })
+	;(big:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(235, 225, 255)
 	if c.rarity == "Secret" then
 		big.BackgroundColor3 = Color3.new(1, 1, 1)
 		local pg = Instance.new("UIGradient")
@@ -589,30 +964,48 @@ local function reveal(c, line: string, confetti: boolean)
 	else
 		UI.gradient(big, rc)
 	end
-	UI.text(big, c.name, UDim2.new(1, -20, 0, 50), { pos = UDim2.fromOffset(10, 12), stroke = 3 })
-	UI.icon(big, CLASS_ART[c.id], 190, UDim2.fromScale(0.5, 0.58), Vector2.new(0.5, 0.5))
-	UI.text(root, string.upper(c.name), UDim2.fromOffset(700, 66), { pos = UDim2.new(0.5, 0, 0.46, 170), anchor = Vector2.new(0.5, 0), stroke = 5 })
-	UI.text(root, line, UDim2.fromOffset(600, 42), { pos = UDim2.new(0.5, 0, 0.46, 236), anchor = Vector2.new(0.5, 0), color = UI.shade(rc, 1.35), stroke = 3.5 })
+	local pic = Instance.new("ImageLabel")
+	pic.Name = "Art"
+	pic.BackgroundColor3 = UI.shade(rc, 1.2)
+	pic.Image = Config.ICONS["scene_" .. c.id] or ""
+	pic.ScaleType = Enum.ScaleType.Crop
+	pic.Size = UDim2.new(1, -24, 0, 120)
+	pic.Position = UDim2.fromOffset(12, 12)
+	UI.corner(pic, 8)
+	pic.Parent = big
+	UI.text(big, (string.split(c.name, " "))[1], UDim2.new(1, -16, 0, 30), { pos = UDim2.fromOffset(8, 140), stroke = 2.5 })
+	local pop = Instance.new("UIScale")
+	pop.Scale = 0.3
+	pop.Parent = big
+	TweenService:Create(pop, TweenInfo.new(0.65, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	local nameText = UI.text(root, string.upper(c.name), UDim2.fromOffset(700, 40), { pos = UDim2.fromOffset(CX, 498), anchor = Vector2.new(0.5, 0), stroke = 4 })
+	local lineText = UI.text(root, line, UDim2.fromOffset(600, 22), { pos = UDim2.fromOffset(CX, 538), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(255, 214, 70), stroke = 2.5 })
+	for _, t in { nameText, lineText } do
+		table.insert(fades, { inst = t, prop = "TextTransparency" })
+		local st = t:FindFirstChildOfClass("UIStroke")
+		if st then
+			table.insert(fades, { inst = st, prop = "Transparency" })
+		end
+	end
 	local flash = UI.frame({ size = UDim2.fromScale(4, 4), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.new(1, 1, 1), parent = root, radius = 0, outline = 0, name = "Flash" })
-	TweenService:Create(flash, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
-	UI.bounce(big)
+	flash.ZIndex = 80
+	flash.BackgroundTransparency = 0.1
+	TweenService:Create(flash, TweenInfo.new(0.5, Enum.EasingStyle.Linear), { BackgroundTransparency = 1 }):Play()
 	Sound.play("reveal")
 	if confetti then
 		Confetti.burst(90)
 	end
 	task.delay(2.3, function()
-		for _, d in root:GetDescendants() do
-			if d:IsA("TextLabel") then
-				TweenService:Create(d, TweenInfo.new(0.35), { TextTransparency = 1 }):Play()
-			elseif d:IsA("UIStroke") then
-				TweenService:Create(d, TweenInfo.new(0.35), { Transparency = 1 }):Play()
-			elseif d:IsA("Frame") and d.BackgroundTransparency < 1 then
-				TweenService:Create(d, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
-			elseif d:IsA("ImageLabel") then
-				TweenService:Create(d, TweenInfo.new(0.35), { ImageTransparency = 1 }):Play()
-			end
+		TweenService:Create(pop, TweenInfo.new(0.43, Enum.EasingStyle.Linear), { Scale = 0.1 }):Play()
+		local out = TweenInfo.new(0.5, Enum.EasingStyle.Linear)
+		for _, f in fades do
+			TweenService:Create(f.inst, out, { [f.prop] = 1 }):Play()
 		end
-		task.wait(0.4)
+		ClassRoom.pulse(rc)
+		task.wait(0.43)
+		big.Visible = false
+		task.wait(0.1)
+		spin:Cancel()
 		root:Destroy()
 	end)
 end
@@ -655,9 +1048,6 @@ function ClassDeal.refresh()
 					best = sc
 				end
 			end
-		end
-		if best then
-			selected = best.id
 		end
 	end
 
@@ -704,6 +1094,17 @@ function ClassDeal.refresh()
 		rc = Color3.fromRGB(200, 110, 255) -- glow, stroke and art panel in prism purple
 	end
 	detailStroke.Color = UI.shade(rc, 1.5)
+	if c.rarity == "Mythic" or c.rarity == "Secret" then
+		detailStroke.Color = Color3.new(1, 1, 1)
+		detailRimGrad.Color = RAINBOW
+		detailRimGrad.Enabled = true
+	elseif c.rarity == "Legendary" then
+		detailStroke.Color = Color3.new(1, 1, 1)
+		detailRimGrad.Color = GOLD_SHIMMER
+		detailRimGrad.Enabled = true
+	else
+		detailRimGrad.Enabled = false
+	end
 	rarityPill.BackgroundColor3 = UI.shade(rc, 0.45)
 	rarityText.Text = string.upper(c.rarity) .. (if d.class == c.id then " · EQUIPPED" else "")
 	detName.Text = c.name
@@ -734,12 +1135,12 @@ function ClassDeal.refresh()
 	local n = 0
 	for _, s in STATS do
 		local v = (c :: any)[s.key]
-		if v and v ~= 0 and n < 3 then -- the top three (VS YOUR CLASS compares them all)
+		if v and v ~= 0 and n < 5 then -- every stat it has (rarer classes have more of them)
 			n += 1
-			local r = UI.frame({ size = UDim2.new(1, 0, 0, 26), color = Color3.fromRGB(20, 14, 34), parent = perkRows, radius = 8, outline = 0, name = "Perk" })
-			r.BackgroundTransparency = 0.45
+			local r = UI.frame({ size = UDim2.new(1, 0, 0, 22), color = Color3.fromRGB(14, 10, 30), parent = perkRows, radius = 7, outline = 0, name = "Perk" })
+			r.BackgroundTransparency = 0.4
 			r.LayoutOrder = n
-			UI.icon(r, STAT_ICON[s.key], 22, UDim2.fromOffset(4, 2))
+			UI.icon(r, STAT_ICON[s.key], 18, UDim2.fromOffset(5, 2))
 			UI.text(r, s.label, UDim2.new(1, -110, 1, -6), { pos = UDim2.fromOffset(32, 3), align = Enum.TextXAlignment.Left, stroke = 1.5 })
 			local pill = UI.frame({ size = UDim2.fromOffset(62, 20), pos = UDim2.new(1, -4, 0.5, 0), anchor = Vector2.new(1, 0.5), color = Color3.fromRGB(40, 150, 60), parent = r, radius = 6, outline = 0, name = "Value" })
 			UI.gradient(pill, Color3.fromRGB(50, 170, 70))
@@ -762,10 +1163,10 @@ function ClassDeal.refresh()
 	gemIcon.Visible = not owned and inStock
 	tick.Visible = owned
 	if owned then
-		gemBtn.Size = UDim2.new(1, -32, 0, 54)
+		gemBtn.Size = UDim2.new(1, -32, 0, 48)
 		UI.setButton(gemBtn, if d.class == c.id then "EQUIPPED" else "EQUIP", Color3.fromRGB(40, 180, 90))
 	else
-		gemBtn.Size = if product then UDim2.fromOffset(134, 52) else UDim2.new(1, -32, 0, 54)
+		gemBtn.Size = if product then UDim2.fromOffset(134, 48) else UDim2.new(1, -32, 0, 48)
 		if inStock then
 			UI.setButton(gemBtn, Format.commas(c.gems), if d.gems >= c.gems then Color3.fromRGB(150, 90, 245) else W.grey)
 		else
@@ -784,12 +1185,12 @@ function ClassDeal.refresh()
 		local a, b = (mine :: any)[s.key], (c :: any)[s.key]
 		if (a and a ~= 0) or (b and b ~= 0) then
 			shown += 1
-			if shown > 3 then
+			if shown > 5 then
 				break
 			end
 			local better = (b or 0) > (a or 0)
-			local r = UI.frame({ size = UDim2.new(1, 0, 0, 32), color = Color3.fromRGB(16, 10, 32), parent = vsRows, radius = 8, outline = 0, name = "Row" })
-			r.BackgroundTransparency = 0.25
+			local r = UI.frame({ size = UDim2.new(1, 0, 0, 30), color = Color3.fromRGB(40, 30, 92), parent = vsRows, radius = 8, outline = 0, name = "Row" })
+			r.BackgroundTransparency = 0.45
 			r.LayoutOrder = shown
 			UI.icon(r, STAT_ICON[s.key], 24, UDim2.fromOffset(6, 4))
 			UI.text(r, s.label, UDim2.new(0.5, -36, 1, -10), { pos = UDim2.fromOffset(36, 5), align = Enum.TextXAlignment.Left, stroke = 1.5 })
@@ -801,10 +1202,17 @@ function ClassDeal.refresh()
 
 	-- the new deal flips the cards over; a Legendary or rarer card gets a full-screen reveal
 	if newDeal then
-		dealAnimation(stock)
+		local took = dealAnimation(stock)
 		if best then
 			local shown = best
-			task.delay(0.25 + #stock * 0.15 + 0.2, function()
+			stockToast(shown)
+			task.delay(took, function()
+				if not UI.isOpen("Classes") then
+					return
+				end
+				-- the big card switches to it under the flash
+				selected = shown.id
+				ClassDeal.refresh()
 				reveal(shown, string.upper(shown.rarity) .. " IN STOCK!", false)
 			end)
 		end
@@ -853,10 +1261,13 @@ task.spawn(function()
 		if UI.isOpen("Classes") then
 			local now = workspace:GetServerTimeNow()
 			local left = Config.STOCK_WINDOW - (now % Config.STOCK_WINDOW)
-			if timerText.Text ~= "DEALING" or left < Config.STOCK_WINDOW - 2 then
+			if os.clock() < dealingUntil then
+				timerText.Text = "DEALING"
+				timerFill.Size = UDim2.fromScale(0.04, 1)
+			else
 				timerText.Text = Format.clock(left)
+				timerFill.Size = UDim2.fromScale(math.clamp(left / Config.STOCK_WINDOW, 0, 1), 1)
 			end
-			timerFill.Size = UDim2.fromScale(math.clamp(left / Config.STOCK_WINDOW, 0, 1), 1)
 			local key = Config.stockWindow() .. ":" .. table.concat((currentStock(State.data)), ",")
 			if key ~= lastDealKey then
 				ClassDeal.refresh()
@@ -866,17 +1277,68 @@ task.spawn(function()
 end)
 
 -- Windows refreshes the open window on every data update (a restock, a purchase); the avatar only reloads on open
-UI.register("Classes", { frame = holder, refresh = ClassDeal.refresh, pop = { row } })
+-- the big card floats +-1.3 px (a 3.5 s sine) once it has slid in, like Chop A Forest's
+do
+	local detailHome, glowHome = detail.Position, cardGlow.Position
+	RunService.RenderStepped:Connect(function()
+		if holder.Visible and os.clock() > slideDone then
+			local y = math.sin(os.clock() * 2 * math.pi / 3.5) * 1.3
+			detail.Position = detailHome + UDim2.fromOffset(0, y)
+			cardGlow.Position = glowHome + UDim2.fromOffset(0, y)
+		end
+	end)
+end
+
+-- the energy / rarity rims turn while the screen is open (5 s a turn)
+RunService.RenderStepped:Connect(function()
+	if holder.Visible then
+		local r = (os.clock() * 72) % 360
+		for _, g in spinners do
+			g.Rotation = r
+		 end
+	end
+end)
+-- tiny stars twinkling in the open space round the panels
+for _, p in { { 60, 70, 18 }, { 400, 40, 12 }, { 860, 34, 16 }, { 1230, 60, 14 }, { 1250, 330, 12 }, { 30, 330, 14 }, { 520, 470, 10 }, { 790, 450, 12 }, { 1200, 690, 16 }, { 60, 690, 12 }, { 640, 30, 10 }, { 1010, 30, 12 } } do
+	twinkle(holder, UDim2.fromOffset(p[1], p[2]), p[3], Color3.fromRGB(220, 225, 255))
+end
+
+UI.register("Classes", { frame = holder, refresh = ClassDeal.refresh, pop = {}, custom = true }) -- its own open (slide-ins), no pop / squash / slide from UI.open
 -- the 3D class room behind the window while it's open (the HUD steps aside, like Chop A Forest's full screen)
+-- the dev-only overlays (VFX LAB toggle, DEV button) step aside too, and come back as they were
+local devHidden: { [Instance]: boolean } = {}
 UI.onWindowChanged.Event:Connect(function(name)
 	local hud = UI.gui:FindFirstChild("Hud")
 	if hud and hud:IsA("GuiObject") then
 		hud.Visible = name ~= "Classes"
 	end
+	local pg = player:FindFirstChildOfClass("PlayerGui")
+	local lab = pg and pg:FindFirstChild("VFXLabUI")
+	local devButton = UI.gui:FindFirstChild("DevButton")
+	if name == "Classes" then
+		if lab and lab:IsA("ScreenGui") and devHidden[lab] == nil then
+			devHidden[lab] = lab.Enabled
+			lab.Enabled = false
+		end
+		if devButton and devButton:IsA("GuiObject") and devHidden[devButton] == nil then
+			devHidden[devButton] = devButton.Visible
+			devButton.Visible = false
+		end
+	else
+		for inst, was in devHidden do
+			if inst:IsA("ScreenGui") then
+				inst.Enabled = was
+			elseif inst:IsA("GuiObject") then
+				inst.Visible = was
+			end
+		end
+		table.clear(devHidden)
+	end
 	if name == "Classes" then
 		local d = State.data
 		local c = Config.class(selected or (d and d.class) or Config.DEFAULT_CLASS)
 		ClassRoom.show(if c then Config.RARITY_COLORS[c.rarity] else nil)
+		playSlideIns()
 	else
 		ClassRoom.hide()
 	end

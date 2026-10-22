@@ -1,13 +1,9 @@
--- The loading screen: a little illustrated countryside in the game's own chunky cartoon style (ForgeGUI pictures
--- laid out in layers like a 2D game's backdrop), the drawn MOW A LAWN logo, and a wooden loading bar a push mower
--- mows its way along.
---   back to front: sky gradient, the sun turning slowly in its halo, clouds drifting at different speeds, far hills
---   with the windmill, near hills with round trees, a white picket fence, the striped lawn with a grass fringe,
---   flower bushes in the bottom corners
---   on top: the logo popping in on a soft glow (drop shadow, sparkles twinkling one at a time); the bar is the HUD's
---   wooden groove: mowed stripes fill it from the left, tall grass grows out of the rest, the mower rides the edge
---   throwing clippings with the percentage on a wooden plate above it; a tip or a silly job on a wooden plate under
---   it ("Sharpening the blades..."); your face and name top left
+-- The loading screen, kept simple and clean (the owner found the busier version messy): a bright sky with the sun
+-- turning slowly in its halo and three clouds drifting by, two layers of soft rolling hills, the drawn MOW A LAWN
+-- logo popping in on a soft glow (drop shadow, a few sparkles), and the loading bar: the HUD's wooden groove, mowed
+-- stripes filling it from the left, tall grass growing out of the rest, a push mower riding the edge throwing
+-- clippings with the percentage above it. Under it one line that changes every couple of seconds (a tip or a silly
+-- job: "Sharpening the blades..."), and your face and name small in the top-left corner.
 -- Self-contained (no client modules): the boot script in ReplicatedFirst uses it on arrival, client/Loading before a
 -- teleport. Pictures come from IconIds; anything missing is drawn as a plain shape or left out.
 -- Progress: LoadingScreen.setProgress(gui, 0..1, cap); between calls it creeps forward on its own up to `cap`, so it
@@ -33,7 +29,6 @@ local FONT = Enum.Font.FredokaOne
 local BAR = { x = 240, y = 562, w = 800, h = 92 }
 local BAR_SLICE, BAR_SRC = Rect.new(90, 60, 934, 105), Vector2.new(1024, 165)
 local BAR_FACE = { 47, 52, 49, 44 }
-local PLATE_SLICE, PLATE_SRC = Rect.new(160, 70, 864, 237), Vector2.new(1024, 307)
 
 local LINES = {
 	"Sharpening the blades",
@@ -62,11 +57,6 @@ local function img(parent: Instance, key: string, size: UDim2, pos: UDim2, ancho
 	i.AnchorPoint = anchor or Vector2.new(0.5, 0.5)
 	i.Parent = parent
 	return i
-end
-
--- a picture of a known pixel size, `h` tall, standing with its bottom centre at (x, y)
-local function standing(parent: Instance, key: string, src: Vector2, h: number, x: number, y: number): ImageLabel
-	return img(parent, key, UDim2.fromOffset(h * src.X / src.Y, h), UDim2.fromOffset(x, y), Vector2.new(0.5, 1))
 end
 
 local function frame(parent: Instance, size: UDim2, pos: UDim2, color: Color3, radius: number?): Frame
@@ -103,7 +93,7 @@ local function text(parent: Instance, t: string, size: UDim2, pos: UDim2, stroke
 	return l
 end
 
--- a 9-slice picture (the HUD's wooden bar or plate) at w x h; returns it and the scale its border is drawn at
+-- a 9-slice picture (the HUD's wooden bar) at w x h; returns it and the scale its border is drawn at
 local function sliced(parent: Instance, key: string, w: number, h: number, slice: Rect, src: Vector2, boost: number?): (GuiObject, number)
 	local k = math.min(w / src.X, h / src.Y) * (boost or 1)
 	k = math.min(k, h / (slice.Min.Y + src.Y - slice.Max.Y), w / (slice.Min.X + src.X - slice.Max.X))
@@ -166,11 +156,11 @@ local function scene(group: Instance): Scene
 	scale.Parent = world
 
 	-- the sun in its halo
-	local halo = img(world, "glow_soft", UDim2.fromOffset(460, 460), UDim2.fromOffset(1110, 112))
+	local halo = img(world, "glow_soft", UDim2.fromOffset(380, 380), UDim2.fromOffset(1110, 112))
 	halo.ScaleType = Enum.ScaleType.Stretch
 	halo.ImageColor3 = Color3.fromRGB(255, 240, 180)
 	halo.ImageTransparency = 0.1
-	local sun = img(world, "bg_sun", UDim2.fromOffset(176, 176), UDim2.fromOffset(1110, 112))
+	local sun = img(world, "bg_sun", UDim2.fromOffset(136, 136), UDim2.fromOffset(1110, 112))
 	if not IconIds.bg_sun then
 		sun.BackgroundTransparency = 0
 		sun.BackgroundColor3 = Color3.fromRGB(255, 220, 90)
@@ -183,11 +173,9 @@ local function scene(group: Instance): Scene
 	-- clouds: { picture, x, y, height, speed } - the smaller (further) ones drift slower
 	local clouds = {}
 	for _, c in {
-		{ "bg_cloud", -40, 92, 120, 7 },
-		{ "bg_cloud2", 360, 168, 70, 3.5 },
-		{ "bg_cloud", 850, 70, 92, 5.5 },
-		{ "bg_cloud2", 1180, 236, 58, 3 },
-		{ "bg_cloud2", 600, 300, 46, 2.2 },
+		{ "bg_cloud", 140, 196, 104, 6 },
+		{ "bg_cloud2", 930, 250, 64, 3.5 },
+		{ "bg_cloud2", 520, 40, 44, 2.4 },
 	} do
 		if IconIds[c[1]] then
 			local src = if c[1] == "bg_cloud" then Vector2.new(768, 439) else Vector2.new(768, 391)
@@ -199,55 +187,25 @@ local function scene(group: Instance): Scene
 		end
 	end
 
-	-- far hills, hazy blue-green, with the windmill on the left one
-	hills(world, { { 150, 486, 660, 250 }, { 640, 470, 760, 230 }, { 1120, 488, 680, 260 }, { 1500, 494, 560, 220 } }, Color3.fromRGB(132, 196, 160), Color3.fromRGB(176, 222, 190), 3)
-	if IconIds.bg_windmill then
-		standing(world, "bg_windmill", Vector2.new(603, 768), 220, 236, 470)
-	end
-	-- near hills with round trees
-	hills(world, { { -60, 548, 780, 250 }, { 740, 540, 860, 240 }, { 1400, 552, 720, 250 } }, Color3.fromRGB(98, 186, 78), Color3.fromRGB(150, 220, 104), 4)
-	if IconIds.bg_tree then
-		standing(world, "bg_tree2", Vector2.new(649, 768), 116, 420, 488)
-		standing(world, "bg_tree", Vector2.new(642, 768), 200, 1032, 500)
-		standing(world, "bg_tree2", Vector2.new(649, 768), 150, 1190, 508)
-	end
-	-- the picket fence along the back of the lawn
-	if IconIds.bg_fence then
-		local h = 62
-		local w = h * 768 / 305
-		for x = -120, 1400, w - 6 do
-			img(world, "bg_fence", UDim2.fromOffset(w, h), UDim2.fromOffset(x, 532), Vector2.new(0, 1))
-		end
-	end
-	-- the lawn, mowed in light and dark stripes, a little darker toward the front, with a grass fringe on top
-	local lawn = frame(world, UDim2.fromOffset(2400, 400), UDim2.fromOffset(-560, 524), Color3.fromRGB(92, 174, 56))
-	lawn.Name = "Lawn"
-	for i = 0, 2400 / 96 do
-		local stripe = frame(lawn, UDim2.fromOffset(48, 400), UDim2.fromOffset(i * 96, 0), Color3.fromRGB(112, 192, 68))
+	-- far hills, hazy blue-green, then the near hills in fresh green running down to the bottom of the screen, with a
+	-- hint of mowed stripes fading in toward the front
+	hills(world, { { 150, 496, 660, 240 }, { 640, 480, 760, 220 }, { 1120, 498, 680, 250 }, { 1500, 504, 560, 210 } }, Color3.fromRGB(140, 202, 168), Color3.fromRGB(184, 226, 196), 3)
+	hills(world, { { -60, 566, 780, 240 }, { 740, 556, 860, 230 }, { 1400, 570, 720, 240 } }, Color3.fromRGB(98, 186, 78), Color3.fromRGB(150, 220, 104), 4)
+	local ground = frame(world, UDim2.fromOffset(2400, 300), UDim2.fromOffset(-560, 600), Color3.fromRGB(98, 186, 78))
+	ground.Name = "Ground"
+	for i = 0, 2400 / 110 do
+		local stripe = frame(ground, UDim2.fromOffset(55, 300), UDim2.fromOffset(i * 110, 0), Color3.fromRGB(118, 200, 90))
 		stripe.Name = "Stripe"
-	end
-	local lg = Instance.new("UIGradient")
-	lg.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(190, 200, 180))
-	lg.Rotation = 90
-	lg.Parent = lawn
-	frame(world, UDim2.fromOffset(2400, 4), UDim2.fromOffset(-560, 522), INK).Name = "LawnEdge"
-	if IconIds.ui_grass then
-		local tw = math.floor(34 * 921 / 271)
-		for x = -560, 1840, tw - 12 do
-			local g = img(world, "ui_grass", UDim2.fromOffset(tw, 34), UDim2.fromOffset(x, 500), Vector2.zero)
-			g.ImageColor3 = Color3.fromRGB(196, 222, 180)
-		end
-	end
-	-- flower bushes in the bottom corners
-	if IconIds.bg_bush then
-		standing(world, "bg_bush", Vector2.new(768, 586), 168, 70, 734)
-		standing(world, "bg_bush2", Vector2.new(768, 670), 176, 1214, 738)
+		local sg2 = Instance.new("UIGradient")
+		sg2.Rotation = 90
+		sg2.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.45, 0.4), NumberSequenceKeypoint.new(1, 0.3) })
+		sg2.Parent = stripe
 	end
 	-- soft dark edges and a darker bottom, so the bar and the writing read
 	for _, side in { 0, 1 } do
 		local v = frame(group, UDim2.new(0.22, 0, 1, 0), UDim2.fromScale(side * 0.78, 0), Color3.fromRGB(10, 24, 8))
 		local vg = Instance.new("UIGradient")
-		vg.Transparency = NumberSequence.new(if side == 0 then 0.6 else 1, if side == 0 then 1 else 0.6)
+		vg.Transparency = NumberSequence.new(if side == 0 then 0.75 else 1, if side == 0 then 1 else 0.75)
 		vg.Parent = v
 	end
 	local shade = frame(group, UDim2.fromScale(1, 1), UDim2.new(), Color3.fromRGB(12, 26, 8))
@@ -263,7 +221,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 local LOGO = Vector2.new(690, 456) -- (the picture is 955 x 631)
 local LOGO_AT = Vector2.new(640, 248)
-local SPARKLES = { { 310, 120, 42 }, { 972, 104, 36 }, { 1006, 336, 48 }, { 268, 352, 32 }, { 742, 34, 28 }, { 536, 452, 26 } }
+local SPARKLES = { { 310, 120, 40 }, { 1006, 336, 44 }, { 742, 34, 26 } }
 type Title = { logo: GuiObject, shadow: GuiObject?, pop: UIScale, glows: { ImageLabel }, sparkles: { ImageLabel } }
 local function title(stage: Frame): Title
 	local glows = {}
@@ -342,11 +300,6 @@ local function bar(stage: Frame): Bar
 			img(grass, "ui_grass", UDim2.fromOffset(tw, th), UDim2.fromOffset(x, gh + reach), Vector2.new(0, 1))
 		end
 	end
-	-- a daisy on each end of the bar
-	if IconIds.daisy then
-		img(stage, "daisy", UDim2.fromOffset(62, 62), UDim2.fromOffset(BAR.x + 6, BAR.y + 8))
-		img(stage, "daisy", UDim2.fromOffset(54, 54), UDim2.fromOffset(BAR.x + BAR.w - 4, BAR.y + 12))
-	end
 	-- the mower (the picture faces left, so it's drawn mirrored to drive right)
 	local mower: GuiObject
 	if IconIds.pushmower then
@@ -358,13 +311,12 @@ local function bar(stage: Frame): Bar
 		mower = frame(stage, UDim2.fromOffset(64, 46), UDim2.fromOffset(gx, gy + gh), Color3.fromRGB(230, 70, 60), 12)
 		mower.AnchorPoint = Vector2.new(0.5, 1)
 	end
-	-- the percentage on a little wooden plate above the mower
-	local plate = frame(stage, UDim2.fromOffset(108, 46), UDim2.fromOffset(gx, gy - 100), WHITE)
-	plate.Name = "Plate"
+	-- the percentage, riding above the mower
+	local plate = frame(stage, UDim2.fromOffset(100, 36), UDim2.fromOffset(gx, gy - 100), WHITE)
+	plate.Name = "Percent"
 	plate.AnchorPoint = Vector2.new(0.5, 0.5)
 	plate.BackgroundTransparency = 1
-	sliced(plate, "ui_plate", 108, 46, PLATE_SLICE, PLATE_SRC, 1.7)
-	local pct = text(plate, "0%", UDim2.new(1, -24, 1, -14), UDim2.fromScale(0.5, 0.47), 2.5)
+	local pct = text(plate, "0%", UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), 3)
 	return { gx = gx, gy = gy, gw = gw, gh = gh, fill = fill, uncut = uncut, grass = grass, mower = mower, plate = plate, pct = pct }
 end
 
@@ -425,32 +377,26 @@ function LoadingScreen.build(player: Player?): ScreenGui
 
 	local T = title(stage)
 	local B = bar(stage)
-	-- the changing line, on a wooden plate under the bar
-	local linePlate = frame(stage, UDim2.fromOffset(640, 54), UDim2.fromOffset(640, BAR.y + BAR.h + 34), WHITE)
-	linePlate.AnchorPoint = Vector2.new(0.5, 0.5)
-	linePlate.BackgroundTransparency = 1
-	sliced(linePlate, "ui_plate", 640, 54, PLATE_SLICE, PLATE_SRC, 1.8)
-	local line = text(linePlate, LINES[1] .. "...", UDim2.new(1, -60, 0, 28), UDim2.fromScale(0.5, 0.46), 2.5)
+	-- the changing line under the bar
+	local line = text(stage, LINES[1] .. "...", UDim2.fromOffset(640, 26), UDim2.fromOffset(640, BAR.y + BAR.h + 30), 2.5)
 
-	-- you, top left: your face in a white ring and your name, on a dark see-through pill
-	local youPill = frame(stage, UDim2.fromOffset(280, 60), UDim2.fromOffset(40, 26), Color3.fromRGB(20, 14, 6), 30)
-	youPill.BackgroundTransparency = 0.45
-	local face = frame(stage, UDim2.fromOffset(72, 72), UDim2.fromOffset(20, 20), WHITE, 36)
+	-- you, small in the top-left corner: your face in a white ring and your name
+	local face = frame(stage, UDim2.fromOffset(54, 54), UDim2.fromOffset(24, 24), WHITE, 27)
 	local fs = Instance.new("UIStroke")
-	fs.Thickness = 4
+	fs.Thickness = 3
 	fs.Color = INK
 	fs.Parent = face
 	local photo = Instance.new("ImageLabel")
 	photo.Name = "Photo"
 	photo.AnchorPoint = Vector2.new(0.5, 0.5)
 	photo.Position = UDim2.fromScale(0.5, 0.5)
-	photo.Size = UDim2.new(1, -10, 1, -10)
+	photo.Size = UDim2.new(1, -8, 1, -8)
 	photo.BackgroundColor3 = Color3.fromRGB(70, 110, 90)
 	photo.Parent = face
 	local pc = Instance.new("UICorner")
 	pc.CornerRadius = UDim.new(0.5, 0)
 	pc.Parent = photo
-	local name = text(stage, if player then player.DisplayName else "", UDim2.fromOffset(200, 28), UDim2.fromOffset(104, 56), 2.5)
+	local name = text(stage, if player then player.DisplayName else "", UDim2.fromOffset(220, 24), UDim2.fromOffset(90, 51), 2.5)
 	name.AnchorPoint = Vector2.new(0, 0.5)
 	name.TextXAlignment = Enum.TextXAlignment.Left
 	if player then
@@ -467,7 +413,7 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	-- fetch the pictures first, ahead of the rest of the game (each shows as soon as it arrives)
 	task.spawn(function()
 		local list = {}
-		for _, key in { "logo", "glow_soft", "bg_sun", "bg_cloud", "bg_cloud2", "bg_windmill", "bg_tree", "bg_tree2", "bg_fence", "bg_bush", "bg_bush2", "ui_bar", "ui_plate", "ui_grass", "pushmower", "daisy", "sparkle" } do
+		for _, key in { "logo", "glow_soft", "bg_sun", "bg_cloud", "bg_cloud2", "ui_bar", "ui_grass", "pushmower", "sparkle" } do
 			if IconIds[key] then
 				table.insert(list, IconIds[key])
 			end

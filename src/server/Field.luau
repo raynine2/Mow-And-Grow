@@ -12,6 +12,7 @@ local RunBuilder = require(script.Parent.RunBuilder)
 local Models = require(script.Parent.Models)
 local VoxelModels = require(script.Parent.VoxelModels)
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
+local Lawn = require(script.Parent.Lawn)
 
 local Field = {}
 
@@ -178,6 +179,7 @@ local function stubble(p: Patch)
 		p.notch = nil
 	end
 	local turf = p.part
+	Lawn.mow(turf.Position, p.z) -- its ground is freshly mowed: striped lawn (server/Lawn)
 	-- what's left, like a tree stump: the Blender stubble, or a low cut disc
 	local def = Config.ZONES[p.z]
 	local vid = voxelId(p.z)
@@ -344,6 +346,9 @@ local function spawnZone(z: number, alreadyCut: boolean)
 		local p = spawnPatch(zoneFolder, z, i, z, alreadyCut, spot.cf, spot.scale)
 		patches[z][i] = p
 		local pos = spot.cf.Position
+		if alreadyCut then
+			Lawn.mow(pos, z)
+		end
 		local key = cellKey(math.floor(pos.X / CELL), math.floor(pos.Z / CELL))
 		local b = buckets[z][key]
 		if not b then
@@ -358,6 +363,7 @@ local function spawnZone(z: number, alreadyCut: boolean)
 end
 
 function Field.build(parent: Instance, startZone: number)
+	Lawn.reset()
 	folder = PropKit.folder("Grass", parent)
 	for z = 1, #Config.ZONES do
 		spawnZone(z, z < startZone)

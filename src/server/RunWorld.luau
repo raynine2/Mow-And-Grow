@@ -295,6 +295,85 @@ local function paths(w: Instance)
 	require(script.Parent.HubPaths).lay(w, segments, 0, 5)
 end
 
+-- The first area has no drop-off of its own in the generated map, and the village shredder is ~350 studs from
+-- its grass, so the first minutes were spent walking. Give it one: a copy of area 2's drop-off pad, put on flat
+-- ground in the middle of area 1's grass, clear of every clump (RunWorld.patches).
+local function meadowDropOff(w: Instance)
+	local pads = w:FindFirstChild("Pads")
+	if not pads or pads:FindFirstChild("DropOff1") or not pads:FindFirstChild("DropOff2") then
+		return
+	end
+	local clumps = RunWorld.patches(1)
+	if #clumps < 4 then
+		return
+	end
+	local ground = w:FindFirstChild("Ground")
+	if not ground then
+		return
+	end
+	local ray = RaycastParams.new()
+	ray.FilterType = Enum.RaycastFilterType.Include
+	ray.FilterDescendantsInstances = { ground }
+	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+	for _, c in clumps do
+		local p = c.cf.Position
+		minX, maxX, minZ, maxZ = math.min(minX, p.X), math.max(maxX, p.X), math.min(minZ, p.Z), math.max(maxZ, p.Z)
+	end
+	local function heightAt(x: number, z: number): number?
+		local hit = workspace:Raycast(Vector3.new(x, 200, z), Vector3.new(0, -400, 0), ray)
+		return if hit and hit.Normal.Y > 0.95 then hit.Position.Y else nil
+	end
+	local best, bestScore = nil, math.huge
+	for x = minX, maxX, 4 do
+		for z = minZ, maxZ, 4 do
+			local near, sum = math.huge, 0
+			for _, c in clumps do
+				local p = c.cf.Position
+				local d = Vector2.new(p.X - x, p.Z - z).Magnitude
+				near = math.min(near, d)
+				sum += d
+			end
+			local score = sum / #clumps
+			if near >= 12 and score < bestScore then
+				local y = heightAt(x, z)
+				local flat = y ~= nil
+				if y then
+					for _, o in { Vector2.new(8, 0), Vector2.new(-8, 0), Vector2.new(0, 8), Vector2.new(0, -8) } do
+						local y2 = heightAt(x + o.X, z + o.Y)
+						if not y2 or math.abs(y2 - y) > 0.3 then
+							flat = false
+							break
+						end
+					end
+				end
+				if flat and y then
+					best, bestScore = Vector3.new(x, y, z), score
+				end
+			end
+		end
+	end
+	if not best then
+		return
+	end
+	-- copy area 2's pad (the top disc and its steps) over to the spot
+	local src = pads:FindFirstChild("DropOff2") :: BasePart
+	local srcFoot = src.Position - Vector3.new(0, 2.3, 0) -- the pad's top disc sits 2.3 above the ground
+	local move = best - srcFoot
+	for _, part in pads:GetChildren() do
+		if part:IsA("BasePart") and (part.Name == "DropOff2" or part.Name == "DropOff2Step") then
+			local copy = part:Clone()
+			copy.Name = if part.Name == "DropOff2" then "DropOff1" else "DropOff1Step"
+			copy.CFrame = part.CFrame + move
+			if part.Name == "DropOff2" then
+				copy:SetAttribute("Zone", 1)
+			end
+			copy.Parent = pads
+		end
+	end
+	print(("[RunWorld] area 1 drop-off placed at %d, %d (avg %.0f studs from its grass)"):format(best.X, best.Z, bestScore))
+end
+
+
 -- Players who fall into the sea, a gorge or lava come back at the way into the area they're working on.
 local function safetyNet(info)
 	task.spawn(function()
@@ -352,6 +431,7 @@ function RunWorld.build()
 		end
 	end
 
+	meadowDropOff(w)
 	local pads = w:FindFirstChild("Pads")
 	for _, pad in (if pads then pads:GetChildren() else {}) do
 		if pad:IsA("BasePart") and pad:GetAttribute("Sell") then

@@ -462,9 +462,16 @@ rewards.refresh = function()
 		else ("🔥 %d day streak  ·  Next reward in %s"):format(v.streak, Format.clock(v.wait))
 	local streak = UI.text(rewards.list, line, UDim2.new(1, 0, 0, 30), { color = Color3.new(1, 1, 1), stroke = 2.5 })
 	streak.LayoutOrder = 2
-	UI.popupRow(rewards.list, 3, "clover", "Join the group +" .. Config.GROUP_GEMS, if d.groupClaimed then "DONE" else "JOIN", if d.groupClaimed then C.green else C.yellow)
+	local free = d.freeGems or { ready = false, wait = 0, gems = Config.FREE_GEMS.gems }
+	UI.popupRow(rewards.list, 3, "gem", ("Free gems every 6 hours +%d"):format(free.gems), if free.ready then "READY" else Format.clock(free.wait), if free.ready then C.green else C.yellow)
+	UI.popupRow(rewards.list, 4, "clover", "Join the group +" .. Config.GROUP_GEMS, if d.groupClaimed then "DONE" else "JOIN", if d.groupClaimed then C.green else C.yellow)
 	if v.ready then
 		UI.setButton(rewards.action, "CLAIM DAY " .. v.day, C.green)
+		rewards.onAction = function()
+			State.fire("Claim", "daily")
+		end
+	elseif free.ready then
+		UI.setButton(rewards.action, ("CLAIM +%d GEMS"):format(free.gems), C.green)
 		rewards.onAction = function()
 			State.fire("Claim", "daily")
 		end

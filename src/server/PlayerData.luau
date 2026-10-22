@@ -46,6 +46,7 @@ local DEFAULT = {
 	lastDaily = 0,
 	lastDailyDay = 0, -- the UTC day number of the last daily claim (server/Daily)
 	dailyStreak = 0, -- daily claims in a row
+	lastFreeGems = 0, -- os.time() of the last 6-hourly free gems (server/Daily)
 	groupClaimed = false,
 	-- lifetime stats (the STATS window): clumps cut, bundles sold, coins earned, mutated ("rare") clumps cut,
 	-- seconds played; newsSeen = the newest Config.NEWS id the player has seen

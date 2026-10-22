@@ -29,8 +29,8 @@ Config.TOOLS = {
 	{ id = "Hands", name = "Bare Hands", cost = 0, kind = "swing", damage = 1, cooldown = 0.45, radius = 5, targets = 1, color = Color3.fromRGB(255, 205, 160) },
 	{ id = "Scissors", name = "Garden Scissors", cost = 150, kind = "swing", damage = 3, cooldown = 0.4, radius = 6, targets = 2, color = Color3.fromRGB(255, 80, 80) },
 	{ id = "Sickle", name = "Sickle", cost = 1500, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
-	{ id = "PushMower", name = "Push Mower", cost = 12000, kind = "auto", damage = 30, radius = 6, color = Color3.fromRGB(255, 140, 30) },
-	{ id = "WeedWhacker", name = "Weed Whacker", cost = 90000, kind = "auto", damage = 140, radius = 9, color = Color3.fromRGB(60, 200, 80) },
+	{ id = "PushMower", name = "Push Mower", cost = 7000, kind = "auto", damage = 30, radius = 6, color = Color3.fromRGB(255, 140, 30) },
+	{ id = "WeedWhacker", name = "Weed Whacker", cost = 60000, kind = "auto", damage = 140, radius = 9, color = Color3.fromRGB(60, 200, 80) },
 	{ id = "MegaScythe", name = "Mega Scythe", cost = 400000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
 	{ id = "LaserMower", name = "Laser Mower", cost = 1500000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
 }
@@ -69,8 +69,8 @@ Config.GEM_DROP = { chance = 0.035, min = 1, max = 3 } -- per cut patch, before 
 -- (Config.PASSES.BigBag) makes your bag endless.
 Config.BAGS = {
 	{ id = "Satchel", name = "Grass Satchel", model = "bag_satchel", cost = 175, carry = 5 },
-	{ id = "Backpack", name = "Clipping Backpack", model = "bag_backpack", cost = 750, carry = 15 },
-	{ id = "Expedition", name = "Expedition Pack", model = "bag_hiker", cost = 9000, carry = 40 },
+	{ id = "Backpack", name = "Clipping Backpack", model = "bag_backpack", cost = 600, carry = 15 },
+	{ id = "Expedition", name = "Expedition Pack", model = "bag_hiker", cost = 4000, carry = 40 },
 }
 Config.ENDLESS_CARRY = 9999 -- what "endless" means in numbers (the HUD shows it as a big infinity sign)
 
@@ -105,7 +105,12 @@ end
 -- model: the clump model (default "tuft_" .. style); tint: recolour it (flat colour instead of its texture).
 -------------------------------------------------------------------------------------------------------------
 Config.BASE_CARRY = 5
-Config.BOSSES = false -- true: clearing an area wakes its boss, and the boss opens the next area (the old way)
+-- Pacing (22 Oct, after the Chop A Forest teardown): aim for a free-to-play clear of 60-90 minutes, with the first
+-- boss and a ride-on mower inside the first 15. A rough sim of one good player came out at ~56 min of mowing plus
+-- the boss fights (area 1 ~7 min with its new drop-off pad, server/RunWorld). Values were x1.5 from area 2, HP -20%
+-- in areas 5-7, areas 4 and 7 spaced wider (fewer clumps), and the Push Mower, Weed Whacker, bags and Rusty Rider
+-- made cheaper. Retune here after real playtests.
+Config.BOSSES = true -- clearing an area wakes its boss, and beating the boss opens the next area (false: areas open straight away)
 
 Config.ZONES = {
 	{
@@ -116,49 +121,49 @@ Config.ZONES = {
 		boss = { name = "Dandelion King", hp = 400, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
 	},
 	{
-		name = "Flower Meadow", grassName = "Meadow Grass", style = "meadow", model = "tuft_golf", hp = 12, value = 8, drops = 1, height = 2.2,
+		name = "Flower Meadow", grassName = "Meadow Grass", style = "meadow", model = "tuft_golf", hp = 12, value = 12, drops = 1, height = 2.2,
 		spacing = 11.5, scale = 6.3, tint = Color3.fromRGB(150, 215, 95),
 		grass = { Color3.fromRGB(150, 215, 95), Color3.fromRGB(130, 200, 80) },
 		ground = Color3.fromRGB(120, 160, 70),
 		boss = { name = "Thorn Bush", hp = 2000, color = Color3.fromRGB(40, 140, 60), every = 4.2, radius = 9, gems = 15, coins = 600 },
 	},
 	{
-		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 50, value = 30, drops = 1, height = 2.5,
+		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 50, value = 45, drops = 1, height = 2.5,
 		spacing = 12.5, scale = 7.2,
 		grass = { Color3.fromRGB(70, 200, 90), Color3.fromRGB(55, 180, 75) },
 		ground = Color3.fromRGB(235, 215, 150),
 		boss = { name = "Thorn Bush", hp = 6000, color = Color3.fromRGB(40, 140, 60), every = 4, radius = 10, gems = 20, coins = 2000 },
 	},
 	{
-		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 150, value = 55, drops = 1, height = 5,
-		spacing = 8, scale = 4.0,
+		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 150, value = 80, drops = 1, height = 5,
+		spacing = 11, scale = 4.0,
 		grass = { Color3.fromRGB(240, 200, 80), Color3.fromRGB(225, 180, 60) },
 		ground = Color3.fromRGB(140, 95, 55),
 		boss = { name = "Venus Flytrap", hp = 90000, color = Color3.fromRGB(200, 40, 70), every = 3.6, radius = 11, gems = 35, coins = 25000 },
 	},
 	{
-		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 600, value = 200, drops = 2, height = 2.5,
+		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 480, value = 300, drops = 2, height = 2.5,
 		spacing = 13.5, scale = 5.1, tint = Color3.fromRGB(255, 160, 205),
 		grass = { Color3.fromRGB(255, 160, 205), Color3.fromRGB(240, 130, 185) },
 		ground = Color3.fromRGB(120, 170, 80),
 		boss = { name = "Venus Flytrap", hp = 300000, color = Color3.fromRGB(200, 40, 70), every = 3.5, radius = 11, gems = 45, coins = 80000 },
 	},
 	{
-		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 2500, value = 750, drops = 2, height = 6.5,
+		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 2000, value = 1100, drops = 2, height = 6.5,
 		spacing = 12, scale = 4.6,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
 		boss = { name = "Swamp Vine", hp = 1200000, color = Color3.fromRGB(90, 70, 140), every = 3.3, radius = 12, gems = 55, coins = 300000 },
 	},
 	{
-		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 6000, value = 1600, drops = 2, height = 6,
-		spacing = 9.5, scale = 5.1, tint = Color3.fromRGB(235, 120, 45),
+		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 4800, value = 2400, drops = 2, height = 6,
+		spacing = 11.5, scale = 5.1, tint = Color3.fromRGB(235, 120, 45),
 		grass = { Color3.fromRGB(235, 120, 45), Color3.fromRGB(215, 95, 40) },
 		ground = Color3.fromRGB(150, 110, 60),
 		boss = { name = "Swamp Vine", hp = 4000000, color = Color3.fromRGB(90, 70, 140), every = 3.1, radius = 13, gems = 65, coins = 1000000 },
 	},
 	{
-		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 60000, value = 8000, drops = 4, height = 8,
+		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 60000, value = 12000, drops = 4, height = 8,
 		spacing = 21, scale = 6.0,
 		grass = { Color3.fromRGB(30, 160, 60), Color3.fromRGB(20, 130, 50) },
 		ground = Color3.fromRGB(90, 70, 45),
@@ -560,8 +565,8 @@ Config.QUESTS = {
 	{ title = "Buy a bag at the Bag Stand", hint = "It's by the spawn, next to the tool shop", event = "bag", goal = 1, reward = 100 },
 	{ title = "Cut 60 grass", hint = "Keep mowing the Backyard Lawn", event = "cut", goal = 60, reward = 150 },
 	{ title = "Mow the whole Backyard Lawn", hint = "Every last patch!", event = "zone", goal = 1, reward = 250 },
-	{ title = "Mow the whole Flower Meadow", hint = "Its gate opened when you cleared the lawn", event = "zone", goal = 1, reward = 300 },
 	{ title = "Get a ride-on mower", hint = "Buy one at the Garage", event = "mower", goal = 1, reward = 500 },
+	{ title = "Mow the whole Flower Meadow", hint = "Its gate opens when you beat the lawn's boss", event = "zone", goal = 1, reward = 300 },
 }
 
 -------------------------------------------------------------------------------------------------------------
@@ -814,7 +819,7 @@ end
 -- "trial": a Robux mower that lasts one run.
 -------------------------------------------------------------------------------------------------------------
 Config.MOWERS = {
-	{ id = "RustyRider", name = "Rusty Rider", currency = "coins", price = 500, damage = 6, radius = 6, speed = 30, fuel = 60, color = Color3.fromRGB(200, 90, 50) },
+	{ id = "RustyRider", name = "Rusty Rider", currency = "coins", price = 350, damage = 6, radius = 6, speed = 30, fuel = 60, color = Color3.fromRGB(200, 90, 50) },
 	{ id = "TurboTractor", name = "Turbo Tractor", currency = "coins", price = 40000, damage = 120, radius = 9, speed = 38, fuel = 90, color = Color3.fromRGB(60, 170, 255) },
 	{ id = "GoldenZeroTurn", name = "Golden Zero-Turn", currency = "gems", price = 900, damage = 400, radius = 10, speed = 42, fuel = 120, color = Color3.fromRGB(255, 200, 40) },
 	{ id = "MonsterMulcher", name = "Monster Mulcher", currency = "gems", price = 2500, damage = 3000, radius = 12, speed = 46, fuel = 150, color = Color3.fromRGB(150, 60, 220) },
@@ -840,6 +845,9 @@ end
 Config.DAILY_STREAK = { 50, 75, 100, 150, 200, 300, 600 }
 Config.DAILY_GEMS = Config.DAILY_STREAK[1]
 Config.DAILY_COOLDOWN = 24 * 3600
+-- On top of the ladder, a little free gems at the same stall every 6 hours (Chop A Forest's daily is 35 gems every
+-- 6 hours): one more reason to drop in during the day. server/Daily.
+Config.FREE_GEMS = { gems = 20, every = 6 * 3600 }
 Config.GROUP_GEMS = 100
 
 -------------------------------------------------------------------------------------------------------------

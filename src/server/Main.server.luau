@@ -131,6 +131,7 @@ local function snapshot(player: Player, data)
 		peaceful = data.peaceful == true,
 		dailyIn = require(script.Parent.Daily).view(data).wait,
 		daily = require(script.Parent.Daily).view(data), -- { ready, wait, day, streak, claimedToday }
+		freeGems = require(script.Parent.Daily).freeView(data), -- { ready, wait, gems }: every 6 hours
 		groupClaimed = data.groupClaimed,
 		stats = data.stats,
 		passes = passes,

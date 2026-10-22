@@ -1044,6 +1044,9 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- Look (bubbly UI on Chop A Forest style wooden boards)
 -------------------------------------------------------------------------------------------------------------
+-- How big the whole interface is drawn: 1 = the 1280x720 layout fills the screen. The owner found that too big
+-- (22 Oct), so it is drawn a bit smaller; raise it towards 1 for bigger, lower it for smaller.
+Config.UI_SIZE = 0.82
 Config.UI = {
 	font = Enum.Font.FredokaOne,
 	outline = Color3.fromRGB(30, 25, 45),

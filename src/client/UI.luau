@@ -51,7 +51,7 @@ scale.Parent = gui
 local function rescale()
 	local cam = workspace.CurrentCamera
 	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
-	scale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.5, 1.5)
+	scale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720) * (Config.UI_SIZE or 1), 0.45, 1.3)
 end
 rescale()
 if workspace.CurrentCamera then

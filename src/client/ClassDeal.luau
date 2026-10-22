@@ -162,6 +162,14 @@ holder.AnchorPoint = Vector2.new(0.5, 0.5)
 holder.Visible = false
 holder.ZIndex = 10
 holder.Parent = UI.gui
+-- the class screen is a full-screen scene: it keeps filling the screen even though the rest of the UI is drawn a bit
+-- smaller (Config.UI_SIZE scales the whole MowALawnGui)
+do
+	local fill = Instance.new("UIScale")
+	fill.Name = "Fill"
+	fill.Scale = 1 / (Config.UI_SIZE or 1)
+	fill.Parent = holder
+end
 
 -- soft dark edges so the panels read over the room (they reach past the 1280 x 720 box on wide screens)
 for _, side in { { 0, 0 }, { 1, 180 } } do

@@ -198,7 +198,7 @@ scaler.Parent = holder
 local function rescale()
 	local cam = workspace.CurrentCamera
 	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
-	scaler.Scale = math.clamp(math.min(vp.X / 1040, vp.Y / 780), 0.45, 1.1)
+	scaler.Scale = math.clamp(math.min(vp.X / 1040, vp.Y / 780) * (Config.UI_SIZE or 1), 0.4, 1.1)
 end
 
 local choice = { pad = 0, size = Config.PARTY_MAX, difficulty = "Normal", peaceful = false }

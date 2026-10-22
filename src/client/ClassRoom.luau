@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local VFX = require(ReplicatedStorage:WaitForChild("VFXLib"))
+local MenuFX = require(script.Parent.MenuFX)
 
 local ClassRoom = {}
 
@@ -316,7 +317,7 @@ local function build()
 	core.Transparency = 1
 	core.Name = "AuraCore"
 	table.insert(aura, emitter(core, {
-		Texture = Tex.Glow, Shape = Enum.ParticleEmitterShape.Box, Color = ColorSequence.new(rgb(170, 90, 255)), LightEmission = 1,
+		Texture = Tex.Glow, Shape = Enum.ParticleEmitterShape.Box, Color = ColorSequence.new(rgb(170, 90, 255)), LightEmission = 0.5,
 		Size = seq(0, 0.5, 0.5, 0.9, 1, 0), Transparency = seq(0, 0.8, 0.4, 0.7, 1, 1), Lifetime = NumberRange.new(0.8, 1.3),
 		Speed = NumberRange.new(2, 3.5), EmissionDirection = Enum.NormalId.Back, SpreadAngle = Vector2.new(10, 10), Rate = Budget.Rate(10),
 	}))
@@ -326,8 +327,8 @@ local function build()
 		Speed = NumberRange.new(6, 10), EmissionDirection = Enum.NormalId.Back, SpreadAngle = Vector2.new(8, 8), Rate = Budget.Rate(8),
 	}))
 	table.insert(tail, emitter(core, {
-		Texture = Tex.Glow, Color = ColorSequence.new(rgb(170, 90, 255)), LightEmission = 1, EmissionDirection = Enum.NormalId.Back,
-		Size = seq(0, 1.6, 1, 0.2), Transparency = seq(0, 0.55, 1, 1), Lifetime = NumberRange.new(1.2, 1.6), Speed = NumberRange.new(9, 12),
+		Texture = Tex.Glow, Color = ColorSequence.new(rgb(170, 90, 255)), LightEmission = 0.5, EmissionDirection = Enum.NormalId.Back,
+		Size = seq(0, 1.6, 1, 0.2), Transparency = seq(0, 0.65, 1, 1), Lifetime = NumberRange.new(1.2, 1.6), Speed = NumberRange.new(9, 12),
 		SpreadAngle = Vector2.new(4, 4), Rate = Budget.Rate(24), Drag = 1,
 	}))
 	auraLight = light(core, rgb(170, 90, 255), 8, 1)
@@ -338,9 +339,9 @@ local function build()
 		p.Transparency = 1
 		light(p, color, range, brightness)
 	end
-	lamp(Vector3.new(0, 9, -9), rgb(255, 235, 255), 16, 1.1)
-	lamp(Vector3.new(-6, 8, 5), rgb(160, 90, 255), 12, 2.2)
-	lamp(Vector3.new(6, 6, 5), rgb(60, 210, 255), 12, 1.8)
+	lamp(Vector3.new(0, 9, -9), rgb(255, 235, 255), 16, 0.8)
+	lamp(Vector3.new(-6, 8, 5), rgb(160, 90, 255), 12, 1.3)
+	lamp(Vector3.new(6, 6, 5), rgb(60, 210, 255), 12, 1.1)
 	lamp(Vector3.new(4, -2, -2), rgb(255, 150, 90), 9, 0.6)
 
 	room = m
@@ -524,6 +525,8 @@ local function setLit(inst: Instance, props: { [string]: any })
 end
 
 local function spaceLighting()
+	-- pause client/BiomeLight, or it puts the zone's sun (and bloom) back every frame and the avatar blows out white
+	player:SetAttribute("BiomeLightOff", true)
 	setLit(Lighting, { ClockTime = 0, Brightness = 0, Ambient = rgb(70, 60, 110), OutdoorAmbient = rgb(55, 45, 100), FogEnd = 100000, FogStart = 99999 })
 	for _, c in Lighting:GetChildren() do
 		if c:IsA("Atmosphere") then
@@ -531,7 +534,7 @@ local function spaceLighting()
 		elseif c:IsA("SunRaysEffect") then
 			setLit(c, { Enabled = false })
 		elseif c:IsA("BloomEffect") then
-			setLit(c, { Intensity = 1.1, Size = 30, Threshold = 0.85 })
+			setLit(c, { Intensity = 0.3, Size = 24, Threshold = 0.95 }) -- soft: 1.1 blew white clothes out into neon
 		elseif c:IsA("Sky") then
 			setLit(c, { StarCount = 3000, CelestialBodiesShown = false })
 		end
@@ -549,6 +552,7 @@ local function restoreLighting()
 		end
 	end
 	table.clear(savedLighting)
+	player:SetAttribute("BiomeLightOff", nil)
 end
 
 -- Show the room and point the camera at the avatar. `color` = the picked card's rarity colour.
@@ -648,8 +652,9 @@ function ClassRoom.setAura(color: Color3)
 	end
 end
 
--- the avatar flashes a colour (a rare card landing): aura and tail burst, its light blooms, then settles
-function ClassRoom.pulse(color: Color3)
+-- the avatar flashes a colour (a rare card landing): aura and tail burst, a VFX Forge burst round it (bigger when
+-- the card was bought), its light blooms, then settles
+function ClassRoom.pulse(color: Color3, big: boolean?)
 	if not shown then
 		return
 	end
@@ -660,10 +665,11 @@ function ClassRoom.pulse(color: Color3)
 	for _, e in tail do
 		e:Emit(20)
 	end
+	MenuFX.burst((ORIGIN * CFrame.new(FLOAT)).Position, color, { size = 0.8, big = big })
 	if auraLight then
 		local l = auraLight
-		l.Brightness = 4
-		l.Range = 14
+		l.Brightness = 2.5
+		l.Range = 12
 		TweenService:Create(l, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 1, Range = 8 }):Play()
 	end
 end

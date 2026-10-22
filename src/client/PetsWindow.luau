@@ -14,6 +14,7 @@ local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local Confetti = require(script.Parent.Confetti)
 local PetFollow = require(script.Parent.PetFollow)
+local MenuFX = require(script.Parent.MenuFX)
 
 local PetsWindow = {}
 local C = UI.colors
@@ -612,6 +613,14 @@ local function hatchShow(eggId: string, ids: { string })
 	dim.BackgroundTransparency = 1
 	TweenService:Create(dim, TweenInfo.new(0.25), { BackgroundTransparency = 0.2 }):Play()
 	local many = #ids > 1
+	-- the rarest critter (a Legendary or rarer one wins): its colour bursts round you when the hatch closes
+	local best: Color3?, bestBig = nil, false
+	for _, id in ids do
+		local p = Config.pet(id)
+		if p and (not best or (BIG[p.rarity] and not bestBig)) then
+			best, bestBig = Config.RARITY_COLORS[p.rarity], BIG[p.rarity] == true
+		end
+	end
 	local cols = math.min(#ids, 5)
 	local cellW = if many then 220 else 0
 	for i, id in ids do
@@ -695,8 +704,15 @@ local function hatchShow(eggId: string, ids: { string })
 		end
 		root:Destroy()
 		hatching = false
+		if best then
+			MenuFX.atCharacter(best, bestBig)
+		end
 		if reopen then
-			UI.open(reopen)
+			task.delay(0.7, function() -- let the burst show first
+				if not hatching and not UI.anyOpen() then
+					UI.open(reopen)
+				end
+			end)
 		end
 	end)
 	root:SetAttribute("t0", os.clock())

@@ -104,26 +104,155 @@ local function toolFrame(parent: Instance, cabinAt: CFrame, tool, spot)
 	prompt:SetAttribute("Item", tool.id)
 end
 
+-- The roomy version (Config.SHOP_SCALE): the cabin 1.5x as big, the four hand tools on the back wall each in a
+-- bigger frame with a carved name plaque above it, the two push mowers on display pedestals (shop_pedestal, with
+-- a name + price plaque) on the floor. Every display is a Folder "ToolDisplay" (ToolId attribute) so the client
+-- (client/ShopDisplays) can colour it by owned / affordable / locked and spin the tool when you walk up.
+local SHOP_SCALE = 1.5
+local WALL_TOOLS = { "Scissors", "Sickle", "WeedWhacker", "MegaScythe" }
+local FLOOR_TOOLS = { PushMower = -9, LaserMower = 9 }
+
+local function toolDef(id: string)
+	for _, t in Config.TOOLS do
+		if t.id == id then
+			return t
+		end
+	end
+	return nil
+end
+
+-- Text on a face (the part's -Z side), lit softly; returns the label so the client can recolour it.
+local function plaqueText(parent: Instance, cf: CFrame, size: Vector2, text: string, color: Color3, name: string): TextLabel
+	local p = PropKit.part({ size = Vector3.new(size.X, size.Y, 0.05), cf = cf, color = Color3.new(1, 1, 1), parent = parent, transparency = 1, collide = false, studs = false, name = name })
+	p.CanQuery = false
+	local label = PropKit.surfaceText(p, text, color)
+	label.Size = UDim2.fromScale(0.92, 0.86)
+	label.Position = UDim2.fromScale(0.04, 0.07)
+	return label
+end
+
+-- A little brass-rimmed status lamp (the client tints its glass: green owned, yellow affordable, grey locked).
+local function statusLamp(parent: Instance, cf: CFrame)
+	local rim = PropKit.cylinder(parent, 0.34, 0.12, cf * CFrame.Angles(math.rad(90), 0, 0), Color3.fromRGB(226, 176, 74))
+	rim.Name = "StatusRim"
+	rim.CanCollide = false
+	rim.CanQuery = false
+	local glass = PropKit.part({ size = Vector3.new(0.42, 0.42, 0.42), cf = cf * CFrame.new(0, 0, -0.05), color = Color3.fromRGB(150, 150, 150), parent = parent, collide = false, studs = false, name = "StatusLamp", shape = Enum.PartType.Ball })
+	glass.Material = Enum.Material.Glass
+	glass.Transparency = 0.15
+	glass.CanQuery = false
+end
+
+local function wallDisplay(shop: Instance, at: CFrame, tool, x: number)
+	local d = PropKit.folder("ToolDisplay", shop)
+	d:SetAttribute("ToolId", tool.id)
+	local S = SHOP_SCALE
+	local cf = at * CFrame.new(x, 0.75, 9.35 * S) * CFrame.Angles(0, 0, 0)
+	local fs = 1.05
+	local base = cf * CFrame.new(0, 1.2, 0)
+	if not Models.place("tool_wall_frame", d, base, fs, true) then
+		PropKit.brick(d, Vector3.new(6, 5, 0.3) * fs, base * CFrame.new(Vector3.new(0, 3.6, 0) * fs), Color3.fromRGB(232, 176, 112), "ToolBoard", Enum.Material.WoodPlanks)
+	end
+	-- the price on the frame's price board
+	local price = PropKit.facePanel(d, base, Vector3.new(0, 0.82, -0.57), Vector2.new(5.4, 1.5), "$" .. Format.commas(tool.cost), PropKit.PRICE, fs)
+	price.Parent.Name = "PriceText"
+	statusLamp(d, base * CFrame.new(Vector3.new(2.4, 0.82, -0.75) * fs))
+	-- the name plaque above the frame
+	local plaqueAt = base * CFrame.new(0, 6.9 * fs, -0.05)
+	if Models.place("shop_plaque", d, plaqueAt, 0.95, true) then
+		plaqueText(d, plaqueAt * CFrame.new(0, 0, -0.38 * 0.95), Vector2.new(4.4, 1.15), tool.name:upper(), PropKit.TITLE, "NameText")
+	else
+		PropKit.facePanel(d, plaqueAt, Vector3.zero, Vector2.new(5, 1.3), tool.name:upper(), PropKit.TITLE)
+	end
+	-- the tool across the pegs
+	local target = base * CFrame.new(Vector3.new(0, 3.9, -0.85) * fs)
+	local m = Models.place(TOOL_MODEL[tool.id], d, target * HANG, 1, true)
+	if m then
+		local _, size = m:GetBoundingBox()
+		local fit = 4.4 * fs / math.max(size.X, size.Y, size.Z)
+		if fit < 1 then
+			m:ScaleTo(fit)
+		end
+		local box = m:GetBoundingBox()
+		m:PivotTo(m:GetPivot() + (target.Position - box.Position))
+		m:SetAttribute("DisplayItem", true)
+	end
+	-- a small warm picture light over each frame (soft: the room shouldn't glare)
+	local lampAt = base * CFrame.new(0, 6.0 * fs, -1.2)
+	local lamp = PropKit.part({ size = Vector3.new(1.4, 0.3, 0.5), cf = lampAt, color = Color3.fromRGB(70, 46, 30), parent = d, collide = false, studs = false, name = "PictureLamp" })
+	lamp.Material = Enum.Material.Wood
+	local bulb = PropKit.part({ size = Vector3.new(1.1, 0.12, 0.3), cf = lampAt * CFrame.new(0, -0.18, 0), color = Color3.fromRGB(255, 226, 170), parent = d, collide = false, studs = false, name = "PictureBulb" })
+	bulb.Material = Enum.Material.Neon
+	bulb.Transparency = 0.35
+	local light = Instance.new("SpotLight")
+	light.Face = Enum.NormalId.Bottom
+	light.Angle = 70
+	light.Brightness = 0.9
+	light.Range = 9
+	light.Color = Color3.fromRGB(255, 220, 170)
+	light.Parent = bulb
+	local prompt = PropKit.prompt(promptSpot(d, base * CFrame.new(0, 3.5 * fs, -1.5), "ToolFrame"), "View", tool.name, "ToolView", 8)
+	prompt:SetAttribute("Item", tool.id)
+end
+
+local function floorDisplay(shop: Instance, at: CFrame, tool, x: number)
+	local d = PropKit.folder("ToolDisplay", shop)
+	d:SetAttribute("ToolId", tool.id)
+	local S = SHOP_SCALE
+	local cf = at * CFrame.new(x, 0.75, 4.2 * S)
+	local top = 1.66
+	if Models.place("shop_pedestal", d, cf, 1, true) then
+		PropKit.collider(d, cf, Vector3.new(0, 0.85, 0), Vector3.new(6.4, 1.7, 6.4))
+		-- the slanted plaque at the front: name on top, price under it
+		local board = cf * CFrame.new(0, 1.55, -4.2) * CFrame.Angles(math.rad(28), 0, 0)
+		plaqueText(d, board * CFrame.new(0, 0.3, -0.13), Vector2.new(3.1, 0.7), tool.name:upper(), PropKit.TITLE, "NameText")
+		local price = plaqueText(d, board * CFrame.new(0, -0.38, -0.13), Vector2.new(3.1, 0.6), "$" .. Format.commas(tool.cost), PropKit.PRICE, "PriceText")
+		local _ = price
+		statusLamp(d, board * CFrame.new(1.45, -0.38, -0.14))
+	else
+		PropKit.cylinder(d, 3, 1.6, cf * CFrame.new(0, 0.8, 0), Color3.fromRGB(150, 96, 56))
+		top = 1.6
+	end
+	local m = Models.place(TOOL_MODEL[tool.id], d, cf * CFrame.new(0, top, 0.3) * CFrame.Angles(0, math.rad(if x < 0 then -25 else 25), 0), 0.78, true)
+	if m then
+		m:SetAttribute("DisplayItem", true)
+	end
+	local prompt = PropKit.prompt(promptSpot(d, cf * CFrame.new(0, 3, -2.5), "ToolFrame"), "View", tool.name, "ToolView", 8)
+	prompt:SetAttribute("Item", tool.id)
+end
+
 local function toolShop(m: Instance, info)
 	local shop = PropKit.folder("TOOL SHOP", m)
 	local at = spotAt("toolShop")
-	if not PropKit.cabin(shop, at, 1) then
+	local S = SHOP_SCALE
+	-- the piece the saved map lines this unit up by (MapStore: first unique part path, alphabetically)
+	local anchor = promptSpot(shop, at, "0Anchor")
+	local _ = anchor
+	if not PropKit.cabin(shop, at, S) then
 		PropKit.stall(m, CFrame.new(28, 0, -55) * CFrame.Angles(0, math.rad(90), 0), "TOOL SHOP", Color3.fromRGB(255, 80, 80), "Tools")
 		return
 	end
 	if Config.HUB_SIGNS then
-		PropKit.cabinSign(shop, at, 1, "TOOL SHOP", PropKit.TITLE)
+		PropKit.cabinSign(shop, at, S, "TOOL SHOP", PropKit.TITLE)
 	end
-	for i = 2, #Config.TOOLS do
-		local spot = FRAME_SPOTS[i - 1]
-		if spot then
-			toolFrame(shop, at, Config.TOOLS[i], spot)
+	for i, id in WALL_TOOLS do
+		local t = toolDef(id)
+		if t then
+			wallDisplay(shop, at, t, (i - 2.5) * 8.4)
+		end
+	end
+	for id, x in FLOOR_TOOLS do
+		local t = toolDef(id)
+		if t then
+			floorDisplay(shop, at, t, x)
 		end
 	end
 	-- the Guide arrow points just outside the door ("Counter" looks out of the door)
-	promptSpot(shop, at * CFrame.new(0, 2, -6), "Counter")
+	promptSpot(shop, at * CFrame.new(0, 2, -6 * S), "Counter")
 	-- a lantern at the door
-	Models.place("lantern_post", shop, at * CFrame.new(5, 0.5, -10.6), 0.8, true)
+	Models.place("lantern_post", shop, at * CFrame.new(5 * S, 0.75, -10.6 * S), 0.9, true)
+	local _ = FRAME_SPOTS
+	local _ = toolFrame
 end
 
 -- The Bag Stand (bag_stand model): a striped market stall by the spawn. The three bag tiers stand on its stumps,
@@ -174,12 +303,35 @@ local function gasPump(parent: Instance, pos: Vector3, info, facing: Vector3?)
 	table.insert(info.pumps, { pos = pos, prompt = prompt })
 end
 
--- The garage: an open wooden bay (party booth model) where your mower spawns, with a gas pump beside it.
+-- The garage: a log garage in the Tool Shop's style (Blender garage_shed) where your mower spawns, open at the
+-- front with the roll-up door rolled up, with a gas pump beside it. Falls back to the old open bay.
+local function garageShed(g: Instance, at: CFrame): boolean
+	if not Models.place("garage_shed", g, at, 1, true) then
+		return false
+	end
+	promptSpot(g, at, "0Anchor") -- lines the saved map's garage up with this one (MapStore)
+	PropKit.collider(g, at, Vector3.new(0, 5, 7.4), Vector3.new(15.4, 10, 1.4))
+	for _, x in { -6.9, 6.9 } do
+		PropKit.collider(g, at, Vector3.new(x, 5, 0.4), Vector3.new(1.3, 10, 16))
+	end
+	plaqueText(g, at * CFrame.new(0, 11.0, -7.27), Vector2.new(7.0, 1.6), "GARAGE", PropKit.TITLE, "SignText")
+	-- the lamp under the roof (soft and warm)
+	local lamp = promptSpot(g, at * CFrame.new(0, 7.9, 1), "LampGlow")
+	local l = Instance.new("PointLight")
+	l.Color = Color3.fromRGB(255, 220, 170)
+	l.Brightness = 0.6
+	l.Range = 12
+	l.Parent = lamp
+	return true
+end
+
 local function garageBay(m: Instance, info)
 	local at = spotAt("garage")
 	local pos = at.Position
 	local g = PropKit.folder("Garage", m)
-	if Models.place("party_booth", g, at, 1.1, true) then
+	if garageShed(g, at) then
+		-- built above
+	elseif Models.place("party_booth", g, at, 1.1, true) then
 		if Config.HUB_SIGNS then
 			PropKit.facePanel(g, at, Vector3.new(0, 7, 5.93), Vector2.new(10.4, 4), "GARAGE", PropKit.TITLE, 1.1)
 		end
@@ -248,6 +400,43 @@ local function shredder(m: Instance, info): boolean
 	return true
 end
 
+local function classesKiosk(m: Instance, at: CFrame)
+	local k = PropKit.folder("CLASSES", m)
+	promptSpot(k, at, "0Anchor")
+	if not Models.place("classes_kiosk", k, at, 1, true) then
+		k:Destroy()
+		PropKit.stall(m, at, "CLASSES", Color3.fromRGB(160, 95, 255), "Classes")
+		return
+	end
+	-- solid: the platform steps, the counter arc, the observatory, the pillars
+	PropKit.collider(k, at, Vector3.new(0, 0.65, 0), Vector3.new(12.4, 1.3, 12.4))
+	PropKit.collider(k, at, Vector3.new(0, 2.6, -3.3), Vector3.new(9.4, 2.6, 2.4))
+	PropKit.collider(k, at, Vector3.new(0, 3, 3.4), Vector3.new(6, 3.4, 6))
+	for _, x in { -5.2, 5.2 } do
+		PropKit.collider(k, at, Vector3.new(x, 5.9, 0.6), Vector3.new(0.9, 9.2, 0.9))
+	end
+	-- the sign on the arch
+	local sign = plaqueText(k, at * CFrame.new(0, 11.2, 0.25), Vector2.new(7.2, 1.6), "CLASSES", Color3.fromRGB(214, 190, 255), "SignText")
+	sign.Font = Enum.Font.LuckiestGuy
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 150, 255))
+	grad.Rotation = 90
+	grad.Parent = sign
+	-- where the hologram floats (client/ClassHolo builds it), and the counter prompt
+	local holo = promptSpot(k, at * CFrame.new(0, 4.15, -0.6), "HoloLens")
+	holo:SetAttribute("ClassHolo", true)
+	PropKit.prompt(promptSpot(k, at * CFrame.new(0, 3, -5.6), "Counter"), "Browse", "Classes", "Classes", 12)
+	-- the lamps on their posts and the projector glow (soft)
+	for _, x in { -6.2, 6.2 } do
+		local p = promptSpot(k, at * CFrame.new(x, 3.7, -2.6), "LampGlow")
+		local l = Instance.new("PointLight")
+		l.Color = Color3.fromRGB(255, 230, 180)
+		l.Brightness = 0.7
+		l.Range = 8
+		l.Parent = p
+	end
+end
+
 local function hub(world: Instance, info)
 	local m = PropKit.folder("Hub", world)
 	-- ground: grass with a dirt yard around the cabin and the machines, and a worn path out to the first field
@@ -260,9 +449,10 @@ local function hub(world: Instance, info)
 	toolShop(m, info)
 	bagStand(m)
 	if Config.WORLD_GEN then
-		-- the class stand (gems), like the lobby's: CLASSES opens the card deal (client/ClassDeal)
+		-- the class stand (gems): a little space observatory (classes_kiosk) whose projector shows the deal as a
+		-- hologram (client/ClassHolo). CLASSES opens the card deal (client/ClassDeal).
 		local at = Vector3.new(-24, FLOOR_Y, 12)
-		PropKit.stall(m, CFrame.lookAt(at, Vector3.new(0, FLOOR_Y, 12)), "CLASSES", Color3.fromRGB(160, 95, 255), "Classes")
+		classesKiosk(m, CFrame.lookAt(at, Vector3.new(0, FLOOR_Y, 12)))
 	end
 	garageBay(m, info)
 	if shredder(m, info) then

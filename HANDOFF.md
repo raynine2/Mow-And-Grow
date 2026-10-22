@@ -104,7 +104,19 @@ and was playtested there with no script errors.
 
 ## Studio vs. git: please read
 
-**State on 23 Oct, after midnight (this commit): the trading cards are in Studio** (`ClassDeal`, `Skin`, `IconIds` match the branch). **But Studio also has newer work that is NOT in git**, from another session that was busy in the place: new `client/ClassHolo`, `client/ShopDisplays`, changes to `client/Client` and `server/RunBuilder`, and new PartModels `shop_plaque shop_pedestal classes_kiosk camp_fountain camp_bench flower_bed` (backups `pre_hubSpread_20261022`, `yard_clearing_20261022`, `MowerRevamp_2026-10-23`). Whoever made it: commit it before anyone syncs Rojo, or it will be overwritten.
+**State on 23 Oct, ~1am (rescue commit): almost all of the other session's Studio-only work is now in git**,
+copied byte-for-byte from Studio and checked by length + checksum: the roomy Tool Shop (wall frames with name
+plaques, pedestals, status lamps), the log garage (`garage_shed`), the CLASSES observatory kiosk with its hologram
+(`client/ClassHolo`), the camp fountain/benches/flower beds, `client/ShopDisplays`, `client/MowerFx` (turning
+wheels and blades, exhaust, auras), `client/MenuFX` (VFX Forge bursts for card/egg/upgrade moments, used by
+ClassRoom, PetsWindow, GemUpgrades), the rigged Blender mowers (`mower_mulcher/rocket/tractor/zeroturn`, plus
+`Mowers.rig` and named parts in `Models`), and a one-line change to `ClassDeal` (`ClassRoom.pulse`).
+**Still only in Studio:** `PartModels/mower_trial` (the Trial Mower model; without it the game falls back to a pink
+Zero-Turn, so nothing breaks, but it must be copied before a Rojo sync). **Not reachable from here:** the Blender
+sources `tools/blender/models/*.py` for the new models (on the other session's computer), and
+`ReplicatedStorage.VFXLib` (a Studio-only library MenuFX/ClassHolo/ShopDisplays need; Rojo leaves it alone).
+
+**Earlier, 23 Oct after midnight: the trading cards are in Studio** (`ClassDeal`, `Skin`, `IconIds` match the branch). **But Studio also has newer work that is NOT in git**, from another session that was busy in the place: new `client/ClassHolo`, `client/ShopDisplays`, changes to `client/Client` and `server/RunBuilder`, and new PartModels `shop_plaque shop_pedestal classes_kiosk camp_fountain camp_bench flower_bed` (backups `pre_hubSpread_20261022`, `yard_clearing_20261022`, `MowerRevamp_2026-10-23`). Whoever made it: commit it before anyone syncs Rojo, or it will be overwritten.
 
 **State on 22 Oct, night (`6a36d66`): Studio and the branch match exactly.** All 180 scripts were checked
 byte-for-byte against the branch (FxPresets by its data, since Rojo turns the JSON into a script).

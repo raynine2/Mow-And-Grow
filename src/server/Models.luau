@@ -142,7 +142,8 @@ local function buildFromParts(name: string, spec: { materials: { string }, parts
 		if kind == "Neon" or see then
 			part.CastShadow = false
 		end
-		part.Name = matName
+		-- moving parts (Wheel*, Blade*, ExhaustTip) carry their own name so the game can animate them
+		part.Name = if type(p[18]) == "string" then p[18] else matName
 		part.TopSurface = Enum.SurfaceType.Smooth
 		part.BottomSurface = Enum.SurfaceType.Smooth
 		part.Anchored = true

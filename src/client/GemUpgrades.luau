@@ -8,6 +8,7 @@ local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
 local UI = require(script.Parent.UI)
 local Skin = require(script.Parent.Skin)
 local State = require(script.Parent.State)
+local MenuFX = require(script.Parent.MenuFX)
 
 local GemUpgrades = {}
 local C = UI.colors
@@ -171,6 +172,15 @@ local function packCard(order: number, pack)
 	end
 end
 
+local lastLv: { [string]: number } = {}
+local upgraded = false
+UI.onWindowChanged.Event:Connect(function(name)
+	if name ~= "Perks" and upgraded then
+		upgraded = false
+		MenuFX.atCharacter(BLUE, true)
+	end
+end)
+
 w.refresh = function()
 	local d = State.data
 	UI.clear(perkRow)
@@ -180,6 +190,15 @@ w.refresh = function()
 	end
 	for i, p in Config.PERKS do
 		perkCard(i, p, d)
+		local lv = d.perks[p.id] or 0
+		if lastLv[p.id] and lv > lastLv[p.id] then
+			upgraded = true
+			local card = perkRow:FindFirstChild("Perk_" .. p.id)
+			if card then
+				UI.bounce(card)
+			end
+		end
+		lastLv[p.id] = lv
 	end
 	for i, pack in PACKS do
 		packCard(i, pack)

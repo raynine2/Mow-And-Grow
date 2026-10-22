@@ -13,7 +13,10 @@ require(modules:WaitForChild("NightGun")) -- boss guns, day/night, crawlers, Pea
 require(modules:WaitForChild("ViewModel"))
 require(modules:WaitForChild("Soundscape")) -- footsteps, birds and breeze
 require(modules:WaitForChild("Fx"))
+require(modules:WaitForChild("ShopDisplays")) -- tool shop status lamps + turning tools, the camp fountain
+require(modules:WaitForChild("ClassHolo")) -- the CLASSES kiosk's hologram
 require(modules:WaitForChild("MowFx")) -- lawn stripes behind mowers, the clippings chute, soft rings, reaper wisps
+require(modules:WaitForChild("MowerFx")) -- ride-on mowers: turning wheels and blade, exhaust puffs, auras
 require(modules:WaitForChild("Input"))
 require(modules:WaitForChild("Guide"))
 require(modules:WaitForChild("SellPointer")) -- bag full: an arrow beside you pointing to the nearest sell spot

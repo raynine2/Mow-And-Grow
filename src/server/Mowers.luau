@@ -13,7 +13,7 @@ local MOWER_MODEL = {
 	TurboTractor = "mower_tractor",
 	GoldenZeroTurn = "mower_zeroturn",
 	MonsterMulcher = "mower_mulcher",
-	TrialMower = "mower_zeroturn",
+	TrialMower = "mower_trial",
 	RocketMower = "mower_rocket",
 }
 
@@ -107,6 +107,39 @@ local function decorate(model: Model, body: BasePart, def)
 	add(Vector3.new(0.25, 1.1, 1.1), CFrame.new(0, -0.95, -5.2) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(220, 40, 40), "BladeHub", nil, Enum.PartType.Cylinder)
 end
 
+-- Moving parts of a Blender mower (named by tools/blender/to_parts.py): each tyre "Wheel<RL|RR|FL|FR>" and the
+-- "Blade" get a Motor6D to the chassis that clients turn (client MowerFx); their bits ("WheelRL_lug3", "Blade_bar0")
+-- weld to them; everything else welds to the chassis like Models.weldTo.
+local function rig(placed: Model, body: BasePart)
+	local hubs: { [string]: BasePart } = {}
+	for _, p in placed:GetDescendants() do
+		if p:IsA("BasePart") and (p.Name:match("^Wheel%u%u$") or p.Name == "Blade") then
+			hubs[p.Name] = p
+		end
+	end
+	for _, p in placed:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.Anchored = false
+			p.CanCollide = false
+			p.CanQuery = false
+			p.Massless = true
+			if hubs[p.Name] == p then
+				local motor = Instance.new("Motor6D")
+				motor.Name = "Spin"
+				motor.Part0 = body
+				motor.Part1 = p
+				motor.C0 = body.CFrame:ToObjectSpace(p.CFrame)
+				motor.Parent = p
+			else
+				local w = Instance.new("WeldConstraint")
+				w.Part0 = p
+				w.Part1 = hubs[p.Name:match("^(%w+)_") or ""] or body
+				w.Parent = p
+			end
+		end
+	end
+end
+
 local function build(player: Player, def, fuel: number): Model
 	local model = Instance.new("Model")
 	model.Name = player.Name .. "'s " .. def.name
@@ -120,11 +153,17 @@ local function build(player: Player, def, fuel: number): Model
 	body.CFrame = Mowers.spawnCFrame
 	body.Parent = model
 	-- the Blender mower sits on the chassis (origin = ground under the middle); the chassis turns invisible
-	local placed = MOWER_MODEL[def.id] and Models.place(MOWER_MODEL[def.id], model, body.CFrame * CFrame.new(0, -1.2, 0))
+	local modelName = MOWER_MODEL[def.id]
+	-- the Trial Mower has its own model; an old place without it falls back to a pink Zero-Turn
+	local tint = def.id == "TrialMower" and not Models.has(modelName)
+	if tint then
+		modelName = "mower_zeroturn"
+	end
+	local placed = modelName and Models.place(modelName, model, body.CFrame * CFrame.new(0, -1.2, 0))
 	if placed then
-		Models.weldTo(placed, body)
+		rig(placed, body)
 		body.Transparency = 1
-		if def.id == "TrialMower" then
+		if tint then
 			for _, p in placed:GetDescendants() do
 				if p:IsA("BasePart") and p.Material ~= Enum.Material.Metal and p.Material ~= Enum.Material.Fabric then
 					p.Color = PropKit.shade(def.color, p.Color.R + 0.3)

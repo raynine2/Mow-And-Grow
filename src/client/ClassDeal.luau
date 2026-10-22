@@ -1351,7 +1351,7 @@ local function reveal(c, line: string, confetti: boolean)
 		for _, f in fades do
 			TweenService:Create(f.inst, out, { [f.prop] = 1 }):Play()
 		end
-		ClassRoom.pulse(rc)
+		ClassRoom.pulse(rc, confetti)
 		task.wait(0.43)
 		big.Visible = false
 		task.wait(0.1)

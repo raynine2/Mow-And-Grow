@@ -325,6 +325,81 @@ def clump(seed=1, area="meadow", stubble=False):
     return vox, pal, 0.6
 
 
+def stalk_clump(seed=1, area="meadow", stubble=False):
+    """A grass clump you chop like a tree (Chop A Forest's trunks): a thick bundled stalk on a little root flare,
+    with blades bursting out of a collar on top and arching up and out, tips lighter (flower or ear heads in some
+    areas). `stubble` is the cut stump: two layers of stalk with a pale cut face on top and its roots.
+    The stalk is 3 x 3 voxels and STALK_H tall, centred on x = z = 0 (server/Field puts a collider there)."""
+    R = _rng(seed)
+    shades, head = GRASS[area]
+    tip = _lift(shades[0], 1.18, 14)
+    foot = _lift(shades[0], 0.66)
+    dark = _lift(shades[0], 0.8)
+    cut = _lift(shades[0], 1.45, 70)  # the pale inside of the cut stems
+    pal = [foot] + list(shades) + [tip, dark, cut] + ([head] if head else [])
+    FOOT, TIP, DARK, CUT = 0, len(shades) + 1, len(shades) + 2, len(shades) + 3
+    HEAD = len(pal) - 1 if head else None
+    vox = {}
+    # roots: a flare of stubs round the foot
+    for x in range(-2, 3):
+        for z in range(-2, 3):
+            if abs(x) == 2 and abs(z) == 2:
+                continue
+            vox[(x, 0, z)] = FOOT
+    for (dx, dz) in ((3, 0), (-3, 0), (0, 3), (0, -3), (2, 2), (-2, -2)):
+        if R.random() < 0.7:
+            vox[(dx, 0, dz)] = FOOT
+    H = 2 if stubble else STALK_H
+    for y in range(H):
+        for x in (-1, 0, 1):
+            for z in (-1, 0, 1):
+                # vertical stripes: the stems bundled in the stalk
+                ci = DARK if (x + z) % 2 == 0 else R.randint(1, len(shades))
+                if y == 0:
+                    ci = FOOT
+                vox[(x, y, z)] = ci
+    if stubble:
+        for x in (-1, 0, 1):
+            for z in (-1, 0, 1):
+                vox[(x, H - 1, z)] = CUT
+        return vox, pal, STALK_VOXEL
+    # a dense tuft on top of the stalk: a squashed dome of blades the arcs burst out of
+    for x in range(-3, 4):
+        for z in range(-3, 4):
+            for y in range(0, 4):
+                d = math.sqrt(x * x + z * z) / 3.2 + (y - 1.2) * (y - 1.2) / 6
+                if d <= 1.0 and R.random() < 0.92:
+                    vox[(x, H + y, z)] = R.randint(1, len(shades))
+    # the blades: arcs leaning out (outer ones further and lower), each a column of voxels, tip lighter
+    n = 44
+    for i in range(n):
+        a = i / n * math.pi * 2 + R.uniform(-0.25, 0.25)
+        outer = R.random()
+        lean = 0.3 + outer * 0.75
+        L = int(R.uniform(6, 10) * (1.2 - outer * 0.4))
+        sx, sz = int(round(math.cos(a) * 1.5)), int(round(math.sin(a) * 1.5))
+        ci = R.randint(1, len(shades))
+        last = None
+        for y in range(1, L + 1):
+            bend = lean * y * (0.4 + 0.6 * y / L)
+            px = int(round(sx + math.cos(a) * bend))
+            pz = int(round(sz + math.sin(a) * bend))
+            p = (px, H + y, pz)
+            vox[p] = ci
+            last = p
+        if last:
+            vox[last] = TIP
+            if HEAD is not None and R.random() < 0.5:
+                vox[(last[0], last[1] + 1, last[2])] = HEAD
+                if area == "wheat":
+                    vox[(last[0], last[1] + 2, last[2])] = HEAD
+    return vox, pal, STALK_VOXEL
+
+
+STALK_H = 6  # voxels: the stalk's height before the blades start
+STALK_VOXEL = 0.4  # studs per voxel (smaller than the old clumps' 0.6: the stalk shape is taller and wider)
+
+
 # ---------------------------------------------------------------------------------------------------------------
 # landmarks
 # ---------------------------------------------------------------------------------------------------------------
@@ -525,8 +600,8 @@ def catalogue():
         out[f"Rock_{area}"] = (rock, dict(area=area, seed=5))
         out[f"Rock_{area}_big"] = (rock, dict(area=area, seed=9, big=True))
         for s in (1, 2):
-            out[f"Clump_{area}_{s}"] = (clump, dict(area=area, seed=s * 31))
-        out[f"Stubble_{area}"] = (clump, dict(area=area, seed=7, stubble=True))
+            out[f"Clump_{area}_{s}"] = (stalk_clump, dict(area=area, seed=s * 31))
+        out[f"Stubble_{area}"] = (stalk_clump, dict(area=area, seed=7, stubble=True))
     out["Landmark_windmill"] = (windmill, dict(part="body"))
     out["Landmark_windmill_sails"] = (windmill, dict(part="sails"))
     for area, lm in LANDMARKS.items():

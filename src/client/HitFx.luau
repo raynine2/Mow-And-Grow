@@ -133,7 +133,7 @@ end
 -- so heights in the presets are above the ground, not above y = 0), s = how big the clump is (the presets are
 -- sized for a small tuft; the big voxel clumps get bigger bursts), r = the clump's radius (its near side), h = its
 -- height (the "crown" anchor drops blades from its top).
-type Ctx = { g: number, s: number, r: number, h: number }
+type Ctx = { g: number, s: number, r: number, h: number, stalk: number? }
 
 local groundRay = RaycastParams.new()
 groundRay.FilterType = Enum.RaycastFilterType.Exclude
@@ -165,7 +165,8 @@ local function anchorFor(layer: any, pos: Vector3, out: Vector3, ctx: Ctx): CFra
 		local cam = workspace.CurrentCamera
 		local eyeY = if cam then cam.CFrame.Position.Y else g + 4.5
 		local right = out:Cross(Vector3.yAxis) -- your right, seen from where you stand
-		local reach = math.max(1.3, ctx.r * 0.85)
+		-- a stalk clump is hit on its stalk's surface (you stand right at it), others on their near side
+		local reach = if ctx.stalk then ctx.stalk + 0.35 else math.max(1.3, ctx.r * 0.85)
 		at = Vector3.new(pos.X, math.clamp(eyeY - 1.6, g + 1.2, g + 3.2 * sc), pos.Z) + out * reach - right * 0.35
 	elseif layer.at == "top" then
 		at = Vector3.new(pos.X, g + (layer.height or 3.2) * sc, pos.Z)
@@ -780,7 +781,7 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 	end
 	local g = groundAt(pos)
 	local hgt = (m and m:GetAttribute("Height") :: number?) or 6 * sc
-	local ctx: Ctx = { g = g, s = sc, r = r, h = hgt }
+	local ctx: Ctx = { g = g, s = sc, r = r, h = hgt, stalk = m and m:GetAttribute("Stalk") :: number? }
 	if preset.pop then
 		pop(preset.pop, pos, style, opts and opts.pop, g)
 	end

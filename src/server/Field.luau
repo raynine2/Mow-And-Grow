@@ -23,6 +23,7 @@ type Patch = {
 	holder: Model, -- the "Patch" model everything of this clump lives in
 	model: Model?, -- the Blender tuft, when uploaded (used instead of stalks)
 	voxel: boolean?, -- the model is the voxel clump (server/VoxelModels): it keeps its own colours
+	stalk: number?, -- the voxel clump's stalk radius (studs): you chop it there, like a tree trunk
 	stub: Instance?, -- the stubble left after it falls
 	notch: BasePart?, -- the fresh cut in its foot
 	notchDir: Vector3?,
@@ -259,10 +260,24 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 			holder.Parent = model
 			p.model = holder
 			p.voxel = true
-			p.radius = math.max(mesh.Size.X, mesh.Size.Z) * 0.45
 			p.height = mesh.Size.Y
+			-- you chop it at its stalk, like a tree trunk (tools/blender/voxel stalk_clump: a 3 x 3 voxel stalk,
+			-- 6 voxels tall, at 0.4 studs a voxel). A collider keeps you at the stalk; the reach is measured from
+			-- its surface, so you have to walk right up to it.
+			local k = mesh.Size.Y / 7.2 -- the mesh's scale (a meadow clump's mesh is 7.2 studs tall)
+			local stalkR = 0.6 * k
+			p.stalk = stalkR
+			p.radius = stalkR + 1.6
+			local collider = brick(holder, Vector3.new(2.4 * k + 0.6, stalkR * 2, stalkR * 2), CFrame.new(p.spot.Position + Vector3.new(0, (2.4 * k + 0.6) / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color3.new(1, 1, 1), "StalkCollider")
+			collider.Shape = Enum.PartType.Cylinder
+			collider.Transparency = 1
+			collider.CanCollide = true
+			collider.CanQuery = false
+			collider.CanTouch = false
+			collider.CastShadow = false
 			holder:SetAttribute("Radius", p.radius)
 			holder:SetAttribute("Height", p.height)
+			holder:SetAttribute("Stalk", stalkR)
 		else
 			holder:Destroy()
 		end
@@ -454,7 +469,9 @@ local function notch(p: Patch, from: Vector3, ratio: number)
 	local w = r * (0.35 + 0.45 * cut)
 	local h = math.max(0.3, hgt * 0.045) * (1 + 0.6 * cut)
 	local d = r * (0.15 + 0.4 * cut)
-	local at = p.spot.Position + Vector3.new(0, math.min(hgt * 0.14, 1.8), 0) + dir * (r * 0.55 - d / 2)
+	-- on a stalk the cut sits at chest height, where your fist lands
+	local lift = if p.stalk then math.min(hgt * 0.17, 2.8) else math.min(hgt * 0.14, 1.8)
+	local at = p.spot.Position + Vector3.new(0, lift, 0) + dir * (r * 0.55 - d / 2)
 	notchPart.Size = Vector3.new(w, h, d)
 	notchPart.CFrame = CFrame.lookAt(at, at + dir)
 end

@@ -24,7 +24,7 @@ return {
 	mower_mulcher = "rbxassetid://89707034505020",
 	mower_rocket = "rbxassetid://97242287569598",
 	mower_rusty = "rbxassetid://128951228775132",
-	mower_tractor = "rbxassetid://133995753133958",
+	mower_tractor = "rbxassetid://85725044549764",
 	mower_trial = "rbxassetid://75011220267983",
 	mower_zeroturn = "rbxassetid://117528230924107",
 	newspaper = "rbxassetid://71805986250786",

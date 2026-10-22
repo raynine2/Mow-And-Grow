@@ -904,12 +904,16 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 	end
 	leaf(holder, UDim2.fromOffset(10, size.Y - 12), 86)
 	leaf(holder, UDim2.fromOffset(size.X - 6, size.Y - 18), 76)
-	leaf(holder, UDim2.fromOffset(size.X * 0.62, 4), 60)
+	if (not o.tabs or #o.tabs == 0) and not o.gems then
+		-- (a window with tabs or a gem box leaves the top edge clear: a daisy would peek out from under them)
+		leaf(holder, UDim2.fromOffset(size.X * 0.62, 4), 60)
+	end
 
 	-- the title outside the top-left corner
 	local titleText = string.upper(title)
 	local titleWidth = math.max(150, #titleText * 38 + 40)
-	local titleLabel = UI.text(holder, titleText, UDim2.fromOffset(titleWidth, 80), { pos = UDim2.fromOffset(-14, -70), stroke = 5, name = "Title" })
+	-- (a little narrower than the slot the tabs leave it, so a long title never touches the first tab)
+	local titleLabel = UI.text(holder, titleText, UDim2.fromOffset(titleWidth - 26, 80), { pos = UDim2.fromOffset(-14, -70), stroke = 5, name = "Title" })
 	titleLabel.ZIndex = 8
 	local w = { name = name, frame = holder, panel = panel, board = board, titleWidth = titleWidth - 20, tabs = {}, title = titleLabel }
 	for _, t in o.tabs or {} do
@@ -955,7 +959,8 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 	if o.grid then
 		local grid = Instance.new("UIGridLayout")
 		grid.CellSize = UDim2.fromOffset(o.grid.X, o.grid.Y)
-		grid.CellPadding = UDim2.fromOffset(18, 18)
+		-- (14 px gaps, so three 250 px cards fit across a standard 900 px board instead of two)
+		grid.CellPadding = UDim2.fromOffset(14, 18)
 		grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		grid.SortOrder = Enum.SortOrder.LayoutOrder
 		grid.Parent = list
@@ -970,7 +975,7 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 	pad.PaddingTop = UDim.new(0, 8)
 	pad.PaddingBottom = UDim.new(0, 8)
 	pad.PaddingLeft = UDim.new(0, 6)
-	pad.PaddingRight = UDim.new(0, 14)
+	pad.PaddingRight = UDim.new(0, 10)
 	pad.Parent = list
 	list.Parent = panel
 	w.list = list
@@ -1011,7 +1016,7 @@ function UI.popupWindow(name: string, title: string, sub: string?)
 	-- (from the bottom-right corner, so it stays in the corner when a popup is made taller)
 	leaf(holder, UDim2.new(1, -30, 1, -40), 70)
 	-- the title keeps clear of the red X in the top-right corner
-	local titleLabel = UI.text(holder, string.upper(title), UDim2.new(1, -150, 0, 56), { pos = UDim2.fromOffset(75, 36), stroke = 4, color = Color3.new(1, 1, 1) })
+	local titleLabel = UI.text(holder, string.upper(title), UDim2.new(1, -180, 0, 56), { pos = UDim2.fromOffset(90, 36), stroke = 4, color = Color3.new(1, 1, 1) })
 	local subLabel = UI.text(holder, sub and string.upper(sub) or "", UDim2.new(1, -80, 0, 28), { pos = UDim2.fromOffset(40, 96), stroke = 2, color = Color3.fromRGB(255, 200, 60) })
 	UI.frame({ size = UDim2.new(1, -100, 0, 4), pos = UDim2.fromOffset(50, 132), color = if S then WOOD.insetEdge else Color3.new(1, 1, 1), parent = holder, radius = 2, outline = 0, name = "Line" })
 	UI.closeButton(holder, UDim2.new(1, -10, 0, 12), function()
@@ -1192,7 +1197,7 @@ function UI.blueCard(list: Instance, order: number, o: CardOpts)
 		UI.text(card, o.sub, UDim2.new(1, -24 - pad * 2, 0, 20), { pos = UDim2.fromOffset(12 + pad, 42 + pad), stroke = 1.5 })
 	end
 	if o.icon then
-		local ic = UI.icon(card, o.icon, 58, UDim2.new(0.5, 0, 0, 66 + pad), Vector2.new(0.5, 0))
+		local ic = UI.icon(card, o.icon, if o.max and o.max > 0 then 50 else 80, UDim2.new(0.5, 0, 0, 66 + pad), Vector2.new(0.5, 0))
 		if S then
 			S.bob(ic, 3, 1.6 + (order % 4) * 0.2)
 		end

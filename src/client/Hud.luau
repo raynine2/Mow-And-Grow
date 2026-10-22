@@ -33,6 +33,18 @@ root.BackgroundTransparency = 1
 root.Size = UDim2.fromScale(1, 1)
 root.Parent = UI.gui
 
+-- HUD pieces hidden because an open window covers them (see onWindowChanged below), each with the visibility it
+-- gets back when the window closes. Code that shows or hides a HUD piece goes through show(), so a piece that
+-- changes while it's tucked away (the hotbar filling, the quest finishing) comes back in the right state.
+local tucked: { [GuiObject]: boolean } = {}
+local function show(h: GuiObject, on: boolean)
+	if tucked[h] ~= nil then
+		tucked[h] = on
+	else
+		h.Visible = on
+	end
+end
+
 -------------------------------------------------------------------------------------------------------------
 -- currencies (left, middle)
 -------------------------------------------------------------------------------------------------------------
@@ -123,6 +135,26 @@ local _, fill, trackText = Skin.bar(infoFace, Vector2.new(250, 34), C.green, { p
 local fillGrad = fill:FindFirstChildOfClass("UIGradient") :: UIGradient
 local nextText = UI.text(infoFace, "", UDim2.new(1, -4, 0, 18), { pos = UDim2.fromOffset(2, 70), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(140, 96, 60), stroke = 0 })
 ;(nextText:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+
+-- Keep clear of Roblox's own screen bits, which don't shrink with our UIScale: the quest scroll sits just below the
+-- top bar (Roblox logo, menu, chat) and the run card steps left of the player list (top-right on a computer).
+local function dodgeCoreUi()
+	local sc = UI.gui:FindFirstChildOfClass("UIScale")
+	local s = if sc then sc.Scale else 1
+	local inset = game:GetService("GuiService"):GetGuiInset().Y
+	quest.Position = UDim2.fromOffset(14, math.max(66, (inset + 2) / s + 14))
+	local listOn = false
+	pcall(function()
+		listOn = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)
+	end)
+	local list = if listOn and not UserInputService.TouchEnabled then 190 / s else 0
+	info.Position = UDim2.new(1, -14 - list, 0, 54)
+end
+dodgeCoreUi()
+local uiScale = UI.gui:FindFirstChildOfClass("UIScale")
+if uiScale then
+	uiScale:GetPropertyChangedSignal("Scale"):Connect(dodgeCoreUi)
+end
 
 -------------------------------------------------------------------------------------------------------------
 -- round side buttons (right) with key badges
@@ -324,7 +356,7 @@ task.spawn(function()
 			table.insert(ids, t:GetAttribute("ToolId") or t:GetAttribute("GunId"))
 		end
 		local key = table.concat(ids, ",")
-		hotbar.Visible = #tools > 0
+		show(hotbar, #tools > 0)
 		if key ~= shownKey then
 			shownKey = key
 			for _, s in slots do
@@ -401,10 +433,10 @@ local function applyMode(mode: string)
 	end
 	currentMode = mode
 	local isRun = mode == "Run"
-	coinBox.Visible = isRun
-	bag.Visible = isRun
-	info.Visible = isRun
-	quest.Visible = isRun
+	show(coinBox, isRun)
+	show(bag, isRun)
+	show(info, isRun)
+	show(quest, isRun)
 	sideButtons(mode)
 	updateHost()
 	Sound.music(if isRun then "musicRun" else "musicLobby")
@@ -438,7 +470,7 @@ State.on("data", function(d)
 			TweenService:Create(bagIcon, TweenInfo.new(0.25), { ImageColor3 = if full then Color3.fromRGB(255, 150, 140) else Color3.new(1, 1, 1) }):Play()
 		end
 		local q = d.run.quest
-		quest.Visible = q ~= nil
+		show(quest, q ~= nil)
 		if q then
 			questNum.Text = ("QUEST %d/%d"):format(q.index, q.total)
 			questTitle.Text = q.title
@@ -565,10 +597,9 @@ local windowOpen = false
 -- HUD pieces that would poke out from under an open window (the gem counter beside the Pets board, the quest card
 -- under a wide one) step aside while it's open and come back when it closes. The side buttons stay: they switch
 -- windows.
-local tucked: { GuiObject } = {}
 local function untuck()
-	for _, h in tucked do
-		h.Visible = true
+	for h, on in tucked do
+		h.Visible = on
 	end
 	table.clear(tucked)
 end
@@ -583,15 +614,24 @@ UI.onWindowChanged.Event:Connect(function(name)
 		if not w or not w:IsA("GuiObject") then
 			return
 		end
-		-- the board's own rectangle (a window slides in from 40 px lower, so take its resting place)
-		local a0 = w.AbsolutePosition - Vector2.new(30, 70)
-		local a1 = w.AbsolutePosition + w.AbsoluteSize + Vector2.new(30, 30)
+		-- the board's own rectangle at full size (it pops in from smaller and slides up from 40 px lower, so undo
+		-- its bounce scale and reach a bit further up)
+		local k = 1
+		for _, bs in w:GetChildren() do
+			if bs:IsA("UIScale") and bs.Scale > 0.05 then
+				k *= bs.Scale
+			end
+		end
+		local centre = w.AbsolutePosition + w.AbsoluteSize * w.AnchorPoint
+		local full = w.AbsoluteSize / k
+		local a0 = centre - full * w.AnchorPoint - Vector2.new(30, 70)
+		local a1 = a0 + full + Vector2.new(60, 100)
 		for _, h in root:GetChildren() do
 			if h:IsA("GuiObject") and h.Visible and h.Name ~= "SideButtons" and h.AbsoluteSize.X > 0 then
 				local b0, b1 = h.AbsolutePosition, h.AbsolutePosition + h.AbsoluteSize
 				if a0.X < b1.X and b0.X < a1.X and a0.Y < b1.Y and b0.Y < a1.Y then
 					h.Visible = false
-					table.insert(tucked, h)
+					tucked[h] = true
 				end
 			end
 		end

@@ -85,7 +85,7 @@ local RUN_TABS = {
 }
 Windows.RUN_TABS = RUN_TABS
 local UPGRADE_ICON = { hold = "hands", swing = "hands", grasp = "bundle", power = "upgrade", speed = "clover", sell = "coin" }
-local CARD = Vector2.new(250, 200)
+local CARD = Vector2.new(250, 226) -- tall enough that the icon clears the level pips
 
 -- A row of fixed-size cards under a heading (the window lists sections top to bottom).
 local function cardRow(list: Instance, order: number, count: number): Frame
@@ -299,7 +299,16 @@ toolView.refresh = function()
 	if not d or not d.run then
 		return
 	end
-	UI.icon(toolView.list, TOOL_ICON[def.id] or "coin", 110).LayoutOrder = 1
+	-- the tool bobbing in front of a slow sunburst
+	local pic = Instance.new("Frame")
+	pic.Name = "Pic"
+	pic.BackgroundTransparency = 1
+	pic.Size = UDim2.fromOffset(160, 120)
+	pic.LayoutOrder = 1
+	pic.Parent = toolView.list
+	Skin.rays(pic, Color3.fromRGB(255, 220, 120), 150, nil, 12)
+	local toolIc = UI.icon(pic, TOOL_ICON[def.id] or "coin", 110, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	Skin.bob(toolIc, 3, 1.5)
 	local desc = UI.text(toolView.list, TOOL_DESC[def.id] or "", UDim2.new(1, -20, 0, 60), { color = Color3.new(1, 1, 1), stroke = 2, textSize = 24 })
 	desc.LayoutOrder = 2
 	local kind = if def.kind == "auto" then "Cuts around you" else ("Cuts %d patch%s per swing"):format(def.targets, if def.targets > 1 then "es" else "")

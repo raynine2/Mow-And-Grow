@@ -1008,7 +1008,7 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 		if TRADING then
 			-- (on a trading card the seal sits on the lower right corner, clear of the name ribbon)
 			chip.AnchorPoint = Vector2.new(0.5, 0.5)
-			chip.Position = UDim2.new(1, -4, 1, -34)
+			chip.Position = UDim2.new(1, -18, 1, -30) -- (inside the card, so the next card in the row can't cover it)
 			chip.ZIndex = 5
 			for _, k in chip:GetChildren() do
 				if k:IsA("ImageLabel") then

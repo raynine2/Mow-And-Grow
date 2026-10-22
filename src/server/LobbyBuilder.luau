@@ -125,7 +125,8 @@ end
 -- lanterns along the walk from the spawn to the booths
 function lanterns(world: Instance)
 	local lamps = PropKit.folder("Lanterns", world)
-	for _, z in { -34, -14, 24 } do -- (none at z 6: that's the fountain plaza)
+	-- (none at z 6: that's the fountain plaza; none at z -34 with the ForgeGUI start gate: it has its own lanterns)
+	for _, z in (if Models.has("forge_startgate") then { -14, 24 } else { -34, -14, 24 }) do
 		for _, x in { -13, 13 } do
 			local pos = Vector3.new(x, FLOOR_Y, z)
 			if not Models.place("lantern_post", lamps, CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, z)), 1, true) then
@@ -150,30 +151,22 @@ local function oldClassBooth(world: Instance): TextLabel
 	return label
 end
 
--- A board on two posts with the "Classes in stock" text (the Lobby system fills it).
-local function stockBoard(m: Instance, cf: CFrame): TextLabel
-	local wood = Color3.fromRGB(110, 70, 40)
-	for _, x in { -4.6, 4.6 } do
-		PropKit.brick(m, Vector3.new(0.6, 7.4, 0.6), cf * CFrame.new(x, 3.7, 0.3), wood, "BoardPost")
-	end
-	local board = PropKit.part({ size = Vector3.new(9.6, 5.2, 0.3), cf = cf * CFrame.new(0, 4.6, 0), color = Color3.fromRGB(44, 30, 60), parent = m, name = "StockBoard" })
-	local label = PropKit.surfaceText(board, "Classes in stock", Color3.new(1, 1, 1))
-	label.TextYAlignment = Enum.TextYAlignment.Top
-	return label
-end
-
--- The class booth as the ForgeGUI log lodge (solid: the vendor stands on the path in front of its porch).
+-- The class booth as the ForgeGUI log lodge (solid: the vendor stands beside the steps up to its porch).
 local function classLodge(m: Instance, at: CFrame, purple: Color3): TextLabel?
 	if not Models.placeForge("lodge", m, at, { width = 30 }, true) then
 		return nil
 	end
 	PropKit.collider(m, at, Vector3.new(0, 11.5, 0), Vector3.new(29, 23, 25))
 	outline(m, at, Vector3.new(0, 0, -20), 16, 6, purple, "Classes")
-	LobbyKit.vendor(m, at * CFrame.new(0, 0.5, -15.5), Color3.fromRGB(196, 48, 42))
+	LobbyKit.vendor(m, at * CFrame.new(5.5, 0.5, -16.5), Color3.fromRGB(196, 48, 42)) -- beside the steps, not on them
 	LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(0, 2, -20), Vector3.new(14, 3, 5), "ClassesFX"), "LobbyFX", { Kind = "sparkle", Color = purple })
 	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -16), "ClassCounter"), "Browse", "Classes", "Classes", 12)
 	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -20), "ClassPorch"), "Browse", "Classes", "Classes", 10)
-	return stockBoard(m, at * CFrame.new(11.5, 0, -17))
+	-- no stock board in front of the lodge (the owner found it ugly; the Classes window shows the stock). The Lobby
+	-- system still writes the stock into this label, which is never shown.
+	local hidden = Instance.new("TextLabel")
+	hidden.Name = "StockText"
+	return hidden
 end
 
 local function classCabin(world: Instance): TextLabel
@@ -273,11 +266,13 @@ local function rewardTexts(): (string, string)
 	return daily, ("GROUP REWARD\n+%d 💎\nJoin the group!"):format(Config.GROUP_GEMS)
 end
 
--- The ForgeGUI rewards stall (fitted into the old stall's box): its counter front is at z -3.4, 4 studs high.
+-- The ForgeGUI rewards stall (fitted into the old stall's box): its counter front is at z -3.4, 4 studs high, with a
+-- ribbon draped in the middle, so each text is two short lines on its own half.
 local function forgeRewards(m: Instance, at: CFrame)
-	local daily, group = rewardTexts()
-	PropKit.facePanel(m, at, Vector3.new(2.9, 2.2, -3.5), Vector2.new(5.2, 2.8), daily, Color3.new(1, 1, 1))
-	PropKit.facePanel(m, at, Vector3.new(-2.9, 2.2, -3.5), Vector2.new(5.2, 2.8), group, Color3.new(1, 1, 1))
+	local daily = ("DAILY\nUp to +%d 💎"):format(Config.DAILY_STREAK[#Config.DAILY_STREAK])
+	local group = ("GROUP\n+%d 💎"):format(Config.GROUP_GEMS)
+	PropKit.facePanel(m, at, Vector3.new(3.4, 1.7, -3.5), Vector2.new(3.6, 1.7), daily, Color3.new(1, 1, 1))
+	PropKit.facePanel(m, at, Vector3.new(-3.4, 1.7, -3.5), Vector2.new(3.6, 1.7), group, Color3.new(1, 1, 1))
 	outline(m, at, Vector3.new(3.9, 0, -6.6), 7, 6, CYAN, "Rewards")
 	outline(m, at, Vector3.new(-3.9, 0, -6.6), 7, 6, CYAN, "Rewards")
 	for _, x in { 3.6, -3.6 } do

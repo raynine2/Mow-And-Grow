@@ -196,7 +196,9 @@ function HubDressing.lobby(world: Instance)
 		-- crates and barrels at the shops' sides
 		piece(town, "S_crate_stack", Vector3.new(29 * sx, 0, -57.5), Vector3.new(0, 0, -57.5), true)
 		piece(town, "S_barrel", Vector3.new(26 * sx, 0, -58), Vector3.new(0, 0, -58), true)
-		piece(town, "S_barrel", Vector3.new(37.5 * sx, 0, -36), Vector3.new(0, 0, -36), true)
+		if not (sx < 0 and Models.has("forge_lodge")) then -- (the ForgeGUI lodge on the west is wider than the old cabin)
+			piece(town, "S_barrel", Vector3.new(37.5 * sx, 0, -36), Vector3.new(0, 0, -36), true)
+		end
 		-- trees and bushes behind the houses and in the corners
 		local rng = Random.new(if sx < 0 then 3 else 4)
 		local HubKit = require(script.Parent.HubKit)

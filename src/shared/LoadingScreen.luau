@@ -1,4 +1,5 @@
--- The loading screen. Over the ForgeGUI meadow painting (or a deep green-to-blue sky until it has loaded): the
+-- The loading screen. Over a cartoon countryside drawn in code in the UI's own chunky style (a sky with a sun and
+-- puffy clouds drifting by, rolling hills in layers with round trees, a striped mowed lawn with a grass fringe), the
 -- drawn MOW A LAWN logo (ForgeGUI, grass growing out of the letters) popping in on a soft warm glow with a drop
 -- shadow and a few twinkling sparkles, and the progress bar is a strip of tall grass that a little push mower mows
 -- from left to right as the game loads, clippings flying, the mowed part in light/dark lawn stripes, the percentage
@@ -199,6 +200,122 @@ local function clipping(stage: Frame, at: Vector2)
 	end)
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- the countryside behind it all: flat cartoon shapes with the art's dark-brown outline. Each outlined layer is
+-- drawn twice, an ink copy a little bigger underneath and the colour on top, so overlapping shapes join into one
+-- silhouette with a single outline round the outside. Laid out on a 1280 x 720 "world" scaled to cover the screen.
+-------------------------------------------------------------------------------------------------------------
+local function blob(parent: Instance, cx: number, cy: number, w: number, h: number, color: Color3): Frame
+	local f = frame(parent, UDim2.fromOffset(w, h), UDim2.fromOffset(cx, cy), color)
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0.5, 0)
+	c.Parent = f
+	return f
+end
+
+-- an outlined layer of ellipses { cx, cy, w, h }, in `color`, with an `ink` px outline
+local function blobLayer(parent: Instance, shapes: { { number } }, color: Color3, ink: number): Frame
+	local layer = frame(parent, UDim2.fromScale(1, 1), UDim2.new(), WHITE)
+	layer.BackgroundTransparency = 1
+	for _, e in shapes do
+		blob(layer, e[1], e[2], e[3] + ink * 2, e[4] + ink * 2, INK)
+	end
+	for _, e in shapes do
+		blob(layer, e[1], e[2], e[3], e[4], color)
+	end
+	return layer
+end
+
+local function cloud(parent: Instance, x: number, y: number, s: number): Frame
+	local c = frame(parent, UDim2.fromOffset(240 * s, 110 * s), UDim2.fromOffset(x, y), WHITE)
+	c.BackgroundTransparency = 1
+	local puffs = { { 0.24, 0.62, 0.44, 0.6 }, { 0.47, 0.42, 0.46, 0.8 }, { 0.72, 0.57, 0.42, 0.66 }, { 0.5, 0.72, 0.86, 0.46 } }
+	local shapes = {}
+	for _, p in puffs do
+		table.insert(shapes, { p[1] * 240 * s, p[2] * 110 * s, p[3] * 240 * s, p[4] * 110 * s })
+	end
+	blobLayer(c, shapes, WHITE, 4)
+	-- a pale blue belly
+	local belly = blob(c, 120 * s, 86 * s, 170 * s, 22 * s, Color3.fromRGB(206, 232, 250))
+	belly.BackgroundTransparency = 0.2
+	return c
+end
+
+local function tree(parent: Instance, x: number, y: number, s: number, color: Color3)
+	local trunk = frame(parent, UDim2.fromOffset(18 * s, 46 * s), UDim2.fromOffset(x, y), Color3.fromRGB(140, 86, 44), 4)
+	trunk.AnchorPoint = Vector2.new(0.5, 1)
+	local ts = Instance.new("UIStroke")
+	ts.Thickness = 3
+	ts.Color = INK
+	ts.Parent = trunk
+	local top = blobLayer(parent, { { x, y - 62 * s, 96 * s, 88 * s }, { x - 28 * s, y - 44 * s, 60 * s, 52 * s }, { x + 28 * s, y - 46 * s, 62 * s, 54 * s } }, color, 4)
+	blob(top, x - 18 * s, y - 80 * s, 30 * s, 20 * s, Color3.new(1, 1, 1)).BackgroundTransparency = 0.6 -- shine
+end
+
+type Scene = { world: Frame, scale: UIScale, clouds: { { f: Frame, speed: number } } }
+local function scene(group: Instance): Scene
+	-- the sky fills the whole screen
+	local sky = frame(group, UDim2.fromScale(1, 1), UDim2.new(), WHITE)
+	sky.Name = "Backdrop"
+	local sg = Instance.new("UIGradient")
+	sg.Color = ColorSequence.new(Color3.fromRGB(86, 182, 255), Color3.fromRGB(196, 236, 255))
+	sg.Rotation = 90
+	sg.Parent = sky
+	local world = frame(group, UDim2.fromOffset(1280, 720), UDim2.fromScale(0.5, 0.5), WHITE)
+	world.Name = "Scene"
+	world.AnchorPoint = Vector2.new(0.5, 0.5)
+	world.BackgroundTransparency = 1
+	local scale = Instance.new("UIScale")
+	scale.Parent = world
+	-- the sun, top right, with a soft halo
+	local halo = img(world, "glow_soft", UDim2.fromOffset(420, 420), UDim2.fromOffset(1120, 96))
+	halo.ScaleType = Enum.ScaleType.Stretch
+	halo.ImageColor3 = Color3.fromRGB(255, 244, 190)
+	halo.ImageTransparency = 0.15
+	blobLayer(world, { { 1120, 96, 112, 112 } }, Color3.fromRGB(255, 222, 92), 5)
+	blob(world, 1100, 76, 40, 28, Color3.new(1, 1, 1)).BackgroundTransparency = 0.45
+	-- clouds (they drift; see the RenderStepped loop)
+	local clouds = {}
+	for _, c in { { -40, 70, 1.05, 9 }, { 300, 150, 0.7, 6 }, { 880, 40, 0.85, 7.5 }, { 1180, 200, 0.6, 5 } } do
+		table.insert(clouds, { f = cloud(world, c[1], c[2], c[3]), speed = c[4] })
+	end
+	-- far hills, soft blue-green
+	blobLayer(world, { { 120, 470, 620, 230 }, { 560, 455, 700, 210 }, { 1040, 470, 640, 240 }, { 1420, 480, 520, 200 } }, Color3.fromRGB(128, 196, 150), 4)
+	-- middle hills with round trees on them
+	blobLayer(world, { { -40, 520, 760, 230 }, { 760, 515, 820, 220 }, { 1360, 525, 700, 230 } }, Color3.fromRGB(104, 190, 84), 5)
+	tree(world, 150, 430, 1, Color3.fromRGB(70, 160, 60))
+	tree(world, 230, 444, 0.75, Color3.fromRGB(86, 176, 66))
+	tree(world, 1010, 424, 0.9, Color3.fromRGB(70, 160, 60))
+	tree(world, 1180, 440, 1.1, Color3.fromRGB(86, 176, 66))
+	-- the lawn, mowed in stripes, with tall grass along its top edge
+	local lawn = frame(world, UDim2.fromOffset(2200, 400), UDim2.fromOffset(-460, 520), Color3.fromRGB(96, 178, 58))
+	lawn.Name = "Lawn"
+	for i = 0, 2200 / 90 do
+		local stripe = frame(lawn, UDim2.fromOffset(45, 400), UDim2.fromOffset(i * 90, 0), Color3.fromRGB(116, 196, 70))
+		stripe.Name = "Stripe"
+	end
+	local edge = frame(world, UDim2.fromOffset(2200, 5), UDim2.fromOffset(-460, 518), INK)
+	edge.Name = "LawnEdge"
+	if IconIds.ui_grass then
+		-- (smaller and a shade darker than the progress bar's grass, so the bar stands out in front of it)
+		local tw = math.floor(40 * 921 / 271)
+		for x = -460, 1740, tw - 14 do
+			local g = img(world, "ui_grass", UDim2.fromOffset(tw, 40), UDim2.fromOffset(x, 492), Vector2.zero)
+			g.Name = "Fringe"
+			g.ImageColor3 = Color3.fromRGB(196, 222, 180)
+		end
+	end
+	-- a soft darkening toward the bottom, so the bar and the writing read
+	local shade = frame(group, UDim2.fromScale(1, 1), UDim2.new(), Color3.fromRGB(16, 30, 12))
+	shade.Name = "Shade"
+	local sh = Instance.new("UIGradient")
+	sh.Rotation = 90
+	sh.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.62, 1), NumberSequenceKeypoint.new(1, 0.45) })
+	sh.Parent = shade
+	return { world = world, scale = scale, clouds = clouds }
+end
+
 export type Screen = { gui: ScreenGui, group: CanvasGroup, bg: Frame }
 
 -- Build the screen for `player` (not parented). It animates until it's destroyed.
@@ -216,28 +333,8 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	group.Size = UDim2.fromScale(1, 1)
 	group.BackgroundTransparency = 1
 	group.Parent = gui
-	-- the sky, then the meadow painting over it once loaded, then a soft darkening toward the bottom
-	local bg = Instance.new("Frame")
-	bg.Name = "Backdrop"
-	bg.Size = UDim2.fromScale(1, 1)
-	bg.BorderSizePixel = 0
-	bg.BackgroundColor3 = Color3.new(1, 1, 1)
-	local grad = Instance.new("UIGradient")
-	grad.Color = ColorSequence.new(Color3.fromRGB(70, 150, 220), Color3.fromRGB(40, 110, 60))
-	grad.Rotation = 90
-	grad.Parent = bg
-	bg.Parent = group
-	-- (a square as wide as the screen, hung from the top: the sky, the trees and the windmill show, the painting's own
-	-- big mower stays down out of the way behind the lane)
-	local painting = img(group, "scene_lawn", UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0), Vector2.new(0.5, 0))
-	painting.Name = "Painting"
-	painting.ScaleType = Enum.ScaleType.Crop
-	local shade = frame(group, UDim2.fromScale(1, 1), UDim2.new(), Color3.fromRGB(16, 30, 12))
-	shade.Name = "Shade"
-	local sg = Instance.new("UIGradient")
-	sg.Rotation = 90
-	sg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.92), NumberSequenceKeypoint.new(0.5, 0.75), NumberSequenceKeypoint.new(1, 0.2) })
-	sg.Parent = shade
+	-- the countryside
+	local S = scene(group)
 
 	-- everything else on a 1280 x 720 stage, fitted to the screen
 	local stage = frame(group, UDim2.fromOffset(1280, 720), UDim2.fromScale(0.5, 0.5), WHITE)
@@ -250,9 +347,8 @@ function LoadingScreen.build(player: Player?): ScreenGui
 		local cam = workspace.CurrentCamera
 		local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
 		fit.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.3, 2)
-		local side = math.max(vp.X, vp.Y)
-		painting.Size = UDim2.fromOffset(side, side)
-		painting.Position = UDim2.new(0.5, 0, 0, -0.03 * side)
+		-- the countryside covers the whole screen (the stage on top only fits inside it)
+		S.scale.Scale = math.max(vp.X / 1280, vp.Y / 720)
 	end
 	refit()
 
@@ -299,7 +395,7 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	-- fetch the pictures first, ahead of the rest of the game (they show as soon as they arrive)
 	task.spawn(function()
 		local list = {}
-		for _, k in { "logo", "scene_lawn", "glow_soft", "ui_grass", "pushmower", "sparkle" } do
+		for _, k in { "logo", "glow_soft", "ui_grass", "pushmower", "sparkle" } do
 			if IconIds[k] then
 				table.insert(list, IconIds[k])
 			end
@@ -344,6 +440,14 @@ function LoadingScreen.build(player: Player?): ScreenGui
 		if shown - was > 0.0004 and t - lastClip > 0.05 then
 			lastClip = t
 			clipping(stage, Vector2.new(LANE_X + x - 20, LANE_Y + LANE_H - 20))
+		end
+		-- clouds drift right and come round again
+		for _, c in S.clouds do
+			local x = c.f.Position.X.Offset + c.speed * dt
+			if x > 1420 then
+				x = -320
+			end
+			c.f.Position = UDim2.fromOffset(x, c.f.Position.Y.Offset)
 		end
 		-- the logo pops in (Back ease over 0.7 s), then breathes and rocks a little; the glow pulses; sparkles twinkle
 		local k = math.clamp(t / 0.7, 0, 1)
@@ -391,22 +495,9 @@ function LoadingScreen.setProgress(gui: ScreenGui, p: number, cap: number?)
 	gui:SetAttribute("Cap", math.max(p, cap or p))
 end
 
--- Called once the world exists behind it. The painting covers the world anyway, so this only matters while the
--- painting hasn't loaded: then the plain sky turns into a dimmed view of the world.
-function LoadingScreen.dim(gui: ScreenGui, alpha: number?)
-	local painting = gui:FindFirstChild("Painting", true) :: ImageLabel?
-	if painting and painting.IsLoaded then
-		return
-	end
-	local bg = gui:FindFirstChild("Backdrop", true) :: Frame?
-	if bg then
-		TweenService:Create(bg, TweenInfo.new(0.5), { BackgroundTransparency = alpha or 0.35, BackgroundColor3 = Color3.fromRGB(10, 14, 20) }):Play()
-		local grad = bg:FindFirstChildOfClass("UIGradient")
-		if grad then
-			grad.Enabled = false
-		end
-	end
-end
+-- Called once the world exists behind it. The drawn countryside covers the world, so there's nothing to do any more
+-- (kept for the callers).
+function LoadingScreen.dim(_gui: ScreenGui, _alpha: number?) end
 
 -- Fill the bar to 100%, then fade it all out and destroy it.
 function LoadingScreen.fadeOut(gui: ScreenGui, time: number?)

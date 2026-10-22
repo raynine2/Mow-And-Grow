@@ -1,0 +1,74 @@
+{
+ "toolshop": {
+  "roblox": "129925361480134",
+  "forge_job": "63ff3a85-91c0-4fa1-9072-db029857f032"
+ },
+ "garage": {
+  "roblox": "108448218074366",
+  "forge_job": "14c70f62-1df1-48de-b236-163aaa1d3e29"
+ },
+ "bagstand": {
+  "roblox": "89479177629481",
+  "forge_job": "9e8c7722-6c7e-46d9-9118-7f7fb4a83c9f"
+ },
+ "shredder": {
+  "roblox": "122216742633383",
+  "forge_job": "94472c08-5a50-4395-ad10-f0ce8462d608"
+ },
+ "guildhall": {
+  "roblox": "96783529640551",
+  "forge_job": "d0a58cad-6d41-4f5a-8f94-e4fdc3036bce"
+ },
+ "windmill": {
+  "roblox": "98872799097988",
+  "forge_job": "4ff3edca-b25a-4761-a154-ef8b75fbebb4"
+ },
+ "lodge": {
+  "roblox": "83216758022373",
+  "forge_job": "b562c0ac-411c-4b39-ac1d-ce8e016152bc"
+ },
+ "barn": {
+  "roblox": "87691690990474",
+  "forge_job": "ff469bd2-2450-4551-a65d-348230715832"
+ },
+ "rewards": {
+  "roblox": "71692087163918",
+  "forge_job": "45ce2b35-b764-483e-8817-226dd25c925b"
+ },
+ "startgate": {
+  "roblox": "81723837273613",
+  "forge_job": "1d457f79-ec10-41f4-b0fa-8db12208d7ba"
+ },
+ "leaderboard": {
+  "roblox": "101353987186694",
+  "forge_job": "a11a03ae-a51e-474b-8e24-5618751e4edf"
+ },
+ "lm_blossom": {
+  "roblox": "76069617427255",
+  "forge_job": "618187cb-97a5-49d6-b31c-77b740634704"
+ },
+ "lm_wheat": {
+  "roblox": "140161198185129",
+  "forge_job": "dabae071-5b03-4f47-8f46-a75734545b0a"
+ },
+ "lm_pine": {
+  "roblox": "120907520324654",
+  "forge_job": "e2d0e8ec-11d8-4639-97b4-a6eb5ac13c81"
+ },
+ "lm_swamp": {
+  "roblox": "122886070654489",
+  "forge_job": "b36d797b-bab7-42f4-adea-c61fce30710d"
+ },
+ "lm_frost": {
+  "roblox": "85463365553189",
+  "forge_job": "01391684-72d1-4c0a-be54-d27fd45be348"
+ },
+ "lm_ember": {
+  "roblox": "87118546176920",
+  "forge_job": "1264936a-3f81-47b1-a9c4-c89b0b27b0c5"
+ },
+ "lm_starlight": {
+  "roblox": "90425779548628",
+  "forge_job": "b5da662c-f52c-439f-9109-364f33e9b146"
+ }
+}

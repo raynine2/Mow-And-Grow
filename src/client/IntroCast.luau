@@ -64,7 +64,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the party: copies of everyone's avatars
 -------------------------------------------------------------------------------------------------------------
-export type Actor = { model: Model, head: BasePart?, name: string, play: (kind: string) -> (), tag: () -> () }
+export type Actor = { model: Model, head: BasePart?, name: string, play: (kind: string) -> (), tag: () -> (), drop: (onLand: (foot: Vector3) -> ()) -> () }
 
 local EMOTES = { "wave", "cheer", "point", "dance2", "dance", "dance3" }
 
@@ -147,8 +147,8 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 	end
 	local lift = if hum and hum.RigType == Enum.HumanoidRigType.R15 and root then hum.HipHeight + root.Size.Y / 2 else 3
 	clone.Name = "IntroActor"
-	clone:PivotTo(cf * CFrame.new(0, lift, 0))
-	clone.Parent = folder()
+	local final = cf * CFrame.new(0, lift, 0)
+	clone:PivotTo(final) -- (not in the world until it drops in: IntroCast Actor.drop)
 	local animator: Animator? = nil
 	if hum then
 		animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator", hum)
@@ -170,7 +170,6 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 			current = track
 		end)
 	end
-	run(animationOf(char, "idle"), true)
 	local idleId = animationOf(char, "idle")
 	local head = clone:FindFirstChild("Head") :: BasePart?
 	local function play(kind: string)
@@ -185,12 +184,36 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 			end)
 		end
 	end
+	-- Fall from the sky onto its spot (a quick ease-in), then call onLand with the point under its feet.
+	local function drop(onLand: (foot: Vector3) -> ())
+		local high = 34
+		clone:PivotTo(final * CFrame.new(0, high, 0))
+		clone.Parent = folder()
+		run(animationOf(char, "fall") or idleId, true)
+		local start = os.clock()
+		local fall = 0.42
+		task.spawn(function()
+			while clone.Parent do
+				local k = math.min(1, (os.clock() - start) / fall)
+				clone:PivotTo(final * CFrame.new(0, high * (1 - k * k), 0))
+				if k >= 1 then
+					break
+				end
+				task.wait()
+			end
+			if clone.Parent then
+				run(idleId, true)
+				onLand(cf.Position)
+			end
+		end)
+	end
 	return {
 		model = clone,
 		head = head,
 		name = p.DisplayName,
 		play = play,
 		tag = if head then nameTag(head, p.DisplayName) else function() end,
+		drop = drop,
 	}
 end
 

@@ -994,6 +994,8 @@ Config.SOUNDS = {
 	engine = { id = "", volume = 0.3 }, -- Roblox has no mower/engine loop; silent until a licensed one is found
 	musicLobby = { id = "rbxassetid://15930255433", volume = 0.35 }, -- Roblox_RetroFluteMusic_01
 	musicRun = { id = "rbxassetid://130053244401794", volume = 0.3 }, -- TutorialMusic_01
+	-- the run's opening cutscene (client/Intro): Roblox's licensed music library (verified creator DistrokidOfficial)
+	introMusic = { id = "rbxassetid://75981022182996", volume = 0.55 }, -- Epic Trailer Music with Powerful Drums
 }
 
 -------------------------------------------------------------------------------------------------------------

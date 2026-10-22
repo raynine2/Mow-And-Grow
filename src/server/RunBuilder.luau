@@ -1007,9 +1007,29 @@ function RunBuilder.build()
 	return info
 end
 
--- Area z's middle (the boss arena when bosses are on, see Config.BOSSES).
+-- Area z's middle (the boss arena when bosses are on, see Config.BOSSES). Kept 90 studs from the camp when the
+-- camp is in that area (server/RunWorld.moveVillageToCamp).
 function RunBuilder.zoneCentre(z: number): Vector3
-	return Config.zoneCentre(z)
+	local c = Config.zoneCentre(z)
+	local w = workspace:FindFirstChild("World")
+	local camp = w and w:GetAttribute("CampCenter")
+	if typeof(camp) == "Vector3" and Vector2.new(c.X - camp.X, c.Z - camp.Z).Magnitude < 90 then
+		local away = Vector3.new(c.X - camp.X, 0, c.Z - camp.Z)
+		away = if away.Magnitude > 1 then away.Unit else ((w :: Instance):GetAttribute("CampFacing") or Vector3.zAxis) :: Vector3
+		local spot = camp + away * 90
+		local ground = w and w:FindFirstChild("Ground")
+		if ground then
+			local rp = RaycastParams.new()
+			rp.FilterType = Enum.RaycastFilterType.Include
+			rp.FilterDescendantsInstances = { ground }
+			local hit = workspace:Raycast(Vector3.new(spot.X, 300, spot.Z), Vector3.new(0, -600, 0), rp)
+			if hit then
+				return hit.Position
+			end
+		end
+		return Vector3.new(spot.X, c.Y, spot.Z)
+	end
+	return c
 end
 
 return RunBuilder

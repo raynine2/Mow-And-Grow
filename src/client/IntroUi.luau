@@ -331,6 +331,30 @@ function IntroUi.title(kicker: string, title: string, sub: string): (number) -> 
 	sc.Scale = 2.4
 	sc.Parent = root
 	tween(sc, 0.26, { Scale = 1 }, Enum.EasingStyle.Back)
+	-- a shockwave ring bursting out from behind the name as it lands
+	task.delay(0.2, function()
+		if not root.Parent then
+			return
+		end
+		local ring = Instance.new("Frame")
+		ring.Name = "Shockwave"
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.new(0.5, 0, 0, 112)
+		ring.Size = UDim2.fromOffset(120, 120)
+		ring.BackgroundTransparency = 1
+		ring.ZIndex = 6
+		ring.Parent = root
+		UI.corner(ring, 999)
+		local edge = Instance.new("UIStroke")
+		edge.Thickness = 10
+		edge.Color = GOLD
+		edge.Parent = ring
+		tween(ring, 0.55, { Size = UDim2.fromOffset(1300, 1300) }, Enum.EasingStyle.Quart)
+		tween(edge, 0.55, { Transparency = 1, Thickness = 2 }, Enum.EasingStyle.Quad)
+		task.delay(0.6, function()
+			ring:Destroy()
+		end)
+	end)
 	-- shake for a moment after it lands
 	task.delay(0.22, function()
 		local start = os.clock()

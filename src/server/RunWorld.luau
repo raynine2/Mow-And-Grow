@@ -301,7 +301,7 @@ end
 -- ground in the middle of area 1's grass, clear of every clump (RunWorld.patches).
 local function meadowDropOff(w: Instance)
 	local pads = w:FindFirstChild("Pads")
-	if not pads or pads:FindFirstChild("DropOff1") or not pads:FindFirstChild("DropOff2") then
+	if not pads or pads:FindFirstChild("DropOff1") or not pads:FindFirstChild("DropOff2") or w:GetAttribute("CampCenter") then
 		return
 	end
 	local clumps = RunWorld.patches(1)
@@ -385,7 +385,9 @@ local function safetyNet(info)
 				local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 				if root and root.Position.Y < Zones.SEA - 4 then
 					local z = info.zone and info.zone() or 1
-					local at = if z > 1 then Config.zoneEntry(z) else Config.zoneCentre(0) + Vector3.new(0, 0, -20)
+					local camp = info.world and info.world:GetAttribute("CampCenter")
+					local start = if typeof(camp) == "Vector3" then camp else Config.zoneCentre(0) + Vector3.new(0, 0, -20)
+					local at = if z > 1 then Config.zoneEntry(z) else start
 					char:PivotTo(CFrame.new(at + Vector3.new(0, 5, 0)))
 					root.AssemblyLinearVelocity = Vector3.zero
 				end
@@ -506,6 +508,12 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 		end
 		return false
 	end
+	-- no grass in the camp (RunWorld.moveVillageToCamp: World attributes CampCenter, CampRadius)
+	local camp = w and w:GetAttribute("CampCenter")
+	local campR = (w and w:GetAttribute("CampRadius") or 0) :: number
+	local function inCamp(p: Vector3): boolean
+		return typeof(camp) == "Vector3" and Vector2.new(p.X - camp.X, p.Z - camp.Z).Magnitude < campR + 4
+	end
 	local function free(p: Vector3): boolean
 		for _, q in placed do
 			if (Vector3.new(q.X - p.X, 0, q.Z - p.Z)).Magnitude < spacing * 0.85 then
@@ -533,7 +541,7 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 						local hit = workspace:Raycast(Vector3.new(x, c.Y + 40, zz), Vector3.new(0, -80, 0), ray)
 						if hit and hit.Normal.Y > 0.9 and math.abs(hit.Position.Y - (c.Y - 0.5)) < 6.5 then
 							local p = hit.Position
-							if free(p) and not onPath(p, 2.6 * scale) and not (yard and blocked(p, 3.4 * scale)) then
+							if free(p) and not inCamp(p) and not onPath(p, 2.6 * scale) and not (yard and blocked(p, 3.4 * scale)) then
 								table.insert(placed, p)
 								local yaw = rng:NextInteger(0, 3) * math.pi / 2
 								table.insert(list, { cf = CFrame.new(p) * CFrame.Angles(0, yaw, 0), scale = scale * rng:NextNumber(0.9, 1.1) })
@@ -591,6 +599,119 @@ function RunWorld.bakeVillage()
 	fresh:Destroy()
 	w:SetAttribute("VillageBaked", os.date("%Y-%m-%d %H:%M"))
 	print("[RunWorld] Village baked into Workspace.World: move things around, then save the place.")
+end
+
+
+-- STUDIO, EDIT MODE, once (command bar), after bakeVillage:
+--   require(game.ServerScriptService.MowALawn.RunWorld).moveVillageToCamp(Vector3.new(73, 0, 351), 34)
+-- Chop A Forest's camp sits in its first wood, so the first area IS where you start. This moves the village's
+-- working buildings (tool shop, bag stand, garage, shredder, classes stand, spawn) onto a flat dirt yard in the
+-- middle of area 1's grass at `centre` (radius `radius`), facing the rest of the meadow; clears the trees and
+-- ground cover standing there; and marks the world (CampCenter / CampRadius / CampFacing) so no grass grows in
+-- the camp and the boss arena keeps away from it. What it takes away goes to ServerStorage.MowALawnBackups.
+local CAMP_LAYOUT = {
+	-- unit name, where it stood in the village (its spot and the point it looked at), where it goes in the camp
+	-- (x: to the camp's right, z: forward into the meadow) and which way it faces there
+	{ "TOOL SHOP", Vector3.new(-34, 0, -46), Vector3.new(0, 0, -46), Vector2.new(-24, -2), "right" },
+	{ "Garage", Vector3.new(-34, 0, -14), Vector3.new(0, 0, -14), Vector2.new(-24, 22), "right" },
+	{ "BAG STAND", Vector3.new(32, 0, -48), Vector3.new(0, 0, -48), Vector2.new(22, -4), "left" },
+	{ "Shredder", Vector3.new(40, 0, -14), Vector3.new(80, 0, -14), Vector2.new(24, 18), "right" },
+	{ "CLASSES", Vector3.new(-24, 0, 12), Vector3.new(0, 0, 12), Vector2.new(-8, -24), "forward" },
+	{ "SpawnLocation", Vector3.new(0, 0, -74), Vector3.new(0, 0, -64), Vector2.new(8, -20), "forward" },
+}
+
+function RunWorld.moveVillageToCamp(centre: Vector3, radius: number)
+	assert(RunService:IsStudio() and not RunService:IsRunning(), "Run in Studio with the game stopped (edit mode)")
+	local w = workspace:FindFirstChild("World") :: Instance
+	assert(w and w:GetAttribute("VillageBaked"), "Bake the village first: RunWorld.bakeVillage()")
+	assert(not w:GetAttribute("CampCenter"), "The camp is already in area 1")
+	local hub = w:FindFirstChild("Hub") :: Instance
+	local backups = ServerStorage:FindFirstChild("MowALawnBackups") :: Instance
+	local bk = Instance.new("Folder")
+	bk.Name = "Before the camp " .. os.date("%Y-%m-%d %H.%M")
+	bk.Parent = backups
+	local ground = w:FindFirstChild("Ground") :: Instance
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Include
+	rp.FilterDescendantsInstances = { ground }
+	-- the yard's height: the highest ground under it
+	local top = -math.huge
+	for x = -radius, radius, 4 do
+		for z = -radius, radius, 4 do
+			if x * x + z * z <= radius * radius then
+				local hit = workspace:Raycast(Vector3.new(centre.X + x, 300, centre.Z + z), Vector3.new(0, -600, 0), rp)
+				if hit then
+					top = math.max(top, hit.Position.Y)
+				end
+			end
+		end
+	end
+	top += 0.3
+	local c = Vector3.new(centre.X, top, centre.Z)
+	-- face the rest of the meadow
+	local meadow = Config.zoneCentre(1)
+	local fwd = Vector3.new(meadow.X - c.X, 0, meadow.Z - c.Z)
+	fwd = if fwd.Magnitude > 1 then fwd.Unit else Vector3.zAxis
+	local right = fwd:Cross(Vector3.yAxis)
+	-- clear what stands in the camp (trees, bushes, ground cover, a drop-off pad), keeping a copy
+	local clear = OverlapParams.new()
+	clear.FilterType = Enum.RaycastFilterType.Include
+	clear.FilterDescendantsInstances = { w:FindFirstChild("Visuals") :: Instance, w:FindFirstChild("Pads") :: Instance }
+	local moved = 0
+	for _, part in workspace:GetPartBoundsInBox(CFrame.new(c), Vector3.new(radius * 2 + 4, 60, radius * 2 + 4), clear) do
+		if part.Parent and part:IsDescendantOf(w) and Vector2.new(part.Position.X - c.X, part.Position.Z - c.Z).Magnitude < radius + 2 then
+			local node: Instance = part
+			-- whole models (a tree is one MeshPart, a prop can be a Model)
+			local model = part:FindFirstAncestorWhichIsA("Model")
+			if model and model:IsDescendantOf(w) then
+				node = model
+			end
+			if node.Parent then
+				node.Parent = bk
+				moved += 1
+			end
+		end
+	end
+	-- the dirt yard: one flat slab down to below the lowest step
+	local yard = Instance.new("Part")
+	yard.Name = "CampYard"
+	yard.Anchored = true
+	yard.Shape = Enum.PartType.Cylinder
+	yard.Size = Vector3.new(8, radius * 2, radius * 2)
+	yard.CFrame = CFrame.new(c - Vector3.new(0, 4, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	yard.Material = Enum.Material.Ground
+	yard.Color = Color3.fromRGB(150, 112, 74)
+	yard.TopSurface = Enum.SurfaceType.Smooth
+	yard.Parent = hub
+	local rim = yard:Clone()
+	rim.Name = "CampRim"
+	rim.Size = Vector3.new(7.6, radius * 2 + 3, radius * 2 + 3)
+	rim.Material = Enum.Material.Grass
+	rim.Color = Color3.fromRGB(86, 168, 58)
+	rim.CFrame = yard.CFrame - Vector3.new(0, 0.25, 0)
+	rim.Parent = hub
+	-- move the buildings
+	local function dir(name: string): Vector3
+		return if name == "right" then right elseif name == "left" then -right else fwd
+	end
+	for _, l in CAMP_LAYOUT do
+		local unit = hub:FindFirstChild(l[1])
+		if unit then
+			local old = CFrame.lookAt(l[2], l[3])
+			local at = c + right * l[4].X + fwd * l[4].Y
+			local new = CFrame.lookAt(at, at + dir(l[5]))
+			local delta = new * old:Inverse()
+			if unit:IsA("Model") then
+				unit:PivotTo(delta * unit:GetPivot())
+			elseif unit:IsA("BasePart") then
+				unit.CFrame = delta * unit.CFrame
+			end
+		end
+	end
+	w:SetAttribute("CampCenter", c)
+	w:SetAttribute("CampRadius", radius)
+	w:SetAttribute("CampFacing", fwd)
+	print(("[RunWorld] The village's buildings are now in area 1's camp at %d, %d (%d things cleared from the yard, kept in %s)"):format(c.X, c.Z, moved, bk.Name))
 end
 
 return RunWorld

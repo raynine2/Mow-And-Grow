@@ -12,6 +12,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local MowALawn = ReplicatedStorage:WaitForChild("MowALawn")
 local Config = require(MowALawn:WaitForChild("Config"))
@@ -79,39 +80,74 @@ local shot: ShotFn? = nil
 local shotStart, shotLen = 0, 1
 local shakeUntil, shakePower = 0, 0
 local onFrame: { (t: number) -> () } = {}
+-- the film's own clock: it runs slower during a slow-motion moment (the crate's impact)
+local simNow = 0
+local timeScale = 1
+-- every cut whips in: the new shot starts swung a little to one side and snaps onto its mark
+local WHIP_TIME = 0.3
+local whipFrom: CFrame? = nil
+local whipSide = 1
+local fovPunch = 0
 
 local function shake(power: number, time: number)
 	shakePower = power
 	shakeUntil = os.clock() + time
 end
 
-local function render()
+-- Slow motion for `realTime` seconds (scale 0.25 = a quarter speed).
+local function slowMo(scale: number, realTime: number)
+	timeScale = scale
+	task.delay(realTime, function()
+		timeScale = 1
+	end)
+end
+
+-- A zoom punch on a hit (the field of view snaps in by `amount` degrees and eases back).
+local function punch(amount: number)
+	fovPunch = amount
+end
+
+local function render(dt: number)
 	local cam = workspace.CurrentCamera
 	local fn = shot
 	if not cam or not fn then
 		return
 	end
+	simNow += dt * timeScale
+	local cf, fov = fn(math.clamp((simNow - shotStart) / shotLen, 0, 1))
+	local since = simNow - shotStart
+	if whipFrom and since < WHIP_TIME then
+		local k = since / WHIP_TIME
+		cf *= (whipFrom :: CFrame):Lerp(CFrame.identity, 1 - (1 - k) ^ 3)
+	end
 	local now = os.clock()
-	local cf, fov = fn(math.clamp((now - shotStart) / shotLen, 0, 1))
 	if now < shakeUntil then
 		local p = shakePower * (shakeUntil - now)
 		cf *= CFrame.Angles((math.random() - 0.5) * p * 0.06, (math.random() - 0.5) * p * 0.06, (math.random() - 0.5) * p * 0.03)
 	end
+	fovPunch *= math.exp(-dt * 6)
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.CFrame = cf
-	cam.FieldOfView = fov
+	cam.FieldOfView = math.clamp(fov - fovPunch, 15, 100)
 	for _, f in onFrame do
 		f(now)
 	end
 end
 
--- Play a shot for `len` seconds. Returns false if the cutscene was skipped meanwhile.
-local function run(len: number, fn: ShotFn): boolean
+-- Play a shot for `len` seconds of film time. A new shot whips in with a whoosh unless `still` (a shot that
+-- carries straight on from the last one). Returns false if the cutscene was skipped meanwhile.
+local function run(len: number, fn: ShotFn, still: boolean?): boolean
 	shot = fn
-	shotStart = os.clock()
+	shotStart = simNow
 	shotLen = len
-	local done = shotStart + len
-	while os.clock() < done do
+	if still then
+		whipFrom = nil
+	else
+		whipSide = -whipSide
+		whipFrom = CFrame.Angles(math.rad(-4), math.rad(24) * whipSide, math.rad(-7) * whipSide)
+		Sound.play("whoosh", 0.12, 0.45)
+	end
+	while simNow < shotStart + len do
 		if not playing then
 			return false
 		end
@@ -220,15 +256,26 @@ local function plan(): Plan
 	local fwd = unit(flat(gate - hub), Vector3.zAxis)
 	local dirIn = unit(flat(Config.zoneCentre(1) - entry), fwd)
 	local cast = IntroCast.ground(hub:Lerp(gate, 0.42))
+	-- the camp in area 1 (server/RunWorld.moveVillageToCamp): the party gathers there, the grass is all round it
+	local w = workspace:FindFirstChild("World")
+	local camp = w and w:GetAttribute("CampCenter")
+	local from = entry
+	if typeof(camp) == "Vector3" then
+		local facing = w and w:GetAttribute("CampFacing")
+		hub = camp
+		fwd = if typeof(facing) == "Vector3" then facing else fwd
+		cast = IntroCast.ground(camp + fwd * 2)
+		from = camp
+	end
 	local spots = {}
 	for _, at in clumpSpots() do
-		if (at - entry).Magnitude < 220 then
+		if (at - from).Magnitude < 220 then
 			table.insert(spots, at)
 		end
 	end
-	local thick = thickest(spots, entry) or (entry + dirIn * 60)
+	local thick = thickest(spots, from) or (from + dirIn * 60)
 	thick = IntroCast.ground(thick)
-	local dirK = unit(flat(thick - entry), dirIn)
+	local dirK = unit(flat(thick - from), dirIn)
 	local m0, m1 = meadowLine(thick, dirK, spots)
 	local def = Config.ZONES[1]
 	return {
@@ -312,7 +359,7 @@ local function meadowShots(P: Plan): boolean
 		local p = P.m1:Lerp(top, e)
 		local look = (P.m1 + P.dirK * 20 + UP * 4.5):Lerp(far, e)
 		return CFrame.lookAt(p, look), 62 + e * 8
-	end)
+	end, true)
 end
 
 -- 2. the party, face by face, each with an emote and their name
@@ -320,6 +367,33 @@ local function partyShots(P: Plan, actors: { IntroCast.Actor }): boolean
 	local n = #actors
 	if n == 0 then
 		return playing
+	end
+	-- they drop in from the sky one after another, landing hard in a puff of dust
+	for i, actor in actors do
+		task.delay(0.35 + (i - 1) * 0.32, function()
+			if not playing then
+				return
+			end
+			actor.drop(function(foot: Vector3)
+				if not playing then
+					return
+				end
+				shake(1.4, 0.35)
+				punch(6)
+				Sound.play("slam", 0.08, 0.7)
+				Sound.play("fellLand", 0.1, 0.5)
+				HitFx.play("bossRise", foot, Color3.fromRGB(150, 118, 80), false)
+				actor.play("cheer")
+			end)
+		end)
+	end
+	local wideFrom = P.cast + P.fwd * 17 + UP * 1.6
+	local okDrop = run(1.0 + 0.32 * n, function(k)
+		local p = wideFrom + P.fwd * (-2.5 * ease(k)) + UP * (0.8 * k)
+		return CFrame.lookAt(p, P.cast + UP * 4.5), 64
+	end)
+	if not okDrop then
+		return false
 	end
 	IntroUi.lowerThird("THE MOWERS", if n == 1 then "One mower. One valley." else n .. " mowers. One valley.", GOLD, 2.8)
 	local first, last = actors[1].head, actors[n].head
@@ -413,8 +487,11 @@ local function crateShot(P: Plan, actors: { IntroCast.Actor }, mode: { value: st
 			if not playing then
 				return
 			end
-			shake(2.2, 0.6)
-			Sound.play("slam", 0.05, 1)
+			shake(2.6, 0.7)
+			slowMo(0.22, 0.45)
+			punch(14)
+			IntroUi.flash(0.75, 0.3)
+			Sound.playAt("slam", 0.45, 1)
 			Sound.play("fellLand", 0.1, 0.8)
 			local g = IntroCast.ground(mid)
 			for i = 1, 5 do
@@ -460,13 +537,52 @@ local function homeShot(): boolean
 		local e = easeOut(k)
 		local p = (eye - look * 9 + UP * 4):Lerp(eye, e)
 		return CFrame.lookAt(p, eye + look * 20):Lerp(final, e), 70
-	end)
+	end, true)
 end
 
 -------------------------------------------------------------------------------------------------------------
 -- start and end
 -------------------------------------------------------------------------------------------------------------
 local savedHud = true
+local music: Sound? = nil
+local quieted: { [Sound]: number } = {}
+
+-- The cutscene's own music; the game's music fades out under it and back after.
+local function musicOn()
+	local def = Config.SOUNDS.introMusic
+	for _, s in game:GetService("SoundService"):GetChildren() do
+		if s:IsA("Sound") and s.Name == "Music" then
+			quieted[s] = s.Volume
+			TweenService:Create(s, TweenInfo.new(0.8), { Volume = 0 }):Play()
+		end
+	end
+	if def and def.id ~= "" then
+		local s = Instance.new("Sound")
+		s.Name = "IntroMusic"
+		s.SoundId = def.id
+		s.Volume = def.volume or 0.5
+		s.Parent = game:GetService("SoundService")
+		s:Play()
+		music = s
+	end
+end
+
+local function musicOff()
+	local s = music
+	music = nil
+	if s then
+		TweenService:Create(s, TweenInfo.new(1.2), { Volume = 0 }):Play()
+		task.delay(1.3, function()
+			s:Destroy()
+		end)
+	end
+	for q, v in quieted do
+		if q.Parent then
+			TweenService:Create(q, TweenInfo.new(2), { Volume = v }):Play()
+		end
+	end
+	table.clear(quieted)
+end
 
 local function finish()
 	if not playing then
@@ -484,6 +600,7 @@ local function finish()
 	end
 	IntroCast.cleanup()
 	IntroUi.close()
+	musicOff()
 	local cam = workspace.CurrentCamera
 	if cam then
 		cam.CameraType = Enum.CameraType.Custom
@@ -546,11 +663,14 @@ local function play()
 	RunService:BindToRenderStep("MowIntro", Enum.RenderPriority.Camera.Value + 2, render)
 	task.delay(TIMEOUT, finish)
 	Soundscape.duck(0.5, 4)
+	musicOn()
 	-- the black cover is up: stream in the far-off places the camera visits
 	local entry = Config.zoneEntry(1)
 	local hub = Config.zoneCentre(0)
 	local inward = (Config.zoneCentre(1) - entry).Unit
-	streamIn({ entry, entry + inward * 50, entry + inward * 110, hub:Lerp(entry, 0.4) })
+	local w = workspace:FindFirstChild("World")
+	local camp = w and w:GetAttribute("CampCenter")
+	streamIn({ entry, entry + inward * 50, entry + inward * 110, if typeof(camp) == "Vector3" then camp else hub:Lerp(entry, 0.4) })
 	if not playing then
 		return
 	end

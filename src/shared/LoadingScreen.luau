@@ -1,9 +1,10 @@
--- The loading screen, kept simple and clean (the owner found the busier version messy): a bright sky with the sun
--- turning slowly in its halo and three clouds drifting by, two layers of soft rolling hills, the drawn MOW A LAWN
--- logo popping in on a soft glow (drop shadow, a few sparkles), and the loading bar: the HUD's wooden groove, mowed
--- stripes filling it from the left, tall grass growing out of the rest, a push mower riding the edge throwing
--- clippings with the percentage above it. Under it one line that changes every couple of seconds (a tip or a silly
--- job: "Sharpening the blades..."), and your face and name small in the top-left corner.
+-- The loading screen, at golden hour (the owner's pick between a too-busy and a too-plain version): a warm sunset
+-- sky, the sun low over the hills turning slowly in its halo with soft rays fanning out, three clouds drifting by,
+-- hazy far hills with a small windmill, near hills in warm green running down to the bottom with faint mowed stripes,
+-- a big tree framing each side and a flower bush in each bottom corner. In the middle: the drawn MOW A LAWN logo on
+-- a soft glow (drop shadow, a few sparkles), and the loading bar: the HUD's wooden groove, mowed stripes filling it
+-- from the left, tall grass growing out of the rest, a push mower riding the edge throwing clippings with the
+-- percentage above it. Under it one line that changes every couple of seconds, and your face and name top left.
 -- Self-contained (no client modules): the boot script in ReplicatedFirst uses it on arrival, client/Loading before a
 -- teleport. Pictures come from IconIds; anything missing is drawn as a plain shape or left out.
 -- Progress: LoadingScreen.setProgress(gui, 0..1, cap); between calls it creeps forward on its own up to `cap`, so it
@@ -56,6 +57,17 @@ local function img(parent: Instance, key: string, size: UDim2, pos: UDim2, ancho
 	i.Position = pos
 	i.AnchorPoint = anchor or Vector2.new(0.5, 0.5)
 	i.Parent = parent
+	return i
+end
+
+-- a picture of a known pixel size, `h` tall, standing with its bottom centre at (x, y), warmed by the evening light
+local GOLD_TINT = Color3.fromRGB(255, 226, 196)
+local function standing(parent: Instance, key: string, src: Vector2, h: number, x: number, y: number): ImageLabel?
+	if not IconIds[key] then
+		return nil
+	end
+	local i = img(parent, key, UDim2.fromOffset(h * src.X / src.Y, h), UDim2.fromOffset(x, y), Vector2.new(0.5, 1))
+	i.ImageColor3 = GOLD_TINT
 	return i
 end
 
@@ -136,15 +148,16 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the countryside (a 1280 x 720 world scaled to cover the screen)
 -------------------------------------------------------------------------------------------------------------
-type Scene = { scale: UIScale, sun: GuiObject, clouds: { { f: GuiObject, speed: number } } }
+type Scene = { scale: UIScale, sun: GuiObject, rays: GuiObject?, clouds: { { f: GuiObject, speed: number } } }
 local function scene(group: Instance): Scene
 	local sky = frame(group, UDim2.fromScale(1, 1), UDim2.new(), WHITE)
 	sky.Name = "Sky"
 	local sg = Instance.new("UIGradient")
 	sg.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(74, 166, 246)),
-		ColorSequenceKeypoint.new(0.6, Color3.fromRGB(150, 212, 255)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(214, 240, 255)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(92, 120, 214)),
+		ColorSequenceKeypoint.new(0.45, Color3.fromRGB(250, 170, 120)),
+		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(255, 214, 140)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 236, 180)),
 	})
 	sg.Rotation = 90
 	sg.Parent = sky
@@ -155,12 +168,22 @@ local function scene(group: Instance): Scene
 	local scale = Instance.new("UIScale")
 	scale.Parent = world
 
-	-- the sun in its halo
-	local halo = img(world, "glow_soft", UDim2.fromOffset(380, 380), UDim2.fromOffset(1110, 112))
+	-- the low evening sun, right of the logo, with soft rays fanning out and a warm halo
+	local SUN = Vector2.new(1060, 330)
+	local rays: GuiObject? = nil
+	if IconIds.ui_rays then
+		local r = img(world, "ui_rays", UDim2.fromOffset(900, 900), UDim2.fromOffset(SUN.X, SUN.Y))
+		r.ScaleType = Enum.ScaleType.Stretch
+		r.ImageColor3 = Color3.fromRGB(255, 236, 190)
+		r.ImageTransparency = 0.82
+		rays = r
+	end
+	local halo = img(world, "glow_soft", UDim2.fromOffset(476, 476), UDim2.fromOffset(SUN.X, SUN.Y))
 	halo.ScaleType = Enum.ScaleType.Stretch
-	halo.ImageColor3 = Color3.fromRGB(255, 240, 180)
-	halo.ImageTransparency = 0.1
-	local sun = img(world, "bg_sun", UDim2.fromOffset(136, 136), UDim2.fromOffset(1110, 112))
+	halo.ImageColor3 = Color3.fromRGB(255, 200, 120)
+	halo.ImageTransparency = 0.05
+	local sun = img(world, "bg_sun", UDim2.fromOffset(170, 170), UDim2.fromOffset(SUN.X, SUN.Y))
+	sun.ImageColor3 = Color3.fromRGB(255, 220, 170)
 	if not IconIds.bg_sun then
 		sun.BackgroundTransparency = 0
 		sun.BackgroundColor3 = Color3.fromRGB(255, 220, 90)
@@ -189,31 +212,41 @@ local function scene(group: Instance): Scene
 
 	-- far hills, hazy blue-green, then the near hills in fresh green running down to the bottom of the screen, with a
 	-- hint of mowed stripes fading in toward the front
-	hills(world, { { 150, 496, 660, 240 }, { 640, 480, 760, 220 }, { 1120, 498, 680, 250 }, { 1500, 504, 560, 210 } }, Color3.fromRGB(140, 202, 168), Color3.fromRGB(184, 226, 196), 3)
-	hills(world, { { -60, 566, 780, 240 }, { 740, 556, 860, 230 }, { 1400, 570, 720, 240 } }, Color3.fromRGB(98, 186, 78), Color3.fromRGB(150, 220, 104), 4)
-	local ground = frame(world, UDim2.fromOffset(2400, 300), UDim2.fromOffset(-560, 600), Color3.fromRGB(98, 186, 78))
+	hills(world, { { 150, 496, 660, 240 }, { 640, 480, 760, 220 }, { 1120, 498, 680, 250 }, { 1500, 504, 560, 210 } }, Color3.fromRGB(170, 160, 150), Color3.fromRGB(226, 196, 170), 3)
+	-- a little windmill on the far hills, in the haze
+	local mill = standing(world, "bg_windmill", Vector2.new(603, 768), 150, 1150, 470)
+	if mill then
+		mill.ImageTransparency = 0.1
+	end
+	hills(world, { { -60, 566, 780, 240 }, { 740, 556, 860, 230 }, { 1400, 570, 720, 240 } }, Color3.fromRGB(110, 170, 70), Color3.fromRGB(200, 214, 110), 4)
+	local ground = frame(world, UDim2.fromOffset(2400, 300), UDim2.fromOffset(-560, 600), Color3.fromRGB(110, 170, 70))
 	ground.Name = "Ground"
 	for i = 0, 2400 / 110 do
-		local stripe = frame(ground, UDim2.fromOffset(55, 300), UDim2.fromOffset(i * 110, 0), Color3.fromRGB(118, 200, 90))
+		local stripe = frame(ground, UDim2.fromOffset(55, 300), UDim2.fromOffset(i * 110, 0), Color3.fromRGB(130, 184, 80))
 		stripe.Name = "Stripe"
 		local sg2 = Instance.new("UIGradient")
 		sg2.Rotation = 90
 		sg2.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.45, 0.4), NumberSequenceKeypoint.new(1, 0.3) })
 		sg2.Parent = stripe
 	end
+	-- a big tree framing each side, a flower bush in each bottom corner
+	standing(world, "bg_tree", Vector2.new(642, 768), 330, 92, 640)
+	standing(world, "bg_tree2", Vector2.new(649, 768), 250, 1205, 650)
+	standing(world, "bg_bush2", Vector2.new(768, 670), 120, 180, 720)
+	standing(world, "bg_bush", Vector2.new(768, 586), 110, 1100, 722)
 	-- soft dark edges and a darker bottom, so the bar and the writing read
 	for _, side in { 0, 1 } do
-		local v = frame(group, UDim2.new(0.22, 0, 1, 0), UDim2.fromScale(side * 0.78, 0), Color3.fromRGB(10, 24, 8))
+		local v = frame(group, UDim2.new(0.22, 0, 1, 0), UDim2.fromScale(side * 0.78, 0), Color3.fromRGB(34, 18, 8))
 		local vg = Instance.new("UIGradient")
 		vg.Transparency = NumberSequence.new(if side == 0 then 0.75 else 1, if side == 0 then 1 else 0.75)
 		vg.Parent = v
 	end
-	local shade = frame(group, UDim2.fromScale(1, 1), UDim2.new(), Color3.fromRGB(12, 26, 8))
+	local shade = frame(group, UDim2.fromScale(1, 1), UDim2.new(), Color3.fromRGB(30, 20, 8))
 	local sh = Instance.new("UIGradient")
 	sh.Rotation = 90
 	sh.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.7, 1), NumberSequenceKeypoint.new(1, 0.5) })
 	sh.Parent = shade
-	return { scale = scale, sun = sun, clouds = clouds }
+	return { scale = scale, sun = sun, rays = rays, clouds = clouds }
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -413,7 +446,7 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	-- fetch the pictures first, ahead of the rest of the game (each shows as soon as it arrives)
 	task.spawn(function()
 		local list = {}
-		for _, key in { "logo", "glow_soft", "bg_sun", "bg_cloud", "bg_cloud2", "ui_bar", "ui_grass", "pushmower", "sparkle" } do
+		for _, key in { "logo", "glow_soft", "bg_sun", "bg_cloud", "bg_cloud2", "ui_rays", "bg_windmill", "bg_tree", "bg_tree2", "bg_bush", "bg_bush2", "ui_bar", "ui_grass", "pushmower", "sparkle" } do
 			if IconIds[key] then
 				table.insert(list, IconIds[key])
 			end
@@ -438,6 +471,9 @@ function LoadingScreen.build(player: Player?): ScreenGui
 		refit()
 		-- the sky: the sun turns slowly, the clouds drift right and come round again
 		S.sun.Rotation = t * 4
+		if S.rays then
+			S.rays.Rotation = -t * 2.5
+		end
 		for _, c in S.clouds do
 			local x = c.f.Position.X.Offset + c.speed * dt
 			if x > 1460 then

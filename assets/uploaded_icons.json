@@ -560,5 +560,59 @@
   "image": 88864581956464,
   "sha": "f50818684dd34ac6edab9e0f140c048872025fc7a97636ac85aa28434544f088",
   "via": "forgegui"
+ },
+ "card_common": {
+  "id": 120915093924437,
+  "image": 120915093924437,
+  "sha": "aa38768e26dde473c590d896eb1847ac93e3c4e3b20fa943f6f0b60c74942aea",
+  "via": "forgegui"
+ },
+ "card_uncommon": {
+  "id": 100197895726731,
+  "image": 100197895726731,
+  "sha": "b39ce236fc29e26fdd4800a2825f44848429d429cd9a83c722911d5bd09357d8",
+  "via": "forgegui"
+ },
+ "card_rare": {
+  "id": 128802686007058,
+  "image": 128802686007058,
+  "sha": "c2b810cac4e22f9a9625e179fd4f16032083992a1f02ea000edc5a1ee24ce55f",
+  "via": "forgegui"
+ },
+ "card_epic": {
+  "id": 85191310940879,
+  "image": 85191310940879,
+  "sha": "8fc65daab25e4a4fa6a68650abc4c7d03970745380f867246df2305920ae36d9",
+  "via": "forgegui"
+ },
+ "card_legendary": {
+  "id": 88292456861426,
+  "image": 88292456861426,
+  "sha": "d71cf33f45d81f6bd3a1ee32b1b5810314c47e83346c43f5b449d3f3cb3b53d2",
+  "via": "forgegui"
+ },
+ "card_mythic": {
+  "id": 125607425649200,
+  "image": 125607425649200,
+  "sha": "18278baa77d526fb8d0a17b5837da9306e3bdfbb3cb33afdb7c0a1d594893be1",
+  "via": "forgegui"
+ },
+ "card_secret": {
+  "id": 83186686031046,
+  "image": 83186686031046,
+  "sha": "ba8641b1d7b592df9aa2232cf0d7fe5531e1fa16f018f06228b6506c2101baef",
+  "via": "forgegui"
+ },
+ "card_ribbon": {
+  "id": 79117604874663,
+  "image": 79117604874663,
+  "sha": "e0d5ea3a42184b2897abdf565d955f11c18343d721bf4d64d3c74511f88a0f2e",
+  "via": "forgegui"
+ },
+ "card_back": {
+  "id": 96310370077693,
+  "image": 96310370077693,
+  "sha": "dbb6d60c0074430504bc30e670f8e1eb97f68189ccfc2ade20256c5904d093e1",
+  "via": "forgegui"
  }
 }

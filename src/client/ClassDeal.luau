@@ -183,6 +183,62 @@ local function plateBox(g: GuiObject, w: number, h: number)
 	art.ZIndex = 0
 end
 
+-- TRADING CARDS (22 Oct 2026, the owner's pick): every class is a collectible card. The frame's material shows the
+-- rarity (honey wood, leafy green, blue enamel, amethyst, gold, ruby roses, black obsidian with a rainbow edge), the
+-- picture sits in a window at the top with the name on a ribbon in the rarity colour across it, the rarity is
+-- written underneath and the price hangs off the bottom on a pill. Face down a card shows the guild's green back.
+-- Epic and rarer cards catch a foil glint every few seconds. Without the pictures the drawn cards stay.
+local CARD_KEY = { Common = "card_common", Uncommon = "card_uncommon", Rare = "card_rare", Epic = "card_epic", Legendary = "card_legendary", Mythic = "card_mythic", Secret = "card_secret" }
+local TRADING = Skin.has("card_common") and Skin.has("card_ribbon")
+local function ribbonTint(rarity: string): Color3
+	if rarity == "Common" then
+		return Color3.fromRGB(236, 226, 206)
+	elseif rarity == "Secret" then
+		return Color3.fromRGB(74, 70, 96)
+	end
+	return Config.RARITY_COLORS[rarity] or Color3.new(1, 1, 1)
+end
+local function rarityInk(rarity: string): Color3
+	if rarity == "Common" then
+		return Color3.fromRGB(130, 110, 90)
+	elseif rarity == "Secret" then
+		return Color3.fromRGB(120, 70, 200)
+	end
+	return UI.shade(Config.RARITY_COLORS[rarity], 0.7)
+end
+-- the rarity's frame behind everything else in `g`; returns it and the insets of its cream inside (l, t, r, b)
+local function cardFrame(g: GuiObject, rarity: string, w: number, h: number, maxScale: number?): (GuiObject, { number })
+	local art, face = Skin.frame(g, CARD_KEY[rarity] or "card_common", Vector2.new(w, h), { name = "CardFrame", maxScale = maxScale })
+	art.Size = UDim2.fromScale(1, 1)
+	art.ZIndex = 0
+	local l, t = face.Position.X.Offset, face.Position.Y.Offset
+	return art, { l, t, -face.Size.X.Offset - l, -face.Size.Y.Offset - t }
+end
+-- a name ribbon in the rarity's colour, centred on `pos`
+local function nameRibbon(parent: Instance, text: string, rarity: string, w: number, h: number, pos: UDim2, stroke: number?): (GuiObject, TextLabel)
+	local r, face = Skin.frame(parent, "card_ribbon", Vector2.new(w, h), { name = "Ribbon", pos = pos, anchor = Vector2.new(0.5, 0.5), tint = ribbonTint(rarity) })
+	r.ZIndex = 3
+	local t = UI.text(face, text, UDim2.fromScale(1, 1), { stroke = stroke or 1.5, name = "Name" })
+	return r, t
+end
+-- a foil glint that sweeps across `g` every few seconds
+local function foil(g: GuiObject, radius: number)
+	local f = Instance.new("Frame")
+	f.Name = "Foil"
+	f.BackgroundColor3 = Color3.new(1, 1, 1)
+	f.BorderSizePixel = 0
+	f.Size = UDim2.fromScale(1, 1)
+	f.ZIndex = 6
+	UI.corner(f, radius)
+	local gr = Instance.new("UIGradient")
+	gr.Rotation = 30
+	gr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.42, 1), NumberSequenceKeypoint.new(0.5, 0.55), NumberSequenceKeypoint.new(0.58, 1), NumberSequenceKeypoint.new(1, 1) })
+	gr.Offset = Vector2.new(-1, 0)
+	gr.Parent = f
+	f.Parent = g
+	TweenService:Create(gr, TweenInfo.new(0.9, Enum.EasingStyle.Linear, Enum.EasingDirection.In, -1, false, 2.6 + math.random() * 1.5), { Offset = Vector2.new(1, 0) }):Play()
+end
+
 -- each class's picture: its card art (Config.ICONS class_<Id>, a fist gripping the class's tool)
 local CLASS_ART = setmetatable({}, { __index = function(_, id)
 	return "class_" .. id
@@ -581,7 +637,7 @@ task.spawn(function()
 end)
 local parch: ImageLabel? = nil
 local seal: GuiObject? = nil
-if GUILD and Skin.has("ui_parch") then
+if GUILD and Skin.has("ui_parch") and not TRADING then
 	-- a pinned parchment notice; the rarity shows in its header band, a faint tint and the wax seal
 	detail.BackgroundTransparency = 1
 	detailGrad.Enabled = false
@@ -599,6 +655,14 @@ if GUILD and Skin.has("ui_parch") then
 		seal = w
 	end
 end
+-- the big trading card: the picked class's rarity frame (rebuilt by refresh when the rarity changes)
+local detailFrame: GuiObject? = nil
+local detailRarity = ""
+if TRADING then
+	detail.BackgroundTransparency = 1
+	detailGrad.Enabled = false
+	detailStroke.Transparency = 1
+end
 slideFrom(detail, "right")
 slideFrom(cardGlow, "right")
 -- hazard stripes along the top and the bottom (Epic and rarer)
@@ -615,10 +679,20 @@ end
 local header = UI.frame({ size = UDim2.new(1, -36, 0, 74), pos = UDim2.fromOffset(18, 26), color = Color3.new(1, 1, 1), parent = detail, radius = 12, outline = 0, name = "Header" })
 header.BackgroundTransparency = if parch then 0.05 else 0.82
 local detName = UI.text(header, "", UDim2.new(1, -16, 0, 40), { pos = UDim2.fromOffset(8, 2), stroke = 3.5 })
+-- (trading card: the name rides a ribbon across the top of the card, wider than the card)
+local detRibbon: GuiObject? = nil
+if TRADING then
+	header.BackgroundTransparency = 1
+	local r = Skin.frame(header, "card_ribbon", Vector2.new(304, 64), { name = "Ribbon", pos = UDim2.new(0.5, 0, 0, 22), anchor = Vector2.new(0.5, 0.5) })
+	r.ZIndex = 0
+	detRibbon = r
+	detName.Size = UDim2.new(1, -44, 0, 30)
+	detName.Position = UDim2.fromOffset(22, 3)
+end
 local starRow = Instance.new("Frame")
 starRow.BackgroundTransparency = 1
 starRow.Size = UDim2.fromOffset(196, 26)
-starRow.Position = UDim2.new(0.5, 0, 0, 44)
+starRow.Position = UDim2.new(0.5, 0, 0, if TRADING then 52 else 44)
 starRow.AnchorPoint = Vector2.new(0.5, 0)
 starRow.Parent = header
 local starIcons: { ImageLabel } = {}
@@ -682,6 +756,13 @@ perkLayout.SortOrder = Enum.SortOrder.LayoutOrder
 perkLayout.Parent = perkRows
 local detQuote = UI.text(detail, "", UDim2.new(1, -36, 0, 26), { pos = UDim2.fromOffset(18, 350), stroke = 1.5, textSize = 12 })
 local detOdds = UI.text(detail, "", UDim2.new(1, -28, 0, 16), { pos = UDim2.fromOffset(14, 376), stroke = 1.5, textSize = 12 })
+if TRADING then
+	-- written on the card's cream: dark ink, no outline
+	for _, t in { detQuote, detOdds } do
+		t.TextColor3 = Color3.fromRGB(92, 58, 30)
+		;(t:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+	end
+end
 local gemBtn = UI.button(detail, "BUY", C.purple, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(0, 16, 1, -14), anchor = Vector2.new(0, 1), name = "GemBuy" })
 local robuxBtn = UI.button(detail, "R$ 0", C.green, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(1, -16, 1, -14), anchor = Vector2.new(1, 1), name = "RobuxBuy" })
 local gemIcon = UI.icon(gemBtn, "gem", 32, UDim2.new(0, 10, 0.5, -3), Vector2.new(0, 0.5))
@@ -697,7 +778,7 @@ end
 -- the thin white inner frame with diamond corners (Chop A Forest's card border)
 local innerFrame = UI.frame({ size = UDim2.new(1, -16, 1, -16), pos = UDim2.fromOffset(8, 8), color = Color3.new(1, 1, 1), parent = detail, radius = 14, outline = 2, name = "Inner" })
 innerFrame.BackgroundTransparency = 1
-innerFrame.Visible = parch == nil -- (the parchment has its own edge)
+innerFrame.Visible = parch == nil and not TRADING -- (the parchment and the trading card have their own edges)
 ;(innerFrame:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(255, 245, 230)
 ;(innerFrame:FindFirstChildOfClass("UIStroke") :: UIStroke).Transparency = 0.3
 for _, p in { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } } do
@@ -817,11 +898,20 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	b.BackgroundColor3 = rc
 	b.ClipsDescendants = false
 	UI.corner(b, 14)
-	UI.stroke(b, if picked then 4 else 3, if picked then Color3.new(1, 1, 1) else UI.shade(rc, 0.35))
+	local rim = UI.stroke(b, if picked then 4 else 3, if picked then Color3.new(1, 1, 1) else UI.shade(rc, 0.35))
 	local bg = Instance.new("UIGradient")
 	bg.Color = ColorSequence.new(UI.shade(rc, 0.85), UI.shade(rc, 0.38))
 	bg.Rotation = 90
 	bg.Parent = b
+	-- a trading card: the rarity's frame instead of the coloured box (its cream inside is `inset`)
+	local inset = { 6, 6, 6, 6 }
+	if TRADING then
+		b.BackgroundTransparency = 1
+		rim.Enabled = false
+		bg.Enabled = false
+		local _, ins = cardFrame(b, c.rarity, 104, 140)
+		inset = ins
+	end
 	-- the card's picture, full bleed (Config.ICONS.scene_<Id>)
 	local art = Instance.new("ImageLabel")
 	art.Name = "Art"
@@ -832,13 +922,34 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	art.Position = UDim2.fromOffset(5, 5)
 	UI.corner(art, 10)
 	art.Parent = b
-	local nameBar = UI.frame({ size = UDim2.new(1, -12, 0, 24), pos = UDim2.fromOffset(6, 82), color = if GUILD then Color3.fromRGB(60, 36, 16) else Color3.fromRGB(20, 14, 36), parent = b, radius = 6, outline = 0, name = "NameBar" })
-	nameBar.BackgroundTransparency = 0.35
-	UI.text(nameBar, c.name, UDim2.new(1, -6, 1, -4), { pos = UDim2.fromOffset(3, 2), stroke = 1.5 })
+	if TRADING then
+		-- the picture in the window at the top, the name on a ribbon across its bottom edge, the rarity under it
+		local picH = math.floor((140 - inset[2] - inset[4]) * 0.66)
+		art.Size = UDim2.new(1, -(inset[1] + inset[3]), 0, picH)
+		art.Position = UDim2.fromOffset(inset[1], inset[2])
+		;(art:FindFirstChildOfClass("UICorner") :: UICorner).CornerRadius = UDim.new(0, 7)
+		UI.stroke(art, 2, Color3.fromRGB(58, 32, 14))
+		local ribbonY = inset[2] + picH
+		local _, nm = nameRibbon(b, c.name, c.rarity, 116, 36, UDim2.fromOffset(52, ribbonY), 1.5)
+		nm.Size = UDim2.new(1, 0, 1, -4)
+		local label = UI.text(b, string.upper(c.rarity), UDim2.new(1, -16, 0, 11), { pos = UDim2.fromOffset(8, ribbonY + 17), color = rarityInk(c.rarity), stroke = 0, name = "Rarity" })
+		label.ZIndex = 2
+		;(label:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+	else
+		local nameBar = UI.frame({ size = UDim2.new(1, -12, 0, 24), pos = UDim2.fromOffset(6, 82), color = if GUILD then Color3.fromRGB(60, 36, 16) else Color3.fromRGB(20, 14, 36), parent = b, radius = 6, outline = 0, name = "NameBar" })
+		nameBar.BackgroundTransparency = 0.35
+		UI.text(nameBar, c.name, UDim2.new(1, -6, 1, -4), { pos = UDim2.fromOffset(3, 2), stroke = 1.5 })
+	end
 	local equipped = owned and d.class == c.id
 	local state = if owned then (if equipped then "EQUIPPED" else "YOURS") elseif c.gems <= 0 then "FREE" else Format.short(c.gems) -- out of stock: still its price, the card dimmed
 	local pillColor = if equipped then Color3.fromRGB(255, 196, 40) elseif owned then C.green elseif inStock then Color3.fromRGB(80, 200, 70) else Color3.fromRGB(34, 28, 58)
 	local pill = UI.frame({ size = UDim2.new(1, -12, 0, 26), pos = UDim2.new(0.5, 0, 1, -6), anchor = Vector2.new(0.5, 1), color = pillColor, parent = b, radius = 8, outline = 2 })
+	if TRADING then
+		-- hanging off the bottom of the card
+		pill.Size = UDim2.fromOffset(84, 24)
+		pill.Position = UDim2.new(0.5, 0, 1, 8)
+		pill.ZIndex = 4
+	end
 	UI.gradient(pill, pillColor)
 	local gemPrice = not owned and c.gems > 0
 	if gemPrice then
@@ -866,6 +977,9 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	if not inStock and not owned and tab == "stock" then
 		local shade = UI.frame({ size = UDim2.fromScale(1, 1), color = if GUILD then Color3.fromRGB(24, 14, 4) else Color3.fromRGB(10, 6, 20), parent = b, radius = 14, outline = 0, name = "Dim" })
 		shade.BackgroundTransparency = 0.45
+		shade.ZIndex = 5
+	elseif TRADING and SHINE[c.rarity] then
+		foil(b, 12)
 	end
 	-- the face-down side, shown while the cards are being dealt: deep purple, a glowing moon, the class's name
 	local back = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.new(1, 1, 1), parent = b, radius = 14, outline = 3, name = "Back" })
@@ -893,13 +1007,28 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	moon.ZIndex = 10
 	local backName = UI.text(back, c.name, UDim2.new(1, -10, 0, 30), { pos = UDim2.fromOffset(5, 80), stroke = 1.5, textSize = 13 })
 	backName.ZIndex = 10
+	if TRADING and Skin.has("card_back") then
+		-- the guild's green card back
+		back.BackgroundTransparency = 1
+		;(back:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		bgr.Enabled = false
+		moonGlow.Visible = false
+		moon.Visible = false
+		backName.Visible = false
+		local face = UI.icon(back, "card_back", 140, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+		face.Size = UDim2.fromScale(1, 1)
+		face.ZIndex = 9
+		if face:IsA("ImageLabel") then
+			face.ScaleType = Enum.ScaleType.Stretch
+		end
+	end
 	back.Visible = false
 	if picked then
 		local grow = Instance.new("UIScale")
 		grow.Scale = 1.06
 		grow.Parent = b
 	end
-	if GUILD then
+	if GUILD and not TRADING then
 		Skin.pushpin(b, UDim2.new(0.5, 0, 0, 2), 18)
 	end
 	UI.clicky(b)
@@ -1118,7 +1247,27 @@ local function reveal(c, line: string, confetti: boolean)
 	pic.Position = UDim2.fromOffset(12, 12)
 	UI.corner(pic, 8)
 	pic.Parent = big
-	UI.text(big, (string.split(c.name, " "))[1], UDim2.new(1, -16, 0, 30), { pos = UDim2.fromOffset(8, 140), stroke = 2.5 })
+	local bigName = UI.text(big, (string.split(c.name, " "))[1], UDim2.new(1, -16, 0, 30), { pos = UDim2.fromOffset(8, 140), stroke = 2.5 })
+	if TRADING then
+		-- the same trading card as in the row, drawn big
+		big.BackgroundTransparency = 1
+		;(big:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		local g = big:FindFirstChildOfClass("UIGradient")
+		if g then
+			g.Enabled = false
+		end
+		bigName.Visible = false
+		local _, ins = cardFrame(big, c.rarity, 174, 240)
+		local picH = math.floor((240 - ins[2] - ins[4]) * 0.66)
+		pic.Size = UDim2.new(1, -(ins[1] + ins[3]), 0, picH)
+		pic.Position = UDim2.fromOffset(ins[1], ins[2])
+		UI.stroke(pic, 3, Color3.fromRGB(58, 32, 14))
+		nameRibbon(big, c.name, c.rarity, 196, 60, UDim2.fromOffset(87, ins[2] + picH), 2)
+		local label = UI.text(big, string.upper(c.rarity), UDim2.new(1, -30, 0, 18), { pos = UDim2.fromOffset(15, ins[2] + picH + 30), color = rarityInk(c.rarity), stroke = 0 })
+		;(label:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		label.ZIndex = 2
+		foil(big, 14)
+	end
 	local pop = Instance.new("UIScale")
 	pop.Scale = 0.3
 	pop.Parent = big
@@ -1271,7 +1420,20 @@ function ClassDeal.refresh()
 	artGlow.ImageColor3 = UI.shade(rc, 1.4)
 	cardGlow.ImageColor3 = rc
 	for _, s in stripes do
-		s.Visible = STRIPED[c.rarity] == true and parch == nil
+		s.Visible = STRIPED[c.rarity] == true and parch == nil and not TRADING
+	end
+	if TRADING then
+		if detailRarity ~= c.rarity then
+			detailRarity = c.rarity
+			if detailFrame then
+				detailFrame:Destroy()
+			end
+			detailFrame = cardFrame(detail, c.rarity, 310, 460, 0.34)
+		end
+		detailStroke.Transparency = 1
+		if detRibbon and detRibbon:IsA("ImageLabel") then
+			detRibbon.ImageColor3 = ribbonTint(c.rarity)
+		end
 	end
 	if parch then
 		parch.ImageColor3 = Color3.new(1, 1, 1):Lerp(rc, 0.16)
@@ -1290,7 +1452,7 @@ function ClassDeal.refresh()
 		local v = (c :: any)[s.key]
 		if v and v ~= 0 and n < 5 then -- every stat it has (rarer classes have more of them)
 			n += 1
-			local r = UI.frame({ size = UDim2.new(1, 0, 0, 22), color = if parch then Color3.fromRGB(96, 60, 30) else Color3.fromRGB(14, 10, 30), parent = perkRows, radius = 7, outline = 0, name = "Perk" })
+			local r = UI.frame({ size = UDim2.new(1, 0, 0, 22), color = if parch or TRADING then Color3.fromRGB(96, 60, 30) else Color3.fromRGB(14, 10, 30), parent = perkRows, radius = 7, outline = 0, name = "Perk" })
 			r.BackgroundTransparency = 0.4
 			r.LayoutOrder = n
 			UI.icon(r, STAT_ICON[s.key], 18, UDim2.fromOffset(5, 2))

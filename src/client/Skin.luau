@@ -39,6 +39,16 @@ Skin.FRAMES = {
 	ui_parch = { w = 648, h = 844, slice = Rect.new(110, 110, 540, 735), face = { 80, 80, 72, 75 }, fallback = Color3.fromRGB(244, 230, 198), radius = 14 },
 	ui_chalk = { w = 816, h = 582, slice = Rect.new(180, 130, 690, 470), face = { 160, 110, 108, 92 }, fallback = Color3.fromRGB(36, 54, 46), radius = 14 },
 	ui_page = { w = 816, h = 970, slice = Rect.new(150, 150, 700, 850), face = { 75, 75, 65, 75 }, fallback = Color3.fromRGB(250, 240, 214), radius = 16 },
+	-- (the trading-card pass, 22 Oct 2026: one frame per rarity, the corner ornaments kept whole; the face is the
+	-- cream inside; the name ribbon only stretches the middle of its band)
+	card_common = { w = 680, h = 919, slice = Rect.new(218, 239, 462, 680), face = { 90, 96, 90, 102 }, fallback = Color3.fromRGB(200, 150, 90), radius = 14 },
+	card_uncommon = { w = 596, h = 808, slice = Rect.new(191, 210, 405, 598), face = { 81, 96, 81, 88 }, fallback = Color3.fromRGB(90, 190, 70), radius = 14 },
+	card_rare = { w = 648, h = 852, slice = Rect.new(207, 222, 441, 630), face = { 74, 88, 86, 88 }, fallback = Color3.fromRGB(70, 160, 255), radius = 14 },
+	card_epic = { w = 646, h = 824, slice = Rect.new(207, 214, 439, 610), face = { 86, 86, 86, 87 }, fallback = Color3.fromRGB(170, 90, 255), radius = 14 },
+	card_legendary = { w = 616, h = 821, slice = Rect.new(197, 213, 419, 608), face = { 83, 81, 83, 86 }, fallback = Color3.fromRGB(255, 190, 40), radius = 14 },
+	card_mythic = { w = 665, h = 871, slice = Rect.new(213, 226, 452, 645), face = { 113, 118, 112, 117 }, fallback = Color3.fromRGB(220, 50, 80), radius = 14 },
+	card_secret = { w = 740, h = 935, slice = Rect.new(237, 243, 503, 692), face = { 107, 117, 107, 104 }, fallback = Color3.fromRGB(40, 40, 50), radius = 14 },
+	card_ribbon = { w = 925, h = 290, slice = Rect.new(330, 110, 595, 170), face = { 130, 30, 130, 100 }, fallback = Color3.fromRGB(240, 240, 240), radius = 6 },
 } :: { [string]: FrameDef }
 
 local function artId(key: string): string?

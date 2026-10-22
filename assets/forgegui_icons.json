@@ -367,5 +367,41 @@
  "bg_bush2": {
   "forge": "12e0de2d-a6ca-4cd4-b3a5-8146c12d0db8",
   "roblox": 88864581956464
+ },
+ "card_common": {
+  "forge": "0cf931ea-57ae-4fc6-80d9-b458e7dbc6a9",
+  "roblox": 120915093924437
+ },
+ "card_uncommon": {
+  "forge": "dccb8fcb-5abf-4903-bb83-103b412406d0",
+  "roblox": 100197895726731
+ },
+ "card_rare": {
+  "forge": "76f5c5c6-c114-4273-99bc-ddda80d2f602",
+  "roblox": 128802686007058
+ },
+ "card_epic": {
+  "forge": "8e37c42c-0c5d-4e0f-82b6-9fa22135d010",
+  "roblox": 85191310940879
+ },
+ "card_legendary": {
+  "forge": "43a537f6-bb22-42ea-b4bf-d4df40e6af43",
+  "roblox": 88292456861426
+ },
+ "card_mythic": {
+  "forge": "39a8ef6d-b2b8-4ddc-b326-63a5b0e6169f",
+  "roblox": 125607425649200
+ },
+ "card_secret": {
+  "forge": "c88f5530-1eab-42d1-84d3-7e93b50101ca",
+  "roblox": 83186686031046
+ },
+ "card_ribbon": {
+  "forge": "df0b5c24-c0a7-4bb9-8df4-ca2d7c859d15",
+  "roblox": 79117604874663
+ },
+ "card_back": {
+  "forge": "94434d02-863b-42eb-915a-f1a891b2213d",
+  "roblox": 96310370077693
  }
 }

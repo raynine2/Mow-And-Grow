@@ -131,8 +131,9 @@ end
 
 -- Where an effect is drawn: g = the ground's height under the clump (the generated world has raised terraces,
 -- so heights in the presets are above the ground, not above y = 0), s = how big the clump is (the presets are
--- sized for a small tuft; the big voxel clumps get bigger bursts), r = the clump's radius (its near side).
-type Ctx = { g: number, s: number, r: number }
+-- sized for a small tuft; the big voxel clumps get bigger bursts), r = the clump's radius (its near side), h = its
+-- height (the "crown" anchor drops blades from its top).
+type Ctx = { g: number, s: number, r: number, h: number }
 
 local groundRay = RaycastParams.new()
 groundRay.FilterType = Enum.RaycastFilterType.Exclude
@@ -168,6 +169,9 @@ local function anchorFor(layer: any, pos: Vector3, out: Vector3, ctx: Ctx): CFra
 		at = Vector3.new(pos.X, math.clamp(eyeY - 1.6, g + 1.2, g + 3.2 * sc), pos.Z) + out * reach - right * 0.35
 	elseif layer.at == "top" then
 		at = Vector3.new(pos.X, g + (layer.height or 3.2) * sc, pos.Z)
+	elseif layer.at == "crown" then
+		-- up in the clump's top, a little toward you
+		at = Vector3.new(pos.X, g + ctx.h * (layer.height or 0.8), pos.Z) + out * ctx.r * 0.3
 	elseif layer.at == "point" then
 		-- exactly at `pos` (boss effects pass a point on the boss), raised by `height`
 		at = pos + Vector3.new(0, layer.height or 0, 0)
@@ -374,6 +378,100 @@ local function clippings(layer: any, cf: CFrame, out: Vector3, grass: Color3, co
 				body:Destroy()
 			end
 		end)
+	end
+end
+
+-- Chunks that fly AT you (Chop A Forest's wood chips coming at the camera): blocks of the clump's greens burst
+-- out of the contact point and sail just past your face, spinning, shrinking as they go. Not physics: each one
+-- follows a short arc to a point beside the camera and is gone before it could clip into the view.
+local chunkLive = 0
+local function chunks(layer: any, cf: CFrame, grass: Color3, count: number, sc: number)
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return
+	end
+	local from = cf.Position
+	local tones = { stopColor("grassLight", grass), grass, stopColor("grassDark", grass), stopColor("grassPale", grass) }
+	local list = {}
+	for _ = 1, count do
+		if chunkLive >= 40 then
+			break
+		end
+		chunkLive += 1
+		local p = Instance.new("Part")
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Material = Enum.Material.SmoothPlastic
+		p.Color = tones[math.random(1, #tones)]
+		local s = rand(0.35, 0.75) * (layer.size or 1) * math.sqrt(sc)
+		p.Size = Vector3.new(s, s * rand(0.6, 1), s * rand(0.7, 1.2))
+		p.CFrame = CFrame.new(from) * CFrame.Angles(rand(0, 6), rand(0, 6), rand(0, 6))
+		p.Parent = folder
+		local c = cam.CFrame
+		-- a point beside the camera: off to a side or above/below, a little in front of it
+		local side = if math.random() < 0.5 then -1 else 1
+		local to = c.Position + c.RightVector * side * rand(1.1, 2.6) + c.UpVector * rand(-1.4, 1.1) + c.LookVector * rand(0.6, 1.6)
+		table.insert(list, {
+			part = p,
+			from = from,
+			to = to,
+			lift = rand(0.5, 2.2),
+			time = rand(0.2, 0.36) * (layer.speed or 1),
+			spin = Vector3.new(rand(-14, 14), rand(-14, 14), rand(-14, 14)),
+			size = p.Size,
+			rot = p.CFrame.Rotation,
+		})
+	end
+	local born = os.clock()
+	local conn: RBXScriptConnection
+	conn = RunService.RenderStepped:Connect(function()
+		local age = os.clock() - born
+		local alive = false
+		for _, c in list do
+			if not c.part.Parent then
+				continue
+			end
+			local k = age / c.time
+			if k >= 1 then
+				c.part:Destroy()
+				chunkLive -= 1
+				continue
+			end
+			alive = true
+			local e = 1 - (1 - k) * (1 - k) -- fast out of the clump, easing as it passes you
+			local p = c.from:Lerp(c.to, e) + Vector3.new(0, math.sin(k * math.pi) * c.lift, 0)
+			c.part.CFrame = CFrame.new(p) * c.rot * CFrame.Angles(c.spin.X * age, c.spin.Y * age, c.spin.Z * age)
+			c.part.Size = c.size * (1 - 0.35 * k)
+			c.part.Transparency = if k > 0.7 then (k - 0.7) / 0.3 else 0
+		end
+		if not alive then
+			conn:Disconnect()
+		end
+	end)
+end
+
+-- Slash marks left on the clump where a blade hit it: three white streaks on its face, fading out.
+local function marks(layer: any, cf: CFrame, out: Vector3, sc: number)
+	local face = CFrame.lookAt(cf.Position, cf.Position + out) * CFrame.Angles(0, 0, math.rad(rand(35, 55)))
+	local len = (layer.length or 2.4) * math.sqrt(sc)
+	for i = -1, 1 do
+		local p = Instance.new("Part")
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Material = Enum.Material.Neon
+		p.Color = Color3.fromRGB(255, 255, 240)
+		p.Size = Vector3.new(0.14, len * (1 - math.abs(i) * 0.18), 0.06)
+		p.CFrame = face * CFrame.new(i * 0.42 * math.sqrt(sc), 0, 0.05)
+		p.Transparency = 0.05
+		p.Parent = folder
+		TweenService:Create(p, TweenInfo.new(layer.life or 1.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Transparency = 1, Size = Vector3.new(0.04, p.Size.Y, 0.06) }):Play()
+		Debris:AddItem(p, (layer.life or 1.1) + 0.1)
 	end
 end
 
@@ -681,7 +779,8 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 		r = sc * 1.6
 	end
 	local g = groundAt(pos)
-	local ctx: Ctx = { g = g, s = sc, r = r }
+	local hgt = (m and m:GetAttribute("Height") :: number?) or 6 * sc
+	local ctx: Ctx = { g = g, s = sc, r = r, h = hgt }
 	if preset.pop then
 		pop(preset.pop, pos, style, opts and opts.pop, g)
 	end
@@ -698,6 +797,14 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 		elseif layer.kind == "clippings" then
 			local n = if mine then (layer.mineCount or layer.count) else (layer.otherCount or math.ceil(layer.count / 2))
 			clippings(layer, cf, out, grass, n, sc)
+		elseif layer.kind == "chunks" then
+			if mine then
+				chunks(layer, cf, grass, layer.count or 5, sc)
+			end
+		elseif layer.kind == "marks" then
+			if mine then
+				marks(layer, cf, out, sc)
+			end
 		end
 	end
 	if mine then
@@ -831,21 +938,25 @@ function HitFx.slash(color: Color3?)
 	if not image then
 		return
 	end
-	local img = Instance.new("ImageLabel")
-	img.BackgroundTransparency = 1
-	img.Image = image
-	img.ImageColor3 = color or Color3.new(1, 1, 1)
-	img.AnchorPoint = Vector2.new(0.5, 0.5)
-	img.Position = UDim2.fromScale(0.55 + rand(-0.02, 0.02), 0.55 + rand(-0.02, 0.02))
-	img.Size = UDim2.fromScale(0.42, 0.42)
-	img.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	img.Rotation = rand(-55, -35)
-	img.ImageTransparency = 0
-	img.ZIndex = 5
-	img.Parent = slashLayer
-	local info = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-	TweenService:Create(img, info, { Size = UDim2.fromScale(0.7, 0.7), Rotation = img.Rotation + 22, ImageTransparency = 1 }):Play()
-	Debris:AddItem(img, 0.2)
+	-- a big streak across the whole view along the swing (top right to bottom left), and a fainter echo
+	local angle = rand(-46, -34)
+	for i, alpha in { 0, 0.45 } do
+		local img = Instance.new("ImageLabel")
+		img.BackgroundTransparency = 1
+		img.Image = image
+		img.ImageColor3 = color or Color3.new(1, 1, 1)
+		img.AnchorPoint = Vector2.new(0.5, 0.5)
+		img.Position = UDim2.fromScale(0.56 + (i - 1) * 0.03, 0.5 + (i - 1) * 0.03)
+		img.Size = UDim2.fromScale(0.95, 0.95)
+		img.SizeConstraint = Enum.SizeConstraint.RelativeYY
+		img.Rotation = angle
+		img.ImageTransparency = alpha
+		img.ZIndex = 5
+		img.Parent = slashLayer
+		local info = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		TweenService:Create(img, info, { Size = UDim2.fromScale(1.35, 1.35), Position = img.Position + UDim2.fromScale(-0.05, 0.06), ImageTransparency = 1 }):Play()
+		Debris:AddItem(img, 0.22)
+	end
 end
 
 return HitFx

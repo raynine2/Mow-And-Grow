@@ -25,8 +25,8 @@ root.Name = "ViewModel"
 -- Proportions. The arm and tool pieces below are drawn at their old (big) size and shrunk by HAND / TOOL; the poses
 -- are pulled toward the camera by DIST. A fist ends up ~13 degrees across: clearly there, never in the way, and
 -- close enough that it doesn't dip into grass clumps and walls.
-local HAND = 0.42
-local TOOL = 0.5
+local HAND = 0.55
+local TOOL = 0.62
 local DIST = 0.66
 local function scaled(cf: CFrame, k: number): CFrame
 	return CFrame.new(cf.Position * k) * cf.Rotation
@@ -250,9 +250,10 @@ type ArmSet = { model: Model, right: { BasePart }, left: { BasePart }, char: Mod
 local arms: ArmSet? = nil
 local nextArmBuild = 0
 -- where the shoulders sit relative to the camera: low and a little behind, so the arms come up from the corners
-local SHOULDER_R = Vector3.new(2, -2.5, 0.4)
-local SHOULDER_L = Vector3.new(-2, -2.5, 0.4)
-local ARM_WIDTH = 0.55 -- how thick the arms are in view (studs, at ~2.7 studs away)
+-- (Chop A Forest's arms are chunky and close: they fill the bottom corners and the fists sit low, near the middle)
+local SHOULDER_R = Vector3.new(1.75, -2.7, 0.2)
+local SHOULDER_L = Vector3.new(-1.75, -2.7, 0.2)
+local ARM_WIDTH = 0.82 -- how thick the arms are in view (studs, at ~2.4 studs away)
 local KEEP = { SpecialMesh = true, SurfaceAppearance = true, Decal = true, Texture = true }
 
 local function copyPart(src: Instance): BasePart?
@@ -401,8 +402,8 @@ end
 -- fists a little further off and tipped up, so you see the knuckles and the forearms run down to the screen's
 -- bottom corners (like Chop A Forest), not the flat tops of the forearms
 -- (with the real arms only the position matters: the arm points from the shoulder at it)
-local REST_R = scaled(CFrame.new(1.55, -1.45, -4.1) * CFrame.Angles(math.rad(24), math.rad(14), 0), DIST)
-local REST_L = scaled(CFrame.new(-1.6, -1.55, -4.2) * CFrame.Angles(math.rad(20), math.rad(-14), 0), DIST)
+local REST_R = scaled(CFrame.new(1.2, -1.6, -3.6) * CFrame.Angles(math.rad(24), math.rad(14), 0), DIST)
+local REST_L = scaled(CFrame.new(-1.25, -1.65, -3.65) * CFrame.Angles(math.rad(20), math.rad(-14), 0), DIST)
 local PUSH_R = scaled(CFrame.new(1.25, -1.7, -2.6) * CFrame.Angles(math.rad(-25), 0, 0), DIST)
 local PUSH_L = scaled(CFrame.new(-1.25, -1.7, -2.6) * CFrame.Angles(math.rad(-25), 0, 0), DIST)
 local TWO_HANDED = { PushMower = true, LaserMower = true, WeedWhacker = true, MegaScythe = true }
@@ -516,19 +517,25 @@ local function placeHand(model: Model?, pieces: { Piece }, cf: CFrame)
 	end
 end
 
--- swing curve: wind up, chop down and across, recover
+-- swing curve, like Chop A Forest's: cock the tool high on the right, then whip it down and right across the
+-- screen to the lower left (speeding up into the hit at t = 0.34, HitFx's STRIKE_DELAY / SWING_TIME), hang there a
+-- beat, and come back.
+local SWING_WIND = CFrame.new(0.55, 0.85, 0.45) * CFrame.Angles(math.rad(48), math.rad(-14), math.rad(18))
+local SWING_HIT = CFrame.new(-1.15, -0.55, -0.7) * CFrame.Angles(math.rad(-58), math.rad(30), math.rad(-34))
+local SWING_END = CFrame.new(-1.6, -0.95, -0.55) * CFrame.Angles(math.rad(-72), math.rad(38), math.rad(-42))
 local function swingOffset(t: number): CFrame
-	if t < 0.25 then
-		local k = t / 0.25
-		return CFrame.new(0.2 * k, 0.5 * k, 0.3 * k) * CFrame.Angles(math.rad(35 * k), math.rad(-10 * k), 0)
-	elseif t < 0.5 then
-		local k = (t - 0.25) / 0.25
-		return CFrame.new(0.2 - 1.2 * k, 0.5 - 1.3 * k, 0.3 - 1 * k) * CFrame.Angles(math.rad(35 - 95 * k), math.rad(-10 + 30 * k), math.rad(-25 * k))
-	else
-		local k = (t - 0.5) / 0.5
-		local e = 1 - (1 - k) * (1 - k)
-		return CFrame.new(-1 * (1 - e), -0.8 * (1 - e), -0.7 * (1 - e)) * CFrame.Angles(math.rad(-60 * (1 - e)), math.rad(20 * (1 - e)), math.rad(-25 * (1 - e)))
+	if t < 0.2 then
+		local k = t / 0.2
+		return CFrame.new():Lerp(SWING_WIND, 1 - (1 - k) * (1 - k))
+	elseif t < 0.34 then
+		local k = (t - 0.2) / 0.14
+		return SWING_WIND:Lerp(SWING_HIT, k * k)
+	elseif t < 0.46 then
+		local k = (t - 0.34) / 0.12
+		return SWING_HIT:Lerp(SWING_END, 1 - (1 - k) * (1 - k))
 	end
+	local k = (t - 0.46) / 0.54
+	return SWING_END:Lerp(CFrame.new(), k * k * (3 - 2 * k))
 end
 
 RunService.RenderStepped:Connect(function()

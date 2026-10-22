@@ -312,8 +312,8 @@ handlers.cut = function(d)
 		(Fx :: any).hideHp()
 		if m.color and (d.mut or "None") ~= "None" then
 			Fx.popWord(d.pos, (m.id or d.mut):upper() .. "!", m.color)
-		else
-			Fx.popWord(d.pos, "MOWED!", Color3.fromRGB(255, 196, 60))
+		elseif not d.timber then
+			Fx.popWord(d.pos, "MOWED!", Color3.fromRGB(255, 196, 60)) -- (a felled clump already got its TIMBER!)
 		end
 		State.emit("bundleGained", d.pos, d.mut)
 		local now = os.clock()
@@ -341,13 +341,16 @@ handlers.fell = function(d)
 	local radius = m and m:IsA("Model") and m:GetAttribute("Radius") :: number?
 	local scale = if radius then radius / 1.6 else nil
 	local function impact(popModel: Model?)
-		handlers.cut({ pos = land, color = d.color, mut = d.mut, z = d.z, by = d.by, scale = scale, model = popModel })
+		handlers.cut({ pos = land, color = d.color, mut = d.mut, z = d.z, by = d.by, scale = scale, model = popModel, timber = true })
 		if near(land, 90) then
 			Fx.shake(if d.by == player.UserId then 1.2 else 0.25, 0.25)
 		end
 	end
 	if d.by == player.UserId then
 		Sound.play("fellCrunch", 0.08) -- the stems giving way as it starts to go
+		-- TIMBER! over the clump as it goes (Chop A Forest's call)
+		local h = (m and m:IsA("Model") and m:GetAttribute("Height") :: number?) or d.height or 6
+		Fx.popWord((d.pos :: Vector3) + Vector3.new(0, math.min(h * 0.55, 8), 0), "TIMBER!", Color3.fromRGB(255, 176, 50))
 	end
 	if not (m and m.Parent and m:IsA("Model")) then
 		task.delay(T, impact)

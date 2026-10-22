@@ -91,7 +91,8 @@ end)
 -- camera feel: the one owner of the field of view and the camera offset
 --   - a wider view in a run (first person 82, third person 74; the lobby keeps 70) that opens up a little more
 --     the faster you go (sprinting, mowers);
---   - first person: a figure-eight head bob while walking, a dip when you land, a slight lean when strafing;
+--   - first person: a very light head bob while walking and a small dip when you land; no lean (Chop A Forest's
+--     view stays steady and leaves the motion to the arms and the effects);
 --   - kicks (hits) and shakes (slams, gates) are asked for here, never written straight to the camera.
 -------------------------------------------------------------------------------------------------------------
 -- Chop A Forest keeps the default 70 in first person too; a wider view made the fists and tools look small
@@ -147,7 +148,7 @@ local function hookLanding(char: Model)
 		if new == Enum.HumanoidStateType.Freefall then
 			fallSpeed = 0
 		elseif new == Enum.HumanoidStateType.Landed then
-			landDip = math.clamp(fallSpeed / 120, 0.08, 0.45)
+			landDip = math.clamp(fallSpeed / 160, 0.04, 0.3)
 		end
 	end)
 	local conn = RunService.Heartbeat:Connect(function()
@@ -193,9 +194,9 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 	if walk > 0.05 then
 		bobPhase += dt * (5.5 + speed * 0.3)
 	end
-	local bobX = math.sin(bobPhase) * 0.06 * walk
-	local bobY = math.cos(bobPhase * 2) * 0.07 * walk
-	landDip *= math.exp(-dt * 7)
+	local bobX = math.sin(bobPhase) * 0.02 * walk
+	local bobY = math.cos(bobPhase * 2) * 0.03 * walk
+	landDip *= math.exp(-dt * 9)
 	local sx, sy = 0, 0
 	local left = shakeUntil - os.clock()
 	if left > 0 then
@@ -208,7 +209,8 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 
 	-- a slight lean into strafes and with the steps (first person only)
 	local lateral = flat:Dot(cam.CFrame.RightVector)
-	local targetRoll = if first then math.clamp(-lateral * 0.0028, -0.05, 0.05) + math.sin(bobPhase) * 0.006 * walk else 0
+	local targetRoll = 0 -- no lean: a steady view like Chop A Forest's
+	local _ = lateral
 	rollNow += (targetRoll - rollNow) * math.min(1, dt * 8)
 	if math.abs(rollNow) > 1e-4 then
 		cam.CFrame = cam.CFrame * CFrame.Angles(0, 0, rollNow)

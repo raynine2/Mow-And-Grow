@@ -30,7 +30,8 @@ For the next person (and their Claude) picking this up. Read `CLAUDE.md` first f
 
 | Commit | What |
 |---|---|
-| _this commit_ | **Loading screen at golden hour** (the owner found the simple version bland and picked this one): same layout as the simple version, but a warm sunset sky (deep blue at the top to peach and gold at the horizon), a bigger low sun right of the logo with soft turning rays (`ui_rays`) and a warm halo, warm-tinted hills, a small windmill on the far hills, a big tree framing each side and a flower bush in each bottom corner, all warmed by the evening light. Logo, bar, text and face are unchanged. **Not tested in Studio yet.** |
+| _this commit_ | **Studio sync + rescue.** Themed screens and the golden-hour loading screen are now in Studio and checked in a play test; the Studio-only mowing effects (`MowFx`, `Client`, `Tools`, `ViewModel`) are now in git. Studio and the branch match exactly (see "Studio vs. git"). |
+| `a00b054` | **Loading screen at golden hour** (the owner found the simple version bland and picked this one): same layout as the simple version, but a warm sunset sky (deep blue at the top to peach and gold at the horizon), a bigger low sun right of the logo with soft turning rays (`ui_rays`) and a warm halo, warm-tinted hills, a small windmill on the far hills, a big tree framing each side and a flower bush in each bottom corner, all warmed by the evening light. Logo, bar, text and face are unchanged. Tested in Studio (see the sync row above). |
 | `810daf5` | **Loading screen simplified** (the owner: the illustrated version was too busy): only the sky, the sun in its halo, three drifting clouds, two layers of soft hills (the near ones run to the bottom with faint mowed stripes), the logo on its glow with three sparkles, the wooden mower bar, the % above the mower and one line of text under the bar; your face and name small top left. The windmill, trees, fence, bushes, grass fringe, bar daisies and wooden plates are gone from the screen (their pictures stay uploaded). **Not tested in Studio yet.** |
 | `1e15df3` | **Loading screen rebuilt with illustrated layers** (the owner: the drawn shapes looked sloppy, the bar wasn't good enough). New ForgeGUI pictures in the game's style: `bg_sun bg_cloud bg_cloud2 bg_windmill bg_tree bg_tree2 bg_fence bg_bush bg_bush2`. Back to front: sky gradient, the sun turning in its halo, five clouds drifting at different speeds, outlined far hills with the windmill, near hills with three trees, a picket fence, the striped lawn with a grass fringe, flower bushes in the corners, soft dark edges. **The bar** is now the HUD's wooden groove (`ui_bar`, 9-sliced): mowed stripes with a gloss fill it, tall grass grows up out of the rest, the mower rides the edge throwing clippings, the % sits on a wooden plate (`ui_plate`) above it, daisies on both ends; the tip line sits on a wide wooden plate; your face and name moved top left. **Not tested in Studio yet.** Three jobs (near hills, a bar frame, a sign board) were still running and weren't used. |
 | `57c05a6` | **Loading screen background drawn in code** (the owner: the meadow painting looked like a generic AI picture): a cartoon countryside in the UI's own style, flat shapes with the dark-brown outline (each layer drawn as an ink copy under the colour, so overlapping shapes share one outline): sky gradient, sun with a soft halo, four puffy clouds drifting right, far and near rolling hills, four round trees, a mowed lawn in stripes with a grass fringe. Laid out on a 1280 x 720 world scaled to cover any screen. `scene_lawn` is no longer used here (still used by the party window's map card and journal photo). `LoadingScreen.dim` is now a no-op. **Not tested in Studio yet.** |
@@ -99,10 +100,17 @@ and was playtested there with no script errors.
 
 ## Studio vs. git: please read
 
-**State on 22 Oct, late evening: the themed-screens commit (after `0b9b025`) is NOT in Studio yet.** It changes
-`Skin`, `UI`, `Windows`, `PetsWindow`, `ClassDeal`, `PartyWindow`, `Config` and `IconIds`; the loading-screen
-commit after it changes `shared/LoadingScreen`, `first/Loading.client` and `client/Loading`. Sync it (checksum Studio
-against `0b9b025` first, back up) before testing.
+**State on 22 Oct, night (this commit): Studio and the branch match exactly.** All 180 scripts were checked
+byte-for-byte against the branch (FxPresets by its data, since Rojo turns the JSON into a script).
+- **Synced in:** the themed screens and the golden-hour loading screen (Skin, UI, Windows, PetsWindow, ClassDeal,
+  PartyWindow, Config, IconIds, shared/LoadingScreen, first/Loading.client, client/Loading). Each was checked against
+  `feaee41` before writing and byte-for-byte after. Backup: `ServerStorage.MowALawnBackups.pre_themed_loading_22oct`.
+- **Rescued into git:** Studio-only mowing-effects work (backup `pre_mowVfx_20261022`): the new `client/MowFx`
+  (lawn stripes, side chute, soft rings, reaper wisps), `Client` requiring it, the Mega Scythe reaper grip and trail
+  in `server/Tools`, and the first-person push mower in `ViewModel`. It needs `ReplicatedStorage.VFXLib`, which
+  lives only in the place (Rojo leaves it alone).
+- **Tested** in a Studio play: the loading screen, Pets, Eggs, Classes, Saved Runs (lobby) and Upgrades (run). No
+  script errors. The owner still has to press Ctrl+S.
 
 **State on 22 Oct, evening (after `feaee41`): synced.** Every script changed by the UI remake was checked against
 git before each sync and checked byte-for-byte after it, so Studio matches the branch. (The earlier note that the

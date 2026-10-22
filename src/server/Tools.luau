@@ -63,7 +63,29 @@ local function buildModel(tool: Tool, def)
 		piece(tool, handle, Vector3.new(2.6, 0.1, 0.2), CFrame.new(0, -2.6, -4.3), Color3.fromRGB(255, 255, 255))
 	elseif def.id == "MegaScythe" then
 		piece(tool, handle, Vector3.new(0.3, 0.3, 5), CFrame.new(0, 0, -2.6), Color3.fromRGB(70, 50, 90))
-		piece(tool, handle, Vector3.new(0.2, 0.6, 3.6), CFrame.new(1.6, 0, -5) * CFrame.Angles(0, math.rad(-80), 0), c, true)
+		local blade = piece(tool, handle, Vector3.new(0.2, 0.6, 3.6), CFrame.new(1.6, 0, -5) * CFrame.Angles(0, math.rad(-80), 0), c, true)
+		-- held like the Grim Reaper: the shaft stands straight up out of the fist (a third of the way up it), the
+		-- blade hooked forward over your head
+		tool.Grip = CFrame.Angles(0, 0, math.rad(-90)) * CFrame.new(0, 0, 1.2) * CFrame.Angles(math.rad(-80), 0, 0)
+		-- a soft violet streak off the blade, only while it swings (Tools.slash turns it on)
+		local a0 = Instance.new("Attachment")
+		a0.Position = Vector3.new(0, 0, 1.7)
+		a0.Parent = blade
+		local a1 = Instance.new("Attachment")
+		a1.Position = Vector3.new(0, 0, -1.7)
+		a1.Parent = blade
+		local trail = Instance.new("Trail")
+		trail.Name = "ReapTrail"
+		trail.Attachment0 = a0
+		trail.Attachment1 = a1
+		trail.Lifetime = 0.2
+		trail.LightEmission = 0.7
+		trail.LightInfluence = 0
+		trail.Color = ColorSequence.new(Color3.fromRGB(235, 200, 255), Color3.fromRGB(150, 80, 255))
+		trail.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
+		trail.FaceCamera = true
+		trail.Enabled = false
+		trail.Parent = blade
 	end
 end
 
@@ -255,6 +277,13 @@ end
 
 -- Play the default "slash" arm swing (the stock Animate script listens for this).
 function Tools.slash(tool: Tool)
+	local trail = tool:FindFirstChild("ReapTrail", true) :: Trail?
+	if trail then
+		trail.Enabled = true
+		task.delay(0.4, function()
+			trail.Enabled = false
+		end)
+	end
 	local v = Instance.new("StringValue")
 	v.Name = "toolanim"
 	v.Value = "Slash"

@@ -13,6 +13,7 @@ require(modules:WaitForChild("NightGun")) -- boss guns, day/night, crawlers, Pea
 require(modules:WaitForChild("ViewModel"))
 require(modules:WaitForChild("Soundscape")) -- footsteps, birds and breeze
 require(modules:WaitForChild("Fx"))
+require(modules:WaitForChild("MowFx")) -- lawn stripes behind mowers, the clippings chute, soft rings, reaper wisps
 require(modules:WaitForChild("Input"))
 require(modules:WaitForChild("Guide"))
 require(modules:WaitForChild("SellPointer")) -- bag full: an arrow beside you pointing to the nearest sell spot

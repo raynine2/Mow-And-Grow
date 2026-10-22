@@ -212,6 +212,92 @@ local function modelFor(id: string?): Model?
 	return heldModel
 end
 
+-- First-person push mower: Roblox fades your whole character out in first person, mower included, so you'd push
+-- thin air. Instead a local copy of the mower you're pushing (server/Tools puts it on the character) rides low in
+-- front of the view, its push bar in your fists. Its grip (the top of the bar) is found from its shape, so the
+-- Blender mower and the brick fallback both line up.
+local PUSH_SCALE = 0.42
+local PUSH_TILT = math.rad(38) -- nose tipped up a little, so you look down onto the deck
+type PushCopy = { model: Model, src: Instance, grip: Vector3, width: number }
+local push: PushCopy? = nil
+
+local function pushCopyFor(char: Model): PushCopy?
+	local src = char:FindFirstChild("PushMowerModel")
+	if push and push.src == src and push.model.Parent then
+		return push
+	end
+	if push then
+		push.model:Destroy()
+		push = nil
+	end
+	if not (src and src:IsA("Model")) then
+		return nil
+	end
+	local was = src.Archivable
+	src.Archivable = true
+	local m = src:Clone()
+	src.Archivable = was
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.CastShadow = false
+			d.LocalTransparencyModifier = 0
+			d:SetAttribute("VT", d.Transparency)
+		elseif d:IsA("Constraint") or d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("LuaSourceContainer") then
+			d:Destroy()
+		end
+	end
+	m:ScaleTo(m:GetScale() * (root:GetAttribute("PushScale") :: number? or PUSH_SCALE))
+	-- the grip: the highest point of the mower (the top of its push bar), and how wide the bar is up there
+	local piv = m:GetPivot()
+	local corners: { Vector3 } = {}
+	local topY = -math.huge
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") and (d:GetAttribute("VT") :: number) < 1 then
+			local h = d.Size / 2
+			for _, sx in { -1, 1 } do
+				for _, sy in { -1, 1 } do
+					for _, sz in { -1, 1 } do
+						local c = piv:PointToObjectSpace(d.CFrame:PointToWorldSpace(Vector3.new(h.X * sx, h.Y * sy, h.Z * sz)))
+						table.insert(corners, c)
+						topY = math.max(topY, c.Y)
+					end
+				end
+			end
+		end
+	end
+	local zSum, n, xMin, xMax = 0, 0, math.huge, -math.huge
+	for _, c in corners do
+		if c.Y > topY - 0.35 then
+			zSum += c.Z
+			n += 1
+			xMin = math.min(xMin, c.X)
+			xMax = math.max(xMax, c.X)
+		end
+	end
+	if n == 0 then
+		m:Destroy()
+		return nil
+	end
+	m.Parent = root
+	push = { model = m, src = src, grip = Vector3.new((xMin + xMax) / 2, topY - 0.12, zSum / n), width = math.max(0.6, xMax - xMin) }
+	return push
+end
+
+local function showPush(p: PushCopy?, visible: boolean)
+	if not p then
+		return
+	end
+	for _, d in p.model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Transparency = if visible then (d:GetAttribute("VT") :: number? or 0) else 1
+		end
+	end
+end
+
 -- Blender gardening-glove hands (hand_right / hand_left), when uploaded, replace the brick arms. Their origin is
 -- the grip in the fist, the same spot as the brick glove's centre. The server loads models after the client
 -- starts, so keep looking until they're there.
@@ -492,6 +578,10 @@ local function hideAll()
 			p.Transparency = 1
 		end
 	end
+	if push then
+		push.model:Destroy()
+		push = nil
+	end
 end
 
 local function place(pieces: { Piece }, base: CFrame)
@@ -598,9 +688,35 @@ RunService.RenderStepped:Connect(function()
 	local swing = if st >= 0 and st <= 1 and not auto then scaled(swingOffset(st), DIST) * recoil else CFrame.new()
 
 	local rightCf, leftCf
-	if id == "PushMower" or id == "LaserMower" then
+	local pushing = if id == "PushMower" or id == "LaserMower" then pushCopyFor(char) else nil
+	if not pushing and push then
+		push.model:Destroy()
+		push = nil
+	end
+	if pushing then
+		-- the mower rides low in front of you, its bar between the fists; it rumbles while it runs and rocks with
+		-- your steps
+		-- (attributes on the ViewModel model override these, for tuning in a playtest)
+		local hands = base * scaled(CFrame.new(0, root:GetAttribute("PushY") :: number? or -2.5, root:GetAttribute("PushZ") :: number? or -3.6), DIST) * buzz
+		local rock = CFrame.Angles(math.sin(stepPhase * 2) * 0.015 * walk, 0, math.sin(stepPhase) * 0.02 * walk)
+		local gripCf = CFrame.new(hands.Position) * cam.CFrame.Rotation * rock * CFrame.Angles(math.rad(root:GetAttribute("PushTilt") :: number? or math.deg(PUSH_TILT)), 0, 0)
+		pushing.model:PivotTo(gripCf * CFrame.new(-pushing.grip))
+		showPush(pushing, true)
+		local half = math.min(pushing.width * 0.42, 0.75)
+		rightCf = gripCf * CFrame.new(half, 0, 0)
+		leftCf = gripCf * CFrame.new(-half, 0, 0)
+	elseif id == "PushMower" or id == "LaserMower" then
 		rightCf = base * PUSH_R * buzz
 		leftCf = base * PUSH_L * buzz
+	elseif id == "MegaScythe" then
+		-- the reaper's grip: one fist low on the right, the shaft standing up past it and the blade hooked over the
+		-- top of the view; a swing whips the whole scythe down and across (the swing turns it about the fist)
+		local tilt = root:GetAttribute("ReaperTilt") :: number? or 36
+		local reaperPos = scaled(CFrame.new(root:GetAttribute("ReaperX") :: number? or 1.15, root:GetAttribute("ReaperY") :: number? or -1.9, -3.2), DIST)
+		local reaperRot = CFrame.Angles(math.rad(tilt), math.rad(-8), math.rad(root:GetAttribute("ReaperRoll") :: number? or 34))
+		local sway = CFrame.Angles(0, 0, math.sin(t * 1.3) * 0.02)
+		rightCf = base * reaperPos * swing * reaperRot * sway
+		leftCf = base * REST_L * scaled(guardOffset(math.clamp(st, 0, 1), -1), DIST)
 	elseif twoHanded then
 		rightCf = base * REST_R * swing * buzz
 		leftCf = rightCf * CFrame.new(-1.3 * DIST, -0.2 * DIST, 0.9 * DIST)
@@ -649,7 +765,7 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 	for toolId, pieces in tools do
-		if toolId == id and not held then
+		if toolId == id and not held and not pushing then
 			local grip = if id == "PushMower" or id == "LaserMower" then rightCf * CFrame.new(0, 0, -0.1 * HAND) else rightCf * CFrame.new(0, 0, -0.3 * HAND)
 			for _, pc in pieces do
 				local cf = grip * pc.offset

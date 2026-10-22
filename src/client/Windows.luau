@@ -409,6 +409,7 @@ end
 -- REWARDS (lobby): daily + group, like the GROUP REWARD board
 -------------------------------------------------------------------------------------------------------------
 local rewards = UI.popupWindow("Rewards", "Free Rewards", "Come back every day for bigger rewards!")
+rewards.frame.Size = UDim2.fromOffset(500, 620) -- room for the calendar, the streak line and two rows above the button
 
 -- The 7-day ladder (server/Daily): claimed days ticked, today's glowing, the rest waiting; day 7 is the big one.
 local function dayCard(parent: Instance, i: number, gems: number, state: string, size: Vector2, pos: Vector2)

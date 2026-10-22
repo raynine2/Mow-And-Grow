@@ -403,5 +403,85 @@
  "card_back": {
   "forge": "94434d02-863b-42eb-915a-f1a891b2213d",
   "roblox": 96310370077693
+ },
+ "cc_Gardener": {
+  "forge": "2a1412fc-e7b7-4688-ad19-62437d888c53",
+  "roblox": 119563979767021
+ },
+ "cw_Gardener": {
+  "forge": "5a28137a-c2d9-4caa-b0b1-2c076e3ecd11",
+  "roblox": 91884373684099
+ },
+ "cc_GoatMan": {
+  "forge": "afe4974e-2a41-4d50-bda5-78ef86d3c81a",
+  "roblox": 130376940252425
+ },
+ "cw_GoatMan": {
+  "forge": "eee93332-d648-4926-8734-b54cfe838ceb",
+  "roblox": 83416260800203
+ },
+ "cc_GrassTitan": {
+  "forge": "8b4e504d-0dbd-4eea-b7ba-7f1737f1716c",
+  "roblox": 104133228855636
+ },
+ "cw_GrassTitan": {
+  "forge": "f37205ca-3cdf-41be-857c-4f63a67200e6",
+  "roblox": 89755146369833
+ },
+ "cc_Groundskeeper": {
+  "forge": "e7c9b4eb-66a3-4ec8-894c-c995539159d8",
+  "roblox": 86794180383864
+ },
+ "cw_Groundskeeper": {
+  "forge": "57cbff95-b247-4eb3-a273-547a2ee23eae",
+  "roblox": 96046994820537
+ },
+ "cc_HedgeReaper": {
+  "forge": "fba843ae-b64d-4489-9e9d-652c271bbc86",
+  "roblox": 106002626343713
+ },
+ "cw_HedgeReaper": {
+  "forge": "729d2705-773d-4fb9-b0ae-54a1078ff647",
+  "roblox": 79996580308322
+ },
+ "cc_LawnBaron": {
+  "forge": "f3ef8900-d54f-49b4-a5a6-4106e5e8f734",
+  "roblox": 108094943359467
+ },
+ "cw_LawnBaron": {
+  "forge": "8b7baa1b-dee7-4c8e-9168-ac9b87198a85",
+  "roblox": 104662955892591
+ },
+ "cc_LawnLegend": {
+  "forge": "d0dca9d6-693f-4c73-802e-a5cfbfb5e1f9",
+  "roblox": 140208081724239
+ },
+ "cw_LawnLegend": {
+  "forge": "d0ccc5fc-c9c9-4e7b-be3a-4caa3e69f093",
+  "roblox": 96011495938957
+ },
+ "cc_MowerSpecialist": {
+  "forge": "601b0d5a-92b9-42e8-9dc3-02036fc66282",
+  "roblox": 76408160337747
+ },
+ "cw_MowerSpecialist": {
+  "forge": "17e1af9a-de61-4209-83c1-ec1a8a252cc9",
+  "roblox": 116537268477766
+ },
+ "cc_UltimateGardener": {
+  "forge": "d501e1f7-6422-45ea-bf5a-78e70fb535e5",
+  "roblox": 101492414600502
+ },
+ "cw_UltimateGardener": {
+  "forge": "caf47679-1f54-41cf-9c01-c24253804550",
+  "roblox": 139930533915861
+ },
+ "cc_WeedPuller": {
+  "forge": "627c4675-25e0-4c94-aa18-130a96d06de3",
+  "roblox": 91849072052245
+ },
+ "cw_WeedPuller": {
+  "forge": "89878096-1b88-4097-a2c7-37533917b97c",
+  "roblox": 73831556962991
  }
 }

@@ -214,23 +214,21 @@ local function nameRibbon(parent: Instance, text: string, rarity: string, w: num
 	local t = UI.text(face, text, UDim2.fromScale(1, 1), { stroke = stroke or 1.5, name = "Name" })
 	return r, t
 end
--- dress a card picture: an ink outline, a soft shade along its bottom (so the price pill reads) and a glossy
--- highlight over its top-left corner, like light on a printed card
+-- each class's card picture (the trading-card pass, 23 Oct 2026): a tall one for the cards (cc_<Id>, 360 x 480) and a
+-- wide one for the big card and the toast (cw_<Id>, 560 x 290), each the class's emblem on a backdrop in its
+-- rarity colour; the older scene_<Id> pictures stand in while they're missing
+local function cardPic(id: string): string
+	return Config.ICONS["cc_" .. id] or Config.ICONS["scene_" .. id] or ""
+end
+local function widePic(id: string): string
+	return Config.ICONS["cw_" .. id] or Config.ICONS["scene_" .. id] or ""
+end
+-- dress a card picture: an ink outline and a glossy highlight over its top-left corner, like light on a printed card
 local function dressPicture(art: GuiObject, rc: Color3, radius: number)
 	local corner = art:FindFirstChildOfClass("UICorner") or UI.corner(art, radius)
 	;(corner :: UICorner).CornerRadius = UDim.new(0, radius)
 	UI.stroke(art, if radius > 8 then 3 else 2, Color3.fromRGB(58, 32, 14))
-	local shade = Instance.new("Frame")
-	shade.Name = "Shade"
-	shade.BorderSizePixel = 0
-	shade.BackgroundColor3 = UI.shade(rc, 0.25)
-	shade.Size = UDim2.fromScale(1, 1)
-	UI.corner(shade, radius)
-	local sg = Instance.new("UIGradient")
-	sg.Rotation = 90
-	sg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.68, 1), NumberSequenceKeypoint.new(1, 0.5) })
-	sg.Parent = shade
-	shade.Parent = art
+	local _ = rc -- (the card pictures carry their own rarity backdrop and shading)
 	local gloss = Instance.new("Frame")
 	gloss.Name = "Gloss"
 	gloss.BorderSizePixel = 0
@@ -953,7 +951,7 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	local art = Instance.new("ImageLabel")
 	art.Name = "Art"
 	art.BackgroundColor3 = UI.shade(rc, 1.2)
-	art.Image = Config.ICONS["scene_" .. c.id] or ""
+	art.Image = if TRADING then cardPic(c.id) else Config.ICONS["scene_" .. c.id] or ""
 	art.ScaleType = Enum.ScaleType.Crop
 	art.Size = UDim2.new(1, -10, 0, 74)
 	art.Position = UDim2.fromOffset(5, 5)
@@ -967,7 +965,7 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 		local _, nm = nameRibbon(b, c.name, c.rarity, 118, 36, UDim2.fromOffset(52, inset[2] + 4), 1.5)
 		nm.Size = UDim2.new(1, 0, 1, -4)
 		if not inStock and not owned and tab == "stock" then
-			art.ImageColor3 = Color3.fromRGB(150, 150, 150) -- sold out: greyed, but still easy to see
+			art.ImageColor3 = Color3.fromRGB(185, 185, 185) -- sold out: a little darker, but still easy to see
 		end
 	else
 		local nameBar = UI.frame({ size = UDim2.new(1, -12, 0, 24), pos = UDim2.fromOffset(6, 82), color = if GUILD then Color3.fromRGB(60, 36, 16) else Color3.fromRGB(20, 14, 36), parent = b, radius = 6, outline = 0, name = "NameBar" })
@@ -1021,7 +1019,7 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	end
 	if not inStock and not owned and tab == "stock" then
 		local shade = UI.frame({ size = UDim2.fromScale(1, 1), color = if GUILD then Color3.fromRGB(24, 14, 4) else Color3.fromRGB(10, 6, 20), parent = b, radius = 14, outline = 0, name = "Dim" })
-		shade.BackgroundTransparency = if TRADING then 0.75 else 0.45
+		shade.BackgroundTransparency = if TRADING then 0.8 else 0.45
 		shade.ZIndex = 5
 	elseif TRADING and SHINE[c.rarity] then
 		foil(b, 12)
@@ -1198,7 +1196,7 @@ local function stockToast(c)
 	stockToastFrame = f
 	local art = Instance.new("ImageLabel")
 	art.BackgroundColor3 = UI.shade(rc, 0.8)
-	art.Image = Config.ICONS["scene_" .. c.id] or ""
+	art.Image = widePic(c.id)
 	art.ScaleType = Enum.ScaleType.Crop
 	art.Size = UDim2.fromOffset(118, 44)
 	art.Position = UDim2.fromOffset(-6, 4)
@@ -1286,7 +1284,7 @@ local function reveal(c, line: string, confetti: boolean)
 	local pic = Instance.new("ImageLabel")
 	pic.Name = "Art"
 	pic.BackgroundColor3 = UI.shade(rc, 1.2)
-	pic.Image = Config.ICONS["scene_" .. c.id] or ""
+	pic.Image = if TRADING then cardPic(c.id) else Config.ICONS["scene_" .. c.id] or ""
 	pic.ScaleType = Enum.ScaleType.Crop
 	pic.Size = UDim2.new(1, -24, 0, 120)
 	pic.Position = UDim2.fromOffset(12, 12)
@@ -1454,7 +1452,7 @@ function ClassDeal.refresh()
 	local pic = Instance.new("ImageLabel")
 	pic.Name = "Scene"
 	pic.BackgroundTransparency = 1
-	pic.Image = Config.ICONS["scene_" .. c.id] or ""
+	pic.Image = widePic(c.id)
 	pic.ScaleType = Enum.ScaleType.Crop
 	pic.Size = UDim2.fromScale(1, 1)
 	UI.corner(pic, 12)

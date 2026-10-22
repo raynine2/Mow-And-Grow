@@ -614,5 +614,125 @@
   "image": 96310370077693,
   "sha": "dbb6d60c0074430504bc30e670f8e1eb97f68189ccfc2ade20256c5904d093e1",
   "via": "forgegui"
+ },
+ "cc_Gardener": {
+  "id": 119563979767021,
+  "image": 119563979767021,
+  "sha": "9c9cda52f9d98b81323d4fca5d0f064990877366b0a7046ff82e917997cbebc1",
+  "via": "forgegui"
+ },
+ "cw_Gardener": {
+  "id": 91884373684099,
+  "image": 91884373684099,
+  "sha": "91545589fec83aa74b1c48c31c4fe8f652ef65ddf6c408afe106b46988b14304",
+  "via": "forgegui"
+ },
+ "cc_GoatMan": {
+  "id": 130376940252425,
+  "image": 130376940252425,
+  "sha": "5fe88fbf1f5617f1cde0f8bef620d331de95c95da2aa8a27a69178df64484540",
+  "via": "forgegui"
+ },
+ "cw_GoatMan": {
+  "id": 83416260800203,
+  "image": 83416260800203,
+  "sha": "dc20f8eb1b3421e7bba246d34b7e2bee0764b6e2decabbee5da0e53691d92ef2",
+  "via": "forgegui"
+ },
+ "cc_GrassTitan": {
+  "id": 104133228855636,
+  "image": 104133228855636,
+  "sha": "f219c2052c212dae41e6465768c595c2ad08e9cf62bfdc474cdf3e1388b2b1b0",
+  "via": "forgegui"
+ },
+ "cw_GrassTitan": {
+  "id": 89755146369833,
+  "image": 89755146369833,
+  "sha": "f24e10ac1fb02432c7d46b22f68021a3ccfd27b8afabe80ea488502656384eb7",
+  "via": "forgegui"
+ },
+ "cc_Groundskeeper": {
+  "id": 86794180383864,
+  "image": 86794180383864,
+  "sha": "4b2d86cc86bb5c6bd04e99bce801916f035edf93a689715a65e28184675a0238",
+  "via": "forgegui"
+ },
+ "cw_Groundskeeper": {
+  "id": 96046994820537,
+  "image": 96046994820537,
+  "sha": "909aec5157dd59631daa83811f50e78470f0787308ebeacc465b33e2f7ce64d5",
+  "via": "forgegui"
+ },
+ "cc_HedgeReaper": {
+  "id": 106002626343713,
+  "image": 106002626343713,
+  "sha": "d76965c0a9cc525b200c502642f7a56565bffef740d9191764e50c5da8faebd5",
+  "via": "forgegui"
+ },
+ "cw_HedgeReaper": {
+  "id": 79996580308322,
+  "image": 79996580308322,
+  "sha": "a644bea78df8a4c9ad0fdd2b037aff205648a27a95fd64e5eba2a7ee39d7ddb7",
+  "via": "forgegui"
+ },
+ "cc_LawnBaron": {
+  "id": 108094943359467,
+  "image": 108094943359467,
+  "sha": "ddbfe6755d61787f1085e54535e3f19c88cd1a6b928f3624218b6de0a2150b86",
+  "via": "forgegui"
+ },
+ "cw_LawnBaron": {
+  "id": 104662955892591,
+  "image": 104662955892591,
+  "sha": "fde226ceef72a587099ab2e1c2392da10d05b135c4d9440a1ba276d23ed38756",
+  "via": "forgegui"
+ },
+ "cc_LawnLegend": {
+  "id": 140208081724239,
+  "image": 140208081724239,
+  "sha": "89668030b11c33c1221dc919aab91f8137fcabfa2d0f28ba560d99afdf986f27",
+  "via": "forgegui"
+ },
+ "cw_LawnLegend": {
+  "id": 96011495938957,
+  "image": 96011495938957,
+  "sha": "0b7a2dd2ec34fd22344823b32842aa303afe0e3ac73f712c08d790ecb8d39e37",
+  "via": "forgegui"
+ },
+ "cc_MowerSpecialist": {
+  "id": 76408160337747,
+  "image": 76408160337747,
+  "sha": "b4b7a1069c97a1b7b232f26de0e01021cfde8ba292d5edf82b556ae6f300171a",
+  "via": "forgegui"
+ },
+ "cw_MowerSpecialist": {
+  "id": 116537268477766,
+  "image": 116537268477766,
+  "sha": "a14080b485b211fbfe1aaeaf7cd4234c7bf752d63455d3a91b03e027c8d57c76",
+  "via": "forgegui"
+ },
+ "cc_UltimateGardener": {
+  "id": 101492414600502,
+  "image": 101492414600502,
+  "sha": "f09a4be7f44a575fd336a643829da9d728f5af8b7071545d3b5223dcfcb559ae",
+  "via": "forgegui"
+ },
+ "cw_UltimateGardener": {
+  "id": 139930533915861,
+  "image": 139930533915861,
+  "sha": "e0c8026299d108d79d447253144bcbd44259405b297135f6c0a39f6502ba0792",
+  "via": "forgegui"
+ },
+ "cc_WeedPuller": {
+  "id": 91849072052245,
+  "image": 91849072052245,
+  "sha": "b057331983db0122f33bf61f4364d0117ba800b70924c9fced6dd624b718e211",
+  "via": "forgegui"
+ },
+ "cw_WeedPuller": {
+  "id": 73831556962991,
+  "image": 73831556962991,
+  "sha": "c661a4b89464945784febf89299d542ce2534156295652e29c6e10b062fbc0f4",
+  "via": "forgegui"
  }
 }

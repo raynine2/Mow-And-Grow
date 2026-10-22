@@ -542,11 +542,11 @@ glass(vs, Color3.fromRGB(46, 28, 104), Color3.fromRGB(12, 8, 34), 14)
 energyRim(vs, 4)
 corkBoard(vs, 360, 272, 0.2)
 if GUILD then
-	Skin.pushpin(vs, UDim2.new(0.5, 0, 0, 8), 30)
+	Skin.pushpin(vs, UDim2.new(1, -24, 0, 16), 30) -- (in the corner, clear of the title)
 end
 shrink(vs, 0.667)
 slideFrom(vs, "left")
-UI.text(vs, "VS YOUR CLASS", UDim2.fromOffset(240, 28), { pos = UDim2.fromOffset(16, 10), align = Enum.TextXAlignment.Left, color = GOLD, stroke = 2 })
+local vsTitle = UI.text(vs, "VS YOUR CLASS", UDim2.fromOffset(240, 28), { pos = UDim2.fromOffset(16, 10), align = Enum.TextXAlignment.Left, color = GOLD, stroke = 2 })
 local vsNames = UI.text(vs, "", UDim2.new(1, -32, 0, 18), { pos = UDim2.fromOffset(16, 38), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(190, 180, 220), stroke = 1 })
 local vsRows = Instance.new("Frame")
 vsRows.BackgroundTransparency = 1
@@ -559,6 +559,19 @@ vsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 vsLayout.Parent = vsRows
 local vsQuote = UI.text(vs, "", UDim2.new(1, -32, 0, 30), { pos = UDim2.fromOffset(16, 236), align = Enum.TextXAlignment.Left, stroke = 1.5, textSize = 14 })
 vsQuote.Font = Enum.Font.FredokaOne
+if GUILD and Skin.has("ui_cork") then
+	-- everything inside the cork, clear of the wooden rim (it overlapped the rim before)
+	vsTitle.Position = UDim2.fromOffset(28, 24)
+	vsTitle.Size = UDim2.fromOffset(220, 26)
+	vsNames.Position = UDim2.fromOffset(28, 50)
+	vsNames.Size = UDim2.new(1, -56, 0, 16)
+	vsRows.Position = UDim2.fromOffset(26, 72)
+	vsRows.Size = UDim2.new(1, -52, 0, 150)
+	vsLayout.Padding = UDim.new(0, 2)
+	vsQuote.Position = UDim2.fromOffset(28, 226)
+	vsQuote.Size = UDim2.new(1, -56, 0, 24)
+	vsQuote.TextSize = 12
+end
 
 -- RESTOCK / LUCKY RESTOCK: a big glossy button with an icon, a title, a line and a dark Robux chip
 local function restockButton(y: number, color: Color3, title: string, line: string, productKey: string, lucky: boolean): TextButton
@@ -783,21 +796,23 @@ if TRADING then
 		;(t:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
 	end
 	-- the picture gets half again as much room; the quote goes (the VS box shows it), the odds stay
-	artPanel.Size = UDim2.new(1, -40, 0, 140)
-	artPanel.Position = UDim2.fromOffset(20, 102)
-	rarityPill.Position = UDim2.new(0.5, 0, 0, 228)
-	perkRows.Position = UDim2.fromOffset(20, 264)
-	perkRows.Size = UDim2.new(1, -40, 0, 122)
+	artPanel.Size = UDim2.new(1, -44, 0, 128)
+	artPanel.Position = UDim2.fromOffset(22, 102)
+	rarityPill.Position = UDim2.new(0.5, 0, 0, 216)
+	perkRows.Position = UDim2.fromOffset(24, 250)
+	perkRows.Size = UDim2.new(1, -48, 0, 120)
+	perkLayout.Padding = UDim.new(0, 2)
 	detQuote.Visible = false
-	detOdds.Position = UDim2.fromOffset(14, 388)
+	detOdds.Position = UDim2.fromOffset(24, 372)
+	detOdds.Size = UDim2.new(1, -48, 0, 16)
 end
 local gemBtn = UI.button(detail, "BUY", C.purple, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(0, 16, 1, -14), anchor = Vector2.new(0, 1), name = "GemBuy" })
 local robuxBtn = UI.button(detail, "R$ 0", C.green, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(1, -16, 1, -14), anchor = Vector2.new(1, 1), name = "RobuxBuy" })
 if TRADING then
 	-- (a touch slimmer, so the bigger picture and the stats fit above them)
 	for _, btn in { gemBtn, robuxBtn } do
-		btn.Size = UDim2.fromOffset(132, 44)
-		btn.Position = UDim2.new(btn.Position.X.Scale, btn.Position.X.Offset, 1, -10)
+		btn.Size = UDim2.fromOffset(128, 44)
+		btn.Position = UDim2.new(btn.Position.X.Scale, if btn.Position.X.Scale > 0 then -24 else 24, 1, -24) -- (inside the frame)
 	end
 end
 local gemIcon = UI.icon(gemBtn, "gem", 32, UDim2.new(0, 10, 0.5, -3), Vector2.new(0, 0.5))
@@ -1520,10 +1535,10 @@ function ClassDeal.refresh()
 	tick.Visible = owned
 	local btnH = if TRADING then 44 else 48
 	if owned then
-		gemBtn.Size = UDim2.new(1, -32, 0, btnH)
+		gemBtn.Size = UDim2.new(1, if TRADING then -48 else -32, 0, btnH)
 		UI.setButton(gemBtn, if d.class == c.id then "EQUIPPED" else "EQUIP", Color3.fromRGB(40, 180, 90))
 	else
-		gemBtn.Size = if product then UDim2.fromOffset(134, btnH) else UDim2.new(1, -32, 0, btnH)
+		gemBtn.Size = if product then UDim2.fromOffset(if TRADING then 128 else 134, btnH) else UDim2.new(1, if TRADING then -48 else -32, 0, btnH)
 		if inStock then
 			UI.setButton(gemBtn, Format.commas(c.gems), if d.gems >= c.gems then Color3.fromRGB(150, 90, 245) else W.grey)
 		else
@@ -1546,7 +1561,7 @@ function ClassDeal.refresh()
 				break
 			end
 			local better = (b or 0) > (a or 0)
-			local r = UI.frame({ size = UDim2.new(1, 0, 0, 30), color = if GUILD then Color3.fromRGB(96, 60, 30) else Color3.fromRGB(40, 30, 92), parent = vsRows, radius = 8, outline = 0, name = "Row" })
+			local r = UI.frame({ size = UDim2.new(1, 0, 0, if GUILD then 28 else 30), color = if GUILD then Color3.fromRGB(96, 60, 30) else Color3.fromRGB(40, 30, 92), parent = vsRows, radius = 8, outline = 0, name = "Row" })
 			r.BackgroundTransparency = 0.45
 			r.LayoutOrder = shown
 			UI.icon(r, STAT_ICON[s.key], 24, UDim2.fromOffset(6, 4))

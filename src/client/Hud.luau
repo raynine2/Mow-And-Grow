@@ -60,8 +60,8 @@ local function counter(y: number, icon: string, plus: boolean?)
 	end
 	return f, t, ic
 end
-local coinBox, coinText, coinIcon = counter(-100, "coin")
-local gemBox, gemText, gemIcon = counter(-14, "gem", true)
+local coinBox, coinText, coinIcon = counter(-56, "coin")
+local gemBox, gemText, gemIcon = counter(30, "gem", true)
 
 -------------------------------------------------------------------------------------------------------------
 -- backpack (bottom-left)
@@ -84,11 +84,11 @@ Skin.bob(bagIcon, 2, 1.6)
 local quest = Instance.new("Frame")
 quest.Name = "Quest"
 quest.BackgroundTransparency = 1
-quest.Size = UDim2.fromOffset(330, 132)
+quest.Size = UDim2.fromOffset(330, 136)
 quest.Position = UDim2.fromOffset(14, 66)
 quest.Parent = root
 -- a cream card in a wooden frame: scroll icon, "QUEST 2/8", the goal, a candy progress bar and a hint
-local questFace = select(2, Skin.frame(quest, "ui_card", Vector2.new(330, 132), { name = "Card" }))
+local questFace = select(2, Skin.frame(quest, "ui_card", Vector2.new(330, 136), { name = "Card" }))
 local BROWN = Color3.fromRGB(110, 62, 30)
 local questIcon = UI.icon(quest, "quest", 58, UDim2.fromOffset(-6, -14))
 questIcon.ZIndex = 4
@@ -116,10 +116,10 @@ local watch = UI.icon(info, "stopwatch", 46, UDim2.new(1, -156, 0, -2))
 Skin.bob(watch, 1.5, 3)
 local infoFace = select(2, Skin.frame(info, "ui_card", Vector2.new(320, 132), { pos = UDim2.fromOffset(0, 44), name = "Card" }))
 local pin = UI.icon(infoFace, "pin", 34, UDim2.fromOffset(-2, -4))
-local zoneText = UI.text(infoFace, "", UDim2.new(1, -40, 0, 26), { pos = UDim2.fromOffset(36, 0), align = Enum.TextXAlignment.Left, color = BROWN, stroke = 0 })
+local zoneText = UI.text(infoFace, "", UDim2.new(1, -150, 0, 26), { pos = UDim2.fromOffset(36, 0), align = Enum.TextXAlignment.Left, color = BROWN, stroke = 0 })
 ;(zoneText:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
 local areaText = UI.text(infoFace, "AREA 1/8", UDim2.fromOffset(120, 18), { pos = UDim2.new(1, 0, 0, 4), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, color = Color3.fromRGB(255, 160, 40), stroke = 2 })
-local _, fill, trackText = Skin.bar(infoFace, Vector2.new(286, 34), C.green, { pos = UDim2.fromOffset(0, 30), name = "Bar" })
+local _, fill, trackText = Skin.bar(infoFace, Vector2.new(250, 34), C.green, { pos = UDim2.fromOffset(0, 30), name = "Bar" })
 local fillGrad = fill:FindFirstChildOfClass("UIGradient") :: UIGradient
 local nextText = UI.text(infoFace, "", UDim2.new(1, -4, 0, 18), { pos = UDim2.fromOffset(2, 70), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(140, 96, 60), stroke = 0 })
 ;(nextText:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false

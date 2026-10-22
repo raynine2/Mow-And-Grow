@@ -1,4 +1,4 @@
-# Handoff: where Mow And Grow is (22 Oct 2026)
+# Handoff: where Mow And Grow is (22 Oct 2026, evening)
 
 For the next person (and their Claude) picking this up. Read `CLAUDE.md` first for the rules, then this.
 
@@ -30,6 +30,8 @@ For the next person (and their Claude) picking this up. Read `CLAUDE.md` first f
 
 | Commit | What |
 |---|---|
+| `a0c4828` → `84c2751` + fixes | **UI remake, window 1 of 8: the HUD** (the owner's brief: remake the whole UI with ForgeGUI, window by window, in the style of the new icons; refs in `docs/ui-references`).<br>• **Art:** made with ForgeGUI using the saved style **"Mow And Grow UI — chunky cartoon"** (style id `3761ed73-ff85-4a52-b197-061fa8e516b4`, v2 has our coin/backpack/basket/upgrade icons as references). New PNGs in `assets/icons`: frames `ui_badge`, `ui_card`, `ui_plate`, `ui_bar`, `ui_banner`, `ui_tile`, `ui_tile_gold`; icons `clover hands lasermower moon newspaper pin pushmower quest scissors scythe sickle stopwatch sun whacker`.<br>• **Uploaded** (all 28, incl. the first 7 icons) through ForgeGUI's Roblox connection for @RayanPoepHoof; ids in `src/shared/IconIds.luau`, map in `assets/forgegui_icons.json`, and `assets/uploaded_icons.json` updated so `upload_models.ps1 --icons` won't re-upload them.<br>• **`client/Skin`** (new): 9-slice frames from that art (falls back to plain wood if an id is missing) + motion kit: shine sweeps, sparkles/bursts, hover tilt, idle bob, pulsing red dot, rising "+N". Works with UI's juice engine (own scales are named `Pop`).<br>• **HUD** (`client/Hud`): coin/gem plates (gems have a "+" to the shop), count-up + "+N" + icon pop on gains, bag plate (icon tints red when full), quest + area cards with candy bars, log-slice side buttons with key tags and `Hud.setDot(window, on)`, gold hotbar tile with sparkles, fuel/day bars on the wood bar.<br>• **Coach card:** hanging wooden sign with a picture per step and STEP n/5; keeps Studio's dock-under-the-quest.<br>• Checked in a Studio run test (screenshots shown to the owner). |
+| `96bf05a`, merged in `cf5df89` | **Studio snapshot 22 Oct** (branch `studio-snapshot-2026-10-22`): 5 scripts had work in Studio that wasn't in git: UI (juice engine, windows slide up, click + hover on every button, Robux glyph, `UI.anyOpen`), Coach (docks under the quest), ClassDeal (reworked deal), ClassRoom (space edition; needs `ReplicatedStorage.VFXLib`, which lives in Studio outside the Rojo tree), Config (class stats rebalanced). Each copied byte-for-byte and merged with the owner's OK. |
 | `7ae2ca7` + Studio edits | **The camp is in area 1** (like Chop A Forest's camp in its first wood).<br>• `RunWorld.moveVillageToCamp(Vector3.new(73, 0, 351), 34)` was run once in Studio, then the layout was hand-tuned so nothing overlaps (yard radius 42, `CampRadius` = 42). The tool shop, garage, bag stand, shredder, CLASSES stand and spawn now stand on a dirt yard in the middle of Sunny Meadow's grass.<br>• `World` attributes: `CampCenter`, `CampRadius`, `CampFacing`.<br>• What this changes: no grass grows in the camp, the boss arena keeps 90 studs away, falling players come back to the camp, and there's no separate area 1 drop-off.<br>• The village-yard grass from `688dbbd` was taken out again, and the trees and fence went back (backups in `MowALawnBackups/pre_village_22oct` and `pre_camp_22oct`).<br>• Runs handle class buys (`server/Classes`).<br>• The cutscene films the camp and got whip cuts, the party dropping in, slow-mo on the crate, and trailer music. |
 | `1dafbe6` + `ba4239f` | **Village baked into the place.** It shows in Edit mode: the tool shop, bag stand, garage, shredder, spawn, paths, arch and area 1's drop-off are real parts in `Workspace.World` (attribute `VillageBaked`).<br>• Done once with `RunWorld.bakeVillage()`. A copy of the world from before is in `MowALawnBackups`.<br>• The buildings carry a `MapUnit` tag. Move or delete one as a whole and the game follows. Changes *inside* one are replaced by code at run start.<br>• **Code changes to village scenery (dressing, paths) won't show any more**, because the saved parts are used. Don't re-bake without asking the owner. |
 | `4f136d3` → `a9b27d7` | **Pacing and look** (from the Chop A Forest teardown):<br>• Mowed ground turns into bright stripes that stay (`server/Lawn.luau`), and a cleared area is striped all over.<br>• Area 1 has its own drop-off sell pad (the village shredder was ~350 studs away).<br>• **Bosses are back on** (`Config.BOSSES = true`).<br>• Economy retuned toward a 60–90 min free clear; see the note above `Config.ZONES`.<br>• Free gems every 6 hours (`Config.FREE_GEMS`) on top of the daily ladder.<br>• Night was checked: the crawlers only stun and never undo progress. |
@@ -57,6 +59,14 @@ and was playtested there with no script errors.
 4. **Title name:** the cutscene title uses `Config.GAME_NAME`, which is still **"Mow A Lawn"**. The owner may
    want "Mow And Grow". Ask before changing it.
 
+**UI remake, still to do (window by window, show the owner each one):**
+- Shop (Featured, Passes, Tools, Mowers, Gems) + gift popup, Pets/Eggs/Index, Classes card deal, Gem Upgrades,
+  Rewards, Create Party / Saved Runs, News, Stats. Use `client/Skin` and generate new art with the saved ForgeGUI
+  style (needs the host `azyjlkhpdgafuobyxoax.supabase.co` allowed in claude.ai Settings → Capabilities, which the
+  owner did on 22 Oct). Our art must stay our own: no Chop A Forest art, names or characters.
+- Small HUD leftovers: the Stats clipboard icon (ForgeGUI job stuck, the old one is used), new lock/leaf icons, the
+  DEV button (Studio/admins only) touches the gem counter, and News should light `Hud.setDot("News", true)`.
+
 **Features from the owner's list, not started:**
 - Golden grass rain: a timed event every ~30 minutes.
 - Rebirth.
@@ -75,6 +85,11 @@ and was playtested there with no script errors.
   re-bake without asking.
 
 ## Studio vs. git: please read
+
+**State on 22 Oct, after the HUD remake:** every script in the place matches the branch (all 102 others were checked
+byte-for-byte, and Hud, Skin, Coach, UI, Config and IconIds after the sync). The copies from before the HUD sync are
+in `ServerStorage.MowALawnBackups.pre_hud_remake_22oct`. If you edit in Studio, commit it soon: on 22 Oct five
+scripts had Studio-only work that had to be rescued first.
 
 Scripts were synced into Studio by hand: each file was fetched from GitHub at a commit and written in with
 `ScriptEditorService:UpdateSourceAsync`, after a backup.

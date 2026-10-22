@@ -13,11 +13,12 @@ local Skin = {}
 
 -- Source size, the 9-slice centre and the flat face inside the frame (left, top, right, bottom insets), all in the
 -- PNG's own pixels. Measured on the exported art (tools: scratchpad measure script, 22 Oct 2026).
-type FrameDef = { w: number, h: number, slice: Rect, face: { number }, fallback: Color3, radius: number }
+type FrameDef = { w: number, h: number, slice: Rect, face: { number }, fallback: Color3, radius: number, rect: Vector2? }
 Skin.FRAMES = {
 	ui_plate = { w = 1024, h = 307, slice = Rect.new(160, 70, 864, 237), face = { 63, 64, 64, 59 }, fallback = Color3.fromRGB(240, 170, 60), radius = 999 },
 	ui_bar = { w = 1024, h = 165, slice = Rect.new(90, 60, 934, 105), face = { 47, 52, 49, 44 }, fallback = Color3.fromRGB(60, 34, 14), radius = 999 },
-	ui_card = { w = 768, h = 481, slice = Rect.new(170, 115, 690, 410), face = { 60, 62, 58, 60 }, fallback = Color3.fromRGB(255, 240, 205), radius = 18 },
+	-- (the card PNG has near-invisible padding under the frame, so only its top 408 rows are used)
+	ui_card = { w = 768, h = 408, rect = Vector2.new(768, 408), slice = Rect.new(170, 115, 690, 345), face = { 128, 66, 64, 52 }, fallback = Color3.fromRGB(255, 240, 205), radius = 18 },
 	ui_banner = { w = 1024, h = 445, slice = Rect.new(190, 190, 834, 380), face = { 40, 160, 40, 50 }, fallback = Color3.fromRGB(230, 160, 80), radius = 14 },
 	ui_tile = { w = 489, h = 512, slice = Rect.new(90, 90, 399, 422), face = { 76, 80, 74, 98 }, fallback = Color3.fromRGB(240, 210, 160), radius = 16 },
 	ui_tile_gold = { w = 506, h = 512, slice = Rect.new(90, 100, 416, 430), face = { 70, 85, 70, 95 }, fallback = Color3.fromRGB(255, 205, 50), radius = 16 },
@@ -48,6 +49,9 @@ function Skin.frame(parent: Instance, key: string, size: Vector2, props: { pos: 
 		local img = Instance.new("ImageLabel")
 		img.BackgroundTransparency = 1
 		img.Image = id
+		if def.rect then
+			img.ImageRectSize = def.rect
+		end
 		if o.stretch ~= false then
 			img.ScaleType = Enum.ScaleType.Slice
 			img.SliceCenter = def.slice

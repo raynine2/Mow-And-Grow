@@ -1,0 +1,115 @@
+{
+ "_note": "ForgeGUI asset ids of assets/icons/*.png (uploaded 22 Oct 2026) and their Roblox image ids, published through ForgeGUI's Roblox connection for @RayanPoepHoof. IconIds.luau is written from 'roblox'.",
+ "backpack": {
+  "forge": "efaaa362-d724-4129-a0be-30b51d8a65e3",
+  "roblox": 86870733037303
+ },
+ "basket": {
+  "forge": "cff7735a-46e4-4596-bc61-5f9292ac222c",
+  "roblox": 115305457839056
+ },
+ "bundle": {
+  "forge": "b7333bcd-640c-4211-8c12-e63b1e0ebbe2",
+  "roblox": 86155411750676
+ },
+ "clover": {
+  "forge": "6698dc54-f618-44fc-9217-6d6138f23a93",
+  "roblox": 137173964406913
+ },
+ "coin": {
+  "forge": "93bed88d-aac8-4b9c-ac63-9abc4bf66b4c",
+  "roblox": 101580457036326
+ },
+ "gem": {
+  "forge": "8e988437-c08e-4e81-8457-b69c18be9b31",
+  "roblox": 117890456517468
+ },
+ "hands": {
+  "forge": "134c74cc-d034-402d-ad5b-ecfa78b60926",
+  "roblox": 71266150782688
+ },
+ "lasermower": {
+  "forge": "23b268f6-3dd2-4b57-86d6-e46f878a1e61",
+  "roblox": 105128352252079
+ },
+ "moon": {
+  "forge": "9ce2eea0-e754-4b2c-a79d-3b575d577d6b",
+  "roblox": 112681993426647
+ },
+ "newspaper": {
+  "forge": "38ebf554-026e-42d7-8252-64cbc7af7379",
+  "roblox": 71805986250786
+ },
+ "paw": {
+  "forge": "f08a0215-faf6-431a-a7d6-3520466bde02",
+  "roblox": 104057465630094
+ },
+ "pin": {
+  "forge": "732e4a46-888b-4ff9-9c8b-a39fe01fe05b",
+  "roblox": 91213246176433
+ },
+ "pushmower": {
+  "forge": "dac4f675-0f10-4fe8-bb20-13ab48e08bae",
+  "roblox": 75917664034549
+ },
+ "quest": {
+  "forge": "72e82241-9f7f-4165-a45c-5523d8e31336",
+  "roblox": 111083412884838
+ },
+ "scissors": {
+  "forge": "9b7e6a55-214a-48b8-af8a-da0c216222de",
+  "roblox": 135500068565449
+ },
+ "scythe": {
+  "forge": "39e435ab-ac78-4782-a4bf-397b8f963fdd",
+  "roblox": 106106888030887
+ },
+ "sickle": {
+  "forge": "ef9ee200-7ed7-4dec-9954-28d9ba3a9f93",
+  "roblox": 111852301098106
+ },
+ "stopwatch": {
+  "forge": "a8206080-1cd9-4a00-a33d-89f13dd9ae68",
+  "roblox": 134731860447277
+ },
+ "sun": {
+  "forge": "4140430c-2e1a-4754-97ea-8fa3e702b0cc",
+  "roblox": 136696456606707
+ },
+ "ui_badge": {
+  "forge": "43207e0c-82de-47dc-8bc9-c422c53c83b0",
+  "roblox": 109402529868084
+ },
+ "ui_banner": {
+  "forge": "58cac1b6-ce2b-47f5-9f01-62a94c8c2820",
+  "roblox": 93637219107117
+ },
+ "ui_bar": {
+  "forge": "d1ef11d9-c5e8-404e-a1a9-77d71832e904",
+  "roblox": 136380412962040
+ },
+ "ui_card": {
+  "forge": "ab24382d-7d18-4432-aa75-af792d9aa10c",
+  "roblox": 101452615323639
+ },
+ "ui_plate": {
+  "forge": "2775e9cc-abf7-4be9-a925-fad4c7130943",
+  "roblox": 112504710509388
+ },
+ "ui_tile": {
+  "forge": "be6e6283-0ff3-444d-be02-bd572c0e4a73",
+  "roblox": 88837393068516
+ },
+ "ui_tile_gold": {
+  "forge": "3e5d623d-a606-4391-859a-3ad19e87b068",
+  "roblox": 93298432206434
+ },
+ "upgrade": {
+  "forge": "8ae78e07-90fe-431c-8974-8053e002bbb2",
+  "roblox": 128517089361131
+ },
+ "whacker": {
+  "forge": "4171525e-524f-4a91-9029-ea6ff47d075b",
+  "roblox": 98464601884290
+ }
+}

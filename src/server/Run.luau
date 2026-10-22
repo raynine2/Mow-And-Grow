@@ -203,6 +203,7 @@ local function onBossDefeated(z: number, _damageBy: { [Player]: number })
 	for _, p in Players:GetPlayers() do
 		Quests.event(p, "boss", 1)
 	end
+	Field.clearStubble(z) -- the stubble puffs away and the whole area's lawn is mowed in stripes
 	if z >= #Config.ZONES then
 		task.spawn(completeRun)
 	else

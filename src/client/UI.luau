@@ -1008,8 +1008,10 @@ function UI.popupWindow(name: string, title: string, sub: string?)
 		;(board:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
 	end
 	leaf(holder, UDim2.fromOffset(40, 16), 70)
-	leaf(holder, UDim2.fromOffset(470, 500), 70)
-	local titleLabel = UI.text(holder, string.upper(title), UDim2.new(1, -60, 0, 60), { pos = UDim2.fromOffset(30, 34), stroke = 4, color = Color3.new(1, 1, 1) })
+	-- (from the bottom-right corner, so it stays in the corner when a popup is made taller)
+	leaf(holder, UDim2.new(1, -30, 1, -40), 70)
+	-- the title keeps clear of the red X in the top-right corner
+	local titleLabel = UI.text(holder, string.upper(title), UDim2.new(1, -150, 0, 56), { pos = UDim2.fromOffset(75, 36), stroke = 4, color = Color3.new(1, 1, 1) })
 	local subLabel = UI.text(holder, sub and string.upper(sub) or "", UDim2.new(1, -80, 0, 28), { pos = UDim2.fromOffset(40, 96), stroke = 2, color = Color3.fromRGB(255, 200, 60) })
 	UI.frame({ size = UDim2.new(1, -100, 0, 4), pos = UDim2.fromOffset(50, 132), color = if S then WOOD.insetEdge else Color3.new(1, 1, 1), parent = holder, radius = 2, outline = 0, name = "Line" })
 	UI.closeButton(holder, UDim2.new(1, -10, 0, 12), function()

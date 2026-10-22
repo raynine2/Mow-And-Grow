@@ -347,7 +347,7 @@ local function bigCard(parent: Instance): { [string]: any }
 	local stateText = UI.text(state, "", UDim2.new(1, -10, 1, -8), { pos = UDim2.fromOffset(5, 4), stroke = 2 })
 	local info = UI.frame({ size = UDim2.new(1, -36, 0, 128), pos = UDim2.fromOffset(18, 374), color = Color3.fromRGB(110, 114, 132), parent = card, radius = 14, outline = 0, name = "Info" })
 	info.BackgroundTransparency = 0.45
-	local empty = UI.text(card, "", UDim2.new(1, -40, 0, 50), { pos = UDim2.new(0, 20, 0.5, -60), stroke = 3.5, name = "Empty" })
+	local empty = UI.text(card, "", UDim2.new(1, -40, 0, 44), { pos = UDim2.fromOffset(20, 340), stroke = 3.5, name = "Empty" })
 	return { card = card, title = title, stars = stars, view = view, rarity = rarity, rarityText = rarityText, state = state, stateText = stateText, info = info, empty = empty }
 end
 PetsWindow.bigCard = bigCard
@@ -369,6 +369,11 @@ local function fillCard(c, p, found: boolean)
 		k:Destroy()
 	end
 	if not p then
+		-- empty card: a soft-glowing egg waiting to hatch instead of a blank white card
+		Skin.rays(c.view, Color3.fromRGB(255, 230, 150), 260, nil, 10)
+		local egg = UI.icon(c.view, if Skin.has("egg_garden") then "egg_garden" else "egg", 150, UDim2.fromScale(0.5, 0.55), Vector2.new(0.5, 0.5))
+		egg.ImageTransparency = 0.15
+		Skin.bob(egg, 6, 1.6)
 		return
 	end
 	local rc = Config.RARITY_COLORS[p.rarity]

@@ -562,8 +562,40 @@ UI.corner(cross, 999)
 UI.stroke(cross, 2.5, Color3.new(1, 1, 1)).Transparency = 0.15
 UI.frame({ size = UDim2.fromOffset(6, 6), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.new(1, 1, 1), parent = cross, radius = 999, outline = 0, name = "Dot" })
 local windowOpen = false
+-- HUD pieces that would poke out from under an open window (the gem counter beside the Pets board, the quest card
+-- under a wide one) step aside while it's open and come back when it closes. The side buttons stay: they switch
+-- windows.
+local tucked: { GuiObject } = {}
+local function untuck()
+	for _, h in tucked do
+		h.Visible = true
+	end
+	table.clear(tucked)
+end
 UI.onWindowChanged.Event:Connect(function(name)
 	windowOpen = name ~= nil
+	untuck()
+	if not name then
+		return
+	end
+	task.defer(function()
+		local w = UI.gui:FindFirstChild(name .. "Window") or UI.gui:FindFirstChild(name .. "Popup")
+		if not w or not w:IsA("GuiObject") then
+			return
+		end
+		-- the board's own rectangle (a window slides in from 40 px lower, so take its resting place)
+		local a0 = w.AbsolutePosition - Vector2.new(30, 70)
+		local a1 = w.AbsolutePosition + w.AbsoluteSize + Vector2.new(30, 30)
+		for _, h in root:GetChildren() do
+			if h:IsA("GuiObject") and h.Visible and h.Name ~= "SideButtons" and h.AbsoluteSize.X > 0 then
+				local b0, b1 = h.AbsolutePosition, h.AbsolutePosition + h.AbsoluteSize
+				if a0.X < b1.X and b0.X < a1.X and a0.Y < b1.Y and b0.Y < a1.Y then
+					h.Visible = false
+					table.insert(tucked, h)
+				end
+			end
+		end
+	end)
 end)
 RunService.RenderStepped:Connect(function()
 	local show = false

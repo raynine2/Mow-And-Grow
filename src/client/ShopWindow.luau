@@ -406,7 +406,7 @@ function ShopWindow.build()
 	lane.Name = "MowerLane"
 	lane.BackgroundTransparency = 1
 	lane.Size = UDim2.new(1, 0, 0, 70)
-	lane.Position = UDim2.new(0, 0, 1, 6)
+	lane.Position = UDim2.new(0, 0, 1, 22) -- ride along the grass strip, below the cards
 	lane.AnchorPoint = Vector2.new(0, 1)
 	lane.ZIndex = 8
 	lane.ClipsDescendants = false
@@ -415,7 +415,7 @@ function ShopWindow.build()
 		while w.frame.Parent do
 			task.wait(6 + math.random() * 6)
 			if w.frame.Visible then
-				local m = UI.icon(lane, "pushmower", 62, UDim2.new(1, 30, 1, 0), Vector2.new(0.5, 1))
+				local m = UI.icon(lane, "pushmower", 46, UDim2.new(1, 30, 1, 0), Vector2.new(0.5, 1))
 				m.ZIndex = 9
 				local drive = TweenService:Create(m, TweenInfo.new(5, Enum.EasingStyle.Linear), { Position = UDim2.new(0, -30, 1, 0) })
 				local rock = TweenService:Create(m, TweenInfo.new(0.12, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 4 })

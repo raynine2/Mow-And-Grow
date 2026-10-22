@@ -146,7 +146,7 @@ local function roundButton(label: string, icon: string, key: string, window: str
 	UI.icon(inner, icon, 64, UDim2.fromScale(0.5, 0.46), Vector2.new(0.5, 0.5))
 	sideLeaf(b, UDim2.fromOffset(20, 10), -40, 30)
 	sideLeaf(b, UDim2.fromOffset(34, 2), -10, 22)
-	local badge = UI.frame({ size = UDim2.fromOffset(if #key > 1 then 44 else 30, 28), pos = UDim2.fromOffset(104, 64), anchor = Vector2.new(1, 0), color = Color3.fromRGB(36, 30, 26), parent = b, radius = 8, outline = 2, name = "Key" })
+	local badge = UI.frame({ size = UDim2.fromOffset(if #key > 1 then 44 else 30, 28), pos = UDim2.fromOffset(106, 0), anchor = Vector2.new(1, 0), color = Color3.fromRGB(36, 30, 26), parent = b, radius = 8, outline = 2, name = "Key" })
 	UI.text(badge, key, UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1 })
 	UI.text(b, label, UDim2.fromOffset(120, 26), { pos = UDim2.new(0.5, 0, 0, 86), anchor = Vector2.new(0.5, 0), stroke = 3 })
 	UI.raise(b, 2)
@@ -294,7 +294,7 @@ end)
 -------------------------------------------------------------------------------------------------------------
 -- fuel (above the hotbar, while driving) + party start button (lobby)
 -------------------------------------------------------------------------------------------------------------
-local fuel = UI.frame({ size = UDim2.fromOffset(300, 36), pos = UDim2.new(0.5, 0, 1, -110), anchor = Vector2.new(0.5, 1), color = C.dark, parent = root, radius = 18, outline = 3, name = "Fuel" })
+local fuel = UI.frame({ size = UDim2.fromOffset(300, 36), pos = UDim2.new(0.5, 0, 1, -124), anchor = Vector2.new(0.5, 1), color = C.dark, parent = root, radius = 18, outline = 3, name = "Fuel" })
 local fuelFill = UI.frame({ size = UDim2.fromScale(1, 1), color = C.orange, parent = fuel, radius = 18, outline = 0 })
 UI.gradient(fuelFill, C.orange)
 local fuelText = UI.text(fuel, "FUEL", UDim2.new(1, -16, 1, -8), { pos = UDim2.fromOffset(8, 4) })

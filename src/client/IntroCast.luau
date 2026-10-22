@@ -515,6 +515,26 @@ function IntroCast.hideGrass(on: boolean)
 	end
 end
 
+-- Fade the actors' name tags away (once the party shot is over, so they don't sit on the later cards).
+function IntroCast.untag()
+	local f = set
+	if not f then
+		return
+	end
+	for _, d in f:GetDescendants() do
+		if d:IsA("BillboardGui") and d.Name == "IntroName" then
+			local label = d:FindFirstChildOfClass("TextLabel")
+			local sc = label and label:FindFirstChildOfClass("UIScale")
+			if sc then
+				tween(sc, 0.2, { Scale = 0 }, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+			end
+			task.delay(0.22, function()
+				d:Destroy()
+			end)
+		end
+	end
+end
+
 -- Take the actors and props away (the hidden characters and grass stay as they are).
 function IntroCast.clearSet()
 	if set then

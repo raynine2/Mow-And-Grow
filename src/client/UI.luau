@@ -2,6 +2,7 @@
 -- Everything is laid out at 1280x720 and scaled with a UIScale, so phones and PCs get the same layout.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
@@ -1055,5 +1056,28 @@ function UI.notice(title: string, sub: string?, icon: string?)
 	bounce(f)
 	fadeOut(f, 2.6)
 end
+
+-- The bottom-centre pop-ups (the first-run coach card, the combo counter, the dark notice) all want the spot
+-- just above the hotbar. Stack whichever are showing upward from there, so they never sit on top of each other
+-- (and above the fuel bar while you drive a mower).
+local STACK = { "Coach", "Combo", "Notice" }
+RunService.RenderStepped:Connect(function()
+	local base = 150
+	local hud = gui:FindFirstChild("Hud")
+	local fuelBar = hud and hud:FindFirstChild("Fuel")
+	if fuelBar and (fuelBar :: GuiObject).Visible then
+		base = 170
+	end
+	for _, name in STACK do
+		local f = gui:FindFirstChild(name)
+		if f and f:IsA("GuiObject") and f.Visible then
+			local want = UDim2.new(0.5, 0, 1, -base)
+			if f.Position ~= want then
+				f.Position = want
+			end
+			base += f.Size.Y.Offset + 10
+		end
+	end
+end)
 
 return UI

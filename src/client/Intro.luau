@@ -349,7 +349,7 @@ local function mayorShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: string
 	local front = -P.fwd -- he faces the party
 	mode.value = "talk"
 	IntroUi.say(MAYOR, "Mowers! At last, you've come!")
-	IntroUi.lowerThird(MAYOR, "Mayor of Spawn Village", RED, 2.4)
+	IntroUi.lowerThird(MAYOR, "Mayor of Spawn Village", RED, 1.9)
 	local ok = run(2.6, function(k)
 		local d = 11 - easeOut(k) * 2
 		local p = head + front * d + P.right * 2.4 - UP * 1.6
@@ -513,6 +513,7 @@ local function film()
 	if not partyShots(P, actors) then
 		return
 	end
+	IntroCast.untag()
 	if not mayorShots(P, mayor, mode) then
 		return
 	end

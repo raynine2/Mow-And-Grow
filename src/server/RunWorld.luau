@@ -8,6 +8,7 @@
 --   * where the grass grows (RunWorld.patches, read by server/Field): clumps scattered in World.Patches.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local Config = require(ReplicatedStorage.MowALawn.Config)
@@ -410,16 +411,28 @@ function RunWorld.build()
 	end
 	world = w
 	require(script.Parent.WorldGen).lighting()
-	clearVillage(w)
-	texturedGround(w)
-	restyleStairs(w)
-	clearPaths(w)
-	-- (the saved world keeps its voxel trees, bushes and rocks: partNature would swap them for part-built ones)
-
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
-	paths(w)
-	RunBuilder.hub(w, info)
-	require(script.Parent.HubDressing).village(w)
+	if w:GetAttribute("VillageBaked") then
+		-- the village was baked into the saved world in Studio (RunWorld.bakeVillage), maybe moved around by hand:
+		-- build the working pieces fresh (prompts, pads, spawn) and put each where its saved copy stands
+		clearPaths(w) -- (only to learn where the paths are, so no grass grows on them)
+		local fresh = Instance.new("Folder")
+		fresh.Name = "FreshVillage"
+		fresh.Parent = workspace
+		info.world = fresh
+		RunBuilder.hub(fresh, info)
+		require(script.Parent.MapStore).swapInto(info, w :: Folder)
+		info.world = w
+	else
+		clearVillage(w)
+		texturedGround(w)
+		restyleStairs(w)
+		clearPaths(w)
+		-- (the saved world keeps its voxel trees, bushes and rocks: partNature would swap them for part-built ones)
+		paths(w)
+		RunBuilder.hub(w, info)
+		require(script.Parent.HubDressing).village(w)
+	end
 
 	local gates = w:FindFirstChild("Gates")
 	for _, g in (if gates then gates:GetChildren() else {}) do
@@ -443,6 +456,7 @@ function RunWorld.build()
 	safetyNet(info)
 	return info
 end
+
 
 -------------------------------------------------------------------------------------------------------------
 -- where the grass grows
@@ -517,6 +531,51 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 	end
 	cache[z] = list
 	return list
+end
+
+-- STUDIO, EDIT MODE (command bar): require(game.ServerScriptService.MowALawn.RunWorld).bakeVillage()
+-- Puts the run's village into the saved world as real parts, so you can see it in Edit mode and move things by
+-- hand: the tool shop, bag stand, garage, shredder, spawn, the paths, the arch and benches, area 1's drop-off.
+-- It does to Workspace.World what a run's server does at start, once, and marks it (attribute VillageBaked).
+-- The working pieces (marked MapUnit) can be moved or deleted as a whole and the game follows; changes inside
+-- them are replaced by code. A copy of the world as it was goes to ServerStorage.MowALawnBackups first.
+function RunWorld.bakeVillage()
+	assert(RunService:IsStudio() and not RunService:IsRunning(), "Bake in Studio with the game stopped (edit mode)")
+	local w = workspace:FindFirstChild("World")
+	assert(w and w:GetAttribute("GatePos2") ~= nil, "Workspace.World isn't the generated world")
+	if w:GetAttribute("VillageBaked") then
+		warn("[RunWorld] The village is already baked into Workspace.World (" .. tostring(w:GetAttribute("VillageBaked")) .. "). To start over, put back the copy in ServerStorage.MowALawnBackups.")
+		return
+	end
+	local backups = ServerStorage:FindFirstChild("MowALawnBackups") or Instance.new("Folder")
+	backups.Name = "MowALawnBackups"
+	backups.Parent = ServerStorage
+	local copy = w:Clone()
+	copy.Name = "World before village bake " .. os.date("%Y-%m-%d %H.%M")
+	copy.Parent = backups
+	require(script.Parent.Models).loadAll(30)
+	world = w
+	table.clear(cache)
+	clearVillage(w)
+	texturedGround(w)
+	restyleStairs(w)
+	clearPaths(w)
+	paths(w)
+	require(script.Parent.HubDressing).village(w)
+	meadowDropOff(w)
+	-- the buildings: built on their own and tagged there (so only they become working pieces), then moved in
+	local fresh = Instance.new("Folder")
+	fresh.Name = "FreshVillage"
+	fresh.Parent = workspace
+	local info = { world = fresh, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
+	RunBuilder.hub(fresh, info)
+	require(script.Parent.MapStore).markSaved(fresh, info, "FreshVillage")
+	for _, c in fresh:GetChildren() do
+		c.Parent = w
+	end
+	fresh:Destroy()
+	w:SetAttribute("VillageBaked", os.date("%Y-%m-%d %H:%M"))
+	print("[RunWorld] Village baked into Workspace.World: move things around, then save the place.")
 end
 
 return RunWorld

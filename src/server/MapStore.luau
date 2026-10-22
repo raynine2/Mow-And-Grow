@@ -420,6 +420,12 @@ local function asSaved(world: Instance, info: any, name: string): Folder
 	return world :: Folder
 end
 
+-- For the generated world (server/RunWorld): the same two steps on a world saved in the place (its village baked
+-- in Studio). markSaved tags a just-built world's working pieces; swapInto puts freshly built (wired) pieces where
+-- the saved ones stand, and the saved world (`saved`) becomes info.world.
+MapStore.markSaved = asSaved
+MapStore.swapInto = swapIn
+
 function MapStore.bake(force: boolean?)
 	assert(RunService:IsStudio() and not RunService:IsRunning(), "Bake in Studio with the game stopped (edit mode)")
 	local old = workspace:FindFirstChild("Maps")

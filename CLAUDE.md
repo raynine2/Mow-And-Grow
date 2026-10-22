@@ -6,6 +6,9 @@ A Roblox game built with Rojo, modelled on Chop A Forest with grass instead of t
 Two people work on it, each with their own Claude sessions. **Losing someone's work is the worst thing that can
 happen here.**
 
+**Current status and open work: read `HANDOFF.md` at the start of a session** (what's done, what's left, what
+is in Studio but not yet in git or the other way round). Update it when you finish something.
+
 ## Never lose a teammate's work
 
 1. **Read the TEAM SAFETY CHECK** that the session start hook prints. It lists branches with recent work that

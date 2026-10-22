@@ -1025,12 +1025,18 @@ for id, asset in {
 } do
 	Config.ICONS["scene_" .. id] = "rbxassetid://" .. asset
 end
--- menu tab and side HUD pictures (Store Icons/uiicons.py)
-Config.ICONS.paw = "rbxassetid://111248410488377"
-Config.ICONS.egg = "rbxassetid://133516698228335"
-Config.ICONS.book = "rbxassetid://82956166303568"
-Config.ICONS.clipboard = "rbxassetid://119603392279586"
-Config.ICONS.newspaper = "rbxassetid://74489703623422"
+-- menu tab and side HUD pictures (Store Icons/uiicons.py); a newer upload of the same name in IconIds wins
+for name, id in {
+	paw = "rbxassetid://111248410488377",
+	egg = "rbxassetid://133516698228335",
+	book = "rbxassetid://82956166303568",
+	clipboard = "rbxassetid://119603392279586",
+	newspaper = "rbxassetid://74489703623422",
+} do
+	if (Config.ICONS[name] or "") == "" then
+		Config.ICONS[name] = id
+	end
+end
 
 -------------------------------------------------------------------------------------------------------------
 -- Look (bubbly UI on Chop A Forest style wooden boards)

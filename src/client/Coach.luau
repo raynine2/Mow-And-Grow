@@ -18,6 +18,7 @@ local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
+local Skin = require(script.Parent.Skin)
 
 local Coach = {}
 local player = Players.LocalPlayer
@@ -157,7 +158,7 @@ local function pick(): Step?
 		return { id = id, title = title, sub = sub, target = at, lift = h + 2, clump = m, trail = far }
 	end
 	if (stats.cut or 0) == 0 and run.carry == 0 and (run.ground or 0) == 0 then
-		return clumpStep("punch", "PUNCH THE GRASS", if touch then "Aim at a clump and tap to chop it down" else "Aim at a clump and click to chop it down")
+		return clumpStep("punch", "PUNCH THE GRASS", if touch then "Tap a clump to chop it: grass sells for coins!" else "Click a clump to chop it: grass sells for coins!")
 	end
 	if not d.endless and run.carry >= max then
 		return { id = "sell", title = "SELL YOUR GRASS", sub = "Your bag is full! Follow the trail and step on SELL at the shredder", target = nearestSell(here), lift = 4, trail = true }
@@ -170,7 +171,7 @@ local function pick(): Step?
 	end
 	local holdCost = Config.upgradeCost("hold", 0)
 	if run.coins >= holdCost then
-		return { id = "upgrade", title = "BUY YOUR FIRST UPGRADE", sub = if touch then "Tap UPGRADES and buy HOLD: keep chopping while you hold" else "Press TAB and buy HOLD: keep chopping while you hold the button" }
+		return { id = "upgrade", title = "BUY YOUR FIRST UPGRADE", sub = if touch then "Tap UPGRADES and buy HOLD: chop nonstop, earn faster" else "Press TAB and buy HOLD: chop nonstop, earn coins faster" }
 	end
 	return clumpStep("fill", ("FILL YOUR BAG   %d / %d"):format(run.carry + (run.ground or 0), max), "Chop more grass, then sell it at the shredder for coins")
 end
@@ -181,26 +182,31 @@ end
 local card = Instance.new("CanvasGroup")
 card.Name = "Coach"
 card.AnchorPoint = Vector2.new(0.5, 1)
-card.Position = UDim2.new(0.5, 0, 1, -150)
-card.Size = UDim2.fromOffset(560, 92)
+card.Position = UDim2.new(0.5, 0, 1, -140)
+card.Size = UDim2.fromOffset(620, 150)
 card.BackgroundTransparency = 1
 card.GroupTransparency = 1
 card.Visible = false
 card.ZIndex = 20
 card.Parent = UI.gui
-local wood = UI.planks(card, UDim2.new(1, 0, 1, 0), UDim2.new(), nil, 18)
-wood.ZIndex = 20
-local badge = UI.frame({ size = UDim2.fromOffset(64, 64), pos = UDim2.fromOffset(14, 14), color = C.yellow, parent = card, radius = 999, outline = 3, name = "Badge" })
-badge.ZIndex = 21
-local num = UI.text(badge, "1", UDim2.new(1, -10, 1, -10), { pos = UDim2.fromOffset(5, 5), stroke = 3 })
-num.ZIndex = 22
-local title = UI.text(card, "", UDim2.new(1, -110, 0, 44), { pos = UDim2.fromOffset(92, 6), align = Enum.TextXAlignment.Left, stroke = 3.5 })
-title.ZIndex = 21
+-- the hanging wooden sign (ui_banner art), a picture of what this step is about, "STEP 2/5", title and why
+local sign, face = Skin.frame(card, "ui_banner", Vector2.new(620, 150), { name = "Sign" })
+sign.ZIndex = 20
+local pic = Instance.new("Frame")
+pic.Name = "Pic"
+pic.BackgroundTransparency = 1
+pic.Size = UDim2.fromOffset(78, 78)
+pic.Position = UDim2.new(0, 8, 0.5, 0)
+pic.AnchorPoint = Vector2.new(0, 0.5)
+pic.Parent = face
+Skin.bob(pic, 2.5, 2.4)
+local num = UI.text(face, "STEP 1/5", UDim2.fromOffset(140, 18), { pos = UDim2.fromOffset(96, 2), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(255, 220, 90), stroke = 2 })
+local title = UI.text(face, "", UDim2.new(1, -104, 0, 34), { pos = UDim2.fromOffset(96, 20), align = Enum.TextXAlignment.Left, stroke = 3.5 })
 UI.gradient(title, C.yellow)
-local sub = UI.text(card, "", UDim2.new(1, -110, 0, 30), { pos = UDim2.fromOffset(92, 52), align = Enum.TextXAlignment.Left, stroke = 2 })
-sub.ZIndex = 21
+local sub = UI.text(face, "", UDim2.new(1, -104, 0, 22), { pos = UDim2.fromOffset(96, 56), align = Enum.TextXAlignment.Left, stroke = 2 })
 local scale = Instance.new("UIScale")
 scale.Parent = card
+local STEP_ICON = { punch = "hands", collect = "bundle", fill = "backpack", sell = "coin", upgrade = "upgrade" }
 
 local ORDER = { punch = 1, collect = 2, fill = 3, sell = 4, upgrade = 5 }
 local shownId: string? = nil
@@ -223,7 +229,10 @@ local function showCard(step: Step?)
 	if step.id ~= shownId then
 		local first = shownId == nil
 		shownId = step.id
-		num.Text = tostring(ORDER[step.id] or 1)
+		num.Text = ("STEP %d/5"):format(ORDER[step.id] or 1)
+		UI.clear(pic)
+		UI.icon(pic, STEP_ICON[step.id] or "clover", 78, UDim2.new())
+		Skin.popIn(pic, 0.12)
 		card.Visible = true
 		TweenService:Create(card, TweenInfo.new(0.2), { GroupTransparency = 0 }):Play()
 		scale.Scale = 0.6

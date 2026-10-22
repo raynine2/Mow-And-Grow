@@ -261,6 +261,7 @@ local function hub(world: Instance, info)
 	bagStand(m)
 	garageBay(m, info)
 	if shredder(m, info) then
+		info.shredderUnit = m:FindFirstChild("Shredder") -- a working piece: its sell pad follows it (server/MapStore)
 		return
 	end
 
@@ -297,6 +298,7 @@ local function hub(world: Instance, info)
 	info.sellPads = info.sellPads or {}
 	table.insert(info.sellPads, 1, { pos = sellPos, radius = 7, mouth = info.shredderMouth, out = info.shredderOut })
 	body:SetAttribute("Shredder", true)
+	info.shredderUnit = s
 end
 
 -- The hub's buildings (tool shop, bag stand, garage + pump, shredder, spawn) around (0, 0, -48), for another map

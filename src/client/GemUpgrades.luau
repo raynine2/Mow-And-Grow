@@ -34,12 +34,17 @@ title.Position = UDim2.fromOffset(60, -70)
 UI.icon(w.frame, "gem", 92, UDim2.fromOffset(-30, -76)).ZIndex = 9
 
 -- the gem box: blue, with a green + that opens the shop
-local gemBox = w.frame:FindFirstChild("GemBox") :: Frame?
+local gemBox = w.frame:FindFirstChild("GemBox") :: GuiObject?
 if gemBox then
-	gemBox.Size = UDim2.fromOffset(250, 60)
-	gemBox.BackgroundColor3 = Color3.fromRGB(30, 70, 170)
-	;(gemBox:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(10, 26, 70)
-	UI.gradient(gemBox, Color3.fromRGB(34, 80, 190))
+	if gemBox:IsA("Frame") then
+		-- (the drawn box; the ForgeGUI wooden plate keeps its own look)
+		gemBox.Size = UDim2.fromOffset(250, 60)
+		gemBox.BackgroundColor3 = Color3.fromRGB(30, 70, 170)
+		;(gemBox:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(10, 26, 70)
+		UI.gradient(gemBox, Color3.fromRGB(34, 80, 190))
+	else
+		gemBox.Size = UDim2.fromOffset(250, 60)
+	end
 	local plus = UI.button(gemBox, "+", C.green, UDim2.fromOffset(46, 46), function()
 		UI.open("Store")
 	end, { pos = UDim2.new(1, -8, 0.5, 0), anchor = Vector2.new(1, 0.5), name = "More" })

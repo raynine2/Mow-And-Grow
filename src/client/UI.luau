@@ -13,6 +13,30 @@ local UI = {}
 local C = Config.UI
 UI.colors = C
 
+-- The ForgeGUI art kit (client/Skin: buttons, boards, boxes, ribbons). Skin requires this module, so it is loaded on
+-- first use, after this module has finished loading. Without an uploaded picture everything keeps the drawn look.
+local uiReady = false
+local skinMod: any = nil
+local function hasArt(key: string): boolean
+	local id = Config.ICONS and Config.ICONS[key]
+	return id ~= nil and id ~= ""
+end
+local function skin(key: string): any?
+	if not uiReady or not hasArt(key) then
+		return nil
+	end
+	if skinMod == nil then
+		skinMod = require(script.Parent.Skin)
+	end
+	return skinMod
+end
+-- the pixel size to draw a frame's border for (a scale-sized frame counts as `guess` wide)
+local function pixels(size: UDim2, guess: number?): Vector2
+	local w = if size.X.Scale > 0 then (guess or 400) else size.X.Offset
+	local h = if size.Y.Scale > 0 then (guess or 400) else size.Y.Offset
+	return Vector2.new(math.max(w, 8), math.max(h, 8))
+end
+
 local player = Players.LocalPlayer
 local gui = Instance.new("ScreenGui")
 gui.Name = "MowALawnGui"
@@ -215,19 +239,28 @@ function UI.button(parent: Instance, text: string, color: Color3, size: UDim2, o
 	b.AutoButtonColor = false
 	b.Text = ""
 	b.BorderSizePixel = 0
-	UI.corner(b, 10)
-	UI.stroke(b, 3)
-	UI.gradient(b, color)
-	local lip = Instance.new("Frame")
-	lip.Name = "Lip"
-	lip.Size = UDim2.new(1, 0, 0, 6)
-	lip.Position = UDim2.new(0, 0, 1, -6)
-	lip.BackgroundColor3 = UI.shade(color, 0.6)
-	lip.BorderSizePixel = 0
-	lip.ZIndex = b.ZIndex
-	UI.corner(lip, 6)
-	lip.Parent = b
-	local label = UI.text(b, text, UDim2.new(1, -12, 1, -12), { pos = UDim2.fromOffset(6, 3), name = "Label" })
+	local S = skin("ui_button")
+	if S then
+		-- the ForgeGUI button (white art, tinted the button's colour; its dark lip is part of the picture)
+		b.BackgroundTransparency = 1
+		local art = S.frame(b, "ui_button", pixels(size, 240), { name = "Art", boost = 1.7, tint = color })
+		art.Size = UDim2.fromScale(1, 1)
+		art.ZIndex = b.ZIndex
+	else
+		UI.corner(b, 10)
+		UI.stroke(b, 3)
+		UI.gradient(b, color)
+		local lip = Instance.new("Frame")
+		lip.Name = "Lip"
+		lip.Size = UDim2.new(1, 0, 0, 6)
+		lip.Position = UDim2.new(0, 0, 1, -6)
+		lip.BackgroundColor3 = UI.shade(color, 0.6)
+		lip.BorderSizePixel = 0
+		lip.ZIndex = b.ZIndex
+		UI.corner(lip, 6)
+		lip.Parent = b
+	end
+	local label = UI.text(b, text, UDim2.new(1, -12, 1, if S then -18 else -12), { pos = UDim2.fromOffset(6, 3), name = "Label" })
 	label.ZIndex = b.ZIndex + 1
 	b.MouseButton1Click:Connect(function()
 		bounce(b)
@@ -245,53 +278,6 @@ function UI.button(parent: Instance, text: string, color: Color3, size: UDim2, o
 		end)
 	end
 	return b
-end
-
--- Every clickable that isn't a UI.button still gets the bounce + click sound.
-function UI.clicky(b: GuiButton)
-	b.MouseButton1Click:Connect(function()
-		bounce(b)
-		Sound.play("click")
-	end)
-end
-
--- Chop A Forest marks every Robux price with a rainbow fill. Re-applied by setButton when the colour changes.
-local RAINBOW = ColorSequence.new({
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 200, 255)),
-	ColorSequenceKeypoint.new(0.3, Color3.fromRGB(190, 110, 255)),
-	ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 110, 170)),
-	ColorSequenceKeypoint.new(0.8, Color3.fromRGB(255, 215, 60)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(110, 230, 90)),
-})
-function UI.rainbow(b: GuiObject)
-	b.BackgroundColor3 = Color3.new(1, 1, 1)
-	local g = b:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
-	g.Color = RAINBOW
-	g.Rotation = 0
-	g.Parent = b
-	b:SetAttribute("Rainbow", true)
-	local lip = b:FindFirstChild("Lip") :: Frame?
-	if lip then
-		lip.BackgroundColor3 = Color3.fromRGB(120, 70, 170)
-	end
-end
-
--- A rainbow Robux price button: "R$ 120".
-function UI.robuxButton(parent: Instance, robux: number, size: UDim2, onClick: () -> (), props: { pos: UDim2?, anchor: Vector2?, name: string?, prefix: string? }?): TextButton
-	local o = props or {}
-	local b = UI.button(parent, (o.prefix or "") .. "R$ " .. robux, Color3.new(1, 1, 1), size, onClick, o)
-	UI.rainbow(b)
-	return b
-end
-
--- Tilted ribbon on a card's top-left corner ("BEST VALUE", "POPULAR", "FOREVER").
-function UI.ribbon(card: GuiObject, text: string, color: Color3?)
-	local r = UI.frame({ size = UDim2.fromOffset(118, 24), pos = UDim2.fromOffset(-16, -18), color = color or Color3.fromRGB(255, 90, 120), parent = card, radius = 6, outline = 2, name = "Ribbon" })
-	r.Rotation = -10
-	r.ZIndex = card.ZIndex + 4
-	local t = UI.text(r, text, UDim2.new(1, -8, 1, -4), { pos = UDim2.fromOffset(4, 2), stroke = 1.5 })
-	t.ZIndex = r.ZIndex + 1
-	return r
 end
 
 -- Chop A Forest's open animation: the children of `container` pop in one after another
@@ -329,6 +315,14 @@ function UI.setButton(b: TextButton, text: string, color: Color3?)
 	if color then
 		b.BackgroundColor3 = color
 		b:SetAttribute("Rainbow", nil)
+		local art = b:FindFirstChild("Art")
+		if art and art:IsA("ImageLabel") then
+			art.ImageColor3 = color
+			local ag = art:FindFirstChildOfClass("UIGradient")
+			if ag then
+				ag:Destroy()
+			end
+		end
 		local g = b:FindFirstChildOfClass("UIGradient")
 		if g then
 			g.Color = ColorSequence.new(UI.shade(color, 1.15), UI.shade(color, 0.85))
@@ -358,10 +352,16 @@ local RAINBOW = ColorSequence.new({
 })
 function UI.rainbow(b: GuiObject)
 	b.BackgroundColor3 = Color3.new(1, 1, 1)
-	local g = b:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+	-- an art button wears the rainbow on its picture
+	local art = b:FindFirstChild("Art")
+	local target: GuiObject = if art and art:IsA("ImageLabel") then art else b
+	if art and art:IsA("ImageLabel") then
+		art.ImageColor3 = Color3.new(1, 1, 1)
+	end
+	local g = target:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
 	g.Color = RAINBOW
 	g.Rotation = 0
-	g.Parent = b
+	g.Parent = target
 	b:SetAttribute("Rainbow", true)
 	local lip = b:FindFirstChild("Lip") :: Frame?
 	if lip then
@@ -379,6 +379,16 @@ end
 
 -- Tilted ribbon on a card's top-left corner ("BEST VALUE", "POPULAR", "EXCLUSIVE").
 function UI.ribbon(card: GuiObject, text: string, color: Color3?)
+	local S = skin("ui_ribbon")
+	if S then
+		-- the ForgeGUI ribbon with swallow-tail ends, tinted
+		local r, face = S.frame(card, "ui_ribbon", Vector2.new(150, 34), { pos = UDim2.fromOffset(-20, 4), name = "Ribbon", boost = 1.2, tint = color or Color3.fromRGB(255, 90, 120) })
+		r.Rotation = -12
+		r.ZIndex = card.ZIndex + 4
+		local t = UI.text(face, text, UDim2.new(1, 4, 1, 2), { pos = UDim2.fromOffset(-2, -1), stroke = 2 })
+		t.ZIndex = r.ZIndex + 1
+		return r
+	end
 	local r = UI.frame({ size = UDim2.fromOffset(130, 26), pos = UDim2.fromOffset(-14, 6), color = color or Color3.fromRGB(255, 90, 120), parent = card, radius = 6, outline = 2, name = "Ribbon" })
 	r.Rotation = -12
 	r.ZIndex = card.ZIndex + 4
@@ -659,9 +669,32 @@ end
 function UI.closeButton(parent: Instance, pos: UDim2, onClick: () -> ()): TextButton
 	local b = UI.button(parent, "X", WOOD.red, UDim2.fromOffset(66, 66), onClick, { pos = pos, anchor = Vector2.new(1, 0), name = "Close" })
 	b.ZIndex = 6
-	;(b:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(90, 20, 16)
 	local label = b:FindFirstChild("Label") :: TextLabel
 	label.ZIndex = 7
+	if hasArt("ui_close") then
+		-- the ForgeGUI red X (a whole picture: the drawn button underneath is hidden)
+		for _, k in b:GetChildren() do
+			if k:IsA("GuiObject") then
+				k.Visible = false
+			end
+		end
+		b.BackgroundTransparency = 1
+		local img = Instance.new("ImageLabel")
+		img.Name = "CloseArt"
+		img.BackgroundTransparency = 1
+		img.Image = Config.ICONS.ui_close
+		img.ScaleType = Enum.ScaleType.Fit
+		img.Size = UDim2.fromScale(1.12, 1.12)
+		img.Position = UDim2.fromScale(0.5, 0.5)
+		img.AnchorPoint = Vector2.new(0.5, 0.5)
+		img.ZIndex = 7
+		img.Parent = b
+	else
+		local st = b:FindFirstChildOfClass("UIStroke")
+		if st then
+			st.Color = Color3.fromRGB(90, 20, 16)
+		end
+	end
 	return b
 end
 
@@ -719,6 +752,21 @@ end
 
 -- A darker brown rounded box inside a window (the sections in the reference menus); cream text goes on it.
 function UI.section(parent: Instance, size: UDim2, pos: UDim2?, color: Color3?): Frame
+	local S = skin("ui_inset")
+	if S then
+		-- the ForgeGUI sunken wood box behind the content (the Frame itself stays see-through, so callers can keep
+		-- putting things in it); a darker `color` darkens the art
+		local f = UI.frame({ size = size, pos = pos, color = color or WOOD.inset, parent = parent, radius = 0, outline = 0, name = "Section" })
+		f.BackgroundTransparency = 1
+		local art = S.frame(f, "ui_inset", pixels(size), { name = "Art", maxScale = 0.17 })
+		art.Size = UDim2.fromScale(1, 1)
+		art.ZIndex = f.ZIndex
+		if color and color ~= WOOD.inset then
+			local base = WOOD.inset
+			;(art :: ImageLabel).ImageColor3 = Color3.new(math.min(1, color.R / base.R), math.min(1, color.G / base.G), math.min(1, color.B / base.B))
+		end
+		return f
+	end
 	local f = UI.frame({ size = size, pos = pos, color = color or WOOD.inset, parent = parent, radius = 14, outline = 3, name = "Section" })
 	;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = WOOD.insetEdge
 	return f
@@ -743,10 +791,16 @@ local function tabButton(holder: Instance, t: Tab, active: boolean, onClick: () 
 	b.AutoButtonColor = false
 	b.BackgroundColor3 = color
 	b.Size = UDim2.fromOffset(178, 52)
-	UI.corner(b, 14)
-	UI.stroke(b, 3, if active then Color3.fromRGB(150, 60, 10) else Color3.fromRGB(80, 46, 22))
-	UI.gradient(b, color)
-	UI.frame({ size = UDim2.new(1, 0, 0, 6), pos = UDim2.new(0, 0, 1, -6), color = UI.shade(color, 0.6), parent = b, radius = 6, outline = 0, name = "Lip" })
+	local S = skin("ui_button")
+	if S then
+		b.BackgroundTransparency = 1
+		S.frame(b, "ui_button", Vector2.new(178, 52), { name = "Art", boost = 1.7, tint = color })
+	else
+		UI.corner(b, 14)
+		UI.stroke(b, 3, if active then Color3.fromRGB(150, 60, 10) else Color3.fromRGB(80, 46, 22))
+		UI.gradient(b, color)
+		UI.frame({ size = UDim2.new(1, 0, 0, 6), pos = UDim2.new(0, 0, 1, -6), color = UI.shade(color, 0.6), parent = b, radius = 6, outline = 0, name = "Lip" })
+	end
 	UI.icon(b, t.icon or "leaf", 44, UDim2.fromOffset(6, 2))
 	UI.text(b, string.upper(t.label), UDim2.new(1, -62, 1, -16), { pos = UDim2.fromOffset(54, 6), color = if active then Color3.new(1, 1, 1) else WOOD.cream, stroke = 2.5, name = "Label" })
 	raise(b, 6)
@@ -788,12 +842,36 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 	holder.Visible = false
 	holder.ZIndex = 10
 	holder.Parent = gui
+	-- the ForgeGUI plank sign as the board (made first, so it draws under everything): grown so its flat inside
+	-- lines up with the plank panel, 20 px in from the board's edge, which keeps every window's layout as it was
+	local S = skin("ui_sign")
+	local art: GuiObject? = nil
+	if S then
+		local a, face = S.frame(holder, "ui_sign", size, { name = "BoardArt", maxScale = 0.62 })
+		local l, t = face.Position.X.Offset, face.Position.Y.Offset
+		local r, btm = -face.Size.X.Offset - l, -face.Size.Y.Offset - t
+		a.Size = UDim2.new(1, l + r - 40, 1, t + btm - 40)
+		a.Position = UDim2.fromOffset(20 - l, 20 - t)
+		face:Destroy()
+		art = a
+	end
 	local board = UI.frame({ size = UDim2.fromScale(1, 1), color = WOOD.frame, parent = holder, radius = 30, outline = 5, name = "Board" })
 	;(board:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = WOOD.frameEdge
 	UI.grain(board, WOOD.frame, 4)
 	local panel = UI.planks(board, UDim2.new(1, -40, 1, -40), UDim2.fromOffset(20, 20))
 	UI.stroke(panel, 3, Color3.fromRGB(140, 84, 40))
 	UI.grain(panel, WOOD.plank, 92)
+	if art then
+		-- the art is the board now: the drawn board and planks turn see-through (kept for the windows that restyle them)
+		board.BackgroundTransparency = 1
+		;(board:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		panel.BackgroundTransparency = 1
+		for _, k in panel:GetChildren() do
+			if k:IsA("Frame") or k:IsA("UIStroke") then
+				k:Destroy()
+			end
+		end
+	end
 	leaf(holder, UDim2.fromOffset(10, size.Y - 12), 86)
 	leaf(holder, UDim2.fromOffset(size.X - 6, size.Y - 18), 76)
 	leaf(holder, UDim2.fromOffset(size.X * 0.62, 4), 60)
@@ -814,7 +892,15 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 		table.insert(w.tabs, { tab = t, button = b })
 	end
 	layoutTabs(w)
-	if o.gems then
+	local plate = if o.gems then skin("ui_plate") else nil
+	if plate then
+		-- the gem counter on the same wooden plate as the HUD's
+		local box, face = plate.frame(holder, "ui_plate", Vector2.new(210, 60), { pos = UDim2.new(1, -86, 0, -34), anchor = Vector2.new(1, 0), name = "GemBox" })
+		UI.icon(box, "gem", 58, UDim2.fromOffset(-12, 0))
+		local t = UI.text(face, "0", UDim2.new(1, -46, 1, 0), { pos = UDim2.fromOffset(40, 0), align = Enum.TextXAlignment.Left, name = "Count" })
+		raise(box, 6)
+		w.gemText = t
+	elseif o.gems then
 		local box = UI.frame({ size = UDim2.fromOffset(190, 52), pos = UDim2.new(1, -86, 0, -30), anchor = Vector2.new(1, 0), color = Color3.fromRGB(60, 36, 20), parent = holder, radius = 12, outline = 3, name = "GemBox" })
 		UI.icon(box, "gem", 40, UDim2.fromOffset(8, 6))
 		local t = UI.text(box, "0", UDim2.new(1, -62, 1, -12), { pos = UDim2.fromOffset(54, 6), align = Enum.TextXAlignment.Left, name = "Count" })
@@ -929,13 +1015,6 @@ function UI.popupRow(list: Instance, order: number, icon: string?, text: string,
 	return row
 end
 
--- A window built by hand (not UI.window / UI.popupWindow), like the class card deal: needs { frame, refresh }.
-function UI.register(name: string, w)
-	w.name = name
-	windows[name] = w
-	return w
-end
-
 function UI.setGems(amount: number)
 	for _, w in windows do
 		if w.gemText then
@@ -1011,8 +1090,8 @@ end
 
 -- A section heading inside a window (dark brown inset bar).
 function UI.heading(list: Instance, order: number, text: string)
-	local bar = UI.frame({ size = UDim2.new(1, -10, 0, 44), color = WOOD.inset, parent = list, radius = 12, outline = 3, name = "Heading" })
-	;(bar:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = WOOD.insetEdge
+	local bar = UI.section(list, UDim2.new(1, -10, 0, 44))
+	bar.Name = "Heading"
 	bar.LayoutOrder = order
 	UI.text(bar, string.upper(text), UDim2.new(1, -20, 1, -10), { pos = UDim2.fromOffset(10, 5), color = WOOD.cream })
 	return bar
@@ -1218,4 +1297,5 @@ do
 	pg.DescendantAdded:Connect(hook)
 end
 
+uiReady = true
 return UI

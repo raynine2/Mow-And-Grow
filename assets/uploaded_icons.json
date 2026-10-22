@@ -176,5 +176,155 @@
   "image": 98464601884290,
   "sha": "0ea828710a77965a8fc1875d9e90f088505aa627d54f53fb85901aa24ad87d0d",
   "via": "forgegui"
+ },
+ "star": {
+  "id": 86492869854053,
+  "image": 86492869854053,
+  "sha": "efdabdd77044d744f23c3f12ae6a8c2859294fb97cf18776266e7c47e1e9beb9",
+  "via": "forgegui"
+ },
+ "ui_sign": {
+  "id": 96726289901359,
+  "image": 96726289901359,
+  "sha": "f943f17322b566b7d13a61035a7a6cd916f88bf0ff540342b32f18e9a1f772fe",
+  "via": "forgegui"
+ },
+ "ticket": {
+  "id": 97266312570614,
+  "image": 97266312570614,
+  "sha": "45b08d4fd57ac9a226d738b690addfd3cdda14fa3968a04f263082ef980823ab",
+  "via": "forgegui"
+ },
+ "gift": {
+  "id": 103983358270730,
+  "image": 103983358270730,
+  "sha": "bb0fc5373edb359dd5d94716a88797de48b492d9d4d41c731a487eca8df238b0",
+  "via": "forgegui"
+ },
+ "crown": {
+  "id": 73060472456174,
+  "image": 73060472456174,
+  "sha": "2669f450e4902f01e04d453ac290a5e6571a0fbafa96b09826d1c15a00e346c9",
+  "via": "forgegui"
+ },
+ "x2coins": {
+  "id": 100943898772892,
+  "image": 100943898772892,
+  "sha": "3db4b43af0de6f1f9e16adbbed910b104af9e316c81c5f292f99dfdcd13aac79",
+  "via": "forgegui"
+ },
+ "x2clip": {
+  "id": 71991247638280,
+  "image": 71991247638280,
+  "sha": "d368b3fc018e511d1181e8b2ac78cd806cba4c03a530c72e838227c3a821cb86",
+  "via": "forgegui"
+ },
+ "x2gems": {
+  "id": 84788493275076,
+  "image": 84788493275076,
+  "sha": "19d124c6dbce7352264c1c79db680f242af8a3b2ed4b7627df37b18b58ae2e35",
+  "via": "forgegui"
+ },
+ "hatchluck": {
+  "id": 89730201812487,
+  "image": 89730201812487,
+  "sha": "c4814703b3f7bc5ce23142da2fcf5db4a6aa7d8a36fb117764ee5ca961561a32",
+  "via": "forgegui"
+ },
+ "superhatch": {
+  "id": 84999806573331,
+  "image": 84999806573331,
+  "sha": "de65dd06bf2ee95743fc0cedecd51d6681d4a1c2a523c67d585f691ed9648000",
+  "via": "forgegui"
+ },
+ "gempile": {
+  "id": 100630478320234,
+  "image": 100630478320234,
+  "sha": "786b7d37839c957be1096644a57c93ab3a6c3598e357da4353d51f9273443df3",
+  "via": "forgegui"
+ },
+ "gempouch": {
+  "id": 118661723526112,
+  "image": 118661723526112,
+  "sha": "365a091c6ceb5993067a427155a7ec35ade3c53dea212fd6eafe9f254c403c26",
+  "via": "forgegui"
+ },
+ "gemchest": {
+  "id": 106655796861149,
+  "image": 106655796861149,
+  "sha": "9517e9766d672282e59a3138365bf9fb5fcec152f2e417e7ddccbb4c0bb61b66",
+  "via": "forgegui"
+ },
+ "gemmountain": {
+  "id": 135602494186760,
+  "image": 135602494186760,
+  "sha": "7efb5ae6ed6fad770dbe4eb0b86cd0453f3102311372435cf124ca0fb7faba8e",
+  "via": "forgegui"
+ },
+ "mower_rusty": {
+  "id": 128951228775132,
+  "image": 128951228775132,
+  "sha": "b543b718f4107aa6d462e733a85ab01f35d81675ca8176914e1a1d5d3c21e78c",
+  "via": "forgegui"
+ },
+ "mower_tractor": {
+  "id": 133995753133958,
+  "image": 133995753133958,
+  "sha": "6905fad547650ffe453c4abb026b68157fb8c6468e154bbf9864aef9c4f372d6",
+  "via": "forgegui"
+ },
+ "mower_zeroturn": {
+  "id": 117528230924107,
+  "image": 117528230924107,
+  "sha": "8b08835f58d6815b47c3c235bbc85f92fa21f6db274821ca91a8d7cad09c5c29",
+  "via": "forgegui"
+ },
+ "mower_mulcher": {
+  "id": 89707034505020,
+  "image": 89707034505020,
+  "sha": "a96f769ad111e90feccb942d83977f66dd400e57f31ecd1519428e1a9a9233c3",
+  "via": "forgegui"
+ },
+ "mower_trial": {
+  "id": 75011220267983,
+  "image": 75011220267983,
+  "sha": "e426ef7c11bea7302c1dc03f9b38ad98b22f51b9c8e4359b0efa7e79d7b68f2a",
+  "via": "forgegui"
+ },
+ "mower_rocket": {
+  "id": 97242287569598,
+  "image": 97242287569598,
+  "sha": "8fc7340a7e1073fa0d287f45a33b441c3da9a3506c09f37043de70e241e1cd35",
+  "via": "forgegui"
+ },
+ "ui_button": {
+  "id": 95093922087446,
+  "image": 95093922087446,
+  "sha": "e3a726a857d8df170abbee0893d5ac9c04befe66710c330e8780fac047bd399f",
+  "via": "forgegui"
+ },
+ "ui_close": {
+  "id": 85870836095438,
+  "image": 85870836095438,
+  "sha": "59551dc61ec849a2965fef940ec88a9aa965cacdbae6df856a8b4e6b3ae0c100",
+  "via": "forgegui"
+ },
+ "ui_inset": {
+  "id": 133537415894333,
+  "image": 133537415894333,
+  "sha": "276f84b3f1511c0668c14ddec870c3eacf4394c2dfde95c1ef53899c268da428",
+  "via": "forgegui"
+ },
+ "ui_pcard": {
+  "id": 109287257504401,
+  "image": 109287257504401,
+  "sha": "aab33b4cbe1eb8e5e63e3065cbdaff0ccae186a06b497b1ea0d3b27a35c23218",
+  "via": "forgegui"
+ },
+ "ui_ribbon": {
+  "id": 103642203737605,
+  "image": 103642203737605,
+  "sha": "211553fb28ccc5ad4ae2a634bd4f93122426a4ec7b3d87b4a795afe62286bca2",
+  "via": "forgegui"
  }
 }

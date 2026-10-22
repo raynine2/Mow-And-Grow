@@ -1,12 +1,15 @@
--- SHOP window (R): hanging wooden category signs on the left (Featured, Passes, Tools, Mowers, Gems), the gem
--- counter with a green + under them, and big dark banner cards on the right with tags, an art area and green
--- Robux buttons. Buying goes through the usual remotes: State.fire("Prompt", "product"/"pass", key) for Robux,
--- State.fire("Buy", "mower", id) for gem mowers. Nothing here has a random result.
+-- SHOP window (R): ForgeGUI plank signs hanging on ropes on the left (Featured, Passes, Tools, Mowers, Gems), the
+-- gem counter plate with a green + under them, and wood-rimmed banner cards on the right (ribbon tag, the item's
+-- picture bobbing on a glow, shine sweeps, sparkles on the special ones, chunky green price buttons).
+-- Buying goes through the usual remotes: State.fire("Prompt", "product"/"pass", key) for Robux, State.fire("Buy",
+-- "mower", id) for gem mowers. Nothing here has a random result.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
 local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
+local Sound = require(script.Parent.Sound)
 local State = require(script.Parent.State)
 
 local ShopWindow = {}
@@ -15,92 +18,117 @@ local W = UI.wood
 
 local CATEGORIES = {
 	{ id = "Featured", icon = "star" },
-	{ id = "Passes", icon = "news" },
+	{ id = "Passes", icon = "ticket" },
 	{ id = "Tools", icon = "scissors" },
 	{ id = "Mowers", icon = "pushmower" },
 	{ id = "Gems", icon = "gem" },
 }
-local PASS_ICON = { DoubleCoins = "coin", DoubleGems = "gem", BigBag = "backpack", VIP = "star" }
-local PASS_COLOR = {
-	DoubleCoins = Color3.fromRGB(230, 160, 30),
-	DoubleGems = Color3.fromRGB(60, 150, 240),
-	BigBag = Color3.fromRGB(150, 100, 60),
-	VIP = Color3.fromRGB(170, 80, 220),
-}
+-- the ForgeGUI pictures (assets/icons): a pass, a mower, a gem pack
+local PASS_ICON = { BigBag = "sack", DoubleCoins = "x2coins", DoubleClippings = "x2clip", DoubleGems = "x2gems", VIP = "crown", HatchLuck = "hatchluck", SuperHatchLuck = "superhatch" }
+local MOWER_ICON = { RustyRider = "mower_rusty", TurboTractor = "mower_tractor", GoldenZeroTurn = "mower_zeroturn", MonsterMulcher = "mower_mulcher", TrialMower = "mower_trial", RocketMower = "mower_rocket" }
+local GEM_ICON = { "gempile", "gempouch", "gemchest", "gemmountain" }
 local GREEN = Color3.fromRGB(70, 200, 80)
 local BLUE = Color3.fromRGB(60, 150, 240)
-local TAG_COLOR = { EXCLUSIVE = Color3.fromRGB(255, 140, 30), NEW = Color3.fromRGB(70, 200, 80), OWNED = Color3.fromRGB(120, 120, 130), BEST = Color3.fromRGB(230, 60, 80) }
+local TAG_COLOR = {
+	EXCLUSIVE = Color3.fromRGB(255, 140, 30),
+	NEW = Color3.fromRGB(70, 200, 80),
+	OWNED = Color3.fromRGB(150, 150, 160),
+	BEST = Color3.fromRGB(230, 60, 80),
+	FOREVER = Color3.fromRGB(80, 170, 255),
+	POPULAR = Color3.fromRGB(255, 120, 170),
+	SUPER = Color3.fromRGB(255, 190, 40),
+	["BEST VALUE"] = Color3.fromRGB(230, 60, 80),
+}
+-- tags that make a banner sparkle
+local SHINY = { EXCLUSIVE = true, NEW = true, BEST = true, POPULAR = true, SUPER = true, ["BEST VALUE"] = true }
 
 type Price = { text: string, icon: string?, enabled: boolean, onClick: () -> (), gift: boolean? }
 type Banner = { title: string, desc: string, icon: string, color: Color3, tags: { string }?, prices: { Price } }
 
+-- `key` if its picture is uploaded, else `fallback` (a new picture can be waiting for Roblox's check)
+local function pic(key: string?, fallback: string): string
+	if key and (Config.ICONS[key] or "") ~= "" then
+		return key
+	end
+	return fallback
+end
+
 -------------------------------------------------------------------------------------------------------------
 -- drawing
 -------------------------------------------------------------------------------------------------------------
-local function pill(parent: Instance, text: string, color: Color3, pos: UDim2, width: number): Frame
-	local p = UI.frame({ size = UDim2.fromOffset(width, 30), pos = pos, color = color, parent = parent, radius = 15, outline = 3, name = "Pill" })
-	UI.gradient(p, color)
-	UI.text(p, text, UDim2.new(1, -14, 1, -8), { pos = UDim2.fromOffset(7, 4), stroke = 2 })
-	return p
-end
-
--- A green price button with an icon on the left (the R$ hex for Robux), grey when it can't be bought.
+-- A chunky price button with an icon on the left (the R$ glyph for Robux, a gem for gems), grey when it can't be
+-- bought.
 local function priceButton(parent: Instance, p: Price, pos: UDim2): TextButton
-	local b = UI.button(parent, p.text, if p.enabled then GREEN else W.grey, UDim2.fromOffset(200, 56), function()
+	local b = UI.button(parent, p.text, if p.enabled then GREEN else W.grey, UDim2.fromOffset(204, 54), function()
 		if p.enabled then
 			p.onClick()
+		else
+			Sound.play("denied")
 		end
 	end, { pos = pos, name = "Price" })
 	if p.icon then
 		local label = b:FindFirstChild("Label") :: TextLabel
-		label.Size = UDim2.new(1, -60, 1, -14)
-		label.Position = UDim2.fromOffset(52, 4)
-		UI.icon(b, p.icon, 38, UDim2.fromOffset(10, 6))
+		label.Size = UDim2.new(1, -62, 1, -18)
+		label.Position = UDim2.fromOffset(52, 3)
+		UI.icon(b, p.icon, 40, UDim2.fromOffset(12, 3))
 	end
 	UI.raise(b, 4)
 	return b
 end
 
 local function giftButton(parent: Instance, pos: UDim2)
-	local b = UI.button(parent, "", BLUE, UDim2.fromOffset(56, 56), function()
+	local b = UI.button(parent, "", BLUE, UDim2.fromOffset(58, 54), function()
 		UI.toast("Gifting is coming soon!", "yellow")
 	end, { pos = pos, name = "Gift" })
-	UI.icon(b, "gift", 40, UDim2.fromOffset(8, 5))
+	UI.icon(b, pic("gift", "gift"), 46, UDim2.new(0.5, 0, 0.5, -4), Vector2.new(0.5, 0.5))
 	UI.raise(b, 4)
 end
 
--- A big dark banner card: title, tag pills, description, price row, and the item's art on the right.
+-- A banner card: the ForgeGUI wood-rimmed card with the item's colour inside, its picture floating on a glow on
+-- the right, the title, a line about it, the price buttons and a ribbon tag. Rare ones sparkle; all of them shine.
+local BANNER = Vector2.new(770, 204)
 local function banner(list: Instance, order: number, o: Banner)
-	local base = UI.shade(o.color, 0.42)
-	local card = UI.frame({ size = UDim2.new(1, -16, 0, 196), color = base, parent = list, radius = 18, outline = 4, name = "Banner" })
-	;(card:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(30, 20, 14)
-	card.LayoutOrder = order
+	local slot = Instance.new("Frame")
+	slot.Name = "Banner"
+	slot.BackgroundTransparency = 1
+	slot.Size = UDim2.fromOffset(BANNER.X, BANNER.Y)
+	slot.LayoutOrder = order
+	slot.Parent = list
+	local _card, face = Skin.frame(slot, "ui_pcard", BANNER, { name = "Card", boost = 1.25 })
+	-- the coloured inside, clipped to the card's rounded window
+	local inner = UI.frame({ size = UDim2.fromScale(1, 1), color = o.color, parent = face, radius = 12, outline = 0, name = "Inner" })
+	inner.ClipsDescendants = true
 	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(UI.shade(o.color, 0.62), UI.shade(o.color, 0.22))
+	g.Color = ColorSequence.new(UI.shade(o.color, 1.2), UI.shade(o.color, 0.5))
 	g.Rotation = 20
-	g.Parent = card
-	-- the art area: a glow and the big icon
-	local art = UI.frame({ size = UDim2.fromOffset(200, 164), pos = UDim2.new(1, -16, 0.5, 0), anchor = Vector2.new(1, 0.5), color = UI.shade(o.color, 0.9), transparency = 0.55, parent = card, radius = 999, outline = 0, name = "Art" })
-	UI.icon(art, o.icon, 130, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-	UI.raise(art, 3)
-	UI.text(card, string.upper(o.title), UDim2.new(1, -260, 0, 50), { pos = UDim2.fromOffset(20, 12), align = Enum.TextXAlignment.Left, stroke = 4 })
-	local x = 20
-	for _, tag in o.tags or {} do
-		local width = 26 + #tag * 13
-		pill(card, tag, TAG_COLOR[tag] or C.green, UDim2.fromOffset(x, 66), width)
-		x += width + 8
+	g.Parent = inner
+	for i, d in { 250, 180 } do
+		local glow = UI.frame({ size = UDim2.fromOffset(d, d), pos = UDim2.new(1, -118, 0.5, 0), anchor = Vector2.new(0.5, 0.5), color = Color3.new(1, 1, 1), parent = inner, radius = 999, outline = 0, name = "Glow" })
+		glow.BackgroundTransparency = if i == 1 then 0.86 else 0.74
 	end
-	UI.text(card, o.desc, UDim2.new(1, -260, 0, 24), { pos = UDim2.fromOffset(20, if o.tags and #o.tags > 0 then 102 else 70), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 2 })
-	x = 20
+	local art = UI.icon(inner, o.icon, 150, UDim2.new(1, -118, 0.5, 2), Vector2.new(0.5, 0.5))
+	Skin.bob(art, 4, 1.4 + (order % 3) * 0.2)
+	Skin.shine(inner, 5, 0.4 + order * 0.35, 12)
+	-- words and buttons sit on the face (not clipped, so a hovered button can grow past the edge)
+	UI.text(face, string.upper(o.title), UDim2.new(1, -270, 0, 44), { pos = UDim2.fromOffset(18, 8), align = Enum.TextXAlignment.Left, stroke = 4 })
+	UI.text(face, o.desc, UDim2.new(1, -270, 0, 24), { pos = UDim2.fromOffset(20, 54), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 2 })
+	local x = 18
 	for _, p in o.prices do
-		priceButton(card, p, UDim2.new(0, x, 1, -70))
-		x += 210
+		priceButton(face, p, UDim2.new(0, x, 1, -62))
+		x += 214
 		if p.gift then
-			giftButton(card, UDim2.new(0, x, 1, -70))
-			x += 66
+			giftButton(face, UDim2.new(0, x, 1, -62))
+			x += 68
 		end
 	end
-	return card
+	local tag = o.tags and o.tags[1]
+	if tag then
+		UI.ribbon(slot, tag, TAG_COLOR[tag] or C.green)
+		if SHINY[tag] then
+			Skin.sparkles(inner, 0.4, Color3.fromRGB(255, 244, 170))
+		end
+	end
+	return slot
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -125,9 +153,9 @@ local function passBanner(d, key: string): Banner
 	return {
 		title = p.name,
 		desc = p.desc,
-		icon = PASS_ICON[key] or "star",
-		color = PASS_COLOR[key] or C.green,
-		tags = if owned then { "OWNED" } else { "FOREVER" },
+		icon = pic(PASS_ICON[key], "backpack"),
+		color = p.color or C.green,
+		tags = if owned then { "OWNED" } else { p.tag or "FOREVER" },
 		prices = {
 			{
 				text = if owned then "OWNED" else Format.commas(p.robux),
@@ -150,7 +178,7 @@ local function classBanners(d, out: { Banner })
 			table.insert(out, {
 				title = p.name,
 				desc = if c then (c.rarity .. " class - yours forever") else "Yours forever",
-				icon = "clover",
+				icon = pic("class_" .. p.class, "clover"),
 				color = if c and Config.RARITY_COLORS[c.rarity] then Config.RARITY_COLORS[c.rarity] else Color3.fromRGB(230, 120, 40),
 				tags = { "EXCLUSIVE" },
 				prices = { robux(key) },
@@ -161,12 +189,13 @@ end
 
 local function mowerBanner(d, m): Banner?
 	local owned = table.find(d.mowers, m.id) ~= nil
+	local icon = pic(MOWER_ICON[m.id], "pushmower")
 	local stats = ("Power %s  -  Speed %d  -  Fuel %d"):format(Format.short(m.damage), m.speed, m.fuel)
 	if m.currency == "gems" then
 		return {
 			title = m.name,
 			desc = stats,
-			icon = "pushmower",
+			icon = icon,
 			color = m.color,
 			tags = if owned then { "OWNED" } else nil,
 			prices = {
@@ -181,9 +210,9 @@ local function mowerBanner(d, m): Banner?
 			},
 		}
 	elseif m.currency == "robux" then
-		return { title = m.name, desc = stats, icon = "pushmower", color = m.color, tags = if owned then { "OWNED" } else { "NEW" }, prices = { robux(m.product, owned) } }
+		return { title = m.name, desc = stats, icon = icon, color = m.color, tags = if owned then { "OWNED" } else { "NEW" }, prices = { robux(m.product, owned) } }
 	elseif m.currency == "trial" and State.isRun() then
-		return { title = m.name, desc = stats .. "  -  this run only", icon = "pushmower", color = m.color, tags = { "BEST" }, prices = { robux(m.product) } }
+		return { title = m.name, desc = stats .. "  -  this run only", icon = icon, color = m.color, tags = { "BEST" }, prices = { robux(m.product) } }
 	end
 	return nil
 end
@@ -240,7 +269,7 @@ CONTENT.Gems = function(_d)
 		table.insert(out, {
 			title = p.name,
 			desc = "For classes, perks and mowers",
-			icon = "gem",
+			icon = pic(GEM_ICON[i], "gem"),
 			color = Color3.fromRGB(40, 140 + i * 15, 230),
 			tags = if i == 4 then { "BEST" } else nil,
 			prices = { robux(key) },
@@ -252,37 +281,36 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the window
 -------------------------------------------------------------------------------------------------------------
--- A wooden sign hanging from the rope, with two pegs; the open category is orange.
+-- A ForgeGUI plank sign hanging from the two ropes by its peg holes; the open category glows orange and its
+-- picture bobs.
+local SIGN = Vector2.new(200, 64)
+local SIGN_GAP = 82
 local function sign(parent: Instance, i: number, cat, active: boolean, onClick: () -> ()): TextButton
-	local color = if active then W.tabOn else W.tabWood
 	local b = Instance.new("TextButton")
 	b.Name = "Sign_" .. cat.id
 	b.Text = ""
 	b.AutoButtonColor = false
-	b.BackgroundColor3 = color
-	b.Size = UDim2.fromOffset(200, 62)
-	b.Position = UDim2.fromOffset(18, 28 + (i - 1) * 84)
+	b.BackgroundTransparency = 1
+	b.Size = UDim2.fromOffset(SIGN.X, SIGN.Y)
+	b.Position = UDim2.fromOffset(16, 30 + (i - 1) * SIGN_GAP)
 	b.Rotation = if i % 2 == 0 then 1.5 else -1.5
-	UI.corner(b, 12)
-	UI.stroke(b, 3, if active then Color3.fromRGB(150, 60, 10) else W.frameEdge)
-	UI.grain(b, color, 4)
-	for _, x in { 38, 162 } do
-		UI.frame({ size = UDim2.fromOffset(12, 12), pos = UDim2.fromOffset(x - 6, 6), color = Color3.fromRGB(70, 44, 24), parent = b, radius = 999, outline = 0, name = "Peg" })
-	end
-	UI.icon(b, cat.icon, 42, UDim2.fromOffset(12, 12))
-	UI.text(b, string.upper(cat.id), UDim2.new(1, -72, 1, -22), { pos = UDim2.fromOffset(60, 12), color = if active then Color3.new(1, 1, 1) else W.cream, stroke = 2.5 })
+	local _art, face = Skin.frame(b, "ui_sign", SIGN, { name = "Art", boost = 1.3, tint = if active then Color3.fromRGB(255, 176, 92) else nil })
+	local icon = UI.icon(face, cat.icon, 50, UDim2.new(0, -4, 0.5, 0), Vector2.new(0, 0.5))
+	UI.text(face, string.upper(cat.id), UDim2.new(1, -54, 1, -6), { pos = UDim2.fromOffset(50, 3), color = if active then Color3.new(1, 1, 1) else W.brownText, stroke = if active then 2.5 else 0 })
 	UI.raise(b, 4)
-	b.MouseButton1Click:Connect(function()
-		UI.bounce(b)
-		onClick()
-	end)
+	if active then
+		Skin.bob(icon, 3, 2.4)
+	end
+	Skin.press(b)
+	b.MouseButton1Click:Connect(onClick)
 	b.Parent = parent
 	return b
 end
 
+-- the two ropes the signs hang on, through the signs' peg holes
 local function ropes(parent: Instance)
-	for _, x in { 56, 180 } do
-		local r = UI.frame({ size = UDim2.fromOffset(5, 28 + 4 * 84 + 20), pos = UDim2.fromOffset(x, 0), color = Color3.fromRGB(196, 160, 100), parent = parent, radius = 2, outline = 2, name = "Rope" })
+	for _, x in { 32, 192 } do
+		local r = UI.frame({ size = UDim2.fromOffset(5, 30 + 4 * SIGN_GAP + 24), pos = UDim2.fromOffset(x, -8), color = Color3.fromRGB(196, 160, 100), parent = parent, radius = 2, outline = 2, name = "Rope" })
 		;(r:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(110, 80, 40)
 		r.ZIndex = 2
 	end
@@ -301,10 +329,12 @@ function ShopWindow.build()
 	signs.Parent = panel
 	ropes(signs)
 
-	-- gems + a green plus that jumps to the GEMS signs
-	local gemBox = UI.section(panel, UDim2.fromOffset(210, 64), UDim2.fromOffset(16, 486), Color3.fromRGB(60, 36, 20))
-	UI.icon(gemBox, "gem", 42, UDim2.fromOffset(10, 11))
-	local gemText = UI.text(gemBox, "0", UDim2.new(1, -124, 1, -20), { pos = UDim2.fromOffset(58, 10), align = Enum.TextXAlignment.Left, stroke = 2.5 })
+	-- gems on the HUD's wooden plate + a green plus that jumps to the GEMS sign
+	local gemBox, gemFace = Skin.frame(panel, "ui_plate", Vector2.new(214, 62), { pos = UDim2.fromOffset(18, 488), name = "GemBox" })
+	local gemIcon = UI.icon(gemBox, "gem", 66, UDim2.fromOffset(-14, -2))
+	Skin.bob(gemIcon, 2, 2)
+	Skin.shine(gemFace, 4.5, 1, 999)
+	local gemText = UI.text(gemFace, "0", UDim2.new(1, -86, 1, -4), { pos = UDim2.fromOffset(36, 2), align = Enum.TextXAlignment.Left, stroke = 2.5 })
 
 	local list = Instance.new("ScrollingFrame")
 	list.Name = "Banners"
@@ -337,9 +367,13 @@ function ShopWindow.build()
 		end
 		for i, cat in CATEGORIES do
 			sign(signs, i, cat, cat.id == current, function()
+				if current == cat.id then
+					return
+				end
 				current = cat.id
 				list.CanvasPosition = Vector2.zero
 				w.refresh()
+				UI.popIn(list)
 			end)
 		end
 		UI.clear(list)
@@ -355,10 +389,14 @@ function ShopWindow.build()
 			UI.text(list, "You own everything here. Thank you!", UDim2.new(1, -40, 0, 40), { color = W.brownText, stroke = 0 })
 		end
 	end
-	UI.button(gemBox, "+", GREEN, UDim2.fromOffset(48, 48), function()
+	UI.button(gemBox, "+", GREEN, UDim2.fromOffset(50, 50), function()
 		current = "Gems"
+		list.CanvasPosition = Vector2.zero
 		w.refresh()
-	end, { pos = UDim2.new(1, -8, 0.5, 0), anchor = Vector2.new(1, 0.5), name = "Plus" })
+		UI.popIn(list)
+	end, { pos = UDim2.new(1, -4, 0.5, 0), anchor = Vector2.new(1, 0.5), name = "Plus" })
+	-- the banners pop in one after another when the window opens
+	w.pop = { list }
 	return w
 end
 

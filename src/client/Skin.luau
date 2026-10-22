@@ -23,6 +23,12 @@ Skin.FRAMES = {
 	ui_tile = { w = 489, h = 512, slice = Rect.new(90, 90, 399, 422), face = { 76, 80, 74, 98 }, fallback = Color3.fromRGB(240, 210, 160), radius = 16 },
 	ui_tile_gold = { w = 506, h = 512, slice = Rect.new(90, 100, 416, 430), face = { 70, 85, 70, 95 }, fallback = Color3.fromRGB(255, 205, 50), radius = 16 },
 	ui_badge = { w = 512, h = 501, slice = Rect.new(140, 120, 372, 380), face = { 110, 100, 106, 92 }, fallback = Color3.fromRGB(196, 124, 62), radius = 999 },
+	-- the window kit (shop pass, 22 Oct 2026): white/grey art is tinted with ImageColor3 (it multiplies)
+	ui_button = { w = 1024, h = 416, slice = Rect.new(110, 100, 914, 306), face = { 30, 22, 30, 52 }, fallback = Color3.fromRGB(240, 240, 240), radius = 12 },
+	ui_inset = { w = 1024, h = 586, slice = Rect.new(110, 110, 914, 476), face = { 80, 88, 80, 62 }, fallback = Color3.fromRGB(160, 102, 56), radius = 14 },
+	ui_pcard = { w = 747, h = 1024, slice = Rect.new(120, 130, 627, 894), face = { 84, 92, 84, 92 }, fallback = Color3.fromRGB(230, 150, 40), radius = 18 },
+	ui_ribbon = { w = 1024, h = 178, slice = Rect.new(140, 40, 884, 140), face = { 125, 14, 125, 42 }, fallback = Color3.fromRGB(240, 240, 240), radius = 6 },
+	ui_sign = { w = 1024, h = 436, slice = Rect.new(140, 120, 884, 300), face = { 48, 48, 48, 70 }, fallback = Color3.fromRGB(240, 222, 200), radius = 14 },
 } :: { [string]: FrameDef }
 
 local function artId(key: string): string?
@@ -38,8 +44,10 @@ end
 
 -- A frame of `key` at a fixed design size (Vector2, in the 1280x720 layout units). Returns the frame and its
 -- "face": an empty Frame over the flat inside, where content goes. `stretch` = 9-slice it (cards, plates, bars);
--- otherwise the picture is fitted whole (badges, tiles).
-function Skin.frame(parent: Instance, key: string, size: Vector2, props: { pos: UDim2?, anchor: Vector2?, name: string?, stretch: boolean? }?): (GuiObject, Frame)
+-- otherwise the picture is fitted whole (badges, tiles). `boost` draws the border that much thicker (small buttons
+-- would get a hairline outline otherwise), `maxScale` caps it (big boxes would get a huge rim), `tint` colours it.
+type FrameProps = { pos: UDim2?, anchor: Vector2?, name: string?, stretch: boolean?, boost: number?, maxScale: number?, tint: Color3? }
+function Skin.frame(parent: Instance, key: string, size: Vector2, props: FrameProps?): (GuiObject, Frame)
 	local o = props or {}
 	local def = Skin.FRAMES[key]
 	local id = artId(key)
@@ -52,13 +60,19 @@ function Skin.frame(parent: Instance, key: string, size: Vector2, props: { pos: 
 		if def.rect then
 			img.ImageRectSize = def.rect
 		end
+		if o.tint then
+			img.ImageColor3 = o.tint
+		end
 		if o.stretch ~= false then
 			img.ScaleType = Enum.ScaleType.Slice
 			img.SliceCenter = def.slice
-			-- keep the border as thick as the art drawn at the frame's smaller dimension
-			k = size.Y / def.h
-			if size.X / def.w < k then
-				k = size.X / def.w
+			-- keep the border as thick as the art drawn at the frame's smaller dimension (times `boost`), but never so
+			-- thick that the corners of the 9-slice overlap
+			local sl = def.slice
+			k = math.min(size.X / def.w, size.Y / def.h) * (o.boost or 1)
+			k = math.min(k, size.Y / (sl.Min.Y + def.h - sl.Max.Y), size.X / (sl.Min.X + def.w - sl.Max.X))
+			if o.maxScale then
+				k = math.min(k, o.maxScale)
 			end
 			img.SliceScale = k
 		else

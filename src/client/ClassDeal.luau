@@ -11,6 +11,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
+local Policy = require(ReplicatedStorage.MowALawn:WaitForChild("Policy"))
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
@@ -429,8 +430,22 @@ local function restockButton(y: number, color: Color3, title: string, line: stri
 	shrink(b, 0.667)
 	return b
 end
-slideFrom(restockButton(312, Color3.fromRGB(50, 140, 245), "RESTOCK", "Deal new cards now", "ClassRestock", false), "left")
-slideFrom(restockButton(354, Color3.fromRGB(70, 190, 80), "LUCKY RESTOCK", "Rare cards 3x more likely", "ClassLuckyRestock", true), "left")
+local restocks = {
+	restockButton(312, Color3.fromRGB(50, 140, 245), "RESTOCK", "Deal new cards now", "ClassRestock", false),
+	restockButton(354, Color3.fromRGB(70, 190, 80), "LUCKY RESTOCK", "Rare cards 3x more likely", "ClassLuckyRestock", true),
+}
+for _, b in restocks do
+	slideFrom(b, "left")
+	-- a restock deals random cards for Robux: hidden until Roblox's policy says paid random items are allowed here
+	b.Visible = false
+end
+task.spawn(function()
+	if Policy.paidRandomOk() then
+		for _, b in restocks do
+			b.Visible = true
+		end
+	end
+end)
 
 -- the picked class's big card (right)
 local cardGlow = Instance.new("ImageLabel")

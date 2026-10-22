@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
 local State = require(script.Parent.State)
 local PetsWindow = require(script.Parent.PetsWindow)
 
@@ -19,16 +20,11 @@ win.list.Visible = false -- this tab lays itself out
 local P = win.panel
 
 local function pillHeader(parent: Instance, text: string, color: Color3, icon: string, pos: UDim2, width: number): TextLabel
-	local pill = UI.frame({ size = UDim2.fromOffset(width, 36), pos = pos, color = color, parent = parent, radius = 12, outline = 3, name = "Header" })
-	UI.gradient(pill, color)
-	UI.icon(pill, icon, 48, UDim2.fromOffset(-18, -8))
-	local t = UI.text(pill, text, UDim2.new(1, -46, 1, -10), { pos = UDim2.fromOffset(38, 5), stroke = 2.5 })
-	UI.raise(pill, 5)
-	return t
+	return Skin.pill(parent, text, color, icon, pos - UDim2.fromOffset(0, 3), width)
 end
 
 UI.section(P, UDim2.fromOffset(204, 470), UDim2.fromOffset(18, 46))
-pillHeader(P, "Eggs", W.tabWood, "egg", UDim2.fromOffset(60, 28), 130)
+pillHeader(P, "Eggs", W.tabWood, PetsWindow.eggIcon(Config.EGGS[1]), UDim2.fromOffset(60, 28), 130)
 local eggList = Instance.new("Frame")
 eggList.BackgroundTransparency = 1
 eggList.Size = UDim2.fromOffset(188, 420)
@@ -40,12 +36,12 @@ eggLayout.Padding = UDim.new(0, 10)
 eggLayout.SortOrder = Enum.SortOrder.LayoutOrder
 eggLayout.Parent = eggList
 
-UI.section(P, UDim2.fromOffset(596, 470), UDim2.fromOffset(234, 46))
-local gridTitle = pillHeader(P, "All Pets", C.orange, "paw", UDim2.fromOffset(440, 28), 200)
+UI.section(P, UDim2.fromOffset(570, 470), UDim2.fromOffset(234, 46))
+local gridTitle = pillHeader(P, "All Pets", C.orange, "paw", UDim2.fromOffset(420, 28), 200)
 local scroll = Instance.new("ScrollingFrame")
 scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel = 0
-scroll.Size = UDim2.fromOffset(576, 420)
+scroll.Size = UDim2.fromOffset(552, 420)
 scroll.Position = UDim2.fromOffset(244, 84)
 scroll.ScrollBarThickness = 8
 scroll.ScrollBarImageColor3 = W.frameEdge
@@ -133,7 +129,7 @@ win.refresh = function()
 	end)
 	for i, egg in Config.EGGS do
 		local list = petsOf(egg.id)
-		eggButton(i, egg.name, ("%d/%d found"):format(count(list), #list), "egg", filter == egg.id, function()
+		eggButton(i, egg.name, ("%d/%d found"):format(count(list), #list), PetsWindow.eggIcon(egg), filter == egg.id, function()
 			filter = egg.id
 			win.refresh()
 		end)
@@ -158,10 +154,15 @@ win.refresh = function()
 		end
 		local rc = Config.RARITY_COLORS[rarity]
 		order += 1
-		local chip = UI.frame({ size = UDim2.fromOffset(150, 30), color = rc, parent = scroll, radius = 10, outline = 3, name = "Head" .. rarity })
+		-- the rarity's ribbon
+		local chip = Instance.new("Frame")
+		chip.Name = "Head" .. rarity
+		chip.BackgroundTransparency = 1
+		chip.Size = UDim2.fromOffset(200, 36)
 		chip.LayoutOrder = order
-		UI.gradient(chip, rc)
-		UI.text(chip, ("%s %d/%d"):format(string.upper(rarity), count(group), #group), UDim2.new(1, -12, 1, -8), { pos = UDim2.fromOffset(6, 4), stroke = 2 })
+		chip.Parent = scroll
+		local _r, rface = Skin.frame(chip, "ui_ribbon", Vector2.new(200, 36), { name = "Ribbon", boost = 1.2, tint = rc })
+		UI.text(rface, ("%s %d/%d"):format(string.upper(rarity), count(group), #group), UDim2.new(1, 0, 1, 0), { stroke = 2 })
 		order += 1
 		local row = Instance.new("Frame")
 		row.BackgroundTransparency = 1
@@ -176,21 +177,14 @@ win.refresh = function()
 		grid.Parent = row
 		for i, p in group do
 			local has = found[p.id] == true
-			local cell = Instance.new("TextButton")
+			local cell = Skin.tile(if has then rc else UI.shade(rc, 0.55), p.id == picked, Vector2.new(96, 104))
 			cell.Name = "Pet_" .. p.id
-			cell.Text = ""
-			cell.AutoButtonColor = false
-			cell.BackgroundColor3 = rc
 			cell.LayoutOrder = i
-			UI.corner(cell, 14)
-			UI.stroke(cell, if p.id == picked then 5 else 3, if p.id == picked then Color3.new(1, 1, 1) else UI.shade(rc, 0.4))
-			UI.gradient(cell, rc)
 			local vp = PetsWindow.petView(cell, p.look, 76, UDim2.new(0.5, 0, 0, 2), Vector2.new(0.5, 0))
 			if not has then
 				vp.ImageColor3 = Color3.new(0, 0, 0)
 			end
-			UI.text(cell, if has then p.name else "???", UDim2.new(1, -8, 0, 22), { pos = UDim2.fromOffset(4, 78), stroke = 2, textSize = 13 })
-			UI.clicky(cell)
+			UI.text(cell, if has then p.name else "???", UDim2.new(1, -8, 0, 22), { pos = UDim2.fromOffset(4, 74), stroke = 2, textSize = 13 })
 			cell.MouseButton1Click:Connect(function()
 				picked = p.id
 				win.refresh()
@@ -213,7 +207,7 @@ win.refresh = function()
 		for _, e in Config.EGGS do
 			local odds = oneIn(e, p.id, d.hatchLuck or 1)
 			if odds then
-				UI.icon(hatchList, "egg", 26, UDim2.fromOffset(2, y))
+				UI.icon(hatchList, PetsWindow.eggIcon(e), 26, UDim2.fromOffset(2, y))
 				UI.text(hatchList, e.name, UDim2.new(0.6, -30, 0, 24), { pos = UDim2.fromOffset(32, y + 1), align = Enum.TextXAlignment.Left, stroke = 2 })
 				UI.text(hatchList, odds, UDim2.new(0.4, 0, 0, 24), { pos = UDim2.new(1, -4, 0, y + 1), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, color = Color3.fromRGB(255, 220, 90), stroke = 2 })
 				y += 30

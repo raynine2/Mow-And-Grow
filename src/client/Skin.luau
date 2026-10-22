@@ -29,6 +29,8 @@ Skin.FRAMES = {
 	ui_pcard = { w = 747, h = 1024, slice = Rect.new(120, 130, 627, 894), face = { 84, 92, 84, 92 }, fallback = Color3.fromRGB(230, 150, 40), radius = 18 },
 	ui_ribbon = { w = 1024, h = 178, slice = Rect.new(140, 40, 884, 140), face = { 125, 14, 125, 42 }, fallback = Color3.fromRGB(240, 240, 240), radius = 6 },
 	ui_sign = { w = 1024, h = 436, slice = Rect.new(140, 120, 884, 300), face = { 48, 48, 48, 70 }, fallback = Color3.fromRGB(240, 222, 200), radius = 14 },
+	-- (the garden pass: a blank seed packet lying sideways, crimped edge on the left; white, tinted per use)
+	ui_packet = { w = 768, h = 574, slice = Rect.new(170, 150, 640, 430), face = { 160, 110, 60, 100 }, fallback = Color3.fromRGB(240, 236, 228), radius = 10 },
 } :: { [string]: FrameDef }
 
 local function artId(key: string): string?
@@ -224,6 +226,7 @@ function Skin.sparkles(obj: GuiObject, rate: number?, color: Color3?): () -> ()
 	local alive = true
 	task.spawn(function()
 		local rng = Random.new()
+		task.wait() -- (the caller may parent `obj` right after this call)
 		while alive and obj.Parent do
 			if obj.Visible and obj.AbsoluteSize.X > 0 then
 				twinkle(obj, UDim2.fromScale(rng:NextNumber(0.05, 0.95), rng:NextNumber(0.05, 0.9)), rng:NextInteger(10, 18), color)
@@ -290,6 +293,66 @@ function Skin.floatText(obj: GuiObject, text: string, color: Color3?)
 		task.wait(0.4)
 		label:Destroy()
 	end)
+end
+
+-- Freshly mowed lawn stripes across a card (light diagonal bands), clipped by the card.
+function Skin.stripes(parent: GuiObject, count: number?, gap: number?)
+	for i = 0, (count or 10) - 1 do
+		local stripe = UI.frame({ size = UDim2.new(0, 46, 2, 0), pos = UDim2.new(0, -60 + i * (gap or 92), 0.5, 0), anchor = Vector2.new(0.5, 0.5), color = Color3.new(1, 1, 1), parent = parent, radius = 0, outline = 0, name = "Stripe" })
+		stripe.Rotation = 24
+		stripe.BackgroundTransparency = 0.9
+	end
+end
+
+-- A slowly turning sunburst behind something special (a hatched critter, a rare card), tinted `color`.
+function Skin.rays(parent: Instance, color: Color3, size: number, pos: UDim2?, speed: number?): ImageLabel?
+	local id = artId("ui_rays")
+	if not id then
+		return nil
+	end
+	local r = Instance.new("ImageLabel")
+	r.Name = "Rays"
+	r.BackgroundTransparency = 1
+	r.Image = id
+	r.ImageColor3 = color
+	r.ImageTransparency = 0.25
+	r.Size = UDim2.fromOffset(size, size)
+	r.Position = pos or UDim2.fromScale(0.5, 0.5)
+	r.AnchorPoint = Vector2.new(0.5, 0.5)
+	r.Parent = parent
+	TweenService:Create(r, TweenInfo.new(speed or 14, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), { Rotation = 360 }):Play()
+	return r
+end
+
+-- A title pill on a box's top edge: the tinted button art (not clickable) with a picture poking out on the left.
+-- Returns the text label.
+function Skin.pill(parent: Instance, text: string, color: Color3, icon: string, pos: UDim2, width: number): TextLabel
+	local pill, face = Skin.frame(parent, "ui_button", Vector2.new(width, 42), { pos = pos, name = "Header", boost = 1.7, tint = color })
+	UI.icon(pill, icon, 52, UDim2.fromOffset(-20, -8))
+	local t = UI.text(face, text, UDim2.new(1, -28, 1, 0), { pos = UDim2.fromOffset(26, 0), stroke = 2.5 })
+	UI.raise(pill, 5)
+	return t
+end
+
+-- A clickable picture tile (a critter, an item): the button art tinted `color`, brighter and sparkling when
+-- `picked`. Size and parent are the caller's.
+function Skin.tile(color: Color3, picked: boolean?, size: Vector2?): TextButton
+	local b = Instance.new("TextButton")
+	b.Text = ""
+	b.AutoButtonColor = false
+	b.BackgroundTransparency = 1
+	local s = size or Vector2.new(104, 124)
+	b.Size = UDim2.fromOffset(s.X, s.Y)
+	local art = Skin.frame(b, "ui_button", s, { name = "Art", boost = 1.5, tint = if picked then UI.shade(color, 1.3) else color })
+	art.Size = UDim2.fromScale(1, 1)
+	if picked then
+		local ring = UI.frame({ size = UDim2.new(1, 8, 1, 8), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.new(1, 1, 1), parent = b, radius = 16, outline = 4, name = "Picked" })
+		ring.BackgroundTransparency = 1
+		;(ring:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.new(1, 1, 1)
+		Skin.sparkles(b, 0.5)
+	end
+	Skin.press(b)
+	return b
 end
 
 -- Pop an object in from nothing (a window, a card), with an overshoot.

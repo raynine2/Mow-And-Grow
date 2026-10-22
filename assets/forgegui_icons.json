@@ -24,6 +24,14 @@
   "forge": "cf7a57e5-34f7-4482-9f81-ad00b06eb7c4",
   "roblox": 73060472456174
  },
+ "daisy": {
+  "forge": "5328bb8b-86b2-49ef-a822-d58bf6b06379",
+  "roblox": 94058680673406
+ },
+ "egg_garden": {
+  "forge": "3416d66e-67f1-4446-b2a8-203fb6835b88",
+  "roblox": 78371966579025
+ },
  "gem": {
   "forge": "8e988437-c08e-4e81-8457-b69c18be9b31",
   "roblox": 117890456517468
@@ -164,9 +172,17 @@
   "forge": "ac6dee19-24d3-4726-8e18-d33fcaa27d4e",
   "roblox": 85870836095438
  },
+ "ui_grass": {
+  "forge": "46891a3b-63b3-4d3e-bf69-71eb9adb5eed",
+  "roblox": 131283498236643
+ },
  "ui_inset": {
   "forge": "3d335e9b-a7c5-4c6b-be46-6367ea10e235",
   "roblox": 133537415894333
+ },
+ "ui_packet": {
+  "forge": "363d31d1-b1f7-445a-81fb-f86825727656",
+  "roblox": 98256362455995
  },
  "ui_pcard": {
   "forge": "8a83f7ab-b3fb-4c8f-a89a-7351534ba26e",
@@ -175,6 +191,10 @@
  "ui_plate": {
   "forge": "2775e9cc-abf7-4be9-a925-fad4c7130943",
   "roblox": 112504710509388
+ },
+ "ui_rays": {
+  "forge": "1fdd38c7-3ab3-4edb-81e8-0bdea59222d5",
+  "roblox": 77698029310104
  },
  "ui_ribbon": {
   "forge": "cacf8979-90bd-446e-b8c3-ea5067c9ff06",

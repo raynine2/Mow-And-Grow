@@ -1,12 +1,15 @@
 -- The PETS window (P): EGGS tab = Chop A Forest's egg cards (egg on the left, every critter with its % odds,
--- 1 / 3 / 10 buttons; odds shown because eggs are random); PETS tab = your critters, equip up to 3, EQUIP BEST.
--- Hatching: the window dims, the egg wobbles and cracks, the critter pops out with a rarity-coloured burst.
+-- 1 / 3 / 10 buttons; odds shown because eggs are random; a Robux egg only shows where Roblox's policy allows paid
+-- random items); PETS tab = your critters, equip up to 3, EQUIP BEST. Drawn with the ForgeGUI kit (client/Skin).
+-- Hatching: the window dims, the egg wobbles and cracks, the critter pops out on rays with a rarity-coloured burst.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
+local Policy = require(ReplicatedStorage.MowALawn:WaitForChild("Policy"))
 local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local Confetti = require(script.Parent.Confetti)
@@ -58,6 +61,18 @@ local function petView(parent: Instance, look, size: number, pos: UDim2, anchor:
 	return vp
 end
 
+-- An egg's picture: the ForgeGUI garden egg / golden egg, else the old moss egg.
+local function eggIcon(egg): string
+	if egg.id == "GoldenEgg" and (Config.ICONS.superhatch or "") ~= "" then
+		return "superhatch"
+	end
+	if egg.id ~= "GoldenEgg" and (Config.ICONS.egg_garden or "") ~= "" then
+		return "egg_garden"
+	end
+	return "egg"
+end
+PetsWindow.eggIcon = eggIcon
+
 -------------------------------------------------------------------------------------------------------------
 -- window: EGGS / PETS tabs
 -------------------------------------------------------------------------------------------------------------
@@ -69,42 +84,55 @@ for _, w in { eggs, pets } do
 end
 PetsWindow.TABS = TABS
 
--- One wide egg card: egg + buttons on the left, the critters with their odds on the right.
+-- One wide egg card on the ForgeGUI wood-rimmed card: the egg bobbing on turning rays at the left, every critter
+-- with its odds on little rarity tiles, the open buttons along the bottom; mowed-lawn stripes in the egg's colour.
+local EGG_CARD = Vector2.new(730, 270)
 local function eggCard(list: Instance, order: number, egg, d)
-	local card = UI.frame({ size = UDim2.new(1, -10, 0, 236), color = egg.color, parent = list, radius = 18, outline = 4, name = "Egg_" .. egg.id })
-	;(card:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = UI.shade(egg.color, 0.4)
+	local card = Instance.new("Frame")
+	card.Name = "Egg_" .. egg.id
+	card.BackgroundTransparency = 1
+	card.Size = UDim2.new(1, -10, 0, EGG_CARD.Y)
 	card.LayoutOrder = order
+	card.Parent = list
+	local art, face = Skin.frame(card, "ui_pcard", EGG_CARD, { name = "Card", boost = 1.25 })
+	art.Size = UDim2.fromScale(1, 1)
+	local inner = UI.frame({ size = UDim2.fromScale(1, 1), color = egg.color, parent = face, radius = 12, outline = 0, name = "Inner" })
+	inner.ClipsDescendants = true
 	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(UI.shade(egg.color, 1.2), UI.shade(egg.color, 0.75))
+	g.Color = ColorSequence.new(UI.shade(egg.color, 1.15), UI.shade(egg.color, 0.55))
 	g.Rotation = 90
-	g.Parent = card
+	g.Parent = inner
+	Skin.stripes(inner)
 	if egg.exclusive then
 		UI.ribbon(card, "EXCLUSIVE", Color3.fromRGB(150, 80, 230))
+		Skin.sparkles(inner, 0.45, Color3.fromRGB(255, 240, 160))
 	end
-	-- the egg itself (two stacked ovals)
+	-- the egg itself, on slowly turning rays
 	local eggHolder = Instance.new("Frame")
 	eggHolder.Name = "EggPic"
 	eggHolder.BackgroundTransparency = 1
-	eggHolder.Size = UDim2.fromOffset(110, 120)
-	eggHolder.Position = UDim2.fromOffset(24, 46)
-	eggHolder.Parent = card
-	local pic = UI.icon(eggHolder, "egg", 118, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-	if pic:IsA("ImageLabel") and egg.id ~= "GardenEgg" then
-		pic.ImageColor3 = UI.shade(egg.color, 1.2) -- the moss egg picture, tinted (the Golden Egg)
+	eggHolder.Size = UDim2.fromOffset(112, 130)
+	eggHolder.Position = UDim2.fromOffset(8, 34)
+	eggHolder.Parent = face
+	Skin.rays(eggHolder, UI.shade(egg.color, 1.5), 210, nil, 18)
+	local pic = UI.icon(eggHolder, eggIcon(egg), 116, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	if pic:IsA("ImageLabel") and eggIcon(egg) == "egg" and egg.id ~= "GardenEgg" then
+		pic.ImageColor3 = UI.shade(egg.color, 1.2) -- the old moss egg picture, tinted
 	end
-	UI.text(card, string.upper(egg.name), UDim2.fromOffset(300, 34), { pos = UDim2.fromOffset(20, 10), align = Enum.TextXAlignment.Left, stroke = 3 })
-	UI.text(card, egg.desc or ("Hatch a garden critter - %s gems"):format(Format.commas(egg.price or 0)), UDim2.fromOffset(400, 20), { pos = UDim2.fromOffset(260, 18), align = Enum.TextXAlignment.Left, stroke = 1.5, textSize = 15 })
+	Skin.bob(pic, 4, 1.8)
+	UI.text(face, string.upper(egg.name), UDim2.fromOffset(300, 32), { pos = UDim2.fromOffset(16, 2), align = Enum.TextXAlignment.Left, stroke = 3 })
+	UI.text(face, egg.desc or ("Hatch a garden critter - %s gems"):format(Format.commas(egg.price or 0)), UDim2.fromOffset(400, 20), { pos = UDim2.fromOffset(250, 10), align = Enum.TextXAlignment.Left, stroke = 1.5, textSize = 15 })
 
 	-- critters + odds (with your hatch luck)
 	local luck = d.hatchLuck or 1
 	local odds = Config.eggOdds(egg, luck)
 	local grid = Instance.new("Frame")
 	grid.BackgroundTransparency = 1
-	grid.Size = UDim2.new(1, -170, 0, 130)
-	grid.Position = UDim2.fromOffset(150, 48)
-	grid.Parent = card
+	grid.Size = UDim2.new(1, -136, 0, 122)
+	grid.Position = UDim2.fromOffset(128, 38)
+	grid.Parent = face
 	local layout = Instance.new("UIGridLayout")
-	layout.CellSize = UDim2.fromOffset(84, 62)
+	layout.CellSize = UDim2.fromOffset(84, 58)
 	layout.CellPadding = UDim2.fromOffset(6, 6)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = grid
@@ -112,26 +140,33 @@ local function eggCard(list: Instance, order: number, egg, d)
 		local p = Config.pet(r[1])
 		if p then
 			local rc = Config.RARITY_COLORS[p.rarity]
-			local cell = UI.frame({ size = UDim2.fromScale(1, 1), color = UI.shade(rc, 0.55), parent = grid, radius = 10, outline = 2, name = "Pet_" .. p.id })
-			;(cell:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = rc
+			local cell = Instance.new("Frame")
+			cell.Name = "Pet_" .. p.id
+			cell.BackgroundTransparency = 1
 			cell.LayoutOrder = i
+			cell.Parent = grid
+			local tile = Skin.frame(cell, "ui_button", Vector2.new(84, 58), { name = "Art", boost = 1.4, tint = UI.shade(rc, 0.75) })
+			tile.Size = UDim2.fromScale(1, 1)
 			petView(cell, p.look, 40, UDim2.fromOffset(2, 2))
-			local nm = UI.text(cell, p.name, UDim2.new(1, -44, 0, 26), { pos = UDim2.fromOffset(42, 4), align = Enum.TextXAlignment.Left, stroke = 1.5 })
+			local nm = UI.text(cell, p.name, UDim2.new(1, -44, 0, 24), { pos = UDim2.fromOffset(42, 4), align = Enum.TextXAlignment.Left, stroke = 1.5 })
 			nm.TextWrapped = true -- scaled, so long names shrink instead of breaking mid-word
-			UI.text(cell, pctText(r[2]), UDim2.new(1, -44, 0, 20), { pos = UDim2.fromOffset(42, 32), align = Enum.TextXAlignment.Left, color = UI.shade(rc, 1.4), stroke = 1.5, textSize = 14 })
+			UI.text(cell, pctText(r[2]), UDim2.new(1, -44, 0, 18), { pos = UDim2.fromOffset(42, 28), align = Enum.TextXAlignment.Left, color = UI.shade(rc, 1.5), stroke = 1.5, textSize = 14 })
+			if BIG[p.rarity] then
+				Skin.sparkles(cell, 0.9, UI.shade(rc, 1.5))
+			end
 		end
 	end
 	if luck > 1 then
-		UI.text(card, ("Hatch Luck x%s applied"):format(tostring(luck)), UDim2.fromOffset(300, 18), { pos = UDim2.new(1, -20, 0, 20), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, color = Color3.fromRGB(150, 255, 120), stroke = 1.5, textSize = 14 })
+		UI.text(face, ("Hatch Luck x%s applied"):format(tostring(luck)), UDim2.fromOffset(300, 18), { pos = UDim2.new(1, -12, 0, 12), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, color = Color3.fromRGB(150, 255, 120), stroke = 1.5, textSize = 14 })
 	end
 
 	-- buttons along the bottom
 	local row = Instance.new("Frame")
 	row.BackgroundTransparency = 1
-	row.Size = UDim2.new(1, -40, 0, 46)
-	row.Position = UDim2.new(0, 20, 1, -14)
+	row.Size = UDim2.new(1, -32, 0, 46)
+	row.Position = UDim2.new(0, 16, 1, -2)
 	row.AnchorPoint = Vector2.new(0, 1)
-	row.Parent = card
+	row.Parent = face
 	local rl = Instance.new("UIListLayout")
 	rl.FillDirection = Enum.FillDirection.Horizontal
 	rl.Padding = UDim.new(0, 12)
@@ -145,8 +180,8 @@ local function eggCard(list: Instance, order: number, egg, d)
 			end, { name = "Open" .. n })
 			b.LayoutOrder = i
 			local label = b:FindFirstChild("Label") :: TextLabel
-			label.Size = UDim2.new(1, -46, 1, -12)
-			UI.icon(b, "gem", 28, UDim2.new(1, -36, 0, 7)).ZIndex = b.ZIndex + 1
+			label.Size = UDim2.new(1, -46, 1, -18)
+			UI.icon(b, "gem", 30, UDim2.new(1, -38, 0, 4)).ZIndex = b.ZIndex + 1
 		end
 	else
 		for i, pr in egg.products do
@@ -165,6 +200,13 @@ local function eggCard(list: Instance, order: number, egg, d)
 	return card
 end
 
+-- ask Roblox's policy once; the Golden Egg card appears when it says paid random items are fine here
+task.spawn(function()
+	if Policy.paidRandomOk() and UI.isOpen("Eggs") then
+		eggs.refresh()
+	end
+end)
+
 eggs.refresh = function()
 	local d = State.data
 	UI.clear(eggs.list)
@@ -172,7 +214,10 @@ eggs.refresh = function()
 		return
 	end
 	for i, egg in Config.EGGS do
-		eggCard(eggs.list, i, egg, d)
+		-- an egg bought with Robux is a paid random item: only where Roblox's policy allows it (Policy)
+		if egg.currency ~= "robux" or Policy.known() == true then
+			eggCard(eggs.list, i, egg, d)
+		end
 	end
 	local luck = d.hatchLuck or 1
 	local line = UI.text(eggs.list, if luck > 1 then ("Your Hatch Luck: x%s - Epic and rarer critters are more likely"):format(tostring(luck)) else "Hatch Luck passes in the Shop make Epic and rarer critters more likely", UDim2.new(1, -20, 0, 26), { stroke = 2 })
@@ -198,12 +243,7 @@ local P = pets.panel
 
 -- a pill title on a section's top edge, with a picture poking out on the left
 local function pillHeader(parent: Instance, text: string, color: Color3, icon: string, pos: UDim2, width: number): TextLabel
-	local pill = UI.frame({ size = UDim2.fromOffset(width, 36), pos = pos, color = color, parent = parent, radius = 12, outline = 3, name = "Header" })
-	UI.gradient(pill, color)
-	UI.icon(pill, icon, 48, UDim2.fromOffset(-18, -8))
-	local t = UI.text(pill, text, UDim2.new(1, -46, 1, -10), { pos = UDim2.fromOffset(38, 5), stroke = 2.5 })
-	UI.raise(pill, 5)
-	return t
+	return Skin.pill(parent, text, color, icon, pos - UDim2.fromOffset(0, 3), width)
 end
 
 local eqBox = UI.section(P, UDim2.fromOffset(392, 170), UDim2.fromOffset(22, 46))
@@ -211,8 +251,14 @@ local eqTitle = pillHeader(P, "Equipped 0/3", C.orange, "paw", UDim2.fromOffset(
 local slots: { Frame } = {}
 for i = 1, Config.PET_EQUIP do
 	local slot = UI.frame({ size = UDim2.fromOffset(108, 108), pos = UDim2.fromOffset(18 + (i - 1) * 124, 42), color = UI.shade(W.inset, 0.88), parent = eqBox, radius = 12, outline = 3, name = "Slot" .. i })
-	;(slot:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(222, 176, 118)
-	UI.text(slot, "EMPTY", UDim2.new(1, -20, 0, 22), { pos = UDim2.new(0, 10, 0.5, -11), color = Color3.fromRGB(226, 186, 136), stroke = 0, name = "Empty" })
+	-- the HUD's wooden hotbar tile; the ring only lights up (in the rarity colour) when a critter sits here
+	slot.BackgroundTransparency = 1
+	local tile = Skin.frame(slot, "ui_tile", Vector2.new(108, 108), { name = "Tile", stretch = false })
+	tile.Size = UDim2.fromScale(1, 1)
+	local ring = slot:FindFirstChildOfClass("UIStroke") :: UIStroke
+	ring.Transparency = 1
+	ring.Thickness = 4
+	UI.text(slot, "EMPTY", UDim2.new(1, -20, 0, 22), { pos = UDim2.new(0, 10, 0.5, -11), color = Color3.fromRGB(150, 104, 62), stroke = 0, name = "Empty" })
 	local holder = Instance.new("Frame")
 	holder.Name = "Pet"
 	holder.BackgroundTransparency = 1
@@ -220,11 +266,11 @@ for i = 1, Config.PET_EQUIP do
 	holder.Parent = slot
 	table.insert(slots, slot)
 end
-local boostBox = UI.section(P, UDim2.fromOffset(400, 170), UDim2.fromOffset(426, 46))
+local boostBox = UI.section(P, UDim2.fromOffset(372, 170), UDim2.fromOffset(426, 46))
 UI.text(boostBox, "Team boost", UDim2.new(1, -20, 0, 26), { pos = UDim2.fromOffset(10, 12), color = W.cream, stroke = 2 })
 local boostText = UI.text(boostBox, "+0%", UDim2.new(1, -20, 0, 66), { pos = UDim2.fromOffset(10, 46), color = Color3.fromRGB(110, 230, 80), stroke = 4 })
 UI.text(boostBox, ("Up to %d pets at once"):format(Config.PET_EQUIP), UDim2.new(1, -20, 0, 20), { pos = UDim2.new(0, 10, 1, -32), color = W.cream, stroke = 1.5 })
-local otherBox = UI.section(P, UDim2.fromOffset(804, 280), UDim2.fromOffset(22, 238))
+local otherBox = UI.section(P, UDim2.fromOffset(776, 280), UDim2.fromOffset(22, 238))
 local _ = otherBox
 pillHeader(P, "Other Pets", W.blue, "egg", UDim2.fromOffset(330, 220), 180)
 local countChip = UI.frame({ size = UDim2.fromOffset(120, 32), pos = UDim2.fromOffset(34, 222), color = Color3.fromRGB(60, 36, 20), parent = P, radius = 10, outline = 3, name = "Count" })
@@ -233,9 +279,9 @@ local countText = UI.text(countChip, "0/60", UDim2.new(1, -40, 1, -8), { pos = U
 UI.raise(countChip, 5)
 local bestBtn = UI.button(P, "EQUIP BEST", C.green, UDim2.fromOffset(160, 38), function()
 	State.fire("Pet", "best")
-end, { pos = UDim2.new(1, -34, 0, 218), anchor = Vector2.new(1, 0), name = "Best" })
+end, { pos = UDim2.new(1, -54, 0, 218), anchor = Vector2.new(1, 0), name = "Best" })
 UI.raise(bestBtn, 5)
-petGrid.Size = UDim2.fromOffset(780, 232)
+petGrid.Size = UDim2.fromOffset(756, 232)
 petGrid.Position = UDim2.fromOffset(34, 272)
 petGrid.ZIndex = 3
 
@@ -244,12 +290,20 @@ local function bigCard(parent: Instance): { [string]: any }
 	local card = UI.frame({ size = UDim2.fromOffset(300, 520), pos = UDim2.new(1, 36, 0, 0), color = Color3.new(1, 1, 1), parent = parent, radius = 26, outline = 5, name = "PetCard" })
 	card.Rotation = 2
 	;(card:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(40, 40, 60)
+	local hasArt = Skin.has("ui_pcard")
+	if hasArt then
+		-- the ForgeGUI wood-rimmed collector card
+		card.BackgroundTransparency = 1
+		;(card:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		Skin.frame(card, "ui_pcard", Vector2.new(300, 520), { name = "Art", boost = 1.1 })
+	end
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new(Color3.fromRGB(255, 255, 250), Color3.fromRGB(196, 212, 236))
 	g.Rotation = 90
 	g.Parent = card
 	local inner = UI.frame({ size = UDim2.new(1, -20, 1, -20), pos = UDim2.fromOffset(10, 10), color = Color3.new(1, 1, 1), parent = card, radius = 18, outline = 2, name = "Inner" })
 	inner.BackgroundTransparency = 1
+	inner.Visible = not hasArt
 	;(inner:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(200, 210, 230)
 	for _, sp in { { 0.82, 0.2, 34 }, { 0.2, 0.62, 26 }, { 0.75, 0.8, 40 } } do
 		local st = Instance.new("ImageLabel")
@@ -319,6 +373,9 @@ local function fillCard(c, p, found: boolean)
 	for i, st in c.stars do
 		st.ImageColor3 = if i <= (STARS[p.rarity] or 1) then Color3.fromRGB(255, 205, 50) else Color3.fromRGB(110, 100, 90)
 	end
+	if found then
+		Skin.rays(c.view, rc, 280, nil, 16)
+	end
 	local vp = petView(c.view, p.look, 200, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 	if not found then
 		vp.ImageColor3 = Color3.new(0, 0, 0)
@@ -335,7 +392,7 @@ pets.refresh = function()
 	for _, slot in slots do
 		UI.clear(slot:FindFirstChild("Pet") :: Frame)
 		;(slot:FindFirstChild("Empty") :: TextLabel).Visible = true
-		;(slot:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(222, 176, 118)
+		;(slot:FindFirstChildOfClass("UIStroke") :: UIStroke).Transparency = 1
 	end
 	if not d then
 		return
@@ -358,7 +415,9 @@ pets.refresh = function()
 			if slot then
 				local emptyLabel = slot:FindFirstChild("Empty") :: TextLabel
 				emptyLabel.Visible = false
-				;(slot:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Config.RARITY_COLORS[p.rarity]
+				local ring = slot:FindFirstChildOfClass("UIStroke") :: UIStroke
+				ring.Color = Config.RARITY_COLORS[p.rarity]
+				ring.Transparency = 0
 				local holder = slot:FindFirstChild("Pet") :: Frame
 				petView(holder, p.look, 96, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 				local b = Instance.new("TextButton")
@@ -394,18 +453,14 @@ pets.refresh = function()
 			continue
 		end
 		local rc = Config.RARITY_COLORS[p.rarity]
-		local card = Instance.new("TextButton")
+		local card = Skin.tile(rc, e.uid == pickedUid, Vector2.new(104, 124))
 		card.Name = "Pet_" .. e.uid
-		card.Text = ""
-		card.AutoButtonColor = false
-		card.BackgroundColor3 = rc
 		card.LayoutOrder = i
-		UI.corner(card, 14)
-		UI.stroke(card, if e.uid == pickedUid then 5 else 3, if e.uid == pickedUid then Color3.new(1, 1, 1) else UI.shade(rc, 0.4))
-		UI.gradient(card, rc)
 		petView(card, p.look, 80, UDim2.new(0.5, 0, 0, 4), Vector2.new(0.5, 0))
-		UI.text(card, p.name, UDim2.new(1, -8, 0, 30), { pos = UDim2.fromOffset(4, 88), stroke = 2, textSize = 14 })
-		UI.clicky(card)
+		UI.text(card, p.name, UDim2.new(1, -10, 0, 26), { pos = UDim2.fromOffset(5, 84), stroke = 2, textSize = 14 })
+		if BIG[p.rarity] and e.uid ~= pickedUid then
+			Skin.sparkles(card, 0.8, UI.shade(rc, 1.5))
+		end
 		card.MouseButton1Click:Connect(function()
 			pickedUid = e.uid
 			pets.refresh()
@@ -492,8 +547,9 @@ local function hatchShow(eggId: string, ids: { string })
 		local cx = if many then 640 + (col - (cols - 1) / 2) * cellW else 640
 		local cy = if many then 300 + rowI * 250 else 330
 		local scale = if many then 0.7 else 1
-		local shell = UI.frame({ size = UDim2.fromOffset(150 * scale, 190 * scale), pos = UDim2.fromOffset(cx, cy), anchor = Vector2.new(0.5, 0.5), color = UI.shade(egg.color, 1.35), parent = root, radius = 999, outline = 5, name = "Shell" .. i })
-		UI.gradient(shell, UI.shade(egg.color, 1.35))
+		-- the egg's picture wobbles, then bursts
+		local shell = UI.icon(root, eggIcon(egg), 200 * scale, UDim2.fromOffset(cx, cy), Vector2.new(0.5, 0.5))
+		shell.Name = "Shell" .. i
 		task.delay((i - 1) * 0.35, function()
 			-- wobble
 			for k = 1, 4 do
@@ -514,6 +570,7 @@ local function hatchShow(eggId: string, ids: { string })
 				end)
 			end
 			shell:Destroy()
+			Skin.rays(root, rc, 460 * scale, UDim2.fromOffset(cx, cy - 10), if BIG[p.rarity] then 6 else 12)
 			local burst = UI.frame({ size = UDim2.fromOffset(20, 20), pos = UDim2.fromOffset(cx, cy), anchor = Vector2.new(0.5, 0.5), color = rc, parent = root, radius = 999, outline = 0, name = "Burst" })
 			burst.BackgroundTransparency = 0.2
 			TweenService:Create(burst, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(420 * scale, 420 * scale), BackgroundTransparency = 1 }):Play()

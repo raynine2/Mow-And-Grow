@@ -654,10 +654,15 @@ function UI.planks(parent: Instance, size: UDim2, pos: UDim2?, color: Color3?, r
 	return f
 end
 
--- Decorative leaf on a board corner.
+-- Decorative leaf on a board corner (a little swaying daisy cluster once the ForgeGUI daisy is uploaded).
 local function leaf(parent: Instance, pos: UDim2, size: number)
-	local l = UI.icon(parent, "leaf", size, pos, Vector2.new(0.5, 0.5))
+	local daisy = hasArt("daisy")
+	local l = UI.icon(parent, if daisy then "daisy" else "leaf", if daisy then size * 0.9 else size, pos, Vector2.new(0.5, 0.5))
 	l.ZIndex = 5
+	if daisy then
+		l.Rotation = -6
+		TweenService:Create(l, TweenInfo.new(1.6 + math.random() * 0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 6 }):Play()
+	end
 	for _, d in l:GetDescendants() do
 		if d:IsA("GuiObject") then
 			d.ZIndex = 5
@@ -870,6 +875,31 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 			if k:IsA("Frame") or k:IsA("UIStroke") then
 				k:Destroy()
 			end
+		end
+	end
+	-- a strip of lawn growing along the bottom edge of every board (the ForgeGUI grass, copies side by side)
+	if hasArt("ui_grass") then
+		local strip = Instance.new("Frame")
+		strip.Name = "Grass"
+		strip.BackgroundTransparency = 1
+		strip.Size = UDim2.new(1, 24, 0, 50)
+		strip.Position = UDim2.new(0, -12, 1, 22)
+		strip.AnchorPoint = Vector2.new(0, 1)
+		strip.ZIndex = 5
+		strip.ClipsDescendants = true
+		strip.Parent = holder
+		local gw = math.floor(50 * 921 / 271)
+		local x = 0
+		while x < size.X + 24 do
+			local g = Instance.new("ImageLabel")
+			g.BackgroundTransparency = 1
+			g.Image = Config.ICONS.ui_grass
+			g.ScaleType = Enum.ScaleType.Fit
+			g.Size = UDim2.fromOffset(gw, 50)
+			g.Position = UDim2.fromOffset(x, 0)
+			g.ZIndex = 5
+			g.Parent = strip
+			x += gw - 14
 		end
 	end
 	leaf(holder, UDim2.fromOffset(10, size.Y - 12), 86)

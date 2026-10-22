@@ -1,9 +1,11 @@
--- SHOP window (R): ForgeGUI plank signs hanging on ropes on the left (Featured, Passes, Tools, Mowers, Gems), the
--- gem counter plate with a green + under them, and wood-rimmed banner cards on the right (ribbon tag, the item's
--- picture bobbing on a glow, shine sweeps, sparkles on the special ones, chunky green price buttons).
+-- SHOP window (R): a stack of seed packets on the left (Featured, Passes, Tools, Mowers, Gems), the gem counter
+-- plate with a green + under them, and wood-rimmed banner cards on the right (mowed-lawn stripes, ribbon tag, the
+-- item's picture bobbing on a glow, shine sweeps, sparkles on the special ones, chunky green price buttons). Now
+-- and then a little mower drives along the grass at the bottom of the board.
 -- Buying goes through the usual remotes: State.fire("Prompt", "product"/"pass", key) for Robux, State.fire("Buy",
 -- "mower", id) for gem mowers. Nothing here has a random result.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
@@ -102,6 +104,8 @@ local function banner(list: Instance, order: number, o: Banner)
 	g.Color = ColorSequence.new(UI.shade(o.color, 1.2), UI.shade(o.color, 0.5))
 	g.Rotation = 20
 	g.Parent = inner
+	-- freshly mowed stripes across the card, like a lawn after the mower went up and down it
+	Skin.stripes(inner)
 	for i, d in { 250, 180 } do
 		local glow = UI.frame({ size = UDim2.fromOffset(d, d), pos = UDim2.new(1, -118, 0.5, 0), anchor = Vector2.new(0.5, 0.5), color = Color3.new(1, 1, 1), parent = inner, radius = 999, outline = 0, name = "Glow" })
 		glow.BackgroundTransparency = if i == 1 then 0.86 else 0.74
@@ -281,39 +285,39 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the window
 -------------------------------------------------------------------------------------------------------------
--- A ForgeGUI plank sign hanging from the two ropes by its peg holes; the open category glows orange and its
--- picture bobs.
-local SIGN = Vector2.new(200, 64)
-local SIGN_GAP = 82
+-- The categories are seed packets in a stack, each its own colour: the open one is bright, slides out a little,
+-- sparkles and its picture bobs; the others are pale until you pick them.
+local PACKET = Vector2.new(214, 76)
+local PACKET_GAP = 86
+local CAT_COLOR = {
+	Featured = Color3.fromRGB(255, 196, 60),
+	Passes = Color3.fromRGB(176, 120, 245),
+	Tools = Color3.fromRGB(240, 150, 70),
+	Mowers = Color3.fromRGB(245, 96, 86),
+	Gems = Color3.fromRGB(80, 176, 255),
+}
 local function sign(parent: Instance, i: number, cat, active: boolean, onClick: () -> ()): TextButton
+	local color = CAT_COLOR[cat.id] or C.green
 	local b = Instance.new("TextButton")
 	b.Name = "Sign_" .. cat.id
 	b.Text = ""
 	b.AutoButtonColor = false
 	b.BackgroundTransparency = 1
-	b.Size = UDim2.fromOffset(SIGN.X, SIGN.Y)
-	b.Position = UDim2.fromOffset(16, 30 + (i - 1) * SIGN_GAP)
-	b.Rotation = if i % 2 == 0 then 1.5 else -1.5
-	local _art, face = Skin.frame(b, "ui_sign", SIGN, { name = "Art", boost = 1.3, tint = if active then Color3.fromRGB(255, 176, 92) else nil })
-	local icon = UI.icon(face, cat.icon, 50, UDim2.new(0, -4, 0.5, 0), Vector2.new(0, 0.5))
-	UI.text(face, string.upper(cat.id), UDim2.new(1, -54, 1, -6), { pos = UDim2.fromOffset(50, 3), color = if active then Color3.new(1, 1, 1) else W.brownText, stroke = if active then 2.5 else 0 })
+	b.Size = UDim2.fromOffset(PACKET.X, PACKET.Y)
+	b.Position = UDim2.fromOffset(if active then 22 else 6, 18 + (i - 1) * PACKET_GAP)
+	b.Rotation = if i % 2 == 0 then 2 else -2
+	local _art, face = Skin.frame(b, "ui_packet", PACKET, { name = "Art", boost = 1.3, tint = if active then color else color:Lerp(Color3.new(1, 1, 1), 0.5) })
+	local icon = UI.icon(b, cat.icon, 56, UDim2.new(0, 14, 0.5, -2), Vector2.new(0, 0.5))
+	UI.text(face, string.upper(cat.id), UDim2.new(1, -36, 1, 0), { pos = UDim2.fromOffset(34, 0), stroke = if active then 3 else 2.5, color = if active then Color3.new(1, 1, 1) else Color3.fromRGB(255, 252, 240) })
 	UI.raise(b, 4)
 	if active then
 		Skin.bob(icon, 3, 2.4)
+		Skin.sparkles(b, 0.6)
 	end
 	Skin.press(b)
 	b.MouseButton1Click:Connect(onClick)
 	b.Parent = parent
 	return b
-end
-
--- the two ropes the signs hang on, through the signs' peg holes
-local function ropes(parent: Instance)
-	for _, x in { 32, 192 } do
-		local r = UI.frame({ size = UDim2.fromOffset(5, 30 + 4 * SIGN_GAP + 24), pos = UDim2.fromOffset(x, -8), color = Color3.fromRGB(196, 160, 100), parent = parent, radius = 2, outline = 2, name = "Rope" })
-		;(r:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(110, 80, 40)
-		r.ZIndex = 2
-	end
 end
 
 function ShopWindow.build()
@@ -327,9 +331,8 @@ function ShopWindow.build()
 	signs.BackgroundTransparency = 1
 	signs.Size = UDim2.fromOffset(236, 460)
 	signs.Parent = panel
-	ropes(signs)
 
-	-- gems on the HUD's wooden plate + a green plus that jumps to the GEMS sign
+	-- gems on the HUD's wooden plate + a green plus that jumps to the GEMS packet
 	local gemBox, gemFace = Skin.frame(panel, "ui_plate", Vector2.new(214, 62), { pos = UDim2.fromOffset(18, 488), name = "GemBox" })
 	local gemIcon = UI.icon(gemBox, "gem", 66, UDim2.fromOffset(-14, -2))
 	Skin.bob(gemIcon, 2, 2)
@@ -397,6 +400,40 @@ function ShopWindow.build()
 	end, { pos = UDim2.new(1, -4, 0.5, 0), anchor = Vector2.new(1, 0.5), name = "Plus" })
 	-- the banners pop in one after another when the window opens
 	w.pop = { list }
+
+	-- now and then a little mower putters along the grass at the bottom of the board, spitting clippings
+	local lane = Instance.new("Frame")
+	lane.Name = "MowerLane"
+	lane.BackgroundTransparency = 1
+	lane.Size = UDim2.new(1, 0, 0, 70)
+	lane.Position = UDim2.new(0, 0, 1, 6)
+	lane.AnchorPoint = Vector2.new(0, 1)
+	lane.ZIndex = 8
+	lane.ClipsDescendants = false
+	lane.Parent = w.frame
+	task.spawn(function()
+		while w.frame.Parent do
+			task.wait(6 + math.random() * 6)
+			if w.frame.Visible then
+				local m = UI.icon(lane, "pushmower", 62, UDim2.new(1, 30, 1, 0), Vector2.new(0.5, 1))
+				m.ZIndex = 9
+				local drive = TweenService:Create(m, TweenInfo.new(5, Enum.EasingStyle.Linear), { Position = UDim2.new(0, -30, 1, 0) })
+				local rock = TweenService:Create(m, TweenInfo.new(0.12, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Rotation = 4 })
+				m.Rotation = -4
+				drive:Play()
+				rock:Play()
+				task.spawn(function()
+					while m.Parent do
+						Skin.burst(m, 1, Color3.fromRGB(130, 220, 80))
+						task.wait(0.2)
+					end
+				end)
+				drive.Completed:Wait()
+				rock:Cancel()
+				m:Destroy()
+			end
+		end
+	end)
 	return w
 end
 

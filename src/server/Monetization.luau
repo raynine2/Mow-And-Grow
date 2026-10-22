@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.MowALawn.Config)
+local Policy = require(ReplicatedStorage.MowALawn.Policy)
 local Net = require(script.Parent.Net)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
@@ -228,6 +229,11 @@ function Monetization.start()
 			end
 			if p.id == 0 then
 				Net.notify(player, "Coming soon!", "yellow")
+				return
+			end
+			-- random paid items (eggs, restocks) only where Roblox's policy allows them for this player
+			if p.paidRandom and not Policy.paidRandomOk(player) then
+				Net.notify(player, "That isn't available where you are.", "yellow")
 				return
 			end
 			MarketplaceService:PromptProductPurchase(player, p.id)

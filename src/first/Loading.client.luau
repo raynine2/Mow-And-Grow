@@ -31,6 +31,8 @@ local shared = ReplicatedStorage:WaitForChild("MowALawn")
 local LoadingScreen = require(shared:WaitForChild("LoadingScreen")) :: any
 local gui = LoadingScreen.build(player)
 gui.Parent = playerGui
+-- the mower's progress: each real step moves it on, and it creeps toward the next step's cap in between
+LoadingScreen.setProgress(gui, 0.06, 0.4)
 cover:Destroy()
 if arriving then
 	arriving:Destroy()
@@ -54,6 +56,7 @@ task.delay(1, function()
 end)
 local start = os.clock()
 local dimmed = false
+local readyShown = false
 local lastAsk = os.clock()
 while os.clock() - start < 60 do
 	if not ready and os.clock() - lastAsk > 5 then
@@ -63,6 +66,11 @@ while os.clock() - start < 60 do
 	if not dimmed and workspace:FindFirstChild("World") then
 		dimmed = true
 		LoadingScreen.dim(gui)
+		LoadingScreen.setProgress(gui, 0.5, 0.75)
+	end
+	if ready and not readyShown then
+		readyShown = true
+		LoadingScreen.setProgress(gui, 0.8, 0.95)
 	end
 	local char = player.Character
 	if ready and char and char:FindFirstChild("HumanoidRootPart") then

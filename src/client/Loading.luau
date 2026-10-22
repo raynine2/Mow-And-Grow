@@ -28,6 +28,7 @@ function Loading.show()
 	end
 	local gui = LoadingScreen.build(player)
 	LoadingScreen.dim(gui, 0.3)
+	LoadingScreen.setProgress(gui, 0.1, 0.9) -- (creeps on until the teleport takes over)
 	gui.Parent = player:WaitForChild("PlayerGui")
 	current = gui
 	shownAt = os.clock()

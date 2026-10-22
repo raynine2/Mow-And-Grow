@@ -185,8 +185,9 @@ end
 
 -- TRADING CARDS (22 Oct 2026, the owner's pick): every class is a collectible card. The frame's material shows the
 -- rarity (honey wood, leafy green, blue enamel, amethyst, gold, ruby roses, black obsidian with a rainbow edge), the
--- picture sits in a window at the top with the name on a ribbon in the rarity colour across it, the rarity is
--- written underneath and the price hangs off the bottom on a pill. Face down a card shows the guild's green back.
+-- picture fills the card inside a slim frame (after the owner's note that the first version hid it), the name rides
+-- a ribbon in the rarity colour across the top, the odds sit on a seal at the lower right and the price hangs off the
+-- bottom on a pill. Sold-out cards are greyed, not blacked out. Face down a card shows the guild's green back.
 -- Epic and rarer cards catch a foil glint every few seconds. Without the pictures the drawn cards stay.
 local CARD_KEY = { Common = "card_common", Uncommon = "card_uncommon", Rare = "card_rare", Epic = "card_epic", Legendary = "card_legendary", Mythic = "card_mythic", Secret = "card_secret" }
 local TRADING = Skin.has("card_common") and Skin.has("card_ribbon")
@@ -197,14 +198,6 @@ local function ribbonTint(rarity: string): Color3
 		return Color3.fromRGB(74, 70, 96)
 	end
 	return Config.RARITY_COLORS[rarity] or Color3.new(1, 1, 1)
-end
-local function rarityInk(rarity: string): Color3
-	if rarity == "Common" then
-		return Color3.fromRGB(130, 110, 90)
-	elseif rarity == "Secret" then
-		return Color3.fromRGB(120, 70, 200)
-	end
-	return UI.shade(Config.RARITY_COLORS[rarity], 0.7)
 end
 -- the rarity's frame behind everything else in `g`; returns it and the insets of its cream inside (l, t, r, b)
 local function cardFrame(g: GuiObject, rarity: string, w: number, h: number, maxScale: number?): (GuiObject, { number })
@@ -220,6 +213,35 @@ local function nameRibbon(parent: Instance, text: string, rarity: string, w: num
 	r.ZIndex = 3
 	local t = UI.text(face, text, UDim2.fromScale(1, 1), { stroke = stroke or 1.5, name = "Name" })
 	return r, t
+end
+-- dress a card picture: an ink outline, a soft shade along its bottom (so the price pill reads) and a glossy
+-- highlight over its top-left corner, like light on a printed card
+local function dressPicture(art: GuiObject, rc: Color3, radius: number)
+	local corner = art:FindFirstChildOfClass("UICorner") or UI.corner(art, radius)
+	;(corner :: UICorner).CornerRadius = UDim.new(0, radius)
+	UI.stroke(art, if radius > 8 then 3 else 2, Color3.fromRGB(58, 32, 14))
+	local shade = Instance.new("Frame")
+	shade.Name = "Shade"
+	shade.BorderSizePixel = 0
+	shade.BackgroundColor3 = UI.shade(rc, 0.25)
+	shade.Size = UDim2.fromScale(1, 1)
+	UI.corner(shade, radius)
+	local sg = Instance.new("UIGradient")
+	sg.Rotation = 90
+	sg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.68, 1), NumberSequenceKeypoint.new(1, 0.5) })
+	sg.Parent = shade
+	shade.Parent = art
+	local gloss = Instance.new("Frame")
+	gloss.Name = "Gloss"
+	gloss.BorderSizePixel = 0
+	gloss.BackgroundColor3 = Color3.new(1, 1, 1)
+	gloss.Size = UDim2.fromScale(1, 1)
+	UI.corner(gloss, radius)
+	local gg = Instance.new("UIGradient")
+	gg.Rotation = 40
+	gg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.78), NumberSequenceKeypoint.new(0.3, 0.84), NumberSequenceKeypoint.new(0.31, 1), NumberSequenceKeypoint.new(1, 1) })
+	gg.Parent = gloss
+	gloss.Parent = art
 end
 -- a foil glint that sweeps across `g` every few seconds
 local function foil(g: GuiObject, radius: number)
@@ -692,7 +714,7 @@ end
 local starRow = Instance.new("Frame")
 starRow.BackgroundTransparency = 1
 starRow.Size = UDim2.fromOffset(196, 26)
-starRow.Position = UDim2.new(0.5, 0, 0, if TRADING then 52 else 44)
+starRow.Position = UDim2.new(0.5, 0, 0, if TRADING then 48 else 44)
 starRow.AnchorPoint = Vector2.new(0.5, 0)
 starRow.Parent = header
 local starIcons: { ImageLabel } = {}
@@ -762,9 +784,24 @@ if TRADING then
 		t.TextColor3 = Color3.fromRGB(92, 58, 30)
 		;(t:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
 	end
+	-- the picture gets half again as much room; the quote goes (the VS box shows it), the odds stay
+	artPanel.Size = UDim2.new(1, -40, 0, 140)
+	artPanel.Position = UDim2.fromOffset(20, 102)
+	rarityPill.Position = UDim2.new(0.5, 0, 0, 228)
+	perkRows.Position = UDim2.fromOffset(20, 264)
+	perkRows.Size = UDim2.new(1, -40, 0, 122)
+	detQuote.Visible = false
+	detOdds.Position = UDim2.fromOffset(14, 388)
 end
 local gemBtn = UI.button(detail, "BUY", C.purple, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(0, 16, 1, -14), anchor = Vector2.new(0, 1), name = "GemBuy" })
 local robuxBtn = UI.button(detail, "R$ 0", C.green, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(1, -16, 1, -14), anchor = Vector2.new(1, 1), name = "RobuxBuy" })
+if TRADING then
+	-- (a touch slimmer, so the bigger picture and the stats fit above them)
+	for _, btn in { gemBtn, robuxBtn } do
+		btn.Size = UDim2.fromOffset(132, 44)
+		btn.Position = UDim2.new(btn.Position.X.Scale, btn.Position.X.Offset, 1, -10)
+	end
+end
 local gemIcon = UI.icon(gemBtn, "gem", 32, UDim2.new(0, 10, 0.5, -3), Vector2.new(0, 0.5))
 local robuxIcon = robuxGlyph(robuxBtn, 28, UDim2.new(0, 12, 0.5, -3), Vector2.new(0, 0.5))
 robuxIcon.ZIndex = robuxBtn.ZIndex + 1
@@ -909,7 +946,7 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 		b.BackgroundTransparency = 1
 		rim.Enabled = false
 		bg.Enabled = false
-		local _, ins = cardFrame(b, c.rarity, 104, 140)
+		local _, ins = cardFrame(b, c.rarity, 104, 140, 0.11) -- (a slim border, so the picture gets the room)
 		inset = ins
 	end
 	-- the card's picture, full bleed (Config.ICONS.scene_<Id>)
@@ -923,18 +960,15 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	UI.corner(art, 10)
 	art.Parent = b
 	if TRADING then
-		-- the picture in the window at the top, the name on a ribbon across its bottom edge, the rarity under it
-		local picH = math.floor((140 - inset[2] - inset[4]) * 0.66)
-		art.Size = UDim2.new(1, -(inset[1] + inset[3]), 0, picH)
+		-- the picture fills the whole card inside the frame; the name rides a ribbon across the top
+		art.Size = UDim2.new(1, -(inset[1] + inset[3]), 1, -(inset[2] + inset[4]))
 		art.Position = UDim2.fromOffset(inset[1], inset[2])
-		;(art:FindFirstChildOfClass("UICorner") :: UICorner).CornerRadius = UDim.new(0, 7)
-		UI.stroke(art, 2, Color3.fromRGB(58, 32, 14))
-		local ribbonY = inset[2] + picH
-		local _, nm = nameRibbon(b, c.name, c.rarity, 116, 36, UDim2.fromOffset(52, ribbonY), 1.5)
+		dressPicture(art, rc, 6)
+		local _, nm = nameRibbon(b, c.name, c.rarity, 118, 36, UDim2.fromOffset(52, inset[2] + 4), 1.5)
 		nm.Size = UDim2.new(1, 0, 1, -4)
-		local label = UI.text(b, string.upper(c.rarity), UDim2.new(1, -16, 0, 11), { pos = UDim2.fromOffset(8, ribbonY + 17), color = rarityInk(c.rarity), stroke = 0, name = "Rarity" })
-		label.ZIndex = 2
-		;(label:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		if not inStock and not owned and tab == "stock" then
+			art.ImageColor3 = Color3.fromRGB(150, 150, 150) -- sold out: greyed, but still easy to see
+		end
 	else
 		local nameBar = UI.frame({ size = UDim2.new(1, -12, 0, 24), pos = UDim2.fromOffset(6, 82), color = if GUILD then Color3.fromRGB(60, 36, 16) else Color3.fromRGB(20, 14, 36), parent = b, radius = 6, outline = 0, name = "NameBar" })
 		nameBar.BackgroundTransparency = 0.35
@@ -973,10 +1007,21 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 		else
 			UI.text(chip, pctText(chance), UDim2.new(1, -4, 1, -4), { pos = UDim2.fromOffset(2, 2), stroke = 1 })
 		end
+		if TRADING then
+			-- (on a trading card the seal sits on the lower right corner, clear of the name ribbon)
+			chip.AnchorPoint = Vector2.new(0.5, 0.5)
+			chip.Position = UDim2.new(1, -4, 1, -34)
+			chip.ZIndex = 5
+			for _, k in chip:GetChildren() do
+				if k:IsA("ImageLabel") then
+					k.Size = UDim2.fromOffset(42, 42)
+				end
+			end
+		end
 	end
 	if not inStock and not owned and tab == "stock" then
 		local shade = UI.frame({ size = UDim2.fromScale(1, 1), color = if GUILD then Color3.fromRGB(24, 14, 4) else Color3.fromRGB(10, 6, 20), parent = b, radius = 14, outline = 0, name = "Dim" })
-		shade.BackgroundTransparency = 0.45
+		shade.BackgroundTransparency = if TRADING then 0.75 else 0.45
 		shade.ZIndex = 5
 	elseif TRADING and SHINE[c.rarity] then
 		foil(b, 12)
@@ -1257,15 +1302,13 @@ local function reveal(c, line: string, confetti: boolean)
 			g.Enabled = false
 		end
 		bigName.Visible = false
-		local _, ins = cardFrame(big, c.rarity, 174, 240)
-		local picH = math.floor((240 - ins[2] - ins[4]) * 0.66)
-		pic.Size = UDim2.new(1, -(ins[1] + ins[3]), 0, picH)
+		local _, ins = cardFrame(big, c.rarity, 174, 240, 0.18)
+		pic.Size = UDim2.new(1, -(ins[1] + ins[3]), 1, -(ins[2] + ins[4]))
 		pic.Position = UDim2.fromOffset(ins[1], ins[2])
-		UI.stroke(pic, 3, Color3.fromRGB(58, 32, 14))
-		nameRibbon(big, c.name, c.rarity, 196, 60, UDim2.fromOffset(87, ins[2] + picH), 2)
-		local label = UI.text(big, string.upper(c.rarity), UDim2.new(1, -30, 0, 18), { pos = UDim2.fromOffset(15, ins[2] + picH + 30), color = rarityInk(c.rarity), stroke = 0 })
-		;(label:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
-		label.ZIndex = 2
+		dressPicture(pic, rc, 10)
+		nameRibbon(big, c.name, c.rarity, 200, 60, UDim2.fromOffset(87, ins[2] + 8), 2)
+		local label = UI.text(big, string.upper(c.rarity), UDim2.new(1, -40, 0, 20), { pos = UDim2.new(0, 20, 1, -(ins[4] + 28)), color = Color3.new(1, 1, 1):Lerp(rc, 0.35), stroke = 2.5 })
+		label.ZIndex = 4
 		foil(big, 14)
 	end
 	local pop = Instance.new("UIScale")
@@ -1428,7 +1471,7 @@ function ClassDeal.refresh()
 			if detailFrame then
 				detailFrame:Destroy()
 			end
-			detailFrame = cardFrame(detail, c.rarity, 310, 460, 0.34)
+			detailFrame = cardFrame(detail, c.rarity, 310, 460, 0.22)
 		end
 		detailStroke.Transparency = 1
 		if detRibbon and detRibbon:IsA("ImageLabel") then
@@ -1477,11 +1520,12 @@ function ClassDeal.refresh()
 	end
 	gemIcon.Visible = not owned and inStock
 	tick.Visible = owned
+	local btnH = if TRADING then 44 else 48
 	if owned then
-		gemBtn.Size = UDim2.new(1, -32, 0, 48)
+		gemBtn.Size = UDim2.new(1, -32, 0, btnH)
 		UI.setButton(gemBtn, if d.class == c.id then "EQUIPPED" else "EQUIP", Color3.fromRGB(40, 180, 90))
 	else
-		gemBtn.Size = if product then UDim2.fromOffset(134, 48) else UDim2.new(1, -32, 0, 48)
+		gemBtn.Size = if product then UDim2.fromOffset(134, btnH) else UDim2.new(1, -32, 0, btnH)
 		if inStock then
 			UI.setButton(gemBtn, Format.commas(c.gems), if d.gems >= c.gems then Color3.fromRGB(150, 90, 245) else W.grey)
 		else

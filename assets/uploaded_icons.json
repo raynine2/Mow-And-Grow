@@ -506,5 +506,59 @@
   "image": 114788125499328,
   "sha": "9bb564f813e963a0863a274995f18a4cf6e33d2ac21b427b8a6cc88404c224de",
   "via": "forgegui"
+ },
+ "bg_sun": {
+  "id": 125935237519014,
+  "image": 125935237519014,
+  "sha": "9131399e8c99f9191c1760b78de75d7a493a45d69e7502a7e5f065834981dc28",
+  "via": "forgegui"
+ },
+ "bg_cloud": {
+  "id": 96431502189075,
+  "image": 96431502189075,
+  "sha": "63fb2997959a7c00c4f8d2089c27234dea5db2e8a3e09bf3657f8b2516764a0f",
+  "via": "forgegui"
+ },
+ "bg_cloud2": {
+  "id": 108254263720010,
+  "image": 108254263720010,
+  "sha": "2baea5f9e7a7277af72462618fe25737809cb4d21b37462513f6c9e6eae1e0dd",
+  "via": "forgegui"
+ },
+ "bg_tree": {
+  "id": 86769817864290,
+  "image": 86769817864290,
+  "sha": "eb9d0f46d92850dcd69ec4b6f58fe46b8ca28b9af0432934ecb75858d6ffd9bc",
+  "via": "forgegui"
+ },
+ "bg_tree2": {
+  "id": 95887817195968,
+  "image": 95887817195968,
+  "sha": "0a9624479cc592bd3e324dbdc8aba3713ce0212d5d9cad5f0e022f14cb5181ea",
+  "via": "forgegui"
+ },
+ "bg_windmill": {
+  "id": 135545115377606,
+  "image": 135545115377606,
+  "sha": "4f177653e46cc9ef03e6d3197a27b7b96f3116cb44bb314a5dc6083bd3f93210",
+  "via": "forgegui"
+ },
+ "bg_fence": {
+  "id": 103405206137005,
+  "image": 103405206137005,
+  "sha": "11d19f586f287fd7c30b838b0a5635916355dd1e4dccdfdb48af2fa83b8104cc",
+  "via": "forgegui"
+ },
+ "bg_bush": {
+  "id": 85710989072025,
+  "image": 85710989072025,
+  "sha": "e637f1bf85dcf1f70373661225be2e1b8362ec5e424f975007567b2b487ae1e6",
+  "via": "forgegui"
+ },
+ "bg_bush2": {
+  "id": 88864581956464,
+  "image": 88864581956464,
+  "sha": "f50818684dd34ac6edab9e0f140c048872025fc7a97636ac85aa28434544f088",
+  "via": "forgegui"
  }
 }

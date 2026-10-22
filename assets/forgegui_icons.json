@@ -331,5 +331,41 @@
  "sparkle": {
   "forge": "fe89f14c-0159-4539-a292-18d443efa214",
   "roblox": 114788125499328
+ },
+ "bg_sun": {
+  "forge": "51bc5c77-8bd6-4ffa-9110-6740880042c1",
+  "roblox": 125935237519014
+ },
+ "bg_cloud": {
+  "forge": "38f3e91a-5688-445d-b0ec-820226c98f56",
+  "roblox": 96431502189075
+ },
+ "bg_cloud2": {
+  "forge": "c64f1bf7-d8a7-4177-8a12-609c60ab16df",
+  "roblox": 108254263720010
+ },
+ "bg_tree": {
+  "forge": "d1a5e26c-d2be-4e03-9515-ec5dda1d06ee",
+  "roblox": 86769817864290
+ },
+ "bg_tree2": {
+  "forge": "191f8179-6780-414a-abad-f081c2fe6897",
+  "roblox": 95887817195968
+ },
+ "bg_windmill": {
+  "forge": "9b3546e7-ab01-4b02-951b-ef513c7a3944",
+  "roblox": 135545115377606
+ },
+ "bg_fence": {
+  "forge": "a678d195-e566-40e9-9f8e-b6c9c6d25e7c",
+  "roblox": 103405206137005
+ },
+ "bg_bush": {
+  "forge": "650f85e8-cacb-400b-a9eb-7d198371ea8c",
+  "roblox": 85710989072025
+ },
+ "bg_bush2": {
+  "forge": "12e0de2d-a6ca-4cd4-b3a5-8146c12d0db8",
+  "roblox": 88864581956464
  }
 }

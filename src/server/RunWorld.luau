@@ -492,6 +492,20 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 	ray.FilterType = Enum.RaycastFilterType.Include
 	ray.FilterDescendantsInstances = { ground }
 	local placed: { Vector3 } = {}
+	-- yard discs (attribute Yard: the grass round the village's buildings) keep clear of anything built there
+	local overlap = OverlapParams.new()
+	overlap.FilterType = Enum.RaycastFilterType.Exclude
+	overlap.FilterDescendantsInstances = { ground, folder :: Instance }
+	local function blocked(p: Vector3, r: number): boolean
+		for _, part in workspace:GetPartBoundsInRadius(p + Vector3.new(0, 4, 0), r, overlap) do
+			if part.CanCollide or part.Size.Magnitude > 4.6 then
+				if not part:FindFirstAncestor("Grass") and not part:FindFirstAncestor("Mowed") then
+					return true
+				end
+			end
+		end
+		return false
+	end
 	local function free(p: Vector3): boolean
 		for _, q in placed do
 			if (Vector3.new(q.X - p.X, 0, q.Z - p.Z)).Magnitude < spacing * 0.85 then
@@ -506,6 +520,7 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 	end)
 	for _, d in kids do
 		if d:IsA("BasePart") then
+			local yard = d:GetAttribute("Yard") == true
 			local c = d.Position
 			local r = d.Size.Y / 2 - 2
 			local n = math.ceil(r / spacing)
@@ -518,7 +533,7 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 						local hit = workspace:Raycast(Vector3.new(x, c.Y + 40, zz), Vector3.new(0, -80, 0), ray)
 						if hit and hit.Normal.Y > 0.9 and math.abs(hit.Position.Y - (c.Y - 0.5)) < 6.5 then
 							local p = hit.Position
-							if free(p) and not onPath(p, 2.6 * scale) then
+							if free(p) and not onPath(p, 2.6 * scale) and not (yard and blocked(p, 3.4 * scale)) then
 								table.insert(placed, p)
 								local yaw = rng:NextInteger(0, 3) * math.pi / 2
 								table.insert(list, { cf = CFrame.new(p) * CFrame.Angles(0, yaw, 0), scale = scale * rng:NextNumber(0.9, 1.1) })

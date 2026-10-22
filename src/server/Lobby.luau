@@ -28,21 +28,9 @@ local function stockWindow(): number
 	return math.floor(workspace:GetServerTimeNow() / Config.STOCK_WINDOW)
 end
 
-local function inStock(data, classId: string): boolean
-	local w = stockWindow()
-	-- a Restock / Lucky Restock bought this window replaces the booth's stock for that player
-	local deal = data.classDeal
-	if deal and deal.window == w then
-		return table.find(deal.ids, classId) ~= nil
-	end
-	-- a few seconds of grace so a click right at the restock still counts
-	for _, win in { w, if workspace:GetServerTimeNow() % Config.STOCK_WINDOW < 5 then w - 1 else w } do
-		if table.find(Config.classStock(win), classId) then
-			return true
-		end
-	end
-	return false
-end
+local Classes = require(script.Parent.Classes) -- buying / equipping classes (shared with the run's village)
+local inStock = Classes.inStock
+local _ = inStock
 
 local function updateBoard()
 	local stock = Config.classStock(stockWindow())
@@ -93,31 +81,7 @@ local function updateBest()
 	built.bestLabel.Text = if #lines > 0 then table.concat(lines, "\n") else "Finish a run to set the first time!"
 end
 
-local function buyClass(player: Player, data, id: string)
-	local c = Config.class(id)
-	if not c or c.gems <= 0 then
-		return
-	end
-	if data.classes[id] then
-		data.class = id
-		Net.notify(player, "Equipped " .. c.name, "green")
-		return
-	end
-	if not inStock(data, id) then
-		Net.notify(player, c.name .. " isn't in stock right now. Check back after the restock!", "red")
-		return
-	end
-	if data.gems < c.gems then
-		Net.notify(player, "Not enough gems!", "red")
-		return
-	end
-	data.gems -= c.gems
-	data.classes[id] = true
-	data.class = id
-	Net.notify(player, "You are now a " .. c.name .. "!", "purple")
-	Net.send(player, "Fx", "purchase", { big = true })
-	task.spawn(PlayerData.save, player)
-end
+local buyClass = Classes.buy
 
 -------------------------------------------------------------------------------------------------------------
 -- perks + garage
@@ -500,11 +464,8 @@ function Lobby.start()
 	end)
 	Net.on("EquipClass", 4, function(player, id)
 		local data = PlayerData.get(player)
-		if data and type(id) == "string" and data.classes[id] then
-			data.class = id
-			Stats.applyCharacter(player, data)
-			PlayerData.changed(player)
-			Net.notify(player, "Equipped " .. (Config.class(id) :: any).name, "green")
+		if data then
+			Classes.equip(player, data, id)
 		end
 	end)
 	-- Peaceful Mode: runs this player hosts have no night monsters (and don't set a best time)

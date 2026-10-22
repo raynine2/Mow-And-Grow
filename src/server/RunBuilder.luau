@@ -259,6 +259,11 @@ local function hub(world: Instance, info)
 	Environment.spawn(m, CFrame.lookAt(SPOT.spawn, SPOT.spawn + Vector3.zAxis * 10))
 	toolShop(m, info)
 	bagStand(m)
+	if Config.WORLD_GEN then
+		-- the class stand (gems), like the lobby's: CLASSES opens the card deal (client/ClassDeal)
+		local at = Vector3.new(-24, FLOOR_Y, 12)
+		PropKit.stall(m, CFrame.lookAt(at, Vector3.new(0, FLOOR_Y, 12)), "CLASSES", Color3.fromRGB(160, 95, 255), "Classes")
+	end
 	garageBay(m, info)
 	if shredder(m, info) then
 		info.shredderUnit = m:FindFirstChild("Shredder") -- a working piece: its sell pad follows it (server/MapStore)

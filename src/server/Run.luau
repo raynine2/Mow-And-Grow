@@ -689,8 +689,16 @@ function Run.start()
 			buyBag(player, data, id)
 		elseif kind == "vacuum" then
 			buyVacuum(player, data)
+		elseif kind == "class" then
+			require(script.Parent.Classes).buy(player, data, id) -- the class stand in the village
 		end
 		PlayerData.changed(player)
+	end)
+	Net.on("EquipClass", 4, function(player, id)
+		local data = PlayerData.get(player)
+		if data then
+			require(script.Parent.Classes).equip(player, data, id)
+		end
 	end)
 	Net.on("Seen", 1, function(player, what, id)
 		local data = PlayerData.get(player)

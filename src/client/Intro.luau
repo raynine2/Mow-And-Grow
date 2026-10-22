@@ -145,7 +145,10 @@ local function clumpSpots(): { Vector3 }
 	if grass then
 		for _, d in grass:GetDescendants() do
 			if d:IsA("Model") and d.Name == "Clump" then
-				table.insert(spots, d:GetPivot().Position)
+				local at = d:GetPivot().Position
+				if Config.zoneAt(at) == 1 then -- the meadow itself, not the grass round the village
+					table.insert(spots, at)
+				end
 			end
 		end
 	end

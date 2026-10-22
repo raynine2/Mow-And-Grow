@@ -110,29 +110,21 @@ local function tileFolder(): Folder?
 	return f
 end
 
--- Mow the ground column under `pos` (in zone z). Safe to call again for the same spot.
-function Lawn.mow(pos: Vector3, z: number)
-	local rp = groundParams()
-	local parent = tileFolder()
-	if not rp or not parent then
-		return
-	end
-	local hit = workspace:Raycast(pos + Vector3.new(0, 6, 0), Vector3.new(0, -14, 0), rp)
-	if not hit or not hit.Instance:IsA("BasePart") then
-		return
-	end
-	local g = hit.Instance :: BasePart
-	-- snap to the column (the ground grid starts at the world's corner, Zones.BOUNDS)
-	local cx = OX + (col(pos.X) + 0.5) * CELL
-	local cz = OZ + (row(pos.Z) + 0.5) * CELL
-	local key = cellName(cx, cz)
+-- Mow one ground column (by its grid index) in zone z. Safe to call again for the same column.
+local function mowColumn(ix: number, iz: number, z: number, rp: RaycastParams, parent: Instance)
+	local key = ix .. ":" .. iz
 	if done[key] then
 		return
 	end
+	local cx = OX + (ix + 0.5) * CELL
+	local cz = OZ + (iz + 0.5) * CELL
+	local hit = workspace:Raycast(Vector3.new(cx, 300, cz), Vector3.new(0, -600, 0), rp)
+	if not hit or hit.Normal.Y < 0.9 then
+		return
+	end
 	done[key] = true
-	local top = g.Position.Y + g.Size.Y / 2
+	local top = hit.Position.Y
 	local light, dark = shades(z)
-	local stripe = col(cx) % 2 == 0
 	local t = Instance.new("Part")
 	t.Name = "MowedTile"
 	t.Anchored = true
@@ -143,19 +135,40 @@ function Lawn.mow(pos: Vector3, z: number)
 	t.Material = Enum.Material.SmoothPlastic
 	t.TopSurface = Enum.SurfaceType.Smooth
 	t.BottomSurface = Enum.SurfaceType.Smooth
-	t.Color = if stripe then light else dark
+	t.Color = if ix % 2 == 0 then light else dark
 	t.Size = Vector3.new(CELL, THICK, CELL)
 	t.CFrame = CFrame.new(cx, top + LIFT - THICK / 2 + 0.02, cz)
 	t.Parent = parent
 	-- the shaggy bits standing on this column go
-	local list = coverIndex()[key]
+	local index = coverIndex()
+	local list = index[key]
 	if list then
 		for _, d in list do
 			if d.Parent and math.abs(d.Position.Y - top) < 6 then
 				d:Destroy()
 			end
 		end
-		coverIndex()[key] = nil
+		index[key] = nil
+	end
+end
+
+-- Mow every ground column within `radius` studs of `pos` (in zone z): a clump's patch of lawn. Neighbouring
+-- clumps' patches overlap, so mowed ground joins up into whole stripes.
+function Lawn.mow(pos: Vector3, z: number, radius: number?)
+	local rp = groundParams()
+	local parent = tileFolder()
+	if not rp or not parent then
+		return
+	end
+	local r = radius or 7
+	for ix = col(pos.X - r), col(pos.X + r) do
+		for iz = row(pos.Z - r), row(pos.Z + r) do
+			local cx = OX + (ix + 0.5) * CELL
+			local cz = OZ + (iz + 0.5) * CELL
+			if Vector2.new(cx - pos.X, cz - pos.Z).Magnitude <= r then
+				mowColumn(ix, iz, z, rp, parent)
+			end
+		end
 	end
 end
 

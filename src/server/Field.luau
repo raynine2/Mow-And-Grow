@@ -649,6 +649,15 @@ function Field.clearStubble(z: number)
 		end
 	end
 	task.spawn(function()
+		-- the whole area's lawn mowed: fill the gaps between the clumps' patches so it's all stripes
+		for i, p in list do
+			Lawn.mow(p.part.Position, z, 11)
+			if i % 10 == 0 then
+				task.wait()
+			end
+		end
+	end)
+	task.spawn(function()
 		for i, p in stubs do
 			local stub = p.stub
 			p.stub = nil

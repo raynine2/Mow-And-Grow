@@ -88,8 +88,16 @@ function Pets.hatch(player: Player, data, eggId: string, n: number, paid: boolea
 	end
 	local luck = Pets.luck(player)
 	local got = {}
+	-- NEW! badges: critters this player doesn't have yet (the first of each in this batch)
+	local owned = {}
+	for _, id in data.pets do
+		owned[id] = true
+	end
+	local fresh = {}
 	for _ = 1, n do
 		local id = Config.rollEgg(egg, luck, rng)
+		table.insert(fresh, not owned[id])
+		owned[id] = true
 		local uid = "p" .. data.petNext
 		data.petNext += 1
 		data.pets[uid] = id
@@ -99,7 +107,16 @@ function Pets.hatch(player: Player, data, eggId: string, n: number, paid: boolea
 		table.insert(got, id)
 	end
 	afterChange(player, data)
-	Net.send(player, "Fx", "hatch", { egg = eggId, pets = got })
+	Net.send(player, "Fx", "hatch", { egg = eggId, pets = got, fresh = fresh })
+	-- Legendary and up: a line in everyone's chat (after the hatch has had time to play)
+	for _, id in got do
+		local def = Config.pet(id)
+		if def and (def.rarity == "Legendary" or def.rarity == "Mythic" or def.rarity == "Secret") then
+			task.delay(3.5, function()
+				Net.all("Fx", "announceHatch", { name = player.DisplayName, pet = id })
+			end)
+		end
+	end
 	return got
 end
 

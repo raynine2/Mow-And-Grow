@@ -718,8 +718,48 @@ local function hatchShow(eggId: string, ids: { string })
 	root:SetAttribute("t0", os.clock())
 end
 
+-- The 3D hatch (client/HatchFx); the flat one above is the fallback if it can't load.
+local okHatch, HatchFx = pcall(require, script.Parent:FindFirstChild("HatchFx"))
+local function hatch3D(eggId: string, ids: { string }, fresh: { boolean }?): boolean
+	if not okHatch or type(HatchFx) ~= "table" or HatchFx.busy then
+		return false
+	end
+	-- like Chop A Forest, the menu gets out of the way while the egg hatches, and comes back after
+	local reopen = nil
+	for _, w in { "Eggs", "Pets", "Store" } do
+		if UI.isOpen(w) then
+			reopen = w
+		end
+	end
+	UI.close()
+	-- the rarest critter's colour bursts round you when the hatch closes (MenuFX), then the menu comes back
+	local best: Color3?, bestBig = nil, false
+	for _, id in ids do
+		local p = Config.pet(id)
+		if p and (not best or (BIG[p.rarity] and not bestBig)) then
+			best, bestBig = Config.RARITY_COLORS[p.rarity], BIG[p.rarity] == true
+		end
+	end
+	HatchFx.play(eggId, ids, fresh, function()
+		if best then
+			MenuFX.atCharacter(best, bestBig)
+		end
+		if reopen then
+			task.delay(0.7, function()
+				if not HatchFx.busy and not UI.anyOpen() then
+					UI.open(reopen)
+				end
+			end)
+		end
+	end)
+	return true
+end
+
 State.on("fx", function(kind, d)
 	if kind == "hatch" and type(d) == "table" and d.pets then
+		if hatch3D(d.egg, d.pets, d.fresh) then
+			return
+		end
 		if hatching then
 			local old = UI.gui:FindFirstChild("Hatch")
 			if old then
@@ -727,6 +767,24 @@ State.on("fx", function(kind, d)
 			end
 		end
 		hatchShow(d.egg, d.pets)
+	elseif kind == "announceHatch" and type(d) == "table" then
+		-- someone hatched something big: a line in chat for everyone
+		local def = Config.pet(d.pet)
+		if def then
+			local hex = (Config.RARITY_COLORS[def.rarity] or Color3.new(1, 1, 1)):ToHex()
+			if def.rarity == "Secret" then
+				hex = "ff6ad5"
+			end
+			local text = ('<font color="#%s"><b>%s hatched a %s %s!</b></font>'):format(hex, tostring(d.name), string.upper(def.rarity), def.name)
+			pcall(function()
+				local TextChatService = game:GetService("TextChatService")
+				local channels = TextChatService:FindFirstChild("TextChannels")
+				local general = channels and channels:FindFirstChild("RBXGeneral") :: TextChannel?
+				if general then
+					general:DisplaySystemMessage(text)
+				end
+			end)
+		end
 	end
 end)
 

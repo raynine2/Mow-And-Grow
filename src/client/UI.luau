@@ -994,14 +994,24 @@ function UI.popupWindow(name: string, title: string, sub: string?)
 	holder.Visible = false
 	holder.ZIndex = 10
 	holder.Parent = gui
+	-- the ForgeGUI plank sign (like the big windows), drawn first so it sits under everything
+	local S = skin("ui_sign")
+	if S then
+		local a = S.frame(holder, "ui_sign", Vector2.new(500, 560), { name = "BoardArt", maxScale = 0.5 })
+		a.Size = UDim2.fromScale(1, 1)
+	end
 	local board = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.fromRGB(196, 150, 104), parent = holder, radius = 22, outline = 5, name = "Board" })
 	;(board:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = WOOD.frameEdge
 	UI.gradient(board, Color3.fromRGB(200, 154, 108))
+	if S then
+		board.BackgroundTransparency = 1
+		;(board:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+	end
 	leaf(holder, UDim2.fromOffset(40, 16), 70)
 	leaf(holder, UDim2.fromOffset(470, 500), 70)
 	local titleLabel = UI.text(holder, string.upper(title), UDim2.new(1, -60, 0, 60), { pos = UDim2.fromOffset(30, 34), stroke = 4, color = Color3.new(1, 1, 1) })
 	local subLabel = UI.text(holder, sub and string.upper(sub) or "", UDim2.new(1, -80, 0, 28), { pos = UDim2.fromOffset(40, 96), stroke = 2, color = Color3.fromRGB(255, 200, 60) })
-	UI.frame({ size = UDim2.new(1, -100, 0, 4), pos = UDim2.fromOffset(50, 132), color = Color3.new(1, 1, 1), parent = holder, radius = 2, outline = 0 })
+	UI.frame({ size = UDim2.new(1, -100, 0, 4), pos = UDim2.fromOffset(50, 132), color = if S then WOOD.insetEdge else Color3.new(1, 1, 1), parent = holder, radius = 2, outline = 0, name = "Line" })
 	UI.closeButton(holder, UDim2.new(1, -10, 0, 12), function()
 		UI.close()
 	end)
@@ -1033,6 +1043,14 @@ function UI.popupRow(list: Instance, order: number, icon: string?, text: string,
 	local row = UI.frame({ size = UDim2.new(1, -10, 0, 58), color = Color3.fromRGB(176, 128, 84), parent = list, radius = 8, outline = 2, name = "Row" })
 	;(row:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(120, 80, 45)
 	row.LayoutOrder = order
+	local S = skin("ui_inset")
+	if S then
+		-- the sunken wood box
+		row.BackgroundTransparency = 1
+		;(row:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		local art = S.frame(row, "ui_inset", Vector2.new(430, 58), { name = "Art", maxScale = 0.14 })
+		art.Size = UDim2.fromScale(1, 1)
+	end
 	local x = 14
 	if icon then
 		UI.icon(row, icon, 40, UDim2.fromOffset(12, 9))
@@ -1145,23 +1163,44 @@ function UI.blueCard(list: Instance, order: number, o: CardOpts)
 	local card = UI.frame({ size = UDim2.fromScale(1, 1), color = base, parent = list, radius = 16, outline = 4, name = "Card" })
 	;(card:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = UI.shade(base, 0.45)
 	card.LayoutOrder = order
-	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(UI.shade(base, 1.18), UI.shade(base, 0.82))
-	g.Rotation = 90
-	g.Parent = card
-	UI.text(card, string.upper(o.title), UDim2.new(1, -20, 0, 34), { pos = UDim2.fromOffset(10, 8), stroke = 3 })
+	local S = skin("ui_pcard")
+	local pad = 0
+	if S then
+		-- the ForgeGUI wood-rimmed card; the card's colour (with mowed stripes) fills its window
+		card.BackgroundTransparency = 1
+		;(card:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		local art, face = S.frame(card, "ui_pcard", Vector2.new(250, 250), { name = "Art", maxScale = 0.17 })
+		art.Size = UDim2.fromScale(1, 1)
+		local inner = UI.frame({ size = UDim2.fromScale(1, 1), color = base, parent = face, radius = 10, outline = 0, name = "Inner" })
+		inner.ClipsDescendants = true
+		local g = Instance.new("UIGradient")
+		g.Color = ColorSequence.new(UI.shade(base, 1.18), UI.shade(base, 0.75))
+		g.Rotation = 90
+		g.Parent = inner
+		S.stripes(inner, 6, 80)
+		pad = 10
+	else
+		local g = Instance.new("UIGradient")
+		g.Color = ColorSequence.new(UI.shade(base, 1.18), UI.shade(base, 0.82))
+		g.Rotation = 90
+		g.Parent = card
+	end
+	UI.text(card, string.upper(o.title), UDim2.new(1, -20 - pad * 2, 0, 32), { pos = UDim2.fromOffset(10 + pad, 8 + pad), stroke = 3 })
 	if o.sub then
-		UI.text(card, o.sub, UDim2.new(1, -24, 0, 20), { pos = UDim2.fromOffset(12, 42), stroke = 1.5 })
+		UI.text(card, o.sub, UDim2.new(1, -24 - pad * 2, 0, 20), { pos = UDim2.fromOffset(12 + pad, 42 + pad), stroke = 1.5 })
 	end
 	if o.icon then
-		UI.icon(card, o.icon, 54, UDim2.new(0.5, 0, 0, 66), Vector2.new(0.5, 0))
+		local ic = UI.icon(card, o.icon, 58, UDim2.new(0.5, 0, 0, 66 + pad), Vector2.new(0.5, 0))
+		if S then
+			S.bob(ic, 3, 1.6 + (order % 4) * 0.2)
+		end
 	end
 	if o.max and o.max > 0 then
-		UI.pips(card, o.level or 0, o.max, UDim2.new(0.5, 0, 1, -76), 220)
+		UI.pips(card, o.level or 0, o.max, UDim2.new(0.5, 0, 1, -76 - pad), 200)
 	end
 	local btn = UI.button(card, o.price, if o.enabled then WOOD.purple else WOOD.grey, UDim2.fromOffset(200, 46), function()
 		o.onClick()
-	end, { pos = UDim2.new(0.5, 0, 1, -12), anchor = Vector2.new(0.5, 1), name = "Price" })
+	end, { pos = UDim2.new(0.5, 0, 1, -12 - pad // 2), anchor = Vector2.new(0.5, 1), name = "Price" })
 	if string.sub(o.price, 1, 2) == "R$" then
 		UI.rainbow(btn)
 	end
@@ -1223,6 +1262,8 @@ local function fadeOut(root: Instance, after: number)
 				TweenService:Create(d, TweenInfo.new(0.35), { Transparency = 1 }):Play()
 			elseif d:IsA("Frame") then
 				TweenService:Create(d, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
+			elseif d:IsA("ImageLabel") then
+				TweenService:Create(d, TweenInfo.new(0.35), { ImageTransparency = 1 }):Play()
 			end
 		end
 		if root:IsA("Frame") then
@@ -1260,6 +1301,16 @@ function UI.notice(title: string, sub: string?, icon: string?)
 	f.BackgroundTransparency = 0.06
 	;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(150, 100, 56)
 	f.ZIndex = 45
+	local S = skin("ui_inset")
+	if S then
+		-- the sunken wood box, dark
+		f.BackgroundTransparency = 1
+		;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		local art = S.frame(f, "ui_inset", Vector2.new(520, if sub then 92 else 60), { name = "Art", maxScale = 0.15 })
+		art.Size = UDim2.fromScale(1, 1)
+		art.ZIndex = 45
+		;(art :: ImageLabel).ImageColor3 = Color3.fromRGB(150, 130, 120)
+	end
 	currentNotice = f
 	local x = 16
 	if icon then
@@ -1325,6 +1376,30 @@ do
 		hook(d)
 	end
 	pg.DescendantAdded:Connect(hook)
+end
+
+-- Studio only: a BindableFunction so a test script can open windows (gui.DevUI:Invoke("open", "Rewards")).
+if RunService:IsStudio() then
+	local dev = Instance.new("BindableFunction")
+	dev.Name = "DevUI"
+	dev.OnInvoke = function(cmd: string, name: string?)
+		if cmd == "open" and name then
+			if openName ~= name then
+				UI.open(name)
+			end
+			return openName
+		elseif cmd == "close" then
+			UI.close()
+		elseif cmd == "list" then
+			local names = {}
+			for n in windows do
+				table.insert(names, n)
+			end
+			return table.concat(names, ",")
+		end
+		return openName
+	end
+	dev.Parent = gui
 end
 
 uiReady = true

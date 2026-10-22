@@ -2,12 +2,15 @@
 -- the lobby. Left: CREATE PARTY with the map card (CHAPTER 1, THE LAWN), the difficulty (Normal; harder ones
 -- unlock with wins), Peaceful Mode (no night), the party size, BACK and CREATE. Right: SAVED RUNS, with your
 -- saved run and a LOAD GAME button. The server checks every choice (server/Lobby).
+-- Drawn with the ForgeGUI kit (client/Skin) once its pictures are uploaded, otherwise with plain frames.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local State = require(script.Parent.State)
+local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
 
 local PartyWindow = {}
 local player = Players.LocalPlayer
@@ -85,10 +88,13 @@ local function text(parent: Instance, t: string, size: UDim2, pos: UDim2, color:
 	return l
 end
 
--- A chunky button with a darker lip under it that sinks when pressed.
+-- A chunky button: the tinted ForgeGUI button art (its lip is in the picture), or a drawn one with a lip under it.
 local function button(parent: Instance, label: string, size: UDim2, pos: UDim2, color: Color3, onClick: () -> ()): TextButton
-	local lip = frame(parent, size, pos + UDim2.fromOffset(0, 5), shade(color, 0.62), 12)
-	lip.Name = label .. "Lip"
+	local art = Skin.has("ui_button")
+	if not art then
+		local lip = frame(parent, size, pos + UDim2.fromOffset(0, 5), shade(color, 0.62), 12)
+		lip.Name = label .. "Lip"
+	end
 	local b = Instance.new("TextButton")
 	b.Name = label
 	b.AutoButtonColor = false
@@ -96,10 +102,17 @@ local function button(parent: Instance, label: string, size: UDim2, pos: UDim2, 
 	b.Position = pos
 	b.BackgroundColor3 = color
 	b.Text = ""
-	corner(b, 12)
-	stroke(b, 3)
-	gradient(b, shade(color, 1.18), shade(color, 0.92))
-	text(b, label, UDim2.new(1, -16, 0.62, 0), UDim2.new(0, 8, 0.19, 0), WHITE, 2.5)
+	if art then
+		b.BackgroundTransparency = 1
+		local px = Vector2.new(if size.X.Scale > 0 then 260 else size.X.Offset, size.Y.Offset)
+		local a = Skin.frame(b, "ui_button", px, { name = "Art", boost = 1.7, tint = color })
+		a.Size = UDim2.fromScale(1, 1)
+	else
+		corner(b, 12)
+		stroke(b, 3)
+		gradient(b, shade(color, 1.18), shade(color, 0.92))
+	end
+	text(b, label, UDim2.new(1, -16, 0.56, 0), UDim2.new(0, 8, if art then 0.14 else 0.19, 0), WHITE, 2.5)
 	b.Parent = parent
 	b.MouseButton1Down:Connect(function()
 		b.Position = pos + UDim2.fromOffset(0, 3)
@@ -116,6 +129,10 @@ end
 
 local function setButtonColor(b: TextButton, color: Color3)
 	b.BackgroundColor3 = color
+	local art = b:FindFirstChild("Art")
+	if art and art:IsA("ImageLabel") then
+		art.ImageColor3 = color
+	end
 	local g = b:FindFirstChildOfClass("UIGradient")
 	if g then
 		g.Color = ColorSequence.new(shade(color, 1.18), shade(color, 0.92))
@@ -126,8 +143,38 @@ local function setButtonColor(b: TextButton, color: Color3)
 	end
 end
 
--- A wooden board (the window's two panels): an orange log frame round a paper-coloured page.
+-- A wooden board (the window's two panels): the ForgeGUI plank sign (or an orange log frame round a paper page),
+-- with the grass strip and daisies the other windows have.
 local function board(parent: Instance, title: string, size: UDim2, pos: UDim2): Frame
+	if Skin.has("ui_sign") then
+		local outer = frame(parent, size, pos, WOOD)
+		outer.BackgroundTransparency = 1
+		local a = Skin.frame(outer, "ui_sign", Vector2.new(size.X.Offset, size.Y.Offset), { name = "Art", maxScale = 0.5 })
+		a.Size = UDim2.new(1, 24, 1, 24)
+		a.Position = UDim2.fromOffset(-12, -12)
+		local page = frame(outer, UDim2.new(1, -28, 1, -28), UDim2.fromOffset(14, 14), PAPER)
+		page.BackgroundTransparency = 1
+		if Skin.has("ui_grass") then
+			local strip = frame(outer, UDim2.new(1, 20, 0, 46), UDim2.new(0, -10, 1, 20), WHITE)
+			strip.BackgroundTransparency = 1
+			strip.AnchorPoint = Vector2.new(0, 1)
+			strip.ClipsDescendants = true
+			strip.ZIndex = 5
+			local gw = math.floor(46 * 921 / 271)
+			for x = 0, size.X.Offset + 20, gw - 14 do
+				local g = Instance.new("ImageLabel")
+				g.BackgroundTransparency = 1
+				g.Image = Config.ICONS.ui_grass
+				g.ScaleType = Enum.ScaleType.Fit
+				g.Size = UDim2.fromOffset(gw, 46)
+				g.Position = UDim2.fromOffset(x, 0)
+				g.ZIndex = 5
+				g.Parent = strip
+			end
+		end
+		text(parent, title, UDim2.new(size.X.Scale, size.X.Offset, 0, 52), pos - UDim2.fromOffset(0, 62), WHITE, 4)
+		return page
+	end
 	local outer = frame(parent, size, pos, WOOD, 22)
 	stroke(outer, 4)
 	gradient(outer, Color3.fromRGB(222, 140, 70), Color3.fromRGB(176, 98, 44))
@@ -242,9 +289,18 @@ local function difficultyRow(page: Frame)
 	end
 end
 
-local function peacefulRow(page: Frame)
-	local card = frame(page, UDim2.new(1, -28, 0, 104), UDim2.fromOffset(14, 334), Color3.fromRGB(110, 66, 36), 14)
+-- A brown box on the page: the ForgeGUI sunken wood box (UI.section), or a drawn one.
+local function box(parent: Instance, size: UDim2, pos: UDim2): Frame
+	if Skin.has("ui_inset") then
+		return UI.section(parent, size, pos)
+	end
+	local card = frame(parent, size, pos, Color3.fromRGB(110, 66, 36), 14)
 	stroke(card, 3)
+	return card
+end
+
+local function peacefulRow(page: Frame)
+	local card = box(page, UDim2.new(1, -28, 0, 104), UDim2.fromOffset(14, 334))
 	text(card, "🕊️", UDim2.fromOffset(44, 44), UDim2.fromOffset(10, 10), WHITE, 0)
 	text(card, "PEACEFUL MODE", UDim2.fromOffset(190, 28), UDim2.fromOffset(60, 10), WHITE, 2, Enum.TextXAlignment.Left)
 	text(card, "A calm run - no night, just you and the grass", UDim2.fromOffset(220, 18), UDim2.fromOffset(60, 40), Color3.fromRGB(240, 210, 170), 0, Enum.TextXAlignment.Left)
@@ -263,8 +319,7 @@ local function peacefulRow(page: Frame)
 end
 
 local function partyRow(page: Frame)
-	local card = frame(page, UDim2.new(1, -28, 0, 62), UDim2.fromOffset(14, 450), Color3.fromRGB(110, 66, 36), 14)
-	stroke(card, 3)
+	local card = box(page, UDim2.new(1, -28, 0, 62), UDim2.fromOffset(14, 450))
 	text(card, "PARTY", UDim2.fromOffset(80, 28), UDim2.fromOffset(14, 17), WHITE, 2, Enum.TextXAlignment.Left)
 	refs.people = text(card, "", UDim2.fromOffset(110, 30), UDim2.fromOffset(100, 16), Color3.fromRGB(255, 220, 160), 0)
 	button(card, "-", UDim2.fromOffset(42, 42), UDim2.new(1, -164, 0, 6), Color3.fromRGB(230, 200, 150), function()
@@ -320,8 +375,7 @@ local function fillRuns(run: { [string]: any }?, now: number)
 		text(list, "No saved runs yet", UDim2.new(1, -40, 0, 30), UDim2.fromOffset(20, 40), Color3.fromRGB(150, 100, 60), 0)
 		return
 	end
-	local card = frame(list, UDim2.new(1, 0, 0, 196), UDim2.fromOffset(0, 0), Color3.fromRGB(110, 66, 36), 14)
-	stroke(card, 3)
+	local card = box(list, UDim2.new(1, 0, 0, 196), UDim2.fromOffset(0, 0))
 	local face = frame(card, UDim2.fromOffset(44, 44), UDim2.fromOffset(14, 12), WHITE, 22)
 	local photo = Instance.new("ImageLabel")
 	photo.Size = UDim2.new(1, -6, 1, -6)

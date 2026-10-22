@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
 local State = require(script.Parent.State)
 
 local NewsWindow = {}
@@ -37,7 +38,12 @@ local function dateText(t: number): string
 	return ("%s %d, %d"):format(MONTHS[d.month], d.day, d.year)
 end
 
-local function pill(parent: Instance, text: string, color: Color3, pos: UDim2, width: number)
+local function pill(parent: Instance, text: string, color: Color3, pos: UDim2, width: number): GuiObject
+	if Skin.has("ui_button") then
+		local p, face = Skin.frame(parent, "ui_button", Vector2.new(width, 36), { pos = pos, name = "Pill", boost = 1.6, tint = color })
+		UI.text(face, text, UDim2.fromScale(1, 1), { stroke = 2 })
+		return p
+	end
 	local p = UI.frame({ size = UDim2.fromOffset(width, 32), pos = pos, color = color, parent = parent, radius = 16, outline = 3, name = "Pill" })
 	UI.gradient(p, color)
 	UI.text(p, text, UDim2.new(1, -16, 1, -10), { pos = UDim2.fromOffset(8, 5), stroke = 2 })
@@ -47,27 +53,19 @@ end
 -- One entry in the left list.
 local function entry(list: Instance, order: number, n, selected: boolean, isNew: boolean, onClick: () -> ())
 	local color = if selected then W.tabOn else Color3.fromRGB(176, 120, 72)
-	local b = Instance.new("TextButton")
+	-- a tinted ForgeGUI tile (the picked one bright, with a ring and sparkles)
+	local b = Skin.tile(color, selected, Vector2.new(272, 78))
 	b.Name = "News_" .. n.id
-	b.Text = ""
-	b.AutoButtonColor = false
-	b.BackgroundColor3 = color
-	b.Size = UDim2.new(1, -12, 0, 78)
 	b.LayoutOrder = order
-	UI.corner(b, 12)
-	UI.stroke(b, 3, if selected then Color3.fromRGB(150, 60, 10) else W.insetEdge)
-	UI.gradient(b, color)
-	UI.icon(b, n.icon or "news", 52, UDim2.fromOffset(10, 13))
-	UI.text(b, n.title, UDim2.new(1, -80, 0, 32), { pos = UDim2.fromOffset(70, 10), align = Enum.TextXAlignment.Left, stroke = 2.5 })
-	UI.text(b, ago(n.time), UDim2.new(1, -80, 0, 22), { pos = UDim2.fromOffset(70, 46), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 1.5 })
+	UI.icon(b, n.icon or "news", 52, UDim2.fromOffset(12, 10))
+	UI.text(b, n.title, UDim2.new(1, -84, 0, 30), { pos = UDim2.fromOffset(70, 8), align = Enum.TextXAlignment.Left, stroke = 2.5 })
+	UI.text(b, ago(n.time), UDim2.new(1, -84, 0, 20), { pos = UDim2.fromOffset(70, 40), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 1.5 })
 	if isNew then
-		pill(b, "NEW", Color3.fromRGB(230, 50, 60), UDim2.new(1, -6, 0, -10), 66).AnchorPoint = Vector2.new(1, 0)
+		local r = UI.ribbon(b, "NEW", Color3.fromRGB(230, 50, 60))
+		r.Position = UDim2.new(1, -96, 0, -14)
 	end
 	UI.raise(b, 4)
-	b.MouseButton1Click:Connect(function()
-		UI.bounce(b)
-		onClick()
-	end)
+	b.MouseButton1Click:Connect(onClick)
 	b.Parent = list
 end
 
@@ -76,11 +74,15 @@ local function bullets(box: ScrollingFrame, n)
 	for i, line in n.bullets or {} do
 		local row = Instance.new("Frame")
 		row.BackgroundTransparency = 1
-		row.Size = UDim2.new(1, -10, 0, 36)
+		row.Size = UDim2.new(1, -10, 0, 30)
+		row.AutomaticSize = Enum.AutomaticSize.Y
 		row.LayoutOrder = i
 		row.Parent = box
-		UI.icon(row, "diamondBullet", 26, UDim2.fromOffset(4, 5))
-		UI.text(row, line, UDim2.new(1, -44, 1, -8), { pos = UDim2.fromOffset(40, 4), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 2 })
+		UI.icon(row, "diamondBullet", 22, UDim2.fromOffset(4, 4))
+		-- one text size for every line (scaled text made short lines big and long lines tiny); long lines wrap
+		local t = UI.text(row, line, UDim2.new(1, -40, 0, 26), { pos = UDim2.fromOffset(36, 2), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 2, textSize = 19 })
+		t.AutomaticSize = Enum.AutomaticSize.Y
+		t.TextYAlignment = Enum.TextYAlignment.Top
 	end
 end
 
@@ -116,18 +118,33 @@ local function bannerArea(panel: Frame)
 	g.Color = ColorSequence.new(Color3.fromRGB(60, 120, 60), Color3.fromRGB(20, 44, 26))
 	g.Rotation = 25
 	g.Parent = b
+	if Skin.has("ui_pcard") then
+		-- the ForgeGUI wood-rimmed card; the green lawn (with mowed stripes and rays behind the picture) fills it
+		b.BackgroundTransparency = 1
+		;(b:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		local _a, face = Skin.frame(b, "ui_pcard", Vector2.new(676, 200), { name = "Art", maxScale = 0.22 })
+		local inner = UI.frame({ size = UDim2.fromScale(1, 1), color = base, parent = face, radius = 10, outline = 0, name = "Inner" })
+		inner.ClipsDescendants = true
+		local ig = Instance.new("UIGradient")
+		ig.Color = ColorSequence.new(Color3.fromRGB(70, 140, 66), Color3.fromRGB(24, 56, 30))
+		ig.Rotation = 25
+		ig.Parent = inner
+		Skin.stripes(inner)
+		Skin.rays(inner, Color3.fromRGB(255, 240, 160), 300, UDim2.new(1, -100, 0.5, 0), 22)
+		Skin.shine(inner, 7, 1, 10)
+	end
 	local art = Instance.new("Frame")
 	art.BackgroundTransparency = 1
 	art.Size = UDim2.fromOffset(170, 170)
 	art.Position = UDim2.new(1, -14, 0.5, 0)
 	art.AnchorPoint = Vector2.new(1, 0.5)
 	art.Parent = b
-	local title = UI.text(b, "", UDim2.new(1, -220, 0, 62), { pos = UDim2.fromOffset(20, 58), align = Enum.TextXAlignment.Left, stroke = 4 })
-	local desc = UI.text(b, "", UDim2.new(1, -220, 0, 54), { pos = UDim2.fromOffset(20, 126), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 2 })
+	local title = UI.text(b, "", UDim2.new(1, -230, 0, 58), { pos = UDim2.fromOffset(26, 62), align = Enum.TextXAlignment.Left, stroke = 4 })
+	local desc = UI.text(b, "", UDim2.new(1, -230, 0, 48), { pos = UDim2.fromOffset(26, 124), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 2 })
 	local pills = Instance.new("Frame")
 	pills.BackgroundTransparency = 1
 	pills.Size = UDim2.new(1, -200, 0, 40)
-	pills.Position = UDim2.fromOffset(18, 14)
+	pills.Position = UDim2.fromOffset(24, 20)
 	pills.Parent = b
 	return function(n)
 		UI.clear(pills)
@@ -137,7 +154,8 @@ local function bannerArea(panel: Frame)
 		title.Text = string.upper(n.title)
 		desc.Text = n.desc or ""
 		UI.clear(art)
-		UI.icon(art, n.icon or "news", 160, UDim2.fromOffset(5, 5))
+		local pic = UI.icon(art, n.icon or "news", 150, UDim2.fromOffset(10, 10))
+		Skin.bob(pic, 4, 1.4)
 	end
 end
 
@@ -154,7 +172,8 @@ function NewsWindow.build()
 	UI.button(panel, "PLAY", GREEN, UDim2.fromOffset(220, 96), function()
 		UI.close()
 	end, { pos = UDim2.fromOffset(1008, 544), anchor = Vector2.new(1, 1), name = "Play" })
-	UI.icon(panel, "clover", 130, UDim2.fromOffset(898, 250), Vector2.new(0.5, 0))
+	local clover = UI.icon(panel, "clover", 130, UDim2.fromOffset(898, 250), Vector2.new(0.5, 0))
+	Skin.bob(clover, 4, 1.6)
 	UI.text(panel, "Thanks for playing!",UDim2.fromOffset(220, 30), { pos = UDim2.fromOffset(1008, 400), anchor = Vector2.new(1, 0), color = W.brownText, stroke = 0 })
 
 	local selectedId = newest()

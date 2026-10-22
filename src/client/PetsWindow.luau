@@ -86,7 +86,7 @@ PetsWindow.TABS = TABS
 
 -- One wide egg card on the ForgeGUI wood-rimmed card: the egg bobbing on turning rays at the left, every critter
 -- with its odds on little rarity tiles, the open buttons along the bottom; mowed-lawn stripes in the egg's colour.
-local EGG_CARD = Vector2.new(730, 270)
+local EGG_CARD = Vector2.new(730, 286)
 local function eggCard(list: Instance, order: number, egg, d)
 	local card = Instance.new("Frame")
 	card.Name = "Egg_" .. egg.id
@@ -128,11 +128,11 @@ local function eggCard(list: Instance, order: number, egg, d)
 	local odds = Config.eggOdds(egg, luck)
 	local grid = Instance.new("Frame")
 	grid.BackgroundTransparency = 1
-	grid.Size = UDim2.new(1, -136, 0, 122)
-	grid.Position = UDim2.fromOffset(128, 38)
+	grid.Size = UDim2.new(1, -132, 0, 136)
+	grid.Position = UDim2.fromOffset(126, 36)
 	grid.Parent = face
 	local layout = Instance.new("UIGridLayout")
-	layout.CellSize = UDim2.fromOffset(84, 58)
+	layout.CellSize = UDim2.fromOffset(102, 64)
 	layout.CellPadding = UDim2.fromOffset(6, 6)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = grid
@@ -145,12 +145,12 @@ local function eggCard(list: Instance, order: number, egg, d)
 			cell.BackgroundTransparency = 1
 			cell.LayoutOrder = i
 			cell.Parent = grid
-			local tile = Skin.frame(cell, "ui_button", Vector2.new(84, 58), { name = "Art", boost = 1.4, tint = UI.shade(rc, 0.75) })
+			local tile = Skin.frame(cell, "ui_button", Vector2.new(102, 64), { name = "Art", boost = 1.4, tint = UI.shade(rc, 0.75) })
 			tile.Size = UDim2.fromScale(1, 1)
-			petView(cell, p.look, 40, UDim2.fromOffset(2, 2))
-			local nm = UI.text(cell, p.name, UDim2.new(1, -44, 0, 24), { pos = UDim2.fromOffset(42, 4), align = Enum.TextXAlignment.Left, stroke = 1.5 })
+			petView(cell, p.look, 44, UDim2.fromOffset(2, 2))
+			local nm = UI.text(cell, p.name, UDim2.new(1, -50, 0, 26), { pos = UDim2.fromOffset(46, 4), align = Enum.TextXAlignment.Left, stroke = 1.5 })
 			nm.TextWrapped = true -- scaled, so long names shrink instead of breaking mid-word
-			UI.text(cell, pctText(r[2]), UDim2.new(1, -44, 0, 18), { pos = UDim2.fromOffset(42, 28), align = Enum.TextXAlignment.Left, color = UI.shade(rc, 1.5), stroke = 1.5, textSize = 14 })
+			UI.text(cell, pctText(r[2]), UDim2.new(1, -50, 0, 20), { pos = UDim2.fromOffset(46, 30), align = Enum.TextXAlignment.Left, color = UI.shade(rc, 1.6), stroke = 1.5, textSize = 16 })
 			if BIG[p.rarity] then
 				Skin.sparkles(cell, 0.9, UI.shade(rc, 1.5))
 			end
@@ -282,6 +282,9 @@ local bestBtn = UI.button(P, "EQUIP BEST", C.green, UDim2.fromOffset(160, 38), f
 end, { pos = UDim2.new(1, -54, 0, 218), anchor = Vector2.new(1, 0), name = "Best" })
 UI.raise(bestBtn, 5)
 petGrid.Size = UDim2.fromOffset(756, 232)
+local emptyNote = UI.text(P, "", UDim2.fromOffset(560, 34), { pos = UDim2.fromOffset(410, 370), anchor = Vector2.new(0.5, 0.5), stroke = 2, color = W.cream, name = "EmptyNote" })
+emptyNote.ZIndex = 6
+emptyNote.Visible = false
 petGrid.Position = UDim2.fromOffset(34, 272)
 petGrid.ZIndex = 3
 
@@ -434,10 +437,9 @@ pets.refresh = function()
 		end
 	end
 	boostText.Text = ("+%d%%"):format(math.floor(total * 100 + 0.5))
-	if #rest == 0 then
-		local t = UI.text(petGrid, if #list == 0 then "Open eggs to hatch more pets!" else "Every critter you have is equipped", UDim2.fromOffset(500, 34), { stroke = 2, color = W.cream })
-		t.Size = UDim2.fromOffset(500, 34)
-	end
+	-- (a note over the empty box, not a grid cell: in the grid it was squeezed into one 104 px tile)
+	emptyNote.Text = if #list == 0 then "Open eggs to hatch more pets!" else "Every critter you have is equipped"
+	emptyNote.Visible = #rest == 0
 	table.sort(rest, function(a, b)
 		local pa, pb = Config.pet(a.id), Config.pet(b.id)
 		local ra = pa and table.find({ "Secret", "Mythic", "Legendary", "Epic", "Rare", "Uncommon", "Common" }, pa.rarity) or 9

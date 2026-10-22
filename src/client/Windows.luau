@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
 local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
 local State = require(script.Parent.State)
 
 local Windows = {}
@@ -190,6 +191,14 @@ index.refresh = function()
 			local cell = UI.frame({ size = UDim2.fromOffset(118, 92), color = color, parent = row, radius = 12, outline = 3 })
 			cell.LayoutOrder = i
 			UI.gradient(cell, color)
+			if Skin.has("ui_button") then
+				cell.BackgroundTransparency = 1
+				;(cell:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+				Skin.frame(cell, "ui_button", Vector2.new(118, 92), { name = "Art", boost = 1.4, tint = color })
+				if got and m.id ~= "None" then
+					Skin.sparkles(cell, 1.2, UI.shade(color, 1.5))
+				end
+			end
 			if got then
 				UI.icon(cell, "bundle", 40, UDim2.new(0.5, 0, 0, 8), Vector2.new(0.5, 0))
 			else
@@ -244,7 +253,7 @@ bags.refresh = function()
 	UI.blueCard(bags.list, 11, {
 		title = sack.name,
 		sub = sack.desc,
-		icon = "backpack",
+		icon = if (Config.ICONS.sack or "") ~= "" then "sack" else "backpack",
 		price = if ownsSack then "OWNED" else "R$ " .. sack.robux,
 		enabled = not ownsSack,
 		color = Color3.fromRGB(140, 90, 255),
@@ -318,6 +327,13 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- MOWERS (run garage) and GARAGE (lobby)
 -------------------------------------------------------------------------------------------------------------
+-- each mower's own ForgeGUI picture (the push mower until it's uploaded)
+local MOWER_ICON = { RustyRider = "mower_rusty", TurboTractor = "mower_tractor", GoldenZeroTurn = "mower_zeroturn", MonsterMulcher = "mower_mulcher", TrialMower = "mower_trial", RocketMower = "mower_rocket" }
+local function mowerIcon(m): string
+	local key = MOWER_ICON[m.id]
+	return if key and (Config.ICONS[key] or "") ~= "" then key else "pushmower"
+end
+
 local function mowerSub(m): string
 	return ("Speed %d  -  Radius %d  -  %d fuel"):format(m.speed, m.radius, m.fuel)
 end
@@ -364,7 +380,7 @@ mowers.refresh = function()
 				State.fire("Prompt", "product", m.product)
 			end
 		end
-		UI.blueCard(mowers.list, i, { title = m.name, sub = mowerSub(m), icon = "pushmower", price = price, enabled = enabled, color = color, onClick = action })
+		UI.blueCard(mowers.list, i, { title = m.name, sub = mowerSub(m), icon = mowerIcon(m), price = price, enabled = enabled, color = color, onClick = action })
 	end
 end
 
@@ -395,7 +411,7 @@ garage.refresh = function()
 			UI.blueCard(garage.list, n, {
 				title = m.name,
 				sub = mowerSub(m),
-				icon = "pushmower",
+				icon = mowerIcon(m),
 				price = price,
 				priceIcon = if not owned and m.currency == "gems" then "gem" else nil,
 				enabled = enabled,
@@ -416,18 +432,38 @@ local function dayCard(parent: Instance, i: number, gems: number, state: string,
 	local colors = { claimed = Color3.fromRGB(110, 200, 90), today = C.yellow, later = Color3.fromRGB(150, 116, 84) }
 	local f = UI.frame({ size = UDim2.fromOffset(size.X, size.Y), pos = UDim2.fromOffset(pos.X, pos.Y), color = colors[state], parent = parent, radius = 12, outline = 3, name = "Day" .. i })
 	UI.gradient(f, colors[state])
+	local big = i == #Config.DAILY_STREAK
+	local art: GuiObject? = nil
+	if Skin.has("ui_button") then
+		-- the tinted ForgeGUI button art as the day's tile; today's turns on rays and sparkles
+		f.BackgroundTransparency = 1
+		;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+		if state == "today" then
+			Skin.rays(f, Color3.fromRGB(255, 240, 150), size.X * 1.6, nil, 10)
+		end
+		art = Skin.frame(f, "ui_button", size, { name = "Art", boost = 1.4, tint = colors[state] })
+	end
 	UI.text(f, "DAY " .. i, UDim2.new(1, -8, 0, 20), { pos = UDim2.fromOffset(4, 4), stroke = 2 })
-	UI.icon(f, "gem", if i == #Config.DAILY_STREAK then 34 else 26, UDim2.new(0.5, 0, 0, 27), Vector2.new(0.5, 0))
-	UI.text(f, "+" .. gems, UDim2.new(1, -8, 0, 20), { pos = UDim2.new(0, 4, 1, -24), stroke = 2 })
+	local gem = UI.icon(f, if big and (Config.ICONS.gemchest or "") ~= "" then "gemchest" else "gem", if big then 44 else 28, UDim2.new(0.5, 0, 0, if big then 20 else 25), Vector2.new(0.5, 0))
+	if state ~= "claimed" then
+		Skin.bob(gem, 2, 2 + i * 0.2)
+	end
+	UI.text(f, "+" .. gems, UDim2.new(1, -8, 0, 20), { pos = UDim2.new(0, 4, 1, -26), stroke = 2 })
 	if state == "claimed" then
 		local tick = UI.text(f, "✓", UDim2.fromOffset(30, 30), { pos = UDim2.new(1, 4, 0, -10), anchor = Vector2.new(1, 0), color = Color3.new(1, 1, 1), stroke = 3 })
 		tick.Rotation = 10
 	elseif state == "today" then
-		local glow = Instance.new("UIStroke")
-		glow.Color = Color3.fromRGB(255, 255, 210)
-		glow.Thickness = 3
-		glow.Parent = f
-		UI.bounce(f)
+		if art then
+			Skin.sparkles(f, 0.35)
+		else
+			local glow = Instance.new("UIStroke")
+			glow.Color = Color3.fromRGB(255, 255, 210)
+			glow.Thickness = 3
+			glow.Parent = f
+		end
+		UI.breathe(f, 0.04, 4)
+	elseif art then
+		(art :: ImageLabel).ImageTransparency = 0.3
 	else
 		f.BackgroundTransparency = 0.25
 	end

@@ -1,12 +1,14 @@
--- STATS window (tabs: Upgrades in a run | Stats | Index): a profile card on the left (headshot in a round
--- wooden frame, names, total playtime) and four big coloured stat cards on the right, with your current
--- boosts underneath. The numbers come from the server snapshot (data.stats); playtime ticks locally between
+-- STATS window (tabs: Upgrades in a run | Stats | Index): a profile card on the left (headshot in the round log
+-- slice, names, total playtime) and four wood-rimmed coloured stat cards on the right whose numbers count up, with
+-- your current boosts underneath. The numbers come from the server snapshot (data.stats); playtime ticks locally between
 -- snapshots.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Format = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Format"))
 local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
 local State = require(script.Parent.State)
 
 local StatsWindow = {}
@@ -14,10 +16,10 @@ local W = UI.wood
 local player = Players.LocalPlayer
 
 local CARDS = {
-	{ key = "cut", title = "Clumps Cut", icon = "stump", color = Color3.fromRGB(70, 150, 240) },
+	{ key = "cut", title = "Clumps Cut", icon = "scissors", color = Color3.fromRGB(70, 150, 240) },
 	{ key = "sold", title = "Bundles Sold", icon = "bundle", color = Color3.fromRGB(160, 90, 230) },
 	{ key = "coinsEarned", title = "Coins Earned", icon = "coin", color = Color3.fromRGB(80, 190, 80) },
-	{ key = "rare", title = "Rare Clumps", icon = "tree", color = Color3.fromRGB(230, 70, 70) },
+	{ key = "rare", title = "Rare Clumps", icon = "clover", color = Color3.fromRGB(230, 70, 70) },
 }
 
 -- "2h 05m", "14m 09s", "45s"
@@ -34,6 +36,28 @@ end
 
 -- The round wooden frame with the player's headshot in it.
 local function headshot(parent: Instance)
+	if Skin.has("ui_badge") then
+		-- the HUD's round log slice, with the headshot in its middle
+		local badge, face = Skin.frame(parent, "ui_badge", Vector2.new(176, 172), { pos = UDim2.new(0.5, 0, 0, 20), anchor = Vector2.new(0.5, 0), name = "Ring", stretch = false })
+		local _ = badge
+		local inner = UI.frame({ size = UDim2.fromScale(0.86, 0.86), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(120, 190, 240), parent = face, radius = 999, outline = 3, name = "Inner" })
+		;(inner:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = W.frameEdge
+		local img = Instance.new("ImageLabel")
+		img.Name = "Headshot"
+		img.BackgroundTransparency = 1
+		img.Size = UDim2.fromScale(1, 1)
+		UI.corner(img, 999)
+		img.Parent = inner
+		task.spawn(function()
+			local ok, url = pcall(function()
+				return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+			end)
+			if ok then
+				img.Image = url
+			end
+		end)
+		return
+	end
 	local ring = UI.frame({ size = UDim2.fromOffset(170, 170), pos = UDim2.new(0.5, 0, 0, 22), anchor = Vector2.new(0.5, 0), color = W.frame, parent = parent, radius = 999, outline = 5, name = "Ring" })
 	;(ring:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = W.frameEdge
 	UI.grain(ring, W.frame, 30)
@@ -70,16 +94,26 @@ end
 -- One big coloured card: title on top, the icon on the left, the number on the right.
 local function statCard(panel: Frame, i: number, c): TextLabel
 	local col, row = (i - 1) % 2, (i - 1) // 2
-	local card = UI.frame({ size = UDim2.fromOffset(290, 190), pos = UDim2.fromOffset(334 + col * 306, 40 + row * 206), color = c.color, parent = panel, radius = 18, outline = 4, name = "Stat_" .. c.key })
-	;(card:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = UI.shade(c.color, 0.45)
+	-- the ForgeGUI wood-rimmed card in the stat's colour, mowed stripes, a shine now and then, the picture bobbing
+	local card = Instance.new("Frame")
+	card.Name = "Stat_" .. c.key
+	card.BackgroundTransparency = 1
+	card.Size = UDim2.fromOffset(290, 190)
+	card.Position = UDim2.fromOffset(334 + col * 306, 40 + row * 206)
+	card.Parent = panel
+	local _art, face = Skin.frame(card, "ui_pcard", Vector2.new(290, 190), { name = "Art", maxScale = 0.2 })
+	local inner = UI.frame({ size = UDim2.fromScale(1, 1), color = c.color, parent = face, radius = 10, outline = 0, name = "Inner" })
+	inner.ClipsDescendants = true
 	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(UI.shade(c.color, 1.2), UI.shade(c.color, 0.8))
+	g.Color = ColorSequence.new(UI.shade(c.color, 1.2), UI.shade(c.color, 0.75))
 	g.Rotation = 90
-	g.Parent = card
-	UI.frame({ size = UDim2.new(1, -16, 0, 6), pos = UDim2.fromOffset(8, 6), color = Color3.new(1, 1, 1), transparency = 0.7, parent = card, radius = 3, outline = 0, name = "Shine" })
-	UI.text(card, string.upper(c.title), UDim2.new(1, -24, 0, 40), { pos = UDim2.fromOffset(12, 14), stroke = 3 })
-	UI.icon(card, c.icon, 96, UDim2.fromOffset(16, 70))
-	return UI.text(card, "0", UDim2.new(1, -136, 0, 70), { pos = UDim2.fromOffset(124, 84), stroke = 3.5, name = "Value" })
+	g.Parent = inner
+	Skin.stripes(inner, 6, 80)
+	Skin.shine(inner, 6, i * 0.8, 10)
+	UI.text(face, string.upper(c.title), UDim2.new(1, -16, 0, 34), { pos = UDim2.fromOffset(8, 4), stroke = 3 })
+	local pic = UI.icon(face, c.icon, 86, UDim2.fromOffset(4, 46))
+	Skin.bob(pic, 3, 1.6 + i * 0.25)
+	return UI.text(face, "0", UDim2.new(1, -108, 0, 64), { pos = UDim2.fromOffset(100, 58), stroke = 3.5, name = "Value" })
 end
 
 local function boostLine(d): string
@@ -112,8 +146,25 @@ function StatsWindow.build(tabs)
 		if not d or not d.stats then
 			return
 		end
+		-- the numbers count up to their new value
 		for _, c in CARDS do
-			values[c.key].Text = Format.commas(d.stats[c.key] or 0)
+			local label = values[c.key]
+			local to = d.stats[c.key] or 0
+			local from = tonumber((label.Text:gsub(",", ""))) or 0
+			if from == to then
+				continue
+			end
+			local n = Instance.new("NumberValue")
+			n.Value = from
+			n.Changed:Connect(function(v)
+				label.Text = Format.commas(math.floor(v + 0.5))
+			end)
+			local tw = TweenService:Create(n, TweenInfo.new(0.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Value = to })
+			tw.Completed:Once(function()
+				label.Text = Format.commas(to)
+				n:Destroy()
+			end)
+			tw:Play()
 		end
 		base, baseAt = d.stats.playtime or 0, os.clock()
 		playText.Text = playtime(base)

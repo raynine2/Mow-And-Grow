@@ -1,11 +1,12 @@
--- GEM UPGRADES (the GEMS stall), like Chop A Forest's: "Forever upgrades" (the gem perks) as four tall blue cards
--- (LV n/max, a big picture, now > next, level pips, the gem price), and "Get gems" (the gem packs, Robux) below.
+-- GEM UPGRADES (the GEMS stall): "Forever upgrades" (the gem perks) as four tall wood-rimmed blue cards (LV ribbon,
+-- the picture bobbing on rays, now > next, level pips, the gem price), and "Get gems" (the gem packs, Robux) below.
 -- Takes over the "Perks" window that client/Windows used to draw as a plain grid.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
 local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
 local State = require(script.Parent.State)
 
 local GemUpgrades = {}
@@ -19,11 +20,11 @@ local PERK = {
 	luck = { icon = "clover", what = "mutation chance" },
 	gem = { icon = "gem", what = "gems from grass" },
 }
-local PACKS = { -- the gem products, with Chop A Forest's ribbons
-	{ key = "Gems150", gems = 1 },
-	{ key = "Gems500", gems = 2 },
-	{ key = "Gems1500", gems = 3, tag = "POPULAR" },
-	{ key = "Gems5000", gems = 4, tag = "BEST VALUE" },
+local PACKS = { -- the gem products (their ForgeGUI pictures grow with the pack), with ribbons
+	{ key = "Gems150", gems = 1, icon = "gempile" },
+	{ key = "Gems500", gems = 2, icon = "gempouch" },
+	{ key = "Gems1500", gems = 3, icon = "gemchest", tag = "POPULAR" },
+	{ key = "Gems5000", gems = 4, icon = "gemmountain", tag = "BEST VALUE" },
 }
 
 local w = UI.window("Perks", "Gem Upgrades", nil, { gems = true, size = Vector2.new(1000, 600) })
@@ -51,12 +52,9 @@ if gemBox then
 	UI.raise(plus, 8)
 end
 
+-- (pos is the pill's top centre)
 local function pillHeader(parent: Instance, text: string, color: Color3, icon: string, pos: UDim2, width: number)
-	local pill = UI.frame({ size = UDim2.fromOffset(width, 40), pos = pos, anchor = Vector2.new(0.5, 0), color = color, parent = parent, radius = 12, outline = 3, name = "Header" })
-	UI.gradient(pill, color)
-	UI.icon(pill, icon, 56, UDim2.fromOffset(-24, -10))
-	UI.text(pill, text, UDim2.new(1, -48, 1, -10), { pos = UDim2.fromOffset(40, 5), stroke = 2.5 })
-	UI.raise(pill, 6)
+	Skin.pill(parent, text, color, icon, pos - UDim2.fromOffset(width / 2, 3), width)
 end
 
 -- Forever upgrades
@@ -100,33 +98,34 @@ local function perkCard(order: number, p, d)
 	local max = #p.costs
 	local cost = p.costs[level + 1]
 	local info = PERK[p.id] or { icon = "upgrade", what = p.desc }
-	local card = UI.frame({ size = UDim2.fromOffset(206, 262), color = BLUE, parent = perkRow, radius = 18, outline = 4, name = "Perk_" .. p.id })
+	-- the ForgeGUI wood-rimmed card with a blue, mowed-striped inside; the perk's picture bobs on turning rays
+	local card = Instance.new("Frame")
+	card.Name = "Perk_" .. p.id
+	card.BackgroundTransparency = 1
+	card.Size = UDim2.fromOffset(206, 262)
 	card.LayoutOrder = order
-	;(card:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = NAVY
+	card.Parent = perkRow
+	local _art, face = Skin.frame(card, "ui_pcard", Vector2.new(206, 262), { name = "Art", maxScale = 0.21 })
+	local inner = UI.frame({ size = UDim2.fromScale(1, 1), color = BLUE, parent = face, radius = 10, outline = 0, name = "Inner" })
+	inner.ClipsDescendants = true
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new(Color3.fromRGB(110, 190, 255), Color3.fromRGB(30, 100, 220))
 	g.Rotation = 90
-	g.Parent = card
-	-- a soft glow behind the picture
-	local glow = Instance.new("ImageLabel")
-	glow.BackgroundTransparency = 1
-	glow.Image = "rbxassetid://125552447014366"
-	glow.ImageColor3 = Color3.fromRGB(200, 235, 255)
-	glow.ImageTransparency = 0.3
-	glow.Size = UDim2.fromOffset(170, 150)
-	glow.Position = UDim2.new(0.5, 0, 0, 62)
-	glow.AnchorPoint = Vector2.new(0.5, 0.5)
-	glow.Parent = card
-	local lv = UI.frame({ size = UDim2.fromOffset(78, 30), pos = UDim2.fromOffset(10, -14), color = Color3.fromRGB(20, 30, 70), parent = card, radius = 10, outline = 3, name = "Level" })
-	UI.text(lv, ("LV %d/%d"):format(level, max), UDim2.new(1, -8, 1, -8), { pos = UDim2.fromOffset(4, 4), stroke = 1.5 })
-	UI.icon(card, info.icon, 86, UDim2.new(0.5, 0, 0, 18), Vector2.new(0.5, 0))
-	UI.text(card, string.upper(p.name), UDim2.new(1, -16, 0, 28), { pos = UDim2.fromOffset(8, 108), stroke = 3 })
-	local box = UI.frame({ size = UDim2.new(1, -24, 0, 56), pos = UDim2.fromOffset(12, 140), color = Color3.fromRGB(20, 50, 130), parent = card, radius = 10, outline = 0, name = "Info" })
+	g.Parent = inner
+	Skin.stripes(inner, 5, 70)
+	Skin.rays(inner, Color3.fromRGB(200, 235, 255), 210, UDim2.new(0.5, 0, 0, 46), 20)
+	local lv = Skin.frame(card, "ui_ribbon", Vector2.new(100, 30), { pos = UDim2.fromOffset(-14, -10), name = "Level", boost = 1.2, tint = if level >= max then Color3.fromRGB(255, 190, 40) else NAVY })
+	lv.Rotation = -8
+	UI.text(lv, ("LV %d/%d"):format(level, max), UDim2.new(1, -30, 1, -10), { pos = UDim2.fromOffset(15, 2), stroke = 1.5 })
+	local pic = UI.icon(card, info.icon, 84, UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
+	Skin.bob(pic, 3, 1.6 + order * 0.2)
+	UI.text(card, string.upper(p.name), UDim2.new(1, -36, 0, 26), { pos = UDim2.fromOffset(18, 104), stroke = 3 })
+	local box = UI.frame({ size = UDim2.new(1, -40, 0, 54), pos = UDim2.fromOffset(20, 134), color = Color3.fromRGB(20, 50, 130), parent = card, radius = 10, outline = 0, name = "Info" })
 	box.BackgroundTransparency = 0.25
 	UI.text(box, info.what, UDim2.new(1, -10, 0, 18), { pos = UDim2.fromOffset(5, 5), color = Color3.fromRGB(200, 220, 255), stroke = 1 })
 	local now, nxt = level * p.per, math.min(level + 1, max) * p.per
 	UI.text(box, if cost then ("%s  ▶  %s"):format(pct(now), pct(nxt)) else pct(now) .. "  MAX", UDim2.new(1, -10, 0, 26), { pos = UDim2.fromOffset(5, 25), color = Color3.fromRGB(150, 255, 120), stroke = 2 })
-	UI.pips(card, level, max, UDim2.new(0.5, 0, 0, 204), 170)
+	UI.pips(card, level, max, UDim2.new(0.5, 0, 0, 196), 150)
 	local can = cost ~= nil and d.gems >= cost
 	local b = UI.button(card, if cost then Format.commas(cost) else "MAX", if can then Color3.fromRGB(60, 150, 250) else Color3.fromRGB(150, 155, 170), UDim2.fromOffset(150, 48), function()
 		State.fire("Buy", "perk", p.id)
@@ -142,17 +141,25 @@ local function packCard(order: number, pack)
 	if not p then
 		return
 	end
-	local card = UI.frame({ size = UDim2.fromOffset(196, 128), color = Color3.fromRGB(26, 60, 150), parent = packRow, radius = 16, outline = 4, name = pack.key })
+	local card = Instance.new("Frame")
+	card.Name = pack.key
+	card.BackgroundTransparency = 1
+	card.Size = UDim2.fromOffset(196, 128)
 	card.LayoutOrder = order
-	;(card:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = NAVY
-	UI.gradient(card, Color3.fromRGB(34, 74, 170))
-	for i = 1, pack.gems do -- a little pile: more gems for a bigger pack
-		local ic = UI.icon(card, "gem", 46 - i * 2, UDim2.fromOffset(6 + (i - 1) * 16, 8 + ((i + 1) % 2) * 8))
-		ic.ZIndex = 3 + i
+	card.Parent = packRow
+	local _art, face = Skin.frame(card, "ui_pcard", Vector2.new(196, 128), { name = "Art", maxScale = 0.2 })
+	local inner = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.fromRGB(34, 74, 170), parent = face, radius = 10, outline = 0, name = "Inner" })
+	inner.ClipsDescendants = true
+	UI.gradient(inner, Color3.fromRGB(40, 90, 200))
+	Skin.stripes(inner, 4, 70)
+	local pic = UI.icon(card, if (Config.ICONS[pack.icon] or "") ~= "" then pack.icon else "gem", 62, UDim2.fromOffset(12, 6))
+	Skin.bob(pic, 2, 1.8 + order * 0.3)
+	if pack.gems >= 3 then
+		Skin.sparkles(inner, 0.7, Color3.fromRGB(200, 240, 255))
 	end
-	UI.text(card, Format.commas(p.gems), UDim2.fromOffset(110, 32), { pos = UDim2.fromOffset(78, 10), align = Enum.TextXAlignment.Left, stroke = 3 })
-	UI.text(card, "gems", UDim2.fromOffset(80, 18), { pos = UDim2.fromOffset(80, 42), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(190, 210, 250), stroke = 1 })
-	local b = UI.button(card, tostring(p.robux), C.green, UDim2.new(1, -20, 0, 46), function()
+	UI.text(card, Format.commas(p.gems), UDim2.fromOffset(100, 30), { pos = UDim2.fromOffset(78, 14), align = Enum.TextXAlignment.Left, stroke = 3 })
+	UI.text(card, "gems", UDim2.fromOffset(80, 18), { pos = UDim2.fromOffset(80, 44), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(190, 210, 250), stroke = 1 })
+	local b = UI.button(card, tostring(p.robux), C.green, UDim2.new(1, -28, 0, 44), function()
 		State.fire("Prompt", "product", pack.key)
 	end, { pos = UDim2.new(0.5, 0, 1, -10), anchor = Vector2.new(0.5, 1), name = "Buy" })
 	UI.icon(b, "robux", 28, UDim2.new(0, 14, 0.5, -3), Vector2.new(0, 0.5))

@@ -308,7 +308,7 @@ local function sign(parent: Instance, i: number, cat, active: boolean, onClick: 
 	b.Rotation = if i % 2 == 0 then 2 else -2
 	local _art, face = Skin.frame(b, "ui_packet", PACKET, { name = "Art", boost = 1.3, tint = if active then color else color:Lerp(Color3.new(1, 1, 1), 0.5) })
 	local icon = UI.icon(b, cat.icon, 56, UDim2.new(0, 14, 0.5, -2), Vector2.new(0, 0.5))
-	UI.text(face, string.upper(cat.id), UDim2.new(1, -36, 1, 0), { pos = UDim2.fromOffset(34, 0), stroke = if active then 3 else 2.5, color = if active then Color3.new(1, 1, 1) else Color3.fromRGB(255, 252, 240) })
+	UI.text(face, string.upper(cat.id), UDim2.new(1, -48, 1, -4), { pos = UDim2.fromOffset(46, 2), stroke = if active then 3 else 2.5, color = if active then Color3.new(1, 1, 1) else Color3.fromRGB(255, 252, 240) })
 	UI.raise(b, 4)
 	if active then
 		Skin.bob(icon, 3, 2.4)

@@ -111,8 +111,7 @@ plaques, pedestals, status lamps), the log garage (`garage_shed`), the CLASSES o
 wheels and blades, exhaust, auras), `client/MenuFX` (VFX Forge bursts for card/egg/upgrade moments, used by
 ClassRoom, PetsWindow, GemUpgrades), the rigged Blender mowers (`mower_mulcher/rocket/tractor/zeroturn`, plus
 `Mowers.rig` and named parts in `Models`), and a one-line change to `ClassDeal` (`ClassRoom.pulse`).
-**Still only in Studio:** `PartModels/mower_trial` (the Trial Mower model; without it the game falls back to a pink
-Zero-Turn, so nothing breaks, but it must be copied before a Rojo sync). **Not reachable from here:** the Blender
+**`PartModels/mower_trial` rescued too (next commit), and FxPresets checked by its data: Studio and the branch now match exactly.** **Not reachable from here:** the Blender
 sources `tools/blender/models/*.py` for the new models (on the other session's computer), and
 `ReplicatedStorage.VFXLib` (a Studio-only library MenuFX/ClassHolo/ShopDisplays need; Rojo leaves it alone).
 

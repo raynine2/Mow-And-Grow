@@ -150,11 +150,41 @@ local function oldClassBooth(world: Instance): TextLabel
 	return label
 end
 
+-- A board on two posts with the "Classes in stock" text (the Lobby system fills it).
+local function stockBoard(m: Instance, cf: CFrame): TextLabel
+	local wood = Color3.fromRGB(110, 70, 40)
+	for _, x in { -4.6, 4.6 } do
+		PropKit.brick(m, Vector3.new(0.6, 7.4, 0.6), cf * CFrame.new(x, 3.7, 0.3), wood, "BoardPost")
+	end
+	local board = PropKit.part({ size = Vector3.new(9.6, 5.2, 0.3), cf = cf * CFrame.new(0, 4.6, 0), color = Color3.fromRGB(44, 30, 60), parent = m, name = "StockBoard" })
+	local label = PropKit.surfaceText(board, "Classes in stock", Color3.new(1, 1, 1))
+	label.TextYAlignment = Enum.TextYAlignment.Top
+	return label
+end
+
+-- The class booth as the ForgeGUI log lodge (solid: the vendor stands on the path in front of its porch).
+local function classLodge(m: Instance, at: CFrame, purple: Color3): TextLabel?
+	if not Models.placeForge("lodge", m, at, { width = 30 }, true) then
+		return nil
+	end
+	PropKit.collider(m, at, Vector3.new(0, 11.5, 0), Vector3.new(29, 23, 25))
+	outline(m, at, Vector3.new(0, 0, -20), 16, 6, purple, "Classes")
+	LobbyKit.vendor(m, at * CFrame.new(0, 0.5, -15.5), Color3.fromRGB(196, 48, 42))
+	LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(0, 2, -20), Vector3.new(14, 3, 5), "ClassesFX"), "LobbyFX", { Kind = "sparkle", Color = purple })
+	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -16), "ClassCounter"), "Browse", "Classes", "Classes", 12)
+	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -20), "ClassPorch"), "Browse", "Classes", "Classes", 10)
+	return stockBoard(m, at * CFrame.new(11.5, 0, -17))
+end
+
 local function classCabin(world: Instance): TextLabel
 	local m = PropKit.folder("Classes", world)
 	local pos = Vector3.new(-46, FLOOR_Y, -22)
 	local at = CFrame.lookAt(pos, pos + Vector3.xAxis)
 	local purple = Color3.fromRGB(180, 100, 255)
+	local lodgeLabel = classLodge(m, at, purple)
+	if lodgeLabel then
+		return lodgeLabel
+	end
 	if not cabin(m, at, 1) then
 		return oldClassBooth(world)
 	end
@@ -194,11 +224,14 @@ local function garageCabin(world: Instance)
 	local pos = Vector3.new(46, FLOOR_Y, -22)
 	local at = CFrame.lookAt(pos, pos - Vector3.xAxis)
 	local s = 0.85
-	if not cabin(m, at, s) then
+	if Models.placeForge("barn", m, at * CFrame.new(0, 0, 2), { width = 22 }, true) then
+		-- the ForgeGUI red barn (solid), a little back so the turntable has room in front
+		PropKit.collider(m, at, Vector3.new(0, 9, 3.5), Vector3.new(21, 18, 20))
+	elseif not cabin(m, at, s) then
 		oldGarage(world)
 		return
 	end
-	if Config.HUB_SIGNS then
+	if Config.HUB_SIGNS and not Models.has("forge_barn") then
 		cabinSign(m, at, s, "GARAGE", PropKit.TITLE)
 	end
 	local spot = at * CFrame.new(0, 0, -18 * s)
@@ -235,6 +268,25 @@ local function oldRewardsChest(world: Instance)
 	m.Parent = world
 end
 
+local function rewardTexts(): (string, string)
+	local daily = ("DAILY REWARD\nUp to +%d 💎\nCome back every day!"):format(Config.DAILY_STREAK[#Config.DAILY_STREAK])
+	return daily, ("GROUP REWARD\n+%d 💎\nJoin the group!"):format(Config.GROUP_GEMS)
+end
+
+-- The ForgeGUI rewards stall (fitted into the old stall's box): its counter front is at z -3.4, 4 studs high.
+local function forgeRewards(m: Instance, at: CFrame)
+	local daily, group = rewardTexts()
+	PropKit.facePanel(m, at, Vector3.new(2.9, 2.2, -3.5), Vector2.new(5.2, 2.8), daily, Color3.new(1, 1, 1))
+	PropKit.facePanel(m, at, Vector3.new(-2.9, 2.2, -3.5), Vector2.new(5.2, 2.8), group, Color3.new(1, 1, 1))
+	outline(m, at, Vector3.new(3.9, 0, -6.6), 7, 6, CYAN, "Rewards")
+	outline(m, at, Vector3.new(-3.9, 0, -6.6), 7, 6, CYAN, "Rewards")
+	for _, x in { 3.6, -3.6 } do
+		LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(x, 5.6, -2.4), Vector3.new(3, 2, 2), "RewardsFX"), "LobbyFX", { Kind = "sparkle", Color = CYAN })
+	end
+	PropKit.collider(m, at, Vector3.new(0, 6.9, -0.7), Vector3.new(12.6, 13.8, 5.6))
+	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -6.6), "RewardsPrompt"), "Open", "Free Rewards", "Rewards", 14)
+end
+
 local function rewardsStall(world: Instance)
 	local m = PropKit.folder("FreeRewards", world)
 	local pos = Vector3.new(-50, FLOOR_Y, 26)
@@ -243,13 +295,17 @@ local function rewardsStall(world: Instance)
 		oldRewardsChest(world)
 		return
 	end
+	if Models.isForge("rewards_stall") then
+		forgeRewards(m, at)
+		return
+	end
 	if Config.HUB_SIGNS then
 		PropKit.facePanel(m, at, Vector3.new(0, 13.5, -0.6), Vector2.new(16, 3), "REWARDS", PropKit.TITLE)
 	end
 	-- seen from the front the daily bay is on the left (+X), the group bay on the right
-	local daily = ("DAILY REWARD\nUp to +%d 💎\nCome back every day!"):format(Config.DAILY_STREAK[#Config.DAILY_STREAK])
+	local daily, group = rewardTexts()
 	PropKit.facePanel(m, at, Vector3.new(3.9, 6.6, 2.3), Vector2.new(6, 3.4), daily, Color3.new(1, 1, 1))
-	PropKit.facePanel(m, at, Vector3.new(-3.9, 6.6, 2.3), Vector2.new(6, 3.4), ("GROUP REWARD\n+%d 💎\nJoin the group!"):format(Config.GROUP_GEMS), Color3.new(1, 1, 1))
+	PropKit.facePanel(m, at, Vector3.new(-3.9, 6.6, 2.3), Vector2.new(6, 3.4), group, Color3.new(1, 1, 1))
 	outline(m, at, Vector3.new(3.9, 0, -5), 7, 6, CYAN, "Rewards")
 	outline(m, at, Vector3.new(-3.9, 0, -5), 7, 6, CYAN, "Rewards")
 	-- a glowing chest on each counter
@@ -266,6 +322,15 @@ local function rewardsStall(world: Instance)
 	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -5), "RewardsPrompt"), "Open", "Free Rewards", "Rewards", 14)
 end
 
+-- The ForgeGUI notice board (leaderboard and BEST TIMES): a title and the rows on its green face, which sits at
+-- z -2.2 in the model's own studs, x -4.9..4.9, y 3.2..8.6. Returns the rows label.
+local function forgeBoard(m: Instance, at: CFrame, s: number, title: string, color: Color3): TextLabel
+	PropKit.facePanel(m, at, Vector3.new(0, 7.95, -2.32), Vector2.new(9.2, 1.1), title, color, s)
+	local body = PropKit.facePanel(m, at, Vector3.new(0, 5.35, -2.32), Vector2.new(9.2, 3.9), "", Color3.new(1, 1, 1), s)
+	PropKit.collider(m, at, Vector3.new(0, 7, 0), Vector3.new(14.5, 14, 8.4), s)
+	return body
+end
+
 -- The leaderboard's text label (the Lobby system fills it with this server's top mowers). It stands to the right
 -- of the party pads, turned toward the plaza (Chop A Forest's CASH EARNED board).
 local function leaderboard(world: Instance): TextLabel
@@ -274,7 +339,10 @@ local function leaderboard(world: Instance): TextLabel
 	local at = CFrame.lookAt(pos, pos - Vector3.zAxis) -- square to the plaza, in line with the pads
 	local s = 1.25
 	local body: TextLabel
-	if Models.place("leaderboard", m, at, s, true) then
+	if Models.isForge("leaderboard") and Models.place("leaderboard", m, at, s, true) then
+		body = forgeBoard(m, at, s, "GRASS CUT", GOLD)
+		LobbyKit.boardFace(body, "cut")
+	elseif Models.place("leaderboard", m, at, s, true) then
 		PropKit.facePanel(m, at, Vector3.new(0, 10.65, -0.39), Vector2.new(10, 1.3), "GRASS CUT", GOLD, s)
 		body = PropKit.facePanel(m, at, Vector3.new(0, 6.6, -0.34), Vector2.new(9.6, 6.2), "", Color3.new(1, 1, 1), s)
 		LobbyKit.boardFace(body, "cut") -- all-time rows (server/LobbyBoards)
@@ -298,6 +366,13 @@ local function bestTimesBoard(world: Instance): TextLabel?
 	if not Models.place("trophy_board", m, at, s, true) then
 		return nil
 	end
+	if Models.isForge("trophy_board") then
+		local fbody = forgeBoard(m, at, s, "BEST TIMES", PropKit.TITLE)
+		LobbyKit.boardFace(fbody, "best")
+		fbody.TextXAlignment = Enum.TextXAlignment.Left
+		fbody.TextYAlignment = Enum.TextYAlignment.Top
+		return fbody
+	end
 	PropKit.facePanel(m, at, Vector3.new(0, 10.9, -0.3), Vector2.new(10.4, 1.6), "BEST TIMES", PropKit.TITLE, s)
 	local body = PropKit.facePanel(m, at, Vector3.new(0, 6.3, -0.3), Vector2.new(10.2, 6.6), "", Color3.new(1, 1, 1), s)
 	LobbyKit.boardFace(body, "best") -- all-time rows (server/LobbyBoards)
@@ -315,6 +390,19 @@ local function startBoard(m: Instance)
 	local at = CFrame.lookAt(Vector3.new(0, FLOOR_Y + 26, 58), Vector3.new(0, FLOOR_Y + 26, 0))
 	local sub = ("Step on a pad  -  play solo or bring up to %d friends"):format(Config.PARTY_MAX - 1)
 	LobbyPads.startBoard(m, at, "START A RUN", sub)
+end
+
+-- The ForgeGUI start gate over the walk from the spawn to the plaza, where the welcome arch stood (HUB_SIGNS off).
+-- Its opening (x -7..6.6, up to y 9 at 22 wide) stays open: only the two posts are solid.
+local function startGate(world: Instance)
+	local m = PropKit.folder("StartGate", world)
+	local pos = Vector3.new(0, FLOOR_Y, -36)
+	local at = CFrame.lookAt(pos, pos - Vector3.zAxis)
+	if not Models.placeForge("startgate", m, at, { width = 22 }, true) then
+		return
+	end
+	PropKit.collider(m, at, Vector3.new(-9.2, 9.75, 0), Vector3.new(3.6, 19.5, 5))
+	PropKit.collider(m, at, Vector3.new(8.9, 9.75, 0), Vector3.new(4.2, 19.5, 5))
 end
 
 -- The START A RUN board over a deck of four glowing party bays (server/LobbyPads), facing the spawn.
@@ -341,6 +429,7 @@ function LobbyBuilder.build()
 	local leaderLabel = leaderboard(world)
 	local bestLabel = bestTimesBoard(world)
 	local pads = partyArea(world)
+	startGate(world)
 	require(script.Parent.HubDressing).lobby(world) -- the generated world's style: arch, statue, benches, bunting...
 	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = pads }
 end

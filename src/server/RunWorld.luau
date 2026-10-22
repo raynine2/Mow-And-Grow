@@ -413,6 +413,8 @@ function RunWorld.build()
 	end
 	world = w
 	require(script.Parent.WorldGen).lighting()
+	-- the ForgeGUI landmarks in place of the ones the saved world was built with
+	print(("[RunWorld] %d ForgeGUI landmarks"):format(require(script.Parent.WorldArt).forgeLandmarks(w)))
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
 	if w:GetAttribute("VillageBaked") then
 		-- the village was baked into the saved world in Studio (RunWorld.bakeVillage), maybe moved around by hand:

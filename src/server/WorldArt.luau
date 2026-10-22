@@ -280,11 +280,73 @@ local function meshLandmark(parent: Instance, def: any, at: Vector3): boolean
 	return true
 end
 
+-- The ForgeGUI landmark for each kind (shared/ForgeModelIds; loaded by server/Models at server start).
+local FORGE_LANDMARK: { [string]: string } = {
+	windmill = "windmill",
+	silo = "lm_wheat",
+	cherry = "lm_blossom",
+	elderpine = "lm_pine",
+	mushroomhut = "lm_swamp",
+	icespire = "lm_frost",
+	volcano = "lm_ember",
+	floatrock = "lm_starlight",
+}
+
+-- The area's ForgeGUI landmark standing on the ground at `at` (the Starlight observatory too: it isn't a floating
+-- rock), the landmark's height tall and at most 46 studs across (WorldPlan keeps the grass ~34 studs away), its
+-- front toward the area's centre.
+local function forgeLandmark(parent: Instance, def: any, at: Vector3): Model?
+	local l = def.landmark
+	local name = FORGE_LANDMARK[l.kind]
+	if not name then
+		return nil
+	end
+	local foot = at
+	local look = Vector3.new(def.center.X, foot.Y, def.center.Y)
+	if (look - foot).Magnitude < 1 then
+		look = foot - Vector3.zAxis
+	end
+	local m = Instance.new("Model")
+	m.Name = def.name .. " Landmark"
+	local ServerModels = require(script.Parent.Models) -- (required here: Models loads HubKit and VoxelModels)
+	if not ServerModels.placeForge(name, m, CFrame.lookAt(foot, look), { height = l.height, width = 46, depth = 46 }) then
+		m:Destroy()
+		return nil
+	end
+	m:SetAttribute("Forge", true)
+	m.Parent = parent
+	return m
+end
+
+-- Swap the landmarks of a world saved in the place (built before the ForgeGUI models) for the ForgeGUI ones, on
+-- the ground under the old ones. Returns how many were swapped. The world must be in the Workspace.
+function WorldArt.forgeLandmarks(world: Instance): number
+	local n = 0
+	for _, def in Zones.list do
+		local l = def.landmark
+		local old = l and FORGE_LANDMARK[l.kind] and world:FindFirstChild(def.name .. " Landmark", true)
+		if old and old:IsA("Model") and not old:GetAttribute("Forge") then
+			local cf, size = old:GetBoundingBox()
+			local params = RaycastParams.new()
+			params.FilterType = Enum.RaycastFilterType.Exclude
+			params.FilterDescendantsInstances = { old }
+			local top = cf.Position.Y + size.Y / 2 + 10
+			local hit = workspace:Raycast(Vector3.new(l.at.X, top, l.at.Y), Vector3.new(0, -(size.Y + 120), 0), params)
+			local base = if hit then hit.Position.Y else cf.Position.Y - size.Y / 2
+			if forgeLandmark(old.Parent :: Instance, def, v3(l.at, base)) then
+				old:Destroy()
+				n += 1
+			end
+		end
+	end
+	return n
+end
+
 local function landmark(parent: Instance, zi: number, base: number)
 	local def = Zones.list[zi]
 	local l = def.landmark
 	local at = v3(l.at, base)
-	if meshLandmark(parent, def, at) then
+	if forgeLandmark(parent, def, at) or meshLandmark(parent, def, at) then
 		return
 	end
 	local m = Instance.new("Model")

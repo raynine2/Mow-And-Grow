@@ -1,0 +1,21 @@
+-- ForgeGUI building models (textured meshes, approved by the owner on 23 Oct; records in
+-- assets/forgegui_models.json). server/Models loads each as the template "forge_<name>", keeps its painted texture,
+-- stands it on its feet (pivot at the bottom centre) and turns it so its front faces the pivot's LookVector.
+-- FORGE_SWAP in server/Models says which older models they replace.
+return {
+	bagstand = 89479177629481,
+	shredder = 122216742633383,
+	windmill = 98872799097988,
+	lodge = 83216758022373,
+	barn = 87691690990474,
+	rewards = 71692087163918,
+	startgate = 81723837273613,
+	leaderboard = 101353987186694,
+	lm_blossom = 76069617427255,
+	lm_wheat = 140161198185129,
+	lm_pine = 120907520324654,
+	lm_swamp = 122886070654489,
+	lm_frost = 85463365553189,
+	lm_ember = 87118546176920,
+	lm_starlight = 90425779548628,
+}

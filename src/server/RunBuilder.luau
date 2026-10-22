@@ -255,6 +255,27 @@ local function toolShop(m: Instance, info)
 	local _ = toolFrame
 end
 
+-- The ForgeGUI bag stand (fitted into the old stall's box: 10.9 wide, front at z -4.4, its table about y 3). The
+-- bag tiers and the Bottomless Sack stand on stumps in a row in front of it, each tier with its price.
+local function forgeBagStand(stand: Instance, at: CFrame)
+	PropKit.collider(stand, at, Vector3.new(0, 5, -2.25), Vector3.new(10.8, 10, 4.2))
+	local stump = Color3.fromRGB(122, 84, 52)
+	local function onStump(x: number): CFrame
+		PropKit.cylinder(stand, 1.2, 1.6, at * CFrame.new(x, 0.8, -6.8), stump).Name = "Stump"
+		return at * CFrame.new(x, 1.6, -6.8)
+	end
+	for i, bag in Config.BAGS do
+		local x = ({ -6, -2, 2 })[i]
+		if x then
+			Models.place(bag.model, stand, onStump(x), 0.75, true)
+			PropKit.facePanel(stand, at, Vector3.new(x, 0.75, -8.05), Vector2.new(2.4, 0.85), "$" .. Format.short(bag.cost), PropKit.PRICE)
+		end
+	end
+	Models.place("bag_infinite", stand, onStump(6), 0.55, true)
+	Models.place("tool_vacuum", stand, at * CFrame.new(-7.6, 0, -2), 0.8, true)
+	PropKit.prompt(promptSpot(stand, at * CFrame.new(0, 3, -9), "BagCounter"), "Shop", "Bags & Gear", "Bags", 12)
+end
+
 -- The Bag Stand (bag_stand model): a striped market stall by the spawn. The three bag tiers stand on its stumps,
 -- the Bottomless Sack sits on the counter and the Leaf Vacuum leans beside it. Its prompt opens the Bags window.
 local function bagStand(m: Instance)
@@ -262,6 +283,10 @@ local function bagStand(m: Instance)
 	local at = spotAt("bagStand") -- facing the walk
 	if not Models.place("bag_stand", stand, at, 1, true) then
 		PropKit.stall(stand, at, "BAGS", Color3.fromRGB(90, 190, 90), "Bags")
+		return
+	end
+	if Models.isForge("bag_stand") then
+		forgeBagStand(stand, at)
 		return
 	end
 	if Config.HUB_SIGNS then
@@ -360,9 +385,11 @@ local function shredderAt(parent: Instance, info, at: CFrame, name: string): boo
 		s:Destroy()
 		return false
 	end
-	PropKit.collider(s, at, Vector3.new(0, 5, -0.7), Vector3.new(7.8, 10, 14.5), 1.15)
-	local mouth = (at * CFrame.new(Vector3.new(0.3, 8.8, 4.8) * 1.15)).Position
-	local out = (at * CFrame.new(Vector3.new(0, 1.2, -8.6) * 1.15)).Position
+	local forge = Models.isForge("shredder")
+	-- the ForgeGUI shredder (9 wide, 8.5 deep, its hopper on top) or the older Blender one
+	PropKit.collider(s, at, if forge then Vector3.new(0, 5, -1.55) else Vector3.new(0, 5, -0.7), if forge then Vector3.new(9, 10, 8.4) else Vector3.new(7.8, 10, 14.5), 1.15)
+	local mouth = (at * CFrame.new((if forge then Vector3.new(0, 9.5, -1) else Vector3.new(0.3, 8.8, 4.8)) * 1.15)).Position
+	local out = (at * CFrame.new((if forge then Vector3.new(0, 1.2, -6.6) else Vector3.new(0, 1.2, -8.6)) * 1.15)).Position
 	local padAt = at * CFrame.new(0, 0, 16.5)
 	local sellPos = padAt.Position
 	if Models.place("sell_pad", s, padAt, 1, true) then

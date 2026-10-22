@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local ModelIds = require(ReplicatedStorage.MowALawn.ModelIds)
+local ForgeModelIds = require(ReplicatedStorage.MowALawn.ForgeModelIds)
 local Config = require(ReplicatedStorage.MowALawn.Config)
 
 local Models = {}
@@ -126,6 +127,12 @@ local function buildFromParts(name: string, spec: { materials: { string }, parts
 		end
 		part.Size = Vector3.new(p[2], p[3], p[4])
 		part.CFrame = CFrame.new(p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[16])
+		if p[1] == "E" then
+			-- an ellipsoid: a block with a Sphere mesh filling it
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = part
+		end
 		local matName = spec.materials[p[17]] or "Plastic__A3A2A5"
 		local kind, hex = matName:match("^(%w+)__(%x+)")
 		pcall(function()
@@ -215,9 +222,136 @@ local function buildFromToy(toyName: string, src: Instance, height: number): Mod
 	return model
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- ForgeGUI buildings (shared/ForgeModelIds): one textured MeshPart each, front at the mesh's -X
+-------------------------------------------------------------------------------------------------------------
+-- Older models a ForgeGUI building replaces. The new one is fitted into the old one's box (same height, no
+-- wider than the old one) and stands on the same spot, so builders keep placing it the same way.
+local FORGE_SWAP: { [string]: string } = {
+	bag_stand = "bagstand",
+	shredder = "shredder",
+	rewards_stall = "rewards",
+	leaderboard = "leaderboard",
+	trophy_board = "leaderboard",
+}
+local forgeRaw: { [string]: Model } = {}
+
+-- A template from a loaded ForgeGUI asset: the mesh (texture kept), pivot at the bottom centre, front toward
+-- the pivot's LookVector (-Z).
+local function prepareForge(name: string, asset: Instance): Model?
+	local mesh = asset:FindFirstChildWhichIsA("MeshPart", true)
+	if not mesh then
+		return nil
+	end
+	local model = Instance.new("Model")
+	model.Name = "forge_" .. name
+	mesh.Name = "Body"
+	mesh.Anchored = true
+	mesh.CanTouch = false
+	-- the mesh's front is its -X: turning it -90 degrees about Y points that at -Z
+	mesh.CFrame = CFrame.new(0, mesh.Size.Y / 2, 0) * CFrame.Angles(0, math.rad(-90), 0)
+	mesh.Parent = model
+	model.WorldPivot = CFrame.new()
+	return model
+end
+
+local function loadForge(): number
+	local pending = 0
+	for name, id in ForgeModelIds do
+		pending += 1
+		task.spawn(function()
+			local ok, result = pcall(function()
+				return InsertService:LoadAsset(id)
+			end)
+			local m = ok and result and prepareForge(name, result)
+			if m then
+				forgeRaw[name] = m
+				m.Parent = folder
+				templates[m.Name] = m
+			else
+				warn(("[Models] couldn't load ForgeGUI model %s (%d): %s"):format(name, id, tostring(result)))
+			end
+			if ok and result then
+				result:Destroy()
+			end
+			pending -= 1
+		end)
+	end
+	local deadline = os.clock() + 20
+	while pending > 0 and os.clock() < deadline do
+		task.wait(0.1)
+	end
+	return pending
+end
+
+-- The scale that fits a model of size `have` into `want` (any of height / width / depth; nil = no limit).
+function Models.fitScale(have: Vector3, want: { height: number?, width: number?, depth: number? }): number
+	local k = math.huge
+	if want.height then
+		k = math.min(k, want.height / have.Y)
+	end
+	if want.width then
+		k = math.min(k, want.width / have.X)
+	end
+	if want.depth then
+		k = math.min(k, want.depth / have.Z)
+	end
+	return if k == math.huge then 1 else k
+end
+
+-- Swap the old templates for their ForgeGUI buildings, fitted into the old ones' boxes.
+local function swapForge()
+	for oldName, forgeName in FORGE_SWAP do
+		local raw = forgeRaw[forgeName]
+		local old = templates[oldName]
+		if raw and old then
+			local box, size = old:GetBoundingBox()
+			local k = Models.fitScale(raw:GetExtentsSize(), { height = size.Y, width = size.X * 1.1 })
+			local m = raw:Clone()
+			m.Name = oldName
+			-- resize the parts themselves, not with ScaleTo: Models.place's ScaleTo(scale) is absolute and would undo it
+			for _, p in m:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.Size *= k
+					p.CFrame = p.CFrame.Rotation + p.Position * k
+				end
+			end
+			-- stand it where the old one stood: same bottom centre (in the template's own space)
+			local foot = box.Position - Vector3.new(0, size.Y / 2, 0)
+			m:PivotTo(CFrame.new(foot))
+			m.WorldPivot = CFrame.new()
+			m:SetAttribute("Forge", true)
+			m.Parent = folder
+			old:Destroy()
+			templates[oldName] = m
+		end
+	end
+end
+
+-- Is the template `name` a ForgeGUI building (so builders can skip extras the older model needed)?
+function Models.isForge(name: string): boolean
+	local t = templates[name]
+	return t ~= nil and (t:GetAttribute("Forge") == true or string.sub(t.Name, 1, 6) == "forge_")
+end
+
+-- A ForgeGUI building ("bagstand", "barn"...) at `cf` (feet there, front toward cf.LookVector), scaled to fit
+-- `want` (height / width / depth in studs). Returns nil if it isn't loaded.
+function Models.placeForge(name: string, parent: Instance, cf: CFrame, want: { height: number?, width: number?, depth: number? }, noCollide: boolean?): Model?
+	local raw = forgeRaw[name]
+	if not raw then
+		return nil
+	end
+	return Models.place(raw.Name, parent, cf, Models.fitScale(raw:GetExtentsSize(), want), noCollide)
+end
+
 -- Loads every model at the same time (one at a time took ~30 s) and waits at most `timeout` seconds; a model
 -- that isn't loaded by then uses its native-part version if it has one, else its brick fallback.
 function Models.loadAll(timeout: number?)
+	-- the ForgeGUI buildings load alongside the rest
+	local forgeLeft: number? = nil
+	task.spawn(function()
+		forgeLeft = loadForge()
+	end)
 	local pending = 0
 	local failed = 0
 	for name, id in ModelIds do
@@ -381,6 +515,15 @@ function Models.loadAll(timeout: number?)
 		end
 		print(("[Models] %d hub models built from parts (HubKit)"):format(kit))
 	end
+	while forgeLeft == nil do
+		task.wait(0.1)
+	end
+	swapForge()
+	local forged = 0
+	for _ in forgeRaw do
+		forged += 1
+	end
+	print(("[Models] %d ForgeGUI buildings loaded (%d not loaded)"):format(forged, forgeLeft or 0))
 end
 
 function Models.has(name: string): boolean

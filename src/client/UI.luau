@@ -110,8 +110,22 @@ function UI.text(parent: Instance, text: string, size: UDim2, props: { pos: UDim
 	return t
 end
 
-local function bounce(obj: GuiObject)
-	local sc = obj:FindFirstChild("Bounce") :: UIScale?
+-- Juice: one UIScale per object (the one it already has, e.g. a shrink, or a new "Bounce") whose scale is
+-- base * pop * hover * breath, so a click squash, a hover grow and an idle breath never fight each other.
+type Juice = { sc: UIScale, base: number, popT: number, popFrom: number, popDur: number, popSine: boolean, hover: number, hoverTo: number, amp: number, phase: number, speed: number }
+local juiced: { [GuiObject]: Juice } = {}
+local function juice(obj: GuiObject): Juice
+	local j = juiced[obj]
+	if j and j.sc.Parent == obj then
+		return j
+	end
+	local sc: UIScale? = nil
+	for _, k in obj:GetChildren() do
+		if k:IsA("UIScale") and k.Name ~= "Pop" then
+			sc = k
+			break
+		end
+	end
 	if not sc then
 		local n = Instance.new("UIScale")
 		n.Name = "Bounce"
@@ -119,10 +133,75 @@ local function bounce(obj: GuiObject)
 		sc = n
 	end
 	local s = sc :: UIScale
-	s.Scale = 0.88
-	TweenService:Create(s, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	local nj: Juice = { sc = s, base = s.Scale, popT = 1, popFrom = 0.88, popDur = 0.25, popSine = false, hover = 1, hoverTo = 1, amp = 0, phase = math.random() * 6.28, speed = 3.4 + math.random() * 0.6 }
+	juiced[obj] = nj
+	obj.Destroying:Once(function()
+		juiced[obj] = nil
+	end)
+	return nj
+end
+local function backOut(t: number): number
+	local c1 = 1.70158
+	return 1 + (c1 + 1) * (t - 1) ^ 3 + c1 * (t - 1) ^ 2
+end
+RunService.RenderStepped:Connect(function(dt)
+	local now = os.clock()
+	for obj, j in juiced do
+		if j.popT < 1 then
+			j.popT = math.min(1, j.popT + dt / j.popDur)
+		end
+		j.hover += (j.hoverTo - j.hover) * math.min(1, dt * 14)
+		local k = if j.popSine then math.sin(j.popT * math.pi / 2) else backOut(j.popT)
+		local pop = j.popFrom + (1 - j.popFrom) * k
+		local v = j.base * pop * j.hover * (1 + j.amp * math.sin(now * j.speed + j.phase))
+		if math.abs(j.sc.Scale - v) > 1e-4 then
+			j.sc.Scale = v
+		end
+	end
+end)
+-- the click squash: small, then overshoot back
+local function bounce(obj: GuiObject)
+	local j = juice(obj)
+	j.popT, j.popFrom, j.popDur, j.popSine = 0, 0.88, 0.25, false
 end
 UI.bounce = bounce
+-- grow from `from` x its size to its size over `dur` s (sine out) - a dealt card dropping into place
+function UI.dropIn(obj: GuiObject, from: number, dur: number)
+	local j = juice(obj)
+	j.popT, j.popFrom, j.popDur, j.popSine = 0, from, dur, true
+end
+-- an idle breath (scale +-amp; `speed` in radians a second, default ~1.8 s a breath)
+function UI.breathe(obj: GuiObject, amp: number?, speed: number?)
+	local j = juice(obj)
+	j.amp = amp or 0.02
+	if speed then
+		j.speed = speed
+	end
+end
+-- set an object's resting scale (keeps its juice)
+function UI.scaleBase(obj: GuiObject, s: number)
+	local j = juice(obj)
+	j.base = s
+	j.sc.Scale = s
+end
+-- grow a little under the mouse
+function UI.hoverGrow(b: GuiButton, k: number?)
+	if b:GetAttribute("Hover") then
+		return
+	end
+	b:SetAttribute("Hover", true)
+	b.MouseEnter:Connect(function()
+		if b.AbsoluteSize.X < 520 then
+			juice(b).hoverTo = k or 1.06
+		end
+	end)
+	b.MouseLeave:Connect(function()
+		local j = juiced[b]
+		if j then
+			j.hoverTo = 1
+		end
+	end)
+end
 
 -- Chunky button with a darker "lip" underneath, gradient fill and outline.
 function UI.button(parent: Instance, text: string, color: Color3, size: UDim2, onClick: () -> (), props: { pos: UDim2?, anchor: Vector2?, name: string? }?): TextButton
@@ -156,6 +235,15 @@ function UI.button(parent: Instance, text: string, color: Color3, size: UDim2, o
 		onClick()
 	end)
 	b.Parent = parent
+	-- the big buttons breathe (deferred, so a scale the caller sets right after is the one that breathes)
+	if size.Y.Offset >= 52 then
+		task.defer(function()
+			-- (not on the class screen: Chop A Forest's buttons there hold still)
+			if b.Parent and not b:FindFirstAncestor("ClassDeal") then
+				UI.breathe(b, 0.018)
+			end
+		end)
+	end
 	return b
 end
 
@@ -345,12 +433,22 @@ DRAW.tree = function(h)
 	UI.gradient(crown, Color3.fromRGB(255, 215, 60))
 	circle(h, UDim2.fromScale(0.14, 0.14), UDim2.fromScale(0.3, 0.26), Color3.fromRGB(255, 250, 200), 0)
 end
+-- Roblox's own Robux icon: the private-use glyph U+E002 that Roblox's fonts draw as the current Robux mark
 DRAW.robux = function(h)
-	local hex = part(h, 0.78, 0.78, 0.11, 0.11, Color3.fromRGB(235, 255, 235), 8, 3, 45)
-	;(hex:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(30, 90, 40)
-	local inner = part(h, 0.34, 0.34, 0.33, 0.33, Color3.fromRGB(70, 180, 80), 4, 2.5, 45)
-	inner.BackgroundTransparency = 1
-	;(inner:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(30, 90, 40)
+	local t = Instance.new("TextLabel")
+	t.Name = "Robux"
+	t.BackgroundTransparency = 1
+	t.Text = utf8.char(0xE002)
+	t.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", Enum.FontWeight.Bold)
+	t.TextColor3 = Color3.new(1, 1, 1)
+	t.TextScaled = true
+	t.Size = UDim2.fromScale(1, 1)
+	local s = Instance.new("UIStroke")
+	s.Thickness = 2
+	s.Color = Color3.fromRGB(20, 30, 60)
+	s.Transparency = 0.2
+	s.Parent = t
+	t.Parent = h
 end
 DRAW.gift = function(h)
 	local box = part(h, 0.8, 0.56, 0.1, 0.38, Color3.fromRGB(70, 160, 250), 6, 2.5)
@@ -857,13 +955,20 @@ function UI.open(name: string)
 		return
 	end
 	openName = name
-	Sound.play("whoosh")
 	if w.layoutTabs then
 		w.layoutTabs()
 	end
 	w.frame.Visible = true
 	w.refresh()
-	bounce(w.frame)
+	-- pop + slide up into place (a window with its own open animation, like the class screen, skips both)
+	if not w.custom then
+		bounce(w.frame)
+		local f = w.frame
+		local home = w.home or f.Position
+		w.home = home
+		f.Position = home + UDim2.fromOffset(0, 40)
+		TweenService:Create(f, TweenInfo.new(0.34, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Position = home }):Play()
+	end
 	if w.pop then
 		for _, c in w.pop do
 			UI.popIn(c)
@@ -891,6 +996,11 @@ end
 
 function UI.isOpen(name: string): boolean
 	return openName == name
+end
+
+-- Is any window open right now?
+function UI.anyOpen(): boolean
+	return openName ~= nil
 end
 
 function UI.refreshOpen()
@@ -1070,7 +1180,14 @@ RunService.RenderStepped:Connect(function()
 	end
 	for _, name in STACK do
 		local f = gui:FindFirstChild(name)
-		if f and f:IsA("GuiObject") and f.Visible then
+		if f and f:IsA("GuiObject") and f.Visible and f:GetAttribute("StackBase") ~= nil then
+			-- places itself (the coach card docks up under the quest after a while): tell it where its slot is,
+			-- and only keep the slot while it's still down here
+			f:SetAttribute("StackBase", base)
+			if (f:GetAttribute("Dock") or 0) < 0.5 then
+				base += f.Size.Y.Offset + 10
+			end
+		elseif f and f:IsA("GuiObject") and f.Visible then
 			local want = UDim2.new(0.5, 0, 1, -base)
 			if f.Position ~= want then
 				f.Position = want
@@ -1079,5 +1196,26 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 end)
+
+-- The click sound (Config.SOUNDS.click, the Creamy Keyboard sound) on EVERY button in the player's screens, not
+-- only the ones made with UI.button / UI.clicky. Those already play it; Sound's 0.04 s gap stops a double play.
+do
+	local hooked = setmetatable({}, { __mode = "k" }) :: { [Instance]: boolean }
+	local function hook(d: Instance)
+		if d:IsA("GuiButton") and not hooked[d] then
+			hooked[d] = true
+			d.Activated:Connect(function()
+				Sound.play("click")
+				bounce(d)
+			end)
+			UI.hoverGrow(d)
+		end
+	end
+	local pg = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+	for _, d in pg:GetDescendants() do
+		hook(d)
+	end
+	pg.DescendantAdded:Connect(hook)
+end
 
 return UI

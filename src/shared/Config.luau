@@ -617,17 +617,20 @@ Config.RARITY_COLORS = {
 	Mythic = Color3.fromRGB(255, 70, 110),
 	Secret = Color3.fromRGB(40, 40, 50),
 }
+-- Rarer = better on every axis: each step up adds a stat and every stat it already had grows (Chop A Forest's
+-- curve: a Secret has all five, e.g. Clawman +120% power / +38% speed / +50% sell / +85% luck / +10 carry).
+--   Common 1 stat, Uncommon 2, Rare 3, Epic 4, Legendary/Mythic/Secret all 5
 Config.CLASSES = {
 	{ id = "WeedPuller", name = "Weed Puller", rarity = "Common", gems = 0, power = 0.05 },
-	{ id = "Gardener", name = "Gardener", rarity = "Uncommon", gems = 180, power = 0.10, carry = 1 },
-	{ id = "Groundskeeper", name = "Groundskeeper", rarity = "Rare", gems = 270, carry = 2, sell = 0.10 },
-	{ id = "LawnBaron", name = "Lawn Baron", rarity = "Rare", gems = 330, sell = 0.30 },
-	{ id = "HedgeReaper", name = "Hedge Reaper", rarity = "Epic", gems = 500, power = 0.20, luck = 0.25 },
-	{ id = "MowerSpecialist", name = "Mower Specialist", rarity = "Epic", gems = 800, power = 0.35, speed = 0.10 },
-	{ id = "GrassTitan", name = "Grass Titan", rarity = "Legendary", gems = 1000, power = 0.60, carry = 2 },
-	{ id = "UltimateGardener", name = "Ultimate Gardener", rarity = "Legendary", gems = 1600, power = 0.50, speed = 0.20, sell = 0.25 },
-	{ id = "LawnLegend", name = "Lawn Legend", rarity = "Mythic", gems = 2700, power = 1.0, speed = 0.25, sell = 0.50, luck = 0.50, carry = 3, product = "ClassLawnLegend" },
-	{ id = "GoatMan", name = "Goat Man", rarity = "Secret", gems = 4000, power = 2.0, speed = 0.35, sell = 1.0, luck = 1.0, carry = 5, product = "ClassGoatMan" },
+	{ id = "Gardener", name = "Gardener", rarity = "Uncommon", gems = 180, power = 0.12, carry = 1 },
+	{ id = "Groundskeeper", name = "Groundskeeper", rarity = "Rare", gems = 270, power = 0.18, sell = 0.10, carry = 2 },
+	{ id = "LawnBaron", name = "Lawn Baron", rarity = "Rare", gems = 330, power = 0.15, sell = 0.30, carry = 2 },
+	{ id = "HedgeReaper", name = "Hedge Reaper", rarity = "Epic", gems = 500, power = 0.30, sell = 0.12, luck = 0.25, carry = 3 },
+	{ id = "MowerSpecialist", name = "Mower Specialist", rarity = "Epic", gems = 800, power = 0.40, speed = 0.12, sell = 0.15, carry = 3 },
+	{ id = "GrassTitan", name = "Grass Titan", rarity = "Legendary", gems = 1000, power = 0.65, speed = 0.15, sell = 0.20, luck = 0.25, carry = 4 },
+	{ id = "UltimateGardener", name = "Ultimate Gardener", rarity = "Legendary", gems = 1600, power = 0.75, speed = 0.20, sell = 0.30, luck = 0.30, carry = 5 },
+	{ id = "LawnLegend", name = "Lawn Legend", rarity = "Mythic", gems = 2700, power = 1.10, speed = 0.28, sell = 0.55, luck = 0.60, carry = 7, product = "ClassLawnLegend" },
+	{ id = "GoatMan", name = "Goat Man", rarity = "Secret", gems = 4000, power = 2.0, speed = 0.40, sell = 1.0, luck = 1.0, carry = 10, product = "ClassGoatMan" },
 }
 Config.DEFAULT_CLASS = "WeedPuller"
 Config.STOCK_WINDOW = 300 -- seconds between booth restocks

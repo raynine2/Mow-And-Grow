@@ -30,6 +30,8 @@ For the next person (and their Claude) picking this up. Read `CLAUDE.md` first f
 
 | Commit | What |
 |---|---|
+| `1dafbe6` + `ba4239f` | **Village baked into the place.** It shows in Edit mode: the tool shop, bag stand, garage, shredder, spawn, paths, arch and area 1's drop-off are real parts in `Workspace.World` (attribute `VillageBaked`).<br>• Done once with `RunWorld.bakeVillage()`. A copy of the world from before is in `MowALawnBackups`.<br>• The buildings carry a `MapUnit` tag. Move or delete one as a whole and the game follows. Changes *inside* one are replaced by code at run start.<br>• **Code changes to village scenery (dressing, paths) won't show any more**, because the saved parts are used. Don't re-bake without asking the owner. |
+| `4f136d3` → `a9b27d7` | **Pacing and look** (from the Chop A Forest teardown):<br>• Mowed ground turns into bright stripes that stay (`server/Lawn.luau`), and a cleared area is striped all over.<br>• Area 1 has its own drop-off sell pad (the village shredder was ~350 studs away).<br>• **Bosses are back on** (`Config.BOSSES = true`).<br>• Economy retuned toward a 60–90 min free clear; see the note above `Config.ZONES`.<br>• Free gems every 6 hours (`Config.FREE_GEMS`) on top of the daily ladder.<br>• Night was checked: the crawlers only stun and never undo progress. |
 | `fd592e6` | **UI overlap fixes.** The coach card, combo counter and "locked" notice stack instead of covering each other (a RenderStepped stacker at the end of `client/UI.luau`). The fuel bar moved above the tool name. The P/R/TAB key badges moved to the top-right of the side buttons. Cutscene name tags are removed after the party shot. **Not in Studio yet, see below.** |
 | `4075a42` + `aa47bf2` + `ea61399` | **New opening cutscene** (`client/Intro.luau` directs; actors and props are in `IntroCast.luau`; letterbox, speech, cards and SKIP are in `IntroUi.luau`). It plays on the first run (the server stores `run.introSeen` via the `Seen` remote). About 25 s, five shots:<br>1. Low dolly through the thickest patch of area 1, then a crane up.<br>2. The party's avatars cloned at the fountain, with emotes and name tags.<br>3. **Mayor Thistlewick**, our own brick NPC, speaks in typed lines, with a sepia "Long ago..." flashback (area 1's grass hidden on the client) and a dolly zoom on the grass.<br>4. A supply crate slams down and the title card appears.<br>5. Dip to black, into first person.<br>The map has StreamingEnabled on, so it calls `RequestStreamAroundAsync` first. |
 | `6f360f2` | **Stalk clumps.** The grass clumps have a 3×3 stalk you chop like a tree trunk. The new meshes come from `models.py stalk_clump`. Server side, `Field.luau` adds an invisible `StalkCollider` and a `Stalk` attribute. The FBX is imported and swapped into `ServerStorage.VoxelModels` in Studio. |
@@ -46,14 +48,9 @@ and was playtested there with no script errors.
 ## Not done yet / open items
 
 **Do first:**
-1. **Put `fd592e6` into Studio.** It changes `client/UI.luau`, `Hud.luau`, `Intro.luau` and `IntroCast.luau`. It
-   couldn't be synced because the owner was in a playtest.
-   - Before replacing anything, check that the Studio copy still matches the previous git version, so no Studio
-     edit is lost.
-   - Back the old copies up into `MowALawnBackups`.
-   - Then playtest that the coach card and combo no longer overlap.
-2. **Test the cutscene's SKIP button.** It calls the same `finish()` as the natural end, but nobody has clicked
-   it yet.
+1. Everything up to `ba4239f` is in the Studio place, and the SKIP button was tested. Each script was checked
+   against git first, and the old copies are in `MowALawnBackups/pre_pacing_22oct`.
+2. **Playtest the new pacing for real**: time a full free run (target 60–90 min) and retune `Config.ZONES`.
 3. **Watch a full clump fall with the new stalk clumps.** Punching, chunks and the cut were checked; the
    TIMBER fall itself wasn't seen on screen.
 4. **Title name:** the cutscene title uses `Config.GAME_NAME`, which is still **"Mow A Lawn"**. The owner may

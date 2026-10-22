@@ -356,5 +356,137 @@
   "image": 78371966579025,
   "sha": "9419e9ffd75dc0ebe443b457c8db91cb563e029995d1f5f2bdf64a4eff4f07cb",
   "via": "forgegui"
+ },
+ "blade": {
+  "id": 111048047615821,
+  "image": 111048047615821,
+  "sha": "7aadba15050b847158005433e04efa39d00bf8172af24e9dd84695c2f8752a8a",
+  "via": "forgegui"
+ },
+ "burrow": {
+  "id": 99623820196316,
+  "image": 99623820196316,
+  "sha": "a0c5547fecfee2c506d4c6ece5ab1ed6aa2fbf10fc81604d27e498fe8cab3167",
+  "via": "forgegui"
+ },
+ "guild_crest": {
+  "id": 117921672772088,
+  "image": 117921672772088,
+  "sha": "ed4821333c283bfebc9e2ba64ef2ca990697b7f93f60f1fbd80eb63f5cffd66b",
+  "via": "forgegui"
+ },
+ "hook": {
+  "id": 108419658929727,
+  "image": 108419658929727,
+  "sha": "1e8c316f01b8871abefdf47000317e196dedb175827e1d286dfb71eb73972e7d",
+  "via": "forgegui"
+ },
+ "leaf_tile": {
+  "id": 84619746541017,
+  "image": 84619746541017,
+  "sha": "7ebb899f192f3618db168e483bf70877e3fcad663a9a35c16acb115925473fab",
+  "via": "forgegui"
+ },
+ "nest": {
+  "id": 132647556203341,
+  "image": 132647556203341,
+  "sha": "5e45f526b579063734fb1e2ee82efb16153323259dbeacbf9586406326687a13",
+  "via": "forgegui"
+ },
+ "polaroid": {
+  "id": 100552568928730,
+  "image": 100552568928730,
+  "sha": "da43fff83218f33b9cf0198095090f9d81444ecc7c538367d016fe445e1755cb",
+  "via": "forgegui"
+ },
+ "ring": {
+  "id": 91519668813568,
+  "image": 91519668813568,
+  "sha": "529ce076921897e430add58dba2765f5c0b2ad2b8d8ab64df4f58988351fe12d",
+  "via": "forgegui"
+ },
+ "scene_lawn": {
+  "id": 82274193535797,
+  "image": 82274193535797,
+  "sha": "6417be5b3f10b041a8371e3502253b02bd8cb22aa0d191077ef8e6674dfae8a7",
+  "via": "forgegui"
+ },
+ "tape": {
+  "id": 88587863690986,
+  "image": 88587863690986,
+  "sha": "a37174a6513f44a68c21e44b37e07e910a013c37d2094303d5a0187375214050",
+  "via": "forgegui"
+ },
+ "ui_chalk": {
+  "id": 71762225879826,
+  "image": 71762225879826,
+  "sha": "597868e927cc1c37d5b9552ba632dd40abe2be96024014415067ce68f1ad5e93",
+  "via": "forgegui"
+ },
+ "ui_cork": {
+  "id": 138462200473468,
+  "image": 138462200473468,
+  "sha": "a08d690fb7d2a9ce693703e00c25a6ab2d1cc61c0398c6a547b93f644b58eb2c",
+  "via": "forgegui"
+ },
+ "ui_page": {
+  "id": 89629241154210,
+  "image": 89629241154210,
+  "sha": "2f204b845431231ca8231eb02aa2878de92ccb10cb729405527e768c904786fa",
+  "via": "forgegui"
+ },
+ "ui_parch": {
+  "id": 84449511629500,
+  "image": 84449511629500,
+  "sha": "0314201d8b7210b7d95781df00739ed1939cb6d9fcd5067dfae26b04d1bf079e",
+  "via": "forgegui"
+ },
+ "ui_soil": {
+  "id": 130221693709052,
+  "image": 130221693709052,
+  "sha": "be4902b8c97b86f849b7cf442ffc0966019053d1669db510be798a0ea4efda14",
+  "via": "forgegui"
+ },
+ "ui_tag": {
+  "id": 120836761392748,
+  "image": 120836761392748,
+  "sha": "8cd9bfc6e94ba5e61c63afaddcdebd228503666d717913e68ae3f14fcf643359",
+  "via": "forgegui"
+ },
+ "up_grasp": {
+  "id": 116958727955386,
+  "image": 116958727955386,
+  "sha": "f329c5e2c768f6400d5d3f82c868d5f50c1ee000a51a4cc37bb98262bde28516",
+  "via": "forgegui"
+ },
+ "up_power": {
+  "id": 101764458338853,
+  "image": 101764458338853,
+  "sha": "12d5a873094ca107994a0dbc58258fa9aa993788a32df3010fb0e90968cec6fc",
+  "via": "forgegui"
+ },
+ "up_sell": {
+  "id": 94304945530189,
+  "image": 94304945530189,
+  "sha": "3e1c072c90a406bb7e88aa18002a90ec3683bf2d7e8feeb9c37de3add799b102",
+  "via": "forgegui"
+ },
+ "up_speed": {
+  "id": 124388813966754,
+  "image": 124388813966754,
+  "sha": "358b0f32b9ba57acff0d996627f1b2eccd728f951e4039f0f74e8957937cc067",
+  "via": "forgegui"
+ },
+ "up_swing": {
+  "id": 81547244655448,
+  "image": 81547244655448,
+  "sha": "7b443775c905efd4aee009ebdf14d89a46291226be1db44f47ed754ce5314833",
+  "via": "forgegui"
+ },
+ "wax_seal": {
+  "id": 138987550109514,
+  "image": 138987550109514,
+  "sha": "3dfb71cdd1e32182ab0f41b79c8e545b2bf524c26586fff394d5c976e37185b0",
+  "via": "forgegui"
  }
 }

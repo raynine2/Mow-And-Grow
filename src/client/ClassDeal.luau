@@ -5,6 +5,10 @@
 --   bottom: STOCK / OWNED tabs and a row of tall cards, each with its % chance to be in a deal (odds shown because
 --   the restocks are paid random items). A new deal flips the cards over one by one; a Legendary or rarer card in
 --   the new deal gets a full-screen reveal, and buying a class gets "IS YOURS!" + confetti.
+-- Themed as the GARDENERS' GUILD (22 Oct 2026, the owner's pick; it was a space theme): cork notice boards in honey-
+-- wood frames, the big card a pinned parchment notice with a wax seal in its rarity colour, the timer a chalkboard
+-- ("FRESH STOCK IN"), face-down cards as kraft envelopes with the guild crest, fireflies instead of stars. Each
+-- piece falls back to the old look while its ForgeGUI picture isn't uploaded. (The 3D room behind is unchanged.)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -17,6 +21,7 @@ local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local Confetti = require(script.Parent.Confetti)
+local Skin = require(script.Parent.Skin)
 
 local ClassDeal = {}
 local C = UI.colors
@@ -136,6 +141,48 @@ local function glass(g: GuiObject, top: Color3?, bottom: Color3?, stars: number?
 		TweenService:Create(d, TweenInfo.new(starRng:NextNumber(0.9, 1.8), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, starRng:NextNumber(0, 1.5)), { BackgroundTransparency = 0.95 }):Play()
 	end
 end
+-- GARDENERS' GUILD look
+local GUILD = Skin.has("ui_cork")
+local WOOD_INK = Color3.fromRGB(58, 32, 14)
+local TAB_OFF = if GUILD then Color3.fromRGB(150, 96, 50) else Color3.fromRGB(110, 70, 190)
+-- turn a drawn glass panel into a cork notice board in a wooden frame (keeps its size and children)
+local function corkBoard(g: GuiObject, w: number, h: number, rim: number?)
+	if not GUILD then
+		return
+	end
+	g.BackgroundTransparency = 1
+	local st = g:FindFirstChildOfClass("UIStroke")
+	if st then
+		st.Enabled = false
+	end
+	local gr = g:FindFirstChildOfClass("UIGradient")
+	if gr then
+		gr.Enabled = false
+	end
+	for _, k in g:GetChildren() do
+		if k.Name == "Star" then
+			k:Destroy()
+		end
+	end
+	local art = Skin.frame(g, "ui_cork", Vector2.new(w, h), { name = "Cork", maxScale = rim or 0.24 })
+	art.Size = UDim2.fromScale(1, 1)
+	art.ZIndex = 0
+end
+-- the HUD's wooden plate under a small box (the gem counter)
+local function plateBox(g: GuiObject, w: number, h: number)
+	if not GUILD or not Skin.has("ui_plate") then
+		return
+	end
+	corkBoard(g, w, h) -- (clears the glass)
+	local cork = g:FindFirstChild("Cork")
+	if cork then
+		cork:Destroy()
+	end
+	local art = Skin.frame(g, "ui_plate", Vector2.new(w, h), { name = "Plate" })
+	art.Size = UDim2.fromScale(1, 1)
+	art.ZIndex = 0
+end
+
 -- each class's picture: its card art (Config.ICONS class_<Id>, a fist gripping the class's tool)
 local CLASS_ART = setmetatable({}, { __index = function(_, id)
 	return "class_" .. id
@@ -167,19 +214,19 @@ holder.Parent = UI.gui
 do
 	local fill = Instance.new("UIScale")
 	fill.Name = "Fill"
-	fill.Scale = 1 / (Config.UI_SIZE or 1)
+	fill.Scale = 1 / (UI.size or Config.UI_SIZE or 1)
 	fill.Parent = holder
 end
 
 -- soft dark edges so the panels read over the room (they reach past the 1280 x 720 box on wide screens)
 for _, side in { { 0, 0 }, { 1, 180 } } do
-	local v = UI.frame({ size = UDim2.new(0, 900, 2, 0), pos = UDim2.new(side[1], if side[1] == 0 then -480 else 480, 0.5, 0), anchor = Vector2.new(side[1], 0.5), color = Color3.fromRGB(4, 2, 14), parent = holder, radius = 0, outline = 0, name = "Shade" })
+	local v = UI.frame({ size = UDim2.new(0, 900, 2, 0), pos = UDim2.new(side[1], if side[1] == 0 then -480 else 480, 0.5, 0), anchor = Vector2.new(side[1], 0.5), color = if GUILD then Color3.fromRGB(14, 9, 3) else Color3.fromRGB(4, 2, 14), parent = holder, radius = 0, outline = 0, name = "Shade" })
 	local g = Instance.new("UIGradient")
 	g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.55, 0.5), NumberSequenceKeypoint.new(1, 1) })
 	g.Rotation = side[2]
 	g.Parent = v
 end
-local floorShade = UI.frame({ size = UDim2.new(3, 0, 0, 300), pos = UDim2.new(0.5, 0, 1, 40), anchor = Vector2.new(0.5, 1), color = Color3.fromRGB(8, 4, 18), parent = holder, radius = 0, outline = 0, name = "FloorShade" })
+local floorShade = UI.frame({ size = UDim2.new(3, 0, 0, 300), pos = UDim2.new(0.5, 0, 1, 40), anchor = Vector2.new(0.5, 1), color = if GUILD then Color3.fromRGB(16, 10, 4) else Color3.fromRGB(8, 4, 18), parent = holder, radius = 0, outline = 0, name = "FloorShade" })
 local fg = Instance.new("UIGradient")
 fg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.25) })
 fg.Rotation = 90
@@ -265,13 +312,13 @@ for _, t in {
 	UI.text(titleBox, "CL", UDim2.fromOffset(170, 80), { pos = UDim2.fromOffset(28, 0), align = Enum.TextXAlignment.Right, stroke = 5 }),
 	UI.text(titleBox, "SSES", UDim2.fromOffset(190, 80), { pos = UDim2.fromOffset(238, 0), align = Enum.TextXAlignment.Left, stroke = 5 }),
 } do
-	local g = Instance.new("UIGradient") -- starlight: white fading to a pale cosmic blue
-	g.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(175, 205, 255))
+	local g = Instance.new("UIGradient") -- starlight: white fading to a pale cosmic blue (guild: cream to gold)
+	g.Color = if GUILD then ColorSequence.new(Color3.fromRGB(255, 250, 230), Color3.fromRGB(255, 205, 90)) else ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(175, 205, 255))
 	g.Rotation = 90
 	g.Parent = t
 	local st = t:FindFirstChildOfClass("UIStroke")
 	if st then
-		st.Color = Color3.fromRGB(16, 10, 44)
+		st.Color = if GUILD then WOOD_INK else Color3.fromRGB(16, 10, 44)
 	end
 end
 -- the A: a glowing gold four-point sparkle
@@ -291,10 +338,17 @@ titleStar.Size = UDim2.fromOffset(64, 64)
 titleStar.Position = UDim2.fromOffset(218, 42)
 titleStar.AnchorPoint = Vector2.new(0.5, 0.5)
 titleStar.Parent = titleBox
+if GUILD and Skin.has("guild_crest") then
+	-- the A is the guild's crest
+	titleStar.Image = Config.ICONS.guild_crest
+	titleStar.ScaleType = Enum.ScaleType.Fit
+	titleStar.Size = UDim2.fromOffset(84, 76)
+	titleGlow.ImageColor3 = Color3.fromRGB(255, 230, 150)
+end
 -- (the star holds still - in Chop A Forest only the timer's moon moves up here)
 
 -- NEW CARDS IN (rocket crest, label, big time, gradient bar) - same layout as the Chop A Forest pill, rocket instead of the moon
-local TIMER_INK = Color3.fromRGB(16, 9, 34)
+local TIMER_INK = if GUILD then Color3.fromRGB(16, 26, 20) else Color3.fromRGB(16, 9, 34)
 local timerPill = UI.frame({ size = UDim2.fromOffset(280, 66), pos = UDim2.fromOffset(621, 112), anchor = Vector2.new(1, 0), color = Color3.fromRGB(70, 44, 124), parent = holder, radius = 16, outline = 4, name = "Timer" })
 do
 	local st = timerPill:FindFirstChildOfClass("UIStroke")
@@ -329,7 +383,7 @@ timerMoon.Position = UDim2.fromOffset(-56, -22)
 timerMoon.ZIndex = 5
 timerMoon.Parent = timerPill
 UI.breathe(timerMoon, 0.03, 2 * math.pi / 1.05) -- the crest pulses +-3% about once a second
-local timerLabel = UI.text(timerPill, "NEW CARDS IN", UDim2.fromOffset(130, 22), { pos = UDim2.fromOffset(52, 9), align = Enum.TextXAlignment.Left, stroke = 2 })
+local timerLabel = UI.text(timerPill, if GUILD then "FRESH STOCK IN" else "NEW CARDS IN", UDim2.fromOffset(130, 22), { pos = UDim2.fromOffset(52, 9), align = Enum.TextXAlignment.Left, stroke = 2 })
 local timerText = UI.text(timerPill, "5:00", UDim2.fromOffset(96, 36), { pos = UDim2.new(1, -12, 0, 2), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 3 })
 for _, t in { timerLabel, timerText } do
 	local s = t:FindFirstChildOfClass("UIStroke")
@@ -347,8 +401,8 @@ do
 end
 local timerFill = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.new(1, 1, 1), parent = timerTrack, radius = 7, outline = 0 })
 do
-	local g = Instance.new("UIGradient") -- purple to pink, left to right
-	g.Color = ColorSequence.new(Color3.fromRGB(140, 80, 255), Color3.fromRGB(255, 105, 215))
+	local g = Instance.new("UIGradient") -- purple to pink, left to right (guild: fresh green to gold)
+	g.Color = if GUILD then ColorSequence.new(Color3.fromRGB(110, 210, 70), Color3.fromRGB(255, 210, 70)) else ColorSequence.new(Color3.fromRGB(140, 80, 255), Color3.fromRGB(255, 105, 215))
 	g.Parent = timerFill
 	local shine = Instance.new("Frame") -- glossy strip along the top of the fill
 	shine.BorderSizePixel = 0
@@ -361,12 +415,35 @@ do
 	sc.CornerRadius = UDim.new(1, 0)
 	sc.Parent = shine
 end
+if GUILD and Skin.has("ui_chalk") then
+	-- a little chalkboard: the wood-framed slate behind, chalk-white writing, a basket of fresh stock as the crest
+	timerPill.BackgroundTransparency = 1
+	;(timerPill:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+	;(timerPill:FindFirstChildOfClass("UIGradient") :: UIGradient).Enabled = false
+	local hi = timerPill:FindFirstChild("Highlight")
+	if hi then
+		(hi :: GuiObject).Visible = false
+	end
+	local slate = Skin.frame(timerPill, "ui_chalk", Vector2.new(280, 66), { name = "Chalk", maxScale = 0.12 })
+	slate.Size = UDim2.new(1, 16, 1, 16)
+	slate.Position = UDim2.fromOffset(-8, -8)
+	slate.ZIndex = 0
+	if (Config.ICONS.basket or "") ~= "" then
+		timerMoon.Image = Config.ICONS.basket
+		timerMoon.Size = UDim2.fromOffset(90, 90)
+		timerMoon.Position = UDim2.fromOffset(-50, -14)
+	end
+	timerLabel.TextColor3 = Color3.fromRGB(236, 240, 226)
+	timerText.TextColor3 = Color3.fromRGB(255, 244, 200)
+	timerTrack.BackgroundColor3 = Color3.fromRGB(20, 32, 26)
+end
 shrink(timerPill, 0.66)
 
 -- gems, with a + that opens the shop
 local gemBox = UI.frame({ size = UDim2.fromOffset(240, 66), pos = UDim2.fromOffset(638, 112), color = NAVY, parent = holder, radius = 16, outline = 4, name = "Gems" })
 glass(gemBox, nil, nil, 5)
 energyRim(gemBox, 3)
+plateBox(gemBox, 240, 66)
 shrink(gemBox, 0.66)
 UI.icon(gemBox, "gem", 62, UDim2.fromOffset(-6, 2)).ZIndex = 3
 local gemText = UI.text(gemBox, "0", UDim2.fromOffset(110, 34), { pos = UDim2.fromOffset(64, 6), align = Enum.TextXAlignment.Left, stroke = 2.5 })
@@ -387,6 +464,10 @@ slideFrom(closeBtn, "top")
 local vs = UI.frame({ size = UDim2.fromOffset(360, 272), pos = UDim2.fromOffset(118, 124), color = Color3.new(1, 1, 1), parent = holder, radius = 18, outline = 4, name = "VsCard" })
 glass(vs, Color3.fromRGB(46, 28, 104), Color3.fromRGB(12, 8, 34), 14)
 energyRim(vs, 4)
+corkBoard(vs, 360, 272, 0.2)
+if GUILD then
+	Skin.pushpin(vs, UDim2.new(0.5, 0, 0, 8), 30)
+end
 shrink(vs, 0.667)
 slideFrom(vs, "left")
 UI.text(vs, "VS YOUR CLASS", UDim2.fromOffset(240, 28), { pos = UDim2.fromOffset(16, 10), align = Enum.TextXAlignment.Left, color = GOLD, stroke = 2 })
@@ -498,6 +579,26 @@ task.spawn(function()
 		task.wait(3)
 	end
 end)
+local parch: ImageLabel? = nil
+local seal: GuiObject? = nil
+if GUILD and Skin.has("ui_parch") then
+	-- a pinned parchment notice; the rarity shows in its header band, a faint tint and the wax seal
+	detail.BackgroundTransparency = 1
+	detailGrad.Enabled = false
+	detailStroke.Transparency = 1
+	local art = Skin.frame(detail, "ui_parch", Vector2.new(310, 460), { name = "Parchment", maxScale = 0.3 })
+	art.Size = UDim2.new(1, 12, 1, 12)
+	art.Position = UDim2.fromOffset(-6, -6)
+	art.ZIndex = 0
+	parch = art :: ImageLabel
+	Skin.pushpin(detail, UDim2.new(0.5, 0, 0, 2), 34)
+	if Skin.has("wax_seal") then
+		local w = UI.icon(detail, "wax_seal", 70, UDim2.new(1, 14, 0, 196), Vector2.new(1, 0.5))
+		w.Rotation = 14
+		w.ZIndex = 22
+		seal = w
+	end
+end
 slideFrom(detail, "right")
 slideFrom(cardGlow, "right")
 -- hazard stripes along the top and the bottom (Epic and rarer)
@@ -512,7 +613,7 @@ for _, y in { 8, 448 } do
 	table.insert(stripes, band)
 end
 local header = UI.frame({ size = UDim2.new(1, -36, 0, 74), pos = UDim2.fromOffset(18, 26), color = Color3.new(1, 1, 1), parent = detail, radius = 12, outline = 0, name = "Header" })
-header.BackgroundTransparency = 0.82
+header.BackgroundTransparency = if parch then 0.05 else 0.82
 local detName = UI.text(header, "", UDim2.new(1, -16, 0, 40), { pos = UDim2.fromOffset(8, 2), stroke = 3.5 })
 local starRow = Instance.new("Frame")
 starRow.BackgroundTransparency = 1
@@ -533,7 +634,7 @@ end
 -- the picture: a bright panel with turning rays, a glow and the class's tool
 local artPanel = UI.frame({ size = UDim2.new(1, -36, 0, 100), pos = UDim2.fromOffset(18, 106), color = Color3.fromRGB(120, 180, 255), parent = detail, radius = 14, outline = 4, name = "Art" })
 artPanel.ClipsDescendants = true
-;(artPanel:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(30, 20, 50)
+;(artPanel:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = if GUILD then WOOD_INK else Color3.fromRGB(30, 20, 50)
 local raysBox = Instance.new("Frame")
 raysBox.BackgroundTransparency = 1
 raysBox.Size = UDim2.fromOffset(420, 420)
@@ -596,6 +697,7 @@ end
 -- the thin white inner frame with diamond corners (Chop A Forest's card border)
 local innerFrame = UI.frame({ size = UDim2.new(1, -16, 1, -16), pos = UDim2.fromOffset(8, 8), color = Color3.new(1, 1, 1), parent = detail, radius = 14, outline = 2, name = "Inner" })
 innerFrame.BackgroundTransparency = 1
+innerFrame.Visible = parch == nil -- (the parchment has its own edge)
 ;(innerFrame:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(255, 245, 230)
 ;(innerFrame:FindFirstChildOfClass("UIStroke") :: UIStroke).Transparency = 0.3
 for _, p in { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } } do
@@ -606,12 +708,12 @@ end
 -- STOCK / OWNED tabs and the card carousel
 local tab = "stock"
 local stockTab = UI.button(holder, "STOCK", C.orange, UDim2.fromOffset(140, 46), function() end, { pos = UDim2.fromOffset(133, 454), name = "StockTab" })
-local ownedTab = UI.button(holder, "OWNED", Color3.fromRGB(110, 70, 190), UDim2.fromOffset(180, 46), function() end, { pos = UDim2.fromOffset(231, 454), name = "OwnedTab" })
+local ownedTab = UI.button(holder, "OWNED", TAB_OFF, UDim2.fromOffset(180, 46), function() end, { pos = UDim2.fromOffset(231, 454), name = "OwnedTab" })
 shrink(stockTab, 0.667)
 shrink(ownedTab, 0.667)
 slideFrom(stockTab, "bottom")
 slideFrom(ownedTab, "bottom")
-UI.icon(stockTab, "moon", 38, UDim2.new(0, 2, 0.5, -3), Vector2.new(0, 0.5))
+UI.icon(stockTab, if GUILD and (Config.ICONS.basket or "") ~= "" then "basket" else "moon", 38, UDim2.new(0, 2, 0.5, -3), Vector2.new(0, 0.5))
 ;(stockTab:FindFirstChild("Label") :: TextLabel).Position = UDim2.fromOffset(22, 3)
 local ownedTick = UI.frame({ size = UDim2.fromOffset(28, 28), pos = UDim2.new(0, 8, 0.5, -3), anchor = Vector2.new(0, 0.5), color = Color3.fromRGB(60, 200, 90), parent = ownedTab, radius = 999, outline = 2, name = "Tick" })
 ;(ownedTick:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.new(1, 1, 1)
@@ -619,7 +721,7 @@ for _, b in { { 5, 11, 8, 4, 45 }, { 10, 6, 14, 4, -50 } } do
 	local bar = UI.frame({ size = UDim2.fromOffset(b[3], b[4]), pos = UDim2.fromOffset(b[1] + 2, b[2] + 5), color = Color3.new(1, 1, 1), parent = ownedTick, radius = 2, outline = 0 })
 	bar.Rotation = b[5]
 end
-local ownedChip = UI.frame({ size = UDim2.fromOffset(30, 28), pos = UDim2.new(1, -8, 0.5, -3), anchor = Vector2.new(1, 0.5), color = Color3.fromRGB(30, 20, 50), parent = ownedTab, radius = 8, outline = 0, name = "Count" })
+local ownedChip = UI.frame({ size = UDim2.fromOffset(30, 28), pos = UDim2.new(1, -8, 0.5, -3), anchor = Vector2.new(1, 0.5), color = if GUILD then Color3.fromRGB(70, 42, 20) else Color3.fromRGB(30, 20, 50), parent = ownedTab, radius = 8, outline = 0, name = "Count" })
 local ownedCount = UI.text(ownedChip, "1", UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1.5 })
 local row = Instance.new("ScrollingFrame")
 row.Name = "Cards"
@@ -730,7 +832,7 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	art.Position = UDim2.fromOffset(5, 5)
 	UI.corner(art, 10)
 	art.Parent = b
-	local nameBar = UI.frame({ size = UDim2.new(1, -12, 0, 24), pos = UDim2.fromOffset(6, 82), color = Color3.fromRGB(20, 14, 36), parent = b, radius = 6, outline = 0, name = "NameBar" })
+	local nameBar = UI.frame({ size = UDim2.new(1, -12, 0, 24), pos = UDim2.fromOffset(6, 82), color = if GUILD then Color3.fromRGB(60, 36, 16) else Color3.fromRGB(20, 14, 36), parent = b, radius = 6, outline = 0, name = "NameBar" })
 	nameBar.BackgroundTransparency = 0.35
 	UI.text(nameBar, c.name, UDim2.new(1, -6, 1, -4), { pos = UDim2.fromOffset(3, 2), stroke = 1.5 })
 	local equipped = owned and d.class == c.id
@@ -746,18 +848,32 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	local chance = Config.CLASS_CHANCE[c.id]
 	if chance and chance > 0 then
 		local chip = UI.frame({ size = UDim2.fromOffset(48, 22), pos = UDim2.new(1, 6, 0, -10), anchor = Vector2.new(1, 0), color = Color3.fromRGB(22, 14, 40), parent = b, radius = 7, outline = 2, name = "Chance" })
-		UI.text(chip, pctText(chance), UDim2.new(1, -4, 1, -4), { pos = UDim2.fromOffset(2, 2), stroke = 1 })
+		if GUILD and Skin.has("wax_seal") then
+			-- the odds on a wax seal in the card's rarity colour
+			chip.Size = UDim2.fromOffset(50, 50)
+			chip.Position = UDim2.new(1, 14, 0, -18)
+			chip.BackgroundTransparency = 1
+			;(chip:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
+			local w = UI.icon(chip, "wax_seal", 50, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+			if w:IsA("ImageLabel") then
+				w.ImageColor3 = UI.shade(rc, 0.9)
+			end
+			UI.text(chip, pctText(chance), UDim2.new(0.8, 0, 0.4, 0), { pos = UDim2.fromScale(0.1, 0.3), stroke = 1.5 })
+		else
+			UI.text(chip, pctText(chance), UDim2.new(1, -4, 1, -4), { pos = UDim2.fromOffset(2, 2), stroke = 1 })
+		end
 	end
 	if not inStock and not owned and tab == "stock" then
-		local shade = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.fromRGB(10, 6, 20), parent = b, radius = 14, outline = 0, name = "Dim" })
+		local shade = UI.frame({ size = UDim2.fromScale(1, 1), color = if GUILD then Color3.fromRGB(24, 14, 4) else Color3.fromRGB(10, 6, 20), parent = b, radius = 14, outline = 0, name = "Dim" })
 		shade.BackgroundTransparency = 0.45
 	end
 	-- the face-down side, shown while the cards are being dealt: deep purple, a glowing moon, the class's name
 	local back = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.new(1, 1, 1), parent = b, radius = 14, outline = 3, name = "Back" })
 	back.ZIndex = 8
-	;(back:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(150, 110, 230)
+	;(back:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = if GUILD then Color3.fromRGB(110, 70, 36) else Color3.fromRGB(150, 110, 230)
 	local bgr = Instance.new("UIGradient")
-	bgr.Color = ColorSequence.new(Color3.fromRGB(104, 62, 196), Color3.fromRGB(58, 30, 120)) -- on white, the real colours
+	-- on white, the real colours (guild: a kraft-paper envelope)
+	bgr.Color = if GUILD then ColorSequence.new(Color3.fromRGB(214, 168, 110), Color3.fromRGB(160, 112, 62)) else ColorSequence.new(Color3.fromRGB(104, 62, 196), Color3.fromRGB(58, 30, 120))
 	bgr.Rotation = 90
 	bgr.Parent = back
 	local moonGlow = Instance.new("ImageLabel")
@@ -770,7 +886,10 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	moonGlow.AnchorPoint = Vector2.new(0.5, 0.5)
 	moonGlow.ZIndex = 9
 	moonGlow.Parent = back
-	local moon = UI.icon(back, "moon", 40, UDim2.new(0.5, 0, 0, 46), Vector2.new(0.5, 0.5))
+	local moon = UI.icon(back, if GUILD and Skin.has("guild_crest") then "guild_crest" else "moon", if GUILD then 58 else 40, UDim2.new(0.5, 0, 0, 46), Vector2.new(0.5, 0.5))
+	if GUILD then
+		moonGlow.ImageColor3 = Color3.fromRGB(255, 230, 160)
+	end
 	moon.ZIndex = 10
 	local backName = UI.text(back, c.name, UDim2.new(1, -10, 0, 30), { pos = UDim2.fromOffset(5, 80), stroke = 1.5, textSize = 13 })
 	backName.ZIndex = 10
@@ -779,6 +898,9 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 		local grow = Instance.new("UIScale")
 		grow.Scale = 1.06
 		grow.Parent = b
+	end
+	if GUILD then
+		Skin.pushpin(b, UDim2.new(0.5, 0, 0, 2), 18)
 	end
 	UI.clicky(b)
 	b.MouseButton1Click:Connect(function()
@@ -895,7 +1017,7 @@ local function stockToast(c)
 		stockToastFrame:Destroy()
 	end
 	local rc = if c.rarity == "Secret" then Color3.fromRGB(200, 110, 255) else Config.RARITY_COLORS[c.rarity]
-	local f = UI.frame({ size = UDim2.fromOffset(360, 68), pos = UDim2.new(0.5, 0, 0, -110), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(24, 16, 30), parent = UI.gui, radius = 10, outline = 2, name = "StockToast" })
+	local f = UI.frame({ size = UDim2.fromOffset(360, 68), pos = UDim2.new(0.5, 0, 0, -110), anchor = Vector2.new(0.5, 0), color = if GUILD then Color3.fromRGB(44, 28, 14) else Color3.fromRGB(24, 16, 30), parent = UI.gui, radius = 10, outline = 2, name = "StockToast" })
 	;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(230, 170, 60)
 	f.BackgroundTransparency = 0.05
 	f.ZIndex = 70
@@ -944,7 +1066,7 @@ local function reveal(c, line: string, confetti: boolean)
 	root.ZIndex = 60
 	root.Parent = UI.gui
 	local fades: { { inst: Instance, prop: string } } = {}
-	local tint = UI.frame({ size = UDim2.fromScale(4, 4), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(22, 6, 42), parent = root, radius = 0, outline = 0, name = "Tint" })
+	local tint = UI.frame({ size = UDim2.fromScale(4, 4), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = if GUILD then Color3.fromRGB(28, 18, 6) else Color3.fromRGB(22, 6, 42), parent = root, radius = 0, outline = 0, name = "Tint" })
 	tint.BackgroundTransparency = 0.15
 	table.insert(fades, { inst = tint, prop = "BackgroundTransparency" })
 	local CX, CY = 640, 336 -- the card's centre in the 1280 x 720 screen
@@ -1035,7 +1157,7 @@ end
 
 local function setTab(t: string)
 	tab = t
-	UI.setButton(stockTab, "STOCK", if t == "stock" then C.orange else Color3.fromRGB(110, 70, 190))
+	UI.setButton(stockTab, "STOCK", if t == "stock" then C.orange else TAB_OFF)
 	ClassDeal.refresh()
 end
 stockTab.MouseButton1Click:Connect(function()
@@ -1052,7 +1174,7 @@ function ClassDeal.refresh()
 	end
 	local stock, lucky = currentStock(d)
 	gemText.Text = Format.commas(d.gems)
-	UI.setButton(ownedTab, "OWNED", if tab == "owned" then C.orange else Color3.fromRGB(110, 70, 190))
+	UI.setButton(ownedTab, "OWNED", if tab == "owned" then C.orange else TAB_OFF)
 	ownedCount.Text = tostring(#d.classes)
 	if not selected then
 		selected = stock[1] or d.class
@@ -1095,11 +1217,11 @@ function ClassDeal.refresh()
 		slot.Size = UDim2.fromOffset(112, 162)
 		slot.LayoutOrder = 999
 		slot.Parent = row
-		local ph = UI.frame({ size = UDim2.fromOffset(104, 140), pos = UDim2.fromOffset(56, 16), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(30, 20, 56), parent = slot, radius = 14, outline = 3, name = "Empty" })
+		local ph = UI.frame({ size = UDim2.fromOffset(104, 140), pos = UDim2.fromOffset(56, 16), anchor = Vector2.new(0.5, 0), color = if GUILD then Color3.fromRGB(70, 44, 22) else Color3.fromRGB(30, 20, 56), parent = slot, radius = 14, outline = 3, name = "Empty" })
 		ph.BackgroundTransparency = 0.15
-		;(ph:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(100, 70, 160)
-		local plusRing = UI.frame({ size = UDim2.fromOffset(38, 38), pos = UDim2.fromScale(0.5, 0.3), anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(50, 34, 90), parent = ph, radius = 999, outline = 2, name = "Plus" })
-		;(plusRing:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(190, 170, 230)
+		;(ph:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = if GUILD then Color3.fromRGB(170, 120, 70) else Color3.fromRGB(100, 70, 160)
+		local plusRing = UI.frame({ size = UDim2.fromOffset(38, 38), pos = UDim2.fromScale(0.5, 0.3), anchor = Vector2.new(0.5, 0.5), color = if GUILD then Color3.fromRGB(110, 70, 36) else Color3.fromRGB(50, 34, 90), parent = ph, radius = 999, outline = 2, name = "Plus" })
+		;(plusRing:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = if GUILD then Color3.fromRGB(240, 210, 160) else Color3.fromRGB(190, 170, 230)
 		UI.text(plusRing, "+", UDim2.new(1, -4, 1, -4), { pos = UDim2.fromOffset(2, 0), stroke = 1.5 })
 		UI.text(ph, "Buy more when they're in STOCK", UDim2.new(1, -12, 0, 40), { pos = UDim2.fromOffset(6, 74), stroke = 1.5, textSize = 14 })
 	end
@@ -1149,7 +1271,15 @@ function ClassDeal.refresh()
 	artGlow.ImageColor3 = UI.shade(rc, 1.4)
 	cardGlow.ImageColor3 = rc
 	for _, s in stripes do
-		s.Visible = STRIPED[c.rarity] == true
+		s.Visible = STRIPED[c.rarity] == true and parch == nil
+	end
+	if parch then
+		parch.ImageColor3 = Color3.new(1, 1, 1):Lerp(rc, 0.16)
+		header.BackgroundColor3 = UI.shade(rc, 0.85)
+		detailStroke.Transparency = if detailRimGrad.Enabled then 0 else 1
+		if seal and seal:IsA("ImageLabel") then
+			seal.ImageColor3 = UI.shade(rc, 0.95)
+		end
 	end
 	detQuote.Text = '"' .. (QUOTES[c.id] or "") .. '"'
 	ClassRoom.setAura(rc)
@@ -1160,7 +1290,7 @@ function ClassDeal.refresh()
 		local v = (c :: any)[s.key]
 		if v and v ~= 0 and n < 5 then -- every stat it has (rarer classes have more of them)
 			n += 1
-			local r = UI.frame({ size = UDim2.new(1, 0, 0, 22), color = Color3.fromRGB(14, 10, 30), parent = perkRows, radius = 7, outline = 0, name = "Perk" })
+			local r = UI.frame({ size = UDim2.new(1, 0, 0, 22), color = if parch then Color3.fromRGB(96, 60, 30) else Color3.fromRGB(14, 10, 30), parent = perkRows, radius = 7, outline = 0, name = "Perk" })
 			r.BackgroundTransparency = 0.4
 			r.LayoutOrder = n
 			UI.icon(r, STAT_ICON[s.key], 18, UDim2.fromOffset(5, 2))
@@ -1212,7 +1342,7 @@ function ClassDeal.refresh()
 				break
 			end
 			local better = (b or 0) > (a or 0)
-			local r = UI.frame({ size = UDim2.new(1, 0, 0, 30), color = Color3.fromRGB(40, 30, 92), parent = vsRows, radius = 8, outline = 0, name = "Row" })
+			local r = UI.frame({ size = UDim2.new(1, 0, 0, 30), color = if GUILD then Color3.fromRGB(96, 60, 30) else Color3.fromRGB(40, 30, 92), parent = vsRows, radius = 8, outline = 0, name = "Row" })
 			r.BackgroundTransparency = 0.45
 			r.LayoutOrder = shown
 			UI.icon(r, STAT_ICON[s.key], 24, UDim2.fromOffset(6, 4))
@@ -1323,7 +1453,7 @@ RunService.RenderStepped:Connect(function()
 end)
 -- tiny stars twinkling in the open space round the panels
 for _, p in { { 60, 70, 18 }, { 400, 40, 12 }, { 860, 34, 16 }, { 1230, 60, 14 }, { 1250, 330, 12 }, { 30, 330, 14 }, { 520, 470, 10 }, { 790, 450, 12 }, { 1200, 690, 16 }, { 60, 690, 12 }, { 640, 30, 10 }, { 1010, 30, 12 } } do
-	twinkle(holder, UDim2.fromOffset(p[1], p[2]), p[3], Color3.fromRGB(220, 225, 255))
+	twinkle(holder, UDim2.fromOffset(p[1], p[2]), p[3], if GUILD then Color3.fromRGB(255, 236, 150) else Color3.fromRGB(220, 225, 255)) -- (guild: fireflies)
 end
 
 UI.register("Classes", { frame = holder, refresh = ClassDeal.refresh, pop = {}, custom = true }) -- its own open (slide-ins), no pop / squash / slide from UI.open

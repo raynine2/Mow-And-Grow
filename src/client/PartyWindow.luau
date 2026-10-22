@@ -2,6 +2,8 @@
 -- the lobby. Left: CREATE PARTY with the map card (CHAPTER 1, THE LAWN), the difficulty (Normal; harder ones
 -- unlock with wins), Peaceful Mode (no night), the party size, BACK and CREATE. Right: SAVED RUNS, with your
 -- saved run and a LOAD GAME button. The server checks every choice (server/Lobby).
+-- SAVED RUNS is a garden journal: a ring-bound ruled page, your run as a taped-in instant photo with handwritten
+-- notes beside it and a stamped difficulty.
 -- Drawn with the ForgeGUI kit (client/Skin) once its pictures are uploaded, otherwise with plain frames.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -188,11 +190,43 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the map card: a little painting of the lawn
 -------------------------------------------------------------------------------------------------------------
+-- CHAPTER 1 / THE LAWN, the page arrows (one chapter for now) and dots, over the picture
+local function mapCardTop(card: Frame, parent: Instance)
+	local chapter = frame(card, UDim2.fromOffset(150, 30), UDim2.new(0.5, -75, 1, -86), Color3.fromRGB(70, 44, 26), 15)
+	chapter.BackgroundTransparency = 0.1
+	text(chapter, "CHAPTER 1", UDim2.new(1, -16, 0.7, 0), UDim2.new(0, 8, 0.15, 0), Color3.fromRGB(255, 186, 80), 0)
+	text(card, "THE LAWN", UDim2.new(1, -40, 0, 46), UDim2.new(0, 20, 1, -54), WHITE, 4)
+	for side = -1, 1, 2 do
+		local arrow = frame(card, UDim2.fromOffset(46, 52), UDim2.new(if side < 0 then 0 else 1, if side < 0 then 10 else -56, 0.5, -40), BLUE, 12)
+		stroke(arrow, 3)
+		gradient(arrow, Color3.fromRGB(96, 170, 255), Color3.fromRGB(40, 110, 230))
+		text(arrow, if side < 0 then "<" else ">", UDim2.fromScale(0.8, 0.8), UDim2.fromScale(0.1, 0.1), WHITE, 2)
+		arrow.BackgroundTransparency = 0.25
+	end
+	for i = 0, 1 do
+		local dot = frame(parent, UDim2.fromOffset(if i == 0 then 30 else 16, 14), UDim2.new(0.5, -26 + i * 40, 0, 218), if i == 0 then Color3.fromRGB(190, 220, 190) else Color3.fromRGB(60, 50, 44), 7)
+		stroke(dot, 2)
+	end
+end
+
 local function mapCard(parent: Instance)
 	local card = frame(parent, UDim2.new(1, -28, 0, 196), UDim2.fromOffset(14, 14), Color3.fromRGB(150, 210, 255), 16)
 	card.ClipsDescendants = true
 	stroke(card, 4)
 	gradient(card, Color3.fromRGB(110, 190, 255), Color3.fromRGB(220, 242, 255))
+	if Skin.has("scene_lawn") then
+		-- the ForgeGUI painting of the meadow (sky, windmill, a mowed stripe) instead of the drawn hills
+		local art = Instance.new("ImageLabel")
+		art.Name = "Painting"
+		art.BackgroundTransparency = 1
+		art.Image = Config.ICONS.scene_lawn
+		art.ScaleType = Enum.ScaleType.Crop
+		art.Size = UDim2.fromScale(1, 1)
+		corner(art, 14)
+		art.Parent = card
+		mapCardTop(card, parent)
+		return
+	end
 	local rng = Random.new(5)
 	for i = 0, 15 do
 		local h = rng:NextNumber(0.24, 0.42)
@@ -209,22 +243,7 @@ local function mapCard(parent: Instance)
 			frame(clump, UDim2.fromScale(0.5, 0.45), UDim2.fromScale(0.25, 0.05), Color3.fromRGB(160, 236, 96), 20)
 		end
 	end
-	local chapter = frame(card, UDim2.fromOffset(150, 30), UDim2.new(0.5, -75, 1, -86), Color3.fromRGB(70, 44, 26), 15)
-	chapter.BackgroundTransparency = 0.1
-	text(chapter, "CHAPTER 1", UDim2.new(1, -16, 0.7, 0), UDim2.new(0, 8, 0.15, 0), Color3.fromRGB(255, 186, 80), 0)
-	text(card, "THE LAWN", UDim2.new(1, -40, 0, 46), UDim2.new(0, 20, 1, -54), WHITE, 4)
-	-- page arrows (one chapter for now) and dots
-	for side = -1, 1, 2 do
-		local arrow = frame(card, UDim2.fromOffset(46, 52), UDim2.new(if side < 0 then 0 else 1, if side < 0 then 10 else -56, 0.5, -40), BLUE, 12)
-		stroke(arrow, 3)
-		gradient(arrow, Color3.fromRGB(96, 170, 255), Color3.fromRGB(40, 110, 230))
-		text(arrow, if side < 0 then "<" else ">", UDim2.fromScale(0.8, 0.8), UDim2.fromScale(0.1, 0.1), WHITE, 2)
-		arrow.BackgroundTransparency = 0.25
-	end
-	for i = 0, 1 do
-		local dot = frame(parent, UDim2.fromOffset(if i == 0 then 30 else 16, 14), UDim2.new(0.5, -26 + i * 40, 0, 218), if i == 0 then Color3.fromRGB(190, 220, 190) else Color3.fromRGB(60, 50, 44), 7)
-		stroke(dot, 2)
-	end
+	mapCardTop(card, parent)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -245,7 +264,7 @@ scaler.Parent = holder
 local function rescale()
 	local cam = workspace.CurrentCamera
 	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
-	scaler.Scale = math.clamp(math.min(vp.X / 1040, vp.Y / 780) * (Config.UI_SIZE or 1), 0.4, 1.1)
+	scaler.Scale = math.clamp(math.min(vp.X / 1040, vp.Y / 780) * (UI.size or Config.UI_SIZE or 1), 0.4, 1.1)
 end
 
 local choice = { pad = 0, size = Config.PARTY_MAX, difficulty = "Normal", peaceful = false }
@@ -360,19 +379,155 @@ local function ago(started: number, now: number): string
 	return ("%dd ago"):format(math.floor(s / 86400))
 end
 
+local HAND = Enum.Font.PatrickHand -- handwriting, for the journal
+local PEN = Color3.fromRGB(40, 58, 120) -- blue ballpoint
+local JOURNAL = Skin.has("ui_page")
+
+-- handwritten text in blue pen
+local function hand(parent: Instance, t: string, size: UDim2, pos: UDim2, color: Color3?, rot: number?): TextLabel
+	local l = text(parent, t, size, pos, color or PEN, 0, Enum.TextXAlignment.Left)
+	l.Font = HAND
+	l.Rotation = rot or 0
+	return l
+end
+
+-- the journal page: the ForgeGUI page with binder rings down its left edge, faint ruled lines and a red margin
+local function journalPage(page: Frame)
+	local art = Skin.frame(page, "ui_page", Vector2.new(412, 612), { name = "Journal", maxScale = 0.3 })
+	art.Size = UDim2.new(1, 8, 1, 8)
+	art.Position = UDim2.fromOffset(-4, -4)
+	art.ZIndex = 1
+	for y = 64, 560, 30 do
+		local line = frame(page, UDim2.new(1, -48, 0, 2), UDim2.fromOffset(28, y), Color3.fromRGB(150, 190, 230))
+		line.BackgroundTransparency = 0.45
+		line.ZIndex = 2
+	end
+	local margin = frame(page, UDim2.new(0, 2, 1, -40), UDim2.fromOffset(52, 20), Color3.fromRGB(230, 110, 110))
+	margin.BackgroundTransparency = 0.35
+	margin.ZIndex = 2
+	if Skin.has("ring") then
+		for i = 0, 6 do
+			local ring = UI.icon(page, "ring", 34, UDim2.fromOffset(-14, 40 + i * 82))
+			ring.Size = UDim2.fromOffset(18, 34)
+			ring.ZIndex = 5
+		end
+	end
+end
+
 local function buildRight()
 	local page = board(holder, "SAVED RUNS", UDim2.fromOffset(440, 640), UDim2.fromOffset(530, 70))
-	text(page, "Your runs save by themselves - jump back in", UDim2.new(1, -40, 0, 22), UDim2.fromOffset(20, 14), Color3.fromRGB(150, 90, 40), 0)
+	if JOURNAL then
+		journalPage(page)
+		hand(page, "Your runs save by themselves - jump back in!", UDim2.new(1, -90, 0, 26), UDim2.fromOffset(62, 22), nil, -1).ZIndex = 3
+	else
+		text(page, "Your runs save by themselves - jump back in", UDim2.new(1, -40, 0, 22), UDim2.fromOffset(20, 14), Color3.fromRGB(150, 90, 40), 0)
+	end
 	local list = frame(page, UDim2.new(1, -28, 1, -60), UDim2.fromOffset(14, 46), WHITE)
 	list.BackgroundTransparency = 1
+	list.ZIndex = 3
 	refs.runs = list
+end
+
+-- Your run as a journal entry: an instant photo of the meadow taped in at a tilt, handwritten notes beside it, the
+-- difficulty as a rubber stamp, and LOAD GAME at the bottom of the page.
+local function journalRun(list: Frame, run: { [string]: any }, now: number)
+	local photo = Instance.new("Frame")
+	photo.Name = "Photo"
+	photo.BackgroundTransparency = 1
+	photo.Size = UDim2.fromOffset(176, 186)
+	photo.Position = UDim2.fromOffset(46, 20)
+	photo.Rotation = -5
+	photo.ZIndex = 4
+	photo.Parent = list
+	local pic = Instance.new("ImageLabel")
+	pic.Name = "Picture"
+	pic.BackgroundColor3 = Color3.fromRGB(150, 200, 120)
+	pic.Image = Config.ICONS.scene_lawn or ""
+	pic.ScaleType = Enum.ScaleType.Crop
+	pic.Size = UDim2.fromScale(0.8, 0.68)
+	pic.Position = UDim2.fromScale(0.1, 0.075)
+	pic.ZIndex = 4
+	pic.Parent = photo
+	if Skin.has("polaroid") then
+		local frameArt = UI.icon(photo, "polaroid", 186, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+		frameArt.Size = UDim2.fromScale(1, 1)
+		frameArt.ZIndex = 5
+		-- the photo shows through the polaroid's grey window: draw the picture on top, inside it
+		pic.ZIndex = 6
+	end
+	hand(photo, ("Area %d"):format(run.zone or 1), UDim2.new(0.8, 0, 0, 24), UDim2.fromScale(0.1, 0.8), Color3.fromRGB(60, 60, 70)).ZIndex = 7
+	Skin.tape(photo, UDim2.new(0.5, 0, 0, -2), 84, 6)
+	-- your face, clipped in the photo's corner like a sticker
+	local face = frame(photo, UDim2.fromOffset(46, 46), UDim2.new(1, -30, 0, 96), WHITE, 23)
+	face.ZIndex = 8
+	stroke(face, 3)
+	local head = Instance.new("ImageLabel")
+	head.Size = UDim2.new(1, -6, 1, -6)
+	head.Position = UDim2.fromOffset(3, 3)
+	head.BackgroundColor3 = Color3.fromRGB(70, 110, 90)
+	head.ZIndex = 9
+	corner(head, 20)
+	head.Parent = face
+	task.spawn(function()
+		local ok, img = pcall(function()
+			return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+		end)
+		if ok then
+			head.Image = img
+		end
+	end)
+	-- the notes
+	local nextZone = Config.ZONES[(run.zone or 1) + 1]
+	local lines = {
+		{ "Solo run", 30, Color3.fromRGB(30, 40, 90) },
+		{ ("Area %d of %d"):format(run.zone or 1, #Config.ZONES), 24 },
+		{ ("%d clumps cut"):format(run.cut or 0), 24 },
+		{ "started " .. ago(run.started or now, now), 24 },
+	}
+	local y = 22
+	for _, l in lines do
+		hand(list, l[1], UDim2.fromOffset(150, l[2]), UDim2.fromOffset(238, y), l[3]).ZIndex = 4
+		y += l[2] + 6
+	end
+	-- NORMAL, stamped in green ink
+	local stamp = frame(list, UDim2.fromOffset(96, 40), UDim2.fromOffset(250, 150), WHITE, 10)
+	stamp.BackgroundTransparency = 1
+	stamp.Rotation = 10
+	stamp.ZIndex = 4
+	local ss = stroke(stamp, 3, Color3.fromRGB(60, 150, 70))
+	ss.Transparency = 0.15
+	local st = text(stamp, "NORMAL", UDim2.new(1, -10, 1, -10), UDim2.fromOffset(5, 5), Color3.fromRGB(60, 150, 70), 0)
+	st.TextTransparency = 0.15
+	st.ZIndex = 5
+	if nextZone then
+		hand(list, "Next up: " .. nextZone.name .. "!", UDim2.new(1, -60, 0, 26), UDim2.fromOffset(48, 236), Color3.fromRGB(180, 70, 60), -2).ZIndex = 4
+	end
+	local b = button(list, "LOAD GAME", UDim2.new(1, -60, 0, 60), UDim2.fromOffset(44, 290), GREEN, function()
+		State.fire("Party", "load")
+		close()
+	end)
+	b.ZIndex = 6
 end
 
 local function fillRuns(run: { [string]: any }?, now: number)
 	local list = refs.runs :: Frame
 	list:ClearAllChildren()
 	if not run then
-		text(list, "No saved runs yet", UDim2.new(1, -40, 0, 30), UDim2.fromOffset(20, 40), Color3.fromRGB(150, 100, 60), 0)
+		if JOURNAL then
+			hand(list, "No saved runs yet...", UDim2.new(1, -80, 0, 32), UDim2.fromOffset(48, 46)).ZIndex = 4
+			hand(list, "Start one on the left and it shows up here.", UDim2.new(1, -80, 0, 24), UDim2.fromOffset(48, 86), Color3.fromRGB(110, 110, 130)).ZIndex = 4
+			if Skin.has("daisy") then
+				local d = UI.icon(list, "daisy", 90, UDim2.fromOffset(150, 150))
+				d.ZIndex = 4
+				d.Rotation = -10
+			end
+		else
+			text(list, "No saved runs yet", UDim2.new(1, -40, 0, 30), UDim2.fromOffset(20, 40), Color3.fromRGB(150, 100, 60), 0)
+		end
+		return
+	end
+	if JOURNAL then
+		journalRun(list, run, now)
 		return
 	end
 	local card = box(list, UDim2.new(1, 0, 0, 196), UDim2.fromOffset(0, 0))

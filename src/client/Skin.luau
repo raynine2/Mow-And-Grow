@@ -31,6 +31,14 @@ Skin.FRAMES = {
 	ui_sign = { w = 1024, h = 436, slice = Rect.new(140, 120, 884, 300), face = { 48, 48, 48, 70 }, fallback = Color3.fromRGB(240, 222, 200), radius = 14 },
 	-- (the garden pass: a blank seed packet lying sideways, crimped edge on the left; white, tinted per use)
 	ui_packet = { w = 768, h = 574, slice = Rect.new(170, 150, 640, 430), face = { 160, 110, 60, 100 }, fallback = Color3.fromRGB(240, 236, 228), radius = 10 },
+	-- (the themed pass, 22 Oct 2026: garden shed tags, critter-burrow soil, guild notice board, garden journal)
+	ui_tag = { w = 502, h = 784, slice = Rect.new(110, 110, 392, 670), face = { 75, 72, 68, 78 }, fallback = Color3.fromRGB(240, 200, 150), radius = 18 },
+	-- (the soil box only stretches a thin strip of its grassy top, so the leaf clumps near the corners keep their shape)
+	ui_soil = { w = 918, h = 549, slice = Rect.new(440, 120, 470, 470), face = { 70, 100, 68, 64 }, fallback = Color3.fromRGB(78, 50, 28), radius = 18 },
+	ui_cork = { w = 784, h = 600, slice = Rect.new(120, 120, 664, 480), face = { 100, 100, 95, 100 }, fallback = Color3.fromRGB(214, 160, 96), radius = 16 },
+	ui_parch = { w = 648, h = 844, slice = Rect.new(110, 110, 540, 735), face = { 80, 80, 72, 75 }, fallback = Color3.fromRGB(244, 230, 198), radius = 14 },
+	ui_chalk = { w = 816, h = 582, slice = Rect.new(180, 130, 690, 470), face = { 160, 110, 108, 92 }, fallback = Color3.fromRGB(36, 54, 46), radius = 14 },
+	ui_page = { w = 816, h = 970, slice = Rect.new(150, 150, 700, 850), face = { 75, 75, 65, 75 }, fallback = Color3.fromRGB(250, 240, 214), radius = 16 },
 } :: { [string]: FrameDef }
 
 local function artId(key: string): string?
@@ -353,6 +361,89 @@ function Skin.tile(color: Color3, picked: boolean?, size: Vector2?): TextButton
 	end
 	Skin.press(b)
 	return b
+end
+
+-- A gentle sway, like a tag hanging on a hook (rotation +-`amp` degrees; one RenderStepped for all).
+local swinging: { { obj: GuiObject, amp: number, speed: number, phase: number } } = {}
+function Skin.swing(obj: GuiObject, amp: number?, speed: number?)
+	table.insert(swinging, { obj = obj, amp = amp or 1.5, speed = speed or 1.6, phase = #swinging * 1.3 })
+end
+RunService.RenderStepped:Connect(function()
+	local t = os.clock()
+	for i = #swinging, 1, -1 do
+		local s = swinging[i]
+		if not s.obj.Parent then
+			table.remove(swinging, i)
+		elseif s.obj.Visible then
+			s.obj.Rotation = math.sin(t * s.speed + s.phase) * s.amp
+		end
+	end
+end)
+
+-- A red push pin (the ForgeGUI pin once uploaded, otherwise a drawn glossy red head).
+function Skin.pushpin(parent: Instance, pos: UDim2, size: number?): GuiObject
+	local s = size or 28
+	if artId("pushpin") then
+		local p = UI.icon(parent, "pushpin", s, pos, Vector2.new(0.5, 0.5))
+		p.ZIndex += 6
+		return p
+	end
+	local head = UI.frame({ size = UDim2.fromOffset(s * 0.8, s * 0.8), pos = pos, anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(226, 58, 50), parent = parent, radius = 999, outline = 3, name = "Pin" })
+	;(head:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(74, 22, 14)
+	UI.gradient(head, Color3.fromRGB(236, 74, 60))
+	local shine = UI.frame({ size = UDim2.fromScale(0.34, 0.34), pos = UDim2.fromScale(0.24, 0.2), color = Color3.new(1, 1, 1), parent = head, radius = 999, outline = 0, name = "Shine" })
+	shine.BackgroundTransparency = 0.25
+	head.ZIndex += 6
+	shine.ZIndex = head.ZIndex + 1
+	return head
+end
+
+-- A strip of masking tape across a corner (rotated `rot` degrees).
+function Skin.tape(parent: Instance, pos: UDim2, width: number, rot: number?): GuiObject?
+	if not artId("tape") then
+		return nil
+	end
+	local t = UI.icon(parent, "tape", width, pos, Vector2.new(0.5, 0.5))
+	t.Size = UDim2.fromOffset(width, width * 201 / 512)
+	t.Rotation = rot or -8
+	;(t :: ImageLabel).ImageTransparency = 0.08
+	t.ZIndex += 6
+	return t
+end
+
+-- A level shown as a row of grass blades: grown green ones for the levels you have, short grey stubs for the rest.
+-- (Falls back to UI.pips while the blade picture isn't uploaded.)
+function Skin.blades(parent: Instance, level: number, max: number, pos: UDim2, width: number): GuiObject
+	if not artId("blade") then
+		return UI.pips(parent, level, max, pos, width)
+	end
+	local row = Instance.new("Frame")
+	row.Name = "Blades"
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.fromOffset(width, 26)
+	row.Position = pos
+	row.AnchorPoint = Vector2.new(0.5, 0)
+	row.Parent = parent
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	layout.Padding = UDim.new(0, if max > 6 then 1 else 4)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	local w = math.clamp(math.floor((width - (max - 1)) / max), 10, 22)
+	for i = 1, max do
+		local grown = i <= level
+		local b = Instance.new("ImageLabel")
+		b.BackgroundTransparency = 1
+		b.Image = artId("blade") :: string
+		b.ScaleType = Enum.ScaleType.Fit
+		b.ImageColor3 = if grown then Color3.fromRGB(110, 210, 70) else Color3.fromRGB(120, 104, 84)
+		b.Size = UDim2.fromOffset(w, if grown then 26 else 14)
+		b.LayoutOrder = i
+		b.Parent = row
+	end
+	return row
 end
 
 -- Pop an object in from nothing (a window, a card), with an overshoot.

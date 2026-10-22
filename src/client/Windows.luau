@@ -85,7 +85,14 @@ local RUN_TABS = {
 }
 Windows.RUN_TABS = RUN_TABS
 local UPGRADE_ICON = { hold = "hands", swing = "hands", grasp = "bundle", power = "upgrade", speed = "clover", sell = "coin" }
-local CARD = Vector2.new(250, 226) -- tall enough that the icon clears the level pips
+-- the garden-shed pictures (ForgeGUI, 22 Oct) once they're uploaded
+for id, key in { hold = "up_hold", swing = "up_swing", grasp = "up_grasp", power = "up_power", speed = "up_speed", sell = "up_sell" } do
+	if (Config.ICONS[key] or "") ~= "" then
+		UPGRADE_ICON[id] = key
+	end
+end
+local CARD = Vector2.new(250, 244) -- a hanging tag: the hook and twine on top, the tag, the level blades and the price
+local INK = Color3.fromRGB(92, 52, 22) -- burnt-into-the-wood brown
 
 -- A row of fixed-size cards under a heading (the window lists sections top to bottom).
 local function cardRow(list: Instance, order: number, count: number): Frame
@@ -114,7 +121,71 @@ local function cardSlot(row: Frame, order: number): Frame
 	return slot
 end
 
+-- GARDEN SHED. The board is a pegboard wall (a brown panel with rows of peg holes) and every upgrade hangs on it as
+-- a wooden tool tag on a twine loop, swaying a little: its picture, what it does, its level as grass blades
+-- (grown green ones for the levels you have) and a painted price button.
+local function pegboard(panel: Instance)
+	local board = UI.frame({ size = UDim2.new(1, -8, 1, -8), pos = UDim2.fromOffset(4, 4), color = Color3.fromRGB(178, 120, 66), parent = panel, radius = 16, outline = 3, name = "Pegboard" })
+	;(board:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(110, 66, 30)
+	UI.gradient(board, Color3.fromRGB(190, 130, 72))
+	board.ZIndex = 1
+	board.ClipsDescendants = true
+	local holes = Instance.new("Frame")
+	holes.Name = "Holes"
+	holes.BackgroundTransparency = 1
+	holes.Size = UDim2.new(1, 0, 1, 0)
+	holes.Parent = board
+	local grid = Instance.new("UIGridLayout")
+	grid.CellSize = UDim2.fromOffset(9, 9)
+	grid.CellPadding = UDim2.fromOffset(37, 37)
+	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	grid.VerticalAlignment = Enum.VerticalAlignment.Center
+	grid.Parent = holes
+	for _ = 1, 20 * 12 do
+		local h = UI.frame({ size = UDim2.fromOffset(9, 9), color = Color3.fromRGB(96, 58, 28), parent = holes, radius = 999, outline = 0 })
+		h.BackgroundTransparency = 0.25
+		h.ZIndex = 1
+	end
+end
+
+local function shedCard(slot: Frame, u, level: number, cost: number, enabled: boolean)
+	local maxed = level >= u.max
+	local tag = Instance.new("Frame")
+	tag.Name = "Tag"
+	tag.BackgroundTransparency = 1
+	tag.Size = UDim2.new(1, -10, 1, -26)
+	tag.Position = UDim2.fromOffset(5, 24)
+	tag.Parent = slot
+	local art, face = Skin.frame(tag, "ui_tag", Vector2.new(CARD.X - 10, CARD.Y - 26), { name = "Art", maxScale = 0.3 })
+	art.Size = UDim2.fromScale(1, 1)
+	if Skin.has("hook") then
+		local hook = UI.icon(slot, "hook", 46, UDim2.new(0.5, 0, 0, -4), Vector2.new(0.5, 0))
+		hook.ZIndex = 6
+	end
+	local pad = face.Position.X.Offset
+	UI.text(tag, string.upper(u.name), UDim2.new(1, -pad * 2, 0, 28), { pos = UDim2.fromOffset(pad, face.Position.Y.Offset - 4), color = INK, stroke = 0 })
+	UI.text(tag, u.desc, UDim2.new(1, -pad * 2, 0, 18), { pos = UDim2.fromOffset(pad, face.Position.Y.Offset + 24), color = Color3.fromRGB(140, 90, 50), stroke = 0 })
+	local pic = UI.icon(tag, UPGRADE_ICON[u.id] or "upgrade", 60, UDim2.new(0.5, 0, 0, face.Position.Y.Offset + 44), Vector2.new(0.5, 0))
+	Skin.bob(pic, 3, 1.5 + (#u.id % 3) * 0.3)
+	if u.max > 1 then
+		Skin.blades(tag, level, u.max, UDim2.new(0.5, 0, 1, -92), 176)
+	end
+	local price = if maxed then "MAX" else "$" .. Format.short(cost)
+	local color = if maxed then Color3.fromRGB(255, 196, 40) elseif enabled then C.green else W.grey
+	local btn = UI.button(tag, price, color, UDim2.fromOffset(176, 46), function()
+		if not maxed then
+			State.fire("Buy", "upgrade", u.id)
+		end
+	end, { pos = UDim2.new(0.5, 0, 1, -16), anchor = Vector2.new(0.5, 1), name = "Price" })
+	btn.ZIndex += 2
+	if maxed then
+		Skin.sparkles(tag, 0.6)
+	end
+	Skin.swing(tag, 1.1, 1.3 + (#u.id % 4) * 0.15)
+end
+
 local upgrades = UI.window("Upgrades", "Upgrades", nil, { tabs = RUN_TABS, size = Vector2.new(940, 580) })
+pegboard(upgrades.panel)
 upgrades.refresh = function()
 	local d = data()
 	UI.clear(upgrades.list)
@@ -133,19 +204,7 @@ upgrades.refresh = function()
 				local level = d.run.upgrades[u.id] or 0
 				local maxed = level >= u.max
 				local cost = if maxed then 0 else Config.upgradeCost(u.id, level)
-				UI.blueCard(cardSlot(row, i), 1, {
-					title = u.name,
-					sub = u.desc,
-					icon = UPGRADE_ICON[u.id],
-					level = level,
-					max = u.max,
-					price = if maxed then "MAX" else "$" .. Format.short(cost),
-					enabled = not maxed and d.run.coins >= cost,
-					color = Color3.fromRGB(70, 190, 90),
-					onClick = function()
-						State.fire("Buy", "upgrade", u.id)
-					end,
-				})
+				shedCard(cardSlot(row, i), u, level, cost, not maxed and d.run.coins >= cost)
 			end
 		end
 	end

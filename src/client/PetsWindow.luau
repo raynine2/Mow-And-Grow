@@ -115,11 +115,18 @@ local function eggCard(list: Instance, order: number, egg, d)
 	eggHolder.Position = UDim2.fromOffset(8, 34)
 	eggHolder.Parent = face
 	Skin.rays(eggHolder, UI.shade(egg.color, 1.5), 210, nil, 18)
-	local pic = UI.icon(eggHolder, eggIcon(egg), 116, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	local nested = Skin.has("nest")
+	local pic = UI.icon(eggHolder, eggIcon(egg), if nested then 104 else 116, UDim2.fromScale(0.5, if nested then 0.42 else 0.5), Vector2.new(0.5, 0.5))
 	if pic:IsA("ImageLabel") and eggIcon(egg) == "egg" and egg.id ~= "GardenEgg" then
 		pic.ImageColor3 = UI.shade(egg.color, 1.2) -- the old moss egg picture, tinted
 	end
 	Skin.bob(pic, 4, 1.8)
+	if nested then
+		-- (critter burrow: the egg sits snug in a straw nest, drawn in front of its lower half)
+		local nest = UI.icon(eggHolder, "nest", 122, UDim2.new(0.5, 0, 1, 14), Vector2.new(0.5, 1))
+		nest.Size = UDim2.fromOffset(122, 94)
+		nest.ZIndex = pic.ZIndex + 1
+	end
 	UI.text(face, string.upper(egg.name), UDim2.fromOffset(300, 32), { pos = UDim2.fromOffset(16, 2), align = Enum.TextXAlignment.Left, stroke = 3 })
 	UI.text(face, egg.desc or ("Hatch a garden critter - %s gems"):format(Format.commas(egg.price or 0)), UDim2.fromOffset(400, 20), { pos = UDim2.fromOffset(250, 10), align = Enum.TextXAlignment.Left, stroke = 1.5, textSize = 15 })
 
@@ -241,24 +248,75 @@ end
 petLayout.Parent = petGrid
 local P = pets.panel
 
+-- CRITTER BURROW. The boxes are patches of garden soil with grass on top (ui_soil), the equipped slots are burrows
+-- your critters peek out of, and every other critter sits on a big leaf tinted in its rarity colour.
+local function soilBox(parent: Instance, size: UDim2, pos: UDim2): Frame
+	if not Skin.has("ui_soil") then
+		return UI.section(parent, size, pos)
+	end
+	local box = Instance.new("Frame")
+	box.Name = "Soil"
+	box.BackgroundTransparency = 1
+	box.Size = size
+	box.Position = pos
+	box.Parent = parent
+	local art = Skin.frame(box, "ui_soil", Vector2.new(size.X.Offset, size.Y.Offset), { name = "Art", maxScale = 0.34 })
+	art.Size = UDim2.fromScale(1, 1)
+	return box
+end
+
+-- A critter's leaf: the ForgeGUI leaf tinted in its rarity colour (brighter and sparkling when picked).
+local function leafTile(rc: Color3, picked: boolean, size: Vector2): TextButton
+	if not Skin.has("leaf_tile") then
+		return Skin.tile(rc, picked, size)
+	end
+	local b = Instance.new("TextButton")
+	b.Text = ""
+	b.AutoButtonColor = false
+	b.BackgroundTransparency = 1
+	b.Size = UDim2.fromOffset(size.X, size.Y)
+	local leaf = UI.icon(b, "leaf_tile", size.X, UDim2.new(0.5, 0, 0, -2), Vector2.new(0.5, 0))
+	leaf.Size = UDim2.fromOffset(size.X, size.X * 512 / 475)
+	leaf.Rotation = -4
+	if leaf:IsA("ImageLabel") then
+		leaf.ImageColor3 = if picked then rc:Lerp(Color3.new(1, 1, 1), 0.35) else rc:Lerp(Color3.fromRGB(110, 200, 80), 0.25)
+	end
+	if picked then
+		Skin.sparkles(b, 0.5)
+		Skin.swing(leaf, 3, 2.2)
+	end
+	Skin.press(b)
+	return b
+end
+
 -- a pill title on a section's top edge, with a picture poking out on the left
 local function pillHeader(parent: Instance, text: string, color: Color3, icon: string, pos: UDim2, width: number): TextLabel
 	return Skin.pill(parent, text, color, icon, pos - UDim2.fromOffset(0, 3), width)
 end
 
-local eqBox = UI.section(P, UDim2.fromOffset(392, 170), UDim2.fromOffset(22, 46))
+local eqBox = soilBox(P, UDim2.fromOffset(392, 170), UDim2.fromOffset(22, 46))
 local eqTitle = pillHeader(P, "Equipped 0/3", C.orange, "paw", UDim2.fromOffset(150, 28), 190)
 local slots: { Frame } = {}
 for i = 1, Config.PET_EQUIP do
 	local slot = UI.frame({ size = UDim2.fromOffset(108, 108), pos = UDim2.fromOffset(18 + (i - 1) * 124, 42), color = UI.shade(W.inset, 0.88), parent = eqBox, radius = 12, outline = 3, name = "Slot" .. i })
 	-- the HUD's wooden hotbar tile; the ring only lights up (in the rarity colour) when a critter sits here
 	slot.BackgroundTransparency = 1
-	local tile = Skin.frame(slot, "ui_tile", Vector2.new(108, 108), { name = "Tile", stretch = false })
-	tile.Size = UDim2.fromScale(1, 1)
+	local burrow = Skin.has("burrow")
+	if burrow then
+		-- a burrow: the critter peeks out of the hole
+		local hole = UI.icon(slot, "burrow", 118, UDim2.new(0.5, 0, 1, 6), Vector2.new(0.5, 1))
+		hole.Size = UDim2.fromOffset(118, 85)
+	else
+		local tile = Skin.frame(slot, "ui_tile", Vector2.new(108, 108), { name = "Tile", stretch = false })
+		tile.Size = UDim2.fromScale(1, 1)
+	end
 	local ring = slot:FindFirstChildOfClass("UIStroke") :: UIStroke
 	ring.Transparency = 1
 	ring.Thickness = 4
-	UI.text(slot, "EMPTY", UDim2.new(1, -20, 0, 22), { pos = UDim2.new(0, 10, 0.5, -11), color = Color3.fromRGB(150, 104, 62), stroke = 0, name = "Empty" })
+	if burrow then
+		ring.Enabled = false -- (a burrow has no box to ring; a filled one gets its rarity glow instead)
+	end
+	UI.text(slot, "EMPTY", UDim2.new(1, -20, 0, 18), { pos = UDim2.new(0, 10, 0, if burrow then 70 else 43), color = if burrow then Color3.fromRGB(236, 214, 176) else Color3.fromRGB(150, 104, 62), stroke = if burrow then 1.5 else 0, name = "Empty" })
 	local holder = Instance.new("Frame")
 	holder.Name = "Pet"
 	holder.BackgroundTransparency = 1
@@ -266,11 +324,11 @@ for i = 1, Config.PET_EQUIP do
 	holder.Parent = slot
 	table.insert(slots, slot)
 end
-local boostBox = UI.section(P, UDim2.fromOffset(372, 170), UDim2.fromOffset(426, 46))
+local boostBox = soilBox(P, UDim2.fromOffset(372, 170), UDim2.fromOffset(426, 46))
 UI.text(boostBox, "Team boost", UDim2.new(1, -20, 0, 26), { pos = UDim2.fromOffset(10, 12), color = W.cream, stroke = 2 })
 local boostText = UI.text(boostBox, "+0%", UDim2.new(1, -20, 0, 66), { pos = UDim2.fromOffset(10, 46), color = Color3.fromRGB(110, 230, 80), stroke = 4 })
 UI.text(boostBox, ("Up to %d pets at once"):format(Config.PET_EQUIP), UDim2.new(1, -20, 0, 20), { pos = UDim2.new(0, 10, 1, -32), color = W.cream, stroke = 1.5 })
-local otherBox = UI.section(P, UDim2.fromOffset(776, 280), UDim2.fromOffset(22, 238))
+local otherBox = soilBox(P, UDim2.fromOffset(776, 280), UDim2.fromOffset(22, 238))
 local _ = otherBox
 pillHeader(P, "Other Pets", W.blue, "egg", UDim2.fromOffset(330, 220), 180)
 local countChip = UI.frame({ size = UDim2.fromOffset(120, 32), pos = UDim2.fromOffset(34, 222), color = Color3.fromRGB(60, 36, 20), parent = P, radius = 10, outline = 3, name = "Count" })
@@ -399,6 +457,10 @@ pets.refresh = function()
 	UI.clear(petGrid)
 	for _, slot in slots do
 		UI.clear(slot:FindFirstChild("Pet") :: Frame)
+		local oldGlow = slot:FindFirstChild("Glow")
+		if oldGlow then
+			oldGlow:Destroy()
+		end
 		;(slot:FindFirstChild("Empty") :: TextLabel).Visible = true
 		;(slot:FindFirstChildOfClass("UIStroke") :: UIStroke).Transparency = 1
 	end
@@ -427,7 +489,15 @@ pets.refresh = function()
 				ring.Color = Config.RARITY_COLORS[p.rarity]
 				ring.Transparency = 0
 				local holder = slot:FindFirstChild("Pet") :: Frame
-				petView(holder, p.look, 96, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+				if Skin.has("burrow") then
+					-- a glow in its rarity colour behind the burrow (cleared with the slot on the next refresh)
+					local glow = Skin.rays(slot, Config.RARITY_COLORS[p.rarity], 150, UDim2.fromScale(0.5, 0.42), 16)
+					if glow then
+						glow.Name = "Glow"
+						glow.ZIndex = 0
+					end
+				end
+				petView(holder, p.look, 96, UDim2.fromScale(0.5, if Skin.has("burrow") then 0.4 else 0.5), Vector2.new(0.5, 0.5))
 				local b = Instance.new("TextButton")
 				b.BackgroundTransparency = 1
 				b.Text = ""
@@ -460,7 +530,7 @@ pets.refresh = function()
 			continue
 		end
 		local rc = Config.RARITY_COLORS[p.rarity]
-		local card = Skin.tile(rc, e.uid == pickedUid, Vector2.new(104, 124))
+		local card = leafTile(rc, e.uid == pickedUid, Vector2.new(104, 124))
 		card.Name = "Pet_" .. e.uid
 		card.LayoutOrder = i
 		petView(card, p.look, 80, UDim2.new(0.5, 0, 0, 4), Vector2.new(0.5, 0))

@@ -48,10 +48,14 @@ UI.gui = gui
 
 local scale = Instance.new("UIScale")
 scale.Parent = gui
+-- how big the layout is drawn on top of fitting the screen (Config.UI_SIZE; full size on touch-only devices)
+local touchOnly = game:GetService("UserInputService").TouchEnabled and not game:GetService("UserInputService").KeyboardEnabled
+UI.size = if touchOnly then (Config.UI_SIZE_TOUCH or 1) else (Config.UI_SIZE or 1)
+UI.touch = touchOnly
 local function rescale()
 	local cam = workspace.CurrentCamera
 	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
-	scale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720) * (Config.UI_SIZE or 1), 0.45, 1.3)
+	scale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720) * UI.size, 0.45, 1.3)
 end
 rescale()
 if workspace.CurrentCamera then

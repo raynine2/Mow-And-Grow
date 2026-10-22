@@ -231,5 +231,93 @@
  "x2gems": {
   "forge": "cea4a471-1669-4007-9228-230a5bf97f06",
   "roblox": 84788493275076
+ },
+ "blade": {
+  "forge": "342667be-2bbe-4ff6-a214-ca62fb5b16e4",
+  "roblox": 111048047615821
+ },
+ "burrow": {
+  "forge": "c20b0740-7451-4899-bc2d-2a049ae41b9a",
+  "roblox": 99623820196316
+ },
+ "guild_crest": {
+  "forge": "1936ccc7-f652-4981-a826-be27ab1b057a",
+  "roblox": 117921672772088
+ },
+ "hook": {
+  "forge": "d5b15791-b2d3-4ea2-9cbc-d6a62a175d30",
+  "roblox": 108419658929727
+ },
+ "leaf_tile": {
+  "forge": "217c39be-f905-4d5f-adeb-7eb3e54b2d8b",
+  "roblox": 84619746541017
+ },
+ "nest": {
+  "forge": "5ec98b82-8ba3-43fa-922e-e7ceab6261e7",
+  "roblox": 132647556203341
+ },
+ "polaroid": {
+  "forge": "33dc2513-aa2a-4ec0-829c-e26da86c3c5e",
+  "roblox": 100552568928730
+ },
+ "ring": {
+  "forge": "58084f38-59b5-43bb-b990-f6f4ca1d666b",
+  "roblox": 91519668813568
+ },
+ "scene_lawn": {
+  "forge": "51a6bbbe-2274-4072-86c4-3494c769d694",
+  "roblox": 82274193535797
+ },
+ "tape": {
+  "forge": "8a46d9ba-fff1-44b6-a90e-e0992078cdc4",
+  "roblox": 88587863690986
+ },
+ "ui_chalk": {
+  "forge": "7b7dcb03-f285-4ad1-8730-c6b0d9489c19",
+  "roblox": 71762225879826
+ },
+ "ui_cork": {
+  "forge": "db1666c6-b2ba-443c-92ba-ecf74d63a03c",
+  "roblox": 138462200473468
+ },
+ "ui_page": {
+  "forge": "0836dff6-94b3-487c-a717-17838c674eaf",
+  "roblox": 89629241154210
+ },
+ "ui_parch": {
+  "forge": "eb02c660-d977-411e-aab9-5e9f3edc618f",
+  "roblox": 84449511629500
+ },
+ "ui_soil": {
+  "forge": "03410d17-b331-44c1-ad50-e25187d68070",
+  "roblox": 130221693709052
+ },
+ "ui_tag": {
+  "forge": "2fa6a52a-4532-4e55-9dbf-8a2bd2428fdb",
+  "roblox": 120836761392748
+ },
+ "up_grasp": {
+  "forge": "9f087993-2731-4222-9138-8ad71652f8a9",
+  "roblox": 116958727955386
+ },
+ "up_power": {
+  "forge": "015557ab-c56a-4ba1-a6bc-7a313a267202",
+  "roblox": 101764458338853
+ },
+ "up_sell": {
+  "forge": "671614fd-7903-4134-a485-22c6dbb82841",
+  "roblox": 94304945530189
+ },
+ "up_speed": {
+  "forge": "01a19744-4e06-4d5c-a519-48eb26ba4049",
+  "roblox": 124388813966754
+ },
+ "up_swing": {
+  "forge": "54233a65-ef74-4d61-b27b-a2c2935e9ae0",
+  "roblox": 81547244655448
+ },
+ "wax_seal": {
+  "forge": "42c8a835-b84c-4364-b976-bd12044b203a",
+  "roblox": 138987550109514
  }
 }

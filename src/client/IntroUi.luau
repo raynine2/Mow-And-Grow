@@ -218,7 +218,7 @@ function IntroUi.film(on: boolean)
 	end)
 end
 
--- A name card sliding in at the lower left: a coloured stripe, a big title, a small line under it.
+-- A name card sliding in at the top left (under the letterbox bar, clear of the speech box): a coloured stripe, a big title, a small line under it.
 function IntroUi.lowerThird(title: string, sub: string, color: Color3?, life: number?)
 	local l = layer
 	if not l then
@@ -227,7 +227,7 @@ function IntroUi.lowerThird(title: string, sub: string, color: Color3?, life: nu
 	local root = Instance.new("Frame")
 	root.Name = "LowerThird"
 	root.BackgroundTransparency = 1
-	root.Position = UDim2.new(0, -520, 1, -250)
+	root.Position = UDim2.new(0, -520, BAR, 18)
 	root.Size = UDim2.fromOffset(520, 110)
 	root.Parent = l
 	local stripe = UI.frame({ size = UDim2.fromOffset(10, 92), pos = UDim2.fromOffset(40, 8), color = color or GREEN, parent = root, radius = 4, outline = 0, name = "Stripe" })
@@ -240,11 +240,11 @@ function IntroUi.lowerThird(title: string, sub: string, color: Color3?, life: nu
 	g.Parent = t
 	local s = UI.text(root, sub, UDim2.fromOffset(460, 30), { pos = UDim2.fromOffset(64, 66), stroke = 3, align = Enum.TextXAlignment.Left, name = "Sub" })
 	s.ZIndex = 6
-	tween(root, 0.45, { Position = UDim2.new(0, 0, 1, -250) }, Enum.EasingStyle.Back)
+	tween(root, 0.45, { Position = UDim2.new(0, 0, BAR, 18) }, Enum.EasingStyle.Back)
 	Sound.play("whoosh", 0.1, 0.25)
 	task.delay(life or 2.6, function()
 		if root.Parent then
-			tween(root, 0.35, { Position = UDim2.new(0, -560, 1, -250) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			tween(root, 0.35, { Position = UDim2.new(0, -560, BAR, 18) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 			task.delay(0.4, function()
 				root:Destroy()
 			end)

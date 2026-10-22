@@ -351,9 +351,9 @@ local function mayorShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: string
 	IntroUi.say(MAYOR, "Mowers! At last, you've come!")
 	IntroUi.lowerThird(MAYOR, "Mayor of Spawn Village", RED, 2.4)
 	local ok = run(2.6, function(k)
-		local d = 7.5 - easeOut(k) * 2
-		local p = head + front * d + P.right * 1.8 - UP * 1.4
-		return CFrame.lookAt(p, head - UP * 0.4), 50
+		local d = 11 - easeOut(k) * 2
+		local p = head + front * d + P.right * 2.4 - UP * 1.6
+		return CFrame.lookAt(p, head - UP * 0.9), 50
 	end)
 	if not ok then
 		return false

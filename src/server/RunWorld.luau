@@ -718,24 +718,26 @@ end
 
 -- STUDIO, EDIT MODE (command bar): require(game.ServerScriptService.MowALawn.RunWorld).refreshForge()
 -- Puts the ForgeGUI models into the world saved in the place, so Edit mode shows what a run shows: the 8 area
--- landmarks (WorldArt.forgeLandmarks) and the BAG STAND and Shredder (built fresh by the code, then put exactly
--- where the saved ones stand, so hand moves are kept). Copies of what it replaces go to
--- ServerStorage.MowALawnBackups first. Safe to run again: pieces that are already ForgeGUI are left alone.
+-- landmarks (WorldArt.forgeLandmarks) and the camp's working buildings (BAG STAND, Shredder, TOOL SHOP, Garage,
+-- CLASSES: built fresh by the code, then put exactly where the saved ones stand, so hand moves are kept; what's
+-- inside them is the code's anyway, a run replaces it). Copies of what it replaces go to
+-- ServerStorage.MowALawnBackups first. Safe to run again.
 local function swapUnit(w: Instance, fresh: Instance, name: string, inner: string, bk: Instance): boolean
 	local hub, freshHub = w:FindFirstChild("Hub"), fresh:FindFirstChild("Hub")
 	local saved = hub and hub:FindFirstChild(name)
 	local gen = freshHub and freshHub:FindFirstChild(name)
 	local a = gen and gen:FindFirstChild(inner)
 	local b = saved and saved:FindFirstChild(inner)
-	if not (saved and gen and a and b and a:IsA("Model") and b:IsA("Model")) then
+	if not (saved and gen and a and b) then
 		warn("[RunWorld] couldn't find " .. name .. " in the saved world")
 		return false
 	end
-	if b:GetAttribute("Forge") then
-		return false -- already the ForgeGUI one
+	-- the code's piece, moved by how far the saved one was moved (measured on the same part or model in both:
+	-- the building model, or the invisible "0Anchor" spot)
+	local function pivot(x: Instance): CFrame
+		return if x:IsA("BasePart") then x.CFrame else (x :: Model):GetPivot()
 	end
-	-- the code's piece, moved by how far the saved one was moved (measured on the building model in both)
-	local delta = b:GetPivot() * a:GetPivot():Inverse()
+	local delta = pivot(b) * pivot(a):Inverse()
 	local function move(inst: Instance)
 		if inst:IsA("Model") then
 			inst:PivotTo(delta * inst:GetPivot())
@@ -773,7 +775,7 @@ function RunWorld.refreshForge()
 		end
 	end
 	local marks = require(script.Parent.WorldArt).forgeLandmarks(w)
-	-- the working pieces: build the hub on its own (as a run's server does), take the two that changed
+	-- the working pieces: build the hub on its own (as a run's server does) and take the buildings
 	local fresh = Instance.new("Folder")
 	fresh.Name = "FreshVillage"
 	fresh.Parent = workspace
@@ -781,7 +783,7 @@ function RunWorld.refreshForge()
 	RunBuilder.hub(fresh, info)
 	require(script.Parent.MapStore).markSaved(fresh, info, "FreshVillage")
 	local units = 0
-	for _, pair in { { "BAG STAND", "bag_stand" }, { "Shredder", "shredder" } } do
+	for _, pair in { { "BAG STAND", "bag_stand" }, { "Shredder", "shredder" }, { "TOOL SHOP", "0Anchor" }, { "Garage", "0Anchor" }, { "CLASSES", "0Anchor" } } do
 		if swapUnit(w, fresh, pair[1], pair[2], bk) then
 			units += 1
 		end

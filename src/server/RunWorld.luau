@@ -716,4 +716,78 @@ function RunWorld.moveVillageToCamp(centre: Vector3, radius: number)
 	print(("[RunWorld] The village's buildings are now in area 1's camp at %d, %d (%d things cleared from the yard, kept in %s)"):format(c.X, c.Z, moved, bk.Name))
 end
 
+-- STUDIO, EDIT MODE (command bar): require(game.ServerScriptService.MowALawn.RunWorld).refreshForge()
+-- Puts the ForgeGUI models into the world saved in the place, so Edit mode shows what a run shows: the 8 area
+-- landmarks (WorldArt.forgeLandmarks) and the BAG STAND and Shredder (built fresh by the code, then put exactly
+-- where the saved ones stand, so hand moves are kept). Copies of what it replaces go to
+-- ServerStorage.MowALawnBackups first. Safe to run again: pieces that are already ForgeGUI are left alone.
+local function swapUnit(w: Instance, fresh: Instance, name: string, inner: string, bk: Instance): boolean
+	local hub, freshHub = w:FindFirstChild("Hub"), fresh:FindFirstChild("Hub")
+	local saved = hub and hub:FindFirstChild(name)
+	local gen = freshHub and freshHub:FindFirstChild(name)
+	local a = gen and gen:FindFirstChild(inner)
+	local b = saved and saved:FindFirstChild(inner)
+	if not (saved and gen and a and b and a:IsA("Model") and b:IsA("Model")) then
+		warn("[RunWorld] couldn't find " .. name .. " in the saved world")
+		return false
+	end
+	if b:GetAttribute("Forge") then
+		return false -- already the ForgeGUI one
+	end
+	-- the code's piece, moved by how far the saved one was moved (measured on the building model in both)
+	local delta = b:GetPivot() * a:GetPivot():Inverse()
+	local function move(inst: Instance)
+		if inst:IsA("Model") then
+			inst:PivotTo(delta * inst:GetPivot())
+		elseif inst:IsA("BasePart") then
+			inst.CFrame = delta * inst.CFrame
+		else
+			for _, c in inst:GetChildren() do
+				move(c)
+			end
+		end
+	end
+	move(gen)
+	saved.Parent = bk
+	gen.Parent = hub
+	return true
+end
+
+function RunWorld.refreshForge()
+	assert(RunService:IsStudio() and not RunService:IsRunning(), "Run in Studio with the game stopped (edit mode)")
+	local w = workspace:FindFirstChild("World")
+	assert(w and w:GetAttribute("VillageBaked"), "Workspace.World isn't the saved generated world")
+	local Models = require(script.Parent.Models)
+	Models.loadAll(30)
+	local backups = ServerStorage:FindFirstChild("MowALawnBackups") or Instance.new("Folder")
+	backups.Name = "MowALawnBackups"
+	backups.Parent = ServerStorage
+	local bk = Instance.new("Folder")
+	bk.Name = "Before ForgeGUI refresh " .. os.date("%Y-%m-%d %H.%M")
+	bk.Parent = backups
+	-- landmarks: keep copies of the old ones, then swap
+	local visuals = w:FindFirstChild("Visuals")
+	for _, d in (if visuals then visuals:GetDescendants() else {}) do
+		if d:IsA("Model") and string.match(d.Name, " Landmark$") and not d:GetAttribute("Forge") then
+			d:Clone().Parent = bk
+		end
+	end
+	local marks = require(script.Parent.WorldArt).forgeLandmarks(w)
+	-- the working pieces: build the hub on its own (as a run's server does), take the two that changed
+	local fresh = Instance.new("Folder")
+	fresh.Name = "FreshVillage"
+	fresh.Parent = workspace
+	local info = { world = fresh, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
+	RunBuilder.hub(fresh, info)
+	require(script.Parent.MapStore).markSaved(fresh, info, "FreshVillage")
+	local units = 0
+	for _, pair in { { "BAG STAND", "bag_stand" }, { "Shredder", "shredder" } } do
+		if swapUnit(w, fresh, pair[1], pair[2], bk) then
+			units += 1
+		end
+	end
+	fresh:Destroy()
+	print(("[RunWorld] ForgeGUI refresh: %d landmarks and %d buildings swapped (old copies in %s). Save the place."):format(marks, units, bk:GetFullName()))
+end
+
 return RunWorld

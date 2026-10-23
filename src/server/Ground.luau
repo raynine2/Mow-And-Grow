@@ -6,6 +6,9 @@ local Ground = {}
 -- True while a world is built on top of a map saved in the place (server/MapStore): the saved Terrain is the
 -- ground then, so the builders' fills, hills and paths are skipped.
 Ground.locked = false
+-- True while MapStore.bakeLobby builds the lobby in Studio: the builders fill as usual, but reset() doesn't clear
+-- the whole Terrain (the bake clears just the lobby's own box first).
+Ground.keepTerrain = false
 
 local terrain = workspace.Terrain
 
@@ -32,7 +35,7 @@ local COLORS = {
 
 -- Clear the old ground and set the look: grass blades, colours, water.
 function Ground.reset()
-	if not Ground.locked then
+	if not Ground.locked and not Ground.keepTerrain then
 		terrain:Clear()
 	end
 	-- some Roblox versions don't let scripts set some of these (Decoration, GrassLength): skip those instead of

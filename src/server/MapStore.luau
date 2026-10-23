@@ -464,4 +464,108 @@ function MapStore.bake(force: boolean?)
 	print(("[MapStore] Baked: Workspace.Maps.Run (the run map) and Workspace.Maps.Lobby (%d studs to the side). Edit away, then save the place."):format(MapStore.LOBBY_OFFSET.X))
 end
 
+-- STUDIO, EDIT MODE (command bar): require(game.ServerScriptService.MowALawn.MapStore).bakeLobby()
+-- Saves only the lobby, as Workspace.Maps.Lobby (LOBBY_OFFSET studs to the side, with its ground), for a place
+-- whose run is the generated world (Config.WORLD_GEN: a run uses Workspace.World, not Maps.Run). Unlike bake(),
+-- it leaves everything else as it was: Workspace.World (the saved run world), the Baseplate and spawns, the
+-- Lighting and the Terrain are set aside while the lobby builds and put back after. bakeLobby(true) rebuilds a
+-- saved lobby (the old one goes to ServerStorage.MowALawnBackups first).
+local LIGHT_PROPS = { "Ambient", "OutdoorAmbient", "Brightness", "ClockTime", "GeographicLatitude", "ColorShift_Top", "ColorShift_Bottom", "EnvironmentDiffuseScale", "EnvironmentSpecularScale", "ExposureCompensation", "FogColor", "FogStart", "FogEnd", "GlobalShadows", "ShadowSoftness" }
+local TERRAIN_PROPS = { "Decoration", "GrassLength", "WaterColor", "WaterTransparency", "WaterWaveSize", "WaterWaveSpeed", "WaterReflectance" }
+
+local function snapshot(inst: Instance, props: { string }): { [string]: any }
+	local out = {}
+	for _, p in props do
+		pcall(function()
+			out[p] = (inst :: any)[p]
+		end)
+	end
+	return out
+end
+
+local function restore(inst: Instance, values: { [string]: any })
+	for p, v in values do
+		pcall(function()
+			(inst :: any)[p] = v
+		end)
+	end
+end
+
+function MapStore.bakeLobby(force: boolean?)
+	assert(RunService:IsStudio() and not RunService:IsRunning(), "Bake in Studio with the game stopped (edit mode)")
+	local maps = workspace:FindFirstChild("Maps")
+	local backups = ServerStorage:FindFirstChild("MowALawnBackups") or Instance.new("Folder")
+	backups.Name = "MowALawnBackups"
+	backups.Parent = ServerStorage
+	local oldLobby = maps and maps:FindFirstChild("Lobby")
+	if oldLobby then
+		if not force then
+			warn("[MapStore] Workspace.Maps.Lobby is already there (your edits). To rebuild it from code: MapStore.bakeLobby(true) - the old one is backed up to ServerStorage.MowALawnBackups.")
+			return
+		end
+		oldLobby.Name = "Maps.Lobby " .. os.date("%Y-%m-%d %H.%M.%S")
+		oldLobby.Parent = backups
+	end
+	-- set aside what building the lobby would change
+	local aside = Instance.new("Folder")
+	aside.Name = "BakeLobby aside (put back automatically)"
+	aside.Parent = ServerStorage
+	for _, c in workspace:GetChildren() do
+		if c.Name == "World" or c.Name == "Baseplate" or c:IsA("SpawnLocation") then
+			c.Parent = aside
+		end
+	end
+	local lighting = game:GetService("Lighting")
+	local lightProps = snapshot(lighting, LIGHT_PROPS)
+	local terrainProps = snapshot(workspace.Terrain, TERRAIN_PROPS)
+	local lightKids = {}
+	for _, c in lighting:GetChildren() do
+		table.insert(lightKids, c:Clone())
+	end
+	-- the terrain: only the lobby's box in the middle is used (copied first, cleared, put back after)
+	local origin = workspace.Terrain:CopyRegion((lobbyCells(Vector3.zero)))
+	workspace.Terrain:FillRegion(lobbyRegion(Vector3.zero), 4, Enum.Material.Air)
+
+	local Models = require(script.Parent.Models)
+	Models.loadAll(30)
+	Ground.keepTerrain = true
+	local ok, err = pcall(function()
+		local info = require(script.Parent.LobbyBuilder).build()
+		local ground = workspace.Terrain:CopyRegion((lobbyCells(Vector3.zero)))
+		local lobby = asSaved(info.world, info, "Lobby")
+		moveBy(lobby, CFrame.new(MapStore.LOBBY_OFFSET))
+		if not maps then
+			maps = Instance.new("Folder")
+			maps.Name = "Maps"
+		end
+		lobby.Parent = maps
+		local _, corner = lobbyCells(MapStore.LOBBY_OFFSET)
+		workspace.Terrain:PasteRegion(ground, corner, true)
+	end)
+
+	Ground.keepTerrain = false
+	-- put everything back: the terrain at the middle, the lighting, the run world, baseplate and spawns
+	workspace.Terrain:FillRegion(lobbyRegion(Vector3.zero), 4, Enum.Material.Air)
+	local _, originCorner = lobbyCells(Vector3.zero)
+	workspace.Terrain:PasteRegion(origin, originCorner, true)
+	restore(workspace.Terrain, terrainProps)
+	restore(lighting, lightProps)
+	for _, c in lighting:GetChildren() do
+		c:Destroy()
+	end
+	for _, c in lightKids do
+		c.Parent = lighting
+	end
+	for _, c in aside:GetChildren() do
+		c.Parent = workspace
+	end
+	aside:Destroy()
+	assert(ok, err)
+	local m = maps :: Folder
+	m:SetAttribute("Terrain", true)
+	m:SetAttribute("LobbyBakedAt", os.date("%Y-%m-%d %H:%M"))
+	m.Parent = workspace
+	print(("[MapStore] Lobby saved as Workspace.Maps.Lobby, %d studs to the side. Edit away, then save the place."):format(MapStore.LOBBY_OFFSET.X))
+end
+
 return MapStore

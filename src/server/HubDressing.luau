@@ -193,14 +193,13 @@ function HubDressing.lobby(world: Instance)
 	local c = Vector3.new(0, 0, 4) -- the fountain plaza
 	piece(town, "S_fountain", c, c + Vector3.new(0, 0, -1), true)
 	for _, sx in { -1, 1 } do
-		-- the town houses either side of the plaza, the shops by the spawn, stalls along the walk
+		-- the town houses either side of the plaza
 		-- (the ForgeGUI cottages when they're loaded, in the old houses' 18 x 15 footprint)
 		local house = Vector3.new(29 * sx, 0, 5)
 		if not forgePiece(town, if sx < 0 then "house_red" else "house_blue", house, Vector3.new(0, 0, 5), { width = 18, depth = 15.5, height = 21 }) then
 			piece(town, if sx < 0 then "S_house_red" else "S_house_blue", house, Vector3.new(0, 0, 5), true)
 		end
-		piece(town, if sx < 0 then "S_shop_teal" else "S_shop_red", Vector3.new(29 * sx, 0, -46), Vector3.new(0, 0, -46), true)
-		piece(town, if sx < 0 then "S_stall_blue" else "S_stall_red", Vector3.new(18.5 * sx, 0, -41), Vector3.new(0, 0, -41), true)
+		-- (the two shops and two market stalls by the spawn were taken out: the owner wanted them gone)
 		-- benches facing the fountain, flower beds round the plaza
 		piece(town, "S_bench", Vector3.new(10 * sx, 0, 4), c, true)
 		piece(town, "S_flower_bed", Vector3.new(9 * sx, 0, -9.5), c, true)

@@ -151,15 +151,19 @@ local function oldClassBooth(world: Instance): TextLabel
 	return label
 end
 
--- The class booth as the ForgeGUI log lodge (solid: the vendor stands beside the steps up to its porch).
-local function classLodge(m: Instance, at: CFrame, purple: Color3): TextLabel?
+-- The class booth as the ForgeGUI log lodge (solid). No vendor (the owner took him out); in front of the steps a
+-- little patch of night sky (LobbyPads.space) where the classes are browsed.
+local function classLodge(m: Instance, at: CFrame, _purple: Color3): TextLabel?
 	if not Models.placeForge("lodge", m, at, { width = 30 }, true) then
 		return nil
 	end
 	PropKit.collider(m, at, Vector3.new(0, 11.5, 0), Vector3.new(29, 23, 25))
-	outline(m, at, Vector3.new(0, 0, -20), 16, 6, purple, "Classes")
-	LobbyKit.vendor(m, at * CFrame.new(5.5, 0.5, -16.5), Color3.fromRGB(196, 48, 42)) -- beside the steps, not on them
-	LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(0, 2, -20), Vector3.new(14, 3, 5), "ClassesFX"), "LobbyFX", { Kind = "sparkle", Color = purple })
+	if Config.WORLD_GEN then
+		LobbyPads.space(m, at * CFrame.new(0, 0, -20), 16, 6)
+	else
+		outline(m, at, Vector3.new(0, 0, -20), 16, 6, _purple, "Classes")
+	end
+	LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(0, 2, -20), Vector3.new(14, 3, 5), "ClassesFX"), "LobbyFX", { Kind = "sparkle", Color = Color3.fromRGB(200, 225, 255) })
 	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -16), "ClassCounter"), "Browse", "Classes", "Classes", 12)
 	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -20), "ClassPorch"), "Browse", "Classes", "Classes", 10)
 	-- no stock board in front of the lodge (the owner found it ugly; the Classes window shows the stock). The Lobby

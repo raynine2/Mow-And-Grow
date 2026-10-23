@@ -65,6 +65,58 @@ local function calmFrame(parent: Instance, cf: CFrame, w: number, d: number, col
 	return { setColor = setColor, parts = table.clone(strips) }
 end
 
+-- The classes lodge's pad, a little patch of night sky in the paving: a midnight-blue studded border with gold
+-- star studs at the corners, a deep indigo inside sprinkled with tiny glowing stars, and a small ringed planet.
+-- Named "PadFrame" like the calm frames (the paving stones' tops are at 0.32, so it all sits just above them).
+function LobbyPads.space(parent: Instance, cf: CFrame, w: number, d: number): Glow
+	local m = Instance.new("Model")
+	m.Name = "PadFrame"
+	local NIGHT = Color3.fromRGB(34, 36, 92)
+	local SKY = Color3.fromRGB(26, 20, 64)
+	local GOLD = Color3.fromRGB(255, 214, 90)
+	local t = 0.8
+	local strips: { BasePart } = {}
+	for _, e in {
+		{ Vector3.new(0, 0, d / 2 - t / 2), Vector3.new(w, 0, t) },
+		{ Vector3.new(0, 0, -d / 2 + t / 2), Vector3.new(w, 0, t) },
+		{ Vector3.new(w / 2 - t / 2, 0, 0), Vector3.new(t, 0, d - 2 * t) },
+		{ Vector3.new(-w / 2 + t / 2, 0, 0), Vector3.new(t, 0, d - 2 * t) },
+	} do
+		local strip = block(m, Vector3.new(e[2].X, 0.4, e[2].Z), cf * CFrame.new(e[1] + Vector3.new(0, 0.2, 0)), NIGHT, "Strip", Enum.Material.Plastic)
+		strip.TopSurface = Enum.SurfaceType.Studs
+		deco(strip)
+		table.insert(strips, strip)
+	end
+	-- the night sky inside the border (just above the paving stones)
+	local sky = block(m, Vector3.new(w - 2 * t, 0.06, d - 2 * t), cf * CFrame.new(0, 0.36, 0), SKY, "Sky", Enum.Material.SmoothPlastic)
+	deco(sky)
+	-- gold star studs on the corners (a square turned 45 degrees)
+	for _, c in { Vector3.new(1, 0, 1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, -1) } do
+		local at = Vector3.new(c.X * (w / 2 - t / 2), 0.44, c.Z * (d / 2 - t / 2))
+		local star = block(m, Vector3.new(0.75, 0.1, 0.75), cf * CFrame.new(at) * CFrame.Angles(0, math.rad(45), 0), GOLD, "CornerStar", Enum.Material.Neon)
+		deco(star)
+	end
+	-- tiny stars scattered over the sky (the same pattern every time)
+	local rng = Random.new(1969)
+	local tints = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 240, 180), Color3.fromRGB(170, 220, 255) }
+	for i = 1, math.floor(w * d / 7) do
+		local x = rng:NextNumber(-(w / 2 - t - 0.4), w / 2 - t - 0.4)
+		local z = rng:NextNumber(-(d / 2 - t - 0.4), d / 2 - t - 0.4)
+		local s = if i % 5 == 0 then 0.32 else 0.18
+		local star = block(m, Vector3.new(s, 0.04, s), cf * CFrame.new(x, 0.4, z) * CFrame.Angles(0, math.rad(45), 0), tints[i % #tints + 1], "Star", Enum.Material.Neon)
+		deco(star)
+	end
+	-- a small ringed planet near one end
+	local px = w / 2 - t - 1.6
+	local planet = block(m, Vector3.new(0.05, 1.5, 1.5), cf * CFrame.new(px, 0.41, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(255, 150, 90), "Planet", Enum.Material.SmoothPlastic)
+	planet.Shape = Enum.PartType.Cylinder
+	deco(planet)
+	local ring = block(m, Vector3.new(2.6, 0.03, 0.22), cf * CFrame.new(px, 0.43, 0) * CFrame.Angles(0, math.rad(-25), 0), Color3.fromRGB(255, 220, 160), "Ring", Enum.Material.Neon)
+	deco(ring)
+	m.Parent = parent
+	return { setColor = function(_c: Color3) end, parts = table.clone(strips) }
+end
+
 function LobbyPads.glow(parent: Instance, cf: CFrame, w: number, d: number, color: Color3): Glow
 	if Config.WORLD_GEN then
 		return calmFrame(parent, cf, w, d, color)

@@ -385,8 +385,9 @@ titleBox.AnchorPoint = Vector2.new(0.5, 0)
 titleBox.Parent = holder
 shrink(titleBox, 0.62)
 for _, t in {
-	UI.text(titleBox, "CL", UDim2.fromOffset(170, 80), { pos = UDim2.fromOffset(28, 0), align = Enum.TextXAlignment.Right, stroke = 5 }),
-	UI.text(titleBox, "SSES", UDim2.fromOffset(190, 80), { pos = UDim2.fromOffset(238, 0), align = Enum.TextXAlignment.Left, stroke = 5 }),
+	-- (a clear gap either side of the crest in the middle: it used to sit on the L and the first S)
+	UI.text(titleBox, "CL", UDim2.fromOffset(170, 80), { pos = UDim2.fromOffset(-10, 0), align = Enum.TextXAlignment.Right, stroke = 5 }),
+	UI.text(titleBox, "SSES", UDim2.fromOffset(190, 80), { pos = UDim2.fromOffset(260, 0), align = Enum.TextXAlignment.Left, stroke = 5 }),
 } do
 	local g = Instance.new("UIGradient") -- starlight: white fading to a pale cosmic blue (guild: cream to gold)
 	g.Color = if GUILD then ColorSequence.new(Color3.fromRGB(255, 250, 230), Color3.fromRGB(255, 205, 90)) else ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(175, 205, 255))
@@ -404,14 +405,14 @@ titleGlow.Image = Tex.Glow
 titleGlow.ImageColor3 = Color3.fromRGB(255, 200, 80)
 titleGlow.ImageTransparency = 0.25
 titleGlow.Size = UDim2.fromOffset(110, 110)
-titleGlow.Position = UDim2.fromOffset(218, 42)
+titleGlow.Position = UDim2.fromOffset(210, 42)
 titleGlow.AnchorPoint = Vector2.new(0.5, 0.5)
 titleGlow.Parent = titleBox
 local titleStar = Instance.new("ImageLabel")
 titleStar.BackgroundTransparency = 1
 titleStar.Image = "rbxassetid://104095913007401" -- chunky gold sparkle, Store Icons/ClassArt/UISpark.png
 titleStar.Size = UDim2.fromOffset(64, 64)
-titleStar.Position = UDim2.fromOffset(218, 42)
+titleStar.Position = UDim2.fromOffset(210, 42)
 titleStar.AnchorPoint = Vector2.new(0.5, 0.5)
 titleStar.Parent = titleBox
 if GUILD and Skin.has("guild_crest") then

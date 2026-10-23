@@ -74,15 +74,27 @@ end
 
 State.on("data", refresh)
 
+-- (a whole-workspace scan is a hitch in a big world: only scan again when the world changes or a display
+-- turns up, not on a timer)
+local displaysDirty = true
+workspace.DescendantAdded:Connect(function(d)
+	if d.Name == "ToolDisplay" then
+		displaysDirty = true
+	end
+end)
 task.spawn(function()
+	local scannedWorld: Instance? = nil
 	while true do
 		local world = workspace:FindFirstChild("World")
-		if world and #displays == 0 then
-			scan()
-			refresh()
-		end
 		if #displays > 0 and not displays[1].folder.Parent then
 			table.clear(displays)
+			displaysDirty = true
+		end
+		if world and (displaysDirty or world ~= scannedWorld) then
+			displaysDirty = false
+			scannedWorld = world
+			scan()
+			refresh()
 		end
 		task.wait(2)
 	end
@@ -200,14 +212,30 @@ local function spray(m: Model)
 	drips.Parent = rim
 end
 
-task.spawn(function()
-	while true do
-		for _, d in workspace:GetDescendants() do
-			if d:IsA("Model") and d:GetAttribute("Fountain") then
+-- once for what's there, then whatever turns up (no whole-workspace scan on a timer)
+for _, d in workspace:GetDescendants() do
+	if d:IsA("Model") and d:GetAttribute("Fountain") then
+		task.spawn(spray, d)
+	end
+end
+workspace.DescendantAdded:Connect(function(d)
+	if d:IsA("Model") then
+		task.defer(function()
+			if d.Parent and d:GetAttribute("Fountain") then
 				spray(d)
 			end
+		end)
+	end
+end)
+-- forget fountains that are gone (a world rebuild)
+task.spawn(function()
+	while true do
+		task.wait(10)
+		for m in fountains do
+			if not m.Parent then
+				fountains[m] = nil
+			end
 		end
-		task.wait(5)
 	end
 end)
 

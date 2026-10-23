@@ -1,7 +1,8 @@
 -- The always-on screen, laid out like Chop A Forest:
 --   left: big coin + gem counters   bottom-left: backpack "3/5"     bottom: tool hotbar
 --   right: round wooden badge buttons (run: SHOP R, UPGRADES TAB; lobby: PETS P, SHOP R, STATS TAB, NEWS J)
---   top-left: quest tracker         top-centre: day / night bar (ReplicatedStorage DayPhase/DayLeft/DayLength)
+--   top-left: quest tracker, and the Potato Mode button beside it
+--   top-centre: day / night bar (ReplicatedStorage DayPhase/DayLeft/DayLength)
 --   top-right: run timer, area name, AREA n/8, % cleared and the next area (or the boss bar during a fight)
 --   centre: a small crosshair in a run while the camera is in first person
 local Players = game:GetService("Players")
@@ -17,6 +18,7 @@ local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local Skin = require(script.Parent.Skin)
+local Potato = require(script.Parent.Potato)
 
 local Hud = {}
 local C = UI.colors
@@ -113,6 +115,30 @@ local questHint = UI.text(questFace, "", UDim2.new(1, -4, 0, 16), { pos = UDim2.
 ;(questHint:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
 
 -------------------------------------------------------------------------------------------------------------
+-- Potato Mode (top-left, beside the quest card): low graphics for slow devices (client/Potato), saved
+-------------------------------------------------------------------------------------------------------------
+local POTATO_OFF = Color3.fromRGB(150, 120, 90)
+local potato = Instance.new("Frame")
+potato.Name = "Potato"
+potato.BackgroundTransparency = 1
+potato.Size = UDim2.fromOffset(84, 74)
+potato.Position = UDim2.fromOffset(14 + 330 + 10, 66)
+potato.Parent = root
+local potatoButton = UI.button(potato, "🥔", POTATO_OFF, UDim2.fromOffset(50, 50), function()
+	Potato.toggle()
+	UI.toast(if Potato.on then "🥔 Potato Mode ON: low graphics, smoother on slow devices" else "Potato Mode OFF: full graphics", if Potato.on then "green" else nil)
+end, { pos = UDim2.fromOffset(42, 0), anchor = Vector2.new(0.5, 0), name = "PotatoButton" })
+Skin.press(potatoButton)
+local potatoText = UI.text(potato, "POTATO OFF", UDim2.fromOffset(84, 20), { pos = UDim2.fromOffset(0, 52), stroke = 2 })
+local function showPotato(on: boolean)
+	UI.setButton(potatoButton, "🥔", if on then C.green else POTATO_OFF)
+	potatoText.Text = if on then "POTATO ON" else "POTATO OFF"
+	potatoText.TextColor3 = if on then C.green else Color3.new(1, 1, 1)
+end
+showPotato(Potato.on)
+Potato.changed(showPotato)
+
+-------------------------------------------------------------------------------------------------------------
 -- run info (top-right): timer, zone, progress / boss bar
 -------------------------------------------------------------------------------------------------------------
 local info = Instance.new("Frame")
@@ -143,6 +169,7 @@ local function dodgeCoreUi()
 	local s = if sc then sc.Scale else 1
 	local inset = game:GetService("GuiService"):GetGuiInset().Y
 	quest.Position = UDim2.fromOffset(14, math.max(66, (inset + 2) / s + 14))
+	potato.Position = UDim2.fromOffset(14 + 330 + 10, quest.Position.Y.Offset)
 	local listOn = false
 	pcall(function()
 		listOn = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)

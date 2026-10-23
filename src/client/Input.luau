@@ -156,10 +156,12 @@ local function currentMower(): (Model?, VehicleSeat?)
 	return nil, nil
 end
 
+local lastFuel, lastMaxFuel = -1, -1
 RunService.RenderStepped:Connect(function(dt)
 	local model, seat = currentMower()
 	if model ~= driving then
 		driving = model
+		lastFuel, lastMaxFuel = -1, -1
 		State.emit("driving", model)
 		if model and model.PrimaryPart then
 			local look = model.PrimaryPart.CFrame.LookVector
@@ -181,7 +183,11 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	local fuel = model:GetAttribute("Fuel") or 0
 	local maxFuel = model:GetAttribute("MaxFuel") or 0
-	State.emit("fuel", fuel, maxFuel)
+	-- (only when it changes: an emit every frame rebuilt the fuel bar's text every frame)
+	if fuel ~= lastFuel or maxFuel ~= lastMaxFuel then
+		lastFuel, lastMaxFuel = fuel, maxFuel
+		State.emit("fuel", fuel, maxFuel)
+	end
 	local top = model:GetAttribute("Speed") or 30
 	local throttle = if fuel > 0 then seat.ThrottleFloat else 0
 	local target = if throttle >= 0 then throttle * top else throttle * top * 0.5

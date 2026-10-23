@@ -172,9 +172,36 @@ local function backOut(t: number): number
 	local c1 = 1.70158
 	return 1 + (c1 + 1) * (t - 1) ^ 3 + c1 * (t - 1) ^ 2
 end
+-- Is it on screen at all (it and every frame above it visible, in an enabled ScreenGui)?
+local function shown(obj: Instance): boolean
+	local o: Instance? = obj
+	while o and o:IsA("GuiObject") do
+		if not o.Visible then
+			return false
+		end
+		o = o.Parent
+	end
+	if o and o:IsA("LayerCollector") then
+		return o.Enabled
+	end
+	return o ~= nil
+end
 RunService.RenderStepped:Connect(function(dt)
 	local now = os.clock()
 	for obj, j in juiced do
+		-- a breathing button that's settled and hidden (a closed window's) doesn't need re-scaling every frame:
+		-- whether it's on screen is checked a few times a second
+		if j.amp ~= 0 and j.popT >= 1 and math.abs(j.hover - j.hoverTo) < 1e-3 then
+			local nj = j :: any
+			nj.visT = (nj.visT or 0) - dt
+			if nj.visT <= 0 then
+				nj.visT = 0.25
+				nj.vis = shown(obj)
+			end
+			if not nj.vis then
+				continue
+			end
+		end
 		if j.popT < 1 then
 			j.popT = math.min(1, j.popT + dt / j.popDur)
 		end

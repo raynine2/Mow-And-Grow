@@ -628,22 +628,38 @@ local function swingOffset(t: number): CFrame
 	return SWING_END:Lerp(CFrame.new(), k * k * (3 - 2 * k))
 end
 
+-- The server-side tool in our own hand: hidden in first person (it would poke through the camera), shown in third.
+-- Only the character's Tools are walked, not the whole character.
+local function realTools(char: Model, modifier: number)
+	for _, tool in char:GetChildren() do
+		if tool:IsA("Tool") then
+			for _, d in tool:GetDescendants() do
+				if d:IsA("BasePart") and d.LocalTransparencyModifier ~= modifier then
+					d.LocalTransparencyModifier = modifier
+				end
+			end
+		end
+	end
+end
+
+local thirdPerson = false
 RunService.RenderStepped:Connect(function()
 	local cam = workspace.CurrentCamera
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	if not cam or not hum or hum.Health <= 0 or hum.SeatPart or not inFirstPerson() then
-		hideAll()
+		-- hide the first-person hands once, not every frame (that walked every view model each frame)
+		if not thirdPerson then
+			thirdPerson = true
+			hideAll()
+		end
 		-- third person: show the real tool in the character's hand again
 		if char then
-			for _, d in char:GetDescendants() do
-				if d:IsA("BasePart") and d.LocalTransparencyModifier ~= 0 and d:FindFirstAncestorOfClass("Tool") then
-					d.LocalTransparencyModifier = 0
-				end
-			end
+			realTools(char, 0)
 		end
 		return
 	end
+	thirdPerson = false
 	if root.Parent ~= cam then
 		root.Parent = cam
 	end
@@ -783,11 +799,7 @@ RunService.RenderStepped:Connect(function()
 	end
 
 	-- the server-side tool in our own hand would poke through the camera; hide it locally
-	for _, d in char:GetDescendants() do
-		if d:IsA("BasePart") and d:FindFirstAncestorOfClass("Tool") then
-			d.LocalTransparencyModifier = 1
-		end
-	end
+	realTools(char, 1)
 end)
 
 return ViewModel

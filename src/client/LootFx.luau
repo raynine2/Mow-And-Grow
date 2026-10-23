@@ -120,8 +120,12 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 	local now = os.clock()
+	-- (only the ones you could see turning: far drops stay still)
+	local cam = workspace.CurrentCamera
+	local eye = cam and cam.CFrame.Position or Vector3.zero
+	local far = if Players.LocalPlayer:GetAttribute("Potato") then 50 else 110
 	for m, base in spinners do
-		if m.Parent then
+		if m.Parent and (base.Position - eye).Magnitude < far then
 			setPivot(m, base * CFrame.new(0, math.sin(now * 2.4) * 0.35, 0) * CFrame.Angles(0, now * 2, 0))
 		end
 	end

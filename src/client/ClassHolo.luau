@@ -338,9 +338,29 @@ local function scan()
 	end
 end
 
+-- scan the whole workspace only when a lens might have turned up (not on a timer: that's a hitch in a big world)
+local holoDirty = true
+workspace.DescendantAdded:Connect(function(d)
+	if d:GetAttribute("ClassHolo") then
+		holoDirty = true
+	end
+end)
 task.spawn(function()
+	local scannedWorld: Instance? = nil
 	while true do
-		pcall(scan)
+		local world = workspace:FindFirstChild("World")
+		if holoDirty or world ~= scannedWorld then
+			scannedWorld = world
+			holoDirty = false
+			pcall(scan)
+		else
+			for lens, h in holos do
+				if not lens.Parent then
+					h.folder:Destroy()
+					holos[lens] = nil
+				end
+			end
+		end
 		task.wait(3)
 	end
 end)

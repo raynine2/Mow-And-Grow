@@ -163,6 +163,13 @@ local function turnOn()
 		lowerPost(e)
 	end
 	table.insert(conns, Lighting.DescendantAdded:Connect(lowerPost))
+	-- (the server turns shadows back on when it sets up a run's lighting: keep them off, and back on later)
+	table.insert(conns, Lighting:GetPropertyChangedSignal("GlobalShadows"):Connect(function()
+		if Lighting.GlobalShadows then
+			shadows = true
+			Lighting.GlobalShadows = false
+		end
+	end))
 	table.insert(conns, workspace.DescendantAdded:Connect(lower))
 	-- the whole world, a slice per frame so the switch doesn't freeze the game
 	task.spawn(function()
@@ -203,7 +210,8 @@ local function turnOff()
 		shadows = nil
 	end
 	for part, m in material do
-		if part.Parent then
+		-- (not if the server changed it meanwhile, a clump turning rare)
+		if part.Parent and part.Material == Enum.Material.SmoothPlastic then
 			part.Material = m
 		end
 	end

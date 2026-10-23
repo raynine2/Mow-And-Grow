@@ -19,8 +19,8 @@ local Life = {}
 local player = Players.LocalPlayer
 
 local WIND = Vector3.new(0.8, 0, 0.6).Unit -- where the wind blows to
-local SWAY_RADIUS = 170
-local SWAY_BUDGET = 700 -- swaying parts moved per frame at most (a part-built tree is about six leaf blocks)
+local SWAY_RADIUS = 130 -- (Potato Mode: 60)
+local SWAY_BUDGET = 400 -- swaying parts moved per frame at most (a part-built tree is about six leaf blocks)
 
 local folder = Instance.new("Folder")
 folder.Name = "Life"
@@ -129,20 +129,56 @@ end)
 local moveParts: { BasePart } = {}
 local moveCFrames: { CFrame } = {}
 
+-- Only what's near you sways: the near list is picked out of the whole list twice a second (walking every
+-- leaf in the world each frame cost more than the swaying), and a part leaving it is put back home once.
+local nearList: { Sway } = {}
+local nearSet: { [Sway]: boolean } = {}
+local nearAt: Vector3? = nil
+local nearClock = 0
+local function swayRadius(): number
+	return if player:GetAttribute("Potato") then 60 else SWAY_RADIUS
+end
+local function pickNear(at: Vector3)
+	local r = swayRadius() + 20
+	local fresh: { [Sway]: boolean } = {}
+	table.clear(nearList)
+	for _, s in swayList do
+		if s.part.Parent and (s.foot - at).Magnitude <= r then
+			table.insert(nearList, s)
+			fresh[s] = true
+		end
+	end
+	for s in nearSet do
+		if not fresh[s] and s.last and s.last ~= s.base and s.part.Parent then
+			table.insert(moveParts, s.part)
+			table.insert(moveCFrames, s.base)
+			s.last = s.base
+		end
+	end
+	nearSet = fresh
+end
+
 local function swayStep(at: Vector3, t: number)
-	local n = #swayList
+	if t - nearClock > 0.5 or not nearAt or (at - nearAt).Magnitude > 15 then
+		nearClock = t
+		nearAt = at
+		pickNear(at)
+	end
+	local n = #nearList
 	if n == 0 then
 		return
 	end
 	local axis = Vector3.yAxis:Cross(WIND) -- tips lean downwind
+	local radius = swayRadius()
+	local budget = if player:GetAttribute("Potato") then 150 else SWAY_BUDGET
 	local done = 0
 	local tries = 0
-	while done < SWAY_BUDGET and tries < n do
+	while done < budget and tries < n do
 		tries += 1
 		if swayCursor > n then
 			swayCursor = 1
 		end
-		local s = swayList[swayCursor]
+		local s = nearList[swayCursor]
 		swayCursor += 1
 		local p = s.part
 		if not p.Parent then
@@ -160,13 +196,13 @@ local function swayStep(at: Vector3, t: number)
 		end
 		local d = (s.foot - at).Magnitude
 		local cf: CFrame
-		if d > SWAY_RADIUS then
+		if d > radius then
 			if s.last == s.base then
 				continue
 			end
 			cf = s.base
 		else
-			local fade = math.clamp((SWAY_RADIUS - d) / 30, 0, 1)
+			local fade = math.clamp((radius - d) / 30, 0, 1)
 			local g = gust(s.foot, t)
 			local angle = s.amp * fade * (g + 0.35 * math.sin(t * 1.9 + s.phase))
 			cf = CFrame.new(s.foot) * CFrame.fromAxisAngle(axis, angle) * CFrame.new(-s.foot) * s.base

@@ -346,11 +346,14 @@ RunService.RenderStepped:Connect(function(dt)
 	local camPos = if cam then cam.CFrame.Position else Vector3.zero
 	-- the 3D egg hatch (client/HatchFx) plays right in front of the camera: pets would stand in the shot
 	local hatching = cam ~= nil and cam:FindFirstChild("HatchFx") ~= nil
+	-- Potato Mode: only your own pets and other players' close by
+	local potato = Players.LocalPlayer:GetAttribute("Potato") == true
 	for p, fs in followers do
 		local char = p.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		local far = hatching or not root or (root.Position - camPos).Magnitude > VIEW_DISTANCE
+		local view = if potato and p ~= Players.LocalPlayer then 45 else VIEW_DISTANCE
+		local far = hatching or not root or (root.Position - camPos).Magnitude > view
 		for i, f in fs do
 			if far then
 				if f.model.Parent then

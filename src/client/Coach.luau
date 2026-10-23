@@ -515,6 +515,9 @@ task.spawn(function()
 	end
 end)
 
+local foundCard: GuiObject? = nil
+local foundButton: GuiObject? = nil
+local searchAt = 0
 RunService.RenderStepped:Connect(function()
 	local s = step
 	local t = os.clock()
@@ -541,13 +544,19 @@ RunService.RenderStepped:Connect(function()
 	-- the HUD arrow, then the Hold card once the window is open
 	local wantArrow = false
 	if s and s.id == "upgrade" then
-		local c = holdCard()
+		-- (searching the whole PlayerGui every frame was costly: look again 4 times a second)
+		if t - searchAt > 0.25 then
+			searchAt = t
+			foundCard = holdCard()
+			foundButton = if foundCard then nil else findButton("UPGRADES")
+		end
+		local c = if foundCard and foundCard.Parent and UI.isOpen("Upgrades") then foundCard else nil
 		if c then
 			cardGlow.Parent = c
 			cardGlow.Thickness = 4 + 2 * math.sin(t * 6)
 		else
 			cardGlow.Parent = nil
-			local b = findButton("UPGRADES")
+			local b = if foundButton and foundButton.Parent and foundButton.Visible then foundButton else nil
 			if b then
 				wantArrow = true
 				local pos = b.AbsolutePosition

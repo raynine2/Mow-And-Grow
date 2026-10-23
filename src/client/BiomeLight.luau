@@ -113,6 +113,21 @@ end
 
 -- Off while something else owns the lighting (the lobby, the class room, a cutscene): set the attribute
 -- "BiomeLightOff" on this script's player to pause it.
+local lastApplied: Look? = nil
+local function differs(a: Look, b: Look): boolean
+	for _, k in KEYS do
+		local x, y = a[k], b[k]
+		if typeof(x) == "Color3" then
+			if math.abs(x.R - y.R) + math.abs(x.G - y.G) + math.abs(x.B - y.B) > 0.004 then
+				return true
+			end
+		elseif math.abs(x - y) > 0.003 then
+			return true
+		end
+	end
+	return false
+end
+
 local acc = 0
 RunService.RenderStepped:Connect(function(dt)
 	acc += dt
@@ -123,6 +138,7 @@ RunService.RenderStepped:Connect(function(dt)
 	acc = 0
 	if player:GetAttribute("BiomeLightOff") or not Config.WORLD_GEN then
 		current = nil
+		lastApplied = nil
 		return
 	end
 	local char = player.Character
@@ -137,6 +153,17 @@ RunService.RenderStepped:Connect(function(dt)
 	else
 		current = mix(current, want, 1 - math.exp(-step * 1.1))
 	end
+	-- once the look has settled the blend keeps making tiny changes: only write Lighting when something visibly
+	-- moved (every write makes the engine redo its lighting), or when the effects were replaced
+	if lastApplied and not differs(lastApplied, current :: Look) and atmosphere and atmosphere.Parent and bloom.Parent and color.Parent and rays.Parent then
+		-- (the time of day is still held to the zone's, as before: the server's clock writes it too)
+		local clock = (current :: Look).clock
+		if math.abs(Lighting.ClockTime - clock) > 0.01 then
+			Lighting.ClockTime = clock
+		end
+		return
+	end
+	lastApplied = current
 	apply(current :: Look)
 end)
 

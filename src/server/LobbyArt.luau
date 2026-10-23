@@ -86,10 +86,16 @@ local function heightAt(x: number, z: number): number?
 	return 0
 end
 
+-- The zone's grass (Sunny Meadow, Workspace.World.Ground): its two greens in 8-stud squares. x, z are the
+-- square's centre measured from the lobby's centre.
+local function zoneGrass(x: number, z: number): Color3
+	return if hash(x, z, 9) < 0.5 then MEADOW.ground else MEADOW.ground2
+end
+
 local function colorAt(x: number, z: number, h: number): (Color3, boolean)
 	if h == 0 then
-		-- one even lawn (the dirt paths are laid on top: server/HubPaths)
-		return LAWN, false
+		-- the zone's two-tone grass (the stone walks are laid on top: server/HubPaths)
+		return zoneGrass(x, z), false
 	end
 	local base = if (h // 2) % 2 == 0 then LAWN else LAWN:Lerp(MEADOW.ground2, 0.5)
 	return base:Lerp(Color3.new(0, 0, 0), math.min(0.2, h * 0.01)), false
@@ -201,10 +207,74 @@ function LobbyArt.build(world: Instance)
 		table.insert(segments, { a = s[1], b = s[2], width = 12 })
 	end
 	-- the round plaza with the fountain in the middle of the main walk (server/HubDressing puts the fountain there)
-	require(script.Parent.HubPaths).lay(world, segments, 0, 11, { { centre = Vector2.new(0, 4), radius = 13 } })
+	local HubPaths = require(script.Parent.HubPaths)
+	HubPaths.pave(HubPaths.lay(world, segments, 0, 11, { { centre = Vector2.new(0, 4), radius = 13 } }), Vector3.zero)
 	nature(world)
 	bounds(world)
 	require(script.Parent.WorldGen).lighting()
+end
+
+-- Splits each grass top in a saved lobby's Ground into 8-stud squares in the zone's two greens (same squares as a
+-- fresh build), joining neighbours of the same green again. `origin` is where the lobby's centre is.
+local function regrass(ground: Instance, origin: Vector3): number
+	local made = 0
+	for _, p in ground:GetDescendants() do
+		if p:IsA("Part") and p.Name == "Floor" and p.CFrame.Rotation:FuzzyEq(CFrame.identity, 1e-4) then
+			local nx, nz = math.round(p.Size.X / CELL), math.round(p.Size.Z / CELL)
+			local x0, z0 = p.Position.X - p.Size.X / 2, p.Position.Z - p.Size.Z / 2
+			if nx >= 1 and nz >= 1 and math.abs(nx * CELL - p.Size.X) < 0.01 and math.abs(nz * CELL - p.Size.Z) < 0.01 then
+				for b = 0, nz - 1 do
+					local runStart, runC = 0, nil
+					for a = 0, nx do
+						local c = if a < nx then zoneGrass(x0 + (a + 0.5) * CELL - origin.X, z0 + (b + 0.5) * CELL - origin.Z) else nil
+						if runC and c ~= runC then
+							local q = p:Clone()
+							q.Size = Vector3.new((a - runStart) * CELL, p.Size.Y, CELL)
+							q.CFrame = CFrame.new(x0 + (runStart + a) / 2 * CELL, p.Position.Y, z0 + (b + 0.5) * CELL)
+							q.Color = runC
+							q.Parent = p.Parent
+							made += 1
+							runStart = a
+						end
+						runC = c
+					end
+				end
+				p:Destroy()
+			end
+		end
+	end
+	return made
+end
+
+-- STUDIO, EDIT MODE (command bar): require(game.ServerScriptService.MowALawn.LobbyArt).zoneLookSaved()
+-- Gives the lobby saved in the place (Workspace.Maps.Lobby, server/MapStore) the zone's ground, in place: the
+-- two-tone grass squares and the camp's stone paving on the walks. Nothing else in the saved lobby is touched;
+-- its Ground and Paths are copied to ServerStorage.MowALawnBackups first.
+function LobbyArt.zoneLookSaved()
+	local RunService = game:GetService("RunService")
+	assert(RunService:IsStudio() and not RunService:IsRunning(), "Run in Studio with the game stopped (edit mode)")
+	local maps = workspace:FindFirstChild("Maps")
+	local lobby = maps and maps:FindFirstChild("Lobby")
+	assert(lobby, "There's no saved lobby (Workspace.Maps.Lobby)")
+	local ground, paths = lobby:FindFirstChild("Ground"), lobby:FindFirstChild("Paths")
+	assert(ground and paths, "The saved lobby has no Ground or Paths folder")
+	assert(not paths:FindFirstChild("Stones"), "The saved lobby already has the zone's ground")
+	local ServerStorage = game:GetService("ServerStorage")
+	local backups = ServerStorage:FindFirstChild("MowALawnBackups")
+	if not backups then
+		backups = Instance.new("Folder")
+		backups.Name = "MowALawnBackups"
+		backups.Parent = ServerStorage
+	end
+	local bk = Instance.new("Folder")
+	bk.Name = "Before the lobby's zone ground " .. os.date("%Y-%m-%d %H.%M")
+	ground:Clone().Parent = bk
+	paths:Clone().Parent = bk
+	bk.Parent = backups
+	local origin = require(script.Parent.MapStore).LOBBY_OFFSET
+	local squares = regrass(ground, origin)
+	local stones = require(script.Parent.HubPaths).pave(paths, origin)
+	print(("[LobbyArt] Saved lobby: %d grass pieces, %d paving stones (old ground kept in %s)"):format(squares, #stones:GetChildren(), bk.Name))
 end
 
 return LobbyArt

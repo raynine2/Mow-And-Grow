@@ -50,7 +50,13 @@ local function wanted(p: Instance): boolean
 	return n ~= "Patch" and n ~= "Water" and not string.find(n, "Side", 1, true) and not string.find(n, "Patch", 1, true) and p.Material ~= Enum.Material.Glass and p.Material ~= Enum.Material.ForceField
 end
 
+local inGrid: { [BasePart]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 local function add(p: BasePart)
+	-- (a piece Potato Mode hid and put back comes through DescendantAdded again: don't list it twice)
+	if inGrid[p] then
+		return
+	end
+	inGrid[p] = true
 	local k = key(p.Position.X, p.Position.Z)
 	local list = grid[k]
 	if not list then
@@ -145,6 +151,7 @@ task.spawn(function()
 									local p = list[i]
 									if not p.Parent then
 										table.remove(list, i)
+										inGrid[p] = nil
 									elseif not boxes[p] and p.Transparency < 0.6 and (p.Position - at).Magnitude <= RADIUS then
 										attach(p)
 									end

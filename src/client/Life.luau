@@ -143,7 +143,7 @@ local function pickNear(at: Vector3)
 	local fresh: { [Sway]: boolean } = {}
 	table.clear(nearList)
 	for _, s in swayList do
-		if s.part.Parent and (s.foot - at).Magnitude <= r then
+		if (s.foot - at).Magnitude <= r and s.part:IsDescendantOf(workspace) then
 			table.insert(nearList, s)
 			fresh[s] = true
 		end

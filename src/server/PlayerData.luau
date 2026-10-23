@@ -291,10 +291,10 @@ RunService.Heartbeat:Connect(function()
 		if now - (lastPush[player] or 0) < PUSH_GAP then
 			continue
 		end
-		lastPush[player] = now
 		dirty[player] = nil
 		local data = profiles[player]
 		if data then
+			lastPush[player] = now
 			for _, fn in changedCallbacks do
 				local ok, err = pcall(fn, player, data)
 				if not ok then

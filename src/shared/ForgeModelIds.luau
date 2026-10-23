@@ -18,4 +18,6 @@ return {
 	lm_frost = 85463365553189,
 	lm_ember = 87118546176920,
 	lm_starlight = 90425779548628,
+	house_red = 87898019152043,
+	house_blue = 122703325704658,
 }

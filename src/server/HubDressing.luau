@@ -164,6 +164,21 @@ local function piece(parent: Instance, name: string, foot: Vector3, toward: Vect
 	return VM.place(parent, name, foot, { yaw = math.atan2(-d.X, -d.Z), collide = collide, scale = scale })
 end
 
+-- A ForgeGUI building (shared/ForgeModelIds) standing on `foot`, its front toward `toward`, fitted into `want`
+-- (studs), solid through one box collider. False if it isn't loaded.
+local function forgePiece(parent: Instance, name: string, foot: Vector3, toward: Vector3, want: { [string]: number }): boolean
+	local cf = CFrame.lookAt(foot, Vector3.new(toward.X, foot.Y, toward.Z))
+	local m = Models.placeForge(name, parent, cf, want :: any, true)
+	local body = m and m:FindFirstChild("Body") :: BasePart?
+	if not body then
+		return false
+	end
+	-- the mesh is turned a quarter: its X is the building's depth, its Z the width
+	local w, h, d = body.Size.Z, body.Size.Y, body.Size.X
+	PropKit.collider(m :: Model, cf, Vector3.new(0, h / 2, 0), Vector3.new(w * 0.86, h, d * 0.8))
+	return true
+end
+
 -- The lobby (y = 0) as a little town square, like Catch a Brainrot's: spawn at (0, -46) looking north up the main
 -- walk (x = 0) to the party pads (z 40). Two shops and two market stalls by the spawn, the cabins (classes,
 -- garage) on the cross street (z -22), a round plaza with a fountain (0, 4) between two town houses, the rewards
@@ -179,7 +194,11 @@ function HubDressing.lobby(world: Instance)
 	piece(town, "S_fountain", c, c + Vector3.new(0, 0, -1), true)
 	for _, sx in { -1, 1 } do
 		-- the town houses either side of the plaza, the shops by the spawn, stalls along the walk
-		piece(town, if sx < 0 then "S_house_red" else "S_house_blue", Vector3.new(29 * sx, 0, 5), Vector3.new(0, 0, 5), true)
+		-- (the ForgeGUI cottages when they're loaded, in the old houses' 18 x 15 footprint)
+		local house = Vector3.new(29 * sx, 0, 5)
+		if not forgePiece(town, if sx < 0 then "house_red" else "house_blue", house, Vector3.new(0, 0, 5), { width = 18, depth = 15.5, height = 21 }) then
+			piece(town, if sx < 0 then "S_house_red" else "S_house_blue", house, Vector3.new(0, 0, 5), true)
+		end
 		piece(town, if sx < 0 then "S_shop_teal" else "S_shop_red", Vector3.new(29 * sx, 0, -46), Vector3.new(0, 0, -46), true)
 		piece(town, if sx < 0 then "S_stall_blue" else "S_stall_red", Vector3.new(18.5 * sx, 0, -41), Vector3.new(0, 0, -41), true)
 		-- benches facing the fountain, flower beds round the plaza

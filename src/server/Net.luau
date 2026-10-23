@@ -20,6 +20,7 @@ local INBOUND = {
 	"Pet", -- (action, uid)                 equip | unequip | best
 	"Shoot", -- (aimDir)                    fire the boss-crate gun (server checks rate + range)
 	"Setting", -- (key, value)              peaceful (lobby)
+	"Graphics", -- (potato)                 Potato Mode on/off (saved; the client does the rest)
 }
 -- server -> client
 local OUTBOUND = {

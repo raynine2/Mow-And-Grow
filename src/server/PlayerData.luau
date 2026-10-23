@@ -53,6 +53,7 @@ local DEFAULT = {
 	stats = { cut = 0, runs = 0, bosses = 0, sold = 0, coinsEarned = 0, rare = 0, playtime = 0, newsSeen = 0 },
 	guns = {}, -- boss-crate guns bought with Robux: [gunId] = true
 	peaceful = false, -- Peaceful Mode for runs this player hosts (no night monsters, no best time)
+	potato = false, -- Potato Mode: low graphics on this player's screen (client/Potato)
 	pets = {}, -- hatched critters: [uid] = petId
 	petsOn = {}, -- equipped pet uids (at most Config.PET_EQUIP)
 	petNext = 1, -- next uid number
@@ -277,9 +278,20 @@ for _, p in Players:GetPlayers() do
 	task.spawn(onJoin, p)
 end
 
--- Push changed state to clients (batched once per frame).
+-- Push changed state to clients, batched: at most PUSH_GAP apart per player. While mowing, a profile changes on
+-- almost every frame, and a full snapshot 60 times a second clogged the network and the server for nothing.
+local PUSH_GAP = 0.1
+local lastPush: { [Player]: number } = {}
+Players.PlayerRemoving:Connect(function(player)
+	lastPush[player] = nil
+end)
 RunService.Heartbeat:Connect(function()
+	local now = os.clock()
 	for player in dirty do
+		if now - (lastPush[player] or 0) < PUSH_GAP then
+			continue
+		end
+		lastPush[player] = now
 		dirty[player] = nil
 		local data = profiles[player]
 		if data then

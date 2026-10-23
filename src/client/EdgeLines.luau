@@ -117,7 +117,7 @@ task.spawn(function()
 	local player = Players.LocalPlayer
 	while true do
 		task.wait(0.5)
-		if player:GetAttribute("EdgeLinesOff") then
+		if player:GetAttribute("EdgeLinesOff") or player:GetAttribute("Potato") then
 			for p in boxes do
 				detach(p)
 			end

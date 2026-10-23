@@ -129,6 +129,7 @@ local function snapshot(player: Player, data)
 			return g
 		end)(),
 		peaceful = data.peaceful == true,
+		potato = data.potato == true,
 		dailyIn = require(script.Parent.Daily).view(data).wait,
 		daily = require(script.Parent.Daily).view(data), -- { ready, wait, day, streak, claimedToday }
 		freeGems = require(script.Parent.Daily).freeView(data), -- { ready, wait, gems }: every 6 hours
@@ -182,6 +183,15 @@ end
 
 PlayerData.onChanged(function(player, data)
 	Net.send(player, "State", snapshot(player, data))
+end)
+
+-- Potato Mode (client/Potato): only remembered here, in both the lobby and runs
+Net.on("Graphics", 2, function(player, potato)
+	local data = PlayerData.get(player)
+	if data and type(potato) == "boolean" and data.potato ~= potato then
+		data.potato = potato
+		PlayerData.changed(player)
+	end
 end)
 
 Net.on("Ready", 1, function(player)

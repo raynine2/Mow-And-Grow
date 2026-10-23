@@ -740,7 +740,19 @@ local function hatch3D(eggId: string, ids: { string }, fresh: { boolean }?): boo
 			best, bestBig = Config.RARITY_COLORS[p.rarity], BIG[p.rarity] == true
 		end
 	end
+	-- the HUD steps aside too, so nothing but the eggs is on screen (Pet Simulator style)
+	local hidden: { GuiObject } = {}
+	for _, name in { "Hud", "DevButton" } do
+		local g = UI.gui:FindFirstChild(name)
+		if g and g:IsA("GuiObject") and g.Visible then
+			g.Visible = false
+			table.insert(hidden, g)
+		end
+	end
 	HatchFx.play(eggId, ids, fresh, function()
+		for _, g in hidden do
+			g.Visible = true
+		end
 		if best then
 			MenuFX.atCharacter(best, bestBig)
 		end

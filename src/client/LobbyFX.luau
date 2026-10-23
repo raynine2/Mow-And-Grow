@@ -14,6 +14,7 @@ local RunService = game:GetService("RunService")
 
 local VFX = require(ReplicatedStorage:WaitForChild("VFXLib"))
 local UI = require(script.Parent.UI)
+local State = require(script.Parent.State)
 
 local player = Players.LocalPlayer
 local Tex = VFX.Assets.Tex
@@ -153,7 +154,7 @@ local function burst(pos: Vector3, color: Color3)
 end
 LobbyFX.burst = burst
 
-type Zone = { cf: CFrame, size: Vector3, window: string?, color: Color3, inside: boolean }
+type Zone = { model: Model, cf: CFrame, size: Vector3, window: string?, claim: string?, color: Color3, inside: boolean, sized: number }
 local zones: { [Instance]: Zone } = {}
 
 local function onZone(m: Instance)
@@ -163,7 +164,17 @@ local function onZone(m: Instance)
 	local cf, size = m:GetBoundingBox()
 	local w = m:GetAttribute("Window")
 	local c = m:GetAttribute("Color")
-	zones[m] = { cf = cf, size = size, window = if type(w) == "string" then w else nil, color = if typeof(c) == "Color3" then c else Color3.new(1, 1, 1), inside = false }
+	local claim = m:GetAttribute("Claim")
+	zones[m] = {
+		model = m,
+		cf = cf,
+		size = size,
+		window = if type(w) == "string" then w else nil,
+		claim = if type(claim) == "string" then claim else nil,
+		color = if typeof(c) == "Color3" then c else Color3.new(1, 1, 1),
+		inside = false,
+		sized = os.clock(),
+	}
 end
 
 local function checkZones()
@@ -171,17 +182,31 @@ local function checkZones()
 	if not root then
 		return
 	end
-	for _, z in zones do
+	local now = os.clock()
+	for m, z in zones do
+		if not m.Parent then
+			zones[m] = nil
+			continue
+		end
+		-- measure again now and then: with streaming the pad's parts arrive after the model (an empty model
+		-- measures 0 x 0), and a saved map can move the pad after it's tagged
+		if now - z.sized > 1 then
+			z.sized = now
+			z.cf, z.size = z.model:GetBoundingBox()
+		end
 		local p = z.cf:PointToObjectSpace(root.Position)
 		local inside = math.abs(p.X) <= z.size.X / 2 and math.abs(p.Z) <= z.size.Z / 2 and p.Y > -1 and p.Y < 6
 		if inside ~= z.inside then
 			z.inside = inside
 			if inside then
 				burst(Vector3.new(root.Position.X, z.cf.Position.Y + 0.3, root.Position.Z), z.color)
-				if z.window then
+				if z.claim then
+					-- walk-on reward (the daily bay): the server gives it if it's ready, or says when it will be
+					State.fire("Claim", z.claim)
+				elseif z.window then
 					UI.open(z.window)
 				end
-			elseif z.window and UI.isOpen(z.window) then
+			elseif not z.claim and z.window and UI.isOpen(z.window) then
 				UI.close()
 			end
 		end

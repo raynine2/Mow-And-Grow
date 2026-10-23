@@ -57,11 +57,11 @@ end
 -- pads in front of Chop A Forest's stalls: bright strips, a tinted fill and rising wisps (server/LobbyPads).
 -- With `window`, stepping on it opens that window (client/LobbyFX). The generated world's lobby keeps its plaza
 -- calm: only the pads that open a window get a glowing frame there.
-local function outline(parent: Instance, at: CFrame, centre: Vector3, w: number, d: number, color: Color3, window: string?)
+local function outline(parent: Instance, at: CFrame, centre: Vector3, w: number, d: number, color: Color3, window: string?, claim: string?)
 	if Config.WORLD_GEN and not window then
 		return
 	end
-	LobbyKit.padZone(parent, at * CFrame.new(centre), w, d, color, window)
+	LobbyKit.padZone(parent, at * CFrame.new(centre), w, d, color, window, claim)
 end
 
 -- An invisible part to hang a prompt on.
@@ -273,7 +273,7 @@ local function forgeRewards(m: Instance, at: CFrame)
 	local group = ("GROUP\n+%d 💎"):format(Config.GROUP_GEMS)
 	PropKit.facePanel(m, at, Vector3.new(3.4, 1.7, -3.5), Vector2.new(3.6, 1.7), daily, Color3.new(1, 1, 1))
 	PropKit.facePanel(m, at, Vector3.new(-3.4, 1.7, -3.5), Vector2.new(3.6, 1.7), group, Color3.new(1, 1, 1))
-	outline(m, at, Vector3.new(3.9, 0, -6.6), 7, 6, CYAN, "Rewards")
+	outline(m, at, Vector3.new(3.9, 0, -6.6), 7, 6, CYAN, "Rewards", "daily") -- the daily bay: walk on to claim
 	outline(m, at, Vector3.new(-3.9, 0, -6.6), 7, 6, CYAN, "Rewards")
 	for _, x in { 3.6, -3.6 } do
 		LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(x, 5.6, -2.4), Vector3.new(3, 2, 2), "RewardsFX"), "LobbyFX", { Kind = "sparkle", Color = CYAN })
@@ -301,7 +301,7 @@ local function rewardsStall(world: Instance)
 	local daily, group = rewardTexts()
 	PropKit.facePanel(m, at, Vector3.new(3.9, 6.6, 2.3), Vector2.new(6, 3.4), daily, Color3.new(1, 1, 1))
 	PropKit.facePanel(m, at, Vector3.new(-3.9, 6.6, 2.3), Vector2.new(6, 3.4), group, Color3.new(1, 1, 1))
-	outline(m, at, Vector3.new(3.9, 0, -5), 7, 6, CYAN, "Rewards")
+	outline(m, at, Vector3.new(3.9, 0, -5), 7, 6, CYAN, "Rewards", "daily") -- the daily bay: walk on to claim
 	outline(m, at, Vector3.new(-3.9, 0, -5), 7, 6, CYAN, "Rewards")
 	-- a glowing chest on each counter
 	for _, x in { 3.6, -3.6 } do

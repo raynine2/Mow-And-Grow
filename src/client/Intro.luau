@@ -113,7 +113,9 @@ local function render(dt: number)
 	if not cam or not fn then
 		return
 	end
-	simNow += dt * timeScale
+	-- (tests: the Workspace attribute IntroTestSpeed slows or freezes the film, e.g. 0 to look at a frame)
+	local test = workspace:GetAttribute("IntroTestSpeed")
+	simNow += dt * timeScale * (if type(test) == "number" then test else 1)
 	local cf, fov = fn(math.clamp((simNow - shotStart) / shotLen, 0, 1))
 	local since = simNow - shotStart
 	if whipFrom and since < WHIP_TIME then
@@ -312,6 +314,60 @@ local function streamIn(spots: { Vector3 })
 	end
 end
 
+-- Keeping the camera out of buildings and trees (the camp and the meadow change as the map is edited): a shot is
+-- laid out round its subject at a turn (yaw, degrees); the first turn whose camera spots all see the subject wins.
+local function turn(v: Vector3, deg: number): Vector3
+	return CFrame.Angles(0, math.rad(deg), 0):VectorToWorldSpace(v)
+end
+
+local function sees(from: Vector3, to: Vector3): boolean
+	local skip: { Instance } = {}
+	local set = workspace:FindFirstChild("IntroSet")
+	if set then
+		table.insert(skip, set)
+	end
+	for _, p in Players:GetPlayers() do
+		if p.Character then
+			table.insert(skip, p.Character)
+		end
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = skip
+	params.IgnoreWater = true
+	-- a little past the camera too, so it doesn't sit flush against a wall
+	local dir = from - to
+	return workspace:Raycast(to, dir + dir.Unit * 2.5, params) == nil
+end
+
+local YAWS = { 0, 25, -25, 50, -50, 75, -75, 100, -100, 130, -130, 160, -160, 180 }
+
+-- The turn (from `yaws`, default YAWS, earlier ones win ties) whose spots(yaw) see `target(yaw)` best: every spot
+-- must see it, and with `spread` the points that far to its left and right count too (so nothing sits at the
+-- edges of the frame either). If no turn is clear, the one that comes closest.
+local function freeYaw(spots: (number) -> { Vector3 }, target: (number) -> Vector3, yaws: { number }?, spread: number?): number
+	local list = yaws or YAWS
+	local best, bestScore = list[1], -1
+	for _, y in list do
+		local score = 0
+		local t = target(y)
+		for _, at in spots(y) do
+			if sees(at, t) then
+				score += 2
+			end
+			if spread then
+				local side = (t - at):Cross(UP)
+				side = if side.Magnitude > 0.01 then side.Unit * spread else Vector3.zero
+				score += (if sees(at, t + side) then 1 else 0) + (if sees(at, t - side) then 1 else 0)
+			end
+		end
+		if score > bestScore then
+			best, bestScore = y, score
+		end
+	end
+	return best
+end
+
 -------------------------------------------------------------------------------------------------------------
 -- the film, shot by shot
 -------------------------------------------------------------------------------------------------------------
@@ -352,8 +408,13 @@ local function meadowShots(P: Plan): boolean
 	if not ok then
 		return false
 	end
-	local top = P.thick - P.dirK * 34 + UP * 38
-	local far = P.thick + P.dirK * 40
+	local craneYaw = freeYaw(function(y)
+		return { P.thick - turn(P.dirK, y) * 34 + UP * 38 }
+	end, function()
+		return P.thick + UP * 20
+	end, { 0, 15, -15, 30, -30, 45, -45 })
+	local top = P.thick - turn(P.dirK, craneYaw) * 34 + UP * 38
+	local far = P.thick + turn(P.dirK, craneYaw) * 40
 	return run(2.6, function(k)
 		local e = ease(k)
 		local p = P.m1:Lerp(top, e)
@@ -387,10 +448,17 @@ local function partyShots(P: Plan, actors: { IntroCast.Actor }): boolean
 			end)
 		end)
 	end
-	local wideFrom = P.cast + P.fwd * 17 + UP * 1.6
+	-- off to one side of the mayor (he stands between the party and the camp centre)
+	local dropYaw = freeYaw(function(y)
+		return { P.cast + turn(P.fwd, y) * 16 + UP * 2.6 }
+	end, function()
+		return P.cast + UP * 4
+	end, { 60, -60, 80, -80, 45, -45, 100, -100 })
+	local dropDir = turn(P.fwd, dropYaw)
+	local wideFrom = P.cast + dropDir * 16 + UP * 2.6
 	local okDrop = run(1.0 + 0.32 * n, function(k)
-		local p = wideFrom + P.fwd * (-2.5 * ease(k)) + UP * (0.8 * k)
-		return CFrame.lookAt(p, P.cast + UP * 4.5), 64
+		local p = wideFrom + dropDir * (-2.5 * ease(k)) + UP * (0.8 * k)
+		return CFrame.lookAt(p, P.cast + UP * 4.2), 64
 	end)
 	if not okDrop then
 		return false
@@ -428,9 +496,9 @@ local function mayorShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: string
 	IntroUi.say(MAYOR, "Mowers! At last, you've come!")
 	IntroUi.lowerThird(MAYOR, "Mayor of Spawn Village", RED, 1.9)
 	local ok = run(2.6, function(k)
-		local d = 11 - easeOut(k) * 2
-		local p = head + front * d + P.right * 2.4 - UP * 1.6
-		return CFrame.lookAt(p, head - UP * 0.9), 50
+		local d = 13 - easeOut(k) * 2
+		local p = head + front * d + P.right * 2.4 - UP * 1.4
+		return CFrame.lookAt(p, head - UP * 0.6), 50
 	end)
 	if not ok then
 		return false
@@ -439,11 +507,20 @@ local function mayorShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: string
 	mode.value = "idle"
 	flashback(true)
 	IntroUi.say(MAYOR, "Long ago, this valley was the tidiest lawn in the land...", 34)
+	local function flashPath(y: number): (Vector3, Vector3, Vector3)
+		local d = turn(P.dirK, y)
+		local side = d:Cross(UP)
+		return P.thick - d * 46 + UP * 30 - side * 14, P.thick - d * 26 + UP * 24 + side * 10, P.thick + d * 25
+	end
+	local flashYaw = freeYaw(function(y)
+		local a, b = flashPath(y)
+		return { a, a:Lerp(b, 0.5), b }
+	end, function()
+		return P.thick + UP * 20
+	end, nil, 36)
+	local fa, fb, flook = flashPath(flashYaw)
 	ok = run(3.8, function(k)
-		local e = ease(k)
-		local side = P.dirK:Cross(UP)
-		local p = (P.thick - P.dirK * 46 + UP * 26 - side * 14):Lerp(P.thick - P.dirK * 26 + UP * 20 + side * 10, e)
-		return CFrame.lookAt(p, P.thick + P.dirK * 25), 58
+		return CFrame.lookAt(fa:Lerp(fb, ease(k)), flook), 58
 	end)
 	flashback(false)
 	if not ok then
@@ -453,13 +530,20 @@ local function mayorShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: string
 	IntroUi.say(MAYOR, "Then the grass came back... and it NEVER stopped growing!")
 	Sound.playAt("rustle", 0.55, 0.7)
 	shake(1.2, 3)
-	local subject = P.thick + UP * 4
+	local subject = P.thick + UP * 15
+	local zoomYaw = freeYaw(function(y)
+		local d = turn(P.dirK, y)
+		return { subject - d * 16 + UP * 4, subject - d * 29 + UP * 4.6, subject - d * 42 + UP * 5.5 }
+	end, function()
+		return subject
+	end, nil, 24)
+	local zoomDir = turn(P.dirK, zoomYaw)
 	local width = 2 * 16 * math.tan(math.rad(37))
 	ok = run(3.0, function(k)
 		local d = 16 + ease(k) * 26
-		local p = subject - P.dirK * d + UP * (1 + k * 1.5)
+		local p = subject - zoomDir * d + UP * (4 + k * 1.5)
 		local fov = math.deg(2 * math.atan(width / (2 * d)))
-		return CFrame.lookAt(p, subject + UP * 2), fov
+		return CFrame.lookAt(p, subject + UP * 1), fov
 	end)
 	if not ok then
 		return false
@@ -507,8 +591,15 @@ local function crateShot(P: Plan, actors: { IntroCast.Actor }, mode: { value: st
 		end)
 	end)
 	local look = mid + UP * 2.5
+	local crateYaw = freeYaw(function(y)
+		local r, f = turn(P.right, y), turn(P.fwd, y)
+		return { mid + r * 19 - f * 4 + UP * 5, mid + r * 16 - f * 4 + UP * 6.5 }
+	end, function()
+		return look
+	end, { 0, 180, 20, -20, 160, -160, 40, -40 })
+	local cr, cf = turn(P.right, crateYaw), turn(P.fwd, crateYaw)
 	local ok = run(3.6, function(k)
-		local p = mid + P.right * (19 - k * 3) - P.fwd * 4 + UP * (5 + k * 1.5)
+		local p = mid + cr * (19 - k * 3) - cf * 4 + UP * (6.5 + k * 1.5)
 		return CFrame.lookAt(p, look), 58
 	end)
 	if closeTitle then
@@ -661,7 +752,11 @@ local function play()
 	end)
 	cam.CameraType = Enum.CameraType.Scriptable
 	RunService:BindToRenderStep("MowIntro", Enum.RenderPriority.Camera.Value + 2, render)
-	task.delay(TIMEOUT, finish)
+	task.delay(TIMEOUT, function()
+		if workspace:GetAttribute("IntroTestSpeed") == nil then
+			finish()
+		end
+	end)
 	Soundscape.duck(0.5, 4)
 	musicOn()
 	-- the black cover is up: stream in the far-off places the camera visits

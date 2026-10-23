@@ -107,6 +107,7 @@ local function face(card: Part, side: Enum.NormalId): Face
 		t.TextSize = size
 		t.TextScaled = false
 		t.TextColor3 = Color3.new(1, 1, 1)
+		t.Text = "" -- (not Roblox's default "Label" before the first card is set)
 		t.Parent = holder
 		local s = Instance.new("UIStroke")
 		s.Color = Color3.fromRGB(26, 12, 56)
@@ -320,7 +321,13 @@ end
 local function scan()
 	for _, d in workspace:GetDescendants() do
 		if d:IsA("BasePart") and d:GetAttribute("ClassHolo") and not holos[d] then
-			holos[d] = build(d)
+			local h = build(d)
+			holos[d] = h
+			-- show a card straight away (the loop only fills it in once you're near)
+			local list = stock()
+			if list[1] then
+				setClass(h, list[1])
+			end
 		end
 	end
 	for lens, h in holos do

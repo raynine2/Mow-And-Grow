@@ -1236,6 +1236,149 @@ local function stockToast(c)
 	end)
 end
 
+-- The reveal's "umph" (the owner's hatch brief, same hype for classes): a shockwave ring (two for Legendary+, gold
+-- then the rarity colour), stars bursting out of the card, and a short shake of the whole reveal.
+local REVEAL_RANK = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6, Secret = 7 }
+local function revealBurst(root: GuiObject, c, cx: number, cy: number)
+	local rc = Config.RARITY_COLORS[c.rarity] or Color3.new(1, 1, 1)
+	local rank = REVEAL_RANK[c.rarity] or 1
+	local big = rank >= 5
+	local ringImg = Config.ICONS.ring or ""
+	for k = 1, if big then 2 else 1 do
+		local ring = Instance.new("ImageLabel")
+		ring.Name = "Shockwave"
+		ring.BackgroundTransparency = 1
+		ring.Image = ringImg
+		ring.ImageColor3 = if k == 1 and big then GOLD else rc
+		ring.ImageTransparency = 0.15
+		ring.AnchorPoint = Vector2.new(0.5, 0.5)
+		ring.Position = UDim2.fromOffset(cx, cy)
+		ring.Size = UDim2.fromOffset(120, 120)
+		ring.ZIndex = 62
+		ring.Parent = root
+		local info = TweenInfo.new(if big then 0.75 else 0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, (k - 1) * 0.16)
+		local size = if big then 1100 else 760
+		TweenService:Create(ring, info, { Size = UDim2.fromOffset(size, size), ImageTransparency = 1 }):Play()
+	end
+	-- stars bursting out of the card
+	for k = 1, if big then 26 else 14 do
+		local star = Instance.new("ImageLabel")
+		star.BackgroundTransparency = 1
+		star.Image = STAR_IMG
+		star.ImageColor3 = if c.rarity == "Secret" then Color3.fromHSV(math.random(), 0.6, 1) elseif k % 3 == 0 then Color3.new(1, 1, 1) else rc:Lerp(Color3.new(1, 1, 1), 0.25)
+		star.AnchorPoint = Vector2.new(0.5, 0.5)
+		star.Position = UDim2.fromOffset(cx, cy)
+		local sz = math.random(16, if big then 40 else 30)
+		star.Size = UDim2.fromOffset(sz, sz)
+		star.Rotation = math.random(0, 360)
+		star.ZIndex = 63
+		star.Parent = root
+		local a = (k / (if big then 26 else 14)) * math.pi * 2 + math.random() * 0.4
+		local dist = math.random(220, if big then 480 else 340)
+		local t = 0.55 + math.random() * 0.35
+		TweenService:Create(star, TweenInfo.new(t, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+			Position = UDim2.fromOffset(cx + math.cos(a) * dist, cy + math.sin(a) * dist * 0.8),
+			Rotation = star.Rotation + math.random(-200, 200),
+			ImageTransparency = 1,
+			Size = UDim2.fromOffset(sz * 0.4, sz * 0.4),
+		}):Play()
+	end
+	-- a short shake, harder for the rare ones
+	local amp = if big then 16 else 8
+	local base = root.Position
+	task.spawn(function()
+		local t0 = os.clock()
+		while root.Parent and os.clock() - t0 < 0.35 do
+			local k = 1 - (os.clock() - t0) / 0.35
+			root.Position = base + UDim2.fromOffset((math.random() - 0.5) * 2 * amp * k, (math.random() - 0.5) * 2 * amp * k)
+			RunService.RenderStepped:Wait()
+		end
+		if root.Parent then
+			root.Position = base
+		end
+	end)
+end
+
+-- The charge-up before a reveal: the card appears face down on a dark screen, glows through in the rarity colour
+-- and shakes harder and faster while rising ticks play; Legendary and up fake you out (the glow starts Epic purple
+-- and jumps to the real colour with a ping). Rarer = longer. Then the reveal flashes in over it.
+local CHARGE = { Common = 0.35, Uncommon = 0.4, Rare = 0.6, Epic = 0.75, Legendary = 1.05, Mythic = 1.2, Secret = 1.5 }
+local function charge(c, onDone: () -> ())
+	local rc = Config.RARITY_COLORS[c.rarity] or Color3.new(1, 1, 1)
+	local rank = REVEAL_RANK[c.rarity] or 1
+	local fake = rank >= 5
+	local dur = CHARGE[c.rarity] or 0.5
+	local root = Instance.new("Frame")
+	root.Name = "ClassCharge"
+	root.BackgroundTransparency = 1
+	root.Size = UDim2.fromOffset(1280, 720)
+	root.Position = UDim2.fromScale(0.5, 0.5)
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.ZIndex = 59
+	root.Parent = UI.gui
+	local tint = UI.frame({ size = UDim2.fromScale(4, 4), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = if GUILD then Color3.fromRGB(28, 18, 6) else Color3.fromRGB(22, 6, 42), parent = root, radius = 0, outline = 0, name = "Tint" })
+	tint.BackgroundTransparency = 1
+	TweenService:Create(tint, TweenInfo.new(0.2), { BackgroundTransparency = 0.15 }):Play()
+	local glow = Instance.new("ImageLabel")
+	glow.Name = "Glow"
+	glow.BackgroundTransparency = 1
+	glow.Image = Config.ICONS.glow_soft or ""
+	glow.ImageColor3 = if fake then Config.RARITY_COLORS.Epic else rc
+	glow.ImageTransparency = 0.7
+	glow.AnchorPoint = Vector2.new(0.5, 0.5)
+	glow.Position = UDim2.fromOffset(640, 336)
+	glow.Size = UDim2.fromOffset(260, 330)
+	glow.ZIndex = 60
+	glow.Parent = root
+	local back = UI.frame({ size = UDim2.fromOffset(174, 240), pos = UDim2.fromOffset(640, 336), anchor = Vector2.new(0.5, 0.5), color = NAVY, parent = root, radius = 14, outline = 4, name = "Back" })
+	back.ZIndex = 61
+	local stroke = back:FindFirstChildOfClass("UIStroke") :: UIStroke
+	stroke.Color = glow.ImageColor3
+	local mark = UI.text(back, "?", UDim2.fromScale(1, 1), { stroke = 3, color = Color3.fromRGB(235, 225, 255) })
+	mark.TextScaled = true
+	mark.ZIndex = 62
+	local sc = Instance.new("UIScale")
+	sc.Scale = 0.2
+	sc.Parent = back
+	TweenService:Create(sc, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	Sound.play("whoosh")
+	local t0 = os.clock()
+	local nextTick = 0.18
+	local faked = false
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - t0
+		local p = math.clamp(t / dur, 0, 1)
+		-- shake harder and faster as it charges
+		local amp = 2 + 14 * p * p
+		local freq = 10 + 26 * p
+		back.Rotation = math.sin(t * freq) * amp
+		back.Position = UDim2.fromOffset(640 + math.sin(t * freq * 1.3) * amp * 0.4, 336)
+		glow.ImageTransparency = 0.7 - 0.55 * p
+		local gs = 1 + 0.35 * p + math.sin(t * 20) * 0.03 * p
+		glow.Size = UDim2.fromOffset(260 * gs, 330 * gs)
+		if t >= nextTick and p < 1 then
+			Sound.playAt("rareChime", 0.7 + p * 0.9, 0.18)
+			nextTick += math.max(0.08, 0.22 - 0.14 * p)
+		end
+		if fake and not faked and p >= 0.7 then
+			faked = true
+			glow.ImageColor3 = rc
+			stroke.Color = rc
+			sc.Scale = 1.12
+			TweenService:Create(sc, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			Sound.playAt("rareChime", 1.9, 0.4)
+		end
+		if p >= 1 then
+			conn:Disconnect()
+			onDone()
+			task.delay(0.08, function()
+				root:Destroy()
+			end)
+		end
+	end)
+end
+
 -- The full-screen reveal, timed off Chop A Forest at 120 fps:
 --   0.00 s  a white flash (90%) over everything, fading out linearly in 0.5 s onto a dark purple dim (85%)
 --           the card pops from 30% size: Back out over 0.65 s (peaks ~107% at 0.37 s, settles by 0.65 s)
@@ -1268,7 +1411,7 @@ local function reveal(c, line: string, confetti: boolean)
 	for i = 0, 7 do -- 8 bars through the centre = 16 rays
 		local r = Instance.new("Frame")
 		r.BorderSizePixel = 0
-		r.BackgroundColor3 = Color3.fromRGB(255, 200, 70)
+		r.BackgroundColor3 = if c.rarity == "Secret" then Color3.fromHSV(i / 8, 0.55, 1) else rc:Lerp(Color3.fromRGB(255, 236, 170), 0.3)
 		r.BackgroundTransparency = 1
 		r.Size = UDim2.new(0, 64, 1, 0)
 		r.Position = UDim2.fromScale(0.5, 0.5)
@@ -1345,6 +1488,7 @@ local function reveal(c, line: string, confetti: boolean)
 	if confetti then
 		Confetti.burst(90)
 	end
+	revealBurst(root, c, CX, CY)
 	task.delay(2.3, function()
 		TweenService:Create(pop, TweenInfo.new(0.43, Enum.EasingStyle.Linear), { Scale = 0.1 }):Play()
 		local out = TweenInfo.new(0.5, Enum.EasingStyle.Linear)
@@ -1585,7 +1729,9 @@ function ClassDeal.refresh()
 				-- the big card switches to it under the flash
 				selected = shown.id
 				ClassDeal.refresh()
-				reveal(shown, string.upper(shown.rarity) .. " IN STOCK!", false)
+				charge(shown, function()
+					reveal(shown, string.upper(shown.rarity) .. " IN STOCK!", false)
+				end)
 			end)
 		end
 	end
@@ -1600,7 +1746,9 @@ function ClassDeal.refresh()
 			if not lastOwned[id] then
 				local nc = Config.class(id)
 				if nc then
-					reveal(nc, "IS YOURS!", true)
+					charge(nc, function()
+						reveal(nc, "IS YOURS!", true)
+					end)
 				end
 			end
 		end
@@ -1679,11 +1827,14 @@ UI.register("Classes", { frame = holder, refresh = ClassDeal.refresh, pop = {}, 
 -- the 3D class room behind the window while it's open (the HUD steps aside, like Chop A Forest's full screen)
 -- the dev-only overlays (VFX LAB toggle, DEV button) step aside too, and come back as they were
 local devHidden: { [Instance]: boolean } = {}
+local wasClasses = false
 UI.onWindowChanged.Event:Connect(function(name)
+	-- only when the class screen opens or closes (other things, e.g. the egg hatch, hide the HUD too)
 	local hud = UI.gui:FindFirstChild("Hud")
-	if hud and hud:IsA("GuiObject") then
+	if hud and hud:IsA("GuiObject") and (name == "Classes") ~= wasClasses then
 		hud.Visible = name ~= "Classes"
 	end
+	wasClasses = name == "Classes"
 	local pg = player:FindFirstChildOfClass("PlayerGui")
 	local lab = pg and pg:FindFirstChild("VFXLabUI")
 	local devButton = UI.gui:FindFirstChild("DevButton")

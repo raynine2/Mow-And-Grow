@@ -33,6 +33,7 @@ local Confetti = require(modules:WaitForChild("Confetti"))
 
 local HatchFx = {}
 HatchFx.busy = false
+HatchFx.timeScale = 1 -- tests: slow the hatch down to look at it frame by frame
 
 local TEX = if okAssets and type(Assets) == "table" then Assets.Tex else {}
 local ICONS = if okIcons and type(IconIds) == "table" then IconIds else {}
@@ -56,6 +57,20 @@ local RAINBOW = ColorSequence.new({
 
 -- timeline (seconds): drop, land, wobble + cracks, swell, burst, reveal
 local T = { land = 0.4, wobble = 0.7, crack = { 1.15, 1.7, 2.2 }, swell = 2.35, burst = 2.55, click = 3.2 }
+-- The wobble comes in kicks (seconds after T.wobble, strength), not a steady shake: the egg sits still between
+-- them, the gaps get shorter and the kicks harder (timing: wide spacing reads calm, tight spacing reads urgent).
+-- A kick lands just before each crack, so the kick is what cracks it.
+local KICKS = {
+	{ 0.0, 0.35 },
+	{ 0.4, 0.55 },
+	{ 0.62, 0.45 },
+	{ 0.95, 0.75 },
+	{ 1.12, 0.6 },
+	{ 1.26, 0.85 },
+	{ 1.38, 0.8 },
+	{ 1.5, 1 },
+	{ 1.58, 0.9 },
+}
 
 local function rarityColor(r: string, t: number?): Color3
 	if r == "Secret" then
@@ -105,6 +120,24 @@ local function billboardPlane(parent: Instance, size: number, texture: string, c
 	d.Transparency = transparency
 	d.Parent = p
 	return p, d
+end
+
+-- Rays behind the eggs: a camera-facing image on a BillboardGui, so it always faces you; the eggs still hide it.
+local function rayBoard(parent: Instance, texture: string): (Part, ImageLabel)
+	local p = part(parent, Vector3.one, Color3.new(1, 1, 1))
+	p.Transparency = 1
+	local g = Instance.new("BillboardGui")
+	g.Adornee = p
+	g.LightInfluence = 0
+	g.Size = UDim2.fromOffset(0, 0)
+	g.Parent = p
+	local img = Instance.new("ImageLabel")
+	img.BackgroundTransparency = 1
+	img.Size = UDim2.fromScale(1, 1)
+	img.Image = texture
+	img.ImageTransparency = 1
+	img.Parent = g
+	return p, img
 end
 
 local function emitter(parent: Instance, props: { [string]: any }): ParticleEmitter
@@ -233,18 +266,20 @@ local function tintCracks(e: Egg, color: Color3)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- the stage: frozen camera, soft dark backdrop, rays, light
+-- the stage: frozen camera, blurred world, rays, light
 -------------------------------------------------------------------------------------------------------------
 type Stage = {
 	cam: Camera,
 	camCF: CFrame,
 	oldType: Enum.CameraType,
+	hide: { Instance },
+	signs: { BillboardGui },
+	raysAt: CFrame,
 	folder: Folder,
-	backdrop: Part,
 	rays: Part,
-	raysDecal: Decal,
+	raysDecal: ImageLabel,
 	rays2: Part,
-	rays2Decal: Decal,
+	rays2Decal: ImageLabel,
 	dof: DepthOfFieldEffect,
 	cc: ColorCorrectionEffect,
 	gui: ScreenGui,
@@ -273,10 +308,25 @@ local function buildStage(): Stage
 	s.oldType = cam.CameraType
 	cam.CameraType = Enum.CameraType.Scriptable
 	s.folder = folder
-	-- the world behind goes dark and out of focus (the eggs stay sharp: depth of field focuses on them)
-	s.backdrop = part(folder, Vector3.new(600, 600, 1), Color3.fromRGB(8, 8, 18), Enum.Material.SmoothPlastic, "Backdrop")
-	s.backdrop.Transparency = 1
-	s.backdrop.CFrame = stageAt(s, 0, 0, DIST + 30)
+	-- the world behind stays as it is, just out of focus (depth of field keeps the eggs sharp)
+	-- your own character would stand between the camera and the eggs: hide it while the hatch plays
+	s.hide = {}
+	-- world signs and name tags (e.g. your own VIP tag) would float over the eggs: switch them off meanwhile
+	s.signs = {}
+	for _, g in workspace:GetDescendants() do
+		if g:IsA("BillboardGui") and g.Enabled then
+			g.Enabled = false
+			table.insert(s.signs, g)
+		end
+	end
+	local char = Players.LocalPlayer.Character
+	if char then
+		for _, d in char:GetDescendants() do
+			if d:IsA("BasePart") or d:IsA("Decal") then
+				table.insert(s.hide, d)
+			end
+		end
+	end
 	s.dof = Instance.new("DepthOfFieldEffect")
 	s.dof.Name = "HatchDOF"
 	s.dof.FocusDistance = DIST
@@ -287,18 +337,17 @@ local function buildStage(): Stage
 	s.cc = Instance.new("ColorCorrectionEffect")
 	s.cc.Name = "HatchGrade"
 	s.cc.Parent = Lighting
-	TweenService:Create(s.backdrop, TweenInfo.new(0.35), { Transparency = 0.32 }):Play()
 	TweenService:Create(s.dof, TweenInfo.new(0.35), { FarIntensity = 0.75 }):Play()
 	-- rays behind the eggs (hidden until a crack lights them)
-	s.rays, s.raysDecal = billboardPlane(folder, 30, RAYS, Color3.new(1, 1, 1), 1)
-	s.rays2, s.rays2Decal = billboardPlane(folder, 22, TEX.VS_Starburst or RAYS, Color3.new(1, 1, 1), 1)
+	s.rays, s.raysDecal = rayBoard(folder, RAYS)
+	s.rays2, s.rays2Decal = rayBoard(folder, TEX.VS_Starburst or RAYS)
 	-- a soft key light so the eggs read well day or night
 	local key = part(folder, Vector3.one, Color3.new(1, 1, 1), nil, "KeyLight")
 	key.Transparency = 1
-	key.CFrame = stageAt(s, 2, 4, DIST - 6)
+	key.CFrame = stageAt(s, 1, 0.5, DIST - 4)
 	local l = Instance.new("PointLight")
-	l.Brightness = 1.6
-	l.Range = 18
+	l.Brightness = 0.8
+	l.Range = 7
 	l.Color = Color3.fromRGB(255, 246, 230)
 	l.Parent = key
 	s.gui = Instance.new("ScreenGui")
@@ -579,7 +628,7 @@ local function revealPet(s: Stage, e: Egg)
 	local def = e.pet
 	local m = PetFollow.build(def.look)
 	local bsCF, bsSize = m:GetBoundingBox()
-	local want = 3.0 * e.scale * (1 + (e.rank - 1) * 0.06)
+	local want = 3.6 * e.scale * (1 + (e.rank - 1) * 0.06)
 	m:ScaleTo(want / math.max(bsSize.X, bsSize.Y, bsSize.Z, 0.1))
 	bsCF = m:GetBoundingBox()
 	for _, d in m:GetDescendants() do
@@ -595,7 +644,7 @@ local function revealPet(s: Stage, e: Egg)
 	e.petPieces = capture(m, bsCF)
 	-- soft glow behind it in its colour
 	local color = rarityColor(def.rarity)
-	local halo, hd = billboardPlane(s.folder, 7 * e.scale, TEX.Glow or RAYS, color, 0.25)
+	local halo, hd = billboardPlane(s.folder, 7 * e.scale, TEX.Glow or RAYS, color, 0.62)
 	e.halo, e.haloDecal = halo, hd
 end
 
@@ -621,20 +670,35 @@ local function updateEgg(s: Stage, e: Egg, t: number)
 		local q = math.sin(a * math.pi) * (1 - a * 0.4)
 		sy, sx = 1 - 0.24 * q + 0.05 * math.sin(a * math.pi * 2), 1 + 0.16 * q
 	elseif tl < T.swell then
-		-- wobble: harder and faster as it goes; a little hop on the big kicks
-		local a = clamp01((tl - T.wobble) / (T.swell - T.wobble))
-		local amp = math.rad(4 + 20 * a * a)
-		local freq = 3 + 7 * a
-		local ph = (tl - T.wobble) * freq * math.pi * 2
-		rot = CFrame.Angles(math.sin(ph * 0.5) * amp * 0.35, 0, math.sin(ph) * amp)
-		up = Vector3.new(0, math.max(0, math.sin(ph * 2)) * 0.12 * a * e.scale, 0)
-		sy = 1 + math.sin(ph * 2) * 0.03 * a
-		sx = 1 - math.sin(ph * 2) * 0.02 * a
+		-- the kicks: each one a quick rock that dies away, with a hop and a squash as it starts
+		local w = tl - T.wobble
+		local a = clamp01(w / (T.swell - T.wobble))
+		local roll, pitch, lift, squash = 0, 0, 0, 0
+		for i, k in KICKS do
+			local d = w - k[1]
+			if d >= 0 and d < 0.9 then
+				local side = if i % 2 == 0 then -1 else 1
+				local decay = math.exp(-d * 6.5)
+				roll += math.sin(d * math.pi * 2 * 4.2) * decay * k[2] * math.rad(22) * side
+				pitch += math.sin(d * math.pi * 2 * 2.6) * decay * k[2] * math.rad(6)
+				if d < 0.16 then
+					lift += math.sin(d / 0.16 * math.pi) * k[2] * 0.3
+				end
+				squash += math.exp(-d * 14) * k[2]
+			end
+		end
+		-- between kicks only a faint tremble, which grows as it gets close
+		local tremble = math.sin(tl * 70) * math.rad(0.6 + 1.4 * a)
+		rot = CFrame.Angles(pitch, 0, roll + tremble)
+		up = Vector3.new(0, lift * e.scale, 0)
+		sy = 1 - 0.08 * squash + 0.04 * lift
+		sx = 1 + 0.05 * squash
 	else
-		-- swell before the burst
-		local a = clamp01((tl - T.swell) / (T.burst - T.swell))
-		sx, sy = 1 + 0.12 * a, 1 + 0.1 * a
-		rot = CFrame.Angles(0, 0, math.sin(tl * 80) * math.rad(3))
+		-- swell fast, then hold almost still for a beat: the calm right before the pop makes the pop land
+		local a = clamp01((tl - T.swell) / 0.09)
+		local e2 = 1 - (1 - a) ^ 3
+		sx, sy = 1 + 0.12 * e2, 1 + 0.1 * e2
+		rot = CFrame.Angles(0, 0, math.sin(tl * 90) * math.rad(0.8))
 	end
 	poseEgg(e, h * CFrame.new(up) * rot, sx, sy)
 end
@@ -643,18 +707,40 @@ local function updatePet(s: Stage, e: Egg, t: number)
 	if not e.petModel then
 		return
 	end
-	local tl = t - T.burst - e.delay
-	local a = clamp01(tl / 0.65)
-	-- jump: up and back down, growing with an overshoot, spinning once
-	local hop = math.sin(a * math.pi) * 2.4 * e.scale
-	local grow = if a < 1 then easeOutBack(a) else 1
-	local spin = if a < 1 then (1 - (1 - a) ^ 3) * math.pi * 2 else 0
-	local idle = if a >= 1 then math.sin((tl - 0.65) * 2.4) * 0.18 * e.scale else 0
-	local sway = if a >= 1 then math.sin((tl - 0.65) * 1.3) * math.rad(10) else 0
+	local tl = math.max(0, t - T.burst - e.delay)
+	-- the pop, timed like a jump: shoot up fast, hang at the top, drop, squash on landing, settle
+	local POP = { up = 0.16, hang = 0.3, down = 0.14, land = 0.3 }
+	local top = 2.6 * e.scale
+	local hop, sy = 0, 1
+	local landAt = POP.up + POP.hang + POP.down
+	local done = landAt + POP.land
+	if tl < POP.up then
+		local a = tl / POP.up
+		hop = top * (1 - (1 - a) ^ 2) -- fast out, easing into the top
+		sy = 1 + 0.18 * (1 - a) -- stretched on the way up
+	elseif tl < POP.up + POP.hang then
+		local a = (tl - POP.up) / POP.hang
+		hop = top + math.sin(a * math.pi) * 0.25 * e.scale -- floats a little at the top
+	elseif tl < landAt then
+		local a = (tl - POP.up - POP.hang) / POP.down
+		hop = top * (1 - a * a) -- falls faster and faster
+		sy = 1 + 0.12 * a
+	elseif tl < done then
+		local a = (tl - landAt) / POP.land
+		sy = 1 - 0.22 * math.exp(-a * 5) * math.cos(a * math.pi * 2.2) -- squash, bounce back, settle
+	end
+	-- grows in fast with a small overshoot; turns once, done by the top so it faces you while it hangs
+	local grow = easeOutBack(clamp01(tl / (POP.up + 0.12)))
+	local spin = (1 - (1 - clamp01(tl / (POP.up + 0.14))) ^ 3) * math.pi * 2
+	local after = tl - done
+	local idle = if after > 0 then math.sin(after * 2.4) * 0.18 * e.scale * math.min(1, after * 2) else 0
+	local sway = if after > 0 then math.sin(after * 1.3) * math.rad(10) * math.min(1, after) else 0
 	local base = e.home * CFrame.new(0, 1.7 * e.scale + hop + idle, 0) * CFrame.Angles(0, spin + sway, 0)
 	local k = math.max(grow, 0.05)
+	local scaleV = Vector3.new(k / math.sqrt(sy), k * sy, k / math.sqrt(sy))
+	local a = clamp01(tl / done)
 	for _, p in e.petPieces do
-		p.part.CFrame = base * CFrame.new(p.rel.Position * k) * p.rel.Rotation
+		p.part.CFrame = base * CFrame.new(p.rel.Position * scaleV) * p.rel.Rotation
 		if a < 1 and not p.part:GetAttribute("Size0") then
 			p.part:SetAttribute("Size0", p.part.Size)
 		end
@@ -680,15 +766,19 @@ local function updateStage(s: Stage, dt: number)
 	local glowA = clamp01((t - T.crack[1]) / 1.2)
 	local raysOn = if s.revealed then 1 else glowA * 0.5
 	local size = 22 + s.tier * 3 + (if s.revealed and s.tier >= BIG then 14 else 0)
-	s.rays.Size = Vector3.new(size, size, 0.05)
-	s.rays.CFrame = stageAt(s, 0, 0.4, DIST + 4) * CFrame.Angles(0, 0, t * (0.25 + s.tier * 0.05))
-	s.raysDecal.Transparency = 1 - raysOn * (0.25 + s.tier * 0.06)
-	s.rays2.Size = Vector3.new(size * 0.7, size * 0.7, 0.05)
-	s.rays2.CFrame = stageAt(s, 0, 0.4, DIST + 3.8) * CFrame.Angles(0, 0, -t * 0.4)
-	s.rays2Decal.Transparency = 1 - raysOn * 0.35
+	local board = s.rays:FindFirstChildOfClass("BillboardGui") :: BillboardGui
+	board.Size = UDim2.new(size, 0, size, 0)
+	s.rays.CFrame = s.raysAt
+	s.raysDecal.Rotation = math.deg(t * (0.25 + s.tier * 0.05))
+	s.raysDecal.ImageTransparency = 1 - raysOn * math.min(0.9, 0.35 + s.tier * 0.08)
+	local board2 = s.rays2:FindFirstChildOfClass("BillboardGui") :: BillboardGui
+	board2.Size = UDim2.new(size * 0.7, 0, size * 0.7, 0)
+	s.rays2.CFrame = s.raysAt * CFrame.new(0, 0, -0.2)
+	s.rays2Decal.Rotation = -math.deg(t * 0.4)
+	s.rays2Decal.ImageTransparency = 1 - raysOn * (0.3 + s.tier * 0.05)
 	local col = if s.tier >= RANK.Secret then rarityColor("Secret", t) else s.color
-	s.raysDecal.Color3 = col
-	s.rays2Decal.Color3 = col:Lerp(Color3.new(1, 1, 1), 0.4)
+	s.raysDecal.ImageColor3 = col
+	s.rays2Decal.ImageColor3 = col:Lerp(Color3.new(1, 1, 1), 0.4)
 	-- camera shake (decays)
 	s.shake = math.max(0, s.shake - dt * 2.6)
 	local j = s.shake * s.shake
@@ -702,7 +792,7 @@ local function layout(n: number): { { x: number, y: number, scale: number } }
 	local out = {}
 	local rows = if n > 5 then 2 else 1
 	local perRow = math.ceil(n / rows)
-	local scale = if n == 1 then 1.35 elseif rows == 1 then 0.85 else 0.68
+	local scale = if n == 1 then 1.5 elseif rows == 1 then 0.85 else 0.68
 	local gap = if n == 1 then 0 elseif rows == 1 then 4.6 else 3.7
 	for i = 1, n do
 		local row = (i - 1) // perRow
@@ -790,7 +880,7 @@ local function doCrack(s: Stage, stage: number)
 			s.shake = math.max(s.shake, 0.7)
 		end
 		e.glow.Color = c
-		e.glow.Brightness = stage * 1.2
+		e.glow.Brightness = stage * 0.7
 	end
 	if stage == 3 and s.tier >= BIG then
 		Sound.play("slam")
@@ -822,8 +912,8 @@ local function doBurst(s: Stage)
 			end
 		end
 		e.model:Destroy()
-		e.glow.Brightness = 3
-		TweenService:Create(e.glow, TweenInfo.new(1.2), { Brightness = 0.8 }):Play()
+		e.glow.Brightness = 2
+		TweenService:Create(e.glow, TweenInfo.new(1.2), { Brightness = 0.25 }):Play()
 		revealPet(s, e)
 	end
 	s.shake = 0.6 + tier * 0.12
@@ -862,7 +952,12 @@ local function close(s: Stage, onDone: (() -> ())?)
 		return
 	end
 	s.closing = true
-	TweenService:Create(s.backdrop, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+	for _, d in s.hide do
+		(d :: any).LocalTransparencyModifier = 0
+	end
+	for _, g in s.signs do
+		g.Enabled = true
+	end
 	TweenService:Create(s.dof, TweenInfo.new(0.3), { FarIntensity = 0 }):Play()
 	TweenService:Create(s.cc, TweenInfo.new(0.3), { Brightness = 0, Saturation = 0, Contrast = 0 }):Play()
 	for _, g in s.gui:GetChildren() do
@@ -887,6 +982,9 @@ local function close(s: Stage, onDone: (() -> ())?)
 	end)
 end
 
+-- The rays sit just behind the eggs, facing the camera.
+local RAYS_DEPTH = DIST + 1.5
+
 -- Play the hatch. `fresh[i]` = pet i is new to this player (NEW! badge). `onDone` runs after it closes.
 function HatchFx.play(eggId: string, ids: { string }, fresh: { boolean }?, onDone: (() -> ())?)
 	local eggDef = Config.egg(eggId)
@@ -906,6 +1004,7 @@ function HatchFx.play(eggId: string, ids: { string }, fresh: { boolean }?, onDon
 		end
 	end
 	s.tier = best
+	s.raysAt = stageAt(s, 0, 0.4, RAYS_DEPTH)
 	s.color = if bestEgg then rarityColor(bestEgg.pet.rarity) else Color3.new(1, 1, 1)
 	if eggDef.id == "GoldenEgg" and best < BIG then
 		s.color = GOLD
@@ -931,24 +1030,25 @@ function HatchFx.play(eggId: string, ids: { string }, fresh: { boolean }?, onDon
 		end
 	end)
 	conn = RunService.RenderStepped:Connect(function(dt)
-		s.t += dt * s.speed
-		local t = s.t
-		-- wobble ticks rise in pitch as it shakes harder
-		if t > T.wobble and t < T.swell + hold then
-			local a = clamp01((t - T.wobble) / (T.swell - T.wobble))
-			local period = 1 / (3 + 7 * a) / 2
-			if t - T.wobble > (ticks + 1) * period then
-				ticks += 1
-				Sound.playAt("click", 0.8 + a * 0.9, 0.5 + a * 0.4)
+		s.t += dt * s.speed * HatchFx.timeScale
+		if not s.closing then
+			for _, d in s.hide do
+				(d :: any).LocalTransparencyModifier = 1
 			end
+		end
+		local t = s.t
+		-- a tick on every kick, higher and louder as they get harder
+		local kick = KICKS[ticks + 1]
+		if kick and t - T.wobble >= kick[1] then
+			ticks += 1
+			Sound.playAt("click", 0.8 + kick[2] * 0.9, 0.45 + kick[2] * 0.45)
 		end
 		while stage < 3 and t >= T.crack[stage + 1] do
 			stage += 1
 			doCrack(s, stage)
 		end
 		if secret and t > T.swell - 0.4 and not burst then
-			-- the world goes dark for the Secret
-			s.backdrop.Transparency = math.max(0.04, s.backdrop.Transparency - dt * 0.8)
+			-- the world dims for the Secret
 			s.cc.Brightness = math.max(-0.35, s.cc.Brightness - dt * 0.4)
 		end
 		if not burst then

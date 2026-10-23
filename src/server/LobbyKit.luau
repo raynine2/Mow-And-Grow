@@ -460,16 +460,19 @@ end
 
 -- The glowing pad in front of a stall (or anywhere): a LobbyPads glow frame tagged so client/LobbyFX can play a
 -- burst (and open `window`) when you step on it.
-function LobbyKit.padZone(parent: Instance, cf: CFrame, w: number, d: number, color: Color3, window: string?)
+-- `claim`: stepping on the pad claims that reward straight away (e.g. "daily") instead of opening `window`.
+function LobbyKit.padZone(parent: Instance, cf: CFrame, w: number, d: number, color: Color3, window: string?, claim: string?)
 	local glow = LobbyPads.glow(parent, cf, w, d, color)
 	local frame = parent:FindFirstChild("GlowFrame")
 	for _, c in parent:GetChildren() do
-		if c.Name == "GlowFrame" and not CollectionService:HasTag(c, "LobbyPadZone") then
+		-- (the calm WORLD_GEN pads are "PadFrame"s; only a claim pad acts as a zone there)
+		local name = c.Name == "GlowFrame" or (claim ~= nil and c.Name == "PadFrame")
+		if name and not CollectionService:HasTag(c, "LobbyPadZone") then
 			frame = c
 		end
 	end
 	if frame then
-		tag(frame, "LobbyPadZone", { Window = window, Color = color })
+		tag(frame, "LobbyPadZone", { Window = window, Color = color, Claim = claim })
 	end
 	return glow
 end

@@ -501,13 +501,19 @@ function IntroCast.hideCharacters(on: boolean)
 					if d:IsA("BasePart") or d:IsA("Decal") then
 						d.LocalTransparencyModifier = 1
 						table.insert(hiddenChars, d)
+					elseif d:IsA("BillboardGui") and d.Enabled then
+						-- name tags (VIP) would float in the shots
+						d.Enabled = false
+						table.insert(hiddenChars, d)
 					end
 				end
 			end
 		end
 	else
 		for _, d in hiddenChars do
-			if d.Parent then
+			if d:IsA("BillboardGui") then
+				d.Enabled = true
+			elseif d.Parent then
 				(d :: any).LocalTransparencyModifier = 0
 			end
 		end

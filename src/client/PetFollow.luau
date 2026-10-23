@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
+local PartBuild = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("PartBuild"))
 
 local PetFollow = {}
 
@@ -17,8 +18,39 @@ local function shade(c: Color3, k: number): Color3
 	return Color3.new(math.clamp(c.R * k, 0, 1), math.clamp(c.G * k, 0, 1), math.clamp(c.B * k, 0, 1))
 end
 
+-- The smooth cartoon critter from Blender (shared/PartModels/pet_<id>, made by tools/blender/models/pet_*.py), if
+-- there is one for this look. Its feet are at y = 0; an invisible Root sits 0.6 up (where the blocky ones have
+-- their body centre), so both kinds follow the same way.
+local function blenderPet(look): Model?
+	for _, def in Config.PETS do
+		if def.look == look then
+			local m = PartBuild.get("pet_" .. string.lower(def.id))
+			if m then
+				local root = Instance.new("Part")
+				root.Name = "Root"
+				root.Size = Vector3.new(0.4, 0.4, 0.4)
+				root.Transparency = 1
+				root.Anchored = true
+				root.CanCollide = false
+				root.CanQuery = false
+				root.CanTouch = false
+				root.CFrame = CFrame.new(0, 0.6, 0)
+				root.Parent = m
+				m.PrimaryPart = root
+				m.Name = "Pet"
+			end
+			return m
+		end
+	end
+	return nil
+end
+
 -- Build a critter. Root = the body; everything is placed relative to it (front = -Z).
 function PetFollow.build(look): Model
+	local smooth = blenderPet(look)
+	if smooth then
+		return smooth
+	end
 	local model = Instance.new("Model")
 	model.Name = "Pet"
 	local function part(name: string, size: Vector3, offset: CFrame, color: Color3, neon: boolean?, transparency: number?): Part
@@ -126,12 +158,94 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- followers
 -------------------------------------------------------------------------------------------------------------
-type Follower = { model: Model, flies: boolean, cf: CFrame, phase: number, parts: { { part: BasePart, rel: CFrame } } }
+type Follower = {
+	model: Model,
+	flies: boolean,
+	cf: CFrame,
+	phase: number,
+	lift: number,
+	parts: { { part: BasePart, rel: CFrame, wing: number } },
+	list: { BasePart },
+	cfs: { CFrame },
+	-- motion state (timing: steps and turns speed up with the player, idle is slow and calm)
+	hop: number, -- hop phase, advances with speed
+	speed: number, -- smoothed ground speed
+	yaw: number, -- smoothed facing
+	lookOff: number, -- idle look-around offset (radians)
+	lookAt: number, -- when the next idle glance starts
+}
 local folder = Instance.new("Folder")
 folder.Name = "PetFollowers"
 folder.Parent = workspace
 local followers: { [Player]: { Follower } } = {}
 local FLYING = { bee = true, butterfly = true }
+-- rarer critters are bigger
+local SIZE = { Common = 1, Uncommon = 1.06, Rare = 1.12, Epic = 1.2, Legendary = 1.3, Mythic = 1.38, Secret = 1.46 }
+local RANK = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6, Secret = 7 }
+local okFx, FxIds = pcall(require, ReplicatedStorage.MowALawn:FindFirstChild("FxIds"))
+local FX = if okFx and type(FxIds) == "table" then FxIds else {}
+
+-- Legendary and up sparkle; Mythic and Secret stand on a soft aura ring; Secret leaves a rainbow trail.
+local function petFx(m: Model, def)
+	local root = m.PrimaryPart :: BasePart
+	local rank = RANK[def.rarity] or 1
+	local color = Config.RARITY_COLORS[def.rarity] or Color3.new(1, 1, 1)
+	if rank >= RANK.Legendary then
+		local e = Instance.new("ParticleEmitter")
+		e.Name = "PetSparkle"
+		e.Texture = FX.spark or "rbxasset://textures/particles/sparkles_main.dds"
+		e.Rate = if rank >= RANK.Secret then 6 else 3.5
+		e.Lifetime = NumberRange.new(0.8, 1.4)
+		e.Speed = NumberRange.new(0.4, 1)
+		e.SpreadAngle = Vector2.new(180, 180)
+		e.Acceleration = Vector3.new(0, 1, 0)
+		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.32), NumberSequenceKeypoint.new(1, 0) })
+		e.Transparency = NumberSequence.new(0.15)
+		e.LightEmission = 0.6
+		e.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 1), 0.4), color)
+		e.Shape = Enum.ParticleEmitterShape.Sphere
+		e.Parent = root
+	end
+	if rank >= RANK.Mythic then
+		local ring = Instance.new("Part")
+		ring.Name = "AuraRing"
+		ring.Size = Vector3.new(3.2, 0.05, 3.2)
+		ring.Transparency = 1
+		ring.Anchored = true
+		ring.CanCollide = false
+		ring.CanQuery = false
+		ring.CanTouch = false
+		ring.CFrame = root.CFrame * CFrame.new(0, -0.55, 0)
+		ring.Parent = m
+		local d = Instance.new("Decal")
+		d.Face = Enum.NormalId.Top
+		d.Texture = FX.ring or "rbxasset://textures/particles/sparkles_main.dds"
+		d.Color3 = color
+		d.Transparency = 0.35
+		d.Parent = ring
+	end
+	if rank >= RANK.Secret then
+		local a0 = Instance.new("Attachment")
+		a0.Position = Vector3.new(-0.5, 0.3, 0)
+		a0.Parent = root
+		local a1 = Instance.new("Attachment")
+		a1.Position = Vector3.new(0.5, 0.3, 0)
+		a1.Parent = root
+		local tr = Instance.new("Trail")
+		tr.Attachment0 = a0
+		tr.Attachment1 = a1
+		tr.Lifetime = 0.6
+		tr.LightEmission = 0.5
+		tr.Transparency = NumberSequence.new(0.35, 1)
+		tr.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 110, 200)),
+			ColorSequenceKeypoint.new(0.33, Color3.fromRGB(255, 220, 110)),
+			ColorSequenceKeypoint.new(0.66, Color3.fromRGB(110, 230, 160)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(110, 170, 255)),
+		})
+		tr.Parent = root
+	end
+end
 
 local function clear(p: Player)
 	for _, f in followers[p] or {} do
@@ -152,15 +266,37 @@ local function rebuild(p: Player)
 		if def then
 			local m = PetFollow.build(def.look)
 			m.Name = p.Name .. "_" .. id
+			local size = SIZE[def.rarity] or 1
+			if size ~= 1 then
+				m:ScaleTo(size)
+			end
+			petFx(m, def)
 			local root = m.PrimaryPart :: BasePart
-			local rel = {}
+			local rel, list, cfs = {}, {}, {}
 			for _, d in m:GetDescendants() do
 				if d:IsA("BasePart") then
-					table.insert(rel, { part = d, rel = root.CFrame:ToObjectSpace(d.CFrame) })
+					local wing = if d.Name:sub(1, 9) == "AnimWingL" then -1 elseif d.Name:sub(1, 9) == "AnimWingR" then 1 else 0
+					table.insert(rel, { part = d, rel = root.CFrame:ToObjectSpace(d.CFrame), wing = wing })
+					table.insert(list, d)
+					table.insert(cfs, d.CFrame)
 				end
 			end
 			m.Parent = folder
-			table.insert(fs, { model = m, flies = FLYING[def.look.kind] == true, cf = CFrame.new(), phase = i * 1.7, parts = rel })
+			table.insert(fs, {
+				model = m,
+				flies = FLYING[def.look.kind] == true,
+				cf = CFrame.new(),
+				phase = i * 1.7,
+				lift = 0.6 * (size - 1),
+				parts = rel,
+				list = list,
+				cfs = cfs,
+				hop = 0,
+				speed = 0,
+				yaw = 0,
+				lookOff = 0,
+				lookAt = os.clock() + 2 + i * 1.3,
+			})
 		end
 	end
 	followers[p] = fs
@@ -180,17 +316,41 @@ end
 
 -- slots behind the player: middle, left, right
 local SLOTS = { Vector3.new(0, 0, 4.2), Vector3.new(-3, 0, 3.2), Vector3.new(3, 0, 3.2) }
+
+-- Shortest signed angle from a to b.
+local function angleTo(a: number, b: number): number
+	return (b - a + math.pi) % (math.pi * 2) - math.pi
+end
+
+-- Idle glance (the timing principle: a slow, careful look to one side, held, then a snappy turn back).
+-- Returns the yaw offset `k` seconds into a glance of `dir` (+1 / -1).
+local GLANCE = { out = 0.9, hold = 0.8, back = 0.22 }
+local function glance(k: number, dir: number): number
+	local turn = math.rad(38) * dir
+	if k < GLANCE.out then
+		local a = k / GLANCE.out
+		return turn * (a * a * (3 - 2 * a)) -- slow in, slow out
+	elseif k < GLANCE.out + GLANCE.hold then
+		return turn
+	end
+	local a = math.min(1, (k - GLANCE.out - GLANCE.hold) / GLANCE.back)
+	return turn * (1 - (1 - (1 - a) ^ 3)) -- quick snap back
+end
+local GLANCE_LEN = GLANCE.out + GLANCE.hold + GLANCE.back
+
 local t = 0
 RunService.RenderStepped:Connect(function(dt)
 	t += dt
+	local now = os.clock()
 	local cam = workspace.CurrentCamera
 	local camPos = if cam then cam.CFrame.Position else Vector3.zero
-	local alpha = 1 - math.exp(-dt * 8)
+	-- the 3D egg hatch (client/HatchFx) plays right in front of the camera: pets would stand in the shot
+	local hatching = cam ~= nil and cam:FindFirstChild("HatchFx") ~= nil
 	for p, fs in followers do
 		local char = p.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		local far = not root or (root.Position - camPos).Magnitude > VIEW_DISTANCE
+		local far = hatching or not root or (root.Position - camPos).Magnitude > VIEW_DISTANCE
 		for i, f in fs do
 			if far then
 				if f.model.Parent then
@@ -205,18 +365,67 @@ RunService.RenderStepped:Connect(function(dt)
 			local groundY = r.Position.Y - (if hum then hum.HipHeight + r.Size.Y / 2 else 3)
 			local flat = CFrame.new(r.Position) * CFrame.Angles(0, select(2, r.CFrame:ToEulerAnglesYXZ()), 0)
 			local slot = flat:PointToWorldSpace(SLOTS[((i - 1) % #SLOTS) + 1])
-			local bob = if f.flies then 2.6 + math.sin(t * 3 + f.phase) * 0.35 else 0.6 + math.abs(math.sin(t * 6 + f.phase)) * 0.35
-			local target = Vector3.new(slot.X, groundY + bob, slot.Z)
-			local pos = f.cf.Position:Lerp(target, alpha)
-			if (f.cf.Position - target).Magnitude > 40 then
-				pos = target -- teleported / respawned: snap
+			-- each pet follows a little looser than the one before (overlapping action, not one block)
+			local alpha = 1 - math.exp(-dt * (8.5 - i * 1.2))
+			local old = f.cf.Position
+			local flatTarget = Vector3.new(slot.X, 0, slot.Z)
+			local flatPos = Vector3.new(old.X, 0, old.Z):Lerp(flatTarget, alpha)
+			local snapped = (Vector3.new(old.X, 0, old.Z) - flatTarget).Magnitude > 40
+			if snapped then
+				flatPos = flatTarget -- teleported / respawned: snap
+				old = Vector3.new(flatPos.X, old.Y, flatPos.Z)
 			end
-			local moving = Vector3.new(target.X - pos.X, 0, target.Z - pos.Z)
-			local look = if moving.Magnitude > 0.3 then moving.Unit else flat.LookVector
-			f.cf = CFrame.lookAt(pos, pos + look)
-			for _, pr in f.parts do
-				pr.part.CFrame = f.cf * pr.rel
+			local step = (flatPos - Vector3.new(old.X, 0, old.Z)).Magnitude / math.max(dt, 1e-3)
+			-- speed eases up fast and down slower, so a stop settles instead of freezing
+			f.speed += (step - f.speed) * math.min(1, dt * (if step > f.speed then 10 else 4))
+			local moving = math.clamp(f.speed / 8, 0, 1)
+			-- hops: the faster it goes, the quicker the steps (spacing gets tighter); still = no hopping
+			f.hop += dt * (1.2 + f.speed * 0.13) * moving
+			local hop = math.abs(math.sin(f.hop * math.pi)) * moving
+			local breathe = math.sin(t * 2.1 + f.phase) * 0.5 + 0.5
+			local bob = if f.flies
+				then 2.6 + math.sin(t * (2.2 + moving * 2) + f.phase) * (0.35 - moving * 0.15)
+				else 0.6 + hop * 0.38
+			local y = groundY + bob + f.lift
+			local pos = Vector3.new(flatPos.X, if snapped then y else old.Y + (y - old.Y) * math.min(1, dt * 20), flatPos.Z)
+			-- facing: turn toward where it's going (quicker the faster it moves), else the way the player faces
+			local dir = flatTarget - flatPos
+			local want = if dir.Magnitude > 0.4 then math.atan2(-dir.X, -dir.Z) else select(2, flat:ToEulerAnglesYXZ())
+			f.yaw += angleTo(f.yaw, want) * math.min(1, dt * (3 + moving * 9))
+			-- idle glances now and then: slow look away, hold, snap back
+			if moving > 0.2 then
+				f.lookAt = math.max(f.lookAt, now + 1.5)
+				f.lookOff += (0 - f.lookOff) * math.min(1, dt * 10)
+			elseif now >= f.lookAt then
+				local k = now - f.lookAt
+				local side = if (math.floor(f.lookAt) % 2) == 0 then 1 else -1
+				f.lookOff = glance(k, side)
+				if k > GLANCE_LEN then
+					f.lookOff = 0
+					f.lookAt = now + 3 + ((f.phase * 7.3 + f.lookAt) % 4)
+				end
 			end
+			f.cf = CFrame.new(pos) * CFrame.Angles(0, f.yaw + f.lookOff, 0)
+			-- squash and stretch: squashed as a hop lands, stretched on the way up; idle walkers breathe
+			local sy = if f.flies
+				then 1 + math.sin(t * 3 + f.phase) * 0.03
+				else (0.9 + hop * 0.14) * moving + (1 + (breathe - 0.5) * 0.04) * (1 - moving)
+			local sxz = 1 / math.sqrt(sy)
+			-- fliers flap faster when they hurry; walkers' little wings only flutter while moving
+			local flapRate = if f.flies then 18 + moving * 10 else 8
+			local flapAmp = if f.flies then 0.5 + moving * 0.1 else 0.25 * moving
+			local flap = math.sin(t * flapRate + f.phase) * flapAmp
+			for k, pr in f.parts do
+				local rel = pr.rel
+				local pos2 = Vector3.new(rel.X * sxz, (rel.Y + 0.6) * sy - 0.6, rel.Z * sxz)
+				local cf = CFrame.new(pos2) * rel.Rotation
+				if pr.wing ~= 0 then
+					local hinge = Vector3.new(0, pos2.Y, pos2.Z)
+					cf = CFrame.new(hinge) * CFrame.Angles(0, 0, pr.wing * flap) * CFrame.new(-hinge) * cf
+				end
+				f.cfs[k] = f.cf * cf
+			end
+			workspace:BulkMoveTo(f.list, f.cfs, Enum.BulkMoveMode.FireCFrameChanged)
 		end
 	end
 end)

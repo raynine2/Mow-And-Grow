@@ -237,8 +237,15 @@ local FORGE_SWAP: { [string]: string } = {
 local forgeRaw: { [string]: Model } = {}
 -- The ForgeGUI models made on 26 Oct come with their front at the mesh's +Z (the older ones: -X).
 local FRONT_PLUS_Z: { [string]: boolean } = {}
-for _, n in { "fountain", "dropoff", "partybooth", "altar", "gate_wheat", "gate_blossom", "gate_pine", "gate_swamp", "gate_frost", "gate_ember", "gate_starlight", "arena_meadow", "arena_hedge", "arena_bunker", "arena_cornfield", "arena_sakura", "arena_swamp", "arena_pumpkin", "arena_ruins" } do
+for _, n in { "fountain", "dropoff", "partybooth", "altar", "gate_wheat", "gate_blossom", "gate_pine", "gate_swamp", "gate_frost", "gate_ember", "gate_starlight", "arena_meadow", "arena_hedge", "arena_bunker", "arena_cornfield", "arena_sakura", "arena_swamp", "arena_pumpkin", "arena_ruins", "arena_frost", "arena_ember", "arena_starlight" } do
 	FRONT_PLUS_Z[n] = true
+end
+-- (and the boss arenas' walls, pillars and props: server/ArenaDress)
+for _, area in { "meadow", "wheat", "blossom", "pine", "swamp", "frost", "ember", "starlight" } do
+	FRONT_PLUS_Z["awall_" .. area] = true
+	FRONT_PLUS_Z["apost_" .. area] = true
+	FRONT_PLUS_Z["aprop_" .. area .. "1"] = true
+	FRONT_PLUS_Z["aprop_" .. area .. "2"] = true
 end
 
 -- A template from a loaded ForgeGUI asset: the mesh (texture kept), pivot at the bottom centre, front toward

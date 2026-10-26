@@ -15,6 +15,7 @@ local Zones = require(ReplicatedStorage.MowALawn.Zones)
 local BossMoves = require(ReplicatedStorage.MowALawn.BossMoves)
 local Net = require(script.Parent.Net)
 local Models = require(script.Parent.Models)
+local ArenaDress = require(script.Parent.ArenaDress)
 
 local BossArena = {}
 
@@ -272,7 +273,9 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	if not spot or not def then
 		return nil
 	end
-	local theme = THEMES[def.arena] or THEMES.meadow
+	-- the area's own look (server/ArenaDress, owner 26 Oct: make it fit the world), else the boss's theme
+	local look = ArenaDress.look(z)
+	local theme = look or THEMES[def.arena] or THEMES.meadow
 	local r = Config.BOSS_ARENA_RADIUS
 	local c2 = Vector2.new(spot.x, spot.z)
 	local hi, lo = heights(c2, r + 4, groundRay(world))
@@ -288,11 +291,15 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	local model = Instance.new("Model")
 	model.Name = "Arena" .. z
 	-- floor + rim + skirt down to the lowest ground (or the water, for the floating isles)
-	cyl(model, "Rim", r + 3, 5, centre + Vector3.new(0, -0.3, 0), theme.rim, Enum.Material.Slate)
+	cyl(model, "Rim", r + 3, 5, centre + Vector3.new(0, -0.3, 0), theme.rim, if look then look.rimMat else Enum.Material.Slate)
 	local floor = cyl(model, "Floor", r, 5, centre, theme.floor, theme.floorMat)
 	floor:SetAttribute("ArenaFloor", z)
 	local depth = math.max(6, top - math.min(lo, Zones.SEA) + 4)
-	cyl(model, "Skirt", r + 2, depth, centre + Vector3.new(0, -5, 0), theme.rim, Enum.Material.Rock)
+	if look then
+		cyl(model, "Skirt", r + 2, depth, centre + Vector3.new(0, -5, 0), ArenaDress.skirtColor(look), Enum.Material.Ground)
+	else
+		cyl(model, "Skirt", r + 2, depth, centre + Vector3.new(0, -5, 0), theme.rim, Enum.Material.Rock)
+	end
 	-- a faint ring marking the fight floor
 	local ring = cyl(model, "Line", r - 6, 0.1, centre + Vector3.new(0, 0.06, 0), theme.accent, Enum.Material.SmoothPlastic)
 	ring.Transparency = 0.82
@@ -307,13 +314,18 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	local segW = 2 * math.pi * r / segs
 	local yaw0 = math.atan2(facing.X, facing.Z)
 	local builder = WALL[def.arena] or WALL.meadow
+	-- the area's ForgeGUI wall, pillars and props; the part-built wall below only when they aren't loaded
+	local dressed = look ~= nil
+		and ArenaDress.wall({ model = model, centre = centre, r = r, facing = facing, segs = segs, segW = segW, yaw0 = yaw0, look = look })
 	for i = 0, segs - 1 do
 		local a = yaw0 + (i + 0.5) / segs * 2 * math.pi
 		local gap = i == 0 or i == segs - 1 -- the two segments either side of the facing direction
 		if not gap then
 			local pos = centre + Vector3.new(math.sin(a), 0, math.cos(a)) * r
 			local at = CFrame.lookAt(pos, Vector3.new(centre.X, pos.Y, centre.Z))
-			builder(wallFolder, at, segW, theme)
+			if not dressed then
+				builder(wallFolder, at, segW, theme)
+			end
 			local col = part(wallFolder, { Name = "Collider", Size = Vector3.new(segW + 0.6, 26, 2), CFrame = at * CFrame.new(0, 13, -1.5), Transparency = 1 })
 			col.CanQuery = false
 		end
@@ -326,7 +338,9 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	local bossName = (Config.ZONES[z].boss.name or "BOSS"):upper()
 	-- the theme's ForgeGUI gateway (owner, 26 Oct: "remake the boss areas with forgegui"), its front to the
 	-- outside, the boss's name floating over it; the brick arch and board when the model isn't loaded
-	local forgeGate = Models.placeForge("arena_" .. tostring(def.arena), model, CFrame.lookAt(gatePos, gatePos + facing), { width = gapW + 10, height = 26 }, true)
+	-- (fitted to the gap: its pillars stand on the ends of the wall either side, not in it)
+	local gateName = if look and Models.has("forge_" .. look.gate) then look.gate else "arena_" .. tostring(def.arena)
+	local forgeGate = Models.placeForge(gateName, model, CFrame.lookAt(gatePos, gatePos + facing), { width = gapW + 3, height = 26 }, true)
 	if forgeGate then
 		forgeGate.Name = "ArenaGate"
 		local _, gsize = forgeGate:GetBoundingBox()
@@ -400,7 +414,7 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	bb.Name = "PadLabel"
 	bb.Size = UDim2.fromOffset(260, 60)
 	bb.StudsOffset = Vector3.new(0, 6, 0)
-	bb.MaxDistance = 140
+	bb.MaxDistance = 70 -- (from further off the boss's name over the gateway says it all; the two overlapped)
 	bb.AlwaysOnTop = false
 	bb.Parent = pad
 	local label = Instance.new("TextLabel")
@@ -550,7 +564,7 @@ function BossArena.setPad(z: number, mode: string, text: string?)
 	if not a then
 		return
 	end
-	local theme = THEMES[BossMoves.get(z).arena] or THEMES.meadow
+	local theme = ArenaDress.look(z) or THEMES[BossMoves.get(z).arena] or THEMES.meadow
 	local bb = a.pad:FindFirstChild("PadLabel")
 	local label = bb and bb:FindFirstChild("Text") :: TextLabel?
 	a.pad:SetAttribute("Mode", mode)

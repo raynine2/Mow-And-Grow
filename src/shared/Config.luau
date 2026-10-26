@@ -125,49 +125,49 @@ Config.ZONES = {
 		spacing = 11.5, scale = 6.3, tint = Color3.fromRGB(150, 215, 95),
 		grass = { Color3.fromRGB(150, 215, 95), Color3.fromRGB(130, 200, 80) },
 		ground = Color3.fromRGB(120, 160, 70),
-		boss = { name = "Thorn Bush", hp = 2000, color = Color3.fromRGB(40, 140, 60), every = 4.2, radius = 9, gems = 15, coins = 600 },
+		boss = { name = "Bramble Brute", hp = 2000, color = Color3.fromRGB(40, 140, 60), every = 4.2, radius = 9, gems = 15, coins = 600 },
 	},
 	{
 		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 50, value = 45, drops = 1, height = 2.5,
 		spacing = 12.5, scale = 7.2,
 		grass = { Color3.fromRGB(70, 200, 90), Color3.fromRGB(55, 180, 75) },
 		ground = Color3.fromRGB(235, 215, 150),
-		boss = { name = "Thorn Bush", hp = 6000, color = Color3.fromRGB(40, 140, 60), every = 4, radius = 10, gems = 20, coins = 2000 },
+		boss = { name = "Bunker Thornback", hp = 6000, color = Color3.fromRGB(235, 200, 110), every = 4, radius = 10, gems = 20, coins = 2000 },
 	},
 	{
 		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 150, value = 80, drops = 1, height = 5,
 		spacing = 11, scale = 4.0,
 		grass = { Color3.fromRGB(240, 200, 80), Color3.fromRGB(225, 180, 60) },
 		ground = Color3.fromRGB(140, 95, 55),
-		boss = { name = "Venus Flytrap", hp = 90000, color = Color3.fromRGB(200, 40, 70), every = 3.6, radius = 11, gems = 35, coins = 25000 },
+		boss = { name = "Harvest Maw", hp = 90000, color = Color3.fromRGB(240, 200, 80), every = 3.6, radius = 11, gems = 35, coins = 25000 },
 	},
 	{
 		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 480, value = 300, drops = 2, height = 2.5,
 		spacing = 13.5, scale = 5.1, tint = Color3.fromRGB(255, 160, 205),
 		grass = { Color3.fromRGB(255, 160, 205), Color3.fromRGB(240, 130, 185) },
 		ground = Color3.fromRGB(120, 170, 80),
-		boss = { name = "Venus Flytrap", hp = 300000, color = Color3.fromRGB(200, 40, 70), every = 3.5, radius = 11, gems = 45, coins = 80000 },
+		boss = { name = "Sakura Snapjaw", hp = 300000, color = Color3.fromRGB(255, 150, 200), every = 3.5, radius = 11, gems = 45, coins = 80000 },
 	},
 	{
 		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 2000, value = 1100, drops = 2, height = 6.5,
 		spacing = 12, scale = 4.6,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
-		boss = { name = "Swamp Vine", hp = 1200000, color = Color3.fromRGB(90, 70, 140), every = 3.3, radius = 12, gems = 55, coins = 300000 },
+		boss = { name = "Bog Strangler", hp = 1200000, color = Color3.fromRGB(125, 212, 90), every = 3.3, radius = 12, gems = 55, coins = 300000 },
 	},
 	{
 		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 4800, value = 2400, drops = 2, height = 6,
 		spacing = 11.5, scale = 5.1, tint = Color3.fromRGB(235, 120, 45),
 		grass = { Color3.fromRGB(235, 120, 45), Color3.fromRGB(215, 95, 40) },
 		ground = Color3.fromRGB(150, 110, 60),
-		boss = { name = "Swamp Vine", hp = 4000000, color = Color3.fromRGB(90, 70, 140), every = 3.1, radius = 13, gems = 65, coins = 1000000 },
+		boss = { name = "Hollow Harvest", hp = 4000000, color = Color3.fromRGB(255, 140, 40), every = 3.1, radius = 13, gems = 65, coins = 1000000 },
 	},
 	{
 		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 60000, value = 12000, drops = 4, height = 8,
 		spacing = 21, scale = 6.0,
 		grass = { Color3.fromRGB(30, 160, 60), Color3.fromRGB(20, 130, 50) },
 		ground = Color3.fromRGB(90, 70, 45),
-		boss = { name = "Jungle Titan", hp = 15000000, color = Color3.fromRGB(20, 90, 40), every = 3, radius = 14, gems = 80, coins = 4000000 },
+		boss = { name = "Jungle Titan", hp = 15000000, color = Color3.fromRGB(63, 230, 200), every = 3, radius = 14, gems = 80, coins = 4000000 },
 	},
 }
 -- Boss weapon crate (Chop A Forest v2): a crate parachutes in when a boss appears; opening it gives you your best
@@ -202,7 +202,47 @@ Config.CRAWLERS = {
 	color = Color3.fromRGB(70, 40, 90),
 }
 
-Config.BOSS_HP_PER_EXTRA_PLAYER = 0.6 -- +60% boss HP for every party member after the first
+Config.BOSS_HP_PER_EXTRA_PLAYER = 0.6 -- (old fights; server/Boss now uses BOSS_PARTY_HP)
+-- Boss fights (the owner's boss brief, 26 Oct; moves, timing and words in shared/BossMoves):
+-- boss HP x this for 1 / 2 / 3 / 4+ players in the arena when the fight starts
+Config.BOSS_PARTY_HP = { 1, 1.7, 2.4, 3.0 }
+-- Boss HP per area: about 2.5 minutes for one player with the area's expected tool (Scissors, Sickle, Push Mower,
+-- Weed Whacker x2, Mega Scythe x2, Laser Mower) and a few Power upgrades, hitting about half the time plus the
+-- x2.5 punish windows. Guesses from Config.TOOLS (26 Oct): retune after real playtests.
+Config.BOSS_HP = { 1400, 5000, 25000, 120000, 200000, 1200000, 1500000, 4800000 }
+-- Players in a boss fight (server/BossFighters): 100 HP; at 0 you're downed for BOSS_DOWN_TIME s and a teammate
+-- standing next to you for BOSS_REVIVE_TIME s picks you up, else you get up at the arena entrance.
+Config.BOSS_PLAYER_HP = 100
+Config.BOSS_DOWN_TIME = 10
+Config.BOSS_REVIVE_TIME = 2.5
+Config.BOSS_REVIVE_RADIUS = 9
+-- juice boxes (owner, 26 Oct round 2): +30 HP, one every ~20 s and one each time the boss is stunned open
+Config.BOSS_HEAL = { every = 20, amount = 30, life = 16, radius = 5, onPunish = true }
+-- pets chip in (owner, round 2): every `every` s each standing fighter's equipped pets take perPet x (number of
+-- pets) of the boss's max HP; small on purpose (3 pets: about a tenth of the boss over a 2.5 minute fight)
+Config.BOSS_PET_CHIP = { every = 1, perPet = 0.00025 }
+-- no-hit bonus (owner, round 2): extra gems for a fighter the boss never hit in that fight (x the area's boss gems)
+Config.BOSS_NOHIT_GEMS = 1
+-- Roblox badge per boss (0 = none yet: make them on the Creator Hub and put the ids here); the in-game trophy
+-- (PlayerData.bossTrophies) is given either way.
+Config.BOSS_BADGES = { 0, 0, 0, 0, 0, 0, 0, 0 }
+-- Boss arenas (server/BossArena): a fenced 140-stud pocket at the FAR END of each area (owner, round 2: opposite
+-- the gate you come in by). x, z = the middle; picked in Studio (26 Oct) by raycasting the generated ground: the
+-- flattest spot within 80 degrees of straight across from the way in, 85-135 studs from the area's middle, at
+-- least 100 studs from the landmark and the way out, and clear of the camp, the gates, the pads and the isles'
+-- bridges (an arena never sits on one of those; trees and rocks inside are cleared). Move one by changing its
+-- numbers here.
+Config.BOSS_ARENA_RADIUS = 70
+Config.BOSS_ARENAS = {
+	{ x = -26, z = 460 },
+	{ x = -434, z = 337 },
+	{ x = -469, z = -233 },
+	{ x = -187, z = -508 },
+	{ x = 285, z = -472 },
+	{ x = 544, z = -154 },
+	{ x = 400, z = 277 }, -- 7 and 8 moved (26 Oct): the old spots sat on the Starlight gate and the isles' sell pad
+	{ x = 130, z = 650 },
+}
 Config.RUN_COMPLETE_GEMS = 150
 
 -- (old straight-road layout; only the unused Blender ground sheets in server/GroundMesh still read these)
@@ -1011,6 +1051,9 @@ Config.SOUNDS = {
 	musicRun = { id = "rbxassetid://130053244401794", volume = 0.3 }, -- TutorialMusic_01
 	-- the run's opening cutscene (client/Intro): Roblox's licensed music library (verified creator DistrokidOfficial)
 	introMusic = { id = "rbxassetid://75981022182996", volume = 0.55 }, -- Epic Trailer Music with Powerful Drums
+	-- boss fights (client/BossCine): Roblox's licensed music library (verified creator DistrokidOfficial); phase 2
+	-- plays it 12% faster
+	bossMusic = { id = "rbxassetid://132347366936691", volume = 0.45 }, -- Boss Fight!
 }
 
 -------------------------------------------------------------------------------------------------------------

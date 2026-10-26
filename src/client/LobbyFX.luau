@@ -286,7 +286,13 @@ watch("LobbyFX", onSpot, offSpot)
 watch("LobbyPadZone", onZone, function(m)
 	zones[m] = nil
 end)
-watch("LobbyBoard", fillYou)
+watch("LobbyBoard", function(b)
+	fillYou(b)
+	-- boards that take turns (server/LobbyBoards' Cycle) change their Key
+	b:GetAttributeChangedSignal("Key"):Connect(function()
+		fillYou(b)
+	end)
+end)
 
 local lanterns: { [BasePart]: { light: PointLight, base: number, seed: number } } = {}
 watch("LobbyLantern", function(core)

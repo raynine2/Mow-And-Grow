@@ -2,6 +2,7 @@
 local modules = script.Parent
 
 local State = require(modules:WaitForChild("State"))
+require(modules:WaitForChild("PhonePerf")) -- phones: shadows, bloom and sun rays off (owner, 26 Oct)
 require(modules:WaitForChild("Sound"))
 require(modules:WaitForChild("UI"))
 require(modules:WaitForChild("Hud"))
@@ -13,6 +14,7 @@ require(modules:WaitForChild("NightGun")) -- boss guns, day/night, crawlers, Pea
 require(modules:WaitForChild("ViewModel"))
 require(modules:WaitForChild("Soundscape")) -- footsteps, birds and breeze
 require(modules:WaitForChild("Fx"))
+require(modules:WaitForChild("BossCine")) -- boss fights: the model, effects, cutscenes, your HP (after Fx)
 require(modules:WaitForChild("ShopDisplays")) -- tool shop status lamps + turning tools, the camp fountain
 require(modules:WaitForChild("ClassHolo")) -- the CLASSES kiosk's hologram
 require(modules:WaitForChild("MowFx")) -- lawn stripes behind mowers, the clippings chute, soft rings, reaper wisps

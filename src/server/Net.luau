@@ -21,6 +21,7 @@ local INBOUND = {
 	"Shoot", -- (aimDir)                    fire the boss-crate gun (server checks rate + range)
 	"Setting", -- (key, value)              peaceful (lobby)
 	"Graphics", -- (potato)                 Potato Mode on/off (saved; the client does the rest)
+	"Boss", -- (action)                     "skip": vote to skip the boss cutscene (server/Boss)
 }
 -- server -> client
 local OUTBOUND = {

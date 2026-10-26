@@ -1,7 +1,8 @@
 -- Best Times: the fastest finished runs. A run's time is the time you spent playing it (profile.run.time, counted
 -- by server/Run), so leaving and coming back later doesn't count. Each player's best is in their profile
 -- (bestTime); the all-servers top list is an OrderedDataStore (lower = better) that the lobby's trophy board reads.
--- Every character wears a small trophy tag with its best time. Studio dry runs never write.
+-- Every character wears a small trophy tag with its best time and, once they've beaten a boss, a crown with how
+-- many of the 8 bosses they've beaten (owner, boss brief round 2). Studio dry runs never write.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -80,7 +81,18 @@ function BestTimes.top(n: number): { { name: string, time: number } }
 	return out
 end
 
--- The trophy tag over a character's head (only once they have a best time).
+-- How many different bosses this profile has beaten (PlayerData.bossTrophies).
+local function crowns(data): number
+	local n = 0
+	for _, times in data.bossTrophies or {} do
+		if (tonumber(times) or 0) > 0 then
+			n += 1
+		end
+	end
+	return n
+end
+
+-- The trophy tag over a character's head (once they have a best time or a boss crown).
 local function tag(player: Player)
 	local data = PlayerData.get(player)
 	local char = player.Character
@@ -89,7 +101,8 @@ local function tag(player: Player)
 		return
 	end
 	local gui = head:FindFirstChild("BestTimeTag") :: BillboardGui?
-	if (data.bestTime or 0) <= 0 then
+	local bosses = crowns(data)
+	if (data.bestTime or 0) <= 0 and bosses <= 0 then
 		if gui then
 			gui:Destroy()
 		end
@@ -98,7 +111,7 @@ local function tag(player: Player)
 	if not gui then
 		local g = Instance.new("BillboardGui")
 		g.Name = "BestTimeTag"
-		g.Size = UDim2.fromOffset(150, 28)
+		g.Size = UDim2.fromOffset(190, 28)
 		g.StudsOffsetWorldSpace = Vector3.new(0, 2.4, 0)
 		g.MaxDistance = 70
 		g.LightInfluence = 0
@@ -118,7 +131,14 @@ local function tag(player: Player)
 		gui = g
 	end
 	local label = (gui :: BillboardGui):FindFirstChild("Time") :: TextLabel
-	local text = "🏆 " .. Format.clock(data.bestTime)
+	local parts = {}
+	if (data.bestTime or 0) > 0 then
+		table.insert(parts, "🏆 " .. Format.clock(data.bestTime))
+	end
+	if bosses > 0 then
+		table.insert(parts, "👑 " .. bosses .. "/8")
+	end
+	local text = table.concat(parts, "   ")
 	if label.Text ~= text then
 		label.Text = text
 	end

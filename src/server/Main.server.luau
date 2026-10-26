@@ -255,7 +255,8 @@ Net.on("Dev", 8, function(player, action, arg)
 end)
 
 -- Studio test hook: ServerStorage.DevHook:Invoke("gems", player, 1000), ("coins", player, n),
--- ("set", player, key, value), ("save", player, true/false), ("clearZone"), ("killBoss"), ("zone", n)
+-- ("set", player, key, value), ("save", player, true/false), ("clearZone"), ("killBoss"), ("zone", n),
+-- ("boss", "fight"|"ready"|"to"|"rage"|"kill"|"hurt"|"wipe", zone or fraction)
 if RunService:IsStudio() then
 	local hook = Instance.new("BindableFunction")
 	hook.Name = "DevHook"
@@ -271,7 +272,7 @@ if RunService:IsStudio() then
 		elseif cmd == "save" and data then
 			data._dryRun = not b -- ("save", player, true) lets this Studio session save for real
 		elseif Mode.isRun then
-			(system :: any).dev(cmd, a)
+			(system :: any).dev(cmd, a, b) -- ("boss", "fight", 3) etc.: see Run.dev
 		end
 		if player then
 			PlayerData.changed(player)

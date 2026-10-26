@@ -17,9 +17,9 @@ local ForgeDress = {}
 
 -- the archway for the way into each area
 ForgeDress.GATE_MODEL = {
-	[2] = "gate_wheat",
+	[2] = "arena_cornfield", -- (the barn-post gateway, as at the wheat arena: ForgeGUI didn't deliver gate_wheat)
 	[3] = "gate_blossom",
-	[4] = "gate_pine",
+	[4] = "arena_ruins", -- (the rune-stone gateway, as at the pine arena: ForgeGUI didn't deliver gate_pine)
 	[5] = "gate_swamp",
 	[6] = "gate_frost",
 	[7] = "gate_ember",

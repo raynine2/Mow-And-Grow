@@ -314,9 +314,9 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	local segW = 2 * math.pi * r / segs
 	local yaw0 = math.atan2(facing.X, facing.Z)
 	local builder = WALL[def.arena] or WALL.meadow
-	-- the area's ForgeGUI wall, pillars and props; the part-built wall below only when they aren't loaded
-	local dressed = look ~= nil
-		and ArenaDress.wall({ model = model, centre = centre, r = r, facing = facing, segs = segs, segW = segW, yaw0 = yaw0, look = look })
+	-- the area's voxel wall, pillars and props (server/ArenaDress); the boss-themed part wall below otherwise
+	local ctx = if look then { model = model, centre = centre, r = r, facing = facing, segs = segs, segW = segW, yaw0 = yaw0, look = look } else nil
+	local dressed = ctx ~= nil and ArenaDress.wall(ctx)
 	for i = 0, segs - 1 do
 		local a = yaw0 + (i + 0.5) / segs * 2 * math.pi
 		local gap = i == 0 or i == segs - 1 -- the two segments either side of the facing direction
@@ -338,9 +338,10 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	local bossName = (Config.ZONES[z].boss.name or "BOSS"):upper()
 	-- the theme's ForgeGUI gateway (owner, 26 Oct: "remake the boss areas with forgegui"), its front to the
 	-- outside, the boss's name floating over it; the brick arch and board when the model isn't loaded
-	-- (fitted to the gap: its pillars stand on the ends of the wall either side, not in it)
-	local gateName = if look and Models.has("forge_" .. look.gate) then look.gate else "arena_" .. tostring(def.arena)
-	local forgeGate = Models.placeForge(gateName, model, CFrame.lookAt(gatePos, gatePos + facing), { width = gapW + 3, height = 26 }, true)
+	-- (the area's block gateway, its towers standing on the wall's ends either side of the gap: server/ArenaDress)
+	local forgeGate = if ctx
+		then ArenaDress.gate(ctx)
+		else Models.placeForge("arena_" .. tostring(def.arena), model, CFrame.lookAt(gatePos, gatePos + facing), { width = gapW + 3, height = 26 }, true)
 	if forgeGate then
 		forgeGate.Name = "ArenaGate"
 		local _, gsize = forgeGate:GetBoundingBox()
@@ -401,6 +402,7 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	padRing.CanCollide = false
 	-- the ForgeGUI summoning altar round the pad: sunk so its top is just above the floor (the pad is read by
 	-- distance, server/Boss, so nothing about standing on it changes)
+	-- (a block ring in the area's colours when that model isn't loaded: server/ArenaDress)
 	if Models.has("forge_altar") then
 		local altar = Models.placeForge("altar", model, CFrame.lookAt(padPos, padPos + facing), { width = 17 }, false)
 		if altar then
@@ -409,6 +411,9 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 			altar:PivotTo(altar:GetPivot() - Vector3.new(0, math.max(0, asize.Y - 0.5), 0))
 			padRing.Transparency = 1
 		end
+	elseif ctx then
+		ArenaDress.altar(ctx, padPos)
+		padRing.Transparency = 1
 	end
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "PadLabel"

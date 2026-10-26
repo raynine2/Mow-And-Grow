@@ -243,6 +243,8 @@ end
 -- (and the boss arenas' walls, pillars and props: server/ArenaDress)
 for _, area in { "meadow", "wheat", "blossom", "pine", "swamp", "frost", "ember", "starlight" } do
 	FRONT_PLUS_Z["awall_" .. area] = true
+	FRONT_PLUS_Z["vwall_" .. area] = true
+	FRONT_PLUS_Z["varena_" .. area] = true
 	FRONT_PLUS_Z["apost_" .. area] = true
 	FRONT_PLUS_Z["aprop_" .. area .. "1"] = true
 	FRONT_PLUS_Z["aprop_" .. area .. "2"] = true

@@ -96,7 +96,7 @@ end
 -- swirling abyss; crystal clusters on the rim with energy streams curving up into the hole; a soft light column
 -- from the abyss to the hole; glowing cracks running out over the ground; chunks of meadow floating round it
 -- (client/BlackHole orbits them and sends gravity pulses in over the ground).
-local BASALT = { Color3.fromRGB(52, 46, 70), Color3.fromRGB(64, 56, 86), Color3.fromRGB(42, 37, 58), Color3.fromRGB(58, 50, 78) }
+local BASALT = { Color3.fromRGB(46, 43, 52), Color3.fromRGB(57, 53, 63), Color3.fromRGB(38, 36, 44), Color3.fromRGB(63, 58, 68) } -- (charcoal with a hint of violet: the glow does the colour)
 local TURF = Color3.fromRGB(88, 158, 44)
 local DIRT = Color3.fromRGB(116, 82, 52)
 local ROOTS = Color3.fromRGB(92, 72, 58)
@@ -163,8 +163,8 @@ local function crater(k: Instance, at: CFrame)
 	local up = Instance.new("PointLight")
 	up.Name = "Uplight"
 	up.Color = Color3.fromRGB(140, 90, 255)
-	up.Brightness = 3
-	up.Range = 14
+	up.Brightness = 1
+	up.Range = 12
 	up.Shadows = false
 	up.Parent = well
 	-- motes lifted out of the abyss, and grit off the rim
@@ -452,8 +452,8 @@ local function hole(k: Instance, c: CFrame, tilt: CFrame)
 	local light = Instance.new("PointLight")
 	light.Name = "Glow"
 	light.Color = Color3.fromRGB(160, 110, 255)
-	light.Brightness = 2.2
-	light.Range = 22
+	light.Brightness = 0.8 -- (soft: stronger turns the rock and the paving blue)
+	light.Range = 18
 	light.Shadows = false
 	light.Parent = core
 	local def = Config.SOUNDS.bhHum

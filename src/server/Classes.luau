@@ -18,7 +18,7 @@ function Classes.inStock(data, classId: string): boolean
 	local w = Classes.stockWindow()
 	-- a Restock / Lucky Restock bought this window replaces the stand's stock for that player
 	local deal = data.classDeal
-	if deal and deal.window == w then
+	if deal and Config.dealActive(deal) then
 		return table.find(deal.ids, classId) ~= nil
 	end
 	-- a few seconds of grace so a click right at the restock still counts

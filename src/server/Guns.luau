@@ -133,8 +133,26 @@ end
 -- The crate: falls on a parachute in front of the boss, then opens with a prompt.
 function Guns.dropCrate(z: number)
 	Guns.clear()
+	-- between the boss (which stands at the area's centre facing its gate) and the gate, on the ground there
+	-- (it used the old straight-road layout: far from the boss, or under the terraces, in the generated world)
 	local centre = RunBuilder.zoneCentre(z)
-	local ground = Vector3.new(centre.X + 14, 0, Config.zoneStartZ(z) + 8)
+	local gate = Config.gatePos(z)
+	local toGate = Vector3.new(gate.X - centre.X, 0, gate.Z - centre.Z)
+	toGate = if toGate.Magnitude > 1 then toGate.Unit else Vector3.zAxis
+	local spot = centre + toGate * 26 + toGate:Cross(Vector3.yAxis) * 8
+	local y = centre.Y
+	local world = workspace:FindFirstChild("World")
+	local floor = world and world:FindFirstChild("Ground")
+	if floor then
+		local rp = RaycastParams.new()
+		rp.FilterType = Enum.RaycastFilterType.Include
+		rp.FilterDescendantsInstances = { floor }
+		local hit = workspace:Raycast(Vector3.new(spot.X, centre.Y + 80, spot.Z), Vector3.new(0, -200, 0), rp)
+		if hit then
+			y = hit.Position.Y
+		end
+	end
+	local ground = Vector3.new(spot.X, y, spot.Z)
 	local m = Instance.new("Model")
 	m.Name = "WeaponCrate"
 	local box = part(m, Vector3.new(4, 3, 4), CFrame.new(ground + Vector3.new(0, 1.5, 0)), Color3.fromRGB(70, 110, 60), Enum.Material.WoodPlanks)

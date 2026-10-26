@@ -170,20 +170,26 @@ end
 
 local function write(player: Player, release: boolean)
 	local data = profiles[player]
-	if not data or not store or data._dryRun then
+	if not data then
+		return false -- (nothing to save: a purchase must not count as saved)
+	end
+	if not store or data._dryRun then
 		return true
 	end
 	local copy = deepCopy(data)
+	local wrote = false
 	local ok = retry(function()
+		wrote = false
 		store:UpdateAsync(key(player), function(old)
 			if type(old) == "table" and old._lock and old._lock.job ~= game.JobId then
 				return nil -- another server owns this player now; never overwrite it
 			end
 			copy._lock = if release then nil else { job = game.JobId, t = os.time() }
+			wrote = true
 			return copy
 		end)
 	end, 4)
-	return ok
+	return ok and wrote
 end
 
 function PlayerData.get(player: Player)
@@ -244,6 +250,12 @@ end
 local function onJoin(player: Player)
 	local data, why = load(player)
 	if not player.Parent then
+		-- left while loading: the load took the session lock, so give it back (or their next join waits ~40 s)
+		if data and not IS_STUDIO then
+			profiles[player] = data
+			write(player, true)
+			profiles[player] = nil
+		end
 		return
 	end
 	if not data then

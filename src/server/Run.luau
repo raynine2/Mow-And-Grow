@@ -135,8 +135,9 @@ local function completeRun()
 			data.gems += gems
 			data.stats.runs += 1
 			local time = if data.run then data.run.time or 0 else 0
-			-- a Peaceful Mode run doesn't count for the BEST TIMES board
-			local best = if Night.peaceful then nil else BestTimes.submit(p, data, time)
+			-- a Peaceful Mode run doesn't count for the BEST TIMES board, nor one joined part-way through
+			local skipped = data.run ~= nil and data.run.skipped == true
+			local best = if Night.peaceful or skipped then nil else BestTimes.submit(p, data, time)
 			data.run = nil -- coins, tools and coin mowers end with the run
 			PlayerData.changed(p)
 			Net.send(p, "Fx", "runComplete", { gems = gems, time = time, best = best })
@@ -566,9 +567,10 @@ local function setupPlayer(player: Player, data)
 	if not data.run then
 		data.run = PlayerData.newRun()
 	end
-	-- join the party's progress
+	-- join the party's progress (skipping areas: then this run's time doesn't go on the BEST TIMES board)
 	if data.run.zone < zone then
 		data.run.zone = zone
+		data.run.skipped = true
 	end
 	-- runs start in first person like the Chop A Forest trailer, but aren't locked there: the client
 	-- (CameraView) lets you press V or scroll out to free the mouse, and Shift toggles shift lock
@@ -591,9 +593,11 @@ local function setupPlayer(player: Player, data)
 	end
 end
 
--- The first loaded player decides where the run starts (their saved zone).
+-- The party's host decides where the run starts (their saved zone). Profiles load in any order after a teleport,
+-- so the host's is waited for (up to 20 s) before the first loaded player decides instead.
 local function waitForHost(): number
-	local deadline = os.clock() + 60
+	local start = os.clock()
+	local deadline = start + 60
 	while os.clock() < deadline do
 		for _, p in Players:GetPlayers() do
 			local data = PlayerData.get(p)
@@ -604,6 +608,9 @@ local function waitForHost(): number
 					local h = Players:GetPlayerByUserId(tpData.host)
 					if h and PlayerData.get(h) then
 						host = h
+					elseif os.clock() - start < 20 then
+						-- the host's profile isn't loaded yet (or they haven't arrived): keep waiting a little
+						break
 					end
 				end
 				local hd = PlayerData.get(host)
@@ -739,7 +746,16 @@ function Run.start()
 		bagWarn[p] = nil
 	end)
 
-	task.spawn(sellLoop)
+	-- (the run's loops restart after an error instead of stopping selling or auto-cutting for the whole server)
+	task.spawn(function()
+		while true do
+			local ok, err = pcall(sellLoop)
+			if not ok then
+				warn("[Run] sell loop failed, restarting: " .. tostring(err))
+			end
+			task.wait(1)
+		end
+	end)
 	-- the run clock: one second per second you're in the run (the HUD ticks it between updates)
 	task.spawn(function()
 		while true do
@@ -792,10 +808,16 @@ function Run.start()
 		while true do
 			local dt = task.wait(Config.TICK)
 			if started and not completing then
-				autoTick()
+				local ok, err = pcall(autoTick)
+				if not ok then
+					warn("[Run] auto tick failed: " .. tostring(err))
+				end
 				acc += dt
 				if acc >= 0.5 then
-					Mowers.burn(acc)
+					local ok2, err2 = pcall(Mowers.burn, acc)
+					if not ok2 then
+						warn("[Run] mower fuel failed: " .. tostring(err2))
+					end
 					acc = 0
 				end
 			end
@@ -807,7 +829,12 @@ function Run.start()
 			task.wait(0.2)
 			if worldDirty and started then
 				worldDirty = false
-				Net.all("World", worldState())
+				local ok, state = pcall(worldState)
+				if ok then
+					Net.all("World", state)
+				else
+					warn("[Run] world state failed: " .. tostring(state))
+				end
 			end
 		end
 	end)

@@ -653,6 +653,18 @@ function Config.stockWindow(): number
 	return math.floor(workspace:GetServerTimeNow() / Config.STOCK_WINDOW)
 end
 
+-- Is a bought Restock (data.classDeal) still on? It lasts STOCK_WINDOW from the purchase (older saved deals: their
+-- window).
+function Config.dealActive(deal: any): boolean
+	if type(deal) ~= "table" then
+		return false
+	end
+	if type(deal.expires) == "number" then
+		return workspace:GetServerTimeNow() < deal.expires
+	end
+	return deal.window == Config.stockWindow()
+end
+
 -- The booth stock for a 5-minute window. Same seed on every server, so every lobby shows the same stock.
 function Config.classStock(window: number): { string }
 	return Config.rollStock(Random.new(window * 7919 + 13), false)

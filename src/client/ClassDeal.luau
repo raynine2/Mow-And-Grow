@@ -58,7 +58,7 @@ end
 local function currentStock(d): ({ string }, boolean)
 	local w = Config.stockWindow()
 	local deal = d and d.classDeal
-	if deal and deal.window == w and deal.ids then
+	if deal and Config.dealActive(deal) and deal.ids then
 		return deal.ids, deal.lucky == true
 	end
 	return Config.classStock(w), false

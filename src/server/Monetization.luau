@@ -26,6 +26,22 @@ local function toolOwned(data, product): boolean
 	return data.run ~= nil and data.run.tool >= index
 end
 
+-- Already owns what this (non-tool) product gives? Gems, eggs and restocks can always be bought again.
+local function alreadyOwned(data, product): boolean
+	if product.class then
+		return data.classes[product.class] == true
+	elseif product.gun then
+		return data.guns ~= nil and data.guns[product.gun] == true
+	elseif product.mower then
+		local def = Config.mower(product.mower)
+		if def and def.currency == "trial" then
+			return data.run ~= nil and data.run.trial == true
+		end
+		return data.mowers[product.mower] == true
+	end
+	return false
+end
+
 -- Grant a product to a loaded profile. Returns true when granted.
 local function grant(player: Player, data, key: string, product): boolean
 	if product.gems then
@@ -63,7 +79,8 @@ local function grant(player: Player, data, key: string, product): boolean
 	elseif product.restock then
 		-- the class card deal: new cards for this player until the next restock
 		local lucky = product.restock == "lucky"
-		data.classDeal = { window = Config.stockWindow(), ids = Config.rollStock(Random.new(), lucky), lucky = lucky }
+		-- (a full STOCK_WINDOW from now: bought late in a window it used to vanish at the restock seconds later)
+		data.classDeal = { window = Config.stockWindow(), expires = workspace:GetServerTimeNow() + Config.STOCK_WINDOW, ids = Config.rollStock(Random.new(), lucky), lucky = lucky }
 		Net.notify(player, if lucky then "Lucky cards dealt!" else "New cards dealt!", "pink")
 	elseif product.tool then
 		local index = Config.toolIndex(product.tool)
@@ -226,6 +243,12 @@ function Monetization.start()
 					Net.notify(player, "You already have that tool!", "yellow")
 					return
 				end
+			end
+			-- don't take Robux for something already owned (a stale window, a double click)
+			local data = PlayerData.get(player)
+			if data and alreadyOwned(data, p) then
+				Net.notify(player, "You already have that!", "yellow")
+				return
 			end
 			if p.id == 0 then
 				Net.notify(player, "Coming soon!", "yellow")

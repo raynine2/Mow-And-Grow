@@ -126,7 +126,8 @@ hudScale.Parent = hud
 local function rescale()
 	local cam = workspace.CurrentCamera
 	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
-	hudScale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.5, 1.5)
+	-- (the same size setting as the rest of the HUD: without it the bar was bigger on PC and reached the top-left)
+	hudScale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720) * UI.size, 0.45, 1.5)
 end
 rescale()
 if workspace.CurrentCamera then

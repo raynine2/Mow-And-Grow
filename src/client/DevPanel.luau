@@ -43,7 +43,7 @@ local function build()
 
 	local open = UI.button(UI.gui, "DEV", RED, UDim2.fromOffset(96, 46), function()
 		UI.open("Dev")
-	end, { pos = UDim2.new(0, 16, 0.5, 96), name = "DevButton" })
+	end, { pos = UDim2.new(0, 16, 0.5, if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then 176 else 120), name = "DevButton" }) -- (under the gem counter, not on its icon)
 	open.ZIndex = 5
 
 	UserInputService.InputBegan:Connect(function(input, processed)

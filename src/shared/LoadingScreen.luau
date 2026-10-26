@@ -413,8 +413,9 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	-- the changing line under the bar
 	local line = text(stage, LINES[1] .. "...", UDim2.fromOffset(640, 26), UDim2.fromOffset(640, BAR.y + BAR.h + 30), 2.5)
 
-	-- you, small in the top-left corner: your face in a white ring and your name
-	local face = frame(stage, UDim2.fromOffset(54, 54), UDim2.fromOffset(24, 24), WHITE, 27)
+	-- you, small in the bottom-left corner: your face in a white ring and your name (top-left sat under Roblox's
+	-- menu button)
+	local face = frame(stage, UDim2.fromOffset(54, 54), UDim2.fromOffset(24, 642), WHITE, 27)
 	local fs = Instance.new("UIStroke")
 	fs.Thickness = 3
 	fs.Color = INK
@@ -429,7 +430,7 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	local pc = Instance.new("UICorner")
 	pc.CornerRadius = UDim.new(0.5, 0)
 	pc.Parent = photo
-	local name = text(stage, if player then player.DisplayName else "", UDim2.fromOffset(220, 24), UDim2.fromOffset(90, 51), 2.5)
+	local name = text(stage, if player then player.DisplayName else "", UDim2.fromOffset(220, 24), UDim2.fromOffset(90, 669), 2.5)
 	name.AnchorPoint = Vector2.new(0, 0.5)
 	name.TextXAlignment = Enum.TextXAlignment.Left
 	if player then

@@ -766,7 +766,7 @@ Config.EGGS = {
 	},
 	{
 		id = "GoldenEgg", name = "Golden Egg", currency = "robux", color = Color3.fromRGB(255, 190, 40), exclusive = true,
-		desc = "Exclusive critters only this egg hatches - Rare or better",
+		desc = "Exclusive critters - Rare or better", -- (short: the card's line is 400 px wide)
 		pets = { { "RoyalBeetle", 42 }, { "ThunderHare", 38 }, { "GoldenGnome", 16 }, { "RainbowButterfly", 4 } },
 		products = { { count = 1, key = "GoldenEgg1" }, { count = 3, key = "GoldenEgg3" }, { count = 10, key = "GoldenEgg10", tag = "BEST VALUE" } },
 	},

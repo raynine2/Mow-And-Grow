@@ -878,6 +878,21 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 	holder.Visible = false
 	holder.ZIndex = 10
 	holder.Parent = gui
+	-- On narrow layouts (16:9 phones, tablets) a big window reached under Roblox's buttons, over the side buttons
+	-- and off the bottom: there it's drawn a little smaller (its resting scale, so the open bounce still works).
+	local function fitWindow()
+		local cam = workspace.CurrentCamera
+		local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+		local s = math.max(scale.Scale, 0.01)
+		local w, h = vp.X / s, vp.Y / s
+		local k = math.clamp(math.min((w - 300) / holder.Size.X.Offset, (h - 120) / holder.Size.Y.Offset), 0.6, 1)
+		if k < 0.999 or juiced[holder] then
+			UI.scaleBase(holder, k)
+		end
+	end
+	fitWindow()
+	scale:GetPropertyChangedSignal("Scale"):Connect(fitWindow)
+	holder:GetPropertyChangedSignal("Size"):Connect(fitWindow)
 	-- the ForgeGUI plank sign as the board (made first, so it draws under everything): grown so its flat inside
 	-- lines up with the plank panel, 20 px in from the board's edge, which keeps every window's layout as it was
 	local S = skin("ui_sign")
@@ -1319,6 +1334,22 @@ toastHolder.Position = UDim2.new(0.5, 0, 0, 120)
 toastHolder.AnchorPoint = Vector2.new(0.5, 0)
 toastHolder.ZIndex = 50
 toastHolder.Parent = gui
+-- On narrow layouts (16:9 phones, tablets) the strip went over the quest card and the Potato button: lower and
+-- narrower there.
+local function placeToasts()
+	local cam = workspace.CurrentCamera
+	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	local width = vp.X / math.max(scale.Scale, 0.01)
+	if width < 1450 then
+		toastHolder.Size = UDim2.fromOffset(600, 200)
+		toastHolder.Position = UDim2.new(0.5, 0, 0, 280)
+	else
+		toastHolder.Size = UDim2.fromOffset(720, 200)
+		toastHolder.Position = UDim2.new(0.5, 0, 0, 120)
+	end
+end
+placeToasts()
+scale:GetPropertyChangedSignal("Scale"):Connect(placeToasts)
 local toastLayout = Instance.new("UIListLayout")
 toastLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 toastLayout.Padding = UDim.new(0, 6)

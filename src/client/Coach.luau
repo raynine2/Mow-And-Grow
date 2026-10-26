@@ -525,6 +525,11 @@ RunService.RenderStepped:Connect(function()
 	if card.Visible then
 		setDock(if UI.anyOpen() or t > bigUntil then 1 else 0)
 		placeCard()
+		-- fade away while a window is open (docked it sat on the window's title, or on the Potato button)
+		if shownId then
+			local want = if UI.anyOpen() then 1 else 0
+			card.GroupTransparency += (want - card.GroupTransparency) * 0.2
+		end
 	end
 	-- the clump glow
 	if s and s.clump and s.clump.Parent then
@@ -559,9 +564,12 @@ RunService.RenderStepped:Connect(function()
 			local b = if foundButton and foundButton.Parent and foundButton.Visible then foundButton else nil
 			if b then
 				wantArrow = true
-				local pos = b.AbsolutePosition
+				-- (screen pixels -> the scaled gui's own units, as placeCard does: it used to land far off on big screens)
+				local s = guiScale()
+				local o = UI.gui.AbsolutePosition
+				local pos = b.AbsolutePosition - o
 				local size = b.AbsoluteSize
-				hudArrow.Position = UDim2.fromOffset(pos.X - 6 - math.abs(math.sin(t * 4)) * 14, pos.Y + size.Y * 0.4)
+				hudArrow.Position = UDim2.fromOffset((pos.X - 6) / s - math.abs(math.sin(t * 4)) * 14, (pos.Y + size.Y * 0.4) / s)
 			end
 		end
 	else

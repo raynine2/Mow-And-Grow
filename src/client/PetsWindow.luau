@@ -200,7 +200,9 @@ local function eggCard(list: Instance, order: number, egg, d)
 				end, { name = pr.key, prefix = ("%d EGG%s  "):format(pr.count, if pr.count > 1 then "S" else "") })
 				b.LayoutOrder = i
 				if pr.tag then
-					UI.ribbon(b, pr.tag, Color3.fromRGB(255, 140, 40))
+					-- (above the button's right end: on the button it covered the price)
+					local r = UI.ribbon(b, pr.tag, Color3.fromRGB(255, 140, 40))
+					r.Position = UDim2.new(1, -110, 0, -30)
 				end
 			end
 		end

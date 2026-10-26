@@ -74,8 +74,10 @@ local function counter(y: number, icon: string, plus: boolean?)
 	end
 	return f, t, ic
 end
-local coinBox, coinText, coinIcon = counter(-56, "coin")
-local gemBox, gemText, gemIcon = counter(30, "gem", true)
+-- (a little lower on phones and tablets: the coach card docks under the quest there and covered the coins)
+local TOUCH_HUD = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local coinBox, coinText, coinIcon = counter(if TOUCH_HUD then 4 else -56, "coin")
+local gemBox, gemText, gemIcon = counter(if TOUCH_HUD then 90 else 30, "gem", true)
 
 -------------------------------------------------------------------------------------------------------------
 -- backpack (bottom-left)
@@ -244,18 +246,47 @@ function Hud.setDot(window: string, on: boolean)
 	end
 end
 
+-- Where the column goes. On a computer: right-middle, stepping left of Roblox's player list. On a phone or tablet
+-- it's smaller and higher, under the run card, clear of Roblox's jump button in the bottom-right corner.
+local sideMode = "Lobby"
+local sideScale = Instance.new("UIScale")
+sideScale.Parent = side
+local function placeSide()
+	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	if touch then
+		sideScale.Scale = 0.8
+		side.AnchorPoint = Vector2.new(1, 0)
+		side.Position = UDim2.new(1, -12, 0, if sideMode == "Run" then 240 else 118)
+		return
+	end
+	sideScale.Scale = 1
+	local sc = UI.gui:FindFirstChildOfClass("UIScale")
+	local s = if sc then sc.Scale else 1
+	local listOn = false
+	pcall(function()
+		listOn = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)
+	end)
+	side.AnchorPoint = Vector2.new(1, 0.5)
+	side.Position = UDim2.new(1, -16 - (if listOn then 190 / s else 0), 0.5, 30)
+end
+if uiScale then
+	uiScale:GetPropertyChangedSignal("Scale"):Connect(placeSide)
+end
+
 local function sideButtons(mode: string)
 	UI.clear(side)
+	sideMode = mode
 	roundButton("PETS", "paw", "P", "Pets", 0)
 	roundButton("SHOP", "basket", "R", "Store", 1)
 	if mode == "Run" then
 		roundButton("UPGRADES", "upgrade", "TAB", "Upgrades", 2)
-		side.Size = UDim2.fromOffset(124, 2 * 126)
+		side.Size = UDim2.fromOffset(124, 3 * 126) -- (three buttons: it said two)
 	else
 		roundButton("STATS", "clipboard", "TAB", "Stats", 2)
 		roundButton("NEWS", "newspaper", "J", "News", 4)
 		side.Size = UDim2.fromOffset(124, 4 * 126)
 	end
+	placeSide()
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -711,7 +742,9 @@ task.spawn(function()
 		local phase = ReplicatedStorage:GetAttribute("DayPhase")
 		local length = tonumber(ReplicatedStorage:GetAttribute("DayLength"))
 		local has = type(phase) == "string" and ReplicatedStorage:GetAttribute("DayLeft") ~= nil and length ~= nil and length > 0
-		day.Visible = has
+		-- (the boss's health bar takes the top centre during a fight)
+		local boss = State.world and State.world.boss
+		day.Visible = has and not boss
 		if has then
 			local night = phase == "night"
 			if phase ~= shownPhase then

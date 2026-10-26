@@ -130,7 +130,7 @@ local function perkCard(order: number, p, d)
 	local can = cost ~= nil and d.gems >= cost
 	local b = UI.button(card, if cost then Format.commas(cost) else "MAX", if can then Color3.fromRGB(60, 150, 250) else Color3.fromRGB(150, 155, 170), UDim2.fromOffset(150, 48), function()
 		State.fire("Buy", "perk", p.id)
-	end, { pos = UDim2.new(0.5, 0, 1, 22), anchor = Vector2.new(0.5, 1), name = "Buy" })
+	end, { pos = UDim2.new(0.5, 0, 1, 8), anchor = Vector2.new(0.5, 1), name = "Buy" }) -- (hung 22 below, into the "Get gems" header)
 	if cost then
 		UI.icon(b, "gem", 30, UDim2.new(0, 12, 0.5, -3), Vector2.new(0, 0.5))
 	end

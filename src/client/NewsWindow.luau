@@ -58,11 +58,12 @@ local function entry(list: Instance, order: number, n, selected: boolean, isNew:
 	b.Name = "News_" .. n.id
 	b.LayoutOrder = order
 	UI.icon(b, n.icon or "news", 52, UDim2.fromOffset(12, 10))
-	UI.text(b, n.title, UDim2.new(1, -84, 0, 30), { pos = UDim2.fromOffset(70, 8), align = Enum.TextXAlignment.Left, stroke = 2.5 })
+	-- (a small NEW badge in the corner: the tilted ribbon covered the title and was cut off by the list)
+	UI.text(b, n.title, UDim2.new(1, if isNew then -146 else -84, 0, 30), { pos = UDim2.fromOffset(70, 8), align = Enum.TextXAlignment.Left, stroke = 2.5 })
 	UI.text(b, ago(n.time), UDim2.new(1, -84, 0, 20), { pos = UDim2.fromOffset(70, 40), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 1.5 })
 	if isNew then
-		local r = UI.ribbon(b, "NEW", Color3.fromRGB(230, 50, 60))
-		r.Position = UDim2.new(1, -96, 0, -14)
+		local badge = UI.frame({ size = UDim2.fromOffset(58, 24), pos = UDim2.new(1, -8, 0, 8), anchor = Vector2.new(1, 0), color = Color3.fromRGB(230, 50, 60), parent = b, radius = 8, outline = 2, name = "NewBadge" })
+		UI.text(badge, "NEW", UDim2.new(1, -6, 1, -4), { pos = UDim2.fromOffset(3, 2), stroke = 1.5 })
 	end
 	UI.raise(b, 4)
 	b.MouseButton1Click:Connect(onClick)

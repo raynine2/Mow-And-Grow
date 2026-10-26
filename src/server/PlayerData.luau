@@ -58,6 +58,7 @@ local DEFAULT = {
 	petNext = 1, -- next uid number
 	index = {}, -- grass types collected: ["<zone>:<mutation>"] = true (see Config.INDEX_GEMS)
 	bestTime = 0, -- fastest finished run in seconds (0 = none yet)
+	bossTrophies = {}, -- bosses beaten: [rig name] = times (server/Boss; the STATS window shows them)
 	run = nil, -- the saved run, see PlayerData.newRun
 	receipts = {}, -- recent processed purchase ids
 }

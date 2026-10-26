@@ -71,6 +71,12 @@ local function flat(v: Vector3): Vector3
 end
 
 local function bossModel(): Model?
+	-- the boss revamp (26 Oct) draws the boss in workspace.BossView (client/BossView)
+	local view = workspace:FindFirstChild("BossView")
+	local m = view and view:FindFirstChildOfClass("Model")
+	if m then
+		return m
+	end
 	local world = workspace:FindFirstChild("World")
 	local holder = world and world:FindFirstChild("Boss")
 	return holder and holder:FindFirstChildOfClass("Model")
@@ -310,6 +316,14 @@ for _, x in { 0.25, 0.5, 0.75 } do
 	local tick = UI.frame({ size = UDim2.new(0, 3, 1, 0), pos = UDim2.fromScale(x, 0), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(28, 22, 36), parent = hpInner, radius = 0, outline = 0, transparency = 0.45, name = "Tick" })
 	tick.ZIndex = 4
 end
+-- the phase marker at 50% (the rage form starts there): a gold notch over the bar, gone in phase 2
+local phaseMark = UI.frame({ size = UDim2.new(0, 6, 1, 14), pos = UDim2.new(0.5, 0, 0, -7), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(255, 214, 60), parent = hpInner, radius = 3, outline = 2, name = "PhaseMark" })
+phaseMark.ZIndex = 6
+local function setPhase(phase: number)
+	local rage = phase >= 2
+	phaseMark.Visible = not rage
+	fillGrad.Color = if rage then ColorSequence.new(Color3.fromRGB(150, 10, 30), Color3.fromRGB(255, 40, 40)) else ColorSequence.new(Color3.fromRGB(220, 38, 38), Color3.fromRGB(255, 150, 40))
+end
 local hpText = UI.text(hpTrack, "", UDim2.new(1, -16, 1, -8), { pos = UDim2.fromOffset(8, 4), stroke = 2.5 })
 hpText.ZIndex = 5
 
@@ -388,7 +402,8 @@ State.on("world", function(w)
 	try("world", function()
 		if w.mode == "Run" and w.boss then
 			setHp(w.boss.name, w.boss.hp, w.boss.max)
-			if not intro.active then
+			setPhase(w.boss.phase or 1)
+			if not intro.active and not BossFx.cinematic and w.boss.state ~= "intro" then
 				showBar(true)
 			end
 		elseif hp.shown then
@@ -1086,6 +1101,22 @@ function BossFx.reward(d): boolean
 		rewardLine(death.card, d)
 	end
 	return true
+end
+
+-- for client/BossCine (the revamp's cutscenes): the bar, the title cards, the letterbox, the defeated card
+BossFx.cinematic = false
+BossFx.showBar = showBar
+BossFx.setPhase = setPhase
+BossFx.titleCard = titleCard
+BossFx.fadeCard = fadeCard
+BossFx.shakeCard = shakeCard
+BossFx.letterbox = letterbox
+BossFx.defeatedCard = defeatedCard
+BossFx.screenFlash = function(color: Color3, strength: number, time: number)
+	screenFlash(overlay(color, "Flash"), strength, time)
+end
+BossFx.resetHp = function()
+	hp.name = ""
 end
 
 return BossFx

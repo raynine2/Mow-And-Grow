@@ -23,7 +23,11 @@ function Format.short(n: number): string
 	else
 		text = string.format("%.2f", math.floor(v * 100) / 100)
 	end
-	text = text:gsub("%.?0+$", "")
+	-- drop trailing zeros after the point only ("1.50" -> "1.5", "2.00" -> "2"); "120" and "600" keep theirs
+	-- (the old pattern turned 120K into "12K" and 600K into "6K")
+	if string.find(text, ".", 1, true) then
+		text = (text:gsub("0+$", ""):gsub("%.$", ""))
+	end
 	return text .. SUFFIXES[i]
 end
 

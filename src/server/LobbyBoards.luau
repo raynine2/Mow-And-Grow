@@ -34,7 +34,32 @@ local DEFS: { Def } = {
 	{ key = "cut", store = "_LB_cut", asc = false, write = true, value = function(d) return d.stats and d.stats.cut or 0 end, text = function(n) return Format.short(n) end },
 	{ key = "cash", store = "_LB_cash", asc = false, write = true, value = function(d) return d.stats and d.stats.coinsEarned or 0 end, text = function(n) return "$" .. Format.short(n) end },
 	{ key = "time", store = "_LB_time", asc = false, write = true, value = function(d) return d.stats and d.stats.playtime or 0 end, text = duration },
+	-- boss kills (owner, boss brief round 2): shown on the BEST TIMES board, which takes turns with it
+	{ key = "bosses", store = "_LB_bosses", asc = false, write = true, value = function(d) return d.stats and d.stats.bosses or 0 end, text = function(n) return "👑 " .. Format.short(n) end },
 }
+
+-- Boards that take turns between keys (attribute Cycle = "best:BEST TIMES,bosses:BOSS SLAYERS"; an ObjectValue
+-- "TitleLabel" under the board part points at its title text). Every CYCLE_TIME s the next key shows.
+local CYCLE_TIME = 10
+local function cycle(tick: number)
+	for _, part in CollectionService:GetTagged("LobbyBoard") do
+		local list = part:GetAttribute("Cycle")
+		if type(list) ~= "string" then
+			continue
+		end
+		local entries = string.split(list, ",")
+		local i = (tick // CYCLE_TIME) % #entries + 1
+		local key, title = string.match(entries[i], "^([^:]+):(.+)$")
+		if key and part:GetAttribute("Key") ~= key then
+			part:SetAttribute("Key", key)
+			local ref = part:FindFirstChild("TitleLabel")
+			local label = ref and ref:IsA("ObjectValue") and ref.Value
+			if label and label:IsA("TextLabel") then
+				label.Text = title
+			end
+		end
+	end
+end
 
 type Row = { userId: number, name: string, value: number }
 local stores: { [string]: OrderedDataStore } = {}
@@ -189,6 +214,7 @@ function LobbyBoards.start()
 					task.spawn(save, p)
 				end
 			end
+			pcall(cycle, tick)
 			for _, def in DEFS do
 				local ok, err = pcall(show, def)
 				if not ok then

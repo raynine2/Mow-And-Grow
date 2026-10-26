@@ -9,6 +9,7 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Net = require(script.Parent.Net)
 local RunBuilder = require(script.Parent.RunBuilder)
 local Boss = require(script.Parent.Boss)
+local BossArena = require(script.Parent.BossArena)
 
 local Night = {}
 Night.peaceful = false
@@ -173,9 +174,14 @@ local function step(dt: number)
 			count[cr.target] = (count[cr.target] or 0) + 1
 		end
 	end
+	local fighting = Boss.alive()
 	for _, p in Players:GetPlayers() do
 		local root = rootOf(p)
 		local z = if root then zoneOf(root.Position) else 0
+		-- no crawlers in or near an arena while a fight is on (owner, round 2)
+		if root and fighting and BossArena.near(root.Position, 40) then
+			continue
+		end
 		if root and z > 0 and (count[p] or 0) < Config.CRAWLERS.maxPerPlayer and #crawlers < Config.CRAWLERS.maxTotal and os.clock() - (lastSpawn[p] or 0) > Config.CRAWLERS.every then
 			lastSpawn[p] = os.clock()
 			spawnFor(p, z, root.Position)
@@ -186,7 +192,7 @@ local function step(dt: number)
 		local cr = crawlers[i]
 		local target = cr.target
 		local troot = target and target.Parent and rootOf(target)
-		if not troot or zoneOf(troot.Position) == 0 then
+		if not troot or zoneOf(troot.Position) == 0 or (fighting and BossArena.near(troot.Position, 40)) then
 			-- its player went home (or left): it burrows back into the grass
 			remove(i, true)
 			continue

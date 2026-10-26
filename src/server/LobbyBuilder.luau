@@ -319,11 +319,24 @@ end
 
 -- The ForgeGUI notice board (leaderboard and BEST TIMES): a title and the rows on its green face, which sits at
 -- z -2.2 in the model's own studs, x -4.9..4.9, y 3.2..8.6. Returns the rows label.
-local function forgeBoard(m: Instance, at: CFrame, s: number, title: string, color: Color3): TextLabel
-	PropKit.facePanel(m, at, Vector3.new(0, 7.95, -2.32), Vector2.new(9.2, 1.1), title, color, s)
+local function forgeBoard(m: Instance, at: CFrame, s: number, title: string, color: Color3): (TextLabel, TextLabel)
+	local head = PropKit.facePanel(m, at, Vector3.new(0, 7.95, -2.32), Vector2.new(9.2, 1.1), title, color, s)
 	local body = PropKit.facePanel(m, at, Vector3.new(0, 5.35, -2.32), Vector2.new(9.2, 3.9), "", Color3.new(1, 1, 1), s)
 	PropKit.collider(m, at, Vector3.new(0, 7, 0), Vector3.new(14.5, 14, 8.4), s)
-	return body
+	return body, head
+end
+
+-- Make a board take turns between leaderboards (server/LobbyBoards' Cycle): `body` is its rows label (after
+-- LobbyKit.boardFace), `head` its title.
+local function cycleBoard(body: TextLabel, head: TextLabel?, list: string)
+	local part = (body.Parent :: Instance).Parent :: Instance
+	part:SetAttribute("Cycle", list)
+	if head then
+		local ref = Instance.new("ObjectValue")
+		ref.Name = "TitleLabel"
+		ref.Value = head
+		ref.Parent = part
+	end
 end
 
 -- The leaderboard's text label (the Lobby system fills it with this server's top mowers). It stands to the right
@@ -362,15 +375,17 @@ local function bestTimesBoard(world: Instance): TextLabel?
 		return nil
 	end
 	if Models.isForge("trophy_board") then
-		local fbody = forgeBoard(m, at, s, "BEST TIMES", PropKit.TITLE)
+		local fbody, fhead = forgeBoard(m, at, s, "BEST TIMES", PropKit.TITLE)
 		LobbyKit.boardFace(fbody, "best")
+		cycleBoard(fbody, fhead, "best:BEST TIMES,bosses:BOSS SLAYERS") -- takes turns with the boss kills
 		fbody.TextXAlignment = Enum.TextXAlignment.Left
 		fbody.TextYAlignment = Enum.TextYAlignment.Top
 		return fbody
 	end
-	PropKit.facePanel(m, at, Vector3.new(0, 10.9, -0.3), Vector2.new(10.4, 1.6), "BEST TIMES", PropKit.TITLE, s)
+	local head = PropKit.facePanel(m, at, Vector3.new(0, 10.9, -0.3), Vector2.new(10.4, 1.6), "BEST TIMES", PropKit.TITLE, s)
 	local body = PropKit.facePanel(m, at, Vector3.new(0, 6.3, -0.3), Vector2.new(10.2, 6.6), "", Color3.new(1, 1, 1), s)
 	LobbyKit.boardFace(body, "best") -- all-time rows (server/LobbyBoards)
+	cycleBoard(body, head, "best:BEST TIMES,bosses:BOSS SLAYERS")
 	body.TextXAlignment = Enum.TextXAlignment.Left
 	body.TextYAlignment = Enum.TextYAlignment.Top
 	PropKit.collider(m, at, Vector3.new(0, 7, 0), Vector3.new(13, 14, 1.4), s)

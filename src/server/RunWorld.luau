@@ -516,6 +516,23 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 	local function inCamp(p: Vector3): boolean
 		return typeof(camp) == "Vector3" and Vector2.new(p.X - camp.X, p.Z - camp.Z).Magnitude < campR + 4
 	end
+	-- no grass on the boss arenas (server/BossArena: World attributes Arena<z>, ArenaRadius)
+	local arenaR = (w and w:GetAttribute("ArenaRadius") or 0) :: number
+	local arenaCs: { Vector3 } = {}
+	for i = 1, #Config.ZONES do
+		local a = w and w:GetAttribute("Arena" .. i)
+		if typeof(a) == "Vector3" then
+			table.insert(arenaCs, a)
+		end
+	end
+	local function inArena(p: Vector3): boolean
+		for _, a in arenaCs do
+			if Vector2.new(p.X - a.X, p.Z - a.Z).Magnitude < arenaR + 6 then
+				return true
+			end
+		end
+		return false
+	end
 	local function free(p: Vector3): boolean
 		for _, q in placed do
 			if (Vector3.new(q.X - p.X, 0, q.Z - p.Z)).Magnitude < spacing * 0.85 then
@@ -543,7 +560,7 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 						local hit = workspace:Raycast(Vector3.new(x, c.Y + 40, zz), Vector3.new(0, -80, 0), ray)
 						if hit and hit.Normal.Y > 0.9 and math.abs(hit.Position.Y - (c.Y - 0.5)) < 6.5 then
 							local p = hit.Position
-							if free(p) and not inCamp(p) and not onPath(p, 2.6 * scale) and not (yard and blocked(p, 3.4 * scale)) then
+							if free(p) and not inCamp(p) and not inArena(p) and not onPath(p, 2.6 * scale) and not (yard and blocked(p, 3.4 * scale)) then
 								table.insert(placed, p)
 								local yaw = rng:NextInteger(0, 3) * math.pi / 2
 								table.insert(list, { cf = CFrame.new(p) * CFrame.Angles(0, yaw, 0), scale = scale * rng:NextNumber(0.9, 1.1) })
@@ -715,6 +732,7 @@ function RunWorld.moveVillageToCamp(centre: Vector3, radius: number)
 	w:SetAttribute("CampFacing", fwd)
 	print(("[RunWorld] The village's buildings are now in area 1's camp at %d, %d (%d things cleared from the yard, kept in %s)"):format(c.X, c.Z, moved, bk.Name))
 end
+
 
 -- STUDIO, EDIT MODE (command bar): require(game.ServerScriptService.MowALawn.RunWorld).refreshForge()
 -- Puts the ForgeGUI models into the world saved in the place, so Edit mode shows what a run shows: the 8 area

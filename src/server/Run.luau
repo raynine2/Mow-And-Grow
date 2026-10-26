@@ -24,6 +24,7 @@ local Models = require(script.Parent.Models)
 local BestTimes = require(script.Parent.BestTimes)
 local Night = require(script.Parent.Night)
 local Guns = require(script.Parent.Guns)
+local BossArena = require(script.Parent.BossArena)
 
 local Run = {}
 
@@ -185,7 +186,7 @@ local function onAreaCleared(z: number)
 	end
 end
 
-local function onBossDefeated(z: number, _damageBy: { [Player]: number })
+local function onBossDefeated(z: number, _damageBy: { [Player]: number }, noHit: { [Player]: boolean }?)
 	Guns.clear() -- the crate and the guns go with the boss
 	local def = Config.ZONES[z].boss
 	for _, p in Players:GetPlayers() do
@@ -193,11 +194,29 @@ local function onBossDefeated(z: number, _damageBy: { [Player]: number })
 		if data and data.run then
 			-- everyone in the party gets the reward; helpers get the full amount too
 			local gems = math.floor(def.gems * Stats.compute(p, data).gems)
+			-- the no-hit bonus (owner, round 2): fought the whole fight and the boss never touched you
+			local flawless = noHit ~= nil and noHit[p] == true
+			if flawless then
+				gems += math.floor(def.gems * (Config.BOSS_NOHIT_GEMS or 0))
+			end
 			data.gems += gems
 			data.run.coins += def.coins
 			data.stats.bosses += 1
+			-- the in-game trophy, and the boss's Roblox badge once the owner has made it (Config.BOSS_BADGES)
+			local rig = require(ReplicatedStorage.MowALawn.BossMoves).get(z).rig
+			data.bossTrophies = data.bossTrophies or {}
+			data.bossTrophies[rig] = (data.bossTrophies[rig] or 0) + 1
+			local badge = Config.BOSS_BADGES and Config.BOSS_BADGES[z] or 0
+			if badge > 0 then
+				task.spawn(pcall, function()
+					game:GetService("BadgeService"):AwardBadge(p.UserId, badge)
+				end)
+			end
 			PlayerData.changed(p)
 			Net.send(p, "Fx", "reward", { coins = def.coins, gems = gems, title = def.name:upper() .. " DEFEATED!" })
+			if flawless then
+				Net.notify(p, "NO-HIT BONUS! The boss never touched you: extra gems!", "yellow")
+			end
 		end
 	end
 	for _, p in Players:GetPlayers() do
@@ -363,6 +382,7 @@ local function onSwing(player: Player, look: any)
 	if Boss.inReach(root.Position, def.radius) then
 		Boss.damage(player, damage * Config.BOSS_TOOL_MULT)
 	end
+	Boss.hitAdds(player, root.Position, def.radius) -- the boss's minions pop
 	Night.hit(player, root.Position, def.radius, damage)
 end
 
@@ -383,9 +403,6 @@ local function autoTick()
 					else
 						Field.hit(player, pos, mdef.radius, dmg, nil, stats.luck)
 					end
-					if Boss.inReach(pos, mdef.radius) then
-						Boss.damage(player, dmg)
-					end
 				end
 			else
 				local def = Tools.equipped(player)
@@ -400,6 +417,7 @@ local function autoTick()
 					if Boss.inReach(root.Position, def.radius) then
 						Boss.damage(player, dmg)
 					end
+					Boss.hitAdds(player, root.Position, def.radius)
 					Night.hit(player, root.Position, def.radius, dmg)
 				end
 			end
@@ -620,6 +638,9 @@ end
 function Run.start()
 	if Config.WORLD_GEN then
 		info = RunWorld.build() -- the generated world (village + eight valleys)
+		if Config.BOSSES then
+			BossArena.build(info) -- a themed arena per area (before any grass is placed: none grows on them)
+		end
 		Field.spots = RunWorld.patches
 	else
 		info = require(script.Parent.MapStore).load("Run", RunBuilder.build) -- the saved map, if the place has one
@@ -656,8 +677,7 @@ function Run.start()
 				Quests.event(p, "zone", 1)
 			end
 			if Config.BOSSES then
-				Boss.spawn(z)
-				Guns.dropCrate(z)
+				Boss.ready(z) -- its arena's summon pad lights up (hand tools only: no boss crate any more)
 			else
 				onAreaCleared(z)
 			end
@@ -880,10 +900,11 @@ function Run.devAction(player: Player, data, action: string, _arg: any): string?
 		if Boss.alive() then
 			return "A boss is already out"
 		end
-		Boss.spawn(zone)
-		return Config.ZONES[zone].boss.name .. " spawned"
+		Boss.dev("ready", zone)
+		Boss.dev("to", zone, player)
+		return Config.ZONES[zone].boss.name .. ": stand on the pad"
 	elseif action == "killBoss" then
-		Boss.damage(player, math.huge)
+		Boss.dev("kill")
 		return "Boss killed"
 	elseif action == "bossesOn" then
 		Config.BOSSES = not Config.BOSSES
@@ -919,10 +940,11 @@ function Run.dev(cmd: string, ...)
 			devCutting = false
 		end
 	elseif cmd == "killBoss" then
-		local player = Players:GetPlayers()[1]
-		if player then
-			Boss.damage(player, math.huge)
-		end
+		Boss.dev("kill")
+	elseif cmd == "boss" then
+		-- Boss.dev: ready <z> | to <z> | fight <z> | rage | kill | hurt <fraction> | wipe
+		local a, b = ...
+		Boss.dev(a, tonumber(b) or zone, Players:GetPlayers()[1])
 	elseif cmd == "night" then
 		Night.skipTo(true)
 	elseif cmd == "day" then

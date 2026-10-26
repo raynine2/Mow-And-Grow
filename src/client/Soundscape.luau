@@ -79,8 +79,15 @@ local function step(material: Enum.Material, speed: number)
 	end
 end
 
+local stepRay = RaycastParams.new()
+stepRay.FilterType = Enum.RaycastFilterType.Exclude
+local rayChar: Model? = nil
 RunService.Heartbeat:Connect(function(dt)
 	local char = player.Character
+	if char and char ~= rayChar then
+		rayChar = char
+		stepRay.FilterDescendantsInstances = { char }
+	end
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not hum or not root or hum.Health <= 0 or hum.SeatPart then
@@ -98,6 +105,16 @@ RunService.Heartbeat:Connect(function(dt)
 	local stride = STRIDE * math.clamp(speed / 16, 1, 1.35)
 	if walked >= stride then
 		walked -= stride
+		-- Potato Mode makes the ground smooth plastic: step on what it really is (kept in PotatoMat)
+		if material == Enum.Material.SmoothPlastic and player:GetAttribute("Potato") then
+			local hit = workspace:Raycast(root.Position, Vector3.new(0, -8, 0), stepRay)
+			local real = hit and hit.Instance:GetAttribute("PotatoMat")
+			if type(real) == "string" then
+				pcall(function()
+					material = (Enum.Material :: any)[real]
+				end)
+			end
+		end
 		step(material, speed)
 	end
 end)

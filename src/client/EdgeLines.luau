@@ -47,7 +47,7 @@ local function wanted(p: Instance): boolean
 	end
 	-- skip the invisible helpers, water and the deep column bodies under the floor
 	local n = p.Name
-	return n ~= "Patch" and n ~= "Water" and not string.find(n, "Side", 1, true) and not string.find(n, "Patch", 1, true) and p.Material ~= Enum.Material.Glass and p.Material ~= Enum.Material.ForceField
+	return n ~= "Patch" and n ~= "Water" and not string.find(n, "Side", 1, true) and not string.find(n, "Patch", 1, true) and p.Material ~= Enum.Material.Glass and p.Material ~= Enum.Material.ForceField and p:GetAttribute("PotatoMat") ~= "Glass"
 end
 
 local inGrid: { [BasePart]: boolean } = setmetatable({}, { __mode = "k" }) :: any

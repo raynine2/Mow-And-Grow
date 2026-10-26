@@ -544,7 +544,13 @@ rewards.refresh = function()
 	if not d then
 		return
 	end
-	local v = d.daily or { ready = d.dailyIn <= 0, wait = d.dailyIn, day = 1, streak = 0, claimedToday = false }
+	-- the timers count down here between snapshots (an idle lobby player gets no new state to refresh them)
+	local elapsed = os.clock() - State.dataAt
+	local v = table.clone(d.daily or { ready = d.dailyIn <= 0, wait = d.dailyIn, day = 1, streak = 0, claimedToday = false })
+	if not v.ready and (v.wait or 0) > 0 then
+		v.wait = math.max(0, v.wait - elapsed)
+		v.ready = v.wait <= 0
+	end
 	-- the calendar: days 1-4 on top, 5-6 and the big day 7 below
 	local cal = Instance.new("Frame")
 	cal.Name = "Calendar"
@@ -567,8 +573,38 @@ rewards.refresh = function()
 		else ("🔥 %d day streak  ·  Next reward in %s"):format(v.streak, Format.clock(v.wait))
 	local streak = UI.text(rewards.list, line, UDim2.new(1, 0, 0, 30), { color = Color3.new(1, 1, 1), stroke = 2.5 })
 	streak.LayoutOrder = 2
-	local free = d.freeGems or { ready = false, wait = 0, gems = Config.FREE_GEMS.gems }
-	UI.popupRow(rewards.list, 3, "gem", ("Free gems every 6 hours +%d"):format(free.gems), if free.ready then "READY" else Format.clock(free.wait), if free.ready then C.green else C.yellow)
+	local free = table.clone(d.freeGems or { ready = false, wait = 0, gems = Config.FREE_GEMS.gems })
+	if not free.ready and (free.wait or 0) > 0 then
+		free.wait = math.max(0, free.wait - elapsed)
+		free.ready = free.wait <= 0
+	end
+	local freeText = if free.ready then "READY" else Format.clock(free.wait)
+	local freeRow = UI.popupRow(rewards.list, 3, "gem", ("Free gems every 6 hours +%d"):format(free.gems), freeText, if free.ready then C.green else C.yellow)
+	local freeLabel: TextLabel? = nil
+	for _, c in freeRow:GetChildren() do
+		if c:IsA("TextLabel") and c.Text == freeText then
+			freeLabel = c
+		end
+	end
+	-- ticked every second while the window is open: the countdowns move, and a timer reaching 0 redraws it
+	rewards.tick = function()
+		local e = os.clock() - State.dataAt
+		local dailyWait = (d.daily and d.daily.wait) or d.dailyIn or 0
+		local freeWait = (d.freeGems and d.freeGems.wait) or 0
+		local dailyLeft = math.max(0, dailyWait - e)
+		local freeLeft = math.max(0, freeWait - e)
+		-- (only a countdown that was running can run out: a 0 the server sent doesn't redraw every second)
+		if (not v.ready and dailyWait > 0 and dailyLeft <= 0) or (not free.ready and freeWait > 0 and freeLeft <= 0) then
+			rewards.refresh()
+			return
+		end
+		if not v.ready then
+			streak.Text = ("🔥 %d day streak  ·  Next reward in %s"):format(v.streak, Format.clock(dailyLeft))
+		end
+		if freeLabel and not free.ready then
+			freeLabel.Text = Format.clock(freeLeft)
+		end
+	end
 	UI.popupRow(rewards.list, 4, "clover", "Join the group +" .. Config.GROUP_GEMS, if d.groupClaimed then "DONE" else "JOIN", if d.groupClaimed then C.green else C.yellow)
 	if v.ready then
 		UI.setButton(rewards.action, "CLAIM DAY " .. v.day, C.green)
@@ -770,6 +806,15 @@ end)
 
 State.on("data", function()
 	UI.refreshOpen()
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if UI.isOpen("Rewards") and rewards.tick then
+			pcall(rewards.tick)
+		end
+	end
 end)
 
 function Windows.open(name: string)

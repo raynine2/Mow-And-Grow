@@ -275,7 +275,7 @@ local function turnOn()
 	end)
 end
 
-local function turnOff()
+local function turnOff(done: () -> ())
 	gen += 1
 	for _, c in conns do
 		c:Disconnect()
@@ -303,6 +303,7 @@ local function turnOff()
 				task.wait()
 			end
 		end
+		done()
 	end)
 end
 
@@ -311,23 +312,36 @@ function Potato.changed(fn: (boolean) -> ())
 	table.insert(listeners, fn)
 end
 
--- Switch it (save = also tell the server, so it's remembered next time).
+-- Switch it (save = also tell the server, so it's remembered next time). Listeners hear "off" once everything has
+-- been put back, so a module can then set its own effects the way it wants them (one it switched off meanwhile
+-- would otherwise come back on).
+local saveAt = 0
 function Potato.set(on: boolean, save: boolean?)
 	if on == Potato.on then
 		return
 	end
 	Potato.on = on
 	player:SetAttribute("Potato", on)
+	local function notify()
+		for _, fn in listeners do
+			task.spawn(fn, on)
+		end
+	end
 	if on then
 		turnOn()
+		notify()
 	else
-		turnOff()
-	end
-	for _, fn in listeners do
-		task.spawn(fn, on)
+		turnOff(notify)
 	end
 	if save then
-		State.fire("Graphics", on)
+		-- only the last of quick clicks is sent (the server takes a couple a second)
+		saveAt = os.clock()
+		local mine = saveAt
+		task.delay(1, function()
+			if saveAt == mine then
+				State.fire("Graphics", Potato.on)
+			end
+		end)
 	end
 end
 

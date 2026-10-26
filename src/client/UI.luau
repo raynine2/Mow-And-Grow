@@ -1168,10 +1168,46 @@ function UI.anyOpen(): boolean
 	return openName ~= nil
 end
 
+-- Redraw the open window for new state. While mowing, state comes up to 10 times a second, and a redraw rebuilds
+-- every button: so redraws are at most ~3 a second, and wait while a click or tap is in progress (the button would
+-- be swapped out from under the finger and the click lost).
+local refreshPending = false
+local lastRefresh = 0
+local touches = 0
+do
+	local UIS = game:GetService("UserInputService")
+	UIS.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch then
+			touches += 1
+		end
+	end)
+	UIS.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch then
+			touches = math.max(0, touches - 1)
+		end
+	end)
+end
 function UI.refreshOpen()
-	if openName and windows[openName] then
-		windows[openName].refresh()
+	if refreshPending then
+		return
 	end
+	refreshPending = true
+	task.spawn(function()
+		local UIS = game:GetService("UserInputService")
+		local t0 = os.clock()
+		while (UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) or touches > 0) and os.clock() - t0 < 2 do
+			task.wait(0.05)
+		end
+		local gap = 0.3 - (os.clock() - lastRefresh)
+		if gap > 0 then
+			task.wait(gap)
+		end
+		refreshPending = false
+		lastRefresh = os.clock()
+		if openName and windows[openName] then
+			windows[openName].refresh()
+		end
+	end)
 end
 
 -- A section heading inside a window (dark brown inset bar).

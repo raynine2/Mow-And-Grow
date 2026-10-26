@@ -365,6 +365,15 @@ task.spawn(function()
 	end
 end)
 
+-- after Potato Mode, set every hologram's effects again (they're switched by distance, and come back as they were)
+require(script.Parent.Potato).changed(function(on)
+	if not on then
+		for _, h in holos do
+			h.card:SetAttribute("On", nil)
+		end
+	end
+end)
+
 local lastClock = 0
 RunService.RenderStepped:Connect(function(dt)
 	local cam = workspace.CurrentCamera

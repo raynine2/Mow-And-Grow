@@ -255,6 +255,15 @@ for _ = 1, 3 do
 	table.insert(ribbons, makeRibbon())
 end
 
+-- after Potato Mode: only the ribbons in flight leave a trail
+require(script.Parent.Potato).changed(function(on)
+	if not on then
+		for _, r in ribbons do
+			r.trail.Enabled = r.active
+		end
+	end
+end)
+
 local function ribbonStep(at: Vector3, t: number)
 	for _, r in ribbons do
 		if not r.active then

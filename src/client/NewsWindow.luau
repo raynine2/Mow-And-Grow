@@ -179,7 +179,8 @@ function NewsWindow.build()
 	local selectedId = newest()
 	local seenAtOpen: number? = nil
 	UI.onWindowChanged.Event:Connect(function(name)
-		if name ~= "News" then
+		-- (with deferred events the close that comes before the News window opens can arrive after it opened)
+		if name ~= "News" and not UI.isOpen("News") then
 			seenAtOpen = nil
 		end
 	end)

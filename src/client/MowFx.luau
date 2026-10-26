@@ -238,7 +238,8 @@ RunService.Heartbeat:Connect(function(dt)
 			st.last = pos
 			if moved.Magnitude < 12 then -- (a teleport is no stripe)
 				local hit = workspace:Raycast(to + Vector3.new(0, 3, 0), Vector3.new(0, -8, 0), groundRay)
-				if hit and hit.Material == Enum.Material.Grass then
+				-- (Potato Mode makes the ground smooth plastic: its real material is kept in PotatoMat)
+				if hit and (hit.Material == Enum.Material.Grass or hit.Instance:GetAttribute("PotatoMat") == "Grass") then
 					local y = hit.Position.Y
 					layStripe(Vector3.new(from.X, y, from.Z), Vector3.new(to.X, y, to.Z), width, stripeColor(hit.Instance.Color, moved.Unit))
 				end

@@ -120,6 +120,7 @@ local function fire()
 	Sound.play("hit", 0.15)
 end
 
+local fireInput: InputObject? = nil
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
 		return
@@ -127,12 +128,15 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		if heldGun() then
 			firing = true
+			fireInput = input
 		end
 	end
 end)
+-- (only the press that started firing stops it: on a phone, letting go of the move stick mustn't)
 UserInputService.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+	if input == fireInput or input.UserInputType == Enum.UserInputType.MouseButton1 then
 		firing = false
+		fireInput = nil
 	end
 end)
 RunService.Heartbeat:Connect(function()

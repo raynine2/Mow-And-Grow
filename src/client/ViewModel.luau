@@ -687,7 +687,7 @@ RunService.RenderStepped:Connect(function()
 	local sway = CFrame.new(swayYaw * 1.4, swayPitch * 1.2, 0) * CFrame.Angles(swayPitch, swayYaw, swayYaw * 0.6)
 	local base = cam.CFrame * bob * sway
 	lamp.CFrame = cam.CFrame * CFrame.new(0, 0.5, -1.2) -- above the hands: lights the tops you see
-	handLight.Enabled = true
+	handLight.Enabled = not player:GetAttribute("Potato")
 
 	local id = equippedId()
 	local twoHanded = id ~= nil and TWO_HANDED[id] == true

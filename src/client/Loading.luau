@@ -43,6 +43,15 @@ function Loading.show()
 	end)
 end
 
+-- a teleport that failed after it was sent: take the screen down at once and say so (instead of 45 s of loading)
+TeleportService.TeleportInitFailed:Connect(function(who, result, message)
+	if who ~= player or not current then
+		return
+	end
+	Loading.hide()
+	State.emit("notify", "The teleport didn't work (" .. tostring(message ~= "" and message or result) .. "). Try again in a moment.", "red")
+end)
+
 State.on("fx", function(kind)
 	if kind == "loading" then
 		Loading.show()

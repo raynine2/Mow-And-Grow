@@ -1017,8 +1017,10 @@ function HatchFx.play(eggId: string, ids: { string }, fresh: { boolean }?, onDon
 	local stage, burst, ticks = 0, false, 0
 	local conn, input
 	-- click: skip ahead (only without a Legendary+ inside), or close once revealed
+	-- (a gamepad's A button works too: the HUD is hidden during the hatch, so there's nothing else to press)
 	input = UserInputService.InputBegan:Connect(function(io)
-		if io.UserInputType ~= Enum.UserInputType.MouseButton1 and io.UserInputType ~= Enum.UserInputType.Touch then
+		local pad = io.UserInputType == Enum.UserInputType.Gamepad1 and io.KeyCode == Enum.KeyCode.ButtonA
+		if io.UserInputType ~= Enum.UserInputType.MouseButton1 and io.UserInputType ~= Enum.UserInputType.Touch and not pad then
 			return
 		end
 		if s.t >= clickAt then

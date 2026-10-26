@@ -124,13 +124,15 @@ potato.BackgroundTransparency = 1
 potato.Size = UDim2.fromOffset(84, 74)
 potato.Position = UDim2.fromOffset(14 + 330 + 10, 66)
 potato.Parent = root
+local showPotato: (boolean) -> () -- (below: the button's click needs it)
 local potatoButton = UI.button(potato, "🥔", POTATO_OFF, UDim2.fromOffset(50, 50), function()
 	Potato.toggle()
+	showPotato(Potato.on)
 	UI.toast(if Potato.on then "🥔 Potato Mode ON: low graphics, smoother on slow devices" else "Potato Mode OFF: full graphics", if Potato.on then "green" else nil)
 end, { pos = UDim2.fromOffset(42, 0), anchor = Vector2.new(0.5, 0), name = "PotatoButton" })
 Skin.press(potatoButton)
 local potatoText = UI.text(potato, "POTATO OFF", UDim2.fromOffset(84, 20), { pos = UDim2.fromOffset(0, 52), stroke = 2 })
-local function showPotato(on: boolean)
+function showPotato(on: boolean)
 	UI.setButton(potatoButton, "🥔", if on then C.green else POTATO_OFF)
 	potatoText.Text = if on then "POTATO ON" else "POTATO OFF"
 	potatoText.TextColor3 = if on then C.green else Color3.new(1, 1, 1)

@@ -30,7 +30,9 @@ function State.fire(remote: string, ...)
 	(remotes:WaitForChild(remote) :: RemoteEvent):FireServer(...)
 end
 
+State.dataAt = os.clock() -- when the latest snapshot arrived (timers in it count down from here)
 remotes:WaitForChild("State").OnClientEvent:Connect(function(data)
+	State.dataAt = os.clock()
 	State.data = data
 	State.mode = data.mode or State.mode
 	State.emit("data", data)

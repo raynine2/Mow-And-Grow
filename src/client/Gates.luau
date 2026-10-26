@@ -46,6 +46,11 @@ local function setGate(gate: Instance, open: boolean)
 	if prompt and prompt:IsA("ProximityPrompt") then
 		prompt.Enabled = not open
 	end
+	-- the floating "mow all of ... to open" label (server/ForgeDress): only while it's shut for you
+	local info = gate:FindFirstChild("GateInfo", true)
+	if info and info:IsA("BillboardGui") then
+		info.Enabled = not open
+	end
 end
 
 -- The opening effect for gate kind `kind`, then it's left open.
@@ -94,6 +99,10 @@ local function playOpen(gate: Instance, kind: string)
 	local prompt = gate:FindFirstChild("UnlockPrompt", true)
 	if prompt and prompt:IsA("ProximityPrompt") then
 		prompt.Enabled = false
+	end
+	local info = gate:FindFirstChild("GateInfo", true)
+	if info and info:IsA("BillboardGui") then
+		info.Enabled = false
 	end
 end
 

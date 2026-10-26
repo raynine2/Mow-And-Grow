@@ -286,28 +286,44 @@ type SignHandles = { pill: TextLabel, pillBox: Frame, number: TextLabel }
 
 -- The roofed sign at `at` (front = at.LookVector, standing on the deck): two posts, a gabled shingle roof, a
 -- framed board with the painting and the texts.
+-- where the ForgeGUI booth's chalkboard is, as fractions of the booth's box: width, height, centre height, and
+-- how far in front of the middle its face is (measured in Studio on the model)
+local BOOTH_FACE = { w = 0.62, h = 0.2, y = 0.25, z = 0.42 }
+
 local function sign(parent: Instance, at: CFrame, title: string, sub: string, maxText: string): SignHandles
 	local m = Instance.new("Model")
 	m.Name = "PartySign"
 	local W, H, Y = 11, 9.5, 6.4 -- board width, height, centre height
-	-- posts and a lower crossbar
-	for _, x in { -W / 2 - 0.3, W / 2 + 0.3 } do
-		block(m, Vector3.new(0.9, Y + H / 2 + 1.6, 0.9), at * CFrame.new(x, (Y + H / 2 + 1.6) / 2, 0.5), DARK_WOOD, "Post", Enum.Material.Wood)
+	local board: BasePart
+	-- the ForgeGUI party booth (owner, 26 Oct: "remake the lobby boards with forgegui"), the face on its chalkboard
+	local booth = Models.placeForge("partybooth", m, at * CFrame.new(0, 0, 0.5), { width = W + 1 }, false)
+	if booth then
+		booth.Name = "Booth"
+		local _, bsize = booth:GetBoundingBox()
+		local fw, fh = bsize.X * BOOTH_FACE.w, bsize.Y * BOOTH_FACE.h
+		board = block(m, Vector3.new(fw, fh, 0.1), at * CFrame.new(0, bsize.Y * BOOTH_FACE.y, 0.5 - bsize.Z * BOOTH_FACE.z), DARK_WOOD, "Board", Enum.Material.SmoothPlastic)
+		board.Transparency = 1
+		board.CanCollide = false
+	else
+		-- posts and a lower crossbar
+		for _, x in { -W / 2 - 0.3, W / 2 + 0.3 } do
+			block(m, Vector3.new(0.9, Y + H / 2 + 1.6, 0.9), at * CFrame.new(x, (Y + H / 2 + 1.6) / 2, 0.5), DARK_WOOD, "Post", Enum.Material.Wood)
+		end
+		-- the board and its frame
+		board = block(m, Vector3.new(W, H, 0.5), at * CFrame.new(0, Y, 0.5), DARK_WOOD, "Board", Enum.Material.WoodPlanks)
+		for _, e in { { 0, H / 2, W + 0.6, 0.6 }, { 0, -H / 2, W + 0.6, 0.6 }, { W / 2, 0, 0.6, H }, { -W / 2, 0, 0.6, H } } do
+			local trim = block(m, Vector3.new(e[3], e[4], 0.8), at * CFrame.new(e[1], Y + e[2], 0.45), LIGHT_WOOD, "Trim", Enum.Material.Wood)
+			trim.CanCollide = false
+		end
+		-- gabled roof: two slanted shingle slabs and a ridge beam
+		local roofY = Y + H / 2 + 1.4
+		for side = -1, 1, 2 do
+			local slab = block(m, Vector3.new(W / 2 + 1.6, 0.5, 4.2), at * CFrame.new(side * (W / 4 + 0.55), roofY + 0.9, 0.5) * CFrame.Angles(0, 0, math.rad(-side * 22)), ROOF, "Roof", Enum.Material.WoodPlanks)
+			slab.CanCollide = false
+		end
+		block(m, Vector3.new(0.7, 0.7, 4.6), at * CFrame.new(0, roofY + 2.15, 0.5), DARK_WOOD, "Ridge", Enum.Material.Wood).CanCollide = false
+		block(m, Vector3.new(W + 1.2, 1.3, 0.6), at * CFrame.new(0, roofY - 0.2, 0.4), WOOD, "Eave", Enum.Material.Wood).CanCollide = false
 	end
-	-- the board and its frame
-	local board = block(m, Vector3.new(W, H, 0.5), at * CFrame.new(0, Y, 0.5), DARK_WOOD, "Board", Enum.Material.WoodPlanks)
-	for _, e in { { 0, H / 2, W + 0.6, 0.6 }, { 0, -H / 2, W + 0.6, 0.6 }, { W / 2, 0, 0.6, H }, { -W / 2, 0, 0.6, H } } do
-		local trim = block(m, Vector3.new(e[3], e[4], 0.8), at * CFrame.new(e[1], Y + e[2], 0.45), LIGHT_WOOD, "Trim", Enum.Material.Wood)
-		trim.CanCollide = false
-	end
-	-- gabled roof: two slanted shingle slabs and a ridge beam
-	local roofY = Y + H / 2 + 1.4
-	for side = -1, 1, 2 do
-		local slab = block(m, Vector3.new(W / 2 + 1.6, 0.5, 4.2), at * CFrame.new(side * (W / 4 + 0.55), roofY + 0.9, 0.5) * CFrame.Angles(0, 0, math.rad(-side * 22)), ROOF, "Roof", Enum.Material.WoodPlanks)
-		slab.CanCollide = false
-	end
-	block(m, Vector3.new(0.7, 0.7, 4.6), at * CFrame.new(0, roofY + 2.15, 0.5), DARK_WOOD, "Ridge", Enum.Material.Wood).CanCollide = false
-	block(m, Vector3.new(W + 1.2, 1.3, 0.6), at * CFrame.new(0, roofY - 0.2, 0.4), WOOD, "Eave", Enum.Material.Wood).CanCollide = false
 	-- the face
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front

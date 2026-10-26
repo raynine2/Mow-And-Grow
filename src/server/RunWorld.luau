@@ -60,7 +60,7 @@ function RunWorld.openGate(gate: Instance, hideAfter: number?)
 			if p:IsA("BasePart") and (p.Name == "Blocker" or string.sub(p.Name, 1, 4) == "Sign") then
 				p.Transparency = 1
 				p.CanCollide = false
-			elseif p:IsA("SurfaceGui") then
+			elseif p:IsA("SurfaceGui") or (p:IsA("BillboardGui") and p.Name == "GateInfo") then
 				p.Enabled = false
 			end
 		end
@@ -449,6 +449,8 @@ function RunWorld.build()
 	end
 
 	meadowDropOff(w)
+	-- the ForgeGUI archways at the gates and bins on the drop-off pads (no-ops where the saved world has them)
+	require(script.Parent.ForgeDress).world(w)
 	local pads = w:FindFirstChild("Pads")
 	for _, pad in (if pads then pads:GetChildren() else {}) do
 		if pad:IsA("BasePart") and pad:GetAttribute("Sell") then

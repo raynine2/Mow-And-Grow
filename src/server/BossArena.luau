@@ -14,6 +14,7 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
 local BossMoves = require(ReplicatedStorage.MowALawn.BossMoves)
 local Net = require(script.Parent.Net)
+local Models = require(script.Parent.Models)
 
 local BossArena = {}
 
@@ -322,12 +323,40 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	local gatePos = centre + facing * r
 	local gateCf = CFrame.lookAt(gatePos, gatePos - facing) -- looks into the arena
 	local gapW = segW * 2
-	for s = -1, 1, 2 do
-		part(model, { Name = "ArchPost", Size = Vector3.new(3, 16, 3), CFrame = gateCf * CFrame.new(s * (gapW / 2 + 1.2), 8, 0), Color = theme.rim, Material = Enum.Material.Slate })
-		part(model, { Name = "ArchCap", Size = Vector3.new(4, 1.2, 4), CFrame = gateCf * CFrame.new(s * (gapW / 2 + 1.2), 16.6, 0), Color = theme.accent, Material = Enum.Material.Neon })
+	local bossName = (Config.ZONES[z].boss.name or "BOSS"):upper()
+	-- the theme's ForgeGUI gateway (owner, 26 Oct: "remake the boss areas with forgegui"), its front to the
+	-- outside, the boss's name floating over it; the brick arch and board when the model isn't loaded
+	local forgeGate = Models.placeForge("arena_" .. tostring(def.arena), model, CFrame.lookAt(gatePos, gatePos + facing), { width = gapW + 10, height = 26 }, true)
+	if forgeGate then
+		forgeGate.Name = "ArenaGate"
+		local _, gsize = forgeGate:GetBoundingBox()
+		local spot = part(model, { Name = "BossNameSpot", Size = Vector3.one, CFrame = CFrame.new(gatePos + Vector3.new(0, gsize.Y + 4, 0)), Transparency = 1, CanCollide = false, CanQuery = false, CanTouch = false })
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "BossName"
+		bb.Size = UDim2.fromScale(20, 4) -- (studs)
+		bb.LightInfluence = 0
+		bb.MaxDistance = 220
+		bb.Parent = spot
+		local l = Instance.new("TextLabel")
+		l.Size = UDim2.fromScale(1, 1)
+		l.BackgroundTransparency = 1
+		l.Font = Enum.Font.LuckiestGuy
+		l.TextScaled = true
+		l.TextColor3 = theme.accent
+		l.Text = bossName
+		local ls = Instance.new("UIStroke")
+		ls.Thickness = 3
+		ls.Color = C(30, 18, 10)
+		ls.Parent = l
+		l.Parent = bb
+	else
+		for s = -1, 1, 2 do
+			part(model, { Name = "ArchPost", Size = Vector3.new(3, 16, 3), CFrame = gateCf * CFrame.new(s * (gapW / 2 + 1.2), 8, 0), Color = theme.rim, Material = Enum.Material.Slate })
+			part(model, { Name = "ArchCap", Size = Vector3.new(4, 1.2, 4), CFrame = gateCf * CFrame.new(s * (gapW / 2 + 1.2), 16.6, 0), Color = theme.accent, Material = Enum.Material.Neon })
+		end
+		part(model, { Name = "ArchBeam", Size = Vector3.new(gapW + 6, 2, 3), CFrame = gateCf * CFrame.new(0, 15.5, 0), Color = theme.rim, Material = Enum.Material.Slate })
+		sign(model, gateCf * CFrame.new(0, 12.4, 0.2), bossName, theme.accent)
 	end
-	part(model, { Name = "ArchBeam", Size = Vector3.new(gapW + 6, 2, 3), CFrame = gateCf * CFrame.new(0, 15.5, 0), Color = theme.rim, Material = Enum.Material.Slate })
-	sign(model, gateCf * CFrame.new(0, 12.4, 0.2), (Config.ZONES[z].boss.name or "BOSS"):upper(), theme.accent)
 	entranceRamp(world, model, gatePos, facing, gapW + 4, theme)
 	local bars = {}
 	local nBars = 6
@@ -356,6 +385,17 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	pad:SetAttribute("SummonPad", z)
 	local padRing = cyl(model, "SummonRing", 7.5, 0.4, padPos + Vector3.new(0, 0.2, 0), C(60, 50, 40), Enum.Material.Slate)
 	padRing.CanCollide = false
+	-- the ForgeGUI summoning altar round the pad: sunk so its top is just above the floor (the pad is read by
+	-- distance, server/Boss, so nothing about standing on it changes)
+	if Models.has("forge_altar") then
+		local altar = Models.placeForge("altar", model, CFrame.lookAt(padPos, padPos + facing), { width = 17 }, false)
+		if altar then
+			altar.Name = "SummonAltar"
+			local _, asize = altar:GetBoundingBox()
+			altar:PivotTo(altar:GetPivot() - Vector3.new(0, math.max(0, asize.Y - 0.5), 0))
+			padRing.Transparency = 1
+		end
+	end
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "PadLabel"
 	bb.Size = UDim2.fromOffset(260, 60)

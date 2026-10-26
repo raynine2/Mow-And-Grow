@@ -7,8 +7,10 @@
 --     an arc of water into the pool: a stream, a splash and ripples where it lands, a little mist
 --   * four wooden planters of flowers on the corners (where the old ones stood)
 -- It keeps the old footprint (about 9.5 studs across), so the benches round it still fit.
--- Built by tools/studio-camp-fountain.luau into the saved camp (Workspace.World.Hub.CampDecor), in edit mode.
+-- Built by tools/studio-camp-fountain.luau into the saved camp (Workspace.World.Hub.CampDecor), in edit mode. When
+-- the ForgeGUI fountain ("fountain" in shared/ForgeModelIds) is loaded, that's used instead of these parts.
 local PropKit = require(script.Parent.PropKit)
+local Models = require(script.Parent.Models)
 
 local CampFountain = {}
 
@@ -232,8 +234,17 @@ local function planters(m: Instance, at: CFrame, rng: Random)
 	end
 end
 
--- Build the fountain into a new Model under `parent`, its floor centre at `at`.
+-- Build the fountain into a new Model under `parent`, its floor centre at `at`: the ForgeGUI garden fountain (the
+-- same design, modelled and painted; owner, 26 Oct) when it's loaded, else the part-built one below.
 function CampFountain.build(parent: Instance, at: CFrame): Model
+	if Models.has("forge_fountain") then
+		local f = Models.placeForge("fountain", parent, at, { width = 9.6 }, false)
+		if f then
+			f.Name = "camp_fountain"
+			f:SetAttribute("GardenFountain", true)
+			return f
+		end
+	end
 	local m = Instance.new("Model")
 	m.Name = "camp_fountain"
 	local rng = Random.new(2210)

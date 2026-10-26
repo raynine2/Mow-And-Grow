@@ -78,5 +78,69 @@
  "house_blue": {
   "roblox": "122703325704658",
   "forge_job": "abb8283a-e824-43f2-b8e9-6faa71605be8"
+ },
+ "fountain": {
+  "roblox": "82568929623199",
+  "forge_job": "f7bfd437-668f-4650-8abd-c53fb6e62c7f"
+ },
+ "dropoff": {
+  "roblox": "131787783453543",
+  "forge_job": "36be2418-6a97-4e0f-acf9-be2dca0abbee"
+ },
+ "partybooth": {
+  "roblox": "97998160921780",
+  "forge_job": "09d559d9-7ad6-4204-b9d9-580520d4941c"
+ },
+ "altar": {
+  "roblox": "127212826627130",
+  "forge_job": "a51c1ae4-7a15-4a44-b060-03e4d364a887"
+ },
+ "gate_blossom": {
+  "roblox": "118481985520587",
+  "forge_job": "265b77ef-519f-47fd-884c-9b54567b7fcf"
+ },
+ "gate_swamp": {
+  "roblox": "109418497237639",
+  "forge_job": "5e7b39ed-e5ea-46a3-94d9-16ad09acc7b3"
+ },
+ "gate_ember": {
+  "roblox": "83338532938788",
+  "forge_job": "41f3be4c-df46-43d6-9a4e-c1556d7d39f4"
+ },
+ "gate_starlight": {
+  "roblox": "120530589946580",
+  "forge_job": "df04f16a-9a01-45c5-a8c9-aec4b2f3cd8a"
+ },
+ "arena_meadow": {
+  "roblox": "72812439262906",
+  "forge_job": "f542c594-eea9-4f7a-9efd-b3dc0cdbe24b"
+ },
+ "arena_hedge": {
+  "roblox": "119760703897452",
+  "forge_job": "871f4756-f0d8-4ccd-9f51-3c583c2e2e82"
+ },
+ "arena_bunker": {
+  "roblox": "89188908030942",
+  "forge_job": "f9c0b956-f01a-49e6-ba24-90df8f47f73d"
+ },
+ "arena_cornfield": {
+  "roblox": "125419026188869",
+  "forge_job": "f766202d-413b-4a8e-949a-59f0f399c792"
+ },
+ "arena_sakura": {
+  "roblox": "130442464493828",
+  "forge_job": "3e2afa47-bda2-4f58-82cc-d980a7a89381"
+ },
+ "arena_swamp": {
+  "roblox": "75474451775473",
+  "forge_job": "83f77881-95a3-4ba1-a2ee-54bb4cc50a52"
+ },
+ "arena_pumpkin": {
+  "roblox": "74165472176746",
+  "forge_job": "369699fb-6b4b-471d-a34e-02451b37a20f"
+ },
+ "arena_ruins": {
+  "roblox": "84244292155553",
+  "forge_job": "d61b618c-329d-438b-b376-9ec0367dcb07"
  }
 }

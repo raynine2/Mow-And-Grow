@@ -235,6 +235,11 @@ local FORGE_SWAP: { [string]: string } = {
 	trophy_board = "leaderboard",
 }
 local forgeRaw: { [string]: Model } = {}
+-- The ForgeGUI models made on 26 Oct come with their front at the mesh's +Z (the older ones: -X).
+local FRONT_PLUS_Z: { [string]: boolean } = {}
+for _, n in { "fountain", "dropoff", "partybooth", "altar", "gate_wheat", "gate_blossom", "gate_pine", "gate_swamp", "gate_frost", "gate_ember", "gate_starlight", "arena_meadow", "arena_hedge", "arena_bunker", "arena_cornfield", "arena_sakura", "arena_swamp", "arena_pumpkin", "arena_ruins" } do
+	FRONT_PLUS_Z[n] = true
+end
 
 -- A template from a loaded ForgeGUI asset: the mesh (texture kept), pivot at the bottom centre, front toward
 -- the pivot's LookVector (-Z).
@@ -248,8 +253,8 @@ local function prepareForge(name: string, asset: Instance): Model?
 	mesh.Name = "Body"
 	mesh.Anchored = true
 	mesh.CanTouch = false
-	-- the mesh's front is its -X: turning it -90 degrees about Y points that at -Z
-	mesh.CFrame = CFrame.new(0, mesh.Size.Y / 2, 0) * CFrame.Angles(0, math.rad(-90), 0)
+	-- the mesh's front is its -X: turning it -90 degrees about Y points that at -Z (a +Z front: half a turn)
+	mesh.CFrame = CFrame.new(0, mesh.Size.Y / 2, 0) * CFrame.Angles(0, math.rad(if FRONT_PLUS_Z[name] then 180 else -90), 0)
 	mesh.Parent = model
 	model.WorldPivot = CFrame.new()
 	return model

@@ -516,6 +516,30 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 	local function inCamp(p: Vector3): boolean
 		return typeof(camp) == "Vector3" and Vector2.new(p.X - camp.X, p.Z - camp.Z).Magnitude < campR + 4
 	end
+	-- nor inside an area's landmark (up to ~46 studs wide) or on a drop-off pad (the patch blobs reached them)
+	local keepOut: { { at: Vector2, r: number } } = {}
+	for _, zdef in Zones.list do
+		if zdef.landmark then
+			table.insert(keepOut, { at = zdef.landmark.at, r = 26 })
+		end
+	end
+	local padFolder = w and w:FindFirstChild("Pads")
+	for _, pd in (if padFolder then padFolder:GetChildren() else {}) do
+		if string.match(pd.Name, "^DropOff") then
+			local pp = if pd:IsA("Model") then pd:GetPivot().Position elseif pd:IsA("BasePart") then pd.Position else nil
+			if pp then
+				table.insert(keepOut, { at = Vector2.new(pp.X, pp.Z), r = 11 })
+			end
+		end
+	end
+	local function keptOut(p: Vector3): boolean
+		for _, k in keepOut do
+			if Vector2.new(p.X - k.at.X, p.Z - k.at.Y).Magnitude < k.r then
+				return true
+			end
+		end
+		return false
+	end
 	local function free(p: Vector3): boolean
 		for _, q in placed do
 			if (Vector3.new(q.X - p.X, 0, q.Z - p.Z)).Magnitude < spacing * 0.85 then
@@ -543,7 +567,7 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 						local hit = workspace:Raycast(Vector3.new(x, c.Y + 40, zz), Vector3.new(0, -80, 0), ray)
 						if hit and hit.Normal.Y > 0.9 and math.abs(hit.Position.Y - (c.Y - 0.5)) < 6.5 then
 							local p = hit.Position
-							if free(p) and not inCamp(p) and not onPath(p, 2.6 * scale) and not (yard and blocked(p, 3.4 * scale)) then
+							if free(p) and not inCamp(p) and not keptOut(p) and not onPath(p, 2.6 * scale) and not (yard and blocked(p, 3.4 * scale)) then
 								table.insert(placed, p)
 								local yaw = rng:NextInteger(0, 3) * math.pi / 2
 								table.insert(list, { cf = CFrame.new(p) * CFrame.Angles(0, yaw, 0), scale = scale * rng:NextNumber(0.9, 1.1) })

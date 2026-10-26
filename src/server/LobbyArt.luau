@@ -59,7 +59,7 @@ local PATHS = {
 	{ Vector2.new(0, -52), Vector2.new(0, 34) },
 	{ Vector2.new(-46, -22), Vector2.new(46, -22) },
 	{ Vector2.new(-42, 26), Vector2.new(42, 26) }, -- to the rewards stall, and the market on the east side
-	{ Vector2.new(-44, 42), Vector2.new(44, 42) },
+	{ Vector2.new(-28, 42), Vector2.new(28, 42) }, -- (not under the GRASS CUT / BEST TIMES boards at x +-44)
 }
 local function pathDist(p: Vector2): number
 	local best = math.huge

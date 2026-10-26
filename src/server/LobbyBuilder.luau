@@ -128,7 +128,8 @@ function lanterns(world: Instance)
 	-- (none at z 6: that's the fountain plaza; none at z -34 with the ForgeGUI start gate: it has its own lanterns)
 	for _, z in (if Models.has("forge_startgate") then { -14, 24 } else { -34, -14, 24 }) do
 		for _, x in { -13, 13 } do
-			local pos = Vector3.new(x, FLOOR_Y, z)
+			-- (the pair at z 24 stood in the middle of the cross walk there: beside it instead)
+			local pos = if z == 24 then Vector3.new(16 * math.sign(x), FLOOR_Y, 18.4) else Vector3.new(x, FLOOR_Y, z)
 			if not Models.place("lantern_post", lamps, CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, z)), 1, true) then
 				PropKit.brick(lamps, Vector3.new(0.8, 6, 0.8), CFrame.new(pos + Vector3.new(0, 3, 0)), PropKit.TRUNK, "LanternPost", Enum.Material.Wood)
 			end

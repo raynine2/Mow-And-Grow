@@ -202,8 +202,9 @@ function HubDressing.lobby(world: Instance)
 		-- (the two shops and two market stalls by the spawn were taken out: the owner wanted them gone)
 		-- benches facing the fountain, flower beds round the plaza
 		piece(town, "S_bench", Vector3.new(10 * sx, 0, 4), c, true)
-		piece(town, "S_flower_bed", Vector3.new(9 * sx, 0, -9.5), c, true)
-		piece(town, "S_flower_bed", Vector3.new(9 * sx, 0, 17.5), c, true)
+		-- (clear of the walks: at x 9 / z 17.5 their corners were on the paving)
+		piece(town, "S_flower_bed", Vector3.new(10.5 * sx, 0, -9.5), c, true)
+		piece(town, "S_flower_bed", Vector3.new(10.5 * sx, 0, 16.5), c, true)
 		-- in front of the houses: planters, pots by the door, a mailbox
 		for _, z in { -2.5, 12.5 } do
 			piece(town, "S_planter", Vector3.new(19.6 * sx, 0, z), Vector3.new(0, 0, z), true)
@@ -220,10 +221,14 @@ function HubDressing.lobby(world: Instance)
 		-- trees and bushes behind the houses and in the corners
 		local rng = Random.new(if sx < 0 then 3 else 4)
 		local HubKit = require(script.Parent.HubKit)
-		for _, p in { Vector3.new(45, 0, 2), Vector3.new(56, 0, 12), Vector3.new(44, 0, 15), Vector3.new(57, 0, -2), Vector3.new(56, 0, -56), Vector3.new(46, 0, -58), Vector3.new(57, 0, 56), Vector3.new(30, 0, 56), Vector3.new(16, 0, 57) } do
-			HubKit.tree(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(0.75, 0.9), "meadow", rng)
+		-- (none right behind the houses, the lodge or the barn: their canopies grew through the roofs; the ones behind
+		-- the party signs stand back past the fence; none over the rewards stall on the west)
+		for _, p in { Vector3.new(56, 0, 12), Vector3.new(56, 0, -56), Vector3.new(46, 0, -58), Vector3.new(57, 0, 56), Vector3.new(30, 0, 70), Vector3.new(16, 0, 70) } do
+			if not (sx < 0 and p.X == 56 and p.Z == 12) then
+				HubKit.tree(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(0.75, 0.9), "meadow", rng)
+			end
 		end
-		for _, p in { Vector3.new(38, 0, -1), Vector3.new(38, 0, 12), Vector3.new(22, 0, 56), Vector3.new(50, 0, -50), Vector3.new(36, 0, 58) } do
+		for _, p in { Vector3.new(41, 0, -1), Vector3.new(41, 0, 12), Vector3.new(22, 0, 56), Vector3.new(50, 0, -50), Vector3.new(36, 0, 58) } do
 			HubKit.bush(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(1.0, 1.3), rng, rng:NextNumber() < 0.5)
 		end
 	end

@@ -120,6 +120,18 @@ task.spawn(function()
 		return
 	end
 	scan(world)
+	-- a new World (Studio turns the lobby into the run in place): start over with it
+	workspace.ChildAdded:Connect(function(c)
+		if c.Name == "World" and c ~= world then
+			world = c
+			for p in boxes do
+				detach(p)
+			end
+			table.clear(grid)
+			table.clear(inGrid)
+			scan(c)
+		end
+	end)
 	local player = Players.LocalPlayer
 	while true do
 		task.wait(0.5)

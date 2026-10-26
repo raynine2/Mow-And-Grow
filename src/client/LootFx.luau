@@ -74,12 +74,8 @@ local function watch(folder: Instance)
 	folder.ChildAdded:Connect(onDrop)
 end
 
--- the Loot folder lives in the run's World folder
-task.spawn(function()
-	local world = workspace:WaitForChild("World", 60)
-	if not world then
-		return
-	end
+-- the Loot folder lives in the run's World folder (each World: in Studio the lobby's is replaced by the run's)
+local function watchWorld(world: Instance)
 	local function check(c: Instance)
 		if c.Name == "Loot" and c:IsA("Folder") then
 			watch(c)
@@ -89,7 +85,16 @@ task.spawn(function()
 	for _, c in world:GetChildren() do
 		check(c)
 	end
+end
+workspace.ChildAdded:Connect(function(c)
+	if c.Name == "World" then
+		watchWorld(c)
+	end
 end)
+local firstWorld = workspace:FindFirstChild("World")
+if firstWorld then
+	watchWorld(firstWorld)
+end
 
 RunService.RenderStepped:Connect(function(dt)
 	for i = #pops, 1, -1 do

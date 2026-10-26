@@ -66,7 +66,8 @@ local function nearestClump(from: Vector3, maxZone: number): Model?
 	end
 	local best, bestD = nil, math.huge
 	for _, c in clumps do
-		if c.z <= maxZone and c.model.Parent then
+		-- (checked again: one cut since the list was made is no target any more)
+		if c.z <= maxZone and c.model.Parent and isClump(c.model) then
 			local p = c.model:GetPivot().Position
 			local d = (p - from).Magnitude
 			if d < bestD then
@@ -234,7 +235,13 @@ Skin.bob(pic, 2.5, 2.4)
 local num = UI.text(face, "STEP 1/5", UDim2.fromOffset(140, 18), { pos = UDim2.fromOffset(96, 2), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(255, 220, 90), stroke = 2 })
 local title = UI.text(face, "", UDim2.new(1, -104, 0, 34), { pos = UDim2.fromOffset(96, 20), align = Enum.TextXAlignment.Left, stroke = 3.5 })
 UI.gradient(title, C.yellow)
-local sub = UI.text(face, "", UDim2.new(1, -104, 0, 22), { pos = UDim2.fromOffset(96, 56), align = Enum.TextXAlignment.Left, stroke = 2 })
+-- (two lines, wrapped: on one line the long hints shrank too small to read, on phones especially)
+local sub = UI.text(face, "", UDim2.new(1, -104, 0, 46), { pos = UDim2.fromOffset(96, 56), align = Enum.TextXAlignment.Left, stroke = 2 })
+sub.TextWrapped = true
+sub.TextYAlignment = Enum.TextYAlignment.Top
+local subMax = Instance.new("UITextSizeConstraint")
+subMax.MaxTextSize = 21 -- (a short hint stays its old size instead of filling both lines)
+subMax.Parent = sub
 local scale = Instance.new("UIScale")
 scale.Parent = card
 local STEP_ICON = { punch = "hands", collect = "bundle", fill = "backpack", sell = "coin", upgrade = "upgrade" }

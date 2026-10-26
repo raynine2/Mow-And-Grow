@@ -17,7 +17,7 @@ local INBOUND = {
 	"Seen", -- (what)                       "intro": the run's fly-over was shown
 	"Dev", -- (action, arg)                 dev panel (Studio, or Config.ADMINS / the game's owner)
 	"Hatch", -- (eggId, count)              open a gem egg (Robux eggs go through Prompt)
-	"Pet", -- (action, uid)                 equip | unequip | best
+	"Pet", -- (action, uid)                 equip | unequip | best | delete
 	"Shoot", -- (aimDir)                    fire the boss-crate gun (server checks rate + range)
 	"Setting", -- (key, value)              peaceful (lobby)
 	"Graphics", -- (potato)                 Potato Mode on/off (saved; the client does the rest)

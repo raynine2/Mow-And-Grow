@@ -191,6 +191,14 @@ function Pets.start()
 				equip(player, data, uid)
 			elseif action == "unequip" then
 				unequip(player, data, uid)
+			elseif action == "delete" and data.pets[uid] then
+				-- let a critter go (the bag holds Config.PET_MAX: a full bag stops gem eggs)
+				local i = table.find(data.petsOn, uid)
+				if i then
+					table.remove(data.petsOn, i)
+				end
+				data.pets[uid] = nil
+				afterChange(player, data)
 			end
 		end
 	end)

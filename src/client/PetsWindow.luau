@@ -413,8 +413,11 @@ local function bigCard(parent: Instance): { [string]: any }
 end
 PetsWindow.bigCard = bigCard
 local side = bigCard(pets.frame)
-local sideBtn = UI.button(side.card, "EQUIP", C.green, UDim2.fromOffset(220, 48), function() end, { pos = UDim2.new(0.5, 0, 1, -28), anchor = Vector2.new(0.5, 1), name = "Equip" })
-local pickedUid: number? = nil
+local sideBtn = UI.button(side.card, "EQUIP", C.green, UDim2.fromOffset(170, 48), function() end, { pos = UDim2.new(0.5, -28, 1, -28), anchor = Vector2.new(0.5, 1), name = "Equip" })
+-- let a critter go (a full bag stops gem eggs): press twice, the first press asks
+local deleteArmed = 0
+local deleteBtn = UI.button(side.card, "🗑", Color3.fromRGB(200, 80, 70), UDim2.fromOffset(50, 48), function() end, { pos = UDim2.new(0.5, 86, 1, -28), anchor = Vector2.new(0.5, 1), name = "Delete" })
+local pickedUid: string? = nil
 
 -- Show one critter on a big card (`found` false = a black silhouette with ???).
 local function fillCard(c, p, found: boolean)
@@ -559,6 +562,9 @@ pets.refresh = function()
 	fillCard(side, p, true)
 	side.empty.Text = "No pets yet"
 	sideBtn.Visible = p ~= nil
+	deleteBtn.Visible = p ~= nil
+	deleteArmed = 0
+	UI.setButton(deleteBtn, "🗑")
 	UI.clear(side.info)
 	if picked and p then
 		side.stateText.Text = if picked.on then "EQUIPPED" else "OWNED"
@@ -577,9 +583,28 @@ pets.refresh = function()
 		sideBtn:SetAttribute("On", isOn)
 	end
 end
+deleteBtn.MouseButton1Click:Connect(function()
+	local uid = sideBtn:GetAttribute("Uid")
+	if type(uid) ~= "string" then
+		return
+	end
+	if os.clock() - deleteArmed > 3 then
+		deleteArmed = os.clock()
+		UI.setButton(deleteBtn, "SURE?")
+		task.delay(3, function()
+			if os.clock() - deleteArmed >= 3 then
+				UI.setButton(deleteBtn, "🗑")
+			end
+		end)
+		return
+	end
+	deleteArmed = 0
+	State.fire("Pet", "delete", uid)
+end)
 sideBtn.MouseButton1Click:Connect(function()
 	local uid = sideBtn:GetAttribute("Uid")
-	if type(uid) == "number" then
+	-- (pet ids are text like "p12": this checked for a number, so the button never did anything)
+	if type(uid) == "string" then
 		State.fire("Pet", if sideBtn:GetAttribute("On") then "unequip" else "equip", uid)
 	end
 end)

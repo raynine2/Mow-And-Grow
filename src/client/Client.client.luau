@@ -17,6 +17,7 @@ require(modules:WaitForChild("Fx"))
 require(modules:WaitForChild("BossCine")) -- boss fights: the model, effects, cutscenes, your HP (after Fx)
 require(modules:WaitForChild("ShopDisplays")) -- tool shop status lamps + turning tools, the camp fountain
 require(modules:WaitForChild("ClassHolo")) -- the CLASSES kiosk's hologram
+require(modules:WaitForChild("BlackHole")) -- the CLASSES black hole: jump in for the class screen
 require(modules:WaitForChild("MowFx")) -- lawn stripes behind mowers, the clippings chute, soft rings, reaper wisps
 require(modules:WaitForChild("MowerFx")) -- ride-on mowers: turning wheels and blade, exhaust puffs, auras
 require(modules:WaitForChild("Input"))

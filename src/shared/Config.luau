@@ -368,6 +368,9 @@ Config.WORLD_GEN = true
 -- Name signs on the hub buildings (shop boards, the arches, START A RUN, floating DROP BUNDLES / GAS labels).
 -- Off: the buildings speak for themselves and their prompts name them. Price tags and the score boards stay.
 Config.HUB_SIGNS = false
+-- The run camp's CLASSES stand is a black hole you jump into (server/BlackHole, client/BlackHole). Off: the old
+-- observatory kiosk with its class hologram (classes_kiosk, client/ClassHolo).
+Config.CLASSES_BLACK_HOLE = true
 
 do
 	local Zones = require(script.Parent.Zones)
@@ -1054,6 +1057,13 @@ Config.SOUNDS = {
 	-- boss fights (client/BossCine): Roblox's licensed music library (verified creator DistrokidOfficial); phase 2
 	-- plays it 12% faster
 	bossMusic = { id = "rbxassetid://132347366936691", volume = 0.45 }, -- Boss Fight!
+	-- the CLASSES black hole (server/BlackHole, client/BlackHole): Pro Sound Effects library sounds (licensed to every
+	-- Roblox experience, creator "ProSoundEffects", checked on the Creator Store on 26 Oct 2026)
+	bhHum = { id = "rbxassetid://9125898973", volume = 0.45 }, -- Sci Fi Transformation Synth Tones Slow Swirling 1 (loop)
+	bhPull = { id = "rbxassetid://9119468100", volume = 0.6, pitch = 0.8 }, -- Spirit Pass Bys Fast Whooshes 5
+	bhWarp = { id = "rbxassetid://9125973433", volume = 0.45 }, -- Spaceship Blast High Pitch Energy Charge Up 2
+	bhOut = { id = "rbxassetid://9114159659", volume = 0.55, pitch = 0.9 }, -- Doppler Whooshes Crackly Airy Bursts 2
+	bhPop = { id = "rbxassetid://9116406610", volume = 0.45, pitch = 0.75 }, -- Magic Poofs Thumpy 1
 }
 
 -------------------------------------------------------------------------------------------------------------

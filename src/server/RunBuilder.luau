@@ -430,6 +430,10 @@ end
 local function classesKiosk(m: Instance, at: CFrame)
 	local k = PropKit.folder("CLASSES", m)
 	promptSpot(k, at, "0Anchor")
+	if Config.CLASSES_BLACK_HOLE then
+		require(script.Parent.BlackHole).build(k, at)
+		return
+	end
 	if not Models.place("classes_kiosk", k, at, 1, true) then
 		k:Destroy()
 		PropKit.stall(m, at, "CLASSES", Color3.fromRGB(160, 95, 255), "Classes")
@@ -476,8 +480,9 @@ local function hub(world: Instance, info)
 	toolShop(m, info)
 	bagStand(m)
 	if Config.WORLD_GEN then
-		-- the class stand (gems): a little space observatory (classes_kiosk) whose projector shows the deal as a
-		-- hologram (client/ClassHolo). CLASSES opens the card deal (client/ClassDeal).
+		-- the class stand (gems): a black hole you jump into (server/BlackHole), or with CLASSES_BLACK_HOLE off a
+		-- little space observatory (classes_kiosk) whose projector shows the deal as a hologram (client/ClassHolo).
+		-- Either opens the card deal (client/ClassDeal).
 		local at = Vector3.new(-24, FLOOR_Y, 12)
 		classesKiosk(m, CFrame.lookAt(at, Vector3.new(0, FLOOR_Y, 12)))
 	end

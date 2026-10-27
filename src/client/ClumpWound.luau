@@ -29,11 +29,13 @@ local Shared = ReplicatedStorage:WaitForChild("MowALawn")
 local Config = require(Shared:WaitForChild("Config"))
 local Zones = require(Shared:WaitForChild("Zones")) :: any
 local HitFx = require(script.Parent.HitFx)
+local State = require(script.Parent.State)
 
 local ClumpWound = {}
 local player = Players.LocalPlayer
 
 local CREAM = Color3.fromRGB(250, 246, 214) -- the inside of a fresh-cut stem
+local PITH = Color3.fromRGB(240, 248, 206) -- (28 Oct) the pale lime-cream pith every cut shows
 local WHITE = Color3.new(1, 1, 1)
 local SHADE = Color3.fromRGB(26, 40, 30)
 -- The cut is drawn in half-voxels (rounder than whole ones on a stalk only 3 voxels wide): 6 per face, 24 round.
@@ -46,7 +48,16 @@ local MAX_ACTIVE = 6
 local RAISE = { [0] = 0.02, [1] = 0.11, [2] = 0.23 }
 local NORMALS = { Vector3.zAxis, Vector3.xAxis, -Vector3.zAxis, -Vector3.xAxis }
 
-type Side = { g: number, row: number, cut: number, seed: number }
+type Side = { g: number, row: number, cut: number, seed: number, sa: number, sb: number }
+-- (28 Oct, council: "every weapon a different wound") how each hand tool's cut is shaped: wider round the stalk
+-- (sa) or taller (sb). Fists punch a round bite, scissors a neat small snip, the sickle a wide curved bite, the
+-- Mega Scythe a long low band.
+local SHAPE: { [string]: { number } } = {
+	Hands = { 1, 1 },
+	Scissors = { 0.8, 0.78 },
+	Sickle = { 1.3, 0.72 },
+	MegaScythe = { 1.65, 0.55 },
+}
 type Cell = { part: BasePart, rank: number, tone: number }
 type Tones = { floorLit: Color3, floor: Color3, grain: Color3, floorShade: Color3, stepLit: Color3, stepShade: Color3, rimLit: Color3, rimShade: Color3 }
 type Wound = { sides: { Side }, cells: { [number]: Cell }, r0: number, v: number, R: number, tones: Tones }
@@ -79,19 +90,21 @@ local function grassOf(z: number?, mut: string?, fallback: Color3?): Color3
 end
 
 local function tones(base: Color3): Tones
-	-- the fresh inside: creamy on a green / gold / pink stalk; on an already pale stalk (frost, blossom) it's a
-	-- deeper, cooler tone instead, so the cut still shows
-	local pale = luma(base) > 0.72
-	local inside = if pale then base:Lerp(Color3.fromRGB(110, 150, 200), 0.38) else base:Lerp(CREAM, 0.56)
+	-- (28 Oct, council round: "the inside must be the brightest thing on the clump, never darker than the stalk")
+	-- the fresh inside of a cut grass stem is one pale lime-cream pith in every area, a touch of the area's colour
+	-- in it; the walls a step darker; a dark rim line round the cut fakes the shadow at its edge (like Chop's dark
+	-- bark round pale wood). All baked into colours, so it reads the same on low graphics.
+	local inside = PITH:Lerp(base, 0.14)
+	local _ = luma
 	return {
-		floorLit = inside:Lerp(WHITE, 0.2), -- the floor of the cut catches the light
+		floorLit = inside:Lerp(WHITE, 0.25), -- the floor of the cut catches the light
 		floor = inside,
-		grain = mul(inside, 0.87), -- faint fibres running up the stem
-		floorShade = inside:Lerp(SHADE, 0.32), -- the top inner wall, in its own shadow
-		stepLit = base:Lerp(if pale then inside else CREAM, 0.52),
-		stepShade = base:Lerp(SHADE, 0.24),
-		rimLit = base:Lerp(WHITE, 0.14), -- the torn edge of the stalk's skin
-		rimShade = base:Lerp(SHADE, 0.34),
+		grain = mul(inside, 0.92), -- faint fibres running up the stem
+		floorShade = mul(inside, 0.85), -- the top inner wall, a step darker (still far lighter than the stalk)
+		stepLit = inside:Lerp(base, 0.35),
+		stepShade = mul(inside:Lerp(base, 0.45), 0.86),
+		rimLit = mul(base, 0.86), -- the torn rim: a darker line round the cut
+		rimShade = mul(base, 0.68),
 	}
 end
 
@@ -148,16 +161,17 @@ local function toneColor(tn: Tones, id: number): Color3
 end
 
 -- `up`: where the cell sits in its wound, -1 (bottom edge) .. 1 (top edge)
-local function toneFor(rank: number, up: number, g: number, row: number): number
+-- `big`: the wound is tall enough to show a shaded top wall (a small first bite is all bright pith)
+local function toneFor(rank: number, up: number, g: number, row: number, big: boolean?): number
 	if rank == 0 then
-		if up > 0.42 then
+		if big and up > 0.42 then
 			return 4 -- the top inner wall, in shade
 		elseif up < -0.3 then
 			return 1 -- the floor, lit
 		end
 		return if (g + row // 3) % 3 == 0 then 3 else 2 -- fibres running up the stem
 	elseif rank == 1 then
-		return if up > 0.05 then 6 else 5
+		return if big and up > 0.05 then 6 else 5
 	end
 	return if up > 0.15 then 8 else 7
 end
@@ -193,17 +207,19 @@ end
 -- How far a wound has spread for how much of the clump it has cut: quick at first (the first hit on a tough clump
 -- still shows a proper bite), then on round the stalk.
 local function spread(cut: number): (number, number)
-	-- (tuned in play, 28 Oct: like Chop's trunk, the first hit takes about a third of the face, about half-way
-	-- through it spans the face, then it wraps round)
+	-- (tuned in play, 28 Oct, then the council: "front-load it": even the first hit on a 10-hit clump opens a real
+	-- bite, about half the face with its rim; mid-way it spans the face; at the end it wraps round)
 	local c = math.clamp(cut * 1.04, 0, 1)
-	return 1.3 + 8.9 * c ^ 1.5, 1.35 + 3.6 * c ^ 1.15 -- round the stalk (columns), up and down (rows)
+	return 2.0 + 8.4 * c ^ 1.25, 1.9 + 3.3 * c ^ 1.1 -- round the stalk (columns), up and down (rows)
 end
 
 local function draw(m: Model, w: Wound)
 	local want: { [number]: number } = {}
 	local wantUp: { [number]: number } = {}
+	local wantBig: { [number]: boolean } = {}
 	for _, s in w.sides do
 		local a, b = spread(s.cut)
+		a, b = a * s.sa, b * s.sb
 		for g = 0, COLS - 1 do
 			local dg = circ(g, s.g)
 			if dg <= a + 1 then
@@ -216,6 +232,7 @@ local function draw(m: Model, w: Wound)
 						if want[key] == nil or rank < want[key] then
 							want[key] = rank
 							wantUp[key] = math.clamp(dr / b, -1, 1)
+							wantBig[key] = b >= 2.6
 						end
 					end
 				end
@@ -224,7 +241,7 @@ local function draw(m: Model, w: Wound)
 	end
 	for key, rank in want do
 		local cell = w.cells[key]
-		local tone = toneFor(rank, wantUp[key], key // 16, key % 16)
+		local tone = toneFor(rank, wantUp[key], key // 16, key % 16, wantBig[key])
 		if not cell or rank < cell.rank then
 			addCell(m, w, key, rank, tone) -- new, or cut deeper: a paler, lower voxel
 		elseif cell.tone ~= tone and cell.rank == rank then
@@ -332,12 +349,69 @@ function ClumpWound.hit(d)
 		end
 	end
 	if not side then
-		side = { g = g, row = row, cut = 0, seed = math.random() * 100 }
+		local char = player.Character
+		local tool = char and char:FindFirstChildOfClass("Tool")
+		local shape = SHAPE[tool and tool:GetAttribute("ToolId") or "Hands"] or SHAPE.Hands
+		side = { g = g, row = row, cut = 0, seed = math.random() * 100, sa = shape[1], sb = shape[2] }
 		table.insert(w.sides, side :: Side)
 	end
 	local s = side :: Side
 	s.cut += (if type(d.dealt) == "number" then d.dealt else d.max * 0.25) / d.max
 	draw(m, w)
 end
+
+-- (28 Oct, council: "give the stump something to look at") the stump you leave: a ring of darker fibre bundles
+-- round a hollow core on its pale cut face (grass stems are tubes; Chop's stumps show rings). Only for clumps you
+-- cut; the dots are parented to the stump, so they go when it regrows.
+local function ringStump(stub: BasePart, tn: Tones)
+	local v = stub.Size.Y / 2 -- the stubble is two voxels tall
+	local rot = stub.CFrame.Rotation
+	local top = stub.Position + Vector3.new(0, stub.Size.Y / 2 + 0.02, 0)
+	local function dot(off: Vector3, s: number, color: Color3, delay: number)
+		local p = Instance.new("Part")
+		p.Name = "StumpRing"
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Material = Enum.Material.SmoothPlastic
+		p.Color = color
+		p.Size = Vector3.new(0.02, 0.05, 0.02)
+		p.CFrame = CFrame.new(top + rot:VectorToWorldSpace(off)) * rot
+		p.Parent = stub
+		TweenService:Create(p, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, delay), { Size = Vector3.new(s, 0.05, s) }):Play()
+	end
+	dot(Vector3.zero, v * 0.62, mul(tn.floor, 0.7), 0) -- the hollow core
+	for i = 0, 7 do
+		local a = i / 8 * math.pi * 2
+		dot(Vector3.new(math.cos(a), 0, math.sin(a)) * v * 1.02, v * 0.26, mul(tn.floor, 0.8), 0.04 * i)
+	end
+end
+
+State.on("fx", function(kind, d)
+	if kind ~= "fell" or type(d) ~= "table" or d.by ~= player.UserId then
+		return
+	end
+	local m = d.model
+	local patch = typeof(m) == "Instance" and m.Parent
+	if not patch then
+		return
+	end
+	local w = wounds[m]
+	local tn = if w then w.tones else tones(grassOf(d.z, d.mut, d.color))
+	task.spawn(function()
+		local deadline = os.clock() + 3
+		while os.clock() < deadline and patch.Parent do
+			for _, ch in patch:GetChildren() do
+				if ch:IsA("BasePart") and ch.Name:sub(1, 8) == "Stubble_" then
+					ringStump(ch, tn)
+					return
+				end
+			end
+			task.wait(0.1)
+		end
+	end)
+end)
 
 return ClumpWound

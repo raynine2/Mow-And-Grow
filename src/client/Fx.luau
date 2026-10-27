@@ -22,6 +22,7 @@ local Moments = require(script.Parent.Moments)
 local HitMeter = require(script.Parent.HitMeter) -- (28 Oct) the soft green hit meter under the crosshair
 local WeaponFx = require(script.Parent.WeaponFx) -- (28 Oct) each tool's own hit look / sound / bite number
 local ClumpWound = require(script.Parent.ClumpWound) -- (28 Oct) the cut carved into a clump's stalk, hit by hit
+local ClumpCarve = require(script.Parent.ClumpCarve) -- (28 Oct) real notches: a carved clump breaks at its cut
 local GnomeHunt = require(script.Parent.GnomeHunt) -- (27 Oct) the Golden Gnome hunt: found gnomes, the gold strip
 
 local Fx = {}
@@ -317,7 +318,8 @@ handlers.cut = function(d)
 		if m.color and (d.mut or "None") ~= "None" then
 			Fx.popWord(d.pos, (m.id or d.mut):upper() .. "!", m.color)
 		elseif not d.timber then
-			Fx.popWord(d.pos, "MOWED!", Color3.fromRGB(255, 196, 60)) -- (a felled clump already got its MOWED!)
+			local word, wordColor = WeaponFx.word(heldToolId()) -- (owner, 28 Oct: a word per weapon)
+			Fx.popWord(d.pos, word, wordColor) -- (a felled clump already got its word)
 		end
 		State.emit("bundleGained", d.pos, d.mut)
 		local now = os.clock()
@@ -351,9 +353,12 @@ handlers.fell = function(d)
 	end
 	if d.by == player.UserId then
 		Sound.play("fellCrunch", 0.08) -- the stems giving way as it starts to go
-		-- MOWED! over the clump as it goes (Chop A Forest's TIMBER!, our word)
+		-- the weapon's word over the clump as it goes (Chop A Forest's TIMBER!)
 		local h = (m and m:IsA("Model") and m:GetAttribute("Height") :: number?) or d.height or 6
-		Fx.popWord((d.pos :: Vector3) + Vector3.new(0, math.min(h * 0.55, 8), 0), "MOWED!", Color3.fromRGB(255, 196, 60)) -- (owner, 28 Oct: MOWED! instead of TIMBER!)
+		-- (owner, 28 Oct: "MOWED!" instead of TIMBER!, then "it should be different per weapon": PUNCHED!, SNIPPED!,
+		-- SLICED!, REAPED!, MOWED!, WHACKED!, ZAPPED!, in the tool's colour: client/WeaponFx.word)
+		local word, wordColor = WeaponFx.word(heldToolId())
+		Fx.popWord((d.pos :: Vector3) + Vector3.new(0, math.min(h * 0.55, 8), 0), word, wordColor)
 	end
 	if not (m and m.Parent and m:IsA("Model")) then
 		task.delay(T, impact)
@@ -362,6 +367,9 @@ handlers.fell = function(d)
 	-- where it is now (leaned over by the chopping), back to its full size
 	HitFx.release(m)
 	local startCf = m:GetPivot()
+	-- (owner, 28 Oct: a real notch) a carved clump breaks at its cut: only the top falls, from the cut, and the
+	-- stump below it stays standing till its stubble comes (client/ClumpCarve marks it CarveStump)
+	local breakY = ClumpCarve.prepareFall(m)
 	local ok, ghost = pcall(function()
 		m.Archivable = true
 		return m:Clone()
@@ -369,6 +377,11 @@ handlers.fell = function(d)
 	if not ok or not ghost then
 		task.delay(T, impact)
 		return
+	end
+	for _, p in ghost:GetDescendants() do
+		if p:GetAttribute("CarveStump") then
+			p:Destroy() -- (the stump isn't part of the falling top)
+		end
 	end
 	for _, p in ghost:GetDescendants() do
 		if p:IsA("BasePart") then
@@ -383,7 +396,7 @@ handlers.fell = function(d)
 	end
 	ghost.Parent = workspace
 	for _, p in m:GetDescendants() do
-		if p:IsA("BasePart") then
+		if p:IsA("BasePart") and not p:GetAttribute("CarveStump") then
 			p.LocalTransparencyModifier = 1
 		end
 	end
@@ -394,6 +407,14 @@ handlers.fell = function(d)
 	-- the hinge: the foot's edge on the cutter's side, at ground level
 	local foot = (d.pos :: Vector3) - Vector3.new(0, 0.5, 0)
 	local hinge = foot - dir * (radius or 1.2) * 0.75
+	local drop = 0
+	if breakY then
+		-- the top tips over the core left on the far side of the cut, and settles to the ground as it goes
+		local upright = HitFx.base(m).Position
+		local stalkR = m:GetAttribute("Stalk")
+		hinge = Vector3.new(upright.X, breakY, upright.Z) + dir * (if type(stalkR) == "number" then stalkR else 0.8)
+		drop = math.max(0, breakY - foot.Y)
+	end
 	-- how far it's already leaning toward `dir`, so the fall carries on from there instead of snapping upright
 	local up = startCf.UpVector
 	local already = math.asin(math.clamp(up:Dot(dir), -1, 1))
@@ -407,7 +428,7 @@ handlers.fell = function(d)
 		local t = math.min(1, (os.clock() - start) / T)
 		-- like a real topple: barely moving at first, speeding up all the way down (a smooth ease-in)
 		local k = t * t * (0.55 + 0.45 * t)
-		ghost:PivotTo(CFrame.new(hinge) * CFrame.fromAxisAngle(axis, total * k) * rel)
+		ghost:PivotTo(CFrame.new(hinge - Vector3.new(0, drop * k, 0)) * CFrame.fromAxisAngle(axis, total * k) * rel)
 		if t >= 1 then
 			conn:Disconnect()
 			impact(ghost)

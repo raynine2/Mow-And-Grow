@@ -11,6 +11,8 @@
 --   * its own sound recipe (licensed sounds from Config.SOUNDS, re-pitched), climbing with the streak on a clump
 --   * a little leaf hit-marker flicks out of the middle of the screen the instant your blow lands
 --   * a soft floating number of the bite you took out of the clump, in the tool's colour
+-- (owner, 28 Oct: "drop both": the hit-marker and the number are switched off where they're called; the code stays.
+-- Every tool also cuts its own notch, client/ClumpCarve, and calls its own word when a clump goes: WeaponFx.word.)
 -- The tool presets are built here from FxPresets' "hit" / "auto" (install), so the big preset file stays as it is.
 -- Signature layers are cheap: a handful of neon parts tweened and destroyed, pooled UI, nothing per frame at rest.
 local Debris = game:GetService("Debris")
@@ -59,6 +61,28 @@ local ACCENT = {
 	WeedWhacker = Color3.fromRGB(150, 235, 120),
 	LaserMower = Color3.fromRGB(120, 240, 255),
 }
+
+-- (owner, 28 Oct: "MOWED!" instead of TIMBER!, then "it should be different per weapon") the word that pops over
+-- a clump you bring down; ride-on mowers and anything else say MOWED!
+local WORD = {
+	Hands = "PUNCHED!",
+	Scissors = "SNIPPED!",
+	Sickle = "SLICED!",
+	MegaScythe = "REAPED!",
+	PushMower = "MOWED!",
+	WeedWhacker = "WHACKED!",
+	LaserMower = "ZAPPED!",
+}
+local WORD_GOLD = Color3.fromRGB(255, 196, 60)
+
+-- The word (and its colour: gold with the tool's colour in it) for bringing a clump down with `toolId`.
+function WeaponFx.word(toolId: string?): (string, Color3)
+	local w = toolId and WORD[toolId]
+	if not w then
+		return "MOWED!", WORD_GOLD
+	end
+	return w, WORD_GOLD:Lerp(ACCENT[toolId :: string] or WORD_GOLD, 0.45)
+end
 
 local function toolDef(id: string?)
 	for _, t in Config.TOOLS do

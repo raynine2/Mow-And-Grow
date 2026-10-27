@@ -641,6 +641,18 @@ function HitFx.attach(m: Model, part: BasePart, rel: CFrame, size: Vector3)
 	part.CFrame = m:GetPivot() * rel
 end
 
+-- (28 Oct) Where `part` of clump `m` sits in its upright pose and how big it is there, even mid-wobble
+-- (client/ClumpCarve builds its stalk on the clump's mesh from this).
+function HitFx.rest(m: Model, part: BasePart): (CFrame, Vector3)
+	local l = leanOf(m)
+	for _, e in l.parts do
+		if e.part == part then
+			return e.rel, e.size
+		end
+	end
+	return l.base:ToObjectSpace(part.CFrame), part.Size
+end
+
 -- Stop moving `m` (it's falling over: client/Fx animates it from here). Puts it back to its full size and
 -- returns its upright pose.
 function HitFx.release(m: Model): CFrame?

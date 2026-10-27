@@ -696,6 +696,14 @@ handlers.zoneOpen = function(d)
 end
 
 handlers.runComplete = function(d)
+	if d.ending then
+		-- the last boss fell: the ending film, the credits and the end screen (client/Ending)
+		Sound.play("victory")
+		task.spawn(function()
+			require(script.Parent.Ending).play(d)
+		end)
+		return
+	end
 	local time = if (d.time or 0) > 0 then "  Time " .. Format.clock(d.time) .. (if d.best then "  NEW BEST!" else "") else ""
 	Fx.banner("RUN COMPLETE!", C.yellow, 10, ("+%d gems.%s Back to the lobby soon..."):format(d.gems or 0, time))
 	Sound.play("victory")

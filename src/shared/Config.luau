@@ -4,6 +4,10 @@
 local Config = {}
 
 Config.GAME_NAME = "Mow A Lawn"
+-- The end credits' MADE BY (client/Ending): the game's owner comes first by itself; add the Roblox usernames of
+-- everyone else who builds the game with you in Studio here, e.g. { "BuilderName", "ScripterName" }. Each shows as
+-- "Display Name (@username)".
+Config.CREDITS_TEAM = {} :: { string }
 Config.GROUP_ID = 96047379 -- Atlas Interactive Inc (group reward)
 Config.ADMINS = { 1994267229 }
 

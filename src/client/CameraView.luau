@@ -75,13 +75,39 @@ player.CharacterAdded:Connect(function()
 	end
 end)
 
+-- A free mouse in first person (owner, 27 Oct: "when I'm first person the free mouse doesn't work, the mouse is
+-- stuck"): outside the camps V frees the cursor (and locks it again) while you stay in first person, and any open
+-- window frees it too, so its buttons can be clicked. Roblox's own way: a visible Modal button unlocks the mouse.
+local mouseFree = false
+local modalGui = Instance.new("ScreenGui")
+modalGui.Name = "MowFreeMouse"
+modalGui.ResetOnSpawn = false
+modalGui.Parent = player:WaitForChild("PlayerGui")
+local modal = Instance.new("TextButton")
+modal.Name = "Modal"
+modal.Text = ""
+modal.BackgroundTransparency = 1
+modal.Size = UDim2.fromOffset(1, 1)
+modal.Modal = true
+modal.Visible = false
+modal.Parent = modalGui
+-- (and, to be sure, the cursor is set free every frame right after Roblox's camera locks it in first person)
+local wantFree = false
+RunService:BindToRenderStep("MowFreeMouse", Enum.RenderPriority.Camera.Value + 5, function()
+	if wantFree then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		UserInputService.MouseIconEnabled = true
+	end
+end)
+
 function CameraView.toggle()
 	if not State.isRun() then
 		return
 	end
 	hintUntil = math.max(hintUntil, os.clock() + 4)
 	if locked then
-		return -- (the hint says why: third person only in the camps)
+		mouseFree = not mouseFree -- outside the camps: first person stays, V frees / locks the mouse
+		return
 	end
 	zoomTo(if inFirstPerson() then THIRD else FIRST)
 end
@@ -144,8 +170,12 @@ task.spawn(function()
 			locked = true
 			player.CameraMinZoomDistance = FIRST
 			player.CameraMaxZoomDistance = FIRST
+			if wasInside then
+				hintUntil = os.clock() + 5 -- walked out of a camp: "[V] Free mouse" for a moment
+			end
 		elseif free and locked then
 			locked = false
+			mouseFree = false
 			player.CameraMinZoomDistance = FIRST
 			player.CameraMaxZoomDistance = MAX_ZOOM
 		end
@@ -167,8 +197,14 @@ UserInputService.InputBegan:Connect(function(input, processed)
 end)
 
 RunService.RenderStepped:Connect(function()
+	-- the mouse is free in first person while you asked for it (V) or a window is open
+	local want = State.isRun() and inFirstPerson() and (mouseFree or UI.anyOpen())
+	wantFree = want
+	if modal.Visible ~= want then
+		modal.Visible = want
+	end
 	if hint.Visible then
-		hint.Text = if locked then "First person outside the camps" elseif inFirstPerson() then "[V] Third person" else "[V] First person   [Shift] Shift lock"
+		hint.Text = if locked then (if mouseFree then "[V] Lock the mouse" else "[V] Free mouse") elseif inFirstPerson() then "[V] Third person" else "[V] First person   [Shift] Shift lock"
 		local left = hintUntil - os.clock()
 		local a = math.clamp(1 - left, 0, 1) -- fades over the last second
 		hint.TextTransparency = a

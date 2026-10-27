@@ -169,7 +169,10 @@ local nextText = UI.text(infoFace, "", UDim2.new(1, -4, 0, 18), { pos = UDim2.fr
 ;(nextText:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
 
 -- Keep clear of Roblox's own screen bits, which don't shrink with our UIScale: the quest scroll sits just below the
--- top bar (Roblox logo, menu, chat) and the run card steps left of the player list (top-right on a computer).
+-- top bar (Roblox logo, menu, chat). Making room for the player list is off (RESERVE_PLAYER_LIST): the game has no
+-- leaderstats, so the list is closed nearly always and the run card and side buttons stood 190 px off the right edge
+-- for nothing (the owner, 27 Oct: "the right side isn't on the right side").
+local RESERVE_PLAYER_LIST = false
 local function dodgeCoreUi()
 	local sc = UI.gui:FindFirstChildOfClass("UIScale")
 	local s = if sc then sc.Scale else 1
@@ -178,7 +181,7 @@ local function dodgeCoreUi()
 	potato.Position = UDim2.fromOffset(14 + 330 + 10, quest.Position.Y.Offset)
 	local listOn = false
 	pcall(function()
-		listOn = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)
+		listOn = RESERVE_PLAYER_LIST and StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)
 	end)
 	local list = if listOn and not UserInputService.TouchEnabled then 190 / s else 0
 	info.Position = UDim2.new(1, -14 - list, 0, 54)
@@ -266,7 +269,7 @@ local function placeSide()
 	local s = if sc then sc.Scale else 1
 	local listOn = false
 	pcall(function()
-		listOn = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)
+		listOn = RESERVE_PLAYER_LIST and StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)
 	end)
 	side.AnchorPoint = Vector2.new(1, 0.5)
 	side.Position = UDim2.new(1, -16 - (if listOn then 190 / s else 0), 0.5, 30)

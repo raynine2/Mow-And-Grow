@@ -236,7 +236,8 @@ local num = UI.text(face, "STEP 1/5", UDim2.fromOffset(140, 18), { pos = UDim2.f
 local title = UI.text(face, "", UDim2.new(1, -104, 0, 34), { pos = UDim2.fromOffset(96, 20), align = Enum.TextXAlignment.Left, stroke = 3.5 })
 UI.gradient(title, C.yellow)
 -- (two lines, wrapped: on one line the long hints shrank too small to read, on phones especially)
-local sub = UI.text(face, "", UDim2.new(1, -104, 0, 46), { pos = UDim2.fromOffset(96, 56), align = Enum.TextXAlignment.Left, stroke = 2 })
+-- (it fills the sign down to its bottom edge and no further: a long hint used to run out under the wood, owner 27 Oct)
+local sub = UI.text(face, "", UDim2.new(1, -110, 1, -60), { pos = UDim2.fromOffset(96, 56), align = Enum.TextXAlignment.Left, stroke = 2 })
 sub.TextWrapped = true
 sub.TextYAlignment = Enum.TextYAlignment.Top
 local subMax = Instance.new("UITextSizeConstraint")

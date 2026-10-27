@@ -391,7 +391,8 @@ local function garageBay(m: Instance, info)
 	end
 	PropKit.prompt(promptSpot(g, at * CFrame.new(0, 3, -8.5), "GaragePrompt"), "Open", "Garage", "Mowers", 12)
 	info.garageSpawn = at * CFrame.new(0, 2, 0)
-	gasPump(g, (at * CFrame.new(10, 0, -6)).Position, info, Vector3.xAxis)
+	-- beside the voxel garage the pump stands a little further out (CampBuildings.PUMP)
+	gasPump(g, (at * (if CampBuildings.ON then CampBuildings.PUMP else CFrame.new(10, 0, -6))).Position, info, Vector3.xAxis)
 end
 
 -------------------------------------------------------------------------------------------------------------

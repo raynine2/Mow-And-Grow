@@ -89,17 +89,18 @@ local current: Look? = nil
 
 -- Every preset goes through a softer grade, like Chop A Forest's clean daylight: much less saturation and
 -- contrast (they made greens neon and shade near black), ambient light pulled toward neutral (no blue cast), a
--- gentler bloom.
+-- gentler bloom. (27 Oct polish pass, owner: "lighting so it feels like a complete game": a touch less colour and a
+-- touch more contrast for depth, the ambient a little more neutral, the bloom a little softer.)
 local NEUTRAL = Color3.fromRGB(140, 140, 140)
 local function apply(l: Look)
 	effects()
 	Lighting.ClockTime = l.clock
-	Lighting.Ambient = l.ambient:Lerp(NEUTRAL, 0.45)
-	Lighting.OutdoorAmbient = l.outdoor:Lerp(NEUTRAL, 0.45)
+	Lighting.Ambient = l.ambient:Lerp(NEUTRAL, 0.5)
+	Lighting.OutdoorAmbient = l.outdoor:Lerp(NEUTRAL, 0.5)
 	Lighting.Brightness = l.brightness
 	color.TintColor = l.tint
-	color.Saturation = l.saturation * 0.4
-	color.Contrast = l.contrast * 0.3
+	color.Saturation = l.saturation * 0.32
+	color.Contrast = l.contrast * 0.4
 	atmosphere.Color = l.fog
 	atmosphere.Decay = l.fog:Lerp(Color3.new(0, 0, 0), 0.35)
 	-- a sky the owner added (any Sky but the game's "MowALawnSky") stays visible: little haze over it
@@ -108,7 +109,7 @@ local function apply(l: Look)
 	atmosphere.Haze = if ownSky then l.haze * 0.15 else l.haze
 	atmosphere.Density = if ownSky then l.density * 0.75 else l.density
 	rays.Intensity = l.sunRays
-	bloom.Intensity = l.bloom * 0.45
+	bloom.Intensity = l.bloom * 0.4
 end
 
 -- Off while something else owns the lighting (the lobby, the class room, a cutscene): set the attribute

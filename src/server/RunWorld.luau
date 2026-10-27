@@ -545,15 +545,26 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 	-- no grass on the boss arenas (server/BossArena: World attributes Arena<z>, ArenaRadius)
 	local arenaR = (w and w:GetAttribute("ArenaRadius") or 0) :: number
 	local arenaCs: { Vector3 } = {}
+	local gateCs: { Vector3 } = {}
 	for i = 1, #Config.ZONES do
 		local a = w and w:GetAttribute("Arena" .. i)
 		if typeof(a) == "Vector3" then
 			table.insert(arenaCs, a)
 		end
+		-- and the way in: the gate, its ramp and the ground in front (owner, 27 Oct: grass grew over the ramp)
+		local g = w and w:GetAttribute("ArenaGate" .. i)
+		if typeof(g) == "Vector3" then
+			table.insert(gateCs, g)
+		end
 	end
 	local function inArena(p: Vector3): boolean
 		for _, a in arenaCs do
 			if Vector2.new(p.X - a.X, p.Z - a.Z).Magnitude < arenaR + 6 then
+				return true
+			end
+		end
+		for _, g in gateCs do
+			if Vector2.new(p.X - g.X, p.Z - g.Z).Magnitude < 24 then
 				return true
 			end
 		end

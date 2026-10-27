@@ -16,6 +16,7 @@ local BossMoves = require(ReplicatedStorage.MowALawn.BossMoves)
 local Net = require(script.Parent.Net)
 local Models = require(script.Parent.Models)
 local ArenaDress = require(script.Parent.ArenaDress)
+local VoxelKit = require(script.Parent.VoxelKit)
 
 local BossArena = {}
 
@@ -255,15 +256,18 @@ local function entranceRamp(world: Instance, model: Instance, gatePos: Vector3, 
 	ramp.Color = theme.floor
 	ramp.Material = theme.floorMat
 	ramp.Parent = model
+	-- stone curbs stepping down both sides (owner, 27 Oct: the smooth grey wedges didn't fit), each block standing
+	-- on the ground and a little above the ramp beside it
+	local rng = Random.new(math.floor(gatePos.X + gatePos.Z))
+	local n = math.max(2, math.ceil(len / 2.4))
 	for side = -1, 1, 2 do
-		local rail = Instance.new("WedgePart")
-		rail.Name = "RampEdge"
-		rail.Anchored = true
-		rail.Size = Vector3.new(1.2, drop + 1, len)
-		rail.CFrame = ramp.CFrame * CFrame.new(side * (width / 2 + 0.6), 0.5, 0)
-		rail.Color = theme.rim
-		rail.Material = Enum.Material.Slate
-		rail.Parent = model
+		for k = 0, n - 1 do
+			local d0, d1 = k * len / n, (k + 1) * len / n
+			local h = drop * (1 - (d0 + d1) / 2 / len) + 0.9
+			local at = gatePos + facing * (1 + (d0 + d1) / 2)
+			local cf = CFrame.lookAt(Vector3.new(at.X, gatePos.Y - drop + h / 2 - 0.4, at.Z), Vector3.new(at.X, gatePos.Y - drop + h / 2 - 0.4, at.Z) + facing)
+			VoxelKit.part(model, "RampCurb", cf * CFrame.new(side * (width / 2 + 0.7), 0, 0), Vector3.new(1.4, h + 0.4, d1 - d0 - 0.06), VoxelKit.jitter(rng, theme.rim:Lerp(Color3.new(1, 1, 1), 0.35), 0.06), "stone", true)
+		end
 	end
 end
 
@@ -403,7 +407,10 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	-- the ForgeGUI summoning altar round the pad: sunk so its top is just above the floor (the pad is read by
 	-- distance, server/Boss, so nothing about standing on it changes)
 	-- (a block ring in the area's colours when that model isn't loaded: server/ArenaDress)
-	if Models.has("forge_altar") then
+	if ctx then
+		ArenaDress.altar(ctx, padPos)
+		padRing.Transparency = 1
+	elseif Models.has("forge_altar") then
 		local altar = Models.placeForge("altar", model, CFrame.lookAt(padPos, padPos + facing), { width = 17 }, false)
 		if altar then
 			altar.Name = "SummonAltar"
@@ -411,9 +418,6 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 			altar:PivotTo(altar:GetPivot() - Vector3.new(0, math.max(0, asize.Y - 0.5), 0))
 			padRing.Transparency = 1
 		end
-	elseif ctx then
-		ArenaDress.altar(ctx, padPos)
-		padRing.Transparency = 1
 	end
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "PadLabel"
@@ -442,6 +446,8 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	model.Parent = folder
 	world:SetAttribute("Arena" .. z, centre)
 	world:SetAttribute("ArenaRadius", r)
+	-- the way in (gate, ramp and the ground in front of it) stays clear of grass too (server/RunWorld)
+	world:SetAttribute("ArenaGate" .. z, gatePos + facing * 16)
 
 	return {
 		z = z,

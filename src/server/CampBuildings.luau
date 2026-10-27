@@ -755,6 +755,67 @@ local function shelf(ctx: Ctx, cf: CFrame, w: number)
 	end
 end
 
+-- The shop counter against the front wall, right of the door: a board front with battens, a brass till, a ledger,
+-- scales and a jar of seeds (owner, 27 Oct: "make the inside of the houses a bit better").
+local function shopCounter(ctx: Ctx)
+	local y = SHOP.floor
+	local z = SHOP.z0 + T + 1.0
+	local cx = 8.6
+	local brass = Color3.fromRGB(176, 140, 64)
+	block(ctx, "Counter", Vector3.new(cx, y + 1.5, z), Vector3.new(5.6, 3.0, 1.7), jitter(ctx.rng, C.board, 0.04))
+	block(ctx, "CounterTop", Vector3.new(cx, y + 3.15, z + 0.1), Vector3.new(6.2, 0.3, 2.1), C.timber)
+	for k = -2, 2 do
+		deco(block(ctx, "CounterBatten", Vector3.new(cx + k * 1.3, y + 1.5, z + 0.88), Vector3.new(0.25, 2.8, 0.1), C.timber))
+	end
+	local ty = y + 3.3
+	block(ctx, "Till", Vector3.new(cx - 1.6, ty + 0.45, z), Vector3.new(1.3, 0.9, 1.0), brass, Enum.Material.Metal)
+	deco(block(ctx, "TillDrawer", Vector3.new(cx - 1.6, ty + 0.2, z + 0.52), Vector3.new(1.1, 0.25, 0.05), brass:Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Metal))
+	deco(block(ctx, "TillKeys", Vector3.new(cx - 1.6, ty + 0.92, z + 0.2), Vector3.new(1.0, 0.1, 0.5), Color3.fromRGB(230, 222, 200)))
+	deco(block(ctx, "Ledger", Vector3.new(cx + 0.3, ty + 0.06, z + 0.1), Vector3.new(1.2, 0.12, 0.9), Color3.fromRGB(110, 40, 40)))
+	deco(block(ctx, "LedgerPages", Vector3.new(cx + 0.3, ty + 0.13, z + 0.1), Vector3.new(1.1, 0.03, 0.8), Color3.fromRGB(236, 228, 206)))
+	deco(block(ctx, "ScaleBase", Vector3.new(cx + 1.9, ty + 0.08, z - 0.1), Vector3.new(0.8, 0.15, 0.6), brass, Enum.Material.Metal))
+	deco(block(ctx, "ScalePost", Vector3.new(cx + 1.9, ty + 0.6, z - 0.1), Vector3.new(0.12, 0.9, 0.12), brass, Enum.Material.Metal))
+	deco(block(ctx, "ScaleBeam", Vector3.new(cx + 1.9, ty + 1.05, z - 0.1), Vector3.new(1.4, 0.08, 0.08), brass, Enum.Material.Metal))
+	for _, sx in { -1, 1 } do
+		deco(block(ctx, "ScalePan", Vector3.new(cx + 1.9 + sx * 0.65, ty + 0.75, z - 0.1), Vector3.new(0.6, 0.06, 0.6), brass, Enum.Material.Metal))
+	end
+	local jar = deco(blockAt(ctx, "SeedJar", CFrame.new(cx + 1.0, ty + 0.45, z - 0.55) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.9, 0.6, 0.6), Color3.fromRGB(150, 176, 150), Enum.Material.Glass))
+	jar.Shape = Enum.PartType.Cylinder
+	jar.Transparency = 0.3
+end
+
+-- Small things that make the room lived in: herb bundles and rope coils hanging from the tie beams, two more roof
+-- purlins, a wall lamp on each side wall, a doormat.
+local function shopDetails(ctx: Ctx, top: number)
+	local y = SHOP.floor
+	local n = 0
+	for _, x in { -14, -7, 7, 14 } do
+		for _, z in { -2, 9 } do
+			n += 1
+			local hang = top - 0.9
+			deco(block(ctx, "String", Vector3.new(x, hang - 0.4, z), Vector3.new(0.08, 0.8, 0.08), C.timber))
+			if n % 2 == 0 then
+				deco(block(ctx, "Herbs", Vector3.new(x, hang - 1.3, z), Vector3.new(0.7, 1.1, 0.7), jitter(ctx.rng, Color3.fromRGB(104, 132, 70), 0.12), Enum.Material.Grass))
+			else
+				local coil = deco(blockAt(ctx, "RopeCoil", CFrame.new(x, hang - 1.4, z), Vector3.new(0.35, 1.2, 1.2), Color3.fromRGB(176, 146, 100), Enum.Material.Fabric))
+				coil.Shape = Enum.PartType.Cylinder
+			end
+		end
+	end
+	for _, z in { -3.5, 10.5 } do
+		block(ctx, "Purlin", Vector3.new(0, top - 0.45, z), Vector3.new(2 * (SHOP.x - T), 0.8, 0.8), C.timber)
+	end
+	for _, sx in { -1, 1 } do
+		local wx = sx * (SHOP.x - T - 0.2)
+		deco(block(ctx, "SconceBack", Vector3.new(wx, y + 7, 7.4), Vector3.new(0.2, 1.2, 0.8), C.timber))
+		deco(block(ctx, "SconceArm", Vector3.new(wx - sx * 0.45, y + 7, 7.4), Vector3.new(0.7, 0.15, 0.15), C.iron))
+		local glow = deco(block(ctx, "SconceGlass", Vector3.new(wx - sx * 0.8, y + 7.25, 7.4), Vector3.new(0.5, 0.7, 0.5), C.lamp, Enum.Material.SmoothPlastic))
+		glow.Transparency = 0.15
+		pointLight(glow, 12, 0.3)
+	end
+	deco(block(ctx, "Doormat", Vector3.new(0, y + 0.03, SHOP.z0 + T + 1.0), Vector3.new(5.5, 0.06, 1.6), Color3.fromRGB(120, 92, 60), Enum.Material.Fabric))
+end
+
 local function shopInside(ctx: Ctx, top: number)
 	local y = SHOP.floor
 	local zi0, zi1 = SHOP.z0 + T, SHOP.z1 - T
@@ -818,6 +879,8 @@ function CampBuildings.shop(parent: Instance, at: CFrame, withSign: boolean?): b
 	shopPorch(ctx, withSign == true)
 	shopYard(ctx, top, top + roof.steps * roof.rise)
 	shopInside(ctx, top)
+	shopCounter(ctx)
+	shopDetails(ctx, top)
 	-- a lantern post at each front corner of the porch, the lantern hanging toward the steps
 	for _, sx in { -1, 1 } do
 		Models.place("lantern_post", building, at * CFrame.new(sx * (PORCH.hx + 0.6), 0, PORCH.z0 - 1.6) * CFrame.Angles(0, math.rad(sx * 90), 0), 0.9, true)
@@ -890,6 +953,43 @@ local function toolCabinet(ctx: Ctx, cf: CFrame)
 		for _, sz in { -1, 1 } do
 			deco(blockAt(ctx, "Caster", cf * CFrame.new(sx * 1.05, 0.15, sz * 0.55), Vector3.new(0.3, 0.3, 0.3), C.iron))
 		end
+	end
+end
+
+-- More of a working garage (owner, 27 Oct: better insides): garden tools in a rack on the left wall, a shelf of
+-- paint cans over the tyres, a green clippings bin by the door, seed sacks on the deck.
+local function garageDetails(ctx: Ctx)
+	local y = GARAGE.floor
+	local xi = GARAGE.x - T
+	-- the tool rack (front of the left wall)
+	local rx = -(xi - 0.2)
+	block(ctx, "ToolRack", Vector3.new(rx, y + 5.2, -6.2), Vector3.new(0.3, 0.4, 2.8), C.timber)
+	block(ctx, "ToolRack", Vector3.new(rx, y + 1.0, -6.2), Vector3.new(0.3, 0.4, 2.8), C.timber)
+	local tools = {
+		{ -7.2, C.board, Vector3.new(0.25, 0.25, 1.3), C.iron }, -- rake
+		{ -6.2, Color3.fromRGB(176, 140, 90), Vector3.new(0.4, 0.7, 1.0), Color3.fromRGB(196, 170, 110) }, -- broom
+		{ -5.2, C.board, Vector3.new(0.12, 0.9, 0.8), C.metal:Lerp(C.iron, 0.4) }, -- spade
+	}
+	for _, t in tools do
+		local cf = CFrame.new(rx + 0.45, y + 3.2, t[1]) * CFrame.Angles(0, 0, math.rad(-5))
+		deco(blockAt(ctx, "ToolHandle", cf, Vector3.new(0.2, 5.0, 0.2), t[2]))
+		deco(blockAt(ctx, "ToolHead", cf * CFrame.new(0, -2.6, 0), t[3], t[4]))
+	end
+	-- paint cans on a shelf over the tyres (right wall)
+	local sx = xi - 0.5
+	block(ctx, "Shelf", Vector3.new(sx, y + 5.0, -5.0), Vector3.new(1.0, 0.2, 3.4), C.timber)
+	for k, c in { Color3.fromRGB(70, 120, 170), Color3.fromRGB(200, 180, 70), Color3.fromRGB(170, 70, 60), Color3.fromRGB(230, 230, 224) } do
+		local can = deco(blockAt(ctx, "PaintCan", CFrame.new(sx, y + 5.45, -6.6 + k * 0.75) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.7, 0.62, 0.62), c, Enum.Material.Metal))
+		can.Shape = Enum.PartType.Cylinder
+	end
+	-- the clippings bin by the door
+	local bin = Color3.fromRGB(62, 120, 70)
+	block(ctx, "ClippingsBin", Vector3.new(-6.4, y + 1.35, -6.6), Vector3.new(1.8, 2.7, 1.8), bin)
+	block(ctx, "BinLid", Vector3.new(-6.4, y + 2.8, -6.55), Vector3.new(1.95, 0.2, 1.95), bin:Lerp(Color3.new(0, 0, 0), 0.2))
+	deco(block(ctx, "BinGrass", Vector3.new(-6.4, y + 2.95, -6.5), Vector3.new(1.3, 0.25, 1.3), Color3.fromRGB(90, 160, 60), Enum.Material.Grass))
+	-- seed sacks on the deck
+	for k = 0, 1 do
+		block(ctx, "SeedSack", Vector3.new(6.8, DECK.top + 0.8, 6.0 + k * 1.3), Vector3.new(1.4, 1.6, 1.1), jitter(ctx.rng, Color3.fromRGB(200, 176, 132), 0.05), Enum.Material.Fabric)
 	end
 end
 
@@ -986,6 +1086,7 @@ function CampBuildings.garage(parent: Instance, at: CFrame): boolean
 		deco(block(ctx, "SignBracket", Vector3.new(sx * 3.2, top + 0.55, GARAGE.z0 - 0.3), Vector3.new(0.4, 0.5, 0.8), C.timber))
 	end
 	garageInside(ctx, top)
+	garageDetails(ctx)
 	-- outside: an oil drum and a crate by the side wall, a tyre leaning on it
 	local drum = blockAt(ctx, "OilDrum", CFrame.new(-(GARAGE.x + 1.6), 1.4, -6.2) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(2.8, 1.9, 1.9), Color3.fromRGB(140, 58, 48), Enum.Material.Metal)
 	drum.Shape = Enum.PartType.Cylinder

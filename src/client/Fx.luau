@@ -317,7 +317,7 @@ handlers.cut = function(d)
 		if m.color and (d.mut or "None") ~= "None" then
 			Fx.popWord(d.pos, (m.id or d.mut):upper() .. "!", m.color)
 		elseif not d.timber then
-			Fx.popWord(d.pos, "MOWED!", Color3.fromRGB(255, 196, 60)) -- (a felled clump already got its TIMBER!)
+			Fx.popWord(d.pos, "MOWED!", Color3.fromRGB(255, 196, 60)) -- (a felled clump already got its MOWED!)
 		end
 		State.emit("bundleGained", d.pos, d.mut)
 		local now = os.clock()
@@ -351,9 +351,9 @@ handlers.fell = function(d)
 	end
 	if d.by == player.UserId then
 		Sound.play("fellCrunch", 0.08) -- the stems giving way as it starts to go
-		-- TIMBER! over the clump as it goes (Chop A Forest's call)
+		-- MOWED! over the clump as it goes (Chop A Forest's TIMBER!, our word)
 		local h = (m and m:IsA("Model") and m:GetAttribute("Height") :: number?) or d.height or 6
-		Fx.popWord((d.pos :: Vector3) + Vector3.new(0, math.min(h * 0.55, 8), 0), "TIMBER!", Color3.fromRGB(255, 176, 50))
+		Fx.popWord((d.pos :: Vector3) + Vector3.new(0, math.min(h * 0.55, 8), 0), "MOWED!", Color3.fromRGB(255, 196, 60)) -- (owner, 28 Oct: MOWED! instead of TIMBER!)
 	end
 	if not (m and m.Parent and m:IsA("Model")) then
 		task.delay(T, impact)
@@ -490,7 +490,8 @@ handlers.chip = function(d)
 	end
 	-- (28 Oct) the bite this hit took, floating up in the tool's colour (hand tools: auto tools chip too fast)
 	local tid = heldToolId()
-	if WeaponFx.family(WeaponFx.eventFor(tid)) ~= "auto" and d.max and d.max > 0 then
+	-- (owner, 28 Oct: "drop both": no floating bite number; WeaponFx.bite stays for later use)
+	if false and WeaponFx.family(WeaponFx.eventFor(tid)) ~= "auto" and d.max and d.max > 0 then
 		WeaponFx.bite(d.hitPos or d.pos, d.dealt or 0, (d.dealt or 0) / d.max, WeaponFx.accent(tid))
 	end
 	ClumpWound.hit(d) -- (before the lean: the cut leans with the clump)

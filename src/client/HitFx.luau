@@ -618,7 +618,9 @@ function HitFx.lean(m: Model?, from: Vector3?, ratio: number?)
 		local axis = Vector3.yAxis:Cross(away.Unit)
 		l.axis = if axis.Magnitude > 1e-3 then axis.Unit else Vector3.xAxis
 	end
-	l.angle = math.rad(11) * math.clamp(1 - ratio, 0, 1)
+	-- (28 Oct, council: "stop moving the target") it stands still while the cut opens and only starts to lean in
+	-- the last 60% of its HP, so the cut stays under the crosshair
+	l.angle = math.rad(11) * math.clamp((0.6 - ratio) / 0.6, 0, 1)
 	if not wobbling[m] then
 		pose(m, l, 0, l.axis)
 	end
@@ -675,9 +677,9 @@ local function wobble(m: Model, away: Vector3, strength: number)
 			return
 		end
 		-- a damped spring about its lean: snaps away, swings back past it, settles
-		local angle = math.rad(14 * strength) * math.exp(-t * 8) * math.cos(t * 24)
+		local angle = math.rad(6 * strength) * math.exp(-t * 8) * math.cos(t * 24) -- (28 Oct: was 14, the cut swung off the crosshair)
 		-- squash on the blow, spring up tall, settle (a quicker spring than the sway)
-		local sq = 0.2 * strength * math.exp(-t * 9) * math.cos(t * 32)
+		local sq = 0.1 * strength * math.exp(-t * 9) * math.cos(t * 32)
 		pose(m, l, angle, axis, sq)
 	end)
 end
@@ -892,7 +894,8 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 		cameraFeel(fam or event)
 		WeaponFx.feel(event)
 		-- the hit registers: four little leaves flick out of the middle of the screen
-		if fam and fam ~= "auto" then
+		-- (owner, 28 Oct: "drop both": the leaf hit-marker is off; WeaponFx.marker stays for later use)
+		if false and fam and fam ~= "auto" then
 			WeaponFx.marker(WeaponFx.accent(WeaponFx.heldId()), event == "reap")
 		end
 	end

@@ -135,6 +135,19 @@ function WeaponFx.install(P: any)
 	if P.snip or not P.hit or not P.auto then
 		return
 	end
+	-- (28 Oct, council) one bigger, softer, slower cloud per hit that drifts off to the side, so it never hides
+	-- the cut for long (every tool's hit below is copied from these)
+	for _, ev in { "punch", "hit" } do
+		local poof = layerNamed(P[ev], "poof")
+		if poof then
+			poof.size = { { 0, 1.1 }, { 1, 2.8 } } -- (tested: 3.4 smeared half the screen green up close)
+			poof.lifetime = { 0.55, 0.7 }
+			poof.transparency = { { 0, 0.45 }, { 1, 1 } }
+			poof.offset = 0.9
+			poof.rise = 1.1
+			poof.count = 2
+		end
+	end
 	-- SNIP: an X of bright blades closing where they bite, fine snippets fluttering down, a crisp little burst
 	local snip = copy(P.hit)
 	without(snip, { "marks", "shock" })

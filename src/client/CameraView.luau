@@ -198,7 +198,8 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 
 	-- field of view: eased toward the mode's base plus a speed boost; kicks bite instantly and spring back
 	local base = if not State.isRun() then FOV_LOBBY elseif first then FOV_FIRST else FOV_THIRD
-	local target = base + SPEED_FOV * math.clamp((speed - 8) / 30, 0, 1)
+	-- (only past a run: walking and stopping no longer make the view breathe in and out)
+	local target = base + SPEED_FOV * math.clamp((speed - 22) / 30, 0, 1)
 	fovNow += (target - fovNow) * math.min(1, dt * 6)
 	kickAmount *= math.exp(-dt * 11)
 	cam.FieldOfView = fovNow - kickAmount - focusNow()

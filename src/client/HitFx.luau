@@ -820,12 +820,17 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 		if event == "punch" or event == "hit" or event == "auto" then
 			hitSounds(event, m)
 		end
-		kick(preset.kick or 0)
-		if event == "punch" or event == "hit" then
-			CameraView.shake(0.5, 0.09) -- a small jolt through the view on contact
+		-- Calmer on every hit (owner, 27 Oct: "Chop A Forest is very smooth, ours doesn't feel right"): every click
+		-- used to punch the field of view, shake the view and freeze the swing for 3-4 frames, so chopping felt
+		-- jerky. Now a light FOV punch, no shake, and only a short freeze; the full weight is kept for the cut.
+		local chop = event == "punch" or event == "hit"
+		kick((preset.kick or 0) * (if chop then 0.4 else 0.7))
+		local stop = preset.hitstop or 0
+		if chop then
+			stop = math.min(stop, 0.025)
 		end
-		if (preset.hitstop or 0) > 0 then
-			State.emit("hitstop", preset.hitstop)
+		if stop > 0 then
+			State.emit("hitstop", stop)
 		end
 	end
 end

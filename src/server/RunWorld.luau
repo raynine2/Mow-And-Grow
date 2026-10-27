@@ -396,6 +396,33 @@ local function safetyNet(info)
 	end)
 end
 
+-- A cleaner floor (owner, 27 Oct: "Chop A Forest has no random stuff around the map; ours feels cluttered"):
+-- WorldArt stood four thin grass sticks on about a third of all ground squares (some 12,000 loose parts over the
+-- map), which read as random poles everywhere and cost frame time. They're taken out of the run's copy of the
+-- world here; the world saved in the place keeps them (nothing in Studio changes). Also drops the empty
+-- leftover "Water" folders the saved world has hundreds of.
+local function tidyGround(w: Instance)
+	local visuals = w:FindFirstChild("Visuals")
+	local gone = 0
+	for _, area in (if visuals then visuals:GetChildren() else {}) do
+		for _, p in area:GetChildren() do
+			if p:IsA("BasePart") and p.Name == "Part" then
+				local s = p.Size
+				if s.X < 0.45 and s.Z < 0.45 and s.Y > 1.2 and s.Y < 4.5 then
+					p:Destroy()
+					gone += 1
+				end
+			end
+		end
+	end
+	for _, c in w:GetChildren() do
+		if c.Name == "Water" and c:IsA("Folder") and #c:GetChildren() == 0 then
+			c:Destroy()
+		end
+	end
+	print(("[RunWorld] %d loose grass sticks cleared off the floor"):format(gone))
+end
+
 function RunWorld.build()
 	local old = workspace:FindFirstChild("World")
 	if old then
@@ -407,6 +434,7 @@ function RunWorld.build()
 	if saved then
 		w = saved:Clone()
 		w.Name = "World"
+		tidyGround(w) -- (before it's parented: nothing gets sent to players for the sticks)
 		w.Parent = workspace
 	else
 		w = require(script.Parent.WorldGen).build()

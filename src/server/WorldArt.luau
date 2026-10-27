@@ -13,6 +13,7 @@ local WorldArt = {}
 
 local SMOOTH = Enum.SurfaceType.Smooth
 local STUDS = Enum.SurfaceType.Studs
+local GROUND_STICKS = false -- the thin grass sticks standing all over the floor (off: they read as clutter)
 
 local count = 0
 local function blk(parent: Instance, size: Vector3, cf: CFrame, color: Color3, mat: Enum.Material?, studs: boolean?): Part
@@ -590,10 +591,11 @@ function WorldArt.decorate(world: Instance, plan: any)
 						local k = if hash(i, j, 12) < 0.5 then 1.09 else 0.92
 						deco(blk(f, Vector3.new(C, 0.12, C), CFrame.new(v3(p, c.h + 0.06)), shade(base, k)))
 					end
-					-- ground cover: clumps of thin tall blades all over the floor (not on the mowing patches),
-					-- so the ground reads as lush grass like the reference, not a flat green plate
+					-- ground cover: clumps of thin tall blades all over the floor. Off (owner, 27 Oct: the map felt
+					-- cluttered next to Chop A Forest's clean ground; they were ~12,000 loose parts). RunWorld also
+					-- clears them from a world saved with them.
 					local rc = hash(i, j, 19)
-					if rc < 0.3 and patchFree(p, 0) and not onCorridor(p) then
+					if GROUND_STICKS and rc < 0.3 and patchFree(p, 0) and not onCorridor(p) then
 						local g = def.palette.grass
 						local base = Vector2.new(hash(i, j, 30) * 5 - 2.5, hash(i, j, 40) * 5 - 2.5)
 						for t = 1, 4 do

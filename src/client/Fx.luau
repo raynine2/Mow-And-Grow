@@ -343,7 +343,7 @@ handlers.fell = function(d)
 	local function impact(popModel: Model?)
 		handlers.cut({ pos = land, color = d.color, mut = d.mut, z = d.z, by = d.by, scale = scale, model = popModel, timber = true })
 		if near(land, 90) then
-			Fx.shake(if d.by == player.UserId then 1.2 else 0.25, 0.25)
+			Fx.shake(if d.by == player.UserId then 0.5 else 0.15, 0.2) -- (was 1.2: every clump cut jolted the view)
 		end
 	end
 	if d.by == player.UserId then

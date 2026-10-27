@@ -61,7 +61,8 @@ local function counter(y: number, icon: string, plus: boolean?)
 	f.Position = UDim2.new(0, 10, 0.5, y)
 	f.Parent = root
 	local plate, face = Skin.frame(f, "ui_plate", Vector2.new(250, 62), { pos = UDim2.fromOffset(40, 8), name = "Plate" })
-	Skin.shine(face, 5, if icon == "gem" then 2.5 else 0)
+	-- (a rare glint: the HUD sits still like Chop A Forest's; owner, 27 Oct: "cluttered, not smooth")
+	Skin.shine(face, 18, if icon == "gem" then 9 else 0)
 	local t = UI.text(face, "0", UDim2.new(1, -46, 1, -4), { pos = UDim2.fromOffset(42, 2), align = Enum.TextXAlignment.Left, stroke = 3.5 })
 	t.ZIndex = plate.ZIndex + 2
 	local ic = UI.icon(f, icon, 78, UDim2.fromOffset(0, 0))
@@ -93,7 +94,7 @@ local bagFace = select(2, Skin.frame(bag, "ui_plate", Vector2.new(190, 60), { po
 local bagText = UI.text(bagFace, "0/5", UDim2.new(1, -50, 1, -4), { pos = UDim2.fromOffset(46, 2), align = Enum.TextXAlignment.Left, stroke = 3.5 })
 local bagIcon = UI.icon(bag, "backpack", 96, UDim2.fromOffset(0, 0))
 bagIcon.ZIndex = 3
-Skin.bob(bagIcon, 2, 1.6)
+-- (no idle bobbing on the HUD icons: seven things always moving made the screen busy)
 
 -------------------------------------------------------------------------------------------------------------
 -- quest tracker (top-left, under Roblox's buttons)
@@ -109,7 +110,6 @@ local questFace = select(2, Skin.frame(quest, "ui_card", Vector2.new(330, 136), 
 local BROWN = Color3.fromRGB(110, 62, 30)
 local questIcon = UI.icon(quest, "quest", 58, UDim2.fromOffset(-6, -14))
 questIcon.ZIndex = 4
-Skin.bob(questIcon, 2, 1.3)
 local questNum = UI.text(questFace, "QUEST 1/8", UDim2.new(1, -40, 0, 18), { pos = UDim2.fromOffset(40, 0), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(255, 160, 40), stroke = 2 })
 -- (title and hint stop short of the right edge, clear of the wooden frame: the owner, 27 Oct, "the text goes out of
 -- the sign")
@@ -159,7 +159,7 @@ info.Parent = root
 -- the timer floats above a cream card that holds the area name, AREA n/8, the cleared bar and what's next
 local timerText = UI.text(info, "0:00", UDim2.fromOffset(150, 42), { pos = UDim2.new(1, -6, 0, 0), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 3.5 })
 local watch = UI.icon(info, "stopwatch", 46, UDim2.new(1, -156, 0, -2))
-Skin.bob(watch, 1.5, 3)
+local _ = watch
 local infoFace = select(2, Skin.frame(info, "ui_card", Vector2.new(320, 132), { pos = UDim2.fromOffset(0, 44), name = "Card" }))
 local pin = UI.icon(infoFace, "pin", 34, UDim2.fromOffset(-2, -4))
 local zoneText = UI.text(infoFace, "", UDim2.new(1, -150, 0, 26), { pos = UDim2.fromOffset(36, 0), align = Enum.TextXAlignment.Left, color = BROWN, stroke = 0 })
@@ -229,9 +229,9 @@ local function roundButton(label: string, icon: string, key: string, window: str
 	body.Parent = b
 	local badge, face = Skin.frame(body, "ui_badge", Vector2.new(98, 96), { pos = UDim2.fromOffset(7, 0), stretch = false, name = "Badge" })
 	local _ = badge
-	Skin.shine(face, 6, order * 0.7)
+	Skin.shine(face, 20, 4 + order * 3)
 	local ic = UI.icon(face, icon, 58, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
-	Skin.bob(ic, 2, 2.2)
+	local _ = ic
 	local tag = UI.frame({ size = UDim2.fromOffset(if #key > 1 then 44 else 30, 28), pos = UDim2.fromOffset(110, 2), anchor = Vector2.new(1, 0), color = Color3.fromRGB(58, 34, 16), parent = body, radius = 8, outline = 2.5, name = "Key" })
 	;(tag:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(28, 16, 8)
 	UI.gradient(tag, Color3.fromRGB(70, 42, 20))

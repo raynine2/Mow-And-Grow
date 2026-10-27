@@ -215,10 +215,10 @@ if not Mode.isRun then
 		if what == "news" and data and type(id) == "number" then
 			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)
 			PlayerData.changed(player)
-		elseif what == "firstLawn" and (id == "stay" or id == "go") then
-			-- client/FirstLawn: STAY IN LOBBY cancels a first-timer's trip to their first lawn, GO NOW starts it now
-			-- (server/Lobby)
-			player:SetAttribute(if id == "stay" then "FirstLawnStay" else "FirstLawnGo", true)
+		elseif what == "firstLawn" and (id == "stay" or id == "go" or id == "ready") then
+			-- client/FirstLawn: STAY IN LOBBY cancels a first-timer's trip to their first lawn, GO NOW starts it now,
+			-- "ready" says their loading screen is gone so the countdown card can be seen (server/Lobby)
+			player:SetAttribute(if id == "stay" then "FirstLawnStay" elseif id == "go" then "FirstLawnGo" else "FirstLawnReady", true)
 		end
 	end)
 end

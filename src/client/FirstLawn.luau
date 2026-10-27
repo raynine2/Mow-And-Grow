@@ -145,4 +145,23 @@ State.on("fx", function(kind: string, d: any)
 	end
 end)
 
+-- A first-timer in the lobby: tell the server once the loading screen is gone, so the countdown card above starts
+-- when it can be seen (server/Lobby waits for this before it counts down)
+task.spawn(function()
+	local pg = player:WaitForChild("PlayerGui")
+	local t0 = os.clock()
+	while os.clock() - t0 < 60 do
+		local d = State.data
+		if d and (d.mode ~= "Lobby" or not d.newPlayer) then
+			return
+		end
+		if d and player.Character and not pg:FindFirstChild("MowALawnLoading") then
+			task.wait(0.8) -- (the loading screen's fade)
+			State.fire("Seen", "firstLawn", "ready")
+			return
+		end
+		task.wait(0.25)
+	end
+end)
+
 return FirstLawn

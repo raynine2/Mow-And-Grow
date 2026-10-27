@@ -242,7 +242,16 @@ end
 -- (client/FirstLawn shows it, with STAY IN LOBBY and GO NOW) they're sent into a solo run like a solo pad would.
 -- Stepping onto a pad or joining a party first cancels it.
 local function firstLawn(player: Player, seconds: number)
-	task.wait(2.5) -- (the loading screen goes away first)
+	-- the countdown starts when their screen says it can show the card (client/FirstLawn: the loading screen is gone).
+	-- (A fixed 2.5 s after the data loaded was too soon: the card was sent before the client listened, so it never
+	-- showed and the player was moved without a word.) No word within 45 s: no trip, the arrow shows the SOLO pad.
+	local waited = 0
+	while not player:GetAttribute("FirstLawnReady") do
+		if waited > 45 or not player.Parent then
+			return
+		end
+		waited += task.wait(0.25)
+	end
 	if not player.Parent or player:GetAttribute("FirstLawnStay") then
 		return
 	end

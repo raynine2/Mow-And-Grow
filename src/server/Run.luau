@@ -801,6 +801,16 @@ function Run.start()
 			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)
 		end
 	end)
+	-- the SETTINGS panel (client/Settings) in a run: the in-stock alerts and Reduce camera shake are saved here too,
+	-- like in the lobby (server/Lobby), so a choice made mid-run sticks
+	Net.on("Setting", 3, function(player, key, value)
+		local data = PlayerData.get(player)
+		if data and (key == "alertLegendary" or key == "alertMythic" or key == "calmCamera") and type(value) == "boolean" then
+			data.alerts = if type(data.alerts) == "table" then data.alerts else {}
+			data.alerts[key] = value
+			PlayerData.changed(player)
+		end
+	end)
 	Net.on("SpawnMower", 2, function(player, id)
 		if type(id) == "string" then
 			if not Mowers.spawn(player, id) then

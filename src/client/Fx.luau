@@ -344,10 +344,9 @@ handlers.fell = function(d)
 	local radius = m and m:IsA("Model") and m:GetAttribute("Radius") :: number?
 	local scale = if radius then radius / 1.6 else nil
 	local function impact(popModel: Model?)
+		-- (the camera's part of it is in client/HitFx's "cut": a shake for a clump you chopped, a small bump for a
+		-- mower's; there used to be a jolt here for every fall, even other players' and every mower cut)
 		handlers.cut({ pos = land, color = d.color, mut = d.mut, z = d.z, by = d.by, scale = scale, model = popModel, timber = true })
-		if near(land, 90) then
-			Fx.shake(if d.by == player.UserId then 0.5 else 0.15, 0.2) -- (was 1.2: every clump cut jolted the view)
-		end
 	end
 	if d.by == player.UserId then
 		Sound.play("fellCrunch", 0.08) -- the stems giving way as it starts to go
@@ -617,6 +616,8 @@ handlers.gnome = function(d)
 	local sub = ("%s   +%d gems   %d / %d collected"):format(if def then def.name else "Gnome", d.gems or 0, d.have or 0, d.total or 0)
 	Fx.banner(title, if diamond then Color3.fromRGB(150, 225, 255) else Color3.fromRGB(255, 205, 60), 3.4, sub)
 	Sound.play(if d.first then "victory" else "purchase")
+	CameraView.impact(Config.CAMERA_KICK.gnome) -- a find: a bigger kick and a buzz (the report's "Golden find")
+	CameraView.buzz(0.5, 0.15)
 	if d.first then
 		Confetti.burst(if d.set or diamond then 160 else 60)
 	end

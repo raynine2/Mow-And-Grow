@@ -1,12 +1,16 @@
 -- Camera: runs start in first person like Chop A Forest. In the camps (area 1's camp and every area's camp) the
 -- camera is free: walking in swings it out to third person, V (or the mouse wheel) switches, Shift toggles shift
 -- lock. Out in the areas it's first person only. The lobby is always third person.
+local HapticService = game:GetService("HapticService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
+local Potato = require(script.Parent.Potato)
 
 local CameraView = {}
 local player = Players.LocalPlayer
@@ -228,16 +232,166 @@ end)
 local FOV_LOBBY, FOV_FIRST, FOV_THIRD = 80, 80, 80
 local SPEED_FOV = 5 -- extra degrees at full speed
 local kickAmount = 0
-local shakeUntil, shakePower = 0, 0
 local bobPhase = 0
 local landDip = 0
 local fovNow = FOV_LOBBY
 local rollNow = 0
 
--- A quick zoom-in punch of `amount` degrees that springs back (hits, slams, boss death).
+-- How much of the kicks and shakes to show: Settings "Reduce camera shake" (the CalmCamera attribute, client/Settings)
+-- and Potato Mode turn them down.
+local KICK = Config.CAMERA_KICK
+local function shakeScale(): number
+	local k = 1
+	if player:GetAttribute("CalmCamera") == true then
+		k *= KICK.reduced
+	end
+	if Potato.on then
+		k *= KICK.potato
+	end
+	return k
+end
+
+-- A quick zoom-in punch of `amount` degrees that springs back (the big moments: a clump falling, a boss hit, an
+-- area cleared). Potato Mode has none; "Reduce camera shake" makes them smaller.
 function CameraView.kick(amount: number)
+	if Potato.on then
+		return
+	end
+	if player:GetAttribute("CalmCamera") == true then
+		amount *= KICK.reduced
+	end
 	kickAmount = math.max(kickAmount, amount)
 end
+
+-------------------------------------------------------------------------------------------------------------
+-- the camera kick (the report "Making Mow A Lawn feel as satisfying as Chop A Forest", 28 Oct: "the screen moves
+-- when you swing"; tuning in Config.CAMERA_KICK). Both kinds only tilt the view (pitch and roll) and nudge it a
+-- hair, so they never fight your own turning:
+--   * jolt(pitch, roll): a hit. The view dips and rolls on the impact frame and springs back in about 0.15 s with
+--     a little overshoot. Worked out from the time since the hit, so a slow frame never stacks it up.
+--   * trauma(amount): the bigger moments. Trauma (0..1) drains at KICK.decay per second; the shake you see is
+--     trauma squared on smooth noise, so a small one is a shiver, a big one is strong, and nothing snaps
+--     (Eiserloh, "Juicing Your Cameras With Math", GDC 2016). shake(power, time) is the old call, kept for the
+--     boss and gate shakes: power 10 = trauma 1, held for `time`.
+-- Roblox's camera starts every frame from the angle it ended on, so a tilt left in the camera would slowly drag
+-- your aim: the tilt is put on after the camera updates and taken back off just before its next update.
+-------------------------------------------------------------------------------------------------------------
+type Jolt = { at: number, pitch: number, roll: number }
+local jolts: { Jolt } = {}
+local JOLT_LIFE = 0.22
+local trauma = 0
+local holdUntil, holdLevel = 0, 0
+local noiseT = 0
+
+-- 0 at the hit, full at ~0.035 s, back through zero at ~0.105 s, a small overshoot, gone by ~0.2 s
+local function joltShape(u: number): number
+	return math.exp(-u * 18) * math.sin(u * 30) / 0.462
+end
+
+function CameraView.jolt(pitch: number, roll: number?)
+	local k = shakeScale()
+	if k <= 0 then
+		return
+	end
+	if #jolts >= 4 then
+		table.remove(jolts, 1)
+	end
+	table.insert(jolts, { at = os.clock(), pitch = math.rad(pitch * k), roll = math.rad((roll or 0) * k) })
+end
+
+function CameraView.trauma(amount: number)
+	trauma = math.min(1, trauma + amount * shakeScale())
+end
+
+-- A big moment (a clump you chopped falling, a find, an area at 100%): a bigger jolt than a hit (2.4 x `amount`
+-- degrees, so 0.5 dips 1.2 deg) plus a rumble of `amount` trauma. (A rumble alone is short and soft at these
+-- levels: play-tested, trauma 0.45 showed ~0.2 deg, less than a normal hit.)
+function CameraView.impact(amount: number)
+	CameraView.jolt(amount * 2.4, 0)
+	CameraView.trauma(amount)
+end
+
+-- Shake the view with `power` (about 1 = light, 10 = huge) for `time` seconds.
+function CameraView.shake(power: number, time: number)
+	local level = math.sqrt(math.clamp(power / 10, 0, 1)) * shakeScale()
+	trauma = math.max(trauma, level)
+	if time > 0.25 then
+		-- a long rumble (a gate sinking) holds its level, then drains
+		local now = os.clock()
+		if now >= holdUntil then
+			holdLevel = 0
+		end
+		holdUntil = math.max(holdUntil, now + time - 0.25)
+		holdLevel = math.max(holdLevel, level)
+	end
+end
+
+-- A short buzz on phones and gamepads that can (only the big moments: never on a normal hit). Quietly does nothing
+-- where Roblox can't vibrate.
+function CameraView.buzz(strength: number, time: number)
+	if Potato.on then
+		return
+	end
+	for _, input in { Enum.UserInputType.Gamepad1, Enum.UserInputType.Touch } do
+		pcall(function()
+			if HapticService:IsVibrationSupported(input) and HapticService:IsMotorSupported(input, Enum.VibrationMotor.Large) then
+				HapticService:SetMotor(input, Enum.VibrationMotor.Large, strength)
+				task.delay(time, function()
+					pcall(HapticService.SetMotor, HapticService, input, Enum.VibrationMotor.Large, 0)
+				end)
+			end
+		end)
+	end
+end
+
+-- This frame's tilt and nudge (identity when there's nothing to show). dt drains the trauma.
+local function shakeNow(dt: number): CFrame?
+	local now = os.clock()
+	if now < holdUntil then
+		trauma = math.max(trauma, holdLevel)
+	end
+	trauma = math.max(0, trauma - KICK.decay * dt)
+	local pitch, roll = 0, 0
+	for i = #jolts, 1, -1 do
+		local j = jolts[i]
+		local u = now - j.at
+		if u > JOLT_LIFE then
+			table.remove(jolts, i)
+		else
+			local s = joltShape(u)
+			pitch -= j.pitch * s -- dips toward the grass
+			roll += j.roll * s
+		end
+	end
+	local cap = math.rad(2)
+	pitch, roll = math.clamp(pitch, -cap, cap), math.clamp(roll, -cap, cap)
+	local x, y = 0, 0
+	if trauma > 0 then
+		noiseT += dt * 25
+		local s = trauma * trauma
+		local a = math.rad(KICK.maxAngle) * s
+		local function n(seed: number): number
+			return math.clamp(math.noise(noiseT, seed) * 2, -1, 1)
+		end
+		pitch += n(0.1) * a
+		roll += n(7.3) * a
+		x = n(13.7) * KICK.maxOffset * s
+		y = n(21.1) * KICK.maxOffset * s
+	end
+	if pitch == 0 and roll == 0 and x == 0 and y == 0 then
+		return nil
+	end
+	return CFrame.new(x, y, 0) * CFrame.Angles(pitch, 0, roll)
+end
+
+local applied: CFrame? = nil -- the tilt put on the camera this frame, taken off before the next camera update
+RunService:BindToRenderStep("MowALawnCameraUndo", Enum.RenderPriority.Camera.Value - 1, function()
+	local cam = workspace.CurrentCamera
+	if applied and cam and cam.CameraType == Enum.CameraType.Custom then
+		cam.CFrame = cam.CFrame * applied:Inverse()
+	end
+	applied = nil
+end)
 
 -- A slow push-in of `amount` degrees: eases in over `inTime`, holds `hold` seconds, eases back out over
 -- `outTime` (a rare reveal's slow-motion beat). A newer focus replaces an older one.
@@ -259,12 +413,6 @@ local function focusNow(): number
 		k = 1 - (t - focusIn - focusHold) / focusOut
 	end
 	return focusAmount * k * k * (3 - 2 * k)
-end
-
--- Shake the view with `power` (about 1 = light, 6 = huge) for `time` seconds.
-function CameraView.shake(power: number, time: number)
-	shakeUntil = math.max(shakeUntil, os.clock() + time)
-	shakePower = math.max(shakePower, power)
 end
 
 local function hookLanding(char: Model)
@@ -302,6 +450,7 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 	local char = player.Character
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local shake = shakeNow(dt) -- (worked out every frame, so a shake also drains during a cutscene)
 	if not cam or cam.CameraType ~= Enum.CameraType.Custom or not hum or not root then
 		return -- cutscenes (boss intro) drive the camera themselves
 	end
@@ -319,7 +468,7 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 	kickAmount *= math.exp(-dt * 11)
 	cam.FieldOfView = fovNow - kickAmount - focusNow()
 
-	-- offset: head bob (first person, walking on the ground), landing dip, shake
+	-- offset: head bob (first person, walking on the ground), landing dip
 	local walk = if first and onGround and not hum.SeatPart then math.clamp(speed / 16, 0, 1.3) else 0
 	if walk > 0.05 then
 		bobPhase += dt * (5.5 + speed * 0.3)
@@ -327,15 +476,9 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 	local bobX = math.sin(bobPhase) * 0.02 * walk
 	local bobY = math.cos(bobPhase * 2) * 0.03 * walk
 	landDip *= math.exp(-dt * 9)
-	local sx, sy = 0, 0
-	local left = shakeUntil - os.clock()
-	if left > 0 then
-		local p = shakePower * math.min(1, left * 3) * 0.12
-		sx, sy = (math.random() - 0.5) * p, (math.random() - 0.5) * p
-	else
-		shakePower = 0
-	end
-	hum.CameraOffset = Vector3.new(bobX + sx, bobY - landDip + sy, 0)
+	-- (the old shake jumped the camera to a new random spot every frame: the jitter that made hits feel rough;
+	-- shakes are the smooth tilt below now)
+	hum.CameraOffset = Vector3.new(bobX, bobY - landDip, 0)
 
 	-- a slight lean into strafes and with the steps (first person only)
 	local lateral = flat:Dot(cam.CFrame.RightVector)
@@ -344,6 +487,12 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 	rollNow += (targetRoll - rollNow) * math.min(1, dt * 8)
 	if math.abs(rollNow) > 1e-4 then
 		cam.CFrame = cam.CFrame * CFrame.Angles(0, 0, rollNow)
+	end
+
+	-- the camera kick and shake (taken off again by MowALawnCameraUndo before the next camera update)
+	if shake then
+		cam.CFrame = cam.CFrame * shake
+		applied = shake
 	end
 end)
 

@@ -736,11 +736,57 @@ local function pop(spec: any, pos: Vector3, style: string?, src: Model?, g: numb
 end
 
 -------------------------------------------------------------------------------------------------------------
--- camera kick and hit-stop
+-- camera kick and hit-stop (the report "Making Mow A Lawn feel as satisfying as Chop A Forest", 28 Oct, section 3;
+-- tuning in Config.CAMERA_KICK; client/CameraView draws it)
+--   * every hit of a hand tool: the screen jolts a little and springs back, rolling to alternate sides. No
+--     field-of-view punch and no freeze on a normal hit (owner, 27 Oct: "Chop A Forest is very smooth": they made
+--     chopping feel jerky); the hand still bounces back off the clump (an "instant" hit-stop).
+--   * auto tools and ride-on mowers: a tiny bump while they cut, never more than one every KICK.bump.every s.
+--   * the big moments get the field-of-view punch, the freeze and a shake: a clump you chopped falling (a mower's
+--     cut only bumps: no freeze while mowing), your hit on a boss.
 -------------------------------------------------------------------------------------------------------------
+local KICK = Config.CAMERA_KICK
 local function kick(amount: number)
 	if amount > 0 then
 		CameraView.kick(amount) -- CameraView owns the field of view
+	end
+end
+
+local joltSide = 1
+local lastBump = 0
+local lastHandHit = -10 -- your last hit with a hand tool (a clump falling soon after is one you chopped)
+
+local function bump()
+	local now = os.clock()
+	if now - lastBump >= KICK.bump.every then
+		lastBump = now
+		CameraView.jolt(KICK.bump.pitch, 0)
+	end
+end
+
+local function cameraFeel(event: string)
+	local preset = Presets[event]
+	if event == "punch" or event == "hit" or event == "bossHit" then
+		lastHandHit = os.clock()
+		joltSide = -joltSide
+		CameraView.jolt(KICK.hit.pitch, KICK.hit.roll * joltSide)
+	end
+	if event == "punch" or event == "hit" then
+		State.emit("hitstop", 0)
+	elseif event == "auto" then
+		bump()
+	elseif event == "cut" and os.clock() - lastHandHit > 1.5 then
+		bump() -- mowed by an auto tool or a mower
+	else
+		kick((preset.kick or 0) * 0.7)
+		if (preset.hitstop or 0) > 0 then
+			State.emit("hitstop", preset.hitstop)
+		end
+		if event == "cut" then
+			CameraView.impact(KICK.felled)
+		elseif event == "bossHit" then
+			CameraView.trauma(KICK.bossHit) -- (on top of the hit's jolt)
+		end
 	end
 end
 
@@ -835,18 +881,7 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 		if event == "punch" or event == "hit" or event == "auto" then
 			hitSounds(event, m)
 		end
-		-- Calmer on every hit (owner, 27 Oct: "Chop A Forest is very smooth, ours doesn't feel right"): every click
-		-- used to punch the field of view, shake the view and freeze the swing for 3-4 frames, so chopping felt
-		-- jerky. Now a light FOV punch, no shake, and only a short freeze; the full weight is kept for the cut.
-		local chop = event == "punch" or event == "hit"
-		kick((preset.kick or 0) * (if chop then 0.4 else 0.7))
-		local stop = preset.hitstop or 0
-		if chop then
-			stop = math.min(stop, 0.025)
-		end
-		if stop > 0 then
-			State.emit("hitstop", stop)
-		end
+		cameraFeel(event)
 	end
 end
 

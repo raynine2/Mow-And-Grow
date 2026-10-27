@@ -116,6 +116,34 @@ function Config.gnome(id: string)
 	return nil
 end
 
+-- CAMERA KICK (the report "Making Mow A Lawn feel as satisfying as Chop A Forest", 28 Oct, section 3: "the screen
+-- moves when you swing"). client/CameraView draws it. Angles in degrees.
+--   hit:    every hand-tool hit (yours): the view dips `pitch` and rolls `roll` (alternating sides) on the impact
+--           frame and springs back in about 0.15 s. No field-of-view punch and no freeze on a normal hit.
+--   bump:   auto tools and ride-on mowers while they cut: a tiny dip, at most one every `every` seconds.
+--   felled / gnome / area: the big moments (a clump you chopped falls, a gnome found, an area at 100%): a jolt of
+--           2.4 x that many degrees plus that much trauma (0..1), a rumble. bossHit: trauma on top of the hit's jolt.
+--           The rumble you see is trauma squared, on smooth noise, so a small one is a shiver and a big one is
+--           strong; boss slams use the old shake powers (10 = trauma 1).
+--   maxAngle / maxOffset: the rumble at trauma 1 (tilt, and a nudge in studs); decay: trauma lost per second.
+--   (play-tested 27 Oct: a hit dips 0.75 deg and is gone in ~0.17 s; a rumble of 0.45 alone only showed ~0.2 deg,
+--   less than a hit, hence the jolt on the big moments and the 3 deg full tilt)
+--   reduced: the Settings "Reduce camera shake" switch scales everything by this; potato: Potato Mode does
+--           the same and drops the field-of-view punches.
+Config.CAMERA_KICK = {
+	hit = { pitch = 0.75, roll = 0.45 },
+	bump = { pitch = 0.18, every = 0.3 },
+	felled = 0.5,
+	bossHit = 0.45,
+	gnome = 0.6,
+	area = 0.8,
+	maxAngle = 3,
+	maxOffset = 0.12,
+	decay = 1.8,
+	reduced = 0.35,
+	potato = 0.5,
+}
+
 function Config.upgrade(id: string)
 	for _, u in Config.UPGRADES do
 		if u.id == id then

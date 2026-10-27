@@ -282,6 +282,7 @@ function Moments.reveal(d: any)
 	if tier >= 4 then
 		Confetti.burst(40 + (tier - 4) * 50)
 		CameraView.shake(1.5, 0.3)
+		CameraView.buzz(0.5, 0.15) -- a rare find (phones and gamepads that can)
 	end
 end
 
@@ -319,6 +320,9 @@ function Moments.areaCleared(d: any)
 	Confetti.burst(140)
 	task.delay(0.5, Confetti.burst, 90)
 	CameraView.kick(3)
+	-- (report 28 Oct: a strong shake and a buzz when the lawn hits 100%)
+	CameraView.impact(Config.CAMERA_KICK.area)
+	CameraView.buzz(0.7, 0.25)
 	local root = myRoot()
 	if root then
 		local foot = root.Position - Vector3.new(0, 2.8, 0)

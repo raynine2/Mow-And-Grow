@@ -3,9 +3,12 @@
 --   * Potato Mode (the same switch as the potato button)
 --   * Legendary in-stock alerts, Mythic in-stock alerts: the big pulsing "IN STOCK" banner client/RarityFx drops in
 --     for those rarities (a Secret class always shows it)
+--   * Reduce camera shake (the report "Making Mow A Lawn feel as satisfying as Chop A Forest", 28 Oct): turns the
+--     camera kick on hits and the shakes down (client/CameraView, Config.CAMERA_KICK.reduced); off by default
 -- The alert choices are saved in the profile (server/Lobby "Setting": alertLegendary / alertMythic -> data.alerts) and
 -- mirrored on the player as the attributes AlertLegendary / AlertMythic (false = off) for client/RarityFx. A click
--- sets the attribute at once, so it also works in a run (where only this session remembers it).
+-- sets the attribute at once, so it also works in a run (where only this session remembers it). Reduce camera shake
+-- is saved the same way (data.alerts.calmCamera, attribute CalmCamera = true), from the lobby and from runs.
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
@@ -22,11 +25,15 @@ local ROWS = {
 	{ key = "potato", label = "Potato Mode (low graphics)" },
 	{ key = "alertLegendary", label = "Legendary in-stock alerts", attr = "AlertLegendary" },
 	{ key = "alertMythic", label = "Mythic in-stock alerts", attr = "AlertMythic" },
+	{ key = "calmCamera", label = "Reduce camera shake", attr = "CalmCamera", offByDefault = true },
 }
 
 local function isOn(row): boolean
 	if row.key == "potato" then
 		return Potato.on == true
+	end
+	if row.offByDefault then
+		return player:GetAttribute(row.attr) == true
 	end
 	return player:GetAttribute(row.attr) ~= false
 end
@@ -38,7 +45,11 @@ local function fromData(d)
 	for _, row in ROWS do
 		if row.attr and not touched[row.key] then
 			local v = if type(a) == "table" then a[row.key] else nil
-			player:SetAttribute(row.attr, if v == false then false else nil)
+			if row.offByDefault then
+				player:SetAttribute(row.attr, if v == true then true else nil)
+			else
+				player:SetAttribute(row.attr, if v == false then false else nil)
+			end
 		end
 	end
 end
@@ -90,9 +101,17 @@ task.spawn(function()
 			else
 				local on = not isOn(row)
 				touched[row.key] = true
-				player:SetAttribute(row.attr, if on then nil else false)
+				if row.offByDefault then
+					player:SetAttribute(row.attr, if on then true else nil)
+				else
+					player:SetAttribute(row.attr, if on then nil else false)
+				end
 				State.fire("Setting", row.key, on)
-				UI.toast((if row.key == "alertLegendary" then "Legendary" else "Mythic") .. " in-stock alerts " .. (if on then "ON" else "OFF"), if on then "green" else nil)
+				if row.key == "calmCamera" then
+					UI.toast(if on then "Camera shake reduced" else "Camera shake: full", if on then "green" else nil)
+				else
+					UI.toast((if row.key == "alertLegendary" then "Legendary" else "Mythic") .. " in-stock alerts " .. (if on then "ON" else "OFF"), if on then "green" else nil)
+				end
 			end
 			paint()
 		end, { pos = UDim2.new(1, -12, 0, y + 2), anchor = Vector2.new(1, 0), name = "Toggle_" .. row.key })

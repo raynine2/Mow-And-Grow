@@ -105,11 +105,12 @@ return {
 	Prop_mower_statue = Vector3.new(8.00, 11.50, 9.50),
 	Prop_wheelbarrow = Vector3.new(2.50, 3.00, 6.00),
 	Prop_hay_bale = Vector3.new(6.00, 4.00, 4.00),
-	-- the grass bundles (tools/blender/voxel/bundle.py, MowBundles.fbx: one per grass mutation)
-	Bundle_None = Vector3.new(2.75, 1.62, 1.88),
-	Bundle_Golden = Vector3.new(2.75, 1.62, 1.88),
-	Bundle_Rainbow = Vector3.new(2.75, 1.62, 1.88),
-	Bundle_Diamond = Vector3.new(2.75, 1.62, 1.88),
-	Bundle_Toxic = Vector3.new(2.75, 1.62, 1.88),
-	Bundle_Galaxy = Vector3.new(2.75, 1.62, 1.88),
+	-- the grass bundles, one per grass mutation: made with Studio's model generator on 27 Oct (in
+	-- ServerStorage.VoxelModels.Bundles; MowBundles.fbx from tools/blender/voxel/bundle.py can replace them)
+	Bundle_None = Vector3.new(1.48, 1.41, 2.75),
+	Bundle_Golden = Vector3.new(1.88, 1.10, 2.75),
+	Bundle_Rainbow = Vector3.new(2.75, 1.37, 1.41),
+	Bundle_Diamond = Vector3.new(2.75, 1.06, 1.68),
+	Bundle_Toxic = Vector3.new(2.75, 1.03, 1.05),
+	Bundle_Galaxy = Vector3.new(1.52, 1.29, 2.75),
 }

@@ -65,8 +65,9 @@ function Carry.refresh(player: Player)
 		local vname = Carry.voxelName(mut.id)
 		local mesh = vname and VoxelModels.place(stack, vname, spot.Position, { scale = Carry.VOXEL_SCALE, shadow = false })
 		if mesh then
-			-- (its knot and daisy face out, away from the back, where the camera sees them)
-			mesh.CFrame = spot * CFrame.new(0, mesh.Size.Y / 2, 0)
+			-- lying across the back, its long side along the shoulders (some meshes are long in Z, some in X)
+			local across = if mesh.Size.Z > mesh.Size.X then CFrame.Angles(0, math.rad(90), 0) else CFrame.identity
+			mesh.CFrame = spot * CFrame.new(0, mesh.Size.Y / 2, 0) * across
 			mesh.Anchored = false
 			mesh.Massless = true
 			local w = Instance.new("WeldConstraint")

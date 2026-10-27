@@ -60,6 +60,10 @@ local function refreshClumps()
 	end
 end
 
+-- The clump the arrow is on. It stays the target until it's cut, or until another clump is a lot nearer (you
+-- walked away from it): re-picking the nearest one every check made the arrow hop from clump to clump as you
+-- walked (owner, 27 Oct: "the arrow keeps swapping on different grass").
+local stuck: Model? = nil
 local function nearestClump(from: Vector3, maxZone: number): Model?
 	if os.clock() - clumpsAt > 2 then
 		refreshClumps()
@@ -75,6 +79,14 @@ local function nearestClump(from: Vector3, maxZone: number): Model?
 			end
 		end
 	end
+	local keep = stuck
+	if keep and keep.Parent and isClump(keep) then
+		local d = (keep:GetPivot().Position - from).Magnitude
+		if d < bestD * 2 + 15 then
+			return keep
+		end
+	end
+	stuck = best
 	return best
 end
 

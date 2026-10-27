@@ -40,12 +40,17 @@ local hint = UI.text(UI.gui, "", UDim2.fromOffset(240, 26), {
 	stroke = 2,
 })
 hint.Visible = false
+-- the hint shows for a while at the start of a run and after pressing V, then fades (it was on screen all the
+-- time; owner, 27 Oct: "the game feels cluttered")
+local hintUntil = 0
+local HINT_TIME = 15
 
 local wasRun = false
 local function onMode()
 	local run = State.isRun()
 	hint.Visible = run and not UserInputService.TouchEnabled
 	if run and not wasRun then
+		hintUntil = os.clock() + HINT_TIME
 		-- entering a run: first person, like the video
 		player.CameraMode = Enum.CameraMode.Classic
 		zoomTo(FIRST)
@@ -70,6 +75,7 @@ function CameraView.toggle()
 		return
 	end
 	zoomTo(if inFirstPerson() then THIRD else FIRST)
+	hintUntil = math.max(hintUntil, os.clock() + 4)
 end
 
 UserInputService.InputBegan:Connect(function(input, processed)
@@ -84,6 +90,13 @@ end)
 RunService.RenderStepped:Connect(function()
 	if hint.Visible then
 		hint.Text = if inFirstPerson() then "[V] Free mouse" else "[V] First person   [Shift] Shift lock"
+		local left = hintUntil - os.clock()
+		local a = math.clamp(1 - left, 0, 1) -- fades over the last second
+		hint.TextTransparency = a
+		local stroke = hint:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Transparency = a
+		end
 	end
 end)
 

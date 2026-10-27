@@ -458,10 +458,11 @@ fireflies.Size = NumberSequence.new({
 
 -- per zone: { pollen rate, pollen colour, seed rate, firefly rate }
 local MOTES: { [string]: { any } } = {
-	base = { 14, Color3.fromRGB(255, 244, 196), 3, 0 },
-	wheat = { 26, Color3.fromRGB(255, 220, 130), 2, 0 }, -- golden chaff in the air
-	reeds = { 6, Color3.fromRGB(220, 245, 230), 0, 10 },
-	jungle = { 18, Color3.fromRGB(215, 255, 175), 1, 8 }, -- spores
+	-- (about half what it was: the specks in the air added to the busy look; owner, 27 Oct: "cluttered")
+	base = { 7, Color3.fromRGB(255, 244, 196), 2, 0 },
+	wheat = { 13, Color3.fromRGB(255, 220, 130), 1, 0 }, -- golden chaff in the air
+	reeds = { 4, Color3.fromRGB(220, 245, 230), 0, 7 },
+	jungle = { 9, Color3.fromRGB(215, 255, 175), 1, 5 }, -- spores
 }
 local moteZone = -1
 local function setMotes(zone: number)

@@ -131,9 +131,14 @@ task.spawn(function()
 	end
 end)
 
-RunService.RenderStepped:Connect(function()
+-- where the arrow is drawn: it glides to a new target instead of jumping there (a new target far away, or the
+-- first one, it's put on straight away)
+local shown: Vector3? = nil
+local shownLift = 7
+RunService.RenderStepped:Connect(function(dt)
 	outline.Enabled = target ~= nil
 	if not target then
+		shown = nil
 		for _, p in arrow:GetChildren() do
 			if p:IsA("BasePart") then
 				p.Transparency = 1
@@ -141,9 +146,26 @@ RunService.RenderStepped:Connect(function()
 		end
 		return
 	end
+	if not shown or (shown - target).Magnitude > 80 then
+		shown, shownLift = target, targetLift
+	else
+		local k = 1 - math.exp(-dt * 7)
+		shown = shown:Lerp(target, k)
+		shownLift += (targetLift - shownLift) * k
+	end
+	local at = shown :: Vector3
 	local t = os.clock()
 	local bob = math.abs(math.sin(t * 3.2)) * 1.6
-	local base = CFrame.new(target + Vector3.new(0, targetLift + bob, 0)) * CFrame.Angles(0, t * 1.5, 0)
+	-- turned to face the camera instead of spinning (side-on, the spinning arrow read as a flat yellow bar)
+	local cam = workspace.CurrentCamera
+	local look = if cam then (cam.CFrame.Position - at) * Vector3.new(1, 0, 1) else Vector3.zero
+	local yaw = if look.Magnitude > 0.1 then math.atan2(look.X, look.Z) else 0
+	local base = CFrame.new(at + Vector3.new(0, shownLift + bob, 0)) * CFrame.Angles(0, yaw, 0)
+	-- right at the target (the coach's clump glow already shows it) the arrow fades out
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local near = if root then ((root.Position - at) * Vector3.new(1, 0, 1)).Magnitude else 999
+	local fade = math.clamp((near - 9) / 6, 0, 1)
+	outline.Enabled = fade > 0.5
 	for _, p in arrow:GetChildren() do
 		if not p:IsA("BasePart") then
 			continue -- the outline Highlight
@@ -152,11 +174,11 @@ RunService.RenderStepped:Connect(function()
 		if part == ring then
 			local s = 7 + math.sin(t * 4) * 1
 			part.Size = Vector3.new(0.2, s, s)
-			part.CFrame = CFrame.new(target + Vector3.new(0, 0.45, 0)) * CFrame.Angles(0, 0, math.rad(90))
-			part.Transparency = 0.55
+			part.CFrame = CFrame.new(at + Vector3.new(0, 0.45, 0)) * CFrame.Angles(0, 0, math.rad(90))
+			part.Transparency = 1 - 0.45 * fade
 		else
 			part.CFrame = base * CFrame.new(part:GetAttribute("Offset") :: Vector3)
-			part.Transparency = 0
+			part.Transparency = 1 - fade
 		end
 	end
 end)

@@ -9,6 +9,7 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Format = require(ReplicatedStorage.MowALawn.Format)
 local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
+local CampBuildings = require(script.Parent.CampBuildings)
 local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
 local Landmarks = require(script.Parent.Landmarks)
@@ -228,11 +229,13 @@ local function toolShop(m: Instance, info)
 	-- the piece the saved map lines this unit up by (MapStore: first unique part path, alphabetically)
 	local anchor = promptSpot(shop, at, "0Anchor")
 	local _ = anchor
-	if not PropKit.cabin(shop, at, S) then
+	-- the voxel log shop (server/CampBuildings, owner 27 Oct), else the Blender cabin
+	local voxel = CampBuildings.ON and CampBuildings.shop(shop, at, Config.HUB_SIGNS)
+	if not voxel and not PropKit.cabin(shop, at, S) then
 		PropKit.stall(m, CFrame.new(28, 0, -55) * CFrame.Angles(0, math.rad(90), 0), "TOOL SHOP", Color3.fromRGB(255, 80, 80), "Tools")
 		return
 	end
-	if Config.HUB_SIGNS then
+	if Config.HUB_SIGNS and not voxel then
 		PropKit.cabinSign(shop, at, S, "TOOL SHOP", PropKit.TITLE)
 	end
 	for i, id in WALL_TOOLS do
@@ -249,8 +252,10 @@ local function toolShop(m: Instance, info)
 	end
 	-- the Guide arrow points just outside the door ("Counter" looks out of the door)
 	promptSpot(shop, at * CFrame.new(0, 2, -6 * S), "Counter")
-	-- a lantern at the door
-	Models.place("lantern_post", shop, at * CFrame.new(5 * S, 0.75, -10.6 * S), 0.9, true)
+	-- a lantern at the door (the voxel shop has its own two)
+	if not voxel then
+		Models.place("lantern_post", shop, at * CFrame.new(5 * S, 0.75, -10.6 * S), 0.9, true)
+	end
 	local _ = FRAME_SPOTS
 	local _ = toolFrame
 end
@@ -331,6 +336,11 @@ end
 -- The garage: a log garage in the Tool Shop's style (Blender garage_shed) where your mower spawns, open at the
 -- front with the roll-up door rolled up, with a gas pump beside it. Falls back to the old open bay.
 local function garageShed(g: Instance, at: CFrame): boolean
+	-- the voxel log garage with its roll-up door (server/CampBuildings, owner 27 Oct)
+	if CampBuildings.ON and CampBuildings.garage(g, at) then
+		promptSpot(g, at, "0Anchor") -- lines the saved map's garage up with this one (MapStore)
+		return true
+	end
 	if not Models.place("garage_shed", g, at, 1, true) then
 		return false
 	end

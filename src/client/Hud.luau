@@ -19,6 +19,7 @@ local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local Skin = require(script.Parent.Skin)
 local Potato = require(script.Parent.Potato)
+local Coach = require(script.Parent.Coach)
 
 local Hud = {}
 local C = UI.colors
@@ -508,6 +509,24 @@ local function applyMode(mode: string)
 	Sound.music(if isRun then "musicRun" else "musicLobby")
 end
 
+-- The quest card waits while the first-run coach (client/Coach) is on: both said the same thing at once ("Cut 10
+-- grass" over "PUNCH THE GRASS"), which made the screen busy (owner, 27 Oct: "the game feels cluttered"). The
+-- coach card takes the quest's spot and the quests come back when it's done.
+local questOn = false
+task.spawn(function()
+	local was = nil
+	while true do
+		task.wait(0.4)
+		local on = Coach.active()
+		if on ~= was then
+			was = on
+			if currentMode == "Run" then
+				show(quest, questOn and not on)
+			end
+		end
+	end
+end)
+
 State.on("data", function(d)
 	applyMode(d.mode)
 	if d.gems ~= shownGems then
@@ -536,7 +555,8 @@ State.on("data", function(d)
 			TweenService:Create(bagIcon, TweenInfo.new(0.25), { ImageColor3 = if full then Color3.fromRGB(255, 150, 140) else Color3.new(1, 1, 1) }):Play()
 		end
 		local q = d.run.quest
-		show(quest, q ~= nil)
+		questOn = q ~= nil
+		show(quest, questOn and not Coach.active())
 		if q then
 			questNum.Text = ("QUEST %d/%d"):format(q.index, q.total)
 			questTitle.Text = q.title

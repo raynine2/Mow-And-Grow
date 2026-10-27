@@ -80,7 +80,7 @@ lamp.Name = "HandLight"
 lamp.Transparency = 1
 local handLight = Instance.new("PointLight")
 handLight.Color = Color3.fromRGB(255, 240, 220)
-handLight.Brightness = 5
+handLight.Brightness = 1.4 -- (was 5: light sleeves and skin burned to flat white and filled the bottom of the screen)
 handLight.Range = 4.5 -- reaches the hands, not the ground below them
 handLight.Shadows = false
 handLight.Parent = lamp
@@ -339,7 +339,7 @@ local nextArmBuild = 0
 -- (Chop A Forest's arms are chunky and close: they fill the bottom corners and the fists sit low, near the middle)
 local SHOULDER_R = Vector3.new(1.75, -2.7, 0.2)
 local SHOULDER_L = Vector3.new(-1.75, -2.7, 0.2)
-local ARM_WIDTH = 0.82 -- how thick the arms are in view (studs, at ~2.4 studs away)
+local ARM_WIDTH = 0.7 -- how thick the arms are in view (studs, at ~2.4 studs away; was 0.82, a bit much on screen)
 local KEEP = { SpecialMesh = true, SurfaceAppearance = true, Decal = true, Texture = true }
 
 local function copyPart(src: Instance): BasePart?

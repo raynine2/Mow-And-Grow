@@ -245,7 +245,9 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- Blender landmarks: scale, and how high the foot sits above the ground (the floating rock hangs in the air).
 local LANDMARK_MESH = {
-	windmill = { scale = 1.25 },
+	-- (owner, 27 Oct: the ForgeGUI windmill by the camp looked dark and out of place, "remove this or fix it") the
+	-- voxel one, a bit smaller and 15 studs further back so its sails clear the Tool Shop's roof
+	windmill = { scale = 1.1, shift = Vector3.new(0, 0, 15) },
 	silo = { scale = 1.1 },
 	cherry = { scale = 1 },
 	elderpine = { scale = 1 },
@@ -264,6 +266,7 @@ local function meshLandmark(parent: Instance, def: any, at: Vector3): boolean
 	end
 	local m = Instance.new("Model")
 	m.Name = def.name .. " Landmark"
+	at += spec.shift or Vector3.zero
 	local body = Models.place(m, name, at + Vector3.new(0, spec.lift or 0, 0), { scale = spec.scale, collide = true }) :: MeshPart
 	if l.kind == "windmill" then
 		-- the sails hang on the axle at the tower's front and turn (client/Fx spins parts with Spin). A placed
@@ -347,7 +350,8 @@ local function landmark(parent: Instance, zi: number, base: number)
 	local def = Zones.list[zi]
 	local l = def.landmark
 	local at = v3(l.at, base)
-	if forgeLandmark(parent, def, at) or meshLandmark(parent, def, at) then
+	-- (the windmill is the voxel one now, see LANDMARK_MESH; the other areas keep their ForgeGUI landmarks)
+	if (l.kind ~= "windmill" and forgeLandmark(parent, def, at)) or meshLandmark(parent, def, at) then
 		return
 	end
 	local m = Instance.new("Model")

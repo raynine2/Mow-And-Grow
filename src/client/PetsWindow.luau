@@ -780,11 +780,14 @@ local function hatch3D(eggId: string, ids: { string }, fresh: { boolean }?): boo
 		for _, g in hidden do
 			g.Visible = true
 		end
-		if best then
+		-- HatchFx.after: the result screen's choice. "again" hatches straight away (the menu only comes back if no
+		-- hatch starts, e.g. not enough gems); "gems" opens the Store instead; nil (LEAVE) works as before.
+		local after = HatchFx.after
+		if best and after == nil then
 			MenuFX.atCharacter(best, bestBig)
 		end
-		if reopen then
-			task.delay(0.7, function()
+		if reopen and after ~= "gems" then
+			task.delay(if after == "again" then 1.6 else 0.7, function()
 				if not HatchFx.busy and not UI.anyOpen() then
 					UI.open(reopen)
 				end

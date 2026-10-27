@@ -1259,7 +1259,7 @@ local chip = Instance.new("Frame")
 chip.Name = "Chip"
 chip.AnchorPoint = Vector2.new(0.5, 0)
 chip.Position = UDim2.new(0.5, 0, 0, 6)
-chip.Size = UDim2.fromOffset(250, 28)
+chip.Size = UDim2.fromOffset(500, 56) -- (owner, 27 Oct: twice as big, and it pulses: the most exciting thing on screen)
 chip.BackgroundColor3 = rgb(22, 14, 36)
 chip.BackgroundTransparency = 0.15
 chip.Visible = false
@@ -1270,13 +1270,24 @@ do
 	c.Parent = chip
 end
 local chipStroke = Instance.new("UIStroke")
-chipStroke.Thickness = 2
+chipStroke.Thickness = 3
 chipStroke.Color = WHITE
 chipStroke.Parent = chip
 local chipGrad = Instance.new("UIGradient")
 chipGrad.Parent = chipStroke
-local chipText = label(chip, "", 16, WHITE, UDim2.fromScale(0.5, 0), UDim2.fromScale(1, 1))
+local chipText = label(chip, "", 32, WHITE, UDim2.fromScale(0.5, 0), UDim2.fromScale(1, 1))
 chipText.TextYAlignment = Enum.TextYAlignment.Center
+;(chipText:FindFirstChildOfClass("UIStroke") :: UIStroke).Thickness = 3
+-- the pulse (a UIScale breathing 1 -> 1.08), sized down on narrow screens so it never covers a phone's top bar
+do
+	local pulse = Instance.new("UIScale")
+	pulse.Name = "Pulse"
+	pulse.Parent = chip
+	local cam = workspace.CurrentCamera
+	local base = if cam then math.clamp(cam.ViewportSize.X / 1100, 0.6, 1) else 1
+	pulse.Scale = base
+	TweenService:Create(pulse, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = base * 1.08 }):Play()
+end
 
 local banner: Frame? = nil
 local function showBanner(c, left: number)
@@ -1347,6 +1358,10 @@ task.spawn(function()
 		local window = math.floor(now / Config.STOCK_WINDOW)
 		local left = Config.STOCK_WINDOW - (now % Config.STOCK_WINDOW)
 		local c = bestIn(window)
+		-- SETTINGS (client/Settings): Legendary / Mythic alerts can be switched off; a Secret always shows
+		if c and c.rarity ~= "Secret" and player:GetAttribute("Alert" .. c.rarity) == false then
+			c = nil
+		end
 		if c then
 			if shownFor ~= window and left > 20 then
 				shownFor = window

@@ -128,6 +128,7 @@ potato.BackgroundTransparency = 1
 potato.Size = UDim2.fromOffset(84, 74)
 potato.Position = UDim2.fromOffset(14 + 330 + 10, 66)
 potato.Parent = root
+potato.Visible = false -- (owner, 28 Oct: Potato Mode is in the SETTINGS panel now; the gear takes this spot)
 local showPotato: (boolean) -> () -- (below: the button's click needs it)
 local potatoButton = UI.button(potato, "🥔", POTATO_OFF, UDim2.fromOffset(50, 50), function()
 	Potato.toggle()

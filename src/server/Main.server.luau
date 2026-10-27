@@ -33,6 +33,7 @@ require(script.Parent.Pets).start() -- eggs + pets, in the lobby and in runs
 require(script.Parent.Anims).start() -- our character animations (once uploaded), set before anyone spawns
 require(script.Parent.ClassPerks) -- tags each player's class (attribute "Class") for the rarity auras, in both modes
 require(script.Parent.BestTimes).start() -- the trophy tag with your best time over your head
+require(script.Parent.Offline).start() -- time away with a saved run pays coins + gems (client/WelcomeBack shows it)
 
 -- Spawn on the world's own SpawnLocation, not one from the place template (the Baseplate's). This only
 -- changes the running game; the place file keeps its parts. The Baseplate is hidden while playing because
@@ -131,6 +132,7 @@ local function snapshot(player: Player, data)
 		end)(),
 		peaceful = data.peaceful == true,
 		potato = data.potato == true,
+		alerts = data.alerts, -- SETTINGS: the Legendary / Mythic in-stock alerts (client/Settings)
 		dailyIn = require(script.Parent.Daily).view(data).wait,
 		daily = require(script.Parent.Daily).view(data), -- { ready, wait, day, streak, claimedToday }
 		freeGems = require(script.Parent.Daily).freeView(data), -- { ready, wait, gems }: every 6 hours

@@ -110,10 +110,12 @@ local questIcon = UI.icon(quest, "quest", 58, UDim2.fromOffset(-6, -14))
 questIcon.ZIndex = 4
 Skin.bob(questIcon, 2, 1.3)
 local questNum = UI.text(questFace, "QUEST 1/8", UDim2.new(1, -40, 0, 18), { pos = UDim2.fromOffset(40, 0), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(255, 160, 40), stroke = 2 })
-local questTitle = UI.text(questFace, "", UDim2.new(1, -4, 0, 26), { pos = UDim2.fromOffset(2, 20), align = Enum.TextXAlignment.Left, color = BROWN, stroke = 0 })
+-- (title and hint stop short of the right edge, clear of the wooden frame: the owner, 27 Oct, "the text goes out of
+-- the sign")
+local questTitle = UI.text(questFace, "", UDim2.new(1, -14, 0, 26), { pos = UDim2.fromOffset(2, 20), align = Enum.TextXAlignment.Left, color = BROWN, stroke = 0 })
 ;(questTitle:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
 local _, questFill, questCount = Skin.bar(questFace, Vector2.new(250, 30), C.green, { pos = UDim2.fromOffset(0, 48), name = "Bar" })
-local questHint = UI.text(questFace, "", UDim2.new(1, -4, 0, 16), { pos = UDim2.fromOffset(2, 80), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(140, 96, 60), stroke = 0 })
+local questHint = UI.text(questFace, "", UDim2.new(1, -18, 0, 16), { pos = UDim2.fromOffset(2, 80), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(140, 96, 60), stroke = 0 })
 ;(questHint:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
 
 -------------------------------------------------------------------------------------------------------------

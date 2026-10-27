@@ -1111,8 +1111,8 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- How big the whole interface is drawn: 1 = the 1280x720 layout fills the screen. The owner found that too big
 -- (22 Oct), so it is drawn a bit smaller; raise it towards 1 for bigger, lower it for smaller. 0.82 until 27 Oct,
--- then smaller again (the owner: "it's taking a lot of screen space").
-Config.UI_SIZE = 0.7
+-- then smaller again (the owner: "it's taking a lot of screen space"); 0.7 was a bit too small, so 0.76.
+Config.UI_SIZE = 0.76
 -- Phones and tablets (touch, no keyboard) keep the full size: their screens are small already, and 0.82 made the
 -- text too small to read there.
 Config.UI_SIZE_TOUCH = 1

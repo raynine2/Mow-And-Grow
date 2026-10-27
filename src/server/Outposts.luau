@@ -123,7 +123,7 @@ local function stall(f: Instance, cf: CFrame, title: string, window: string, th:
 	-- the name board on top
 	local board = part(m, "Board", cf * CFrame.new(0, 9.4, 1.4), Vector3.new(6.4, 1.6, 0.4), C.timber)
 	local gui = Instance.new("SurfaceGui")
-	gui.Face = Enum.NormalId.Back
+	gui.Face = Enum.NormalId.Front -- (toward the customers)
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	gui.PixelsPerStud = 40
 	gui.Parent = board

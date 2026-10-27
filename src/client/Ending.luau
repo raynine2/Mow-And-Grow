@@ -456,6 +456,93 @@ local function worldTwoTitle(look: () -> CFrame): boolean
 	return ok
 end
 
+-- Nothing in the way (owner, 27 Oct: "I can't really see a lot during the end because of the houses"): if anything
+-- solid (not the grass, the players, the film's own actors and set, the corruption) stands between the subject and
+-- the camera, the camera slides in toward the subject to just in front of it. Quick in, slow out, so it doesn't
+-- pop. Each shot keeps its own `view`.
+local sight = RaycastParams.new()
+sight.FilterType = Enum.RaycastFilterType.Exclude
+sight.IgnoreWater = true
+local function refreshSight()
+	local skip: { Instance } = {}
+	for _, name in { "IntroSet", "EndingSet", "Corruption" } do
+		local f = workspace:FindFirstChild(name)
+		if f then
+			table.insert(skip, f)
+		end
+	end
+	local w = workspace:FindFirstChild("World")
+	local grass = w and w:FindFirstChild("Grass")
+	if grass then
+		table.insert(skip, grass)
+	end
+	for _, pl in Players:GetPlayers() do
+		if pl.Character then
+			table.insert(skip, pl.Character)
+		end
+	end
+	sight.FilterDescendantsInstances = skip
+end
+
+local function clearView(cam: Vector3, target: Vector3, view: { pull: number }): Vector3
+	local d = cam - target
+	local dist = d.Magnitude
+	local want = 0
+	if dist > 1 then
+		local hit = workspace:Raycast(target, d, sight)
+		if hit then
+			want = math.clamp(1 - (hit.Distance - 2.5) / dist, 0, 0.92)
+		end
+	end
+	view.pull += (want - view.pull) * (if want > view.pull then 0.6 else 0.06)
+	return cam - d * view.pull
+end
+
+-- Where world 2 breaks through: the clearest patch of meadow round the camp (out of the camp, on level ground),
+-- with nothing standing between the twist's camera spots and the demon. The grass doesn't count (it's mowed by
+-- the end). Scored over a ring of spots, both ways round (looking out from the camp, or back at it). Yields.
+local function twistStage(P: Plan): (Vector3, Vector3)
+	refreshSight()
+	local bestAt, bestToward, best = P.sprout, unit(flat(P.sprout - P.cast), P.fwd), math.huge
+	for i = 0, 23 do
+		local a = math.rad(i * 15)
+		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+		for _, d in { 100, 125, 150 } do
+			local at = ground(P.camp + dir * d)
+			if math.abs(at.Y - P.cast.Y) < 12 then
+				for _, toward in { dir, -dir } do
+					local side = toward:Cross(UP)
+					local score = math.abs(at.Y - P.cast.Y) * 0.5
+					-- room for it: nothing overhead where it stands (a tree, a roof) across its shoulders
+					for _, off in { Vector3.zero, side * 12, -side * 12, toward * 8 } do
+						if workspace:Raycast(at + off + UP * 1.5, UP * 70, sight) then
+							score += 6
+						end
+					end
+					for _, cam in { at - toward * 30 + UP * 3 - side * 6, at - toward * 40 + UP * 14 + side * 22, at - toward * 50 + UP * 3 + side * 10, at - toward * 72 + UP * 22 + side * 20 } do
+						for _, h in { 4, 22, 42 } do
+							local target = at + UP * h
+							if workspace:Raycast(target, cam - target, sight) then
+								score += 4
+							end
+						end
+						if workspace:Raycast(cam + UP * 0.5, UP * 60, sight) then
+							score += 2 -- (under a roof or a tree)
+						end
+					end
+					if score < best then
+						best, bestAt, bestToward = score, at, toward
+					end
+				end
+			end
+		end
+		if i % 4 == 3 then
+			task.wait()
+		end
+	end
+	return bestAt, bestToward
+end
+
 -- W4-W9: the meadow splits, the corruption spreads, the sky tears, the demon rises, opens its eyes and roars, title
 local function worldTwoRise(P: Plan, at: Vector3, toward: Vector3, side: Vector3): boolean
 	IntroUi.hush()
@@ -475,9 +562,12 @@ local function worldTwoRise(P: Plan, at: Vector3, toward: Vector3, side: Vector3
 			boom(0.55, 0.6)
 		end
 	end)
+	refreshSight()
+	local view = { pull = 0 }
 	local ok = run(3.8, function(k)
+		local target = at + UP * (1 + k * 3)
 		local p = at - toward * (34 - k * 10) + UP * (2.2 + k * 1.2) - side * 6
-		return CFrame.lookAt(p, at + UP * (1 + k * 3)), 58
+		return CFrame.lookAt(clearView(p, target, view), target), 58
 	end)
 	if not ok then
 		return false
@@ -499,10 +589,13 @@ local function worldTwoRise(P: Plan, at: Vector3, toward: Vector3, side: Vector3
 			end
 		end)
 	end
+	refreshSight()
+	view = { pull = 0 }
 	ok = run(4.0, function(k)
 		local e = ease(k)
+		local target = at + UP * (6 + e * 30)
 		local p = (at - toward * 40 + UP * 14 + side * 22):Lerp(at - toward * 82 + UP * 52 + side * 34, e)
-		return CFrame.lookAt(p, at + UP * (6 + e * 30)), 62 + e * 8
+		return CFrame.lookAt(clearView(p, target, view), target), 62 + e * 8
 	end)
 	if not ok then
 		return false
@@ -531,12 +624,15 @@ local function worldTwoRise(P: Plan, at: Vector3, toward: Vector3, side: Vector3
 	Sound.playAt("roar", 0.35, 0.5)
 	boom(0.33, 1)
 	shake(3, 4.6)
+	refreshSight()
+	view = { pull = 0 }
 	ok = run(4.6, function(k)
 		d.state.rise = ease(math.clamp(k / 0.85, 0, 1)) * 0.86
 		if math.random() < 0.05 then
 			Glitch.burst(0.3, 0.08)
 		end
-		return CFrame.lookAt(at - toward * 50 + UP * 2.5 + side * 10, at + UP * (6 + d.state.rise * 38)), 66
+		local target = at + UP * (6 + d.state.rise * 38)
+		return CFrame.lookAt(clearView(at - toward * 50 + UP * 2.5 + side * 10, target, view), target), 66
 	end)
 	if not ok then
 		return false
@@ -558,6 +654,7 @@ local function worldTwoRise(P: Plan, at: Vector3, toward: Vector3, side: Vector3
 		return false
 	end
 	-- W8: the roar. Pull back hard: jaw wide, arms flung out, lightning everywhere, the picture tearing
+	view = { pull = 0 }
 	d.state.glitch = 1
 	Sound.playAt("roar", 0.55, 1)
 	Sound.playAt("roar", 0.78, 0.7)
@@ -578,8 +675,9 @@ local function worldTwoRise(P: Plan, at: Vector3, toward: Vector3, side: Vector3
 		local e = 1 - (1 - k) ^ 4
 		local eyes = d.eyes()
 		local near = eyes - toward * 16 + side * 2.5
-		local far = at - toward * 84 + UP * 10 + side * 18
-		return CFrame.lookAt(near:Lerp(far, e), eyes:Lerp(at + UP * 38, e)), 34 + e * 36
+		local far = at - toward * 72 + UP * 22 + side * 20
+		local target = eyes:Lerp(at + UP * 38, e)
+		return CFrame.lookAt(clearView(near:Lerp(far, e), target, view), target), 34 + e * 36
 	end)
 	if not ok then
 		return false
@@ -593,14 +691,20 @@ local function worldTwoRise(P: Plan, at: Vector3, toward: Vector3, side: Vector3
 end
 
 local function worldTwoShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: string }): boolean
-	local at = P.sprout
-	local toward = unit(flat(at - P.cast), P.fwd)
-	local side = toward:Cross(UP)
-	-- build the demon now, hidden under the meadow, a few hundred blocks a frame (it rises in W6)
+	-- while the Mayor talks: pick where it breaks through (out in the open meadow) and build the demon there,
+	-- hidden under the ground, a few hundred blocks a frame (it rises in W6)
 	demonReady = false
 	demon = nil
+	local stage: { at: Vector3, toward: Vector3 }? = nil
 	local folder = propFolder()
 	task.spawn(function()
+		local at, toward = twistStage(P)
+		stage = { at = at, toward = toward }
+		task.spawn(function()
+			pcall(function()
+				player:RequestStreamAroundAsync(at, 4)
+			end)
+		end)
 		local g = IntroCast.ground(at)
 		local d = Demon.new(CFrame.lookAt(g, g - toward), 1.5, folder, { yieldEvery = 250 })
 		if playing and folder.Parent and not demon then
@@ -610,12 +714,15 @@ local function worldTwoShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: str
 			d.destroy()
 		end
 	end)
-	-- W1: peace, golden and still, out over the meadow
+	-- W1: peace at last: the Mayor, golden and still, the camp round him
 	mode.value = "idle"
 	IntroUi.say(MAYOR, "Ahh... peace and quiet. At last.", 30)
+	local head = mayor.head.Position
+	refreshSight()
+	local view = { pull = 0 }
 	local ok = run(3.2, function(k)
-		local p = P.cast - toward * (10 - k * 2) + UP * (4.5 + k * 0.5) + side * 4
-		return CFrame.lookAt(p, at + UP * 6), 55
+		local p = head - P.fwd * (15 - k * 2) + P.right * 5 + UP * (2 + k * 0.4)
+		return CFrame.lookAt(clearView(p, head - UP * 2, view), head - UP * 2), 50
 	end)
 	if not ok then
 		return false
@@ -628,8 +735,8 @@ local function worldTwoShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: str
 	Glitch.stutter("bhWarp", 1.6, 0.55, 5)
 	IntroUi.say(MAYOR, "Ahh... p#@ce an% q/!et... a7 l@$t.", 60)
 	ok = run(1.3, function(k)
-		local p = P.cast - toward * (8 - k * 0.6) + UP * 5 + side * 4
-		return CFrame.lookAt(p, at + UP * 6), 52
+		local p = head - P.fwd * (12.6 - k * 0.4) + P.right * 5 + UP * 2.4
+		return CFrame.lookAt(clearView(p, head - UP * 2, view), head - UP * 2), 48
 	end)
 	if not ok then
 		return false
@@ -638,7 +745,6 @@ local function worldTwoShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: str
 	mode.value = "talk"
 	IntroUi.say(MAYOR, "...W-what was THAT?!", 34)
 	dreadSound("bhHum", 0.5, 0.55, true)
-	local head = mayor.head.Position
 	ok = run(2.3, function(k)
 		local p = head - P.fwd * (6.5 - k * 1.2) + P.right * 1.6 - UP * 0.6
 		return CFrame.lookAt(p, head - UP * 0.3), 46
@@ -646,7 +752,16 @@ local function worldTwoShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: str
 	if not ok then
 		return false
 	end
-	return worldTwoRise(P, at, toward, side)
+	-- (the stage is normally chosen long before this)
+	local waited = os.clock()
+	while playing and not stage and os.clock() - waited < 3 do
+		task.wait()
+	end
+	if not playing then
+		return false
+	end
+	local st = stage or { at = P.sprout, toward = unit(flat(P.sprout - P.cast), P.fwd) }
+	return worldTwoRise(P, st.at, st.toward, st.toward:Cross(UP))
 end
 
 -------------------------------------------------------------------------------------------------------------

@@ -13,7 +13,8 @@
 --   rise  0..1  how far up out of the ground (0 = hidden below `base`)
 --   eyes  0..1  shut .. blazing
 --   roar  0..1  head back, jaw wide, arms and wings flung open, claws to the sky
--- and call `update(t)` every frame (it moves every block at once with BulkMoveTo). `destroy()` when done.
+-- and call `update(t)` every frame (each body group's blocks are welded to one root, so a frame moves a few roots).
+-- `destroy()` when done.
 -- Phones and Potato Mode get the LITE build (bigger voxels, half the parts).
 local UserInputService = game:GetService("UserInputService")
 
@@ -153,15 +154,35 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		pivots[g.name] = g.pivot
 		groupIndex[g.name] = i
 	end
-	local parts: { BasePart } = {}
-	local rels: { CFrame } = {}
-	local gidx: { number } = {}
+	-- Each group's blocks are welded to one invisible anchored root, so a frame moves a handful of roots, not
+	-- thousands of blocks (measured in Studio: ~half the cost of moving every block). The loose fragments and the
+	-- glitch ghosts are moved one by one.
+	local roots: { BasePart } = {}
+	local loose: { BasePart } = {}
+	local looseRel: { CFrame } = {}
+	local looseGroup: { number } = {}
 	local tagged: { [string]: { BasePart } } = {}
 	local ghostParts: { BasePart } = {}
-	local ghostSrc: { number } = {}
+	local ghostRel: { CFrame } = {}
+	local ghostGroup: { number } = {}
 	local ghostSide: { number } = {}
 	local made = 0
 	for gi, g in groups do
+		local root: Part? = nil
+		if g.name ~= "frags" then
+			local r = Instance.new("Part")
+			r.Name = "Root_" .. g.name
+			r.Anchored = true
+			r.CanCollide = false
+			r.CanQuery = false
+			r.CanTouch = false
+			r.Transparency = 1
+			r.Size = Vector3.one * 0.2
+			r.CFrame = base
+			r.Parent = model
+			roots[gi] = r
+			root = r
+		end
 		for _, b in g.boxes do
 			local colour, neon, tag
 			if b.colour < 0 then
@@ -172,10 +193,20 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 				local e = Shape.PALETTE[b.colour]
 				colour, neon, tag = COLOURS[b.colour], e[4], e[5]
 			end
+			local rel = CFrame.new(b.at * scale)
 			local p = newPart(model, b.size * scale, colour, neon, b.ghost)
-			table.insert(parts, p)
-			table.insert(rels, CFrame.new(b.at * scale))
-			table.insert(gidx, gi)
+			if root then
+				p.CFrame = base * rel
+				local w = Instance.new("WeldConstraint")
+				w.Part0 = root
+				w.Part1 = p
+				w.Parent = p
+				p.Anchored = false
+			else
+				table.insert(loose, p)
+				table.insert(looseRel, rel)
+				table.insert(looseGroup, gi)
+			end
 			if tag then
 				tagged[tag] = tagged[tag] or {}
 				table.insert(tagged[tag], p)
@@ -185,7 +216,8 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 					local gp = newPart(model, b.size * scale, if side < 0 then GHOST_RED else GHOST_CYAN, true, false)
 					gp.Transparency = 1
 					table.insert(ghostParts, gp)
-					table.insert(ghostSrc, #parts)
+					table.insert(ghostRel, rel)
+					table.insert(ghostGroup, gi)
 					table.insert(ghostSide, side)
 				end
 			end
@@ -224,17 +256,22 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 	local jitter = CFrame.identity
 	local headCf = CFrame.identity
 	local frames: { CFrame } = table.create(#groups, CFrame.identity)
-	local cfs: { CFrame } = table.create(#parts, CFrame.identity)
+	local lcfs: { CFrame } = table.create(#loose, CFrame.identity)
 	local gcfs: { CFrame } = table.create(#ghostParts, CFrame.identity)
 	local ghostsShown = false
-	-- a "sliced" glitch cuts it into horizontal bands that jump sideways (like a torn video frame)
+	-- a "sliced" glitch tears it apart like a video frame: whole pieces (head, jaw, arms, wings...) jump sideways,
+	-- and the ghosts are cut into horizontal bands that slide apart
 	local BAND = 2.6 * scale
 	local slices: { [number]: number } = {}
+	local pieceSlices: { number } = table.create(#groups, 0)
 	local sliced = false
 	local rootY = 0
 	local function cutBands()
 		for i = -4, 20 do
 			slices[i] = if math.random() < 0.4 then (math.random() - 0.5) * 7 * scale else 0
+		end
+		for i = 1, #groups do
+			pieceSlices[i] = if math.random() < 0.45 then (math.random() - 0.5) * 6 * scale else 0
 		end
 	end
 
@@ -271,13 +308,6 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		end
 	end
 
-	local fragStart = #parts + 1
-	for i, p in parts do
-		if gidx[i] == groupIndex.frags then
-			fragStart = math.min(fragStart, i)
-		end
-	end
-
 	local function update(t: number)
 		local now = os.clock()
 		-- glitch timing: a jump every so often (more often with state.glitch)
@@ -303,26 +333,34 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		local cam = workspace.CurrentCamera
 		local right = if cam then cam.CFrame.RightVector else Vector3.xAxis
 		local cutting = glitching and sliced
-		for i = 1, #parts do
-			local cf = frames[gidx[i]] * rels[i]
-			if i >= fragStart and gidx[i] == groupIndex.frags then
-				cf = CFrame.new(0, math.sin(t * 2 + i) * 0.6 * scale, 0) * cf
-			end
-			if cutting then
-				local off = slices[math.floor((cf.Position.Y - rootY) / BAND)]
-				if off and off ~= 0 then
-					cf += right * off
+		if cutting then
+			for gi = 1, #groups do
+				local off = pieceSlices[gi]
+				if off ~= 0 then
+					frames[gi] += right * off
 				end
 			end
-			cfs[i] = cf
 		end
-		workspace:BulkMoveTo(parts, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+		for gi, r in roots do
+			r.CFrame = frames[gi]
+		end
+		for i = 1, #loose do
+			lcfs[i] = CFrame.new(0, math.sin(t * 2 + i) * 0.6 * scale, 0) * frames[looseGroup[i]] * looseRel[i]
+		end
+		workspace:BulkMoveTo(loose, lcfs, Enum.BulkMoveMode.FireCFrameChanged)
 		-- the red / cyan ghosts split off either side while it glitches (left alone while they're invisible)
 		local ghostAlpha = if glitching then 0.45 else (1 - 0.35 * state.glitch)
 		if ghostAlpha < 1 then
 			local spread = if glitching then 1.6 * scale else (0.25 + state.glitch * 0.6) * scale
 			for i = 1, #ghostParts do
-				gcfs[i] = cfs[ghostSrc[i]] + right * (spread * ghostSide[i])
+				local cf = frames[ghostGroup[i]] * ghostRel[i] + right * (spread * ghostSide[i])
+				if cutting then
+					local off = slices[math.floor((cf.Position.Y - rootY) / BAND)]
+					if off and off ~= 0 then
+						cf += right * off
+					end
+				end
+				gcfs[i] = cf
 			end
 			workspace:BulkMoveTo(ghostParts, gcfs, Enum.BulkMoveMode.FireCFrameChanged)
 		end

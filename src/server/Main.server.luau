@@ -148,6 +148,7 @@ local function snapshot(player: Player, data)
 		grasp = s.grasp,
 		swing = s.swing,
 		index = index,
+		gnomes = data.gnomes or {}, -- the Golden Gnome hunt: [id] = how many found (client/GnomeHunt)
 		bestTime = data.bestTime,
 		dryRun = data._dryRun == true,
 		run = nil :: any,

@@ -10,6 +10,7 @@ local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
 local UI = require(script.Parent.UI)
 local Skin = require(script.Parent.Skin)
 local State = require(script.Parent.State)
+local GnomeHunt = require(script.Parent.GnomeHunt) -- (27 Oct) gnome pictures for the Index's gnome shelf
 
 local Windows = {}
 local C = UI.colors
@@ -272,6 +273,49 @@ index.refresh = function()
 	end
 	local line = moneyLine(index.list, 0, ("Collected %d / %d  -  +%d gems for each new one"):format(have, total, Config.INDEX_GEMS))
 	line.LayoutOrder = 0
+	Windows.gnomeShelf(index.list, d, -10)
+end
+
+-- GOLDEN GNOMES (27 Oct, the gnome hunt: server/Gnomes): a shelf of every gnome at the top of the Index; the ones
+-- you've found in colour with how many, the rest dark silhouettes. Uses LayoutOrder `order` .. `order` + 2.
+function Windows.gnomeShelf(list: Instance, d, order: number)
+	local G = Config.GNOMES
+	local got = d.gnomes or {}
+	local have = 0
+	for _, g in G.list do
+		if (got[g.id] or 0) > 0 then
+			have += 1
+		end
+	end
+	UI.heading(list, order, ("Golden Gnomes  %d / %d"):format(have, #G.list))
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.new(1, -10, 0, 112)
+	row.LayoutOrder = order + 1
+	row.Parent = list
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.Padding = UDim.new(0, 5)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = row
+	for i, g in G.list do
+		local n = got[g.id] or 0
+		local color = if n > 0 then (if g.diamond then Color3.fromRGB(120, 200, 235) else Color3.fromRGB(232, 172, 44)) else Color3.fromRGB(110, 94, 80)
+		local cell = UI.frame({ size = UDim2.fromOffset(76, 108), color = color, parent = row, radius = 12, outline = 3 })
+		cell.LayoutOrder = i
+		UI.gradient(cell, color)
+		GnomeHunt.view(cell, g.id, 74, UDim2.new(0.5, 0, 0, 2), Vector2.new(0.5, 0), n == 0)
+		local label = if n > 0 then (g.name:gsub(" Gnome$", "")) else "???"
+		UI.text(cell, label, UDim2.new(1, -6, 0, 24), { pos = UDim2.fromOffset(3, 78), stroke = 2, textSize = 17 })
+		if n > 1 then
+			UI.text(cell, "x" .. n, UDim2.fromOffset(40, 22), { pos = UDim2.new(1, -4, 0, 4), anchor = Vector2.new(1, 0), stroke = 2, textSize = 18, align = Enum.TextXAlignment.Right })
+		end
+	end
+	local note = if have >= #G.list then "You found every gnome!"
+		else ("Gnomes hide at the foot of the grass in every area. Find all %d: +%d gems!"):format(#G.list, G.setGems)
+	local line = moneyLine(list, 0, note)
+	line.LayoutOrder = order + 2
 end
 
 -------------------------------------------------------------------------------------------------------------

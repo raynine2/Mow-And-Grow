@@ -21,6 +21,7 @@ local BossFx = require(script.Parent.BossFx)
 local Moments = require(script.Parent.Moments)
 local HitMeter = require(script.Parent.HitMeter) -- (28 Oct) the soft green hit meter under the crosshair
 local ClumpWound = require(script.Parent.ClumpWound) -- (28 Oct) the cut carved into a clump's stalk, hit by hit
+local GnomeHunt = require(script.Parent.GnomeHunt) -- (27 Oct) the Golden Gnome hunt: found gnomes, the gold strip
 
 local Fx = {}
 local player = Players.LocalPlayer
@@ -604,6 +605,23 @@ handlers.bossDown = function(d)
 end
 
 -- personal boss reward: under the "BOSS DEFEATED!" card, or its own banner if that isn't up
+-- The Golden Gnome hunt (server/Gnomes): your own find gets the big banner, everyone else's the gold strip.
+handlers.gnome = function(d)
+	if d.by ~= player.UserId then
+		GnomeHunt.toast(d)
+		return
+	end
+	local def = Config.gnome(d.id)
+	local diamond = def and def.diamond
+	local title = if d.set then "GNOME COLLECTION COMPLETE!" elseif d.first then (if diamond then "DIAMOND GNOME!" else "NEW GNOME!") else "GNOME FOUND!"
+	local sub = ("%s   +%d gems   %d / %d collected"):format(if def then def.name else "Gnome", d.gems or 0, d.have or 0, d.total or 0)
+	Fx.banner(title, if diamond then Color3.fromRGB(150, 225, 255) else Color3.fromRGB(255, 205, 60), 3.4, sub)
+	Sound.play(if d.first then "victory" else "purchase")
+	if d.first then
+		Confetti.burst(if d.set or diamond then 160 else 60)
+	end
+end
+
 handlers.daily = function(d)
 	Moments.daily(d) -- the day card, gems flying to the counter, confetti
 end

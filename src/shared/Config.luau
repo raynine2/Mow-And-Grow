@@ -84,6 +84,38 @@ Config.VACUUM = { name = "Leaf Vacuum", cost = 1000, graspMult = 3 }
 -- The Index: every grass type x mutation you've collected. A new one pays gems once.
 Config.INDEX_GEMS = 5
 
+-- GOLDEN GNOME HUNT (owner, 27 Oct): little golden gnomes hide at the foot of the grass clumps, `perArea` in every
+-- area of a run. Walk up and pick one up (E): everyone in the server hears who found which, and it goes in your
+-- collection (the Index window). One gnome per area plus the rare Diamond Gnome, which can take the place of any
+-- hidden gnome (`diamondChance` each, at most one per run). The first of each kind pays `gems` (the Diamond its
+-- own), later copies `againGems`, and the whole set `setGems` once. `hat` colours each area's gnome.
+Config.GNOMES = {
+	perArea = 3,
+	diamondChance = 0.04,
+	againGems = 2,
+	setGems = 500,
+	reach = 9, -- how close you must be to pick one up (studs)
+	list = {
+		{ id = "Backyard", name = "Backyard Gnome", zone = 1, gems = 15, hat = Color3.fromRGB(226, 58, 48) },
+		{ id = "Meadow", name = "Meadow Gnome", zone = 2, gems = 20, hat = Color3.fromRGB(172, 102, 232) },
+		{ id = "Golf", name = "Golf Gnome", zone = 3, gems = 25, hat = Color3.fromRGB(245, 245, 240) },
+		{ id = "Wheat", name = "Wheat Gnome", zone = 4, gems = 30, hat = Color3.fromRGB(242, 138, 38) },
+		{ id = "Blossom", name = "Blossom Gnome", zone = 5, gems = 40, hat = Color3.fromRGB(255, 128, 190) },
+		{ id = "Swamp", name = "Swamp Gnome", zone = 6, gems = 50, hat = Color3.fromRGB(52, 168, 150) },
+		{ id = "Prairie", name = "Prairie Gnome", zone = 7, gems = 60, hat = Color3.fromRGB(186, 78, 40) },
+		{ id = "Jungle", name = "Jungle Gnome", zone = 8, gems = 80, hat = Color3.fromRGB(140, 220, 40) },
+		{ id = "Diamond", name = "Diamond Gnome", zone = 0, gems = 200, hat = Color3.fromRGB(225, 250, 255), diamond = true },
+	},
+}
+function Config.gnome(id: string)
+	for _, g in Config.GNOMES.list do
+		if g.id == id then
+			return g
+		end
+	end
+	return nil
+end
+
 function Config.upgrade(id: string)
 	for _, u in Config.UPGRADES do
 		if u.id == id then

@@ -85,13 +85,15 @@ local function groundParams(): RaycastParams?
 	return p
 end
 
--- The two mowed shades for zone z: brighter and a little more saturated than its ground.
+-- The two mowed shades for zone z, like a real striped lawn: the light stripe is grass bent away from you (paler,
+-- a bit washed out), the dark one grass bent towards you (deeper and richer than the uncut ground). (27 Oct: the
+-- owner asked for stripes you can really see; the old pair was only 18% apart.)
 local function shades(z: number): (Color3, Color3)
 	local def = Zones.list[z]
 	local base = if def then def.palette.ground else Color3.fromRGB(76, 178, 50)
 	local h, s, v = base:ToHSV()
-	local light = Color3.fromHSV(h, math.min(1, s * 1.08), math.min(1, v * 1.22))
-	local dark = Color3.fromHSV(h, math.min(1, s * 1.12), math.min(1, v * 1.04))
+	local light = Color3.fromHSV(h, s * 0.8, math.min(1, v * 1.32 + 0.04))
+	local dark = Color3.fromHSV(h, math.min(1, s * 1.12), v * 0.86)
 	return light, dark
 end
 

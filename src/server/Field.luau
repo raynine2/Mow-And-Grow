@@ -710,6 +710,50 @@ function Field.devClear(player: Player, z: number)
 	end
 end
 
+-- Up to `n` hiding places in area z for the Golden Gnome hunt (server/Gnomes): at the foot of random clumps, tucked
+-- under their blades just outside the stalk, facing out, and at least `apart` studs from each other when the area
+-- has room. Each is a CFrame on the ground.
+function Field.hideSpots(z: number, n: number, apart: number?): { CFrame }
+	local list = patches[z]
+	local out: { CFrame } = {}
+	if not list or #list == 0 then
+		return out
+	end
+	local order = {}
+	for i = 1, #list do
+		order[i] = i
+	end
+	for i = #order, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		order[i], order[j] = order[j], order[i]
+	end
+	local gap = apart or 40
+	for pass = 1, 2 do
+		for _, i in order do
+			if #out >= n then
+				return out
+			end
+			local p = list[i]
+			local base = p.spot.Position
+			local ok = true
+			for _, cf in out do
+				if (cf.Position - base).Magnitude < (if pass == 1 then gap else 6) then
+					ok = false
+					break
+				end
+			end
+			if ok then
+				local a = rng:NextNumber(0, math.pi * 2)
+				local dir = Vector3.new(math.cos(a), 0, math.sin(a))
+				local r = (p.stalk or p.radius * 0.35) + 1.4
+				local pos = base + dir * r
+				table.insert(out, CFrame.lookAt(pos, pos + dir))
+			end
+		end
+	end
+	return out
+end
+
 function Field.unlock(z: number)
 	Field.unlocked = math.max(Field.unlocked, z)
 end

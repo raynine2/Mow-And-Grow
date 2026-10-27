@@ -822,6 +822,11 @@ function Run.start()
 		local startZone = waitForHost()
 		zone = startZone
 		Field.build(info.world, startZone)
+		-- (27 Oct) the Golden Gnome hunt: gnomes hidden at the foot of the clumps (server/Gnomes)
+		local okG, errG = pcall(require(script.Parent.Gnomes).build, info.world)
+		if not okG then
+			warn("[Run] gnomes: " .. tostring(errG))
+		end
 		unlock(startZone)
 		started = true
 		PlayerData.onLoaded(setupPlayer)
@@ -1018,6 +1023,9 @@ function Run.devAction(player: Player, data, action: string, _arg: any): string?
 	elseif action == "night" then
 		require(script.Parent.DayNight).skip()
 		return "Skipped to the next day/night"
+	elseif action == "gnome" then
+		local id = require(script.Parent.Gnomes).devFind(player)
+		return if id then "Found the " .. id .. " Gnome" else "No gnomes left for you"
 	end
 	return nil
 end

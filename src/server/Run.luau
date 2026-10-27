@@ -888,7 +888,10 @@ function Run.start()
 		if what == "ending" and id == "again" and endingOpen then
 			sendToLobby({ player }) -- PLAY AGAIN on the end screen: back to the lobby for a new run
 		elseif what == "intro" and data and data.run then
-			data.run.introSeen = true
+			if not data.run.introSeen then
+				data.run.introSeen = true
+				PlayerData.changed(player) -- (client/FirstLawn's loan note waits for this: it shows right after the film)
+			end
 		elseif what == "news" and data and type(id) == "number" then
 			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)
 		end

@@ -120,8 +120,12 @@ end
 task.spawn(function()
 	while true do
 		task.wait(0.25)
+		if not UI.gui.Enabled then
+			-- no arrow in a film: the intro (a first-timer's now plays mid-run, after the first sale, with the coach
+			-- still on: report #1), a boss's entrance and the ending all hide the HUD
+			target = nil
 		-- while the first-run coach (client/Coach) is on, the arrow shows its step
-		if Coach.active() then
+		elseif Coach.active() then
 			local p, lift = Coach.target()
 			target, targetLift = p, lift or 7
 		else

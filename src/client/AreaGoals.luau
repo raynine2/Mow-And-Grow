@@ -69,12 +69,16 @@ local function checkDings(w)
 	end
 	local before = lastPct or pct
 	lastPct = pct
+	-- (a big jump, a black hole say, dings once: for the highest share it passed)
+	local passed: number? = nil
 	for _, t in F.dings do
 		if before < t and pct >= t then
-			dingPop(("%d%% MOWED!"):format(math.floor(t * 100 + 0.5)))
-			Sound.playAt("rareChime", 1 + t * 0.5, 0.7) -- each ding a little higher
-			break
+			passed = t
 		end
+	end
+	if passed then
+		dingPop(("%d%% MOWED!"):format(math.floor(passed * 100 + 0.5)))
+		Sound.playAt("rareChime", 1 + passed * 0.5, 0.7) -- each ding a little higher
 	end
 end
 

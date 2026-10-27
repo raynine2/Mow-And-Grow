@@ -27,7 +27,10 @@ BlackHole.DISK = 12 -- the accretion disk's outer radius
 BlackHole.TILT = 14 -- the disk's tilt (degrees, about the stand's X axis)
 -- The whole stand is built at the sizes above, then scaled by this (the owner, 27 Oct: "a bit smaller"); the
 -- client reads the scaled sizes from the Singularity's / chunks' attributes, so it follows.
-BlackHole.SCALE = 0.75
+BlackHole.SCALE = 0.6 -- (0.75 on 27 Oct, then "a bit more smaller")
+-- ...but the hole's middle stays this high, so a normal jump still reaches it and walking under it doesn't pull you
+-- in (the jump-in sphere is the horizon plus 1.4 studs: client/BlackHole REACH)
+BlackHole.HOLE_AT = 7.2
 -- The crater on the ground under it (slabs, abyss, light column, crystals, spires, cracks): off since the owner,
 -- 27 Oct: "remove the ground bit". The hole, its disk and the floating chunks stay.
 BlackHole.GROUND = false
@@ -563,7 +566,18 @@ function BlackHole.build(k: Instance, at: CFrame): CFrame
 	if scale ~= 1 then
 		m.Parent = workspace -- (ScaleTo wants it in the world)
 		shrink(m, at, scale)
-		c = at * CFrame.new(0, BlackHole.HOLE_Y * scale, 0)
+		local lift = math.max(0, BlackHole.HOLE_AT - BlackHole.HOLE_Y * scale)
+		m:PivotTo(m:GetPivot() + at.UpVector * lift)
+		for _, d in m:GetDescendants() do
+			if d:GetAttribute("HoleY") then
+				d:SetAttribute("HoleY", BlackHole.HOLE_Y * scale + lift)
+			end
+			local oy = d:GetAttribute("OrbitY")
+			if type(oy) == "number" then
+				d:SetAttribute("OrbitY", oy + lift)
+			end
+		end
+		c = at * CFrame.new(0, BlackHole.HOLE_Y * scale + lift, 0)
 	end
 	for _, child in m:GetChildren() do
 		child.Parent = k

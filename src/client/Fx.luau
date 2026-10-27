@@ -20,6 +20,7 @@ local Confetti = require(script.Parent.Confetti)
 local BossFx = require(script.Parent.BossFx)
 local Moments = require(script.Parent.Moments)
 local HitMeter = require(script.Parent.HitMeter) -- (28 Oct) the soft green hit meter under the crosshair
+local WeaponFx = require(script.Parent.WeaponFx) -- (28 Oct) each tool's own hit look / sound / bite number
 local ClumpWound = require(script.Parent.ClumpWound) -- (28 Oct) the cut carved into a clump's stalk, hit by hit
 local GnomeHunt = require(script.Parent.GnomeHunt) -- (27 Oct) the Golden Gnome hunt: found gnomes, the gold strip
 
@@ -487,6 +488,11 @@ handlers.chip = function(d)
 	if d.label then
 		HitMeter.hit(d)
 	end
+	-- (28 Oct) the bite this hit took, floating up in the tool's colour (hand tools: auto tools chip too fast)
+	local tid = heldToolId()
+	if WeaponFx.family(WeaponFx.eventFor(tid)) ~= "auto" and d.max and d.max > 0 then
+		WeaponFx.bite(d.hitPos or d.pos, d.dealt or 0, (d.dealt or 0) / d.max, WeaponFx.accent(tid))
+	end
 	ClumpWound.hit(d) -- (before the lean: the cut leans with the clump)
 	HitFx.lean(d.model, d.from, d.ratio)
 	-- your swing already drew this hit the moment it landed (HitFx prediction); auto tools and extra targets
@@ -499,7 +505,7 @@ handlers.chip = function(d)
 				auto = true
 			end
 		end
-		HitFx.play(if auto then "auto" elseif id == "Hands" then "punch" else "hit", d.pos, d.color, true)
+		HitFx.play(if auto then WeaponFx.eventFor(id) elseif id == "Hands" then "punch" else WeaponFx.eventFor(id), d.pos, d.color, true)
 	end
 end
 

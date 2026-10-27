@@ -20,6 +20,9 @@ local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local CameraView = require(script.Parent.CameraView)
+-- (owner, 28 Oct: "make it with every weapon look different") each tool's hit look, sound, marker and number
+local WeaponFx = require(script.Parent.WeaponFx)
+WeaponFx.install(Presets)
 
 local HitFx = {}
 local player = Players.LocalPlayer
@@ -809,7 +812,9 @@ end
 local function hitSounds(event: string, m: Model?)
 	local up = streakPitch(m)
 	local chip = Config.SOUNDS.chip
-	if event == "punch" then
+	if WeaponFx.sounds(event, up) then
+		-- (28 Oct) the tool's own recipe (client/WeaponFx)
+	elseif event == "punch" then
 		Sound.play("punch", 0.12) -- the meaty thud of the fist
 		Sound.play("rustle", 0.15) -- the grass crunching
 	elseif event == "hit" then
@@ -819,7 +824,7 @@ local function hitSounds(event: string, m: Model?)
 		Sound.play("rustle", 0.2, 0.45)
 	end
 	if chip then
-		Sound.playAt("chip", (chip.pitch or 1) * up * (0.95 + math.random() * 0.1), if event == "auto" then 0.5 else 1)
+		Sound.playAt("chip", (chip.pitch or 1) * up * (0.95 + math.random() * 0.1), if WeaponFx.family(event) == "auto" then 0.5 else 1)
 	end
 end
 
@@ -832,7 +837,8 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 		return
 	end
 	local m = clump
-	if mine and not m and (event == "punch" or event == "hit" or event == "auto") then
+	local fam = WeaponFx.family(event) -- punch / hit / auto under every tool's own event
+	if mine and not m and fam then
 		m = clumpAt(pos, 2.5)
 	end
 	local sc, r = sizeOf(m)
@@ -867,6 +873,8 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 			if mine then
 				marks(layer, cf, out, sc)
 			end
+		else
+			WeaponFx.layer(layer, cf, out, sc, mine) -- a tool's own mark (snip X, crescent, sizzle)
 		end
 	end
 	if mine then
@@ -878,10 +886,15 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 				wobble(m, -out, preset.wobble)
 			end
 		end
-		if event == "punch" or event == "hit" or event == "auto" then
+		if fam then
 			hitSounds(event, m)
 		end
-		cameraFeel(event)
+		cameraFeel(fam or event)
+		WeaponFx.feel(event)
+		-- the hit registers: four little leaves flick out of the middle of the screen
+		if fam and fam ~= "auto" then
+			WeaponFx.marker(WeaponFx.accent(WeaponFx.heldId()), event == "reap")
+		end
 	end
 end
 
@@ -961,7 +974,7 @@ function HitFx.swing(toolId: string?, look: Vector3?)
 	table.insert(predicted, { pos = pos, at = os.clock() })
 	task.delay(STRIKE_DELAY, function()
 		if m.Parent then
-			HitFx.play(if toolId == "Hands" then "punch" else "hit", pos, clumpColor(m), true, m)
+			HitFx.play(WeaponFx.eventFor(toolId), pos, clumpColor(m), true, m)
 		end
 	end)
 end

@@ -21,6 +21,7 @@
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local HitFx = require(script.Parent.HitFx)
@@ -30,7 +31,9 @@ local ClumpCarve = {}
 local player = Players.LocalPlayer
 local templates = ReplicatedStorage:WaitForChild("ClumpCarve", 10)
 
-local MAX_ACTIVE = 4
+-- (a carve you walked away from, 40+ studs and 10+ s since its last hit, is put back to the plain mesh to free its
+-- slot when a new clump needs one; ~100 small parts each at most)
+local MAX_ACTIVE = 8
 local N = 6 -- half-voxels across the stalk (it is 3 voxels wide)
 local ROWS = 10 -- half-voxel rows from the root layer up to the tuft (5 voxels)
 -- the rows a cut may open: the bottom and top rows stay (the root layer and the tuft have no faces where they
@@ -41,7 +44,9 @@ local U = 40 -- a voxel, in the template meshes' units
 local WHITE = Color3.new(1, 1, 1)
 local PITH = Color3.fromRGB(240, 248, 206) -- the pale lime-cream inside of a cut stem (as client/ClumpWound)
 
--- How each weapon cuts, for how much of the clump is cut so far (c, 0..1):
+-- How each weapon cuts, for how much of the clump is cut so far (c, 0..1). (Tuned in a simulation of these exact
+-- formulas, 28 Oct: by 15/40/70/92% cut the bigger cuts have taken about 10-20 / 30-50 / 60-80 / 75-105 of the
+-- 360 half-voxels, the scissors' and the laser's slits stay slimmer, and the back of the core is never cut.)
 --   A how far round the stalk (radians either side of where it came from), B how tall (half-voxel rows either
 --   side of the aim), D how deep (half-voxels in from the skin: the core is 2.5 in, so near the end only a thin
 --   core is left), noise how lumpy its edge is, kind its profile (bowl round, vee a wedge, crescent a curve whose
@@ -50,15 +55,15 @@ type Shape = { A: (number) -> number, B: (number) -> number, D: (number) -> numb
 local SHAPES: { [string]: Shape } = {
 	Hands = {
 		A = function(c) return 0.55 + 1.9 * c ^ 0.9 end,
-		B = function(c) return 1.4 + 2.0 * c ^ 0.8 end,
-		D = function(c) return 1.0 + 1.9 * c ^ 0.85 end,
+		B = function(c) return 1.3 + 1.5 * c ^ 0.8 end,
+		D = function(c) return 1.0 + 1.8 * c ^ 0.85 end,
 		noise = 0.22,
 		kind = "bowl",
 	},
 	Scissors = {
-		A = function(c) return 0.45 + 1.7 * c end,
+		A = function(c) return 0.7 + 1.5 * c end,
 		B = function(c) return 0.8 + 0.9 * c end,
-		D = function(c) return 1.3 + 1.8 * c ^ 0.8 end,
+		D = function(c) return 1.8 + 1.3 * c ^ 0.8 end,
 		noise = 0.04,
 		kind = "vee",
 	},
@@ -70,9 +75,9 @@ local SHAPES: { [string]: Shape } = {
 		kind = "crescent",
 	},
 	MegaScythe = {
-		A = function(c) return 1.5 + 1.8 * c end,
-		B = function(c) return 0.8 + 1.0 * c end,
-		D = function(c) return 0.9 + 2.0 * c ^ 0.9 end,
+		A = function(c) return 1.2 + 2.0 * c end,
+		B = function(c) return 0.8 + 0.9 * c end,
+		D = function(c) return 0.9 + 1.6 * c ^ 0.9 end,
 		noise = 0.04,
 		kind = "band",
 	},
@@ -85,9 +90,9 @@ local SHAPES: { [string]: Shape } = {
 		row = 1.5,
 	},
 	WeedWhacker = {
-		A = function(c) return 1.3 + 2.0 * c end,
-		B = function(c) return 1.2 + 1.0 * c end,
-		D = function(c) return 0.8 + 2.0 * c end,
+		A = function(c) return 1.0 + 1.8 * c end,
+		B = function(c) return 1.0 + 0.9 * c end,
+		D = function(c) return 0.8 + 1.5 * c end,
 		noise = 0.45,
 		kind = "band",
 		strand = true,
@@ -119,6 +124,7 @@ type Carve = {
 	split: { [number]: boolean },
 	sides: { Side },
 	tones: Tones,
+	last: number, -- when it was last hit
 }
 local carves: { [Model]: Carve } = {}
 local active = 0
@@ -262,6 +268,7 @@ local function start(m: Model): Carve?
 		cells = {},
 		split = {},
 		sides = {},
+		last = os.clock(),
 		tones = tonesFor(if src.TextureID == "" then src.Color else Color3.new(avg.X, avg.Y, avg.Z)),
 	}
 	for _, t in { baseT, topT } do
@@ -329,6 +336,9 @@ local function inCut(s: Side, sh: Shape, a: number, b: number, r: number): boole
 	local depth = ring + 0.5
 	local out = Vector2.new(px, pz).Unit
 	local ang = math.acos(math.clamp(out:Dot(s.dir), -1, 1))
+	if ring == 2 and ang > math.pi / 2 then
+		return false -- the back of the core always stays: it holds the top up till the last hit
+	end
 	local c = math.clamp(s.cut * 1.04, 0, 1)
 	local A, B, D = sh.A(c), sh.B(c), sh.D(c)
 	local n = if sh.strand then bump(a, b, 0, s.seed) * 0.75 + bump(a, b, r, s.seed) * 0.25 else bump(a, b, r, s.seed)
@@ -398,6 +408,50 @@ local function aimRow(cv: Carve, bottom: Vector3, cellH: number, R: number): num
 	return math.clamp(math.floor(y / cellH), LOW + 1, HIGH - 1)
 end
 
+-- Put a carve back to the plain mesh (frees its slot).
+local function restore(cv: Carve)
+	for _, p in cv.vox do
+		p:Destroy()
+	end
+	for _, p in cv.cells do
+		p:Destroy()
+	end
+	cv.base:Destroy()
+	cv.top:Destroy()
+	cv.src.Transparency = 0
+	if carves[cv.m] then
+		carves[cv.m] = nil
+		active -= 1
+	end
+end
+
+-- Make room for a new carve: forget clumps that are gone, then put back the stalest one you walked away from.
+local function makeRoom(): boolean
+	for other in carves do
+		if not other.Parent then
+			carves[other] = nil
+			active -= 1
+		end
+	end
+	if active < MAX_ACTIVE then
+		return true
+	end
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local now = os.clock()
+	local oldest: Carve? = nil
+	for m, cv in carves do
+		local far = not root or (m:GetPivot().Position - root.Position).Magnitude > 40
+		if far and now - cv.last > 10 and (not oldest or cv.last < oldest.last) then
+			oldest = cv
+		end
+	end
+	if oldest then
+		restore(oldest)
+	end
+	return active < MAX_ACTIVE
+end
+
 -- A hit (the server's "chip": model, from, dealt, max, z, mut). True when it was carved here.
 function ClumpCarve.hit(d): boolean
 	local m = d.model
@@ -406,16 +460,8 @@ function ClumpCarve.hit(d): boolean
 	end
 	local cv = carves[m]
 	if not cv then
-		if active >= MAX_ACTIVE then
-			for other in carves do
-				if not other.Parent then
-					carves[other] = nil
-					active -= 1
-				end
-			end
-			if active >= MAX_ACTIVE then
-				return false
-			end
+		if active >= MAX_ACTIVE and not makeRoom() then
+			return false
 		end
 		local made = start(m)
 		if not made then
@@ -432,6 +478,7 @@ function ClumpCarve.hit(d): boolean
 		end)
 	end
 	local c = cv :: Carve
+	c.last = os.clock()
 	-- keep the pieces dressed like the original (a mutation repaints it on the first hit)
 	for _, p in { c.base, c.top } do
 		if p.TextureID ~= (c.src :: MeshPart).TextureID then
@@ -481,6 +528,15 @@ function ClumpCarve.hit(d): boolean
 	end
 	if #removed == 0 then
 		return true
+	end
+	if RunService:IsStudio() then
+		task.defer(function() -- (Studio tests: the stalk's state as 360 ones and zeros, key a + b*6 + r*36)
+			local bits = table.create(N * N * ROWS)
+			for i = 0, N * N * ROWS - 1 do
+				bits[i + 1] = if c.solid[i] then "1" else "0"
+			end
+			m:SetAttribute("CarveSolid", table.concat(bits))
+		end)
 	end
 	local colorsBefore = {}
 	for i, e in removed do

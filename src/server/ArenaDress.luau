@@ -3,7 +3,7 @@
 -- log and stone textures (server/VoxelKit); no stretched meshes any more, so nothing pokes through anything:
 --   * the wall runs as straight sections from joint to joint round the ring, each on a stone plinth, with a post
 --     on every joint, so the pieces meet exactly on the curve
---   * each area its own wall: a stone wall with white pickets and a flowering hedge (meadow), a board fence with
+--   * the meadow is its own garden (server/MeadowArena); every other area its own wall: a board fence with
 --     hay (wheat), a white plaster wall with a tiled cap and blossom bushes (blossom), a log palisade (pine),
 --     crooked stakes with purple lanterns (swamp), frosted stone with snow and icicles (frost), basalt with glowing
 --     seams and braziers (ember), violet stone with a gold cap and crystals (isles)
@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
 local VoxelKit = require(script.Parent.VoxelKit)
+local MeadowArena = require(script.Parent.MeadowArena)
 
 local ArenaDress = {}
 
@@ -467,6 +468,10 @@ function ArenaDress.wall(ctx: Ctx): boolean
 	local folder = Instance.new("Folder")
 	folder.Name = "Dress"
 	folder.Parent = ctx.model
+	if ctx.look.id == "meadow" then
+		MeadowArena.wall(ctx, folder) -- the Dandelion King's garden (server/MeadowArena)
+		return true
+	end
 	local rng = Random.new(ctx.segs * 31 + #ctx.look.id * 7)
 	-- sections between joints 1 and segs-1 (the two either side of the facing direction are the entrance)
 	local build = SECTION[t.kind]
@@ -547,6 +552,9 @@ end
 -- The gateway over the entrance: towers on both sides of the gap, a lintel across with banners. Returns the
 -- model (BossArena floats the boss name over it).
 function ArenaDress.gate(ctx: Ctx): Model
+	if ctx.look.id == "meadow" then
+		return MeadowArena.gate(ctx)
+	end
 	local t = ctx.look.theme
 	local m = Instance.new("Model")
 	m.Name = "ArenaGate"
@@ -597,6 +605,10 @@ end
 -- A ring of stone round the summon pad, sunk so only a low step shows, with a lantern / crystal / brazier on four
 -- short pillars (the pad itself and how it's read are BossArena's / server/Boss's).
 function ArenaDress.altar(ctx: Ctx, padPos: Vector3)
+	if ctx.look.id == "meadow" then
+		MeadowArena.altar(ctx, padPos)
+		return
+	end
 	local t = ctx.look.theme
 	local m = Instance.new("Model")
 	m.Name = "SummonAltar"

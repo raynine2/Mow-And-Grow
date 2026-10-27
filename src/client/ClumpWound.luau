@@ -30,6 +30,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Zones = require(Shared:WaitForChild("Zones")) :: any
 local HitFx = require(script.Parent.HitFx)
 local State = require(script.Parent.State)
+local ClumpCarve = require(script.Parent.ClumpCarve) -- (28 Oct) real notches in the stalk, per weapon
 
 local ClumpWound = {}
 local player = Players.LocalPlayer
@@ -306,6 +307,11 @@ end
 function ClumpWound.hit(d)
 	local m = d.model
 	if typeof(m) ~= "Instance" or not m:IsA("Model") or not m.Parent then
+		return
+	end
+	-- (owner, 28 Oct: "yes" to a real notch, "different per weapon") a voxel clump with a split mesh gets its stalk
+	-- really carved, every tool its own way (client/ClumpCarve); the overlay below is for anything else
+	if ClumpCarve.hit(d) then
 		return
 	end
 	local R = m:GetAttribute("Stalk")

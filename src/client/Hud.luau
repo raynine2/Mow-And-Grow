@@ -29,6 +29,11 @@ local player = Players.LocalPlayer
 pcall(function()
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 end)
+-- (owner, 28 Oct: "make it so tab doesnt show the player list in game but actually open that menu instead")
+-- Roblox's player list takes the TAB key, so it's off: TAB opens Upgrades (run) / Stats (lobby), see the keys below.
+pcall(function()
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+end)
 
 local root = Instance.new("Frame")
 root.Name = "Hud"
@@ -646,6 +651,11 @@ end)
 -------------------------------------------------------------------------------------------------------------
 local NUMBER_KEYS = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six, Enum.KeyCode.Seven }
 UserInputService.InputBegan:Connect(function(input, processed)
+	-- TAB counts even when Roblox marked it processed (its player list / UI navigation grab TAB), but not while typing
+	if input.KeyCode == Enum.KeyCode.Tab and not UserInputService:GetFocusedTextBox() then
+		UI.open(if currentMode == "Run" then "Upgrades" else "Stats")
+		return
+	end
 	if processed then
 		return
 	end

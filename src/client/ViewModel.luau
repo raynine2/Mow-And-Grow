@@ -337,8 +337,10 @@ local arms: ArmSet? = nil
 local nextArmBuild = 0
 -- where the shoulders sit relative to the camera: low and a little behind, so the arms come up from the corners
 -- (Chop A Forest's arms are chunky and close: they fill the bottom corners and the fists sit low, near the middle)
-local SHOULDER_R = Vector3.new(1.75, -2.7, 0.2)
-local SHOULDER_L = Vector3.new(-1.75, -2.7, 0.2)
+-- (owner, 28 Oct: "the hands dont cover the screen as much" in Chop A Forest: the shoulders sit far behind the
+-- fists now, so the arms run straight back out of view and only the fists show, low and wide; was (1.75, -2.7, 0.2))
+local SHOULDER_R = Vector3.new(2.5, -3.0, 2.5)
+local SHOULDER_L = Vector3.new(-2.5, -3.0, 2.5)
 local ARM_WIDTH = 0.7 -- how thick the arms are in view (studs, at ~2.4 studs away; was 0.82, a bit much on screen)
 local KEEP = { SpecialMesh = true, SurfaceAppearance = true, Decal = true, Texture = true }
 
@@ -488,8 +490,10 @@ end
 -- fists a little further off and tipped up, so you see the knuckles and the forearms run down to the screen's
 -- bottom corners (like Chop A Forest), not the flat tops of the forearms
 -- (with the real arms only the position matters: the arm points from the shoulder at it)
-local REST_R = scaled(CFrame.new(1.2, -1.6, -3.6) * CFrame.Angles(math.rad(24), math.rad(14), 0), DIST)
-local REST_L = scaled(CFrame.new(-1.25, -1.65, -3.65) * CFrame.Angles(math.rad(20), math.rad(-14), 0), DIST)
+-- (28 Oct: lower and wider, at the bottom of the screen like Chop A Forest's, so the middle of the view stays clear;
+-- was (1.2, -1.6, -3.6) / (-1.25, -1.65, -3.65))
+local REST_R = scaled(CFrame.new(2.15, -2.3, -3.3) * CFrame.Angles(math.rad(24), math.rad(14), 0), DIST)
+local REST_L = scaled(CFrame.new(-2.2, -2.35, -3.35) * CFrame.Angles(math.rad(20), math.rad(-14), 0), DIST)
 local PUSH_R = scaled(CFrame.new(1.25, -1.7, -2.6) * CFrame.Angles(math.rad(-25), 0, 0), DIST)
 local PUSH_L = scaled(CFrame.new(-1.25, -1.7, -2.6) * CFrame.Angles(math.rad(-25), 0, 0), DIST)
 local TWO_HANDED = { PushMower = true, LaserMower = true, WeedWhacker = true, MegaScythe = true }
@@ -664,6 +668,16 @@ RunService.RenderStepped:Connect(function()
 		root.Parent = cam
 	end
 	local t = os.clock()
+	-- (tuning: set Tune = true on the ViewModel model in a playtest and the HandX/Y/Z and ShX/Y/Z attributes move
+	-- the fists and shoulders live)
+	if root:GetAttribute("Tune") then
+		local hx, hy, hz = root:GetAttribute("HandX") :: number? or 2.15, root:GetAttribute("HandY") :: number? or -2.3, root:GetAttribute("HandZ") :: number? or -3.3
+		REST_R = scaled(CFrame.new(hx, hy, hz) * CFrame.Angles(math.rad(24), math.rad(14), 0), DIST)
+		REST_L = scaled(CFrame.new(-hx - 0.05, hy - 0.05, hz - 0.05) * CFrame.Angles(math.rad(20), math.rad(-14), 0), DIST)
+		local sx, sy, sz = root:GetAttribute("ShX") :: number? or 2.5, root:GetAttribute("ShY") :: number? or -3.0, root:GetAttribute("ShZ") :: number? or 2.5
+		SHOULDER_R = Vector3.new(sx, sy, sz)
+		SHOULDER_L = Vector3.new(-sx, sy, sz)
+	end
 	local rootPart = char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local speed = if rootPart then Vector3.new(rootPart.AssemblyLinearVelocity.X, 0, rootPart.AssemblyLinearVelocity.Z).Magnitude else 0
 	local walk = math.clamp(speed / 16, 0, 1.4)

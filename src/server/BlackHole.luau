@@ -25,6 +25,9 @@ BlackHole.HOLE_Y = 10 -- the middle of the hole above the floor
 BlackHole.RADIUS = 3.4 -- the event horizon (a parked avatar fits inside)
 BlackHole.DISK = 12 -- the accretion disk's outer radius
 BlackHole.TILT = 14 -- the disk's tilt (degrees, about the stand's X axis)
+-- The whole stand is built at the sizes above, then scaled by this (the owner, 27 Oct: "a bit smaller"); the
+-- client reads the scaled sizes from the Singularity's / chunks' attributes, so it follows.
+BlackHole.SCALE = 0.75
 
 local TEX = {
 	glow = "rbxassetid://125552447014366",
@@ -514,18 +517,48 @@ local function sign(k: Instance, at: CFrame)
 	s2.Parent = sub
 end
 
+-- Shrink everything built in `m` by k about `at`. Model:ScaleTo covers parts, beams, particles, sounds and the
+-- GUIs; lights and the sizes the client reads from attributes are done here.
+local function shrink(m: Model, at: CFrame, k: number)
+	m.WorldPivot = at
+	m:ScaleTo(k)
+	for _, d in m:GetDescendants() do
+		if d:IsA("Light") then
+			(d :: any).Range *= k
+		end
+		for _, name in { "Radius", "Disk", "HoleY", "OrbitR", "OrbitY" } do
+			local v = d:GetAttribute(name)
+			if type(v) == "number" then
+				d:SetAttribute(name, v * k)
+			end
+		end
+	end
+end
+
 -- Build the stand into folder `k` at `at` (the floor in the middle, facing -Z). Returns the hole's middle.
 function BlackHole.build(k: Instance, at: CFrame): CFrame
-	crater(k, at)
+	-- (built in a model so it can be scaled as one, then moved into `k` as before)
+	local m = Instance.new("Model")
+	crater(m, at)
 	local c = at * CFrame.new(0, BlackHole.HOLE_Y, 0)
 	local tilt = c * CFrame.Angles(math.rad(BlackHole.TILT), 0, 0)
-	hole(k, c, tilt)
-	sign(k, at)
+	hole(m, c, tilt)
+	sign(m, at)
 	-- the prompt in front (for phones, pads and anyone who'd rather not jump); no Window: client/BlackHole
 	-- plays the pull-in first, then opens Classes
-	local spot = ghost(k, "Mouth", Vector3.new(2, 2, 2), at * CFrame.new(0, 3, -6.6))
+	local spot = ghost(m, "Mouth", Vector3.new(2, 2, 2), at * CFrame.new(0, 3, -6.6))
 	local p = PropKit.prompt(spot, "Jump in", "Classes", nil, 11)
 	p:SetAttribute("BlackHole", true)
+	local scale = BlackHole.SCALE
+	if scale ~= 1 then
+		m.Parent = workspace -- (ScaleTo wants it in the world)
+		shrink(m, at, scale)
+		c = at * CFrame.new(0, BlackHole.HOLE_Y * scale, 0)
+	end
+	for _, child in m:GetChildren() do
+		child.Parent = k
+	end
+	m:Destroy()
 	return c
 end
 

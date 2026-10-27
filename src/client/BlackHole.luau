@@ -303,7 +303,8 @@ local function pulse(s: Stand)
 	ring.CanTouch = false
 	ring.CastShadow = false
 	ring.Transparency = 1
-	ring.Size = Vector3.new(30, 0.05, 30)
+	local k = s.disk / 12 -- (the stand's size: server/BlackHole.SCALE)
+	ring.Size = Vector3.new(30 * k, 0.05, 30 * k)
 	ring.CFrame = floor(s) * CFrame.new(0, 0.3, 0)
 	local sg = Instance.new("SurfaceGui")
 	sg.Face = Enum.NormalId.Top
@@ -320,7 +321,7 @@ local function pulse(s: Stand)
 	img.ImageTransparency = 1
 	img.Parent = sg
 	ring.Parent = workspace
-	TweenService:Create(ring, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = Vector3.new(6, 0.05, 6) }):Play()
+	TweenService:Create(ring, TweenInfo.new(1.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Size = Vector3.new(6 * k, 0.05, 6 * k) }):Play()
 	TweenService:Create(img, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { ImageTransparency = 0.35 }):Play()
 	task.delay(0.6, function()
 		TweenService:Create(img, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { ImageTransparency = 1 }):Play()

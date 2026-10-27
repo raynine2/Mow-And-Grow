@@ -81,7 +81,7 @@ Zones.list = {
 		},
 		-- (the hubs use this too) mid-afternoon sun, crisp shadows (owner, 27 Oct: light like Chop A Forest; every area
 		-- now has a daylight or golden-hour time instead of dusk/night, graded in client/BiomeLight)
-		lighting = { clock = 15, ambient = C(120, 126, 130), outdoor = C(140, 146, 150), brightness = 2.3, tint = C(255, 250, 238), saturation = 0.36, contrast = 0.22, fog = C(196, 222, 240), haze = 1.1, density = 0.26, sunRays = 0.05, bloom = 1.1 },
+		lighting = { clock = 16.2, ambient = C(120, 126, 130), outdoor = C(140, 146, 150), brightness = 2.3, tint = C(255, 250, 238), saturation = 0.36, contrast = 0.22, fog = C(196, 222, 240), haze = 1.1, density = 0.26, sunRays = 0.05, bloom = 1.1 },
 	},
 	{
 		id = "wheat",
@@ -196,7 +196,7 @@ Zones.list = {
 			rare = C(60, 230, 255),
 			accent = C(70, 225, 255),
 		},
-		lighting = { clock = 10.4, ambient = C(116, 132, 176), outdoor = C(132, 150, 196), brightness = 1.7, tint = C(238, 244, 255), saturation = 0.3, contrast = 0.24, fog = C(200, 218, 248), haze = 1.3, density = 0.3, sunRays = 0.08, bloom = 1.1 },
+		lighting = { clock = 10.4, ambient = C(116, 132, 176), outdoor = C(132, 150, 196), brightness = 1.5, tint = C(238, 244, 255), saturation = 0.3, contrast = 0.24, fog = C(200, 218, 248), haze = 1.3, density = 0.3, sunRays = 0.08, bloom = 1.1 },
 	},
 	{
 		id = "ember",

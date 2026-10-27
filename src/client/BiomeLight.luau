@@ -93,19 +93,27 @@ local current: Look? = nil
 -- in the area's own colour (the old grade cut the haze to 15% under the place's sky, so everything looked flat);
 -- bloom only on lights, fire and neon. The presets (shared/Zones) give each area its time of day, fog colour and
 -- tint; this turns them into that look.
+-- Second pass (owner, 27 Oct: "focus on lighting"): the first pass was overexposed (the camp paving and paths
+-- burned to near white, the sky washed out by haze when facing the sun). Now: a slightly lower, golden sun,
+-- exposure pulled down, cooler and darker shade, a warmer key, and much less haze so the place's blue sky shows.
+-- Tuned live in Studio against the camp (before/after screenshots).
 local STYLE = {
-	coolFill = Color3.fromRGB(104, 122, 156), -- the shade's colour (sky bounce)
-	ambientMix = 0.4, -- how far the shade is pulled to it
-	ambientScale = 0.72, -- darker shade = more form
-	outdoorScale = 0.84,
-	brightnessScale = 1.22, -- a stronger sun
-	sunTint = Color3.fromRGB(255, 232, 196), -- ColorShift_Top: warm light on the lit faces
-	bounce = Color3.fromRGB(70, 80, 96), -- ColorShift_Bottom: a cool bounce under things
-	saturation = 0.55, -- of the preset's
-	contrast = 0.6,
-	hazeOwnSky = 0.55, -- of the preset's haze when the place has its own sky (the depth fog)
-	densityOwnSky = 0.85,
-	glare = 0.25,
+	coolFill = Color3.fromRGB(92, 108, 156), -- the shade's colour (sky bounce)
+	ambientMix = 0.5, -- how far the shade is pulled to it
+	ambientScale = 0.64, -- darker shade = more form
+	outdoorScale = 0.8,
+	brightnessScale = 0.95,
+	exposure = -0.25, -- the main fix for the burned-out bright surfaces
+	sunTint = Color3.fromRGB(255, 214, 165), -- ColorShift_Top: warm golden light on the lit faces
+	sunTintKeep = 0.25, -- how much of the area's own tint goes into it
+	bounce = Color3.fromRGB(60, 70, 95), -- ColorShift_Bottom: a cool bounce under things
+	saturation = 0.6, -- of the preset's
+	contrast = 0.8,
+	hazeOwnSky = 0.2, -- of the preset's haze when the place has its own sky (more washed the sky out)
+	densityOwnSky = 1.05,
+	skyDecay = Color3.fromRGB(110, 150, 220), -- the far fog's shade, pulled toward the sky's blue
+	glare = 0.4, -- a warm glow round the sun
+	offset = 0.1,
 	bloom = 0.55,
 	bloomThreshold = 0.92,
 	bloomSize = 30,
@@ -118,25 +126,25 @@ local function apply(l: Look)
 	Lighting.Ambient = l.ambient:Lerp(STYLE.coolFill, STYLE.ambientMix):Lerp(Color3.new(0, 0, 0), 1 - STYLE.ambientScale)
 	Lighting.OutdoorAmbient = l.outdoor:Lerp(STYLE.coolFill, STYLE.ambientMix * 0.75):Lerp(Color3.new(0, 0, 0), 1 - STYLE.outdoorScale)
 	Lighting.Brightness = l.brightness * STYLE.brightnessScale
-	Lighting.ColorShift_Top = STYLE.sunTint:Lerp(l.tint, 0.35)
+	Lighting.ColorShift_Top = STYLE.sunTint:Lerp(l.tint, STYLE.sunTintKeep)
 	Lighting.ColorShift_Bottom = STYLE.bounce
 	Lighting.ShadowSoftness = STYLE.shadowSoftness
 	Lighting.EnvironmentSpecularScale = STYLE.specular
 	Lighting.EnvironmentDiffuseScale = 1
-	Lighting.ExposureCompensation = 0
+	Lighting.ExposureCompensation = STYLE.exposure
 	color.TintColor = l.tint
 	color.Saturation = l.saturation * STYLE.saturation
 	color.Contrast = l.contrast * STYLE.contrast
-	color.Brightness = 0.01
+	color.Brightness = 0
 	atmosphere.Color = l.fog
-	atmosphere.Decay = l.fog:Lerp(Color3.new(0, 0, 0), 0.4)
+	atmosphere.Decay = l.fog:Lerp(Color3.new(0, 0, 0), 0.4):Lerp(STYLE.skyDecay, 0.5)
 	-- a sky the owner added (any Sky but the game's "MowALawnSky") stays visible, with the area's haze over the
 	-- horizon
 	local sky = Lighting:FindFirstChildOfClass("Sky")
 	local ownSky = sky ~= nil and sky.Name ~= "MowALawnSky"
 	atmosphere.Haze = if ownSky then l.haze * STYLE.hazeOwnSky else l.haze
 	atmosphere.Density = if ownSky then l.density * STYLE.densityOwnSky else l.density
-	atmosphere.Offset = 0.22
+	atmosphere.Offset = STYLE.offset
 	atmosphere.Glare = STYLE.glare
 	rays.Intensity = l.sunRays
 	bloom.Intensity = l.bloom * STYLE.bloom

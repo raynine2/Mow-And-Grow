@@ -89,14 +89,15 @@ end)
 
 -------------------------------------------------------------------------------------------------------------
 -- camera feel: the one owner of the field of view and the camera offset
---   - a wider view in a run (first person 82, third person 74; the lobby keeps 70) that opens up a little more
+--   - a wide view (80 everywhere) that opens up a little more
 --     the faster you go (sprinting, mowers);
 --   - first person: a very light head bob while walking and a small dip when you land; no lean (Chop A Forest's
 --     view stays steady and leaves the motion to the arms and the effects);
 --   - kicks (hits) and shakes (slams, gates) are asked for here, never written straight to the camera.
 -------------------------------------------------------------------------------------------------------------
--- Chop A Forest keeps the default 70 in first person too; a wider view made the fists and tools look small
-local FOV_LOBBY, FOV_FIRST, FOV_THIRD = 70, 70, 72
+-- owner, 27 Oct: "increase the FOV". 80 everywhere (was 70/70/72: the view felt cramped and the fists filled the
+-- screen); cutscenes still set their own and hand back to this
+local FOV_LOBBY, FOV_FIRST, FOV_THIRD = 80, 80, 80
 local SPEED_FOV = 5 -- extra degrees at full speed
 local kickAmount = 0
 local shakeUntil, shakePower = 0, 0

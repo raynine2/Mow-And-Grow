@@ -165,7 +165,7 @@ local function piece(parent: Instance, name: string, foot: Vector3, toward: Vect
 end
 
 -- A ForgeGUI building (shared/ForgeModelIds) standing on `foot`, its front toward `toward`, fitted into `want`
--- (studs), solid through one box collider. False if it isn't loaded.
+-- (studs), solid through its own mesh (PropKit.solidForge). False if it isn't loaded.
 local function forgePiece(parent: Instance, name: string, foot: Vector3, toward: Vector3, want: { [string]: number }): boolean
 	local cf = CFrame.lookAt(foot, Vector3.new(toward.X, foot.Y, toward.Z))
 	local m = Models.placeForge(name, parent, cf, want :: any, true)
@@ -173,9 +173,7 @@ local function forgePiece(parent: Instance, name: string, foot: Vector3, toward:
 	if not body then
 		return false
 	end
-	-- the mesh is turned a quarter: its X is the building's depth, its Z the width
-	local w, h, d = body.Size.Z, body.Size.Y, body.Size.X
-	PropKit.collider(m :: Model, cf, Vector3.new(0, h / 2, 0), Vector3.new(w * 0.86, h, d * 0.8))
+	PropKit.solidForge(m)
 	return true
 end
 

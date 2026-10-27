@@ -25,6 +25,7 @@ local BestTimes = require(script.Parent.BestTimes)
 local Night = require(script.Parent.Night)
 local Guns = require(script.Parent.Guns)
 local BossArena = require(script.Parent.BossArena)
+local ClassPerks = require(script.Parent.ClassPerks)
 
 local Run = {}
 
@@ -288,6 +289,7 @@ local function onCut(player: Player, patch): boolean
 		Loot.drop(player, "gem", land, patch.z, nil, rng:NextInteger(Config.GEM_DROP.min, Config.GEM_DROP.max), wait)
 	end
 	Quests.event(player, "cut", 1)
+	ClassPerks.cut(player, pos) -- Tidy Up, Hot Streak
 	data.stats.cut += 1
 	local m = Config.mutation(patch.mut or "None")
 	if m.id ~= "None" then
@@ -312,11 +314,11 @@ Loot.reach = function(player: Player)
 	local data = PlayerData.get(player)
 	local root = rootOf(player)
 	if root and data then
-		table.insert(points, { pos = root.Position, radius = Stats.compute(player, data).grasp })
+		table.insert(points, { pos = root.Position, radius = Stats.compute(player, data).grasp + ClassPerks.reachBonus(player) })
 	end
 	local mower, mdef = Mowers.driving(player)
 	if mower and mdef and mower.PrimaryPart then
-		table.insert(points, { pos = mower.PrimaryPart.Position, radius = mdef.radius + 4 })
+		table.insert(points, { pos = mower.PrimaryPart.Position, radius = mdef.radius * ClassPerks.mower(player).radius + 4 })
 	end
 	return points
 end
@@ -369,7 +371,8 @@ local function onSwing(player: Player, look: any)
 	end
 	Tools.slash(tool)
 	local stats = Stats.compute(player, data)
-	local damage = def.damage * stats.power
+	local damage = def.damage * stats.power * ClassPerks.powerMult(player)
+	local cutDamage = ClassPerks.swing(player, def.damage * stats.power, root.Position) -- Root Rip, Reap Wave
 	-- the camera's look direction from the client picks the clump (checked: a unit vector; else the body's facing)
 	local aim = root.CFrame.LookVector
 	if typeof(look) == "Vector3" and look.Magnitude > 0.5 and look.Magnitude < 1.5 and look.X == look.X then
@@ -378,7 +381,7 @@ local function onSwing(player: Player, look: any)
 	if bagFull(player) then
 		warnBagFull(player)
 	else
-		Field.hitAim(player, root.Position, aim, def.radius, damage, def.targets, stats.luck)
+		Field.hitAim(player, root.Position, aim, def.radius, cutDamage, def.targets, stats.luck)
 	end
 	if Boss.inReach(root.Position, def.radius) then
 		Boss.damage(player, damage * Config.BOSS_TOOL_MULT)
@@ -394,22 +397,23 @@ local function autoTick()
 		if data and data.run then
 			local stats = Stats.compute(player, data)
 			local mower, mdef = Mowers.driving(player)
+			ClassPerks.tick(player, rootOf(player), mower ~= nil, Carry.isFull(player)) -- Graze, Courier
 			if mower and mdef and mower.PrimaryPart then
 				local fuel = mower:GetAttribute("Fuel") or 0
 				if fuel > 0 then
 					local pos = mower.PrimaryPart.Position
-					local dmg = mdef.damage * stats.power
+					local dmg = mdef.damage * stats.power * ClassPerks.powerMult(player)
 					if bagFull(player) then
 						warnBagFull(player)
 					else
-						Field.hit(player, pos, mdef.radius, dmg, nil, stats.luck)
+						Field.hit(player, pos, mdef.radius * ClassPerks.mower(player).radius, dmg, nil, stats.luck)
 					end
 				end
 			else
 				local def = Tools.equipped(player)
 				local root = rootOf(player)
 				if def and def.kind == "auto" and root then
-					local dmg = def.damage * stats.power
+					local dmg = def.damage * stats.power * ClassPerks.powerMult(player)
 					if bagFull(player) then
 						warnBagFull(player)
 					else
@@ -429,13 +433,13 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- selling + shops
 -------------------------------------------------------------------------------------------------------------
-local function sell(player: Player, pad)
+local function sell(player: Player, pad, cut: number?): number
 	local data = PlayerData.get(player)
 	if not data or not data.run or #data.run.carry == 0 then
-		return
+		return 0
 	end
 	local count = #data.run.carry
-	local coins = math.floor(Carry.value(data) * Stats.compute(player, data).sell)
+	local coins = math.floor(Carry.value(data) * Stats.compute(player, data).sell * (cut or 1))
 	data.run.coins += coins
 	data.stats.sold = (data.stats.sold or 0) + count
 	data.stats.coinsEarned = (data.stats.coinsEarned or 0) + coins
@@ -443,6 +447,7 @@ local function sell(player: Player, pad)
 	Net.send(player, "Fx", "sell", { coins = coins, count = count, from = pad.mouth, out = pad.out })
 	Net.all("Fx", "shred", { pos = pad.mouth, count = count, by = player.UserId })
 	Quests.event(player, "sell", count)
+	return coins
 end
 
 -- Walk onto any shredder's pad (the hub's or the drop-off) to sell.
@@ -678,6 +683,36 @@ function Run.start()
 
 	Field.onCut = onCut
 	Field.onProgress = pushWorld
+	-- the classes' gimmicks (server/ClassPerks)
+	Field.forceMutation = ClassPerks.forcedMutation
+	Field.onForced = ClassPerks.midasShown
+	ClassPerks.hitArea = function(player: Player, pos: Vector3, radius: number, damage: number, max: number?): number
+		local data = PlayerData.get(player)
+		if not data or not data.run or completing then
+			return 0
+		end
+		if bagFull(player) then
+			warnBagFull(player)
+			return 0
+		end
+		return Field.hit(player, pos, radius, damage, max, Stats.compute(player, data).luck)
+	end
+	ClassPerks.baseDamage = function(player: Player): number
+		local data = PlayerData.get(player)
+		if not data or not data.run then
+			return 0
+		end
+		local def = Config.TOOLS[math.clamp(data.run.tool or 1, 1, #Config.TOOLS)]
+		return (def and def.damage or 1) * Stats.compute(player, data).power * ClassPerks.powerMult(player)
+	end
+	ClassPerks.sellAnywhere = function(player: Player, cut: number): number
+		local root = rootOf(player)
+		if not root then
+			return 0
+		end
+		return sell(player, { mouth = root.Position + Vector3.new(0, 3, 0), out = root.Position }, cut)
+	end
+	ClassPerks.setup()
 	Field.onZoneCleared = function(z)
 		if z == zone then
 			for _, p in Players:GetPlayers() do

@@ -61,6 +61,8 @@ Field.onCut = nil :: ((Player, Patch) -> boolean)? -- return false to refuse (ba
 Field.canCut = nil :: ((Player) -> boolean)?
 Field.onZoneCleared = nil :: ((number) -> ())?
 Field.onProgress = nil :: (() -> ())?
+Field.forceMutation = nil :: ((Player?, string) -> string?)? -- a class's forced mutation (server/ClassPerks)
+Field.onForced = nil :: ((Player, Vector3) -> ())?
 -- Where zone z's clumps stand ({ cf, scale } each). RunBuilder.patches for the plots map; server/Run sets
 -- RunWorld.patches for the generated world.
 Field.spots = nil :: ((number) -> { any })?
@@ -412,6 +414,14 @@ end
 
 local function reveal(p: Patch, luck: number, by: Player?)
 	local mut = Config.rollMutation(rng, luck)
+	-- a class can force one (the Ultimate Gardener's Midas Touch: server/ClassPerks)
+	local forced = if Field.forceMutation then Field.forceMutation(by, mut) else nil
+	if forced then
+		mut = forced
+		if by and Field.onForced then
+			Field.onForced(by, p.part.Position)
+		end
+	end
 	p.mut = mut
 	if mut == "None" then
 		return

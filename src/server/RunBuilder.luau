@@ -339,6 +339,16 @@ local function garageShed(g: Instance, at: CFrame): boolean
 	for _, x in { -6.9, 6.9 } do
 		PropKit.collider(g, at, Vector3.new(x, 5, 0.4), Vector3.new(1.3, 10, 16))
 	end
+	-- the two roof slabs are solid too (owner, 27 Oct: you could hop up from the pump, walk into the roof and fall
+	-- through it)
+	for _, d in g:GetDescendants() do
+		if d:IsA("BasePart") and d.Size.X > 5 and d.Size.Z > 10 and d.Size.Y < 1 then
+			local tilt = math.deg(math.acos(math.clamp(math.abs(d.CFrame.UpVector.Y), 0, 1)))
+			if tilt > 15 and tilt < 60 then
+				d.CanCollide = true
+			end
+		end
+	end
 	plaqueText(g, at * CFrame.new(0, 11.0, -7.27), Vector2.new(7.0, 1.6), "GARAGE", PropKit.TITLE, "SignText")
 	-- the lamp under the roof (soft and warm)
 	local lamp = promptSpot(g, at * CFrame.new(0, 7.9, 1), "LampGlow")

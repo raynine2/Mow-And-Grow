@@ -11,6 +11,7 @@ local State = require(script.Parent.State)
 
 local Input = {}
 local player = Players.LocalPlayer
+local hoverVelocity: (Model, BasePart, Vector3, number, number) -> number
 
 -------------------------------------------------------------------------------------------------------------
 -- tools: hold to keep swinging
@@ -156,6 +157,67 @@ local function currentMower(): (Model?, VehicleSeat?)
 	return nil, nil
 end
 
+-- the ground under a point: its height, or nil (water, a gorge, the edge of the world). Scenery (trees, flowers,
+-- grass) can't be hit by rays, so only the ground, paths, bridges and buildings count.
+local MAX_CLIMB = 4.5 -- a terrace step up to this high is driven over; anything taller is a wall
+local KERB = 1.2 -- anything that isn't the ground itself (an arena hedge, a fence, a planter) is only climbed this high
+local CLEAR = 0.35 -- studs between the chassis and the ground
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+rayParams.IgnoreWater = false
+-- The ray starts at `top` (just above the highest step the mower may climb), never high above the chassis: a roof,
+-- a bridge or a branch overhead isn't ground (a ray from up high made a mower in the garage float up onto the roof).
+local function groundY(at: Vector3, top: number, ignore: { Instance }): (number?, Instance?)
+	rayParams.FilterDescendantsInstances = ignore
+	local hit = workspace:Raycast(Vector3.new(at.X, top, at.Z), Vector3.new(0, -40, 0), rayParams)
+	return hit and hit.Position.Y, hit and hit.Instance
+end
+
+-- the map's own ground (terraces, terrain), as opposed to things standing on it
+local function isGround(inst: Instance?): boolean
+	if not inst then
+		return false
+	end
+	if inst == workspace.Terrain then
+		return true
+	end
+	local world = workspace:FindFirstChild("World")
+	local ground = world and world:FindFirstChild("Ground")
+	return ground ~= nil and inst:IsDescendantOf(ground)
+end
+
+-- the vertical speed that keeps the chassis floating CLEAR above the highest ground under and just ahead of it
+hoverVelocity = function(model: Model, body: BasePart, dir: Vector3, speed: number, dt: number): number
+	local ignore = { model, player.Character :: Instance }
+	local pos = body.Position
+	local half = body.Size.Y / 2
+	local reach = body.Size.Z / 2 + 1.5 + math.abs(speed) * 0.18
+	local fwd = dir * (if speed < 0 then -1 else 1)
+	local side = Vector3.new(-fwd.Z, 0, fwd.X) * (body.Size.X / 2 - 0.4)
+	local top = pos.Y - half + MAX_CLIMB + 0.5
+	local here = groundY(pos, top, ignore)
+	local best: number? = here
+	for _, p in { pos + fwd * reach, pos + fwd * reach + side, pos + fwd * reach - side, pos + fwd * (reach * 0.5) } do
+		local y, inst = groundY(p, top, ignore)
+		-- a step we can climb lifts us early; a wall (or a cliff, or a hedge round an arena, owner test 27 Oct) is
+		-- left to the collision to stop us
+		if y and (not best or y > best) and y - (pos.Y - half) <= (if isGround(inst) then MAX_CLIMB else KERB) then
+			best = y
+		end
+	end
+	if not best then
+		-- nothing below (a gorge, the sea): fall
+		return math.max(-120, body.AssemblyLinearVelocity.Y - workspace.Gravity * dt)
+	end
+	local want = best + half + CLEAR
+	local dy = want - pos.Y
+	if dy < -1.5 then
+		-- going down a step or off a ledge: fall naturally (a little softened), don't snap down
+		return math.max(-80, math.min(body.AssemblyLinearVelocity.Y, 0) - workspace.Gravity * 0.7 * dt)
+	end
+	return math.clamp(dy * 14, -40, 45)
+end
+
 local lastFuel, lastMaxFuel = -1, -1
 RunService.RenderStepped:Connect(function(dt)
 	local model, seat = currentMower()
@@ -196,7 +258,14 @@ RunService.RenderStepped:Connect(function(dt)
 	yaw -= seat.SteerFloat * turnRate * dt * (if speed < 0 then -1 else 1)
 	local rot = CFrame.Angles(0, yaw, 0)
 	local dir = rot.LookVector
-	lv.PlaneVelocity = Vector2.new(dir.X, dir.Z) * speed
+	-- ride over the terraces (owner, 27 Oct: mowers got stuck on the 2-stud ground steps): the mower floats a
+	-- hair above the ground, and it looks ahead along where it's going, so it lifts before a step reaches the
+	-- chassis and drops gently down the other side. Walls, cliffs over MAX_CLIMB and closed gates still stop it.
+	-- (These settings are local: the server's own Drive constraint is untouched, so when you get out it just stops.)
+	lv.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
+	lv.RelativeTo = Enum.ActuatorRelativeTo.World
+	local vy = hoverVelocity(model, body, dir, speed, dt)
+	lv.VectorVelocity = Vector3.new(dir.X * speed, vy, dir.Z * speed)
 	ao.CFrame = rot
 end)
 

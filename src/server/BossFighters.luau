@@ -57,29 +57,21 @@ local function publish(p: Player, f: Fighter?)
 	end
 end
 
--- a knock back and a short stun (also server/Night's crawlers, through Boss.stun)
+-- a knock back (also server/Night's crawlers, through Boss.stun). No stun any more (owner, 27 Oct: "remove the
+-- stun on hit"): you keep moving and can act at once; a hit only pushes you away and shakes the camera. At most one
+-- push every 0.4 s so several hits landing together don't stack.
+local lastKnock: { [Player]: number } = {}
 function BossFighters.stun(player: Player, from: Vector3, power: number?)
 	local char = player.Character
-	local hum = char and char:FindFirstChildOfClass("Humanoid")
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not hum or not root or char:GetAttribute("Stunned") then
+	if not root or os.clock() < (lastKnock[player] or 0) then
 		return
 	end
-	char:SetAttribute("Stunned", true)
-	local speed = hum.WalkSpeed
-	hum.WalkSpeed = 0
+	lastKnock[player] = os.clock() + 0.4
 	local dir = root.Position - from
 	dir = Vector3.new(dir.X, 0, dir.Z)
 	dir = if dir.Magnitude > 0.1 then dir.Unit else Vector3.new(0, 0, -1)
 	Net.send(player, "Fx", "knock", { dir = dir, power = power or 1 })
-	task.delay(BossMoves.STUN, function()
-		if char.Parent then
-			char:SetAttribute("Stunned", nil)
-			if hum.WalkSpeed == 0 and not (fighters[player] and fighters[player].downAt) then
-				hum.WalkSpeed = speed
-			end
-		end
-	end)
 end
 
 local function layDown(p: Player, f: Fighter)

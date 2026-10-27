@@ -1644,7 +1644,9 @@ function ClassDeal.refresh()
 			seal.ImageColor3 = UI.shade(rc, 0.95)
 		end
 	end
-	detQuote.Text = '"' .. (QUOTES[c.id] or "") .. '"'
+	-- the class's own gimmick (owner, 27 Oct) takes the quote's place: it's what makes the class play differently
+	local gim = Config.CLASS_GIMMICK[c.id]
+	detQuote.Text = if gim then "★ " .. string.upper(gim.name) .. ": " .. gim.text else '"' .. (QUOTES[c.id] or "") .. '"'
 	ClassRoom.setAura(rc)
 	UI.clear(perkRows)
 	perkLayout.Parent = perkRows
@@ -1715,7 +1717,7 @@ function ClassDeal.refresh()
 			UI.text(r, statText(s, b), UDim2.fromOffset(70, 22), { pos = UDim2.new(1, -8, 0, 5), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, color = if better then Color3.fromRGB(150, 255, 120) else Color3.new(1, 1, 1), stroke = 1.5 })
 		end
 	end
-	vsQuote.Text = '"' .. (QUOTES[c.id] or "") .. '"'
+	vsQuote.Text = if gim then "★ " .. string.upper(gim.name) .. ": " .. gim.text else '"' .. (QUOTES[c.id] or "") .. '"'
 
 	-- the new deal flips the cards over; a Legendary or rarer card gets a full-screen reveal
 	if newDeal then

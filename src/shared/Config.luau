@@ -675,6 +675,20 @@ Config.CLASSES = {
 	{ id = "LawnLegend", name = "Lawn Legend", rarity = "Mythic", gems = 2700, power = 1.10, speed = 0.28, sell = 0.55, luck = 0.60, carry = 7, product = "ClassLawnLegend" },
 	{ id = "GoatMan", name = "Goat Man", rarity = "Secret", gems = 4000, power = 2.0, speed = 0.40, sell = 1.0, luck = 1.0, carry = 10, product = "ClassGoatMan" },
 }
+-- Each class's own gimmick (owner, 27 Oct: unique, not only stats). server/ClassPerks runs them; the class cards show
+-- these words.
+Config.CLASS_GIMMICK = {
+	WeedPuller = { name = "Root Rip", text = "Every 6th swing rips the clump out in one hit." },
+	Gardener = { name = "Green Thumb", text = "Bundles fly to you from much further away." },
+	Groundskeeper = { name = "Tidy Up", text = "When a clump falls, the 2 nearest clumps take a free hit." },
+	LawnBaron = { name = "Courier", text = "A full bag sells itself for 80%, wherever you are (every 45 s)." },
+	HedgeReaper = { name = "Reap Wave", text = "Every 8th swing sends a wave that hits every clump around you." },
+	MowerSpecialist = { name = "Turbo Deck", text = "Ride-on mowers cut 40% wider, drive 20% faster, burn half the fuel." },
+	GrassTitan = { name = "Titan Stomp", text = "Land from a jump to stomp: clumps around you take 2 hits (4 s cooldown)." },
+	UltimateGardener = { name = "Midas Touch", text = "Every 20th clump you uncover is a mutation (Golden or better)." },
+	LawnLegend = { name = "Hot Streak", text = "Cut fast: each clump in a streak adds +5% power, up to +60%." },
+	GoatMan = { name = "Graze", text = "You eat grass as you walk: clumps around you take a hit every 0.5 s." },
+}
 Config.DEFAULT_CLASS = "WeedPuller"
 Config.STOCK_WINDOW = 300 -- seconds between booth restocks
 Config.STOCK_SLOTS = 4

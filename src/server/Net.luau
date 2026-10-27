@@ -22,6 +22,7 @@ local INBOUND = {
 	"Setting", -- (key, value)              peaceful (lobby)
 	"Graphics", -- (potato)                 Potato Mode on/off (saved; the client does the rest)
 	"Boss", -- (action)                     "skip": vote to skip the boss cutscene (server/Boss)
+	"ClassAct", -- (action)                 "stomp": a Grass Titan landed from a jump (server/ClassPerks)
 }
 -- server -> client
 local OUTBOUND = {

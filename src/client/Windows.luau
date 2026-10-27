@@ -21,6 +21,10 @@ end
 
 local function perkText(c): { string }
 	local parts = {}
+	local gim = Config.CLASS_GIMMICK and Config.CLASS_GIMMICK[c.id]
+	if gim then
+		table.insert(parts, "★ " .. gim.name .. ": " .. gim.text)
+	end
 	if c.power then
 		table.insert(parts, "+" .. math.floor(c.power * 100) .. "% Power")
 	end

@@ -2,7 +2,10 @@
 -- open areas, skip to night). Only shows for players the server marked IsDev (everyone in Studio; live servers:
 -- Config.ADMINS or the game's owner). Open with F2 or the red DEV button. The server checks every request again.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+
+local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
@@ -26,6 +29,10 @@ local BUTTONS = {
 	{ "OPEN ALL AREAS", "allAreas", Color3.fromRGB(150, 90, 220) },
 	{ "DAY / NIGHT", "night", Color3.fromRGB(60, 70, 140) },
 }
+-- a free egg of every kind in Config.EGGS (hatched by the server with the normal hatch show)
+for _, egg in Config.EGGS do
+	table.insert(BUTTONS, { "GIVE " .. egg.name:upper(), "egg", egg.color, egg.id })
+end
 
 local built = false
 local function build()
@@ -33,10 +40,10 @@ local function build()
 		return
 	end
 	built = true
-	local w = UI.window("Dev", "Dev", nil, { size = Vector2.new(780, 520), grid = Vector2.new(220, 78) })
+	local w = UI.window("Dev", "Dev", nil, { size = Vector2.new(780, 620), grid = Vector2.new(220, 78) })
 	for i, b in BUTTONS do
 		local btn = UI.button(w.list, b[1], b[3], UDim2.fromOffset(220, 78), function()
-			State.fire("Dev", b[2])
+			State.fire("Dev", b[2], b[4])
 		end, { name = b[2] })
 		btn.LayoutOrder = i
 	end

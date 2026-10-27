@@ -155,10 +155,11 @@ end
 -- The class booth as the ForgeGUI log lodge (solid). No vendor (the owner took him out); in front of the steps a
 -- little patch of night sky (LobbyPads.space) where the classes are browsed.
 local function classLodge(m: Instance, at: CFrame, _purple: Color3): TextLabel?
-	if not Models.placeForge("lodge", m, at, { width = 30 }, true) then
+	local lodge = Models.placeForge("lodge", m, at, { width = 30 }, true)
+	if not lodge then
 		return nil
 	end
-	PropKit.collider(m, at, Vector3.new(0, 11.5, 0), Vector3.new(29, 23, 25))
+	PropKit.solidForge(lodge) -- (through its own mesh: the old box was smaller than the roof, owner 27 Oct)
 	if Config.WORLD_GEN then
 		LobbyPads.space(m, at * CFrame.new(0, 0, -20), 16, 6)
 	else
@@ -222,9 +223,10 @@ local function garageCabin(world: Instance)
 	local pos = Vector3.new(46, FLOOR_Y, -22)
 	local at = CFrame.lookAt(pos, pos - Vector3.xAxis)
 	local s = 0.85
-	if Models.placeForge("barn", m, at * CFrame.new(0, 0, 2), { width = 22 }, true) then
-		-- the ForgeGUI red barn (solid), a little back so the turntable has room in front
-		PropKit.collider(m, at, Vector3.new(0, 9, 3.5), Vector3.new(21, 18, 20))
+	local barn = Models.placeForge("barn", m, at * CFrame.new(0, 0, 2), { width = 22 }, true)
+	if barn then
+		-- the ForgeGUI red barn (solid through its mesh), a little back so the turntable has room in front
+		PropKit.solidForge(barn)
 	elseif not cabin(m, at, s) then
 		oldGarage(world)
 		return
@@ -283,7 +285,7 @@ local function forgeRewards(m: Instance, at: CFrame)
 	for _, x in { 3.6, -3.6 } do
 		LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(x, 5.6, -2.4), Vector3.new(3, 2, 2), "RewardsFX"), "LobbyFX", { Kind = "sparkle", Color = CYAN })
 	end
-	PropKit.collider(m, at, Vector3.new(0, 6.9, -0.7), Vector3.new(12.6, 13.8, 5.6))
+	PropKit.solidForge(m)
 	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -6.6), "RewardsPrompt"), "Open", "Free Rewards", "Rewards", 14)
 end
 

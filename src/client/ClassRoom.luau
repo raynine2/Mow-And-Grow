@@ -119,7 +119,10 @@ end
 -- the star-box: six far walls, each painted with stars (a few bright ones flare) and soft nebula clouds
 -------------------------------------------------------------------------------------------------------------
 local FACES = {
-	{ CFrame.new(0, 0, 460), Vector3.new(1000, 1000, 2), Enum.NormalId.Front }, -- behind the avatar (the main view)
+	-- behind the avatar (the main view). The class camera sways enough to see the side walls too, so the four upright
+	-- walls share one look (same top-to-bottom glow, same nebula density): a sparser, darker side wall read as a hard
+	-- dark band down both screen edges (the room's "lighting" bug, owner 27 Oct)
+	{ CFrame.new(0, 0, 459), Vector3.new(2800, 1500, 2), Enum.NormalId.Front },
 	{ CFrame.new(0, 0, -460), Vector3.new(1000, 1000, 2), Enum.NormalId.Back },
 	{ CFrame.new(460, 0, 0), Vector3.new(2, 1000, 1000), Enum.NormalId.Left },
 	{ CFrame.new(-460, 0, 0), Vector3.new(2, 1000, 1000), Enum.NormalId.Right },
@@ -135,7 +138,9 @@ local function starWall(m: Instance, i: number, rng: Random)
 	gui.Face = f[3]
 	gui.LightInfluence = 0
 	gui.Brightness = 1.6
-	gui.CanvasSize = Vector2.new(1400, 1400)
+	local cw = if i == 1 then 2600 else 1400
+	local ch = if i == 1 then 1400 else 1400
+	gui.CanvasSize = Vector2.new(cw, ch)
 	gui.Parent = wall
 	-- a deep violet glow over the main wall, darker at the rim (the "sky" isn't flat black)
 	local base = Instance.new("Frame")
@@ -144,11 +149,11 @@ local function starWall(m: Instance, i: number, rng: Random)
 	base.BackgroundColor3 = Color3.new(1, 1, 1)
 	local bg = Instance.new("UIGradient")
 	bg.Color = ColorSequence.new(rgb(26, 14, 60), rgb(4, 3, 14))
-	bg.Rotation = if i == 1 then 90 else rng:NextInteger(0, 360)
+	bg.Rotation = if i <= 4 then 90 else rng:NextInteger(0, 360)
 	bg.Parent = base
 	base.Parent = gui
 	-- nebula clouds: big soft glows and a faint plasma texture, each slowly turning and breathing
-	for k = 1, if i == 1 then 6 else 3 do
+	for k = 1, if i == 1 then 11 elseif i <= 4 then 7 else 3 do
 		local c = NEBULA[rng:NextInteger(1, #NEBULA)]
 		local sz = rng:NextInteger(500, 1100)
 		local neb = Instance.new("ImageLabel")
@@ -157,7 +162,7 @@ local function starWall(m: Instance, i: number, rng: Random)
 		neb.ImageColor3 = c
 		neb.ImageTransparency = if k % 3 == 0 then 0.82 else 0.62
 		neb.Size = UDim2.fromOffset(sz, sz * rng:NextNumber(0.55, 0.9))
-		neb.Position = UDim2.fromOffset(rng:NextInteger(100, 1300), rng:NextInteger(150, 1250))
+		neb.Position = UDim2.fromOffset(rng:NextInteger(100, cw - 100), rng:NextInteger(150, ch - 150))
 		neb.AnchorPoint = Vector2.new(0.5, 0.5)
 		neb.Rotation = rng:NextInteger(0, 360)
 		neb.Parent = gui
@@ -165,12 +170,12 @@ local function starWall(m: Instance, i: number, rng: Random)
 		TweenService:Create(neb, TweenInfo.new(rng:NextNumber(5, 9), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { ImageTransparency = math.min(0.95, neb.ImageTransparency + 0.12) }):Play()
 	end
 	-- stars: many tiny dots, a few bright twinkling flares
-	for _ = 1, if i == 1 then 260 else 150 do
+	for _ = 1, if i == 1 then 480 elseif i <= 4 then 230 else 150 do
 		local d = Instance.new("Frame")
 		d.BorderSizePixel = 0
 		local s = if rng:NextNumber() < 0.85 then rng:NextInteger(2, 3) else rng:NextInteger(4, 5)
 		d.Size = UDim2.fromOffset(s, s)
-		d.Position = UDim2.fromOffset(rng:NextInteger(0, 1400), rng:NextInteger(0, 1400))
+		d.Position = UDim2.fromOffset(rng:NextInteger(0, cw), rng:NextInteger(0, ch))
 		d.BackgroundColor3 = if rng:NextNumber() < 0.2 then rgb(190, 215, 255) elseif rng:NextNumber() < 0.15 then rgb(255, 225, 200) else Color3.new(1, 1, 1)
 		d.BackgroundTransparency = rng:NextNumber(0, 0.45)
 		local cr = Instance.new("UICorner")
@@ -178,7 +183,7 @@ local function starWall(m: Instance, i: number, rng: Random)
 		cr.Parent = d
 		d.Parent = gui
 	end
-	for _ = 1, if i == 1 then 14 else 6 do
+	for _ = 1, if i == 1 then 26 elseif i <= 4 then 12 else 6 do
 		local fl = Instance.new("ImageLabel")
 		fl.BackgroundTransparency = 1
 		fl.Image = Tex.Star4
@@ -186,7 +191,7 @@ local function starWall(m: Instance, i: number, rng: Random)
 		local s = rng:NextInteger(14, 28)
 		fl.Size = UDim2.fromOffset(s, s)
 		fl.AnchorPoint = Vector2.new(0.5, 0.5)
-		fl.Position = UDim2.fromOffset(rng:NextInteger(40, 1360), rng:NextInteger(40, 1360))
+		fl.Position = UDim2.fromOffset(rng:NextInteger(40, cw - 40), rng:NextInteger(40, ch - 40))
 		fl.Parent = gui
 		TweenService:Create(fl, TweenInfo.new(rng:NextNumber(0.8, 1.8), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, rng:NextNumber(0, 1.5)), { ImageTransparency = 0.85, Size = UDim2.fromOffset(s * 0.4, s * 0.4), Rotation = 45 }):Play()
 	end
@@ -333,13 +338,27 @@ local function build()
 	}))
 	auraLight = light(core, rgb(170, 90, 255), 8, 1)
 
-	-- lights: a soft key from the camera side, a violet rim back-left, a cyan rim back-right, a warm planet bounce
+	-- lights: a key from the camera side, a violet rim back-left, a cyan rim back-right, a warm planet bounce, and a
+	-- soft spot on the avatar's front (owner, 27 Oct: the room's lighting needed fixing: the avatar was a dark
+	-- silhouette with only its white bits glowing)
 	local function lamp(pos: Vector3, color: Color3, range: number, brightness: number)
 		local p = part(m, Vector3.one, CFrame.new(pos), Color3.new(1, 1, 1))
 		p.Transparency = 1
 		light(p, color, range, brightness)
 	end
-	lamp(Vector3.new(0, 9, -9), rgb(255, 235, 255), 16, 0.8)
+	lamp(Vector3.new(0, 9, -9), rgb(255, 240, 250), 20, 1)
+	do
+		local p = part(m, Vector3.one, CFrame.lookAt(Vector3.new(1.5, 6.5, -7), FLOAT), Color3.new(1, 1, 1))
+		p.Transparency = 1
+		local spot = Instance.new("SpotLight")
+		spot.Face = Enum.NormalId.Front
+		spot.Angle = 70
+		spot.Range = 16
+		spot.Brightness = 0.9
+		spot.Color = rgb(255, 244, 236)
+		spot.Shadows = false
+		spot.Parent = p
+	end
 	lamp(Vector3.new(-6, 8, 5), rgb(160, 90, 255), 12, 1.3)
 	lamp(Vector3.new(6, 6, 5), rgb(60, 210, 255), 12, 1.1)
 	lamp(Vector3.new(4, -2, -2), rgb(255, 150, 90), 9, 0.6)
@@ -527,7 +546,7 @@ end
 local function spaceLighting()
 	-- pause client/BiomeLight, or it puts the zone's sun (and bloom) back every frame and the avatar blows out white
 	player:SetAttribute("BiomeLightOff", true)
-	setLit(Lighting, { ClockTime = 0, Brightness = 0, Ambient = rgb(70, 60, 110), OutdoorAmbient = rgb(55, 45, 100), FogEnd = 100000, FogStart = 99999 })
+	setLit(Lighting, { ClockTime = 0, Brightness = 0, Ambient = rgb(110, 100, 150), OutdoorAmbient = rgb(90, 80, 135), ExposureCompensation = 0, FogEnd = 100000, FogStart = 99999 })
 	for _, c in Lighting:GetChildren() do
 		if c:IsA("Atmosphere") then
 			setLit(c, { Density = 0, Haze = 0, Glare = 0 })

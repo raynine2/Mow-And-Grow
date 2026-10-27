@@ -19,6 +19,7 @@ local SellFx = require(script.Parent.SellFx)
 local Confetti = require(script.Parent.Confetti)
 local BossFx = require(script.Parent.BossFx)
 local Moments = require(script.Parent.Moments)
+local HitMeter = require(script.Parent.HitMeter) -- (28 Oct) the soft green hit meter under the crosshair
 
 local Fx = {}
 local player = Players.LocalPlayer
@@ -463,6 +464,7 @@ hpText.ZIndex = 3
 local hpShownAt = 0
 function Fx.hideHp()
 	hpGui.Enabled = false
+	HitMeter.hide()
 end
 function Fx.hpBar(pos: Vector3, label: string, hp: number, max: number)
 	hpAnchor.CFrame = CFrame.new(pos)
@@ -479,8 +481,10 @@ function Fx.hpBar(pos: Vector3, label: string, hp: number, max: number)
 end
 
 handlers.chip = function(d)
+	-- (owner, 28 Oct: "copy that [Chop's hit progress] but make it look soothing"): the HitMeter under the
+	-- crosshair replaces the orange billboard bar (Fx.hpBar stays for anything else that wants it)
 	if d.label then
-		Fx.hpBar(d.hitPos or d.pos, d.label, d.hp, d.max)
+		HitMeter.hit(d)
 	end
 	HitFx.lean(d.model, d.from, d.ratio)
 	-- your swing already drew this hit the moment it landed (HitFx prediction); auto tools and extra targets
@@ -696,6 +700,14 @@ handlers.zoneOpen = function(d)
 end
 
 handlers.runComplete = function(d)
+	if d.ending then
+		-- the last boss fell: the ending film, the credits and the end screen (client/Ending)
+		Sound.play("victory")
+		task.spawn(function()
+			require(script.Parent.Ending).play(d)
+		end)
+		return
+	end
 	local time = if (d.time or 0) > 0 then "  Time " .. Format.clock(d.time) .. (if d.best then "  NEW BEST!" else "") else ""
 	Fx.banner("RUN COMPLETE!", C.yellow, 10, ("+%d gems.%s Back to the lobby soon..."):format(d.gems or 0, time))
 	Sound.play("victory")

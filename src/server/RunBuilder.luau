@@ -400,17 +400,22 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- A Giant Grass Shredder (Blender model) at `at` (drum toward at.LookVector) with its log-framed sell pad in
 -- front of the hopper. Every shredder is a sell spot (info.sellPads); the first one is the hub's.
+-- The ForgeGUI shredder's gear and crank are on its -X side: turned a quarter so they face the sell pad, where you
+-- stand (owner, 27 Oct: "rotate the machine to the right spot where you stand"; it stood side-on to the pad).
+local SHREDDER_TURN = CFrame.Angles(0, math.rad(90), 0)
+
 local function shredderAt(parent: Instance, info, at: CFrame, name: string): boolean
 	local s = PropKit.folder(name, parent)
-	if not Models.place("shredder", s, at, 1.15, true) then
+	local forge = Models.isForge("shredder")
+	local machine = if forge then at * SHREDDER_TURN else at -- (the pad stays where it was: `at`)
+	if not Models.place("shredder", s, machine, 1.15, true) then
 		s:Destroy()
 		return false
 	end
-	local forge = Models.isForge("shredder")
 	-- the ForgeGUI shredder (9 wide, 8.5 deep, its hopper on top) or the older Blender one
-	PropKit.collider(s, at, if forge then Vector3.new(0, 5, -1.55) else Vector3.new(0, 5, -0.7), if forge then Vector3.new(9, 10, 8.4) else Vector3.new(7.8, 10, 14.5), 1.15)
-	local mouth = (at * CFrame.new((if forge then Vector3.new(0, 9.5, -1) else Vector3.new(0.3, 8.8, 4.8)) * 1.15)).Position
-	local out = (at * CFrame.new((if forge then Vector3.new(0, 1.2, -6.6) else Vector3.new(0, 1.2, -8.6)) * 1.15)).Position
+	PropKit.collider(s, machine, if forge then Vector3.new(0, 5, -1.55) else Vector3.new(0, 5, -0.7), if forge then Vector3.new(9, 10, 8.4) else Vector3.new(7.8, 10, 14.5), 1.15)
+	local mouth = (machine * CFrame.new((if forge then Vector3.new(0, 9.5, -1) else Vector3.new(0.3, 8.8, 4.8)) * 1.15)).Position
+	local out = (machine * CFrame.new((if forge then Vector3.new(0, 1.2, -6.6) else Vector3.new(0, 1.2, -8.6)) * 1.15)).Position
 	local padAt = at * CFrame.new(0, 0, 16.5)
 	local sellPos = padAt.Position
 	if Models.place("sell_pad", s, padAt, 1, true) then
@@ -552,6 +557,7 @@ end
 -- The hub's buildings (tool shop, bag stand, garage + pump, shredder, spawn) around (0, 0, -48), for another map
 -- to use (server/RunWorld puts them in the generated world's village). Set info.meshGround to skip the Terrain.
 RunBuilder.hub = hub
+RunBuilder.gasPump = gasPump -- (server/Outposts: a pump in every area's camp)
 
 -------------------------------------------------------------------------------------------------------------
 -- the world: a 3 x 3 grid of fenced plots, like Chop A Forest's woods (see Config.MAP)

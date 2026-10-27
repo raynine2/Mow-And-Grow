@@ -291,6 +291,7 @@ local function damage(player: Player, c: Cluster, amount: number, _luck: number,
 			model = c.model,
 			ratio = c.hp / c.maxHp,
 			from = from,
+			dealt = amount, -- (28 Oct) client/HitMeter shows the bite this hit took
 		})
 	end
 	return true

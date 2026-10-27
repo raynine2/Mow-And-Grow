@@ -125,11 +125,49 @@ local function unlock(z: number, gateShow: number?)
 	pushWorld()
 end
 
-local function completeRun()
+-- How long the server waits after the last boss for the ending film, the credits and the end screen before it
+-- sends everyone still there back to the lobby (each player can go sooner with PLAY AGAIN: "Seen" "ending").
+local ENDING_WAIT = 170
+local endingOpen = false
+local sentBack: { [Player]: boolean } = {}
+
+-- Back to the lobby, one player (PLAY AGAIN on the end screen) or everyone left.
+local function sendToLobby(players: { Player })
+	local list = {}
+	for _, p in players do
+		if p.Parent and not sentBack[p] then
+			sentBack[p] = true
+			table.insert(list, p)
+		end
+	end
+	if #list == 0 then
+		return
+	end
+	if RunService:IsStudio() then
+		for _, p in list do
+			Net.notify(p, "(Studio) Teleports don't work here. Stop and start the test to play again.", "yellow")
+		end
+		return
+	end
+	local ok, err = pcall(function()
+		TeleportService:TeleportAsync(game.PlaceId, list)
+	end)
+	if not ok then
+		warn("[Run] teleport back to lobby failed: " .. tostring(err))
+		for _, p in list do
+			sentBack[p] = nil
+			Net.notify(p, "Couldn't send you back to the lobby. Please rejoin.", "red")
+		end
+	end
+end
+
+-- `ending`: the last area's boss fell, so every client plays the ending (client/Ending) first.
+local function completeRun(ending: boolean?)
 	if completing then
 		return
 	end
 	completing = true
+	endingOpen = ending == true
 	for _, p in Players:GetPlayers() do
 		local data = PlayerData.get(p)
 		if data then
@@ -142,25 +180,12 @@ local function completeRun()
 			local best = if Night.peaceful or skipped then nil else BestTimes.submit(p, data, time)
 			data.run = nil -- coins, tools and coin mowers end with the run
 			PlayerData.changed(p)
-			Net.send(p, "Fx", "runComplete", { gems = gems, time = time, best = best })
+			Net.send(p, "Fx", "runComplete", { gems = gems, time = time, best = best, ending = endingOpen, wait = if endingOpen then ENDING_WAIT else 12 })
 			task.spawn(PlayerData.save, p)
 		end
 	end
-	task.wait(12)
-	if RunService:IsStudio() then
-		Net.notifyAll("(Studio) Teleports don't work here. Stop and start the test to play again.", "yellow")
-		return
-	end
-	local players = Players:GetPlayers()
-	if #players > 0 then
-		local ok, err = pcall(function()
-			TeleportService:TeleportAsync(game.PlaceId, players)
-		end)
-		if not ok then
-			warn("[Run] teleport back to lobby failed: " .. tostring(err))
-			Net.notifyAll("Couldn't send you back to the lobby. Please rejoin.", "red")
-		end
-	end
+	task.wait(if endingOpen then ENDING_WAIT else 12)
+	sendToLobby(Players:GetPlayers())
 end
 
 -- An area is mowed bare (Chop A Forest: the next wood unlocks). Everyone gets the area's reward, its stubble
@@ -226,7 +251,7 @@ local function onBossDefeated(z: number, _damageBy: { [Player]: number }, noHit:
 	end
 	Field.clearStubble(z) -- the stubble puffs away and the whole area's lawn is mowed in stripes
 	if z >= #Config.ZONES then
-		task.spawn(completeRun)
+		task.spawn(completeRun, true) -- the last boss: the ending film and credits first
 	else
 		-- the gate sinks into the ground when the banner shows (3 s after the boss falls, for ~2.5 s)
 		unlock(z + 1, 6)
@@ -249,10 +274,11 @@ local function warnBagFull(player: Player)
 	end
 end
 
--- Bundles in the bag plus bundles still on the ground: you can't cut more than you can carry.
-local function bagFull(player: Player): boolean
-	local ground = Loot.count(player)
-	return Carry.count(player) + ground >= Carry.capacity(player) or ground >= Config.LOOT.maxOnGround
+-- Cutting only stops when Config.LOOT.maxOnGround of your bundles lie on the ground. A full bag doesn't stop it
+-- (owner, 27 Oct: "you should be able to chop things when the backpack is full but not grab them, like Chop A
+-- Forest"): the bundles drop and wait for you, and picking them up is refused until there's room (server/Loot).
+local function groundFull(player: Player): boolean
+	return Loot.count(player) >= Config.LOOT.maxOnGround
 end
 
 -- A patch was cut: its bundle drops on the ground (two with Bigger Bundle luck, sometimes a gem too) for the
@@ -266,9 +292,12 @@ local function onCut(player: Player, patch): boolean
 		data.stats.cut += 1
 		return true
 	end
-	if bagFull(player) then
+	if groundFull(player) then
 		warnBagFull(player)
 		return false
+	end
+	if Carry.isFull(player) then
+		warnBagFull(player) -- it still drops; the bag bar shakes and says to sell
 	end
 	local stats = Stats.compute(player, data)
 	local pos = patch.part.Position
@@ -378,7 +407,7 @@ local function onSwing(player: Player, look: any)
 	if typeof(look) == "Vector3" and look.Magnitude > 0.5 and look.Magnitude < 1.5 and look.X == look.X then
 		aim = look.Unit
 	end
-	if bagFull(player) then
+	if groundFull(player) then
 		warnBagFull(player)
 	else
 		Field.hitAim(player, root.Position, aim, def.radius, cutDamage, def.targets, stats.luck)
@@ -403,7 +432,7 @@ local function autoTick()
 				if fuel > 0 then
 					local pos = mower.PrimaryPart.Position
 					local dmg = mdef.damage * stats.power * ClassPerks.powerMult(player)
-					if bagFull(player) then
+					if groundFull(player) then
 						warnBagFull(player)
 					else
 						Field.hit(player, pos, mdef.radius * ClassPerks.mower(player).radius, dmg, nil, stats.luck)
@@ -414,7 +443,7 @@ local function autoTick()
 				local root = rootOf(player)
 				if def and def.kind == "auto" and root then
 					local dmg = def.damage * stats.power * ClassPerks.powerMult(player)
-					if bagFull(player) then
+					if groundFull(player) then
 						warnBagFull(player)
 					else
 						Field.hit(player, root.Position, def.radius, dmg, nil, stats.luck)
@@ -691,7 +720,7 @@ function Run.start()
 		if not data or not data.run or completing then
 			return 0
 		end
-		if bagFull(player) then
+		if groundFull(player) then
 			warnBagFull(player)
 			return 0
 		end
@@ -764,7 +793,9 @@ function Run.start()
 	end)
 	Net.on("Seen", 1, function(player, what, id)
 		local data = PlayerData.get(player)
-		if what == "intro" and data and data.run then
+		if what == "ending" and id == "again" and endingOpen then
+			sendToLobby({ player }) -- PLAY AGAIN on the end screen: back to the lobby for a new run
+		elseif what == "intro" and data and data.run then
 			data.run.introSeen = true
 		elseif what == "news" and data and type(id) == "number" then
 			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)

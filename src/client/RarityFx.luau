@@ -1290,37 +1290,47 @@ do
 end
 
 local banner: Frame? = nil
+-- The "IN STOCK" banner, on the game's own hanging wooden sign (ui_banner, like the first-run coach card) instead of
+-- a dark neon pill (owner, 27 Oct: "make the UI fitting"): the class's picture on the left, "AT THE CLASSES STAND"
+-- in yellow, the title in the rarity's shimmer, then the class, its gimmick and the time left.
 local function showBanner(c, left: number)
 	if banner then
 		banner:Destroy()
 	end
-	local rc = rarityColor(c.rarity)
+	local UI = require(script.Parent.UI)
+	local Skin = require(script.Parent.Skin)
+	local W, H = 540, 132
 	local f = Instance.new("Frame")
 	f.Name = "Banner"
 	f.AnchorPoint = Vector2.new(0.5, 0)
-	f.Size = UDim2.fromOffset(440, 96)
-	f.Position = UDim2.new(0.5, 0, 0, -120)
-	f.BackgroundColor3 = rgb(18, 10, 30)
-	f.BackgroundTransparency = 0.08
+	f.Size = UDim2.fromOffset(W, H)
+	f.Position = UDim2.new(0.5, 0, 0, -H - 30)
+	f.BackgroundTransparency = 1
 	f.Parent = gui
 	banner = f
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 18)
-	corner.Parent = f
-	local st = Instance.new("UIStroke")
-	st.Thickness = 4
-	st.Color = WHITE
-	st.Parent = f
-	local sg = shimmer(st :: any, c.rarity)
-	local title = label(f, "★ " .. string.upper(c.rarity) .. " CLASS IN STOCK ★", 30, WHITE, UDim2.new(0.5, 0, 0, 10), UDim2.new(1, -20, 0, 36))
+	do
+		-- the same size on every screen as the rest of the interface (narrow phones get it smaller)
+		local cam = workspace.CurrentCamera
+		local sc = Instance.new("UIScale")
+		sc.Scale = if cam then math.clamp(cam.ViewportSize.X / 1100, 0.6, 1) else 1
+		sc.Parent = f
+	end
+	local _, face = Skin.frame(f, "ui_banner", Vector2.new(W, H), { name = "Sign" })
+	local icon = if Config.ICONS and Config.ICONS["cc_" .. c.id] then "cc_" .. c.id else "card_" .. string.lower(c.rarity)
+	local pic = UI.icon(face, icon, 76, UDim2.new(0, 6, 0.5, 0), Vector2.new(0, 0.5))
+	Skin.popIn(pic, 0.25)
+	UI.text(face, "AT THE CLASSES STAND", UDim2.fromOffset(240, 18), { pos = UDim2.fromOffset(92, 2), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(255, 220, 90), stroke = 2 })
+	local title = UI.text(face, string.upper(c.rarity) .. " CLASS IN STOCK!", UDim2.new(1, -98, 0, 34), { pos = UDim2.fromOffset(92, 20), align = Enum.TextXAlignment.Left, stroke = 3.5 })
 	local tg = shimmer(title, c.rarity)
 	local gim = Config.CLASS_GIMMICK and Config.CLASS_GIMMICK[c.id]
 	local sub = c.name .. (if gim then "  ·  " .. gim.name else "") .. "  ·  gone in " .. Format.clock(left)
-	label(f, sub, 19, rc:Lerp(WHITE, 0.55), UDim2.new(0.5, 0, 0, 52), UDim2.new(1, -20, 0, 24))
-	local hint = label(f, "Classes stand", 13, rgb(200, 190, 230), UDim2.new(0.5, 0, 1, -18), UDim2.new(1, -20, 0, 14))
-	hint.TextTransparency = 0.2
-	-- drop in with a bounce, shimmer for a while, then fold up into the chip
-	TweenService:Create(f, TweenInfo.new(0.55, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0.5, 0, 0, 44) }):Play()
+	local subText = UI.text(face, sub, UDim2.new(1, -100, 0, 24), { pos = UDim2.fromOffset(92, 56), align = Enum.TextXAlignment.Left, stroke = 2 })
+	subText.TextScaled = true
+	local subMax = Instance.new("UITextSizeConstraint")
+	subMax.MaxTextSize = 21
+	subMax.Parent = subText
+	-- drop in with a bounce, shimmer for a while, then go back up
+	TweenService:Create(f, TweenInfo.new(0.55, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.new(0.5, 0, 0, 40) }):Play()
 	Sound.play(if RANK[c.rarity] >= RANK.Mythic then "reveal" else "rareChime", 0, 0.8)
 	task.delay(0.15, function()
 		Sound.play("whoosh", 0.05, 0.6)
@@ -1332,16 +1342,13 @@ local function showBanner(c, left: number)
 			conn:Disconnect()
 			return
 		end
-		local k = ((os.clock() - t0) * 0.6) % 2 - 1
-		sg.Offset = Vector2.new(k, 0)
-		tg.Offset = Vector2.new(-k, 0)
-		sg.Rotation = (os.clock() - t0) * 40 % 360
+		tg.Offset = Vector2.new(((os.clock() - t0) * 0.6) % 2 - 1, 0)
 	end)
 	task.delay(7, function()
 		if banner ~= f then
 			return
 		end
-		TweenService:Create(f, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(0.5, 0, 0, -120) }):Play()
+		TweenService:Create(f, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(0.5, 0, 0, -H - 30) }):Play()
 		task.delay(0.45, function()
 			f:Destroy()
 			if banner == f then

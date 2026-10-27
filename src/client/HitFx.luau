@@ -898,8 +898,9 @@ function HitFx.swing(toolId: string?, look: Vector3?)
 	end
 	local root = myRoot()
 	local d = State.data
-	-- no swing effect when the bag is full (bundles still on the ground count too)
-	if not def or def.kind ~= "swing" or not root or not d or not d.run or (not d.endless and d.run.carry + (d.run.ground or 0) >= (d.carryMax or 1)) then
+	-- a full bag doesn't stop chopping (server/Run): no swing effect only when the ground holds as many of your
+	-- bundles as it can (Config.LOOT.maxOnGround)
+	if not def or def.kind ~= "swing" or not root or not d or not d.run or (d.run.ground or 0) >= Config.LOOT.maxOnGround then
 		return
 	end
 	local m = aimedClump(root.Position, look or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector) or root.CFrame.LookVector, def.radius)

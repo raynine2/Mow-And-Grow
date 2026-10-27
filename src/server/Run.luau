@@ -178,9 +178,20 @@ local function completeRun(ending: boolean?)
 			-- a Peaceful Mode run doesn't count for the BEST TIMES board, nor one joined part-way through
 			local skipped = data.run ~= nil and data.run.skipped == true
 			local best = if Night.peaceful or skipped then nil else BestTimes.submit(p, data, time)
+			-- (report #16) a run medal for a fast finish (same rules as BEST TIMES), and its Roblox badge once made
+			local medal = if Night.peaceful or skipped then nil else Config.runMedal(time)
+			if medal then
+				data.medals = data.medals or {}
+				data.medals[medal.id] = (data.medals[medal.id] or 0) + 1
+				if medal.badge ~= 0 then
+					task.spawn(pcall, function()
+						game:GetService("BadgeService"):AwardBadge(p.UserId, medal.badge)
+					end)
+				end
+			end
 			data.run = nil -- coins, tools and coin mowers end with the run
 			PlayerData.changed(p)
-			Net.send(p, "Fx", "runComplete", { gems = gems, time = time, best = best, ending = endingOpen, wait = if endingOpen then ENDING_WAIT else 12 })
+			Net.send(p, "Fx", "runComplete", { gems = gems, time = time, best = best, medal = medal and medal.id, ending = endingOpen, wait = if endingOpen then ENDING_WAIT else 12 })
 			task.spawn(PlayerData.save, p)
 		end
 	end
@@ -321,6 +332,13 @@ local function onCut(player: Player, patch): boolean
 	ClassPerks.cut(player, pos) -- Tidy Up, Hot Streak
 	data.stats.cut += 1
 	local m = Config.mutation(patch.mut or "None")
+	-- (report #2) a few coins on the spot for every clump (Chop A Forest pays per hit): the HUD counter ticks up
+	if Config.CUT_COINS > 0 then
+		local pay = math.max(1, math.floor(Config.ZONES[patch.z].value * (m.mult or 1) * count * Config.CUT_COINS * stats.sell + 0.5))
+		data.run.coins += pay
+		data.stats.coinsEarned = (data.stats.coinsEarned or 0) + pay
+		PlayerData.changed(player)
+	end
 	if m.id ~= "None" then
 		data.stats.rare = (data.stats.rare or 0) + 1
 	end
@@ -347,7 +365,9 @@ Loot.reach = function(player: Player)
 	end
 	local mower, mdef = Mowers.driving(player)
 	if mower and mdef and mower.PrimaryPart then
-		table.insert(points, { pos = mower.PrimaryPart.Position, radius = mdef.radius * ClassPerks.mower(player).radius + 4 })
+		-- (a zero-turn's wide swath is out front: Config.MOWERS swath / ahead)
+		local at = (mower.PrimaryPart.CFrame * CFrame.new(0, 0, -(mdef.ahead or 0))).Position
+		table.insert(points, { pos = at, radius = mdef.radius * (mdef.swath or 1) * ClassPerks.mower(player).radius + 4 })
 	end
 	return points
 end
@@ -430,12 +450,13 @@ local function autoTick()
 			if mower and mdef and mower.PrimaryPart then
 				local fuel = mower:GetAttribute("Fuel") or 0
 				if fuel > 0 then
-					local pos = mower.PrimaryPart.Position
+					-- (report #12) a zero-turn mows a wide swath centred on its deck out front (Config.MOWERS swath / ahead)
+					local pos = (mower.PrimaryPart.CFrame * CFrame.new(0, 0, -(mdef.ahead or 0))).Position
 					local dmg = mdef.damage * stats.power * ClassPerks.powerMult(player)
 					if groundFull(player) then
 						warnBagFull(player)
 					else
-						Field.hit(player, pos, mdef.radius * ClassPerks.mower(player).radius, dmg, nil, stats.luck)
+						Field.hit(player, pos, mdef.radius * (mdef.swath or 1) * ClassPerks.mower(player).radius, dmg, nil, stats.luck)
 					end
 				end
 			else
@@ -462,6 +483,31 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- selling + shops
 -------------------------------------------------------------------------------------------------------------
+-- (report #1) A first-timer's first sale: the loaned starter tool goes back (they hold their own best one) and,
+-- a moment later, once the coins have flown, the intro film plays (client/Intro waits for run.tutorial to go).
+local function endTutorial(player: Player, data)
+	local lent = data.run.loaner
+	data.run.loaner = nil
+	if lent then
+		local name = lent
+		for _, t in Config.TOOLS do
+			if t.id == lent then
+				name = t.name
+			end
+		end
+		local nextTool = Config.TOOLS[data.run.tool + 1]
+		Net.send(player, "Fx", "loanOver", { name = name, next = nextTool and nextTool.name, cost = nextTool and nextTool.cost })
+		task.delay(0.6, Tools.give, player)
+	end
+	PlayerData.changed(player)
+	task.delay(3, function()
+		if data.run then
+			data.run.tutorial = nil
+			PlayerData.changed(player)
+		end
+	end)
+end
+
 local function sell(player: Player, pad, cut: number?): number
 	local data = PlayerData.get(player)
 	if not data or not data.run or #data.run.carry == 0 then
@@ -476,6 +522,9 @@ local function sell(player: Player, pad, cut: number?): number
 	Net.send(player, "Fx", "sell", { coins = coins, count = count, from = pad.mouth, out = pad.out })
 	Net.all("Fx", "shred", { pos = pad.mouth, count = count, by = player.UserId })
 	Quests.event(player, "sell", count)
+	if data.run.loaner or data.run.tutorial then
+		endTutorial(player, data)
+	end
 	return coins
 end
 
@@ -503,6 +552,7 @@ local function sellLoop()
 end
 
 local function buyTool(player: Player, data, id: string)
+	local before = Config.TOOLS[data.run.tool]
 	local nextIndex = data.run.tool + 1
 	local def = Config.TOOLS[nextIndex]
 	if not def or def.id ~= id then
@@ -517,7 +567,8 @@ local function buyTool(player: Player, data, id: string)
 	data.run.tool = nextIndex
 	Tools.give(player)
 	Quests.event(player, "tool", nextIndex)
-	Net.send(player, "Fx", "purchase", { big = true, item = def.name })
+	-- (report #13) `ring`: the reach grows on the ground from the old tool's to the new one's (client/FirstLawn)
+	Net.send(player, "Fx", "purchase", { big = true, item = def.name, ring = { from = before and before.radius or 0, to = def.radius, color = def.color } })
 end
 
 local function buyUpgrade(player: Player, data, id: string)
@@ -535,11 +586,14 @@ local function buyUpgrade(player: Player, data, id: string)
 		Net.notify(player, "Not enough coins!", "red")
 		return
 	end
+	local reach = Stats.compute(player, data).grasp
 	data.run.coins -= cost
 	data.run.upgrades[id] = level + 1
 	Stats.applyCharacter(player, data)
 	Carry.refresh(player)
-	Net.send(player, "Fx", "purchase", {})
+	-- (report #13) Grasp shows its new pickup reach growing on the ground (client/FirstLawn)
+	local ring = if id == "grasp" then { from = reach, to = Stats.compute(player, data).grasp, color = Color3.fromRGB(120, 230, 120) } else nil
+	Net.send(player, "Fx", "purchase", { ring = ring })
 end
 
 -- The Leaf Vacuum rides on your back (it works on its own, you don't hold it).
@@ -618,6 +672,17 @@ end
 local function setupPlayer(player: Player, data)
 	if not data.run then
 		data.run = PlayerData.newRun()
+		-- (report #1, Config.FIRST_TIMER) a first-timer's first run: a starter tool on loan until the first sale (walk
+		-- into the grass to mow it), and the intro film after that sale instead of before the first cut
+		if PlayerData.isNew(data) then
+			local F = Config.FIRST_TIMER
+			if F.introAfterSale then
+				data.run.tutorial = true
+			end
+			if F.loaner ~= "" then
+				data.run.loaner = F.loaner
+			end
+		end
 	end
 	-- join the party's progress (skipping areas: then this run's time doesn't go on the BEST TIMES board)
 	if data.run.zone < zone then
@@ -742,6 +807,33 @@ function Run.start()
 		return sell(player, { mouth = root.Position + Vector3.new(0, 3, 0), out = root.Position }, cut)
 	end
 	ClassPerks.setup()
+	-- (report #9) the last ~3% of an area went down by themselves (Field.finishLeftovers): the player whose cut got
+	-- it there is paid their bundles' worth in coins (no bundles to walk across the map for)
+	local finished: { [Player]: { n: number, coins: number } } = {}
+	Field.onAutoCut = function(player: Player, patch)
+		local data = PlayerData.get(player)
+		if not data or not data.run then
+			return
+		end
+		local m = Config.mutation(patch.mut or "None")
+		local def = Config.ZONES[patch.z]
+		local coins = math.max(1, math.floor(def.value * (m.mult or 1) * (def.drops or 1) * Stats.compute(player, data).sell + 0.5))
+		data.run.coins += coins
+		data.stats.cut += 1
+		data.stats.coinsEarned = (data.stats.coinsEarned or 0) + coins
+		local f = finished[player]
+		if not f then
+			f = { n = 0, coins = 0 }
+			finished[player] = f
+			task.defer(function()
+				finished[player] = nil
+				PlayerData.changed(player)
+				Net.send(player, "Fx", "autoFinish", { count = f.n, coins = f.coins, z = patch.z })
+			end)
+		end
+		f.n += 1
+		f.coins += coins
+	end
 	Field.onZoneCleared = function(z)
 		if z == zone then
 			for _, p in Players:GetPlayers() do

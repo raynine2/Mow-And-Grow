@@ -237,8 +237,16 @@ local function toolIndex(id: any): number?
 	return nil
 end
 
+-- The tool lent to a first-timer until their first sale (data.run.loaner, Config.FIRST_TIMER), as its index, or nil
+-- (none, or they own it by now).
+local function loanIndex(data): number?
+	local i = data.run.loaner and toolIndex(data.run.loaner)
+	return if i and i > data.run.tool then i else nil
+end
+
 -- Make sure the player has every tool they own this run, once each (the hotbar shows them all). A tool that is
--- new (just bought, or the best one after a respawn) is equipped straight away.
+-- new (just bought, or the best one after a respawn) is equipped straight away. A first-timer's loaned tool comes
+-- on top (tagged Loaner) and goes again when the loan ends; then they hold their best own tool.
 function Tools.give(player: Player)
 	local data = PlayerData.get(player)
 	if not data or not data.run then
@@ -258,13 +266,26 @@ function Tools.give(player: Player)
 		end
 	end
 	local best = math.clamp(data.run.tool, 1, #Config.TOOLS)
+	local loan = loanIndex(data)
 	local have: { [number]: Tool } = {}
+	local lent: Tool? = nil
 	for _, container in { backpack, char } do
 		if container then
 			for _, t in container:GetChildren() do
 				if t:IsA("Tool") and t:GetAttribute("ToolId") then
 					local i = toolIndex(t:GetAttribute("ToolId"))
-					if not i or i > best or have[i] then
+					if t:GetAttribute("Loaner") then
+						if i and i == loan and not lent then
+							lent = t
+						else
+							-- the loan is over (or they bought their own): a push mower comes off the character too
+							-- (it's still held while it's destroyed, so its own clean-up can't tell)
+							if PUSH_MOWERS[t:GetAttribute("ToolId")] and t.Parent == char then
+								detachPushMower(char)
+							end
+							t:Destroy()
+						end
+					elseif not i or i > best or have[i] then
 						t:Destroy()
 					else
 						have[i] = t
@@ -278,12 +299,23 @@ function Tools.give(player: Player)
 		if not have[i] then
 			local tool = Tools.build(Config.TOOLS[i])
 			tool.Parent = backpack
+			have[i] = tool
 			if i == best then
 				newBest = tool
 			end
 		end
 	end
+	if loan and not lent then
+		local tool = Tools.build(Config.TOOLS[loan])
+		tool:SetAttribute("Loaner", true)
+		tool.ToolTip = "On loan until your first sale"
+		tool.Parent = backpack
+		newBest = tool
+	end
 	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if hum and not newBest and not char:FindFirstChildOfClass("Tool") then
+		newBest = have[best] -- (a loan just ended: hold your own best tool)
+	end
 	if newBest and hum then
 		hum:EquipTool(newBest)
 	end
@@ -301,7 +333,10 @@ function Tools.equipped(player: Player)
 	end
 	local i = toolIndex(tool:GetAttribute("ToolId"))
 	local data = PlayerData.get(player)
-	if not i or not data or not data.run or i > data.run.tool then
+	if not i or not data or not data.run then
+		return nil
+	end
+	if i > data.run.tool and not (tool:GetAttribute("Loaner") and i == loanIndex(data)) then
 		return nil
 	end
 	return Config.TOOLS[i], tool

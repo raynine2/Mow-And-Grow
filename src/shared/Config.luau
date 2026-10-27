@@ -31,7 +31,7 @@ Config.SCHEMA = 1
 Config.TICK = 0.25 -- seconds between auto-cut ticks
 Config.TOOLS = {
 	{ id = "Hands", name = "Bare Hands", cost = 0, kind = "swing", damage = 1, cooldown = 0.45, radius = 5, targets = 1, color = Color3.fromRGB(255, 205, 160) },
-	{ id = "Scissors", name = "Garden Scissors", cost = 150, kind = "swing", damage = 3, cooldown = 0.4, radius = 6, targets = 2, color = Color3.fromRGB(255, 80, 80) },
+	{ id = "Scissors", name = "Garden Scissors", cost = 25, kind = "swing", damage = 3, cooldown = 0.4, radius = 6, targets = 2, color = Color3.fromRGB(255, 80, 80) },
 	{ id = "Sickle", name = "Sickle", cost = 1500, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
 	{ id = "PushMower", name = "Push Mower", cost = 7000, kind = "auto", damage = 30, radius = 6, color = Color3.fromRGB(255, 140, 30) },
 	{ id = "WeedWhacker", name = "Weed Whacker", cost = 60000, kind = "auto", damage = 140, radius = 9, color = Color3.fromRGB(60, 200, 80) },
@@ -143,6 +143,38 @@ Config.CAMERA_KICK = {
 	reduced = 0.35,
 	potato = 0.5,
 }
+
+-- THE REST OF THE REPORT (owner, 27 Oct: "do it"). Each switch below turns its part off.
+-- #1 FIRST 90 SECONDS: a brand-new player (no grass cut, nothing sold, no run finished) mows within seconds.
+--   autoStart: seconds in the lobby before a first-timer is sent into a solo run (no News window, no pad to find; a
+--              STAY IN LOBBY button cancels it). 0 = off.
+--   loaner:    the tool lent to a first-timer for their first run until their first sale ("walk into the grass to
+--              mow it"); then they're back to Bare Hands and buy their own. "" = off.
+--   introAfterSale: the intro film waits for that first sale instead of playing before you've cut anything.
+Config.FIRST_TIMER = { autoStart = 6, loaner = "PushMower", introAfterSale = true }
+-- #2 COINS ON EVERY CUT (Chop A Forest pays a few coins per hit): this share of a clump's bundle value is paid the
+-- moment you cut it (at least 1 coin); the bundles still sell in full. 0 = off.
+Config.CUT_COINS = 0.25
+-- #9 FINISHING AN AREA: dings when the area passes these shares; the last `glowAt` share of clumps glow with a
+-- beacon so you find them; at `autoAt` the leftovers are mowed for you and paid out in coins (no hunting the last
+-- 1%). autoAt = 1 turns the auto-finish off.
+Config.AREA_FINISH = { dings = { 0.25, 0.5, 0.75, 0.9 }, glowAt = 0.95, autoAt = 0.97 }
+-- #16 RUN MEDALS: finish a run under these times. Saved in the profile; `badge` is the Roblox badge to award once
+-- the owner has made it (0 = none). Peaceful runs and runs joined part-way through don't count (like BEST TIMES).
+Config.RUN_MEDALS = {
+	{ id = "Gold", name = "Gold", minutes = 60, badge = 0, color = Color3.fromRGB(255, 205, 50) },
+	{ id = "Silver", name = "Silver", minutes = 75, badge = 0, color = Color3.fromRGB(205, 215, 230) },
+	{ id = "Bronze", name = "Bronze", minutes = 90, badge = 0, color = Color3.fromRGB(215, 140, 80) },
+}
+-- The best medal a run of `seconds` earns (nil = none).
+function Config.runMedal(seconds: number)
+	for _, m in Config.RUN_MEDALS do
+		if seconds > 0 and seconds <= m.minutes * 60 then
+			return m
+		end
+	end
+	return nil
+end
 
 function Config.upgrade(id: string)
 	for _, u in Config.UPGRADES do
@@ -970,7 +1002,9 @@ end
 Config.MOWERS = {
 	{ id = "RustyRider", name = "Rusty Rider", currency = "coins", price = 350, damage = 6, radius = 6, speed = 30, fuel = 60, color = Color3.fromRGB(200, 90, 50) },
 	{ id = "TurboTractor", name = "Turbo Tractor", currency = "coins", price = 40000, damage = 120, radius = 9, speed = 38, fuel = 90, color = Color3.fromRGB(60, 170, 255) },
-	{ id = "GoldenZeroTurn", name = "Golden Zero-Turn", currency = "gems", price = 900, damage = 400, radius = 10, speed = 42, fuel = 120, color = Color3.fromRGB(255, 200, 40) },
+	-- (report #12) the zero-turn mows a wide swath: `swath` x its radius, centred `ahead` studs out on its deck, and its
+	-- lawn stripe is `stripe` studs wide (client/MowFx)
+	{ id = "GoldenZeroTurn", name = "Golden Zero-Turn", currency = "gems", price = 900, damage = 400, radius = 10, speed = 42, fuel = 120, color = Color3.fromRGB(255, 200, 40), swath = 1.3, ahead = 4, stripe = 14 },
 	{ id = "MonsterMulcher", name = "Monster Mulcher", currency = "gems", price = 2500, damage = 3000, radius = 12, speed = 46, fuel = 150, color = Color3.fromRGB(150, 60, 220) },
 	{ id = "TrialMower", name = "Trial Mower", currency = "trial", product = "TrialMower", damage = 800, radius = 11, speed = 44, fuel = 140, color = Color3.fromRGB(255, 80, 160) },
 	{ id = "RocketMower", name = "Rocket Mower", currency = "robux", product = "RocketMower", damage = 2000, radius = 12, speed = 50, fuel = 200, color = Color3.fromRGB(255, 70, 40) },
@@ -1264,9 +1298,9 @@ Config.NEWS = {
 		desc = "A whole new map, tree-sized grass and a brand new lobby.",
 		bullets = {
 			"8 fenced areas that open one after another",
-			"Grass clumps stand like trees: aim, chop, watch them fall",
+			"Grass clumps stand like trees: aim, cut, watch them fall",
 			"Bundles land where a clump falls",
-			"New Hold upgrade: keep the button down to keep chopping",
+			"New Hold upgrade: keep the button down to keep cutting",
 			"A second shredder in the middle of the map",
 			"New lobby: glowing party pads and a big START A RUN board",
 			"New menus, stats and this news board",

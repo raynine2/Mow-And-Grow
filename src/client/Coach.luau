@@ -1,7 +1,9 @@
 -- The first two minutes, impossible to get lost in. Until you've bought your first upgrade (Hold) in your first
 -- run, a card at the bottom of the screen gives you one step at a time, and the world points at it:
---   1. PUNCH THE GRASS      the nearest clump glows and the yellow arrow (client/Guide) floats over it (with the
---                           dotted trail leading there when it's far, like from the village)
+--   1. MOW THE GRASS        the nearest clump glows and the yellow arrow (client/Guide) floats over it (with the
+--                           dotted trail leading there when it's far, like from the village). A first-timer's
+--                           loaned Push Mower (Config.FIRST_TIMER) is told to walk into it; hand tools to click.
+--                           (report 28 Oct: no "punch" or "chop": they're Chop A Forest's words, this is mowing)
 --   2. PICK UP YOUR GRASS   the arrow over your bundles on the ground
 --   3. FILL YOUR BAG        back to the nearest clump, with your bag count on the card
 --   4. SELL YOUR GRASS      the arrow over the shredder and a flowing dotted trail on the ground to it
@@ -148,6 +150,13 @@ local function needed(d: any): boolean
 	return (s.runs or 0) == 0 and (s.cut or 0) < 400 and holdLevel(run) < 1
 end
 
+-- What the tool in your hands is: "auto" (walk into the grass) or "swing" (click), or nil.
+local function heldKind(): string?
+	local char = player.Character
+	local tool = char and char:FindFirstChildOfClass("Tool")
+	return tool and tool:GetAttribute("Kind") :: string?
+end
+
 local function pick(): Step?
 	local d = State.data
 	local w = State.world
@@ -170,8 +179,12 @@ local function pick(): Step?
 		end
 		return { id = id, title = title, sub = sub, target = at, lift = h + 2, clump = m, trail = far }
 	end
+	local auto = heldKind() == "auto" or run.loaner ~= nil
 	if (stats.cut or 0) == 0 and run.carry == 0 and (run.ground or 0) == 0 then
-		return clumpStep("punch", "PUNCH THE GRASS", if touch then "Tap a clump to cut it: grass sells for coins!" else "Click a clump to cut it: grass sells for coins!")
+		if auto then
+			return clumpStep("mow", "MOW THE GRASS", "Walk into the grass to mow it: grass sells for coins!")
+		end
+		return clumpStep("punch", "MOW THE GRASS", if touch then "Tap a clump to cut it: grass sells for coins!" else "Click a clump to cut it: grass sells for coins!")
 	end
 	if not d.endless and run.carry >= max then
 		return { id = "sell", title = "SELL YOUR GRASS", sub = "Your bag is full! Follow the trail and step on SELL at the shredder", target = nearestSell(here), lift = 4, trail = true }
@@ -184,9 +197,9 @@ local function pick(): Step?
 	end
 	local holdCost = Config.upgradeCost("hold", 0)
 	if run.coins >= holdCost then
-		return { id = "upgrade", title = "BUY YOUR FIRST UPGRADE", sub = if touch then "Tap UPGRADES and buy HOLD: chop nonstop, earn faster" else "Press TAB and buy HOLD: chop nonstop, earn coins faster" }
+		return { id = "upgrade", title = "BUY YOUR FIRST UPGRADE", sub = if touch then "Tap UPGRADES and buy HOLD: keep cutting, earn faster" else "Press TAB and buy HOLD: keep cutting, earn coins faster" }
 	end
-	return clumpStep("fill", ("FILL YOUR BAG   %d / %d"):format(run.carry + (run.ground or 0), max), "Chop more grass, then sell it at the shredder for coins")
+	return clumpStep("fill", ("FILL YOUR BAG   %d / %d"):format(run.carry + (run.ground or 0), max), if auto then "Mow more grass, then sell it at the shredder for coins" else "Cut more grass, then sell it at the shredder for coins")
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -257,7 +270,7 @@ subMax.MaxTextSize = 21 -- (a short hint stays its old size instead of filling b
 subMax.Parent = sub
 local scale = Instance.new("UIScale")
 scale.Parent = card
-local STEP_ICON = { punch = "hands", collect = "bundle", fill = "backpack", sell = "coin", upgrade = "upgrade" }
+local STEP_ICON = { punch = "hands", mow = "pushmower", collect = "bundle", fill = "backpack", sell = "coin", upgrade = "upgrade" }
 
 -- A new step shows big at the bottom for a few seconds, then shrinks and glides up under the quest tracker
 -- (top left) so it never sits on top of a menu. Opening any window docks it straight away.
@@ -317,7 +330,7 @@ local function placeCard()
 	scale.Scale = pop.Value * (1 + (DOCK_SCALE - 1) * a)
 end
 
-local ORDER = { punch = 1, collect = 2, fill = 3, sell = 4, upgrade = 5 }
+local ORDER = { punch = 1, mow = 1, collect = 2, fill = 3, sell = 4, upgrade = 5 }
 local shownId: string? = nil
 
 local function showCard(step: Step?)

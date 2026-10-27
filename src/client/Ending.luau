@@ -584,7 +584,14 @@ local function endScreen(d: any)
 	local _, face = Skin.frame(box, "ui_card", Vector2.new(W, H), { name = "Card" })
 	local title = UI.text(face, "THE END...?", UDim2.new(1, 0, 0, 66), { pos = UDim2.fromOffset(0, 6), stroke = 5 })
 	UI.gradient(title, GOLD)
-	local time = if (d.time or 0) > 0 then "Run time " .. Format.clock(d.time) .. (if d.best then "   NEW BEST!" else "") .. "   ·   " else ""
+	-- (report #16) the run medal you earned (Config.RUN_MEDALS)
+	local medal = ""
+	for _, m in Config.RUN_MEDALS do
+		if m.id == d.medal then
+			medal = "   " .. m.name:upper() .. " MEDAL!"
+		end
+	end
+	local time = if (d.time or 0) > 0 then "Run time " .. Format.clock(d.time) .. (if d.best then "   NEW BEST!" else "") .. medal .. "   ·   " else ""
 	local stats = UI.text(face, time .. "+" .. Format.short(d.gems or 0) .. " gems", UDim2.new(1, -40, 0, 28), { pos = UDim2.fromOffset(20, 78), stroke = 0, color = Color3.fromRGB(120, 80, 40) })
 	local _ = stats
 	local blurb = UI.text(face, "The valley is mowed. Mayor Thistlewick sleeps soundly... for now.", UDim2.new(1, -40, 0, 26), { pos = UDim2.fromOffset(20, 114), stroke = 0, color = Color3.fromRGB(140, 96, 60) })

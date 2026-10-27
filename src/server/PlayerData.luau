@@ -63,6 +63,7 @@ local DEFAULT = {
 	bossTrophies = {}, -- bosses beaten: [rig name] = times (server/Boss; the STATS window shows them)
 	gnomes = {}, -- Golden Gnome hunt: [Config.GNOMES id] = how many you've picked up (server/Gnomes)
 	gnomeSet = false, -- the full-set gems were paid
+	medals = {}, -- run medals (Config.RUN_MEDALS): [id] = how many runs earned it
 	run = nil, -- the saved run, see PlayerData.newRun
 	receipts = {}, -- recent processed purchase ids
 }
@@ -225,6 +226,17 @@ function PlayerData.onLoaded(fn: (Player, any) -> ())
 	for p, prof in profiles do
 		task.spawn(fn, p, prof)
 	end
+end
+
+-- A brand-new player: never cut a clump, sold a bundle or finished a run (Config.FIRST_TIMER: they go straight to a
+-- lawn and get a starter tool on loan). Studio profiles always start empty, so there it only counts when the
+-- Workspace attribute TestFirstTimer is on (or every Studio test would be a first visit).
+function PlayerData.isNew(data): boolean
+	local s = data and data.stats
+	if not s or (s.cut or 0) > 0 or (s.sold or 0) > 0 or (s.runs or 0) > 0 then
+		return false
+	end
+	return not RunService:IsStudio() or workspace:GetAttribute("TestFirstTimer") == true
 end
 
 function PlayerData.onChanged(fn: (Player, any) -> ())

@@ -220,7 +220,9 @@ function NewsWindow.build()
 			return
 		end
 		autoDone = true
-		if (d.stats.newsSeen or 0) < newest() then
+		-- (report #1) not for a brand-new player: they're on their way to their first lawn (client/FirstLawn); the
+		-- news can wait until they've played
+		if (d.stats.newsSeen or 0) < newest() and not d.newPlayer then
 			task.delay(2.5, function()
 				if not UI.isOpen("News") then
 					UI.open("News")

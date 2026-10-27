@@ -783,7 +783,9 @@ end
 
 local function maybePlay()
 	local d = State.data
-	if worldReady and State.isRun() and d and d.run and not d.run.introSeen and player.Character then
+	-- (report #1, Config.FIRST_TIMER) a first-timer mows and sells first; the film plays after that first sale (the
+	-- server clears run.tutorial a moment after it)
+	if worldReady and State.isRun() and d and d.run and not d.run.introSeen and not d.run.tutorial and player.Character then
 		task.spawn(play)
 	end
 end

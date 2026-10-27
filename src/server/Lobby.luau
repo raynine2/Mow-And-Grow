@@ -238,6 +238,30 @@ local function teleport(pad: Pad)
 	resetPad(pad)
 end
 
+-- (report #1, Config.FIRST_TIMER) A brand-new player goes straight to their first lawn: after a short countdown
+-- (client/FirstLawn shows it, with STAY IN LOBBY and GO NOW) they're sent into a solo run like a solo pad would.
+-- Stepping onto a pad or joining a party first cancels it.
+local function firstLawn(player: Player, seconds: number)
+	task.wait(2.5) -- (the loading screen goes away first)
+	if not player.Parent or player:GetAttribute("FirstLawnStay") then
+		return
+	end
+	Net.send(player, "Fx", "firstLawn", { seconds = seconds })
+	local deadline = os.clock() + seconds
+	while os.clock() < deadline and not player:GetAttribute("FirstLawnGo") do
+		task.wait(0.25)
+		if not player.Parent or player:GetAttribute("FirstLawnStay") then
+			return
+		end
+		for _, pad in pads do
+			if table.find(pad.members, player) or pad.pending == player then
+				return -- they're starting a run of their own
+			end
+		end
+	end
+	sendParty({ player }, player, { difficulty = "Normal" })
+end
+
 -- What the Create Party window's SAVED RUNS panel shows.
 local function savedRun(data): { [string]: any }?
 	local run = data.run
@@ -494,6 +518,11 @@ function Lobby.start()
 	Net.on("Party", 3, onPartyAction)
 
 	PlayerData.onLoaded(function(player, data)
+		-- (report #1) a brand-new player is taken to their first lawn
+		local wait = Config.FIRST_TIMER.autoStart
+		if wait > 0 and PlayerData.isNew(data) then
+			task.spawn(firstLawn, player, wait)
+		end
 		local function onCharacter()
 			task.wait(0.2)
 			Stats.applyCharacter(player, data)

@@ -220,6 +220,9 @@ local function build(player: Player, def, fuel: number): Model
 	model:SetAttribute("Owner", player.UserId)
 	model:SetAttribute("MowerId", def.id)
 	model:SetAttribute("Speed", def.speed * require(script.Parent.ClassPerks).mower(player).speed) -- Turbo Deck
+	if def.stripe then
+		model:SetAttribute("Swath", def.stripe) -- (report #12) its lawn stripe's width (client/MowFx)
+	end
 	model:SetAttribute("Fuel", fuel)
 	model:SetAttribute("MaxFuel", def.fuel)
 	PropKit.billboard(body, def.name, Color3.fromRGB(255, 255, 255), Vector2.new(8, 1.6), Vector3.new(0, 5, 0), 80)

@@ -173,7 +173,9 @@ local function deckOf(m: Model): (CFrame?, number)
 		return nil, 0
 	end
 	local _, size = m:GetBoundingBox()
-	return body.CFrame * CFrame.new(0, -1.2, -size.Z * 0.3), math.min(size.X * 0.9, 8)
+	-- (report #12) a zero-turn's wide deck leaves a wide stripe (server/Mowers sets Swath from Config.MOWERS)
+	local swath = m:GetAttribute("Swath") :: number?
+	return body.CFrame * CFrame.new(0, -1.2, -size.Z * 0.3), swath or math.min(size.X * 0.9, 8)
 end
 
 local function collect(): { Model }

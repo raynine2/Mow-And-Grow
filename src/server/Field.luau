@@ -44,6 +44,7 @@ type Patch = {
 }
 
 local patches: { [number]: { [number]: Patch } } = {} -- [zone][index]
+local finishing: { [number]: boolean } = {} -- areas whose last clumps were mowed for the player (report #9)
 -- every patch also sits in a bucket of a coarse grid ([zone][cell key]), so hit tests only look nearby
 local buckets: { [number]: { [number]: { Patch } } } = {}
 local CELL = 24
@@ -366,6 +367,7 @@ end
 
 function Field.build(parent: Instance, startZone: number)
 	Lawn.reset()
+	table.clear(finishing)
 	folder = PropKit.folder("Grass", parent)
 	for z = 1, #Config.ZONES do
 		spawnZone(z, z < startZone)
@@ -500,7 +502,7 @@ Field.FALL_TIME = FALL_TIME
 
 -- The last hit: the clump topples away from the cutter (every client animates it), then it's swapped for its
 -- stubble. Its bundles land where its top falls (p.landPos), dropped by Run after FALL_TIME.
-local function fell(p: Patch, player: Player)
+local function fell(p: Patch, player: Player, auto: boolean?)
 	local dir = p.fallDir or Vector3.zAxis
 	if p.notch then
 		p.notch:Destroy()
@@ -516,11 +518,50 @@ local function fell(p: Patch, player: Player)
 		color = p.baseColor,
 		mut = p.mut,
 		z = p.z,
-		by = player.UserId,
+		by = if auto then 0 else player.UserId, -- (an auto-finished leftover is nobody's own cut: no personal effects)
 	})
 	task.delay(FALL_TIME + 0.1, function()
 		stubble(p)
 	end)
+end
+
+-- (report #9, Config.AREA_FINISH.autoAt) Nobody should hunt the last 1% of an area: once it's that far mowed, the
+-- clumps still standing go down by themselves. `player` (whose cut got it there) is paid for them through
+-- Field.onAutoCut (server/Run: coins instead of bundles to walk to). Returns how many it mowed.
+Field.onAutoCut = nil :: ((Player, Patch) -> ())?
+function Field.finishLeftovers(z: number, player: Player): number
+	if finishing[z] then
+		return 0
+	end
+	finishing[z] = true
+	local n = 0
+	for _, p in patches[z] or {} do
+		if not p.cut then
+			p.hp = 0
+			p.cut = true
+			p.fallDir = p.spot.LookVector
+			p.landPos = p.spot.Position + p.fallDir * math.max(2.5, clumpHeight(p) * 0.65)
+			if p.notch then
+				p.notch:Destroy()
+				p.notch = nil
+			end
+			fell(p, player, true)
+			Field.remaining[z] -= 1
+			n += 1
+			if Field.onAutoCut and player.Parent then
+				Field.onAutoCut(player, p)
+			end
+		end
+	end
+	if n > 0 then
+		if Field.onProgress then
+			Field.onProgress()
+		end
+		if Field.remaining[z] <= 0 and Field.onZoneCleared then
+			task.delay(FALL_TIME + 0.2, Field.onZoneCleared, z)
+		end
+	end
+	return n
 end
 
 -- `from`: where the hit comes from (the cutter); the notch faces it and the clump falls away from it.
@@ -544,8 +585,12 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 		if Field.onProgress then
 			Field.onProgress()
 		end
-		if Field.remaining[p.z] <= 0 and Field.onZoneCleared then
+		local left, total = Field.remaining[p.z], Field.totals[p.z] or 0
+		if left <= 0 and Field.onZoneCleared then
 			task.delay(FALL_TIME + 0.2, Field.onZoneCleared, p.z)
+		elseif left > 0 and total > 0 and left <= math.floor(total * (1 - Config.AREA_FINISH.autoAt) + 1e-6) then
+			-- (report #9) the last few go by themselves once the area is ~97% mowed
+			task.delay(0.4, Field.finishLeftovers, p.z, player)
 		end
 	else
 		local ratio = p.hp / p.maxHp

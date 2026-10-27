@@ -149,6 +149,8 @@ local function snapshot(player: Player, data)
 		swing = s.swing,
 		index = index,
 		gnomes = data.gnomes or {}, -- the Golden Gnome hunt: [id] = how many found (client/GnomeHunt)
+		medals = data.medals or {}, -- run medals: [Config.RUN_MEDALS id] = runs that earned it (client/AreaGoals)
+		newPlayer = PlayerData.isNew(data), -- Config.FIRST_TIMER: no News window yet (client/NewsWindow)
 		bestTime = data.bestTime,
 		dryRun = data._dryRun == true,
 		run = nil :: any,
@@ -179,6 +181,8 @@ local function snapshot(player: Player, data)
 			vacuum = run.vacuum == true,
 			time = run.time or 0,
 			introSeen = run.introSeen == true,
+			tutorial = run.tutorial == true, -- a first-timer before their first sale: the intro waits (client/Intro)
+			loaner = run.loaner, -- the starter tool on loan until then (client/Coach, client/FirstLawn)
 			quest = Quests.view(run),
 		}
 	end
@@ -211,6 +215,10 @@ if not Mode.isRun then
 		if what == "news" and data and type(id) == "number" then
 			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)
 			PlayerData.changed(player)
+		elseif what == "firstLawn" and (id == "stay" or id == "go") then
+			-- client/FirstLawn: STAY IN LOBBY cancels a first-timer's trip to their first lawn, GO NOW starts it now
+			-- (server/Lobby)
+			player:SetAttribute(if id == "stay" then "FirstLawnStay" else "FirstLawnGo", true)
 		end
 	end)
 end

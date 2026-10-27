@@ -1,6 +1,6 @@
--- Camera: runs start in first person like Chop A Forest, but you're never stuck there. Press V (or scroll the
--- mouse wheel out) for third person with a free mouse; Shift toggles shift lock there; V again (or scrolling
--- all the way in) goes back to first person. The lobby is always third person.
+-- Camera: runs start in first person like Chop A Forest. In the camps (area 1's camp and every area's camp) the
+-- camera is free: walking in swings it out to third person, V (or the mouse wheel) switches, Shift toggles shift
+-- lock. Out in the areas it's first person only. The lobby is always third person.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -15,13 +15,18 @@ local FIRST = 0.5
 local THIRD = 14
 local MAX_ZOOM = 30
 
+-- Outside the camps (the camp in area 1 and every area's camp, server/Outposts) a run is first person only
+-- (owner, 27 Oct: "if you walk out of the hubs in the zones you get forced in first person", like Chop A Forest):
+-- `locked` pins the zoom at first person there. Driving a mower stays free.
+local locked = false
+
 -- Pin the camera at distance `d` for a moment, then free the range again so the scroll wheel still works.
 local function zoomTo(d: number)
 	player.CameraMinZoomDistance = d
 	player.CameraMaxZoomDistance = d
 	task.delay(0.15, function()
 		player.CameraMinZoomDistance = FIRST
-		player.CameraMaxZoomDistance = MAX_ZOOM
+		player.CameraMaxZoomDistance = if locked then FIRST else MAX_ZOOM
 	end)
 end
 
@@ -74,9 +79,83 @@ function CameraView.toggle()
 	if not State.isRun() then
 		return
 	end
-	zoomTo(if inFirstPerson() then THIRD else FIRST)
 	hintUntil = math.max(hintUntil, os.clock() + 4)
+	if locked then
+		return -- (the hint says why: third person only in the camps)
+	end
+	zoomTo(if inFirstPerson() then THIRD else FIRST)
 end
+
+-- The camps: { centre, radius } from the World's attributes (CampCenter / CampRadius, Hub<z> / HubR<z>).
+local hubList: { { c: Vector3, r: number } } = {}
+local hubsAt = -10
+local function hubs(): { { c: Vector3, r: number } }
+	if os.clock() - hubsAt < 3 then
+		return hubList
+	end
+	hubsAt = os.clock()
+	table.clear(hubList)
+	local w = workspace:FindFirstChild("World")
+	if not w then
+		return hubList
+	end
+	local camp, campR = w:GetAttribute("CampCenter"), w:GetAttribute("CampRadius")
+	if typeof(camp) == "Vector3" and type(campR) == "number" then
+		table.insert(hubList, { c = camp, r = campR })
+	end
+	for z = 1, 12 do
+		local c, r = w:GetAttribute("Hub" .. z), w:GetAttribute("HubR" .. z)
+		if typeof(c) == "Vector3" and type(r) == "number" then
+			table.insert(hubList, { c = c, r = r })
+		end
+	end
+	return hubList
+end
+
+local function inHub(pos: Vector3): boolean
+	for _, h in hubs() do
+		if Vector2.new(pos.X - h.c.X, pos.Z - h.c.Z).Magnitude < h.r + 2 then
+			return true
+		end
+	end
+	return false
+end
+
+-- Every few frames: lock to first person outside the camps, free (and out to third person) on walking into one.
+local wasInside: boolean? = nil
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		local cam = workspace.CurrentCamera
+		local char = player.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not State.isRun() or not cam or cam.CameraType ~= Enum.CameraType.Custom or not root or not hum then
+			if locked and not State.isRun() then
+				locked = false
+				player.CameraMaxZoomDistance = 128
+			end
+			wasInside = nil
+			continue
+		end
+		local inside = inHub(root.Position)
+		local free = inside or hum.SeatPart ~= nil
+		if not free and not locked then
+			locked = true
+			player.CameraMinZoomDistance = FIRST
+			player.CameraMaxZoomDistance = FIRST
+		elseif free and locked then
+			locked = false
+			player.CameraMinZoomDistance = FIRST
+			player.CameraMaxZoomDistance = MAX_ZOOM
+		end
+		if inside and wasInside == false then
+			zoomTo(THIRD) -- walked into a camp: out to third person, like Chop A Forest's camps
+			hintUntil = os.clock() + 4
+		end
+		wasInside = inside
+	end
+end)
 
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then
@@ -89,7 +168,7 @@ end)
 
 RunService.RenderStepped:Connect(function()
 	if hint.Visible then
-		hint.Text = if inFirstPerson() then "[V] Free mouse" else "[V] First person   [Shift] Shift lock"
+		hint.Text = if locked then "First person outside the camps" elseif inFirstPerson() then "[V] Third person" else "[V] First person   [Shift] Shift lock"
 		local left = hintUntil - os.clock()
 		local a = math.clamp(1 - left, 0, 1) -- fades over the last second
 		hint.TextTransparency = a

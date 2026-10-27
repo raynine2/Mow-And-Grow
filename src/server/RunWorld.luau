@@ -479,6 +479,8 @@ function RunWorld.build()
 	meadowDropOff(w)
 	-- the ForgeGUI archways at the gates and bins on the drop-off pads (no-ops where the saved world has them)
 	require(script.Parent.ForgeDress).world(w)
+	-- a camp round every other area's drop-off pad (server/Outposts; owner 27 Oct: "this type of hub in every zone")
+	print(("[RunWorld] %d area camps built"):format(require(script.Parent.Outposts).build(w, info, RunBuilder.gasPump)))
 	local pads = w:FindFirstChild("Pads")
 	for _, pad in (if pads then pads:GetChildren() else {}) do
 		if pad:IsA("BasePart") and pad:GetAttribute("Sell") then
@@ -551,6 +553,14 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 	for _, zdef in Zones.list do
 		if zdef.landmark then
 			table.insert(keepOut, { at = zdef.landmark.at, r = 26 })
+		end
+	end
+	-- and the areas' camps (server/Outposts: World attributes Hub<z>, HubR<z>)
+	for z = 1, #Zones.list do
+		local hc = w and w:GetAttribute("Hub" .. z)
+		local hr = w and w:GetAttribute("HubR" .. z)
+		if typeof(hc) == "Vector3" and type(hr) == "number" then
+			table.insert(keepOut, { at = Vector2.new(hc.X, hc.Z), r = hr + 3 })
 		end
 	end
 	local padFolder = w and w:FindFirstChild("Pads")

@@ -552,6 +552,7 @@ end
 -- The hub's buildings (tool shop, bag stand, garage + pump, shredder, spawn) around (0, 0, -48), for another map
 -- to use (server/RunWorld puts them in the generated world's village). Set info.meshGround to skip the Terrain.
 RunBuilder.hub = hub
+RunBuilder.gasPump = gasPump -- (server/Outposts: a pump in every area's camp)
 
 -------------------------------------------------------------------------------------------------------------
 -- the world: a 3 x 3 grid of fenced plots, like Chop A Forest's woods (see Config.MAP)

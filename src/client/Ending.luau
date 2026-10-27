@@ -422,18 +422,49 @@ local function endGui(): ScreenGui
 	return g
 end
 
-local function makers(): string
-	local name = MAKERS_FALLBACK
+-- MADE BY: the game's group (Config.GROUP_ID), its owner, then the collaborators listed in
+-- Config.CREDITS_TEAM (Roblox usernames: shown as "Display Name (@username)").
+local function makers(): { string }
+	local list = {}
+	-- the studio first: the game's group (Config.GROUP_ID, Atlas Interactive Inc)
+	pcall(function()
+		if Config.GROUP_ID and Config.GROUP_ID > 0 then
+			table.insert(list, game:GetService("GroupService"):GetGroupInfoAsync(Config.GROUP_ID).Name)
+		end
+	end)
 	pcall(function()
 		if game.CreatorId > 0 then
 			if game.CreatorType == Enum.CreatorType.Group then
-				name = game:GetService("GroupService"):GetGroupInfoAsync(game.CreatorId).Name
+				local g = game:GetService("GroupService"):GetGroupInfoAsync(game.CreatorId).Name
+				if not table.find(list, g) then
+					table.insert(list, g)
+				end
 			else
-				name = Players:GetNameFromUserIdAsync(game.CreatorId)
+				local user = Players:GetNameFromUserIdAsync(game.CreatorId)
+				local info = game:GetService("UserService"):GetUserInfosByUserIdsAsync({ game.CreatorId })[1]
+				table.insert(list, if info and info.DisplayName ~= user then info.DisplayName .. "  (@" .. user .. ")" else user)
 			end
 		end
 	end)
-	return name
+	for _, user in (Config.CREDITS_TEAM or {}) :: { string } do
+		local line = user
+		pcall(function()
+			local id = Players:GetUserIdFromNameAsync(user)
+			local info = game:GetService("UserService"):GetUserInfosByUserIdsAsync({ id })[1]
+			if info and info.DisplayName ~= info.Username then
+				line = info.DisplayName .. "  (@" .. info.Username .. ")"
+			elseif info then
+				line = info.Username
+			end
+		end)
+		if not table.find(list, line) then
+			table.insert(list, line)
+		end
+	end
+	if #list == 0 then
+		table.insert(list, MAKERS_FALLBACK)
+	end
+	return list
 end
 
 -- The credit lines: { kind, text } (kind "title" | "head" | "line" | "gap").
@@ -469,7 +500,9 @@ local function creditLines(): { { string } }
 	end
 	add("gap")
 	add("head", "MADE BY")
-	add("line", makers())
+	for _, name in makers() do
+		add("line", name)
+	end
 	add("gap")
 	add("head", "SPECIAL THANKS")
 	add("line", "Every blade of grass that was mowed in the making of this valley")

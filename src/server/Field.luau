@@ -744,9 +744,13 @@ function Field.clearStubble(z: number)
 end
 
 -- Studio helper: cut every clump left in area z at once (no loot, no effects).
-function Field.devClear(player: Player, z: number)
+-- `leave`: that many clumps stay standing (Dev panel ALMOST CLEAR, to try the area's last bits: report #9).
+function Field.devClear(player: Player, z: number, leave: number?)
+	local keep = leave or 0
 	for _, p in patches[z] or {} do
-		if not p.cut then
+		if not p.cut and keep > 0 then
+			keep -= 1
+		elseif not p.cut then
 			p.hp = 0
 			p.fallDir = Vector3.zAxis
 			p.landPos = p.spot.Position
@@ -763,6 +767,18 @@ function Field.devClear(player: Player, z: number)
 	if Field.remaining[z] <= 0 and Field.onZoneCleared then
 		Field.onZoneCleared(z)
 	end
+end
+
+-- Studio helper (Dev panel CUT ONE CLUMP): cut one standing clump in area z the normal way, as `player` (its bundles
+-- drop, it pays, and it can set off the area's auto-finish). Returns whether there was one.
+function Field.devCutOne(player: Player, z: number): boolean
+	for _, p in patches[z] or {} do
+		if not p.cut then
+			damagePatch(player, p, p.hp + 1, 1, p.spot.Position + p.spot.LookVector * 3)
+			return true
+		end
+	end
+	return false
 end
 
 -- Up to `n` hiding places in area z for the Golden Gnome hunt (server/Gnomes): at the foot of random clumps, tucked

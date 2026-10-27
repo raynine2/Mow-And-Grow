@@ -29,6 +29,8 @@ local BUTTONS = {
 	{ "OPEN ALL AREAS", "allAreas", Color3.fromRGB(150, 90, 220) },
 	{ "DAY / NIGHT", "night", Color3.fromRGB(60, 70, 140) },
 	{ "FIND A GNOME", "gnome", Color3.fromRGB(230, 180, 40) },
+	{ "ALMOST CLEAR", "almost", Color3.fromRGB(150, 90, 220) },
+	{ "CUT ONE CLUMP", "cutOne", Color3.fromRGB(150, 90, 220) },
 }
 -- a free egg of every kind in Config.EGGS (hatched by the server with the normal hatch show)
 for _, egg in Config.EGGS do

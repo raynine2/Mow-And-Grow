@@ -1125,6 +1125,14 @@ function Run.devAction(player: Player, data, action: string, _arg: any): string?
 	elseif action == "night" then
 		require(script.Parent.DayNight).skip()
 		return "Skipped to the next day/night"
+	elseif action == "almost" then
+		-- (report #9 tests) mow all but the last ~4%: the leftovers glow; CUT ONE CLUMP then sets off the auto-finish
+		devCutting = true
+		Field.devClear(player, zone, math.max(2, math.ceil(Field.totalIn(zone) * 0.04)))
+		devCutting = false
+		return "Area almost mowed: " .. Field.remainingIn(zone) .. " left"
+	elseif action == "cutOne" then
+		return if Field.devCutOne(player, zone) then "Cut one clump (" .. Field.remainingIn(zone) .. " left)" else "Nothing left to cut"
 	elseif action == "gnome" then
 		local id = require(script.Parent.Gnomes).devFind(player)
 		return if id then "Found the " .. id .. " Gnome" else "No gnomes left for you"

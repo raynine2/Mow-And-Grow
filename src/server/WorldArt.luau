@@ -347,6 +347,10 @@ local function landmark(parent: Instance, zi: number, base: number)
 	local def = Zones.list[zi]
 	local l = def.landmark
 	local at = v3(l.at, base)
+	-- (owner, 27 Oct: "stop and remove the windmill") Sunny Meadow's landmark, by the camp, is gone
+	if l.kind == "windmill" then
+		return
+	end
 	if forgeLandmark(parent, def, at) or meshLandmark(parent, def, at) then
 		return
 	end

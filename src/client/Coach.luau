@@ -171,7 +171,7 @@ local function pick(): Step?
 		return { id = id, title = title, sub = sub, target = at, lift = h + 2, clump = m, trail = far }
 	end
 	if (stats.cut or 0) == 0 and run.carry == 0 and (run.ground or 0) == 0 then
-		return clumpStep("punch", "PUNCH THE GRASS", if touch then "Tap a clump to chop it: grass sells for coins!" else "Click a clump to chop it: grass sells for coins!")
+		return clumpStep("punch", "PUNCH THE GRASS", if touch then "Tap a clump to cut it: grass sells for coins!" else "Click a clump to cut it: grass sells for coins!")
 	end
 	if not d.endless and run.carry >= max then
 		return { id = "sell", title = "SELL YOUR GRASS", sub = "Your bag is full! Follow the trail and step on SELL at the shredder", target = nearestSell(here), lift = 4, trail = true }

@@ -219,7 +219,7 @@ local function build(player: Player, def, fuel: number): Model
 	model.PrimaryPart = body
 	model:SetAttribute("Owner", player.UserId)
 	model:SetAttribute("MowerId", def.id)
-	model:SetAttribute("Speed", def.speed)
+	model:SetAttribute("Speed", def.speed * require(script.Parent.ClassPerks).mower(player).speed) -- Turbo Deck
 	model:SetAttribute("Fuel", fuel)
 	model:SetAttribute("MaxFuel", def.fuel)
 	PropKit.billboard(body, def.name, Color3.fromRGB(255, 255, 255), Vector2.new(8, 1.6), Vector3.new(0, 5, 0), 80)
@@ -304,7 +304,7 @@ function Mowers.burn(dt: number)
 		if drivingModel and body then
 			local v = body.AssemblyLinearVelocity
 			if Vector3.new(v.X, 0, v.Z).Magnitude > 3 then
-				local fuel = math.max(0, (m:GetAttribute("Fuel") or 0) - dt)
+				local fuel = math.max(0, (m:GetAttribute("Fuel") or 0) - dt * require(script.Parent.ClassPerks).mower(player).fuel)
 				m:SetAttribute("Fuel", fuel)
 				local data = PlayerData.get(player)
 				if data and data.run then

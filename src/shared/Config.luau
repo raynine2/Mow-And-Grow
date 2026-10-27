@@ -602,7 +602,7 @@ Config.LOOK = {
 -- levels), zone (zones cleared), boss (bosses beaten), mower (a ride-on mower bought or spawned).
 -------------------------------------------------------------------------------------------------------------
 Config.QUESTS = {
-	{ title = "Cut 10 grass", hint = "Look at a clump and click to chop it", event = "cut", goal = 10, reward = 20 },
+	{ title = "Cut 10 grass", hint = "Look at a clump and click to cut it", event = "cut", goal = 10, reward = 20 },
 	{ title = "Sell your bundles", hint = "Walk onto the sell pad", event = "sell", goal = 5, reward = 40 },
 	{ title = "Buy the Scissors in the cabin", hint = "They're on the wall inside the cabin", event = "tool", goal = 2, reward = 25 },
 	{ title = "Buy a bag at the Bag Stand", hint = "It's by the spawn, next to the tool shop", event = "bag", goal = 1, reward = 100 },
@@ -665,20 +665,46 @@ Config.RARITY_COLORS = {
 --   Common 1 stat, Uncommon 2, Rare 3, Epic 4, Legendary/Mythic/Secret all 5
 Config.CLASSES = {
 	{ id = "WeedPuller", name = "Weed Puller", rarity = "Common", gems = 0, power = 0.05 },
-	{ id = "Gardener", name = "Gardener", rarity = "Uncommon", gems = 180, power = 0.12, carry = 1 },
-	{ id = "Groundskeeper", name = "Groundskeeper", rarity = "Rare", gems = 270, power = 0.18, sell = 0.10, carry = 2 },
-	{ id = "LawnBaron", name = "Lawn Baron", rarity = "Rare", gems = 330, power = 0.15, sell = 0.30, carry = 2 },
-	{ id = "HedgeReaper", name = "Hedge Reaper", rarity = "Epic", gems = 500, power = 0.30, sell = 0.12, luck = 0.25, carry = 3 },
-	{ id = "MowerSpecialist", name = "Mower Specialist", rarity = "Epic", gems = 800, power = 0.40, speed = 0.12, sell = 0.15, carry = 3 },
-	{ id = "GrassTitan", name = "Grass Titan", rarity = "Legendary", gems = 1000, power = 0.65, speed = 0.15, sell = 0.20, luck = 0.25, carry = 4 },
-	{ id = "UltimateGardener", name = "Ultimate Gardener", rarity = "Legendary", gems = 1600, power = 0.75, speed = 0.20, sell = 0.30, luck = 0.30, carry = 5 },
+	{ id = "Gardener", name = "Gardener", rarity = "Uncommon", gems = 180, power = 0.12, carry = 1, product = "ClassGardener" },
+	{ id = "Groundskeeper", name = "Groundskeeper", rarity = "Rare", gems = 270, power = 0.18, sell = 0.10, carry = 2, product = "ClassGroundskeeper" },
+	{ id = "LawnBaron", name = "Lawn Baron", rarity = "Rare", gems = 330, power = 0.15, sell = 0.30, carry = 2, product = "ClassLawnBaron" },
+	{ id = "HedgeReaper", name = "Hedge Reaper", rarity = "Epic", gems = 500, power = 0.30, sell = 0.12, luck = 0.25, carry = 3, product = "ClassHedgeReaper" },
+	{ id = "MowerSpecialist", name = "Mower Specialist", rarity = "Epic", gems = 800, power = 0.40, speed = 0.12, sell = 0.15, carry = 3, product = "ClassMowerSpecialist" },
+	{ id = "GrassTitan", name = "Grass Titan", rarity = "Legendary", gems = 1000, power = 0.65, speed = 0.15, sell = 0.20, luck = 0.25, carry = 4, product = "ClassGrassTitan" },
+	{ id = "UltimateGardener", name = "Ultimate Gardener", rarity = "Legendary", gems = 1600, power = 0.75, speed = 0.20, sell = 0.30, luck = 0.30, carry = 5, product = "ClassUltimateGardener" },
 	{ id = "LawnLegend", name = "Lawn Legend", rarity = "Mythic", gems = 2700, power = 1.10, speed = 0.28, sell = 0.55, luck = 0.60, carry = 7, product = "ClassLawnLegend" },
-	{ id = "GoatMan", name = "Goat Man", rarity = "Secret", gems = 4000, power = 2.0, speed = 0.40, sell = 1.0, luck = 1.0, carry = 10, product = "ClassGoatMan" },
+	{ id = "GoatMan", name = "Goat Man", rarity = "Secret", gems = 4000, power = 1.5, speed = 0.40, sell = 0.7, luck = 1.0, carry = 10, product = "ClassGoatMan" }, -- +150 power / +70 sell (owner 27 Oct: was +200 / +100, too big a jump over Lawn Legend's +110; still the strongest)
 }
+-- Each class's own gimmick (owner, 27 Oct: unique, not only stats). server/ClassPerks runs them; the class cards show
+-- these words.
+Config.CLASS_GIMMICK = {
+	WeedPuller = { name = "Root Rip", text = "Every 6th swing rips the clump out in one hit." },
+	Gardener = { name = "Green Thumb", text = "Bundles fly to you from much further away." },
+	Groundskeeper = { name = "Tidy Up", text = "When a clump falls, the 2 nearest clumps take a free hit." },
+	LawnBaron = { name = "Courier", text = "A full bag sells itself for 80%, wherever you are (every 45 s)." },
+	HedgeReaper = { name = "Reap Wave", text = "Every 8th swing sends a wave that hits every clump around you." },
+	MowerSpecialist = { name = "Turbo Deck", text = "Ride-on mowers cut 40% wider, drive 20% faster, burn half the fuel." },
+	GrassTitan = { name = "Titan Stomp", text = "Land from a jump to stomp: clumps around you take 2 hits (4 s cooldown)." },
+	UltimateGardener = { name = "Midas Touch", text = "Every 20th clump you uncover is a mutation (Golden or better)." },
+	LawnLegend = { name = "Hot Streak", text = "Cut fast: each clump in a streak adds +5% power, up to +60%." },
+	GoatMan = { name = "Graze", text = "You eat grass as you walk: clumps around you take a hit every 0.5 s." },
+}
+-- each gimmick's own icon (ForgeGUI art, 27 Oct), shown on the big class card's gimmick row
+Config.GIMMICK_ICONS = {
+	WeedPuller = "rbxassetid://117785591700509",
+	Gardener = "rbxassetid://123254637418981",
+	LawnBaron = "rbxassetid://84660502573780",
+	UltimateGardener = "rbxassetid://125116243612326",
+	LawnLegend = "rbxassetid://90016869455155",
+	GoatMan = "rbxassetid://87148456600074",
+} :: { [string]: string }
 Config.DEFAULT_CLASS = "WeedPuller"
 Config.STOCK_WINDOW = 300 -- seconds between booth restocks
-Config.STOCK_SLOTS = 4
-Config.STOCK_WEIGHTS = { Uncommon = 40, Rare = 30, Epic = 15, Legendary = 8, Mythic = 4, Secret = 1 }
+-- 3 classes per restock, rarer at the top so the best ones are worth waiting for (owner, 27 Oct; Chop A Forest's curve).
+-- Shown odds come out about Uncommon 90% / Rare 59% / Epic 33% / Legendary 12% / Mythic 3.4% / Secret 1% (Lucky
+-- Restock: Legendary 28% / Mythic 7.7% / Secret 1.5%); Config.CLASS_CHANCE works them out from these weights.
+Config.STOCK_SLOTS = 3
+Config.STOCK_WEIGHTS = { Uncommon = 130, Rare = 46, Epic = 22, Legendary = 7.5, Mythic = 1.55, Secret = 0.29 } -- (owner, 27 Oct: Lawn Legend 2.5%, Goat Man 0.5%)
 
 function Config.class(id: string)
 	for _, c in Config.CLASSES do
@@ -690,7 +716,8 @@ function Config.class(id: string)
 end
 
 -- Lucky Restock (Chop A Forest's "x3 LUCK"): rarity weights are multiplied by these.
-Config.LUCKY_MULT = { Epic = 2, Legendary = 3, Mythic = 3, Secret = 3 }
+-- (the top two at 5x so the shown odds really come out about 3x: 3 slots dealt without repeats dampen a raw multiplier)
+Config.LUCKY_MULT = { Epic = 2, Legendary = 4, Mythic = 5, Secret = 5.5 }
 
 function Config.stockWindow(): number
 	return math.floor(workspace:GetServerTimeNow() / Config.STOCK_WINDOW)
@@ -906,6 +933,9 @@ Config.DAILY_COOLDOWN = 24 * 3600
 -- On top of the ladder, a little free gems at the same stall every 6 hours (Chop A Forest's daily is 35 gems every
 -- 6 hours): one more reason to drop in during the day. server/Daily.
 Config.FREE_GEMS = { gems = 20, every = 6 * 3600 }
+-- Offline earnings (server/Offline, owner 28 Oct): time away with a saved run pays coins into that run (per minute x the
+-- run's area grass value) and a few gems, capped. Nothing under minAway seconds counts (teleports, quick rejoins).
+Config.OFFLINE = { minAway = 600, maxHours = 8, coinsPerMin = 3, gemsPerHour = 2 }
 Config.GROUP_GEMS = 100
 
 -------------------------------------------------------------------------------------------------------------
@@ -926,8 +956,19 @@ Config.PRODUCTS = {
 	Gems5000 = { id = 3720129202, robux = 999, gems = 5000, name = "5,000 Gems" },
 	TrialMower = { id = 3720129209, robux = 25, mower = "TrialMower", name = "Trial Mower (this run)" },
 	RocketMower = { id = 3720129219, robux = 499, mower = "RocketMower", name = "Rocket Mower" },
-	ClassLawnLegend = { id = 3720129226, robux = 799, class = "LawnLegend", name = "Lawn Legend class" },
-	ClassGoatMan = { id = 3720129235, robux = 1499, class = "GoatMan", name = "Goat Man class" },
+	-- every class can be bought for Robux, in stock or not (owner, 27 Oct: the pay-to-win path). The first five are a
+	-- bit cheaper than Chop A Forest's, the top two a bit dearer. The ids of 0 still have to be made on the Creator
+	-- Dashboard (until then the button says "Coming soon"); Lawn Legend (was 799) and Goat Man (was 1499) need their
+	-- price changed there too, or Roblox charges the old price.
+	ClassGardener = { id = 3722990329, robux = 39, class = "Gardener", name = "Gardener class" },
+	ClassGroundskeeper = { id = 3722990484, robux = 65, class = "Groundskeeper", name = "Groundskeeper class" },
+	ClassLawnBaron = { id = 3722990570, robux = 85, class = "LawnBaron", name = "Lawn Baron class" },
+	ClassHedgeReaper = { id = 3722990740, robux = 129, class = "HedgeReaper", name = "Hedge Reaper class" },
+	ClassMowerSpecialist = { id = 3722990933, robux = 219, class = "MowerSpecialist", name = "Mower Specialist class" },
+	ClassGrassTitan = { id = 3722991031, robux = 349, class = "GrassTitan", name = "Grass Titan class" },
+	ClassUltimateGardener = { id = 3722991075, robux = 549, class = "UltimateGardener", name = "Ultimate Gardener class" },
+	ClassLawnLegend = { id = 3720129226, robux = 999, class = "LawnLegend", name = "Lawn Legend class" },
+	ClassGoatMan = { id = 3720129235, robux = 1699, class = "GoatMan", name = "Goat Man class" },
 	-- Class card deal: deal yourself new cards now (until the next restock). Random result, so the odds are
 	-- shown on every card (Config.CLASS_CHANCE / CLASS_CHANCE_LUCKY).
 	-- guns for the boss crate (yours in every fight)

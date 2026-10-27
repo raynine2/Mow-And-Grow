@@ -385,9 +385,8 @@ titleBox.AnchorPoint = Vector2.new(0.5, 0)
 titleBox.Parent = holder
 shrink(titleBox, 0.62)
 for _, t in {
-	-- (a clear gap either side of the crest in the middle: it used to sit on the L and the first S)
-	UI.text(titleBox, "CL", UDim2.fromOffset(170, 80), { pos = UDim2.fromOffset(-10, 0), align = Enum.TextXAlignment.Right, stroke = 5 }),
-	UI.text(titleBox, "SSES", UDim2.fromOffset(190, 80), { pos = UDim2.fromOffset(260, 0), align = Enum.TextXAlignment.Left, stroke = 5 }),
+	-- (owner, 27 Oct: the whole word now, the crest as an emblem on its left - the star-for-an-A was Chop A Forest's)
+	UI.text(titleBox, "CLASSES", UDim2.fromOffset(330, 80), { pos = UDim2.fromOffset(86, 0), align = Enum.TextXAlignment.Center, stroke = 5 }),
 } do
 	local g = Instance.new("UIGradient") -- starlight: white fading to a pale cosmic blue (guild: cream to gold)
 	g.Color = if GUILD then ColorSequence.new(Color3.fromRGB(255, 250, 230), Color3.fromRGB(255, 205, 90)) else ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(175, 205, 255))
@@ -405,14 +404,14 @@ titleGlow.Image = Tex.Glow
 titleGlow.ImageColor3 = Color3.fromRGB(255, 200, 80)
 titleGlow.ImageTransparency = 0.25
 titleGlow.Size = UDim2.fromOffset(110, 110)
-titleGlow.Position = UDim2.fromOffset(210, 42)
+titleGlow.Position = UDim2.fromOffset(52, 42)
 titleGlow.AnchorPoint = Vector2.new(0.5, 0.5)
 titleGlow.Parent = titleBox
 local titleStar = Instance.new("ImageLabel")
 titleStar.BackgroundTransparency = 1
 titleStar.Image = "rbxassetid://104095913007401" -- chunky gold sparkle, Store Icons/ClassArt/UISpark.png
 titleStar.Size = UDim2.fromOffset(64, 64)
-titleStar.Position = UDim2.fromOffset(210, 42)
+titleStar.Position = UDim2.fromOffset(52, 42)
 titleStar.AnchorPoint = Vector2.new(0.5, 0.5)
 titleStar.Parent = titleBox
 if GUILD and Skin.has("guild_crest") then
@@ -460,7 +459,7 @@ timerMoon.Position = UDim2.fromOffset(-56, -22)
 timerMoon.ZIndex = 5
 timerMoon.Parent = timerPill
 UI.breathe(timerMoon, 0.03, 2 * math.pi / 1.05) -- the crest pulses +-3% about once a second
-local timerLabel = UI.text(timerPill, if GUILD then "FRESH STOCK IN" else "NEW CARDS IN", UDim2.fromOffset(130, 22), { pos = UDim2.fromOffset(52, 9), align = Enum.TextXAlignment.Left, stroke = 2 })
+local timerLabel = UI.text(timerPill, "UFO LANDS IN", UDim2.fromOffset(130, 22), { pos = UDim2.fromOffset(52, 9), align = Enum.TextXAlignment.Left, stroke = 2 })
 local timerText = UI.text(timerPill, "5:00", UDim2.fromOffset(96, 36), { pos = UDim2.new(1, -12, 0, 2), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 3 })
 for _, t in { timerLabel, timerText } do
 	local s = t:FindFirstChildOfClass("UIStroke")
@@ -541,10 +540,7 @@ slideFrom(closeBtn, "top")
 local vs = UI.frame({ size = UDim2.fromOffset(360, 272), pos = UDim2.fromOffset(118, 124), color = Color3.new(1, 1, 1), parent = holder, radius = 18, outline = 4, name = "VsCard" })
 glass(vs, Color3.fromRGB(46, 28, 104), Color3.fromRGB(12, 8, 34), 14)
 energyRim(vs, 4)
-corkBoard(vs, 360, 272, 0.2)
-if GUILD then
-	Skin.pushpin(vs, UDim2.new(1, -24, 0, 16), 30) -- (in the corner, clear of the title)
-end
+-- (owner, 27 Oct: purple glass now, to match the space room - it was a cork / parchment board under the guild skin)
 shrink(vs, 0.667)
 slideFrom(vs, "left")
 local vsTitle = UI.text(vs, "VS YOUR CLASS", UDim2.fromOffset(240, 28), { pos = UDim2.fromOffset(16, 10), align = Enum.TextXAlignment.Left, color = GOLD, stroke = 2 })
@@ -560,7 +556,7 @@ vsLayout.SortOrder = Enum.SortOrder.LayoutOrder
 vsLayout.Parent = vsRows
 local vsQuote = UI.text(vs, "", UDim2.new(1, -32, 0, 30), { pos = UDim2.fromOffset(16, 236), align = Enum.TextXAlignment.Left, stroke = 1.5, textSize = 14 })
 vsQuote.Font = Enum.Font.FredokaOne
-if GUILD and Skin.has("ui_cork") then
+if false then -- (the cork layout, kept for the guild skin; the VS panel is purple glass now)
 	-- everything inside the cork, clear of the wooden rim (it overlapped the rim before)
 	vsTitle.Position = UDim2.fromOffset(28, 24)
 	vsTitle.Size = UDim2.fromOffset(220, 26)
@@ -610,8 +606,8 @@ local function restockButton(y: number, color: Color3, title: string, line: stri
 	return b
 end
 local restocks = {
-	restockButton(312, Color3.fromRGB(50, 140, 245), "RESTOCK", "Deal new cards now", "ClassRestock", false),
-	restockButton(354, Color3.fromRGB(70, 190, 80), "LUCKY RESTOCK", "Rare cards 3x more likely", "ClassLuckyRestock", true),
+	restockButton(312, Color3.fromRGB(50, 140, 245), "NEW DELIVERY", "New classes land right now", "ClassRestock", false),
+	restockButton(354, Color3.fromRGB(70, 190, 80), "LUCKY DELIVERY", "Rare classes 3x more likely", "ClassLuckyRestock", true),
 }
 for _, b in restocks do
 	slideFrom(b, "left")
@@ -740,7 +736,7 @@ for i = 1, 7 do
 	table.insert(starIcons, s)
 end
 -- the picture: a bright panel with turning rays, a glow and the class's tool
-local artPanel = UI.frame({ size = UDim2.new(1, -36, 0, 100), pos = UDim2.fromOffset(18, 106), color = Color3.fromRGB(120, 180, 255), parent = detail, radius = 14, outline = 4, name = "Art" })
+local artPanel = UI.frame({ size = UDim2.new(1, -36, 0, 76), pos = UDim2.fromOffset(18, 106), color = Color3.fromRGB(120, 180, 255), parent = detail, radius = 14, outline = 4, name = "Art" })
 artPanel.ClipsDescendants = true
 ;(artPanel:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = if GUILD then WOOD_INK else Color3.fromRGB(30, 20, 50)
 local raysBox = Instance.new("Frame")
@@ -774,22 +770,46 @@ artHolder.Size = UDim2.fromScale(1, 1)
 artHolder.Parent = artPanel
 twinkle(artPanel, UDim2.fromScale(0.82, 0.22), 30, Color3.new(1, 1, 1))
 twinkle(artPanel, UDim2.fromScale(0.16, 0.7), 22, Color3.new(1, 1, 1))
-local rarityPill = UI.frame({ size = UDim2.fromOffset(150, 30), pos = UDim2.new(0.5, 0, 0, 192), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(30, 20, 50), parent = detail, radius = 15, outline = 3, name = "Rarity" })
+local rarityPill = UI.frame({ size = UDim2.fromOffset(150, 30), pos = UDim2.new(0.5, 0, 0, 168), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(30, 20, 50), parent = detail, radius = 15, outline = 3, name = "Rarity" })
 ;(rarityPill:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.new(1, 1, 1)
 local rarityText = UI.text(rarityPill, "", UDim2.new(1, -10, 1, -6), { pos = UDim2.fromOffset(5, 3), stroke = 1.5 })
 local detState = UI.text(detail, "", UDim2.new(1, -24, 0, 0), { pos = UDim2.fromOffset(12, 0), stroke = 1.5 })
 detState.Visible = false
 local perkRows = Instance.new("Frame")
 perkRows.BackgroundTransparency = 1
-perkRows.Size = UDim2.new(1, -36, 0, 126)
-perkRows.Position = UDim2.fromOffset(18, 224)
+perkRows.Size = UDim2.new(1, -36, 0, 110)
+perkRows.Position = UDim2.fromOffset(18, 202)
 perkRows.Parent = detail
 local perkLayout = Instance.new("UIListLayout")
-perkLayout.Padding = UDim.new(0, 3)
+perkLayout.Padding = UDim.new(0, 2)
 perkLayout.SortOrder = Enum.SortOrder.LayoutOrder
 perkLayout.Parent = perkRows
 local detQuote = UI.text(detail, "", UDim2.new(1, -36, 0, 26), { pos = UDim2.fromOffset(18, 350), stroke = 1.5, textSize = 12 })
-local detOdds = UI.text(detail, "", UDim2.new(1, -28, 0, 16), { pos = UDim2.fromOffset(14, 376), stroke = 1.5, textSize = 12 })
+local detOdds = UI.text(detail, "", UDim2.new(1, -28, 0, 16), { pos = UDim2.fromOffset(14, 374), stroke = 1.5, textSize = 12 })
+detQuote.Visible = false -- (the gimmick row has its place; the quote moved to the VS panel)
+-- the class's gimmick, big, on its own row (owner, 27 Oct: it's what we have over Chop A Forest and nobody could read
+-- it in the VS panel's small print). (The trading-card skin has no room for it: hidden there.)
+local gimBox = UI.frame({ size = UDim2.new(1, -36, 0, 58), pos = UDim2.fromOffset(18, 314), color = Color3.fromRGB(30, 18, 64), parent = detail, radius = 10, outline = 3, name = "Gimmick" })
+gimBox.BackgroundTransparency = 0.08
+local gimTitle = UI.text(gimBox, "", UDim2.new(1, -16, 0, 22), { pos = UDim2.fromOffset(8, 3), align = Enum.TextXAlignment.Left, color = GOLD, stroke = 2 })
+local gimText = UI.text(gimBox, "", UDim2.new(1, -16, 0, 30), { pos = UDim2.fromOffset(8, 25), align = Enum.TextXAlignment.Left, stroke = 1.5 })
+gimText.TextWrapped = true
+gimText.TextYAlignment = Enum.TextYAlignment.Top
+do
+	local lim = Instance.new("UITextSizeConstraint")
+	lim.MaxTextSize = 16
+	lim.MinTextSize = 9
+	lim.Parent = gimText
+end
+local gimIcon = Instance.new("ImageLabel") -- the gimmick's own icon (Config.GIMMICK_ICONS) on the left of the row
+gimIcon.Name = "Icon"
+gimIcon.BackgroundTransparency = 1
+gimIcon.ScaleType = Enum.ScaleType.Fit
+gimIcon.AnchorPoint = Vector2.new(0, 0.5)
+gimIcon.Position = UDim2.new(0, 3, 0.5, 0)
+gimIcon.Size = UDim2.fromOffset(48, 48)
+gimIcon.ZIndex = gimBox.ZIndex + 2
+gimIcon.Parent = gimBox
 if TRADING then
 	-- written on the card's cream: dark ink, no outline
 	for _, t in { detQuote, detOdds } do
@@ -797,15 +817,22 @@ if TRADING then
 		;(t:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
 	end
 	-- the picture gets half again as much room; the quote goes (the VS box shows it), the odds stay
-	artPanel.Size = UDim2.new(1, -44, 0, 128)
+	-- (27 Oct: the picture a little shorter so the gimmick gets its own big row under the stats)
+	artPanel.Size = UDim2.new(1, -44, 0, 98)
 	artPanel.Position = UDim2.fromOffset(22, 102)
-	rarityPill.Position = UDim2.new(0.5, 0, 0, 216)
-	perkRows.Position = UDim2.fromOffset(24, 250)
-	perkRows.Size = UDim2.new(1, -48, 0, 120)
+	rarityPill.Position = UDim2.new(0.5, 0, 0, 186)
+	perkRows.Position = UDim2.fromOffset(24, 218)
+	perkRows.Size = UDim2.new(1, -48, 0, 108)
 	perkLayout.Padding = UDim.new(0, 2)
 	detQuote.Visible = false
-	detOdds.Position = UDim2.fromOffset(24, 372)
-	detOdds.Size = UDim2.new(1, -48, 0, 16)
+	gimBox.Position = UDim2.fromOffset(24, 328)
+	gimBox.Size = UDim2.new(1, -48, 0, 50)
+	gimTitle.Size = UDim2.new(1, -14, 0, 19)
+	gimTitle.Position = UDim2.fromOffset(7, 2)
+	gimText.Size = UDim2.new(1, -14, 0, 27)
+	gimText.Position = UDim2.fromOffset(7, 21)
+	detOdds.Position = UDim2.fromOffset(24, 379)
+	detOdds.Size = UDim2.new(1, -48, 0, 13)
 end
 local gemBtn = UI.button(detail, "BUY", C.purple, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(0, 16, 1, -14), anchor = Vector2.new(0, 1), name = "GemBuy" })
 local robuxBtn = UI.button(detail, "R$ 0", C.green, UDim2.fromOffset(134, 48), function() end, { pos = UDim2.new(1, -16, 1, -14), anchor = Vector2.new(1, 1), name = "RobuxBuy" })
@@ -855,6 +882,11 @@ for _, b in { { 5, 11, 8, 4, 45 }, { 10, 6, 14, 4, -50 } } do
 end
 local ownedChip = UI.frame({ size = UDim2.fromOffset(30, 28), pos = UDim2.new(1, -8, 0.5, -3), anchor = Vector2.new(1, 0.5), color = if GUILD then Color3.fromRGB(70, 42, 20) else Color3.fromRGB(30, 20, 50), parent = ownedTab, radius = 8, outline = 0, name = "Count" })
 local ownedCount = UI.text(ownedChip, "1", UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1.5 })
+-- LIMITED (owner, 27 Oct: "add the limited bar for now but no classes inside of it yet"): time-limited classes
+-- (Config.CLASSES entries with limited = true) will live here; until there are any it shows a "coming soon" slot
+local limitedTab = UI.button(holder, "LIMITED", TAB_OFF, UDim2.fromOffset(170, 46), function() end, { pos = UDim2.fromOffset(357, 454), name = "LimitedTab" })
+shrink(limitedTab, 0.667)
+slideFrom(limitedTab, "bottom")
 local row = Instance.new("ScrollingFrame")
 row.Name = "Cards"
 row.BackgroundTransparency = 1
@@ -1516,6 +1548,9 @@ end)
 ownedTab.MouseButton1Click:Connect(function()
 	setTab("owned")
 end)
+limitedTab.MouseButton1Click:Connect(function()
+	setTab("limited")
+end)
 
 function ClassDeal.refresh()
 	local d = State.data
@@ -1525,6 +1560,7 @@ function ClassDeal.refresh()
 	local stock, lucky = currentStock(d)
 	gemText.Text = Format.commas(d.gems)
 	UI.setButton(ownedTab, "OWNED", if tab == "owned" then C.orange else TAB_OFF)
+	UI.setButton(limitedTab, "LIMITED", if tab == "limited" then C.orange else TAB_OFF)
 	ownedCount.Text = tostring(#d.classes)
 	if not selected then
 		selected = stock[1] or d.class
@@ -1554,10 +1590,27 @@ function ClassDeal.refresh()
 		if tab == "owned" and not owned then
 			continue
 		end
+		if (tab == "limited") ~= ((c :: any).limited == true) then
+			continue -- (limited classes only on the LIMITED tab)
+		end
 		if tab == "stock" and c.gems <= 0 and not owned then
 			continue
 		end
 		card(c, i, d, stock)
+	end
+	if tab == "limited" and not row:FindFirstChildWhichIsA("GuiObject") then
+		-- nothing limited yet: one wide "coming soon" slot
+		local slot = Instance.new("Frame")
+		slot.Name = "LimitedSoon"
+		slot.BackgroundTransparency = 1
+		slot.Size = UDim2.fromOffset(560, 162)
+		slot.LayoutOrder = 999
+		slot.Parent = row
+		local ph = UI.frame({ size = UDim2.fromOffset(540, 130), pos = UDim2.fromOffset(280, 18), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(30, 20, 56), parent = slot, radius = 16, outline = 3, name = "Soon" })
+		ph.BackgroundTransparency = 0.12
+		energyRim(ph, 3, GOLD_SHIMMER)
+		UI.text(ph, "LIMITED CLASSES", UDim2.new(1, -24, 0, 40), { pos = UDim2.fromOffset(12, 14), color = GOLD, stroke = 3 })
+		UI.text(ph, "Rare classes that only stay for a short time land here. Check back soon!", UDim2.new(1, -40, 0, 50), { pos = UDim2.fromOffset(20, 60), stroke = 1.5, textSize = 17 })
 	end
 	if tab == "owned" then
 		-- the empty slot after your cards (Chop A Forest's "Buy more when they're in STOCK")
@@ -1644,8 +1697,30 @@ function ClassDeal.refresh()
 			seal.ImageColor3 = UI.shade(rc, 0.95)
 		end
 	end
+	-- the class's own gimmick (owner, 27 Oct) takes the quote's place: it's what makes the class play differently
+	local gim = Config.CLASS_GIMMICK[c.id]
 	detQuote.Text = '"' .. (QUOTES[c.id] or "") .. '"'
+	gimBox.Visible = gim ~= nil
+	if gim then
+		gimTitle.Text = "★ " .. string.upper(gim.name)
+		gimText.Text = gim.text
+	end
+	local gimArt = (Config :: any).GIMMICK_ICONS and (Config :: any).GIMMICK_ICONS[c.id]
+	gimIcon.Image = gimArt or ""
+	gimIcon.Visible = gimArt ~= nil
+	local inset = if gimArt then (if TRADING then 46 else 54) else (if TRADING then 7 else 8)
+	gimIcon.Size = UDim2.fromOffset(if TRADING then 42 else 48, if TRADING then 42 else 48)
+	gimTitle.Position = UDim2.fromOffset(inset, gimTitle.Position.Y.Offset)
+	gimTitle.Size = UDim2.new(1, -inset - 6, 0, gimTitle.Size.Y.Offset)
+	gimText.Position = UDim2.fromOffset(inset, gimText.Position.Y.Offset)
+	gimText.Size = UDim2.new(1, -inset - 6, 0, gimText.Size.Y.Offset)
+	gimTitle.TextColor3 = rc:Lerp(Color3.new(1, 1, 1), 0.35)
+	local gimStroke = gimBox:FindFirstChildOfClass("UIStroke")
+	if gimStroke then
+		gimStroke.Color = rc
+	end
 	ClassRoom.setAura(rc)
+	ClassRoom.setClass(c.id) -- the picked class's own aura on the avatar in the room
 	UI.clear(perkRows)
 	perkLayout.Parent = perkRows
 	local n = 0
@@ -1653,12 +1728,12 @@ function ClassDeal.refresh()
 		local v = (c :: any)[s.key]
 		if v and v ~= 0 and n < 5 then -- every stat it has (rarer classes have more of them)
 			n += 1
-			local r = UI.frame({ size = UDim2.new(1, 0, 0, 22), color = if parch or TRADING then Color3.fromRGB(96, 60, 30) else Color3.fromRGB(14, 10, 30), parent = perkRows, radius = 7, outline = 0, name = "Perk" })
+			local r = UI.frame({ size = UDim2.new(1, 0, 0, 20), color = if parch or TRADING then Color3.fromRGB(96, 60, 30) else Color3.fromRGB(14, 10, 30), parent = perkRows, radius = 7, outline = 0, name = "Perk" })
 			r.BackgroundTransparency = 0.4
 			r.LayoutOrder = n
-			UI.icon(r, STAT_ICON[s.key], 18, UDim2.fromOffset(5, 2))
+			UI.icon(r, STAT_ICON[s.key], 18, UDim2.fromOffset(5, 1))
 			UI.text(r, s.label, UDim2.new(1, -110, 1, -6), { pos = UDim2.fromOffset(32, 3), align = Enum.TextXAlignment.Left, stroke = 1.5 })
-			local pill = UI.frame({ size = UDim2.fromOffset(62, 20), pos = UDim2.new(1, -4, 0.5, 0), anchor = Vector2.new(1, 0.5), color = Color3.fromRGB(40, 150, 60), parent = r, radius = 6, outline = 0, name = "Value" })
+			local pill = UI.frame({ size = UDim2.fromOffset(62, 18), pos = UDim2.new(1, -4, 0.5, 0), anchor = Vector2.new(1, 0.5), color = Color3.fromRGB(40, 150, 60), parent = r, radius = 6, outline = 0, name = "Value" })
 			UI.gradient(pill, Color3.fromRGB(50, 170, 70))
 			UI.text(pill, statText(s, v), UDim2.new(1, -6, 1, -4), { pos = UDim2.fromOffset(3, 2), color = Color3.fromRGB(190, 255, 160), stroke = 1.5 })
 		end
@@ -1667,9 +1742,9 @@ function ClassDeal.refresh()
 	if c.gems <= 0 then
 		detOdds.Text = "Everyone starts with this class"
 	elseif inStock and not owned then
-		detOdds.Text = "Gone at the next restock!"
+		detOdds.Text = "Gone when the UFO lands again!"
 	else
-		detOdds.Text = ("Costs %s gems - %s chance it's in the next deal (Lucky Restock: %s)"):format(Format.commas(c.gems), pctText(chance), pctText(luckyChance))
+		detOdds.Text = ("%s gems · turns up in %s of deliveries (Lucky Delivery: %s)"):format(Format.commas(c.gems), pctText(chance), pctText(luckyChance))
 	end
 	local product = c.product and Config.PRODUCTS[c.product]
 	robuxBtn.Visible = product ~= nil and not owned
@@ -1706,7 +1781,7 @@ function ClassDeal.refresh()
 				break
 			end
 			local better = (b or 0) > (a or 0)
-			local r = UI.frame({ size = UDim2.new(1, 0, 0, if GUILD then 28 else 30), color = if GUILD then Color3.fromRGB(96, 60, 30) else Color3.fromRGB(40, 30, 92), parent = vsRows, radius = 8, outline = 0, name = "Row" })
+			local r = UI.frame({ size = UDim2.new(1, 0, 0, 30), color = Color3.fromRGB(40, 30, 92), parent = vsRows, radius = 8, outline = 0, name = "Row" })
 			r.BackgroundTransparency = 0.45
 			r.LayoutOrder = shown
 			UI.icon(r, STAT_ICON[s.key], 24, UDim2.fromOffset(6, 4))
@@ -1715,7 +1790,7 @@ function ClassDeal.refresh()
 			UI.text(r, statText(s, b), UDim2.fromOffset(70, 22), { pos = UDim2.new(1, -8, 0, 5), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, color = if better then Color3.fromRGB(150, 255, 120) else Color3.new(1, 1, 1), stroke = 1.5 })
 		end
 	end
-	vsQuote.Text = '"' .. (QUOTES[c.id] or "") .. '"'
+	vsQuote.Text = '"' .. (QUOTES[c.id] or "") .. '"' -- (the gimmick has its own big row on the card now)
 
 	-- the new deal flips the cards over; a Legendary or rarer card gets a full-screen reveal
 	if newDeal then
@@ -1799,8 +1874,8 @@ end)
 
 -- Windows refreshes the open window on every data update (a restock, a purchase); the avatar only reloads on open
 -- the big card floats +-1.3 px (a 3.5 s sine) once it has slid in, like Chop A Forest's
+local detailHome, glowHome = detail.Position, cardGlow.Position -- (layoutWide moves them on wide screens)
 do
-	local detailHome, glowHome = detail.Position, cardGlow.Position
 	RunService.RenderStepped:Connect(function()
 		if holder.Visible and os.clock() > slideDone then
 			local y = math.sin(os.clock() * 2 * math.pi / 3.5) * 1.3
@@ -1822,6 +1897,70 @@ end)
 -- tiny stars twinkling in the open space round the panels
 for _, p in { { 60, 70, 18 }, { 400, 40, 12 }, { 860, 34, 16 }, { 1230, 60, 14 }, { 1250, 330, 12 }, { 30, 330, 14 }, { 520, 470, 10 }, { 790, 450, 12 }, { 1200, 690, 16 }, { 60, 690, 12 }, { 640, 30, 10 }, { 1010, 30, 12 } } do
 	twinkle(holder, UDim2.fromOffset(p[1], p[2]), p[3], if GUILD then Color3.fromRGB(255, 236, 150) else Color3.fromRGB(220, 225, 255)) -- (guild: fireflies)
+end
+
+-- WIDE SCREENS (owner, 27 Oct: the screen only used the middle ~60%): the window grows to the screen's width, the left
+-- column (VS panel, restocks, tabs, close) moves out toward the left edge, the big card toward the right edge, and the
+-- card row grows to fill the bottom. Phones (about 2.1:1) gain the most. Runs on open and when the screen resizes.
+local wideHome: { [GuiObject]: UDim2 } = {}
+for _, ch in holder:GetChildren() do
+	if ch:IsA("GuiObject") and ch.Position.X.Scale == 0 then
+		wideHome[ch] = ch.Position
+	end
+end
+local function layoutWide()
+	local cam = workspace.CurrentCamera
+	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	local gs = UI.gui:FindFirstChildOfClass("UIScale")
+	local fill = holder:FindFirstChild("Fill") :: UIScale?
+	local k = (if gs then gs.Scale else 1) * (if fill then fill.Scale else 1)
+	local w = math.clamp(vp.X / math.max(k, 0.05) - 48, 1280, 1720)
+	-- phones (owner, 27 Oct: the text was small there): the left column, tabs, header and big card are drawn bigger,
+	-- the restocks, tabs and card row move down to make room (ForcePhone attribute on the window = test it on a PC)
+	local phoneOn = holder:GetAttribute("ForcePhone") == true
+	if not phoneOn then
+		local okP, PhonePerf = pcall(require, script.Parent:FindFirstChild("PhonePerf") :: any)
+		phoneOn = okP and PhonePerf and PhonePerf.on == true
+	end
+	local dy: { [GuiObject]: number } = {}
+	local dxp: { [GuiObject]: number } = {}
+	if phoneOn then
+		dy[restocks[1]], dy[restocks[2]] = 38, 42
+		dy[stockTab], dy[ownedTab], dy[limitedTab], dy[row] = 38, 38, 38, 38
+		dxp[ownedTab], dxp[limitedTab] = 24, 52 -- (the bigger tabs push each other right)
+	end
+	UI.scaleBase(vs, if phoneOn then 0.8 else 0.667)
+	for _, b in restocks do
+		UI.scaleBase(b, if phoneOn then 0.8 else 0.667)
+	end
+	for _, b in { stockTab, ownedTab, limitedTab } do
+		UI.scaleBase(b, if phoneOn then 0.8 else 0.667)
+	end
+	UI.scaleBase(titleBox, if phoneOn then 0.72 else 0.62)
+	UI.scaleBase(timerPill, if phoneOn then 0.76 else 0.66)
+	UI.scaleBase(gemBox, if phoneOn then 0.76 else 0.66)
+	UI.scaleBase(detail, if phoneOn then 1.02 else 0.95)
+	holder.Size = UDim2.fromOffset(w, 720)
+	local half = (w - 1280) / 2
+	local out = half * 0.92
+	for ch, home in wideHome do
+		local x = home.X.Offset
+		local dx = half + (if x < 520 then -out elseif x > 760 then out else 0)
+		ch.Position = home + UDim2.fromOffset(dx + (dxp[ch] or 0), dy[ch] or 0)
+	end
+	for _, s in slideIns do
+		s.home = s.obj.Position
+	end
+	detailHome, glowHome = detail.Position, cardGlow.Position
+	UI.scaleBase(row, math.clamp((w - 90) / 1220, 0.9, 1.06))
+end
+local cam0 = workspace.CurrentCamera
+if cam0 then
+	cam0:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+		if holder.Visible then
+			task.defer(layoutWide)
+		end
+	end)
 end
 
 UI.register("Classes", { frame = holder, refresh = ClassDeal.refresh, pop = {}, custom = true }) -- its own open (slide-ins), no pop / squash / slide from UI.open
@@ -1862,6 +2001,7 @@ UI.onWindowChanged.Event:Connect(function(name)
 		local d = State.data
 		local c = Config.class(selected or (d and d.class) or Config.DEFAULT_CLASS)
 		ClassRoom.show(if c then Config.RARITY_COLORS[c.rarity] else nil)
+		layoutWide()
 		playSlideIns()
 	else
 		ClassRoom.hide()

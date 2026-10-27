@@ -54,6 +54,7 @@ local DEFAULT = {
 	guns = {}, -- boss-crate guns bought with Robux: [gunId] = true
 	peaceful = false, -- Peaceful Mode for runs this player hosts (no night monsters, no best time)
 	potato = false, -- Potato Mode: low graphics on this player's screen (client/Potato)
+	alerts = {}, -- SETTINGS: { alertLegendary = false, alertMythic = false } turns those IN STOCK banners off (unset = on)
 	pets = {}, -- hatched critters: [uid] = petId
 	petsOn = {}, -- equipped pet uids (at most Config.PET_EQUIP)
 	petNext = 1, -- next uid number

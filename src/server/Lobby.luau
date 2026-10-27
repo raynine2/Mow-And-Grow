@@ -476,6 +476,12 @@ function Lobby.start()
 			PlayerData.changed(player)
 			Net.notify(player, if value then "Peaceful Mode ON: no night monsters, no best times" else "Peaceful Mode OFF", "green")
 		end
+		-- the SETTINGS panel's rare-stock alerts (client/Settings): the big IN STOCK banner for Legendary / Mythic
+		if data and (key == "alertLegendary" or key == "alertMythic") and type(value) == "boolean" then
+			data.alerts = if type(data.alerts) == "table" then data.alerts else {}
+			data.alerts[key] = value
+			PlayerData.changed(player)
+		end
 	end)
 	Net.on("Claim", 2, function(player, kind)
 		local data = PlayerData.get(player)

@@ -10,6 +10,17 @@ local TweenService = game:GetService("TweenService")
 
 local IntroCast = {}
 
+-- the ForgeGUI supply crate and its VFX Forge effects (client/IntroCrate; owner 27 Oct); the brick crate below is
+-- the fallback when its models aren't in the place
+local IntroCrate: any = nil
+do
+	local mod = script.Parent:FindFirstChild("IntroCrate")
+	local ok, res = pcall(require, mod)
+	if mod and ok then
+		IntroCrate = res
+	end
+end
+
 local set: Folder? = nil
 local hiddenChars: { Instance } = {}
 local hiddenGrass: { BasePart } = {}
@@ -432,7 +443,10 @@ local function burstBits(at: Vector3)
 end
 
 -- Drop the crate onto `pos`. Calls `onLand()` the moment it hits the ground.
-function IntroCast.crate(pos: Vector3, face: Vector3, onLand: () -> ())
+function IntroCast.crate(pos: Vector3, face: Vector3, onLand: () -> (), onOpen: (() -> ())?)
+	if IntroCrate and IntroCrate.ready() then
+		return IntroCrate.drop(folder(), IntroCast.ground(pos), face, onLand, onOpen)
+	end
 	local m = Instance.new("Model")
 	m.Name = "SupplyCrate"
 	m.Parent = folder()
@@ -461,6 +475,9 @@ function IntroCast.crate(pos: Vector3, face: Vector3, onLand: () -> ())
 			task.wait()
 		end
 		onLand()
+		if onOpen then
+			onOpen()
+		end
 		-- squash and settle
 		local settle = os.clock()
 		while os.clock() - settle < 0.25 do

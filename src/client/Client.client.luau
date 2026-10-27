@@ -31,6 +31,10 @@ require(modules:WaitForChild("EdgeLines")) -- faint lit edges on the voxel trees
 require(modules:WaitForChild("Wind"))
 require(modules:WaitForChild("Life")) -- trees swaying, wind ribbons, falling leaves, birds overhead
 require(modules:WaitForChild("Combo"))
+require(modules:WaitForChild("RarityFx")) -- rarer = cooler: class auras, pet glow-ups, the rare-restock banner
+require(modules:WaitForChild("WelcomeBack")) -- the welcome-back popup (offline earnings) + the lobby's CONTINUE RUN button
+require(modules:WaitForChild("Settings")) -- the gear beside the potato: Potato Mode + Legendary / Mythic in-stock alerts
+require(modules:WaitForChild("ClassFx")) -- the classes' gimmicks on screen, the Grass Titan's stomp
 require(modules:WaitForChild("LootFx"))
 require(modules:WaitForChild("Intro"))
 require(modules:WaitForChild("Loading"))

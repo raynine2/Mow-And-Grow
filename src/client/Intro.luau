@@ -586,6 +586,11 @@ local function crateShot(P: Plan, actors: { IntroCast.Actor }, mode: { value: st
 			for _, actor in actors do
 				actor.play("cheer")
 			end
+		end, function()
+			-- the title lands once the crate has burst open (owner 27 Oct: the new crate's reveal was hidden under it)
+			if not playing then
+				return
+			end
 			closeTitle = IntroUi.title(P.areaName:upper(), Config.GAME_NAME:upper(), "Mow it ALL to open the next area!")
 			Sound.play("victory", 0, 0.5)
 		end)
@@ -598,7 +603,7 @@ local function crateShot(P: Plan, actors: { IntroCast.Actor }, mode: { value: st
 		return look
 	end, { 0, 180, 20, -20, 160, -160, 40, -40 })
 	local cr, cf = turn(P.right, crateYaw), turn(P.fwd, crateYaw)
-	local ok = run(3.6, function(k)
+	local ok = run(4.3, function(k)
 		local p = mid + cr * (19 - k * 3) - cf * 4 + UP * (6.5 + k * 1.5)
 		return CFrame.lookAt(p, look), 58
 	end)

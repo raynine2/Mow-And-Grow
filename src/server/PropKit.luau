@@ -375,6 +375,18 @@ function PropKit.wall(parent: Instance, size: Vector3, cf: CFrame): Part
 	return w
 end
 
+-- A placed ForgeGUI building made solid through its own mesh (its Body) instead of an invisible box: the boxes were
+-- smaller than the roofs, so you walked into the eaves and fell through them (owner, 27 Oct). Returns the body.
+function PropKit.solidForge(model: Instance?): BasePart?
+	local body = model and model:FindFirstChild("Body", true)
+	if body and body:IsA("BasePart") then
+		body.CanCollide = true
+		body.CanQuery = true
+		return body
+	end
+	return nil
+end
+
 -- Invisible solid box, for Blender models placed without mesh collisions (cabin walls, machine bodies).
 -- `at` is the model's CFrame; centre/size are in the model's own studs (before `scale`).
 function PropKit.collider(parent: Instance, at: CFrame, centre: Vector3, size: Vector3, scale: number?): Part

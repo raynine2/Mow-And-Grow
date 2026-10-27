@@ -473,6 +473,9 @@ end
 local function notch(p: Patch, from: Vector3, ratio: number)
 	local dir = p.notchDir or flatDir(from - p.spot.Position) or Vector3.zAxis
 	p.notchDir = dir
+	if p.stalk then
+		return -- (28 Oct) a voxel clump's cut is carved in voxels by the cutter's client (client/ClumpWound)
+	end
 	local r, hgt = p.radius, p.height
 	local cut = 1 - ratio
 	if not p.notch then
@@ -569,6 +572,8 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 			ratio = ratio,
 			from = from,
 			dealt = amount, -- (28 Oct) client/HitMeter shows the bite this hit took
+			z = p.z, -- (28 Oct) client/ClumpWound tints the cut to the area's grass / the mutation
+			mut = p.mut,
 		})
 	end
 	return true

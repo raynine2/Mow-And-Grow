@@ -904,7 +904,19 @@ end
 local predicted: { { pos: Vector3, at: number } } = {}
 local STRIKE_DELAY = 0.11 -- seconds from the swing to contact (ViewModel's jab / chop reach the clump here)
 
+local Zones = require(Shared:WaitForChild("Zones")) :: any
 local function clumpColor(m: Model): Color3
+	-- (28 Oct) a voxel clump is one textured mesh whose Color is a neutral grey (the chips came out white): its
+	-- area's grass colour from the Zones palette (the clumps sit in World.Grass.Grass<area>)
+	local a = m.Parent
+	while a and not a.Name:match("^Grass%d+$") do
+		a = a.Parent
+	end
+	local z = a and tonumber(a.Name:sub(6))
+	local zdef = z and Zones.list and Zones.list[z]
+	if zdef and zdef.palette and zdef.palette.grass and zdef.palette.grass[1] then
+		return zdef.palette.grass[1]
+	end
 	-- the clump's main grass colour: its biggest part
 	local best, size = nil, 0
 	for _, p in m:GetDescendants() do

@@ -59,7 +59,7 @@ end
 local root = Instance.new("CanvasGroup")
 root.Name = "HitMeter"
 root.AnchorPoint = Vector2.new(0.5, 0)
-root.Position = UDim2.new(0.5, 0, 0.5, 30) -- just under the crosshair
+root.Position = UDim2.new(0.5, 0, 0.5, 52) -- under the crosshair, clear of the cut it's carving (28 Oct: was +30)
 root.Size = UDim2.fromOffset(W + 40, 78)
 root.BackgroundTransparency = 1
 root.GroupTransparency = 1

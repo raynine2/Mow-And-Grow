@@ -1,63 +1,97 @@
 -- CLUMP WOUNDS (owner, 28 Oct, about Chop A Forest's trees: every hit carves a hole right where you hit, the hole
 -- grows with each hit, it's pale fresh wood inside with stepped edges, and at the end the top snaps off; "yes" to
--- the grass version).
+-- the grass version. Round 2, same night: "make the hit look progressive to the tree, look at the video and check
+-- every frame of it").
+-- What the clip shows, frame by frame (120 fps): the hole is there on the very frame the fist lands, right where
+-- the crosshair is; it is a lumpy blob, not a neat oval; pale wood in the middle, a stepped ring, a torn rim; lit
+-- from above, so its top inner wall is in shade and its floor catches the light (that is what makes it read as a
+-- hole); every hit makes it wider and taller, so after 4-5 hits it spans the trunk; a hit higher or lower starts a
+-- second hole that grows into the first; at the end it wraps round and the top goes.
 -- Our voxel clumps get the same on their stalk, drawn in voxels so it matches them. The stalk is a 3 x 3 voxel
--- column; the cut is drawn in half-voxels, so its skin unrolls into 24 columns all the way round:
---   * every hit adds to the wound on the side it came from; a hit from another side starts a second wound there
---   * a wound is an oval on that unrolled skin that grows wider (round the stalk) and taller with every hit, until
---     the wounds meet round the back: a pale band, the stalk nearly through, and then it falls
---   * its voxels come in three soft tones and three heights: the pale fresh middle sits lowest and the torn green
---     rim stands proud, so it reads as a bowl cut into the stem (Chop's stepped edges)
---   * each new voxel pops in, and the wound leans, wobbles and falls over with the clump (client/HitFx's lean
---     carries it, client/Fx's falling copy takes it along)
--- Fed by the server's "chip" (client/Fx's chip handler). Only your own hits, only hand tools: auto tools and mowers
--- chip too many clumps at once. At most MAX_ACTIVE clumps carry a wound at a time (cheap on phones).
+-- column (6 voxels tall); the cut is drawn in half-voxels, so its skin unrolls into 24 columns all the way round
+-- and 12 rows up the stalk:
+--   * every hit adds to the wound under your crosshair (the side it came from, the height you aimed at); a hit
+--     somewhere else starts a second wound there, and they grow into each other
+--   * a wound is a lumpy blob on that unrolled skin that grows wider and taller with every hit (fast at first,
+--     so even the first hit on a tough clump shows), until the wounds meet round the back and it falls
+--   * its voxels come in three rings and three heights: the pale fresh middle sits lowest, the step next, the torn
+--     rim stands proud; the upper inner wall is shaded and the lower one lit, and the middle has a faint grain
+--   * each new voxel pops in white and settles to its colour, so every hit visibly lands; the wound leans, wobbles
+--     and falls over with the clump (client/HitFx's lean carries it, client/Fx's falling copy takes it along)
+-- Colours come from the area's real grass (shared/Zones palette: the voxel meshes are painted from it), or the
+-- mutation's colour. Fed by the server's "chip" (client/Fx's chip handler). Only your own hits, only hand tools:
+-- auto tools and mowers chip too many clumps at once. At most MAX_ACTIVE clumps carry a wound at a time.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
+local Shared = ReplicatedStorage:WaitForChild("MowALawn")
+local Config = require(Shared:WaitForChild("Config"))
+local Zones = require(Shared:WaitForChild("Zones")) :: any
 local HitFx = require(script.Parent.HitFx)
 
 local ClumpWound = {}
 local player = Players.LocalPlayer
 
-local CREAM = Color3.fromRGB(246, 242, 206) -- the inside of a fresh-cut stem
+local CREAM = Color3.fromRGB(250, 246, 214) -- the inside of a fresh-cut stem
+local WHITE = Color3.new(1, 1, 1)
+local SHADE = Color3.fromRGB(26, 40, 30)
 -- The cut is drawn in half-voxels (rounder than whole ones on a stalk only 3 voxels wide): 6 per face, 24 round.
 local PER_FACE = 6
 local COLS = PER_FACE * 4
+local ROWS = 12 -- half-voxel rows up the 6-voxel stalk
 local MAX_ACTIVE = 6
--- how far each ring stands off the bark (in stalk voxels): the pale middle lowest, the step next, the shaded lip of
--- the bark highest, so it reads as a bowl
-local RAISE = { [0] = 0.02, [1] = 0.08, [2] = 0.18 }
+-- how far each ring stands off the bark (in stalk voxels): the pale middle lowest, the step next, the torn rim
+-- highest, so it reads as a bowl
+local RAISE = { [0] = 0.02, [1] = 0.11, [2] = 0.23 }
 local NORMALS = { Vector3.zAxis, Vector3.xAxis, -Vector3.zAxis, -Vector3.xAxis }
 
-type Side = { g: number, cut: number }
-type Cell = { part: BasePart, rank: number }
-type Tones = { pith: Color3, fiber: Color3, stepLit: Color3, stepShade: Color3, lipLit: Color3, lipShade: Color3 }
+type Side = { g: number, row: number, cut: number, seed: number }
+type Cell = { part: BasePart, rank: number, tone: number }
+type Tones = { floorLit: Color3, floor: Color3, grain: Color3, floorShade: Color3, stepLit: Color3, stepShade: Color3, rimLit: Color3, rimShade: Color3 }
 type Wound = { sides: { Side }, cells: { [number]: Cell }, r0: number, v: number, R: number, tones: Tones }
 local wounds: { [Model]: Wound } = {}
 local active = 0
 
-local function tones(z: number?, mut: string?): Tones
-	local zone = Config.ZONES[z or 1] or Config.ZONES[1]
-	local grass: Color3 = zone.tint or zone.grass[1]
+local function luma(c: Color3): number
+	return 0.3 * c.R + 0.59 * c.G + 0.11 * c.B
+end
+
+local function mul(c: Color3, k: number): Color3
+	return Color3.new(math.clamp(c.R * k, 0, 1), math.clamp(c.G * k, 0, 1), math.clamp(c.B * k, 0, 1))
+end
+
+-- The colour the area's clumps are painted (the voxel meshes share one texture, painted from the Zones palette).
+local function grassOf(z: number?, mut: string?, fallback: Color3?): Color3
 	if mut and mut ~= "None" then
 		local m = Config.mutation(mut)
 		if m and m.color then
-			grass = m.color
+			return m.color
 		end
 	end
-	local shade = Color3.fromRGB(24, 46, 22)
-	-- lit from above: the upper side of the cut is in shadow, the lower side catches the light (that's what makes
-	-- it read as a hollow); the fresh middle has faint stem fibres
+	local def = Zones.list and Zones.list[z or 1]
+	local pal = def and def.palette
+	if pal and pal.grass and pal.grass[1] then
+		return pal.grass[1]
+	end
+	local zone = Config.ZONES[z or 1] or Config.ZONES[1]
+	return fallback or zone.tint or zone.grass[1]
+end
+
+local function tones(base: Color3): Tones
+	-- the fresh inside: creamy on a green / gold / pink stalk; on an already pale stalk (frost, blossom) it's a
+	-- deeper, cooler tone instead, so the cut still shows
+	local pale = luma(base) > 0.72
+	local inside = if pale then base:Lerp(Color3.fromRGB(110, 150, 200), 0.38) else base:Lerp(CREAM, 0.56)
 	return {
-		pith = grass:Lerp(CREAM, 0.8),
-		fiber = grass:Lerp(CREAM, 0.68),
-		stepLit = grass:Lerp(CREAM, 0.55),
-		stepShade = grass:Lerp(shade, 0.22),
-		lipLit = grass:Lerp(CREAM, 0.18),
-		lipShade = grass:Lerp(shade, 0.5),
+		floorLit = inside:Lerp(WHITE, 0.2), -- the floor of the cut catches the light
+		floor = inside,
+		grain = mul(inside, 0.87), -- faint fibres running up the stem
+		floorShade = inside:Lerp(SHADE, 0.32), -- the top inner wall, in its own shadow
+		stepLit = base:Lerp(if pale then inside else CREAM, 0.52),
+		stepShade = base:Lerp(SHADE, 0.24),
+		rimLit = base:Lerp(WHITE, 0.14), -- the torn edge of the stalk's skin
+		rimShade = base:Lerp(SHADE, 0.34),
 	}
 end
 
@@ -65,6 +99,12 @@ end
 local function circ(a: number, b: number): number
 	local d = math.abs(a - b) % COLS
 	return math.min(d, COLS - d)
+end
+
+-- a fixed little bump per cell and wound (-1..1): the lumpy edge of a torn cut
+local function bump(g: number, row: number, seed: number): number
+	local h = math.sin(g * 12.9898 + row * 78.233 + seed * 37.719) * 43758.5453
+	return (h - math.floor(h)) * 2 - 1
 end
 
 -- The column (0..23) a hit from local direction (lx, lz) lands on: 6 per face, faces +Z, +X, -Z, -X in turn, each
@@ -95,7 +135,34 @@ local function cellPose(w: Wound, g: number, row: number, rank: number): (CFrame
 	return CFrame.lookAt(pos, pos + n), Vector3.new(h * 1.04, h * 1.04, thick)
 end
 
-local function addCell(m: Model, w: Wound, key: number, rank: number)
+-- tone ids: 1 floor lit, 2 floor, 3 grain, 4 floor shade, 5 step lit, 6 step shade, 7 rim lit, 8 rim shade
+local function toneColor(tn: Tones, id: number): Color3
+	return if id == 1 then tn.floorLit
+		elseif id == 2 then tn.floor
+		elseif id == 3 then tn.grain
+		elseif id == 4 then tn.floorShade
+		elseif id == 5 then tn.stepLit
+		elseif id == 6 then tn.stepShade
+		elseif id == 7 then tn.rimLit
+		else tn.rimShade
+end
+
+-- `up`: where the cell sits in its wound, -1 (bottom edge) .. 1 (top edge)
+local function toneFor(rank: number, up: number, g: number, row: number): number
+	if rank == 0 then
+		if up > 0.42 then
+			return 4 -- the top inner wall, in shade
+		elseif up < -0.3 then
+			return 1 -- the floor, lit
+		end
+		return if (g + row // 3) % 3 == 0 then 3 else 2 -- fibres running up the stem
+	elseif rank == 1 then
+		return if up > 0.05 then 6 else 5
+	end
+	return if up > 0.15 then 8 else 7
+end
+
+local function addCell(m: Model, w: Wound, key: number, rank: number, tone: number)
 	local g, row = key // 16, key % 16
 	local rel, size = cellPose(w, g, row, rank)
 	local p = Instance.new("Part")
@@ -108,40 +175,47 @@ local function addCell(m: Model, w: Wound, key: number, rank: number)
 	p.Material = Enum.Material.SmoothPlastic
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
-	local dr = row - w.r0
-	local tn = w.tones
-	p.Color = if rank == 0 then (if (g + row * 2) % 5 == 0 then tn.fiber else tn.pith)
-		elseif rank == 1 then (if dr > 0 then tn.stepShade else tn.stepLit)
-		else (if dr >= 0 then tn.lipShade else tn.lipLit)
+	local color = toneColor(w.tones, tone)
 	HitFx.attach(m, p, rel, size) -- (before it's parented: the lean remembers its full size, not the pop-in one)
-	-- pop in
+	-- pop in: small and white-hot, then out to full size and its own colour (the fresh cut, just made)
 	p.Size = size * Vector3.new(0.35, 0.35, 1)
+	p.Color = color:Lerp(WHITE, 0.75)
 	p.Parent = m
 	TweenService:Create(p, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = size }):Play()
+	TweenService:Create(p, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Color = color }):Play()
 	local old = w.cells[key]
 	if old then
 		old.part:Destroy()
 	end
-	w.cells[key] = { part = p, rank = rank }
+	w.cells[key] = { part = p, rank = rank, tone = tone }
+end
+
+-- How far a wound has spread for how much of the clump it has cut: quick at first (the first hit on a tough clump
+-- still shows a proper bite), then on round the stalk.
+local function spread(cut: number): (number, number)
+	-- (tuned in play, 28 Oct: like Chop's trunk, the first hit takes about a third of the face, about half-way
+	-- through it spans the face, then it wraps round)
+	local c = math.clamp(cut * 1.04, 0, 1)
+	return 1.3 + 8.9 * c ^ 1.5, 1.35 + 3.6 * c ^ 1.15 -- round the stalk (columns), up and down (rows)
 end
 
 local function draw(m: Model, w: Wound)
 	local want: { [number]: number } = {}
+	local wantUp: { [number]: number } = {}
 	for _, s in w.sides do
-		local c = math.clamp(s.cut * 1.1, 0, 1)
-		local a = 1.4 + 8.6 * c -- round the stalk (half-voxel columns)
-		local b = 1.4 + 3.2 * c -- up and down (half-voxel rows)
+		local a, b = spread(s.cut)
 		for g = 0, COLS - 1 do
 			local dg = circ(g, s.g)
-			if dg <= a then
-				for row = 2, 11 do -- the stalk's half-voxel rows above its foot, below the leaves
-					local dr = row - w.r0
-					local e = math.sqrt((dg / a) ^ 2 + (dr / b) ^ 2)
+			if dg <= a + 1 then
+				for row = 1, ROWS - 1 do
+					local dr = row - s.row
+					local e = math.sqrt((dg / a) ^ 2 + (dr / b) ^ 2) * (1 + 0.15 * bump(g, row, s.seed))
 					if e <= 1 then
-						local rank = if e < 0.42 then 0 elseif e < 0.74 then 1 else 2
+						local rank = if e < 0.45 then 0 elseif e < 0.76 then 1 else 2
 						local key = g * 16 + row
 						if want[key] == nil or rank < want[key] then
 							want[key] = rank
+							wantUp[key] = math.clamp(dr / b, -1, 1)
 						end
 					end
 				end
@@ -150,8 +224,13 @@ local function draw(m: Model, w: Wound)
 	end
 	for key, rank in want do
 		local cell = w.cells[key]
+		local tone = toneFor(rank, wantUp[key], key // 16, key % 16)
 		if not cell or rank < cell.rank then
-			addCell(m, w, key, rank) -- new, or cut deeper: a paler, lower voxel
+			addCell(m, w, key, rank, tone) -- new, or cut deeper: a paler, lower voxel
+		elseif cell.tone ~= tone and cell.rank == rank then
+			-- the wound grew past it: its shading moves with the new shape (top wall / floor)
+			cell.tone = tone
+			cell.part.Color = toneColor(w.tones, tone)
 		end
 	end
 end
@@ -183,6 +262,29 @@ local function forget(m: Model)
 	end
 end
 
+-- The half-voxel row your crosshair is on, where the view line meets the stalk (nil when you aren't looking at it:
+-- the other clumps a wide swing catches get their cut at chest height).
+local function aimRow(base: CFrame, w: Wound): number?
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return nil
+	end
+	local eye, look = cam.CFrame.Position, cam.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	local to = Vector3.new(base.X - eye.X, 0, base.Z - eye.Z)
+	if flat.Magnitude < 0.05 or to.Magnitude < 0.05 then
+		return nil
+	end
+	-- looking at this stalk? (within its width, seen from here)
+	local off = to.Magnitude * math.sqrt(math.max(0, 1 - (to.Unit:Dot(flat.Unit)) ^ 2))
+	if to.Unit:Dot(flat.Unit) < 0.5 or off > w.R + 1.2 then
+		return nil
+	end
+	local t = math.max(0, to.Magnitude - w.R) / flat.Magnitude
+	local y = eye.Y + look.Y * t - base.Y
+	return math.clamp(math.floor(y / (w.v / 2)), 2, ROWS - 3)
+end
+
 -- A hit that didn't cut the clump down yet (the server's "chip": model, from, dealt, max, z, mut).
 function ClumpWound.hit(d)
 	local m = d.model
@@ -207,9 +309,9 @@ function ClumpWound.hit(d)
 		end
 		local hgt = m:GetAttribute("Height")
 		local v = R / 1.5
-		-- the cut sits at chest height, where your fist lands (server/Field puts the hits there too)
+		-- without an aim, the cut sits at chest height, where your fist lands (server/Field puts the hits there too)
 		local lift = math.min((if type(hgt) == "number" then hgt else 7) * 0.17, 2.8)
-		w = { sides = {}, cells = {}, r0 = math.clamp(math.floor(lift / (v / 2)) + 2, 4, 9), v = v, R = R, tones = tones(d.z, d.mut) }
+		w = { sides = {}, cells = {}, r0 = math.clamp(math.floor(lift / (v / 2)) + 2, 4, 9), v = v, R = R, tones = tones(grassOf(d.z, d.mut, d.color)) }
 		wounds[m] = w
 		active += 1
 		m.AncestryChanged:Connect(function(_, parent)
@@ -221,15 +323,16 @@ function ClumpWound.hit(d)
 	local base = HitFx.base(m)
 	local rel = base:VectorToObjectSpace(Vector3.new(d.from.X - base.X, 0, d.from.Z - base.Z))
 	local g = columnOf(rel.X, rel.Z, w.R, w.v)
+	local row = aimRow(base, w) or w.r0
 	local side: Side? = nil
 	for _, s in w.sides do
-		if circ(s.g, g) <= 4 then
+		if circ(s.g, g) <= 4 and math.abs(s.row - row) <= 2 then
 			side = s
 			break
 		end
 	end
 	if not side then
-		side = { g = g, cut = 0 }
+		side = { g = g, row = row, cut = 0, seed = math.random() * 100 }
 		table.insert(w.sides, side :: Side)
 	end
 	local s = side :: Side

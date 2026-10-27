@@ -498,14 +498,14 @@ function WeaponFx.bite(pos: Vector3, amount: number, share: number, color: Color
 	local size = 0.85 + math.clamp(share, 0, 1) * 0.55
 	sc.Scale = size * 1.35
 	TweenService:Create(sc, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = size }):Play()
-	local rise = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local rise = TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 	TweenService:Create(n.a, rise, { WorldPosition = start + Vector3.new(0, 2.2, 0) }):Play()
-	local fade = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.45)
+	local fade = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.6)
 	TweenService:Create(n.label, fade, { TextTransparency = 1 }):Play()
 	TweenService:Create(stroke, fade, { Transparency = 1 }):Play()
 	local my = n.label.Text .. tostring(os.clock())
 	n.label:SetAttribute("Tag", my)
-	task.delay(0.85, function()
+	task.delay(1.0, function()
 		if n.label:GetAttribute("Tag") == my then
 			n.gui.Enabled = false
 		end

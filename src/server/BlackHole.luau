@@ -2,7 +2,7 @@
 -- have the menu"). Built by RunBuilder.classesKiosk in the run's camp when Config.CLASSES_BLACK_HOLE is on.
 --
 -- What's here (server, so Studio's Edit mode shows it too) - the client (client/BlackHole) makes it move:
---   * a crater torn up by the hole: basalt slabs buckled in over a violet glow (some still carrying their turf),
+--   * (off since 27 Oct, BlackHole.GROUND) a crater torn up by the hole: basalt slabs buckled in over a violet glow (some still carrying their turf),
 --     an inner ring sinking into a swirling abyss, a light column up into the hole, crystal clusters with energy
 --     streams curving up into it, glowing cracks over the ground, chunks of meadow floating round it
 --   * the black hole floating over the well (its middle HOLE_Y studs up, out of reach unless you jump): a pitch
@@ -28,6 +28,9 @@ BlackHole.TILT = 14 -- the disk's tilt (degrees, about the stand's X axis)
 -- The whole stand is built at the sizes above, then scaled by this (the owner, 27 Oct: "a bit smaller"); the
 -- client reads the scaled sizes from the Singularity's / chunks' attributes, so it follows.
 BlackHole.SCALE = 0.75
+-- The crater on the ground under it (slabs, abyss, light column, crystals, spires, cracks): off since the owner,
+-- 27 Oct: "remove the ground bit". The hole, its disk and the floating chunks stay.
+BlackHole.GROUND = false
 
 local TEX = {
 	glow = "rbxassetid://125552447014366",
@@ -133,8 +136,8 @@ local function slabRing(k: Instance, at: CFrame, rng: Random, count: number, rad
 	end
 end
 
-local function crater(k: Instance, at: CFrame)
-	local rng = Random.new(1969)
+-- the ground part: the crater of slabs, the abyss and its swirl, the light column, crystals, spires and cracks
+local function ground(k: Instance, at: CFrame, rng: Random)
 	-- the glow under everything (shows between the slabs) and the abyss in the middle
 	local glow = PropKit.cylinder(k, 7.6, 0.1, at * CFrame.new(0, 0.08, 0), Color3.fromRGB(120, 70, 255))
 	glow.Name = "UnderGlow"
@@ -299,6 +302,13 @@ local function crater(k: Instance, at: CFrame)
 			local c = block(k, "Crack", Vector3.new(seg[3], 0.12, len), at * CFrame.lookAt(m, seg[2]), Color3.fromRGB(160, 105, 255), Enum.Material.Neon)
 			c.Transparency = if j == 1 then 0.1 else 0.35
 		end
+	end
+end
+
+local function crater(k: Instance, at: CFrame)
+	local rng = Random.new(1969)
+	if BlackHole.GROUND then
+		ground(k, at, rng)
 	end
 	-- chunks of meadow floating round it (client/BlackHole orbits them: OrbitR / OrbitA / OrbitY)
 	for i = 1, 8 do

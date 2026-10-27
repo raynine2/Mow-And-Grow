@@ -105,4 +105,11 @@ return {
 	Prop_mower_statue = Vector3.new(8.00, 11.50, 9.50),
 	Prop_wheelbarrow = Vector3.new(2.50, 3.00, 6.00),
 	Prop_hay_bale = Vector3.new(6.00, 4.00, 4.00),
+	-- the grass bundles (tools/blender/voxel/bundle.py, MowBundles.fbx: one per grass mutation)
+	Bundle_None = Vector3.new(2.75, 1.62, 1.88),
+	Bundle_Golden = Vector3.new(2.75, 1.62, 1.88),
+	Bundle_Rainbow = Vector3.new(2.75, 1.62, 1.88),
+	Bundle_Diamond = Vector3.new(2.75, 1.62, 1.88),
+	Bundle_Toxic = Vector3.new(2.75, 1.62, 1.88),
+	Bundle_Galaxy = Vector3.new(2.75, 1.62, 1.88),
 }

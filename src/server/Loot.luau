@@ -9,6 +9,7 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Net = require(script.Parent.Net)
 local Models = require(script.Parent.Models)
 local Carry = require(script.Parent.Carry)
+local VoxelModels = require(script.Parent.VoxelModels)
 
 local Loot = {}
 
@@ -47,7 +48,15 @@ end
 
 local function bundleVisual(pos: Vector3, mut: string?): Instance
 	local m = Config.mutation(mut or "None")
-	local cf = CFrame.new(pos) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+	local yaw = rng:NextNumber(0, math.pi * 2)
+	-- the voxel bundle for this grass (server/Carry.voxelName), once its models are in Studio
+	local vname = Carry.voxelName(m.id)
+	local mesh = vname and VoxelModels.place(folder :: Folder, vname, pos, { scale = Carry.VOXEL_SCALE, yaw = yaw })
+	if mesh then
+		mesh.Name = "Bundle"
+		return mesh
+	end
+	local cf = CFrame.new(pos) * CFrame.Angles(0, yaw, 0)
 	local placed = Models.place("bundle", folder :: Folder, cf, 0.9, true)
 	if placed then
 		if m.color then

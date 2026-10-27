@@ -4,10 +4,23 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
 local Models = require(script.Parent.Models)
+local VoxelModels = require(script.Parent.VoxelModels)
 
 local Carry = {}
 
 local MAX_VISIBLE = 12
+-- the voxel bundles (tools/blender/voxel/bundle.py: Bundle_<mutation>, owner 27 Oct "make it voxel like the game"),
+-- drawn this much smaller than built (about 2.2 x 1.3 studs, so six stack a stud apart)
+Carry.VOXEL_SCALE = 0.8
+
+-- The voxel bundle mesh for a mutation (the plain one if that mutation has none), or nil before they're imported.
+function Carry.voxelName(mut: string?): string?
+	local name = "Bundle_" .. (mut or "None")
+	if VoxelModels.has(name) then
+		return name
+	end
+	return if VoxelModels.has("Bundle_None") then "Bundle_None" else nil
+end
 local BUNDLE_COLOR = Color3.fromRGB(150, 220, 80)
 local TAPE = Color3.fromRGB(255, 205, 50)
 
@@ -49,6 +62,19 @@ function Carry.refresh(player: Player)
 		local row = (i - 1) % 6
 		local col = (i - 1) // 6
 		local spot = torso.CFrame * CFrame.new(col * 2.4 - (if n > 6 then 1.2 else 0), -0.6 + row * 1.0, 1.3) * CFrame.new(0, -0.5, 0)
+		local vname = Carry.voxelName(mut.id)
+		local mesh = vname and VoxelModels.place(stack, vname, spot.Position, { scale = Carry.VOXEL_SCALE, shadow = false })
+		if mesh then
+			-- (its knot and daisy face out, away from the back, where the camera sees them)
+			mesh.CFrame = spot * CFrame.new(0, mesh.Size.Y / 2, 0)
+			mesh.Anchored = false
+			mesh.Massless = true
+			local w = Instance.new("WeldConstraint")
+			w.Part0 = mesh
+			w.Part1 = torso
+			w.Parent = mesh
+			continue
+		end
 		local placed = Models.place("bundle", stack, spot, 0.9)
 		if placed then
 			Models.weldTo(placed, torso)

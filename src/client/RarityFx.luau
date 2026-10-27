@@ -1353,7 +1353,8 @@ task.spawn(function()
 				showBanner(c, left)
 			end
 			local rc = rarityColor(c.rarity)
-			chip.Visible = true
+			-- (the chip is hidden for now: the owner, 27 Oct "remove this for now"; true brings it back)
+			chip.Visible = false
 			chipText.Text = "★ " .. string.upper(c.rarity) .. " IN STOCK  " .. Format.clock(left)
 			chipText.TextColor3 = rc:Lerp(WHITE, 0.4)
 			chipStroke.Color = WHITE

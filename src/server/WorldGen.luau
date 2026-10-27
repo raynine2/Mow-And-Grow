@@ -556,6 +556,13 @@ function WorldGen.lighting()
 	-- it and only a little haze at the horizon
 	local sky = L:FindFirstChildOfClass("Sky")
 	local ownSky = sky ~= nil and sky.Name ~= "MowALawnSky"
+	if ownSky then
+		-- the owner's skybox (13107344387) has its pale cloud bank toward the camp spawn's view; turned half round
+		-- the spawn sees the blue side (owner, 27 Oct: too much white when you spawn)
+		pcall(function()
+			(sky :: Sky).SkyboxOrientation = Vector3.new(0, 180, 0)
+		end)
+	end
 	local atm = Instance.new("Atmosphere")
 	atm.Density = if ownSky then 0.22 else 0.3
 	atm.Offset = 0.2

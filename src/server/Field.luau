@@ -187,7 +187,7 @@ local function stubble(p: Patch)
 	local vid = voxelId(p.z)
 	if vid then
 		local _, yaw = p.spot:ToOrientation()
-		local vstub = VoxelModels.place(turf.Parent :: Instance, "Stubble_" .. vid, p.spot.Position, { scale = p.modelScale, yaw = yaw, shadow = false })
+		local vstub = VoxelModels.place(turf.Parent :: Instance, "Stubble_" .. vid, p.stalkAt or p.spot.Position, { scale = p.modelScale, yaw = yaw, shadow = false })
 		if vstub then
 			p.stub = vstub
 			for _, n in { "MutationGlow", "MutationSparkle" } do
@@ -260,7 +260,18 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 		local _, yaw = at:ToOrientation()
 		local mesh = VoxelModels.place(holder, "Clump_" .. vid .. "_" .. rng:NextInteger(1, 2), p.spot.Position, { scale = size, yaw = yaw })
 		if mesh then
-			holder.WorldPivot = p.spot -- falls over about its foot
+			local k = mesh.Size.Y / 7.2 -- the mesh's scale (a meadow clump's mesh is 7.2 studs tall)
+			-- (28 Oct) the stalk isn't always in the middle of its mesh (the mesh is centred on its blades, which
+			-- lean out unevenly): StalkOffset on the template says where it is, in voxels of the model's own frame
+			-- (measured in Studio: wheat_1's stalk sits half a voxel to -X and a whole voxel to -Z). The clump's
+			-- pivot, its collider, the hit prediction and the cut (client/ClumpWound) all go to the real stalk.
+			local so = mesh:GetAttribute("StalkOffset")
+			local stalkAt = p.spot.Position
+			if typeof(so) == "Vector3" then
+				stalkAt += CFrame.Angles(0, yaw, 0):VectorToWorldSpace(so * 0.4 * k)
+			end
+			p.stalkAt = stalkAt
+			holder.WorldPivot = CFrame.new(stalkAt) * p.spot.Rotation -- falls over about its foot
 			holder.Parent = model
 			p.model = holder
 			p.voxel = true
@@ -268,11 +279,10 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 			-- you chop it at its stalk, like a tree trunk (tools/blender/voxel stalk_clump: a 3 x 3 voxel stalk,
 			-- 6 voxels tall, at 0.4 studs a voxel). A collider keeps you at the stalk; the reach is measured from
 			-- its surface, so you have to walk right up to it.
-			local k = mesh.Size.Y / 7.2 -- the mesh's scale (a meadow clump's mesh is 7.2 studs tall)
 			local stalkR = 0.6 * k
 			p.stalk = stalkR
 			p.radius = stalkR + 1.6
-			local collider = brick(holder, Vector3.new(2.4 * k + 0.6, stalkR * 2, stalkR * 2), CFrame.new(p.spot.Position + Vector3.new(0, (2.4 * k + 0.6) / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color3.new(1, 1, 1), "StalkCollider")
+			local collider = brick(holder, Vector3.new(2.4 * k + 0.6, stalkR * 2, stalkR * 2), CFrame.new(stalkAt + Vector3.new(0, (2.4 * k + 0.6) / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)), Color3.new(1, 1, 1), "StalkCollider")
 			collider.Shape = Enum.PartType.Cylinder
 			collider.Transparency = 1
 			collider.CanCollide = true
@@ -513,7 +523,7 @@ local function fell(p: Patch, player: Player)
 		land = p.landPos,
 		height = clumpHeight(p),
 		time = FALL_TIME,
-		color = p.baseColor,
+		color = if p.voxel and Zones.list[p.z] then Zones.list[p.z].palette.grass[1] else p.baseColor,
 		mut = p.mut,
 		z = p.z,
 		by = player.UserId,
@@ -563,8 +573,8 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 		local h = clumpHeight(p)
 		Net.send(player, "Fx", "chip", {
 			pos = p.part.Position,
-			hitPos = p.spot.Position + Vector3.new(0, math.min(h * 0.35, 4), 0),
-			color = if first then first.stem.Color else p.baseColor,
+			hitPos = (p.stalkAt or p.spot.Position) + Vector3.new(0, math.min(h * 0.35, 4), 0),
+			color = if first then first.stem.Color elseif p.voxel and Zones.list[p.z] then Zones.list[p.z].palette.grass[1] else p.baseColor, -- (28 Oct: a voxel clump's real colour)
 			label = def.grassName,
 			hp = p.hp,
 			max = p.maxHp,
@@ -609,7 +619,7 @@ function Field.hitAim(player: Player, rootPos: Vector3, look: Vector3, reach: nu
 	local list = query(rootPos, reach)
 	local best, bestScore = nil, math.huge
 	for _, p in list do
-		local mid = p.spot.Position + Vector3.new(0, math.min(p.height * 0.4, 5), 0)
+		local mid = (p.stalkAt or p.spot.Position) + Vector3.new(0, math.min(p.height * 0.4, 5), 0)
 		local to = mid - eye
 		local d = math.max(to.Magnitude, 0.1)
 		local angle = math.acos(math.clamp(to:Dot(look) / d, -1, 1))

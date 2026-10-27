@@ -51,6 +51,13 @@ local function lighting()
 		sky.Name = "MowALawnSky"
 		sky.Parent = Lighting
 	end
+	-- the place's own skybox (owner's, 13107344387) has its pale, cloudy side toward the camp spawn's view; turned
+	-- half round so a player spawning in sees the blue side (owner, 27 Oct: too much white when you spawn)
+	if sky and sky.Name ~= "MowALawnSky" then
+		pcall(function()
+			sky.SkyboxOrientation = Vector3.new(0, 180, 0)
+		end)
+	end
 	if sky and sky.Name == "MowALawnSky" then
 		sky.SunAngularSize = look.sunSize
 		-- the sun and moon on, and a sky full of stars for the nights in a run (server/DayNight)

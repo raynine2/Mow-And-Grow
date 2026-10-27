@@ -81,7 +81,8 @@ Zones.list = {
 		},
 		-- (the hubs use this too) mid-afternoon sun, crisp shadows (owner, 27 Oct: light like Chop A Forest; every area
 		-- now has a daylight or golden-hour time instead of dusk/night, graded in client/BiomeLight)
-		lighting = { clock = 16.2, ambient = C(120, 126, 130), outdoor = C(140, 146, 150), brightness = 2.3, tint = C(255, 250, 238), saturation = 0.36, contrast = 0.22, fog = C(196, 222, 240), haze = 1.1, density = 0.26, sunRays = 0.05, bloom = 1.1 },
+		-- a morning sun: the camp spawn faces west (-X), so an afternoon sun shone straight into new players' eyes
+		lighting = { clock = 8.3, ambient = C(120, 126, 130), outdoor = C(140, 146, 150), brightness = 2.3, tint = C(255, 250, 238), saturation = 0.36, contrast = 0.22, fog = C(196, 222, 240), haze = 1.1, density = 0.26, sunRays = 0.05, bloom = 1.1 },
 	},
 	{
 		id = "wheat",

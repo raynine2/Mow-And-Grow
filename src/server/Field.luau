@@ -568,6 +568,7 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 			model = p.model or p.holder,
 			ratio = ratio,
 			from = from,
+			dealt = amount, -- (28 Oct) client/HitMeter shows the bite this hit took
 		})
 	end
 	return true

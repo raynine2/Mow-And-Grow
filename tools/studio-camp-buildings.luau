@@ -20,6 +20,10 @@ local KEEP = {
 	Garage = { ["0Anchor"] = true, GaragePrompt = true, gas_pump = true, GasPump = true },
 }
 local OLD_PUMP = CFrame.new(10, 0, -6)
+local before = {}
+for _, c in game.ReplicatedStorage:GetChildren() do
+	before[c] = true
+end
 -- (a fresh copy of the modules: the command bar keeps old requires)
 local tmp = game.ServerScriptService.MowALawn:Clone()
 tmp.Parent = SS
@@ -57,5 +61,12 @@ local ok, err = pcall(function()
 	end
 end)
 tmp:Destroy()
+-- the model cache the fresh require made in ReplicatedStorage (a run makes its own; stale copies saved in the place
+-- were picked up by the client instead of the run's)
+for _, c in game.ReplicatedStorage:GetChildren() do
+	if c.Name == "MowALawnModels" and not before[c] then
+		c:Destroy()
+	end
+end
 assert(ok, err)
 return "voxel shop and garage in place; old pieces in " .. bk:GetFullName() .. ". Save the place (Ctrl+S)."

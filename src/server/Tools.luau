@@ -31,7 +31,38 @@ local function piece(tool: Tool, handle: BasePart, size: Vector3, offset: CFrame
 	return p
 end
 
--- Simple brick models for each tool. The handle is what the hand grips.
+-- The Blender model the first-person hands hold (client/ViewModel) and the shop shows: the tool in your hand looks
+-- the same zoomed in and zoomed out (owner, 27 Oct: the scissors were a different model up close). Held at its
+-- grip (the model's origin), working end forward, like the brick version it covers.
+local HELD_MODEL = { Scissors = "tool_scissors", Sickle = "tool_sickle", WeedWhacker = "tool_whacker", MegaScythe = "tool_scythe" }
+local HELD_SCALE = 0.85
+
+local function dressWithModel(tool: Tool, handle: BasePart, id: string)
+	local name = HELD_MODEL[id]
+	local m = name and Models.place(name, tool, handle.CFrame, HELD_SCALE, true)
+	if not m then
+		return -- not loaded: the brick version stays
+	end
+	m.Name = "HeldModel"
+	for _, d in tool:GetDescendants() do
+		if d:IsA("BasePart") and not d:IsDescendantOf(m) then
+			d.Transparency = 1 -- the bricks stay as the grip and the scythe's trail anchor, unseen
+		end
+	end
+	for _, p in m:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.Anchored = false
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+			p.Massless = true
+			weld(p, handle)
+		end
+	end
+end
+
+-- Simple brick models for each tool (covered by the Blender model when it's loaded). The handle is what the hand
+-- grips.
 local function buildModel(tool: Tool, def)
 	if def.id == "Hands" then
 		tool.RequiresHandle = false
@@ -87,6 +118,7 @@ local function buildModel(tool: Tool, def)
 		trail.Enabled = false
 		trail.Parent = blade
 	end
+	dressWithModel(tool, handle, def.id)
 end
 
 -- Push mowers don't sit in the hand: while equipped, a mower is attached in front of the character on the

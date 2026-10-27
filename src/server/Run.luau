@@ -249,10 +249,11 @@ local function warnBagFull(player: Player)
 	end
 end
 
--- Bundles in the bag plus bundles still on the ground: you can't cut more than you can carry.
-local function bagFull(player: Player): boolean
-	local ground = Loot.count(player)
-	return Carry.count(player) + ground >= Carry.capacity(player) or ground >= Config.LOOT.maxOnGround
+-- Cutting only stops when Config.LOOT.maxOnGround of your bundles lie on the ground. A full bag doesn't stop it
+-- (owner, 27 Oct: "you should be able to chop things when the backpack is full but not grab them, like Chop A
+-- Forest"): the bundles drop and wait for you, and picking them up is refused until there's room (server/Loot).
+local function groundFull(player: Player): boolean
+	return Loot.count(player) >= Config.LOOT.maxOnGround
 end
 
 -- A patch was cut: its bundle drops on the ground (two with Bigger Bundle luck, sometimes a gem too) for the
@@ -266,9 +267,12 @@ local function onCut(player: Player, patch): boolean
 		data.stats.cut += 1
 		return true
 	end
-	if bagFull(player) then
+	if groundFull(player) then
 		warnBagFull(player)
 		return false
+	end
+	if Carry.isFull(player) then
+		warnBagFull(player) -- it still drops; the bag bar shakes and says to sell
 	end
 	local stats = Stats.compute(player, data)
 	local pos = patch.part.Position
@@ -378,7 +382,7 @@ local function onSwing(player: Player, look: any)
 	if typeof(look) == "Vector3" and look.Magnitude > 0.5 and look.Magnitude < 1.5 and look.X == look.X then
 		aim = look.Unit
 	end
-	if bagFull(player) then
+	if groundFull(player) then
 		warnBagFull(player)
 	else
 		Field.hitAim(player, root.Position, aim, def.radius, cutDamage, def.targets, stats.luck)
@@ -403,7 +407,7 @@ local function autoTick()
 				if fuel > 0 then
 					local pos = mower.PrimaryPart.Position
 					local dmg = mdef.damage * stats.power * ClassPerks.powerMult(player)
-					if bagFull(player) then
+					if groundFull(player) then
 						warnBagFull(player)
 					else
 						Field.hit(player, pos, mdef.radius * ClassPerks.mower(player).radius, dmg, nil, stats.luck)
@@ -414,7 +418,7 @@ local function autoTick()
 				local root = rootOf(player)
 				if def and def.kind == "auto" and root then
 					local dmg = def.damage * stats.power * ClassPerks.powerMult(player)
-					if bagFull(player) then
+					if groundFull(player) then
 						warnBagFull(player)
 					else
 						Field.hit(player, root.Position, def.radius, dmg, nil, stats.luck)
@@ -691,7 +695,7 @@ function Run.start()
 		if not data or not data.run or completing then
 			return 0
 		end
-		if bagFull(player) then
+		if groundFull(player) then
 			warnBagFull(player)
 			return 0
 		end

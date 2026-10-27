@@ -1,8 +1,7 @@
 -- Full-screen confetti: coloured paper bits burst up from the bottom corners, flutter (spin and sway) and fall.
 -- Confetti.burst(amount) for big moments: run complete, boss defeated, big combos.
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-
-local UI = require(script.Parent.UI)
 
 local Confetti = {}
 
@@ -20,7 +19,15 @@ layer.Name = "Confetti"
 layer.BackgroundTransparency = 1
 layer.Size = UDim2.fromScale(1, 1)
 layer.ZIndex = 60
-layer.Parent = UI.gui
+-- (27 Oct) its own ScreenGui, not the HUD's: films hide the HUD (the ending, a boss's fall), and the confetti they
+-- fire used to vanish with it
+local holder = Instance.new("ScreenGui")
+holder.Name = "MowConfetti"
+holder.IgnoreGuiInset = true
+holder.ResetOnSpawn = false
+holder.DisplayOrder = 24
+holder.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+layer.Parent = holder
 
 type Bit = { f: Frame, x: number, y: number, vx: number, vy: number, rot: number, spin: number, sway: number, phase: number, life: number, age: number }
 local bits: { Bit } = {}

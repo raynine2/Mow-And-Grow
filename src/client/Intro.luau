@@ -19,6 +19,8 @@ local Config = require(MowALawn:WaitForChild("Config"))
 local HitFx = require(script.Parent.HitFx)
 local IntroCast = require(script.Parent.IntroCast)
 local IntroUi = require(script.Parent.IntroUi)
+local Glitch = require(script.Parent.Glitch) -- (27 Oct) world 2's sneak peek
+local Demon = require(script.Parent.Demon)
 local Sound = require(script.Parent.Sound)
 local Soundscape = require(script.Parent.Soundscape)
 local State = require(script.Parent.State)
@@ -613,6 +615,52 @@ local function crateShot(P: Plan, actors: { IntroCast.Actor }, mode: { value: st
 	return ok
 end
 
+-- 4b. A sneak peek of world 2 (owner, 27 Oct: "have this boss sneak peek in the first cutscene"): the picture
+-- glitches and for a moment, far beyond the meadow on a blood-dark horizon, the glitch demon (client/Demon) looms
+-- up and its eyes ignite... then it snaps back. About two seconds.
+local function peekShot(P: Plan): boolean
+	Glitch.burst(0.9, 0.35)
+	Glitch.stutter("bhWarp", 1.7, 0.5, 4)
+	shake(1.2, 0.3)
+	task.wait(0.3)
+	if not playing then
+		Glitch.clear()
+		return false
+	end
+	local far = IntroCast.ground(P.thick + P.dirK * 230)
+	local demon = Demon.new(CFrame.lookAt(far, far - P.dirK), 2.4, nil, { lite = true }) -- (far off: the light build)
+	demon.state.rise = 0.82
+	demon.state.glitch = 1
+	local ungrade = Glitch.grade({ Brightness = -0.32, Contrast = 0.55, Saturation = -0.65, TintColor = Color3.fromRGB(255, 118, 150) }, 0.12)
+	Glitch.static(0.35, 1.7)
+	Sound.playAt("roar", 0.48, 0.5)
+	Sound.playAt("slam", 0.35, 0.7)
+	local t0 = os.clock()
+	local animate = function(now: number)
+		demon.update(now - t0)
+	end
+	table.insert(onFrame, animate)
+	local caption = Glitch.text(nil, "...something is waking up", UDim2.fromScale(0.42, 0.045), UDim2.fromScale(0.5, 0.8), Color3.fromRGB(255, 150, 200))
+	local from = P.thick - P.dirK * 14 + UP * 9
+	local ok = run(1.7, function(k)
+		demon.state.eyes = math.clamp((k - 0.2) / 0.12, 0, 1)
+		local eyes = demon.eyes()
+		return CFrame.lookAt(from, eyes - UP * (10 - k * 3)), 21 - k * 5
+	end, true)
+	caption.stop()
+	Glitch.burst(1, 0.3)
+	Glitch.stutter("bhWarp", 2.1, 0.45, 3)
+	local i = table.find(onFrame, animate)
+	if i then
+		table.remove(onFrame, i)
+	end
+	demon.destroy()
+	ungrade(0.15)
+	task.wait(0.2)
+	Glitch.clear()
+	return ok and playing
+end
+
 -- 5. dip to black and land in your own eyes
 local function homeShot(): boolean
 	IntroUi.fade(0, 0.3)
@@ -734,6 +782,9 @@ local function film()
 		return
 	end
 	if not crateShot(P, actors, mode) then
+		return
+	end
+	if Config.WORLD2.peek and not peekShot(P) then
 		return
 	end
 	homeShot()

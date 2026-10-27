@@ -6,9 +6,12 @@
 --   1. STARLIGHT ISLES: a slow orbit round the last arena, "the last wild grass in the valley... is gone";
 --   2. THE VALLEY: a long flight back over all eight areas, now mowed in stripes, each name ticking off;
 --   3. SPAWN VILLAGE: the Mayor and the whole party (copies of everyone's avatars), cheers and fireworks;
---   4. THE TWIST: a hush, one strange glowing sprout pushes up out of the meadow... "THE END...?";
+--   4. THE TWIST (owner, 27 Oct: "the ending ... teasing world 2, a corrupt world with a demon glitch type of
+--      enemy and boss"): peace at last... then the picture glitches, the music dies, the meadow splits open in
+--      neon cracks, corruption bursts across it and the sky tears; a colossal glitch demon (client/Demon) heaves
+--      itself out of the ground, its eyes open, it roars: WORLD 2, THE CORRUPTED VALLEY, COMING SOON;
 --   5. the credits roll (the party "starring", the bosses as the cast, the makers), then the end screen:
---      PLAY AGAIN (back to the lobby for a new run) and a locked "???" (the next world, not out yet).
+--      PLAY AGAIN (back to the lobby for a new run) and a locked "???" (world 2, not out yet).
 -- SKIP jumps to the end screen. The actors and the letterbox / speech / title cards are the opening's own
 -- (client/IntroCast, client/IntroUi), so both films look alike.
 local Players = game:GetService("Players")
@@ -26,6 +29,19 @@ local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
 local Skin = require(script.Parent.Skin)
 local Confetti = require(script.Parent.Confetti)
+local Glitch = require(script.Parent.Glitch) -- (27 Oct) world 2's corruption: screen glitches
+local Demon = require(script.Parent.Demon) -- the glitch demon
+local Corruption = require(script.Parent.Corruption) -- the meadow splitting open, the sky tearing
+
+-- the VFX Lab's camera effects (ReplicatedStorage.VFXLib, in the place only): the anime impact frame
+local CameraFX: any = nil
+pcall(function()
+	local lib = ReplicatedStorage:FindFirstChild("VFXLib")
+	local m = lib and lib:FindFirstChild("CameraFX")
+	if m then
+		CameraFX = require(m)
+	end
+end)
 
 local Ending = {}
 local player = Players.LocalPlayer
@@ -40,6 +56,7 @@ local MAKERS_FALLBACK = "The Mow And Grow team" -- the credits name the game's o
 
 local playing = false
 local played = false
+local musicDown: (fade: number?) -> () -- (defined with the music below; the twist cuts the music)
 
 -------------------------------------------------------------------------------------------------------------
 -- helpers and the camera (the same way client/Intro films: a shot is a function of k, 0..1, giving a CFrame
@@ -65,12 +82,28 @@ end
 type ShotFn = (k: number) -> (CFrame, number)
 local shot: ShotFn? = nil
 local shotStart, shotLen, clock = 0, 1, 0
-local shakeUntil, shakePower = 0, 0
+local shakeUntil, shakePower, shakeTime = 0, 0, 0
+local fovPunch = 0
+local freezeUntil = 0
 local onFrame: { (t: number) -> () } = {}
 
+-- Shake the film camera: `power` ~1 is a rumble, 3+ a quake; it fades out over `time`. Smooth noise, not jitter;
+-- "Reduce camera shake" (CalmCamera) turns it right down.
 local function shake(power: number, time: number)
-	shakePower = power
+	local calm = if player:GetAttribute("CalmCamera") == true then 0.3 else 1
+	shakePower = math.max(if os.clock() < shakeUntil then shakePower * (shakeUntil - os.clock()) / math.max(shakeTime, 0.01) else 0, power * calm)
+	shakeTime = time
 	shakeUntil = os.clock() + time
+end
+
+-- A zoom punch: the view snaps in by `deg` and eases back.
+local function punch(deg: number)
+	fovPunch = math.max(fovPunch, deg * (if player:GetAttribute("CalmCamera") == true then 0.4 else 1))
+end
+
+-- The picture sticks for `time` seconds (a glitch stutter): the shot clock stops, the camera holds.
+local function freeze(time: number)
+	freezeUntil = os.clock() + time
 end
 
 local function render(dt: number)
@@ -79,16 +112,21 @@ local function render(dt: number)
 	if not cam or not fn then
 		return
 	end
+	local now = os.clock()
+	if now < freezeUntil then
+		return -- (the camera keeps its last frame)
+	end
 	clock += dt
 	local cf, fov = fn(math.clamp((clock - shotStart) / shotLen, 0, 1))
-	local now = os.clock()
 	if now < shakeUntil then
-		local p = shakePower * (shakeUntil - now)
-		cf *= CFrame.Angles((math.random() - 0.5) * p * 0.05, (math.random() - 0.5) * p * 0.05, 0)
+		local p = shakePower * (shakeUntil - now) / math.max(shakeTime, 0.01)
+		local s = now * 18
+		cf *= CFrame.Angles(math.noise(s, 1.7) * p * 0.03, math.noise(s, 5.3) * p * 0.03, math.noise(s, 9.1) * p * 0.02)
 	end
+	fovPunch *= math.exp(-dt * 6)
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.CFrame = cf
-	cam.FieldOfView = math.clamp(fov, 15, 100)
+	cam.FieldOfView = math.clamp(fov - fovPunch, 12, 100)
 	for _, f in onFrame do
 		f(now)
 	end
@@ -151,7 +189,7 @@ local function plan(): Plan
 	local campPos = if typeof(camp) == "Vector3" then camp else Config.zoneCentre(0)
 	local fwd = if typeof(facing) == "Vector3" then unit(flat(facing), Vector3.zAxis) else unit(flat(Config.zoneCentre(1) - campPos), Vector3.zAxis)
 	local cast = ground(campPos + fwd * 2)
-	-- the sprout: out in the first meadow, where the story began
+	-- out in the first meadow, where the story began: where world 2's corruption breaks through (the twist)
 	local meadow = Config.zoneCentre(1)
 	local sprout = ground(campPos:Lerp(meadow, 0.55))
 	return {
@@ -167,7 +205,7 @@ local function plan(): Plan
 end
 
 -------------------------------------------------------------------------------------------------------------
--- props: fireworks over the camp, and the sprout
+-- props: fireworks over the camp
 -------------------------------------------------------------------------------------------------------------
 local set: Folder? = nil
 local function propFolder(): Folder
@@ -221,46 +259,6 @@ local function firework(at: Vector3)
 	end)
 end
 
--- One strange sprout: a stem and two leaves that glow and pulse, growing out of the bare lawn.
-local function makeSprout(at: Vector3): (Model, (number) -> ())
-	local m = Instance.new("Model")
-	m.Name = "Sprout"
-	local function piece(size: Vector3, cf: CFrame, color: Color3): Part
-		local p = Instance.new("Part")
-		p.Anchored = true
-		p.CanCollide = false
-		p.CanQuery = false
-		p.CastShadow = false
-		p.Material = Enum.Material.Neon
-		p.Color = color
-		p.Size = size
-		p.CFrame = cf
-		p.Parent = m
-		return p
-	end
-	local stem = piece(Vector3.new(0.3, 2.4, 0.3), CFrame.new(at + UP * 1.2), Color3.fromRGB(120, 255, 170))
-	local l1 = piece(Vector3.new(1.4, 0.15, 0.6), CFrame.new(at + UP * 2.1 + Vector3.new(0.6, 0, 0)) * CFrame.Angles(0, 0, math.rad(25)), MYSTERY)
-	local l2 = piece(Vector3.new(1.4, 0.15, 0.6), CFrame.new(at + UP * 2.4 - Vector3.new(0.6, 0, 0)) * CFrame.Angles(0, 0, math.rad(-25)), MYSTERY)
-	local light = Instance.new("PointLight")
-	light.Color = MYSTERY
-	light.Range = 10
-	light.Brightness = 0
-	light.Parent = stem
-	m.Parent = propFolder()
-	local base = { [stem] = stem.CFrame, [l1] = l1.CFrame, [l2] = l2.CFrame }
-	-- grow: 0 = nothing, 1 = full height; it sways and its glow pulses
-	local function grow(k: number)
-		local s = math.max(0.02, k)
-		for p, cf in base do
-			local rel = CFrame.new(at):ToObjectSpace(cf)
-			p.CFrame = CFrame.new(at) * CFrame.Angles(math.sin(os.clock() * 2) * 0.08 * k, 0, 0) * CFrame.new(rel.Position * s) * rel.Rotation
-		end
-		light.Brightness = k * (1.5 + math.sin(os.clock() * 5) * 0.8)
-	end
-	grow(0)
-	return m, grow
-end
-
 -------------------------------------------------------------------------------------------------------------
 -- the film
 -------------------------------------------------------------------------------------------------------------
@@ -272,7 +270,7 @@ local function arenaShot(P: Plan): boolean
 			IntroUi.lowerThird(string.upper(P.areas[1].name), "The last wild grass in the valley... is gone.", GREEN, 4)
 		end
 	end)
-	return run(6, function(k)
+	return run(4.5, function(k)
 		local a = math.rad(200 + k * 70)
 		local r = 70 - ease(k) * 12
 		local p = P.arena + Vector3.new(math.cos(a) * r, 34 + k * 10, math.sin(a) * r)
@@ -290,7 +288,7 @@ local function valleyShots(P: Plan): boolean
 	local legs = #pts - 1
 	local named = {}
 	IntroUi.say(MAYOR, "...The grass. It's... it's GONE.", 30)
-	return run(15, function(k)
+	return run(10, function(k)
 		local f = ease(k) * legs
 		local i = math.clamp(math.floor(f) + 1, 1, legs)
 		local u = f - (i - 1)
@@ -353,51 +351,302 @@ local function villageShots(P: Plan, mayor: IntroCast.Mayor, actors: { IntroCast
 		return false
 	end
 	task.delay(0.4, Confetti.burst, 100)
-	return run(5, function(k)
+	return run(3.2, function(k)
 		local e = ease(k)
 		local p = (P.cast - P.fwd * 12 + UP * 6):Lerp(P.cast - P.fwd * 34 + UP * 42, e)
 		return CFrame.lookAt(p, P.cast:Lerp(sky, 0.4 + e * 0.4)), 62
 	end)
 end
 
--- 4. the twist: the music stops, one strange sprout pushes up out of the bare meadow
-local function twistShot(P: Plan): boolean
-	IntroUi.hush()
-	IntroUi.fade(0, 0.5)
-	task.wait(0.6)
-	if not playing then
-		return false
+-- 4. THE TWIST: world 2 is coming (owner, 27 Oct). Peace at last... then the picture glitches, the meadow splits,
+-- the corruption spreads, the sky tears, and the glitch demon heaves itself out of the ground and roars.
+local corrupt: Corruption.Handle? = nil
+local demon: Demon.Demon? = nil
+local demonReady = false -- (it's built in steps while the twist begins)
+local dread: { Sound } = {}
+local ungrade: ((number?) -> ())? = nil
+
+-- A sound of our own for the corrupted part (`key` from Config.SOUNDS, licensed), looping or not.
+local function dreadSound(key: string, volume: number, speed: number, loop: boolean): Sound?
+	local def = Config.SOUNDS[key]
+	if not def or def.id == "" then
+		return nil
 	end
-	local _, grow = makeSprout(P.sprout)
-	local look = P.sprout + UP * 1.6
-	local side = P.right
-	IntroUi.fade(1, 0.8)
-	shake(0.6, 2.5)
-	Sound.play("rustle", 0, 0.6)
-	local said = false
-	local ok = run(6.5, function(k)
-		grow(math.clamp((k - 0.15) / 0.55, 0, 1))
-		if k > 0.55 and not said then
-			said = true
-			Sound.play("reveal", 0, 0.7)
-			IntroUi.say(MAYOR, "...Hold on. What's THAT?", 28)
+	local s = Instance.new("Sound")
+	s.Name = "EndingDread"
+	s.SoundId = def.id
+	s.Volume = 0
+	s.PlaybackSpeed = speed
+	s.Looped = loop
+	s.Parent = game:GetService("SoundService")
+	s:Play()
+	TweenService:Create(s, TweenInfo.new(1.2), { Volume = volume }):Play()
+	table.insert(dread, s)
+	return s
+end
+
+local function dreadOff()
+	for _, s in dread do
+		TweenService:Create(s, TweenInfo.new(0.8), { Volume = 0 }):Play()
+		task.delay(0.9, function()
+			s:Destroy()
+		end)
+	end
+	table.clear(dread)
+end
+
+-- the anime impact frame (VFXLib) on a big hit, or just a soft flash ("Reduce camera shake": the soft one)
+local function impact(color: Color3)
+	if CameraFX and player:GetAttribute("CalmCamera") ~= true then
+		pcall(CameraFX.ImpactFrame, { Color = color, Duration = 0.35 })
+	else
+		IntroUi.flash(0.35, 0.3)
+	end
+end
+
+local function boom(pitch: number, volume: number)
+	Sound.playAt("slam", pitch, volume)
+	Sound.playAt("fellLand", pitch + 0.1, volume * 0.8)
+end
+
+-- The title over black: WORLD 2 / THE CORRUPTED VALLEY / COMING SOON, glitching, the demon's eyes behind it.
+local function worldTwoTitle(look: () -> CFrame): boolean
+	local W = Config.WORLD2
+	local veil = Instance.new("Frame")
+	veil.Name = "WorldTwoVeil"
+	veil.BorderSizePixel = 0
+	veil.Size = UDim2.fromScale(1, 1)
+	veil.BackgroundColor3 = Color3.fromRGB(4, 0, 8)
+	veil.BackgroundTransparency = 0.12 -- (the demon's eyes burn through it)
+	veil.ZIndex = 1
+	local holder = Instance.new("ScreenGui")
+	holder.Name = "WorldTwoTitle"
+	holder.IgnoreGuiInset = true
+	holder.ResetOnSpawn = false
+	holder.DisplayOrder = 21 -- over the film (IntroCinema 20), under the glitches (22)
+	holder.Parent = player:WaitForChild("PlayerGui")
+	veil.Parent = holder
+	Glitch.static(0.3, 0)
+	Glitch.burst(1, 0.3)
+	boom(0.42, 1)
+	local big = Glitch.text(holder, W.title, UDim2.fromScale(0.7, 0.2), UDim2.fromScale(0.5, 0.4), Color3.fromRGB(255, 70, 150))
+	local name = Glitch.text(holder, W.name, UDim2.fromScale(0.6, 0.075), UDim2.fromScale(0.5, 0.56))
+	local soon: { stop: () -> () }? = nil
+	task.delay(1.1, function()
+		if playing then
+			soon = Glitch.text(holder, W.soon, UDim2.fromScale(0.34, 0.05), UDim2.fromScale(0.5, 0.67), Color3.fromRGB(150, 245, 255))
+			boom(0.5, 0.8)
+			Glitch.burst(0.7, 0.2)
 		end
-		local d = 11 - ease(k) * 6.5
-		local p = look - P.fwd * d + side * (2 - k) + UP * (0.6 + k * 0.4)
-		return CFrame.lookAt(p, look), 48 - k * 10
+	end)
+	task.delay(2.4, function()
+		if playing then
+			Sound.playAt("roar", 0.45, 0.6)
+		end
+	end)
+	local ok = run(4.2, function(k)
+		return look() * CFrame.new(0, 0, -k * 2), 30
+	end)
+	big.stop()
+	name.stop()
+	if soon then
+		soon.stop()
+	end
+	holder:Destroy()
+	return ok
+end
+
+-- W4-W9: the meadow splits, the corruption spreads, the sky tears, the demon rises, opens its eyes and roars, title
+local function worldTwoRise(P: Plan, at: Vector3, toward: Vector3, side: Vector3): boolean
+	IntroUi.hush()
+	local C = Corruption.new(at)
+	corrupt = C
+	ungrade = Glitch.grade(nil, 3)
+	-- W4: low over the meadow, the ground splits open in neon
+	C.fissure(1.6)
+	C.cubes(34, 16)
+	boom(0.38, 1)
+	Sound.playAt("fellCrunch", 0.6, 0.9)
+	shake(1.6, 1.4)
+	Glitch.burst(0.5, 0.25)
+	task.delay(1.4, function()
+		if playing then
+			C.bolt(at + UP * 140 + side * 30, at + side * 4)
+			boom(0.55, 0.6)
+		end
+	end)
+	local ok = run(3.8, function(k)
+		local p = at - toward * (34 - k * 10) + UP * (2.2 + k * 1.2) - side * 6
+		return CFrame.lookAt(p, at + UP * (1 + k * 3)), 58
 	end)
 	if not ok then
 		return false
 	end
-	IntroUi.hush()
-	local close = IntroUi.title("THE END", "...?", "Something in the valley is still growing.")
-	ok = run(3.6, function(k)
-		grow(1)
-		local p = look - P.fwd * 4.5 + side + UP * (1 + k * 0.4)
-		return CFrame.lookAt(p, look), 38
+	-- W5: high and wide, the corruption bursts across the meadow, the sky tears, the storm rolls in
+	C.spread(70, 3.2)
+	C.canopy(2.5)
+	local riftAt = at + toward * 40 + UP * 95
+	C.rift(riftAt, -toward, 70, 1.1)
+	Glitch.static(0.18, 0)
+	dreadSound("bossMusic", 0.35, 0.72, true)
+	Sound.playAt("bhPull", 0.55, 0.8)
+	shake(2.2, 4)
+	for i = 0, 3 do
+		task.delay(0.6 + i * 0.75, function()
+			if playing then
+				C.bolt(riftAt + side * math.random(-20, 20) - UP * 10, at + Vector3.new(math.random(-40, 40), 0, math.random(-40, 40)))
+				Glitch.burst(0.35, 0.12)
+			end
+		end)
+	end
+	ok = run(4.0, function(k)
+		local e = ease(k)
+		local p = (at - toward * 40 + UP * 14 + side * 22):Lerp(at - toward * 82 + UP * 52 + side * 34, e)
+		return CFrame.lookAt(p, at + UP * (6 + e * 30)), 62 + e * 8
 	end)
-	close(0.4)
-	return ok
+	if not ok then
+		return false
+	end
+	-- W6: it rises. Low, looking up: the horns break the ground and it heaves itself out, shaking everything
+	-- (built in steps since W1; if it isn't done yet, wait a moment, then build it now)
+	local waited = os.clock()
+	while playing and not demonReady and os.clock() - waited < 2 do
+		task.wait()
+	end
+	if not playing then
+		return false
+	end
+	local d = demon
+	if not d then
+		local g = IntroCast.ground(at)
+		d = Demon.new(CFrame.lookAt(g, g - toward), 1.5, propFolder())
+		demon = d
+	end
+	assert(d)
+	d.state.glitch = 0.4
+	local t0 = os.clock()
+	table.insert(onFrame, function(now: number)
+		d.update(now - t0)
+	end)
+	Sound.playAt("roar", 0.35, 0.5)
+	boom(0.33, 1)
+	shake(3, 4.6)
+	ok = run(4.6, function(k)
+		d.state.rise = ease(math.clamp(k / 0.85, 0, 1)) * 0.86
+		if math.random() < 0.05 then
+			Glitch.burst(0.3, 0.08)
+		end
+		return CFrame.lookAt(at - toward * 50 + UP * 2.5 + side * 10, at + UP * (6 + d.state.rise * 38)), 66
+	end)
+	if not ok then
+		return false
+	end
+	-- W7: its eyes open
+	ok = run(1.7, function(k)
+		if k > 0.35 and d.state.eyes < 1 then
+			d.state.eyes = 1
+			impact(Color3.fromRGB(255, 60, 150))
+			boom(0.3, 1)
+			punch(8)
+			shake(2.4, 0.6)
+			Glitch.burst(0.9, 0.3)
+		end
+		local eyes = d.eyes()
+		return CFrame.lookAt(eyes - toward * (20 - k * 3.5) + side * 2.5 + UP * 0.8, eyes), 34
+	end)
+	if not ok then
+		return false
+	end
+	-- W8: the roar. Pull back hard: jaw wide, arms flung out, lightning everywhere, the picture tearing
+	d.state.glitch = 1
+	Sound.playAt("roar", 0.55, 1)
+	Sound.playAt("roar", 0.78, 0.7)
+	boom(0.36, 1)
+	shake(4, 3)
+	punch(12)
+	Glitch.burst(1, 0.6)
+	for i = 0, 4 do
+		task.delay(0.25 + i * 0.45, function()
+			if playing and corrupt then
+				corrupt.bolt(riftAt + side * math.random(-25, 25), at + Vector3.new(math.random(-30, 30), 0, math.random(-30, 30)))
+				Glitch.burst(0.6, 0.15)
+			end
+		end)
+	end
+	ok = run(3.2, function(k)
+		d.state.roar = math.clamp(k / 0.25, 0, 1)
+		local e = 1 - (1 - k) ^ 4
+		local eyes = d.eyes()
+		local near = eyes - toward * 16 + side * 2.5
+		local far = at - toward * 84 + UP * 10 + side * 18
+		return CFrame.lookAt(near:Lerp(far, e), eyes:Lerp(at + UP * 38, e)), 34 + e * 36
+	end)
+	if not ok then
+		return false
+	end
+	-- W9: the title, its eyes burning behind it
+	d.state.roar = 0.3
+	return worldTwoTitle(function(): CFrame
+		local eyes = d.eyes()
+		return CFrame.lookAt(eyes - toward * 24 - UP * 2, eyes)
+	end)
+end
+
+local function worldTwoShots(P: Plan, mayor: IntroCast.Mayor, mode: { value: string }): boolean
+	local at = P.sprout
+	local toward = unit(flat(at - P.cast), P.fwd)
+	local side = toward:Cross(UP)
+	-- build the demon now, hidden under the meadow, a few hundred blocks a frame (it rises in W6)
+	demonReady = false
+	demon = nil
+	local folder = propFolder()
+	task.spawn(function()
+		local g = IntroCast.ground(at)
+		local d = Demon.new(CFrame.lookAt(g, g - toward), 1.5, folder, { yieldEvery = 250 })
+		if playing and folder.Parent and not demon then
+			demon = d
+			demonReady = true
+		else
+			d.destroy()
+		end
+	end)
+	-- W1: peace, golden and still, out over the meadow
+	mode.value = "idle"
+	IntroUi.say(MAYOR, "Ahh... peace and quiet. At last.", 30)
+	local ok = run(3.2, function(k)
+		local p = P.cast - toward * (10 - k * 2) + UP * (4.5 + k * 0.5) + side * 4
+		return CFrame.lookAt(p, at + UP * 6), 55
+	end)
+	if not ok then
+		return false
+	end
+	-- W2: it stutters. The picture sticks and splits, the line breaks up, the music dies.
+	musicDown(0.08)
+	freeze(0.32)
+	shake(1.4, 0.5)
+	Glitch.burst(0.85, 0.5)
+	Glitch.stutter("bhWarp", 1.6, 0.55, 5)
+	IntroUi.say(MAYOR, "Ahh... p#@ce an% q/!et... a7 l@$t.", 60)
+	ok = run(1.3, function(k)
+		local p = P.cast - toward * (8 - k * 0.6) + UP * 5 + side * 4
+		return CFrame.lookAt(p, at + UP * 6), 52
+	end)
+	if not ok then
+		return false
+	end
+	-- W3: the Mayor, rattled; a low hum creeps in
+	mode.value = "talk"
+	IntroUi.say(MAYOR, "...W-what was THAT?!", 34)
+	dreadSound("bhHum", 0.5, 0.55, true)
+	local head = mayor.head.Position
+	ok = run(2.3, function(k)
+		local p = head - P.fwd * (6.5 - k * 1.2) + P.right * 1.6 - UP * 0.6
+		return CFrame.lookAt(p, head - UP * 0.3), 46
+	end)
+	if not ok then
+		return false
+	end
+	return worldTwoRise(P, at, toward, side)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -508,6 +757,9 @@ local function creditLines(): { { string } }
 	add("line", "Every blade of grass that was mowed in the making of this valley")
 	add("line", "And you, for playing")
 	add("gap")
+	add("head", Config.WORLD2.title .. ": " .. Config.WORLD2.name)
+	add("line", "Something is waking up...  " .. string.lower(Config.WORLD2.soon))
+	add("gap")
 	add("gap")
 	add("title", "THANK YOU FOR PLAYING!")
 	return L
@@ -520,9 +772,8 @@ local function rollCredits(): boolean
 	bg.Name = "Credits"
 	bg.Size = UDim2.fromScale(1, 1)
 	bg.BackgroundColor3 = Color3.fromRGB(10, 12, 22)
-	bg.BackgroundTransparency = 1
+	bg.BackgroundTransparency = 0 -- (the film ends on black: no glimpse of the live world before the roll)
 	bg.Parent = g
-	TweenService:Create(bg, TweenInfo.new(1), { BackgroundTransparency = 0 }):Play()
 	local roll = Instance.new("Frame")
 	roll.BackgroundTransparency = 1
 	roll.AnchorPoint = Vector2.new(0.5, 0)
@@ -567,12 +818,10 @@ local function endScreen(d: any)
 	bg.Name = "EndScreen"
 	bg.Size = UDim2.fromScale(1, 1)
 	bg.BackgroundColor3 = Color3.fromRGB(10, 12, 22)
-	bg.BackgroundTransparency = if old then 0 else 1
+	bg.BackgroundTransparency = 0 -- (straight from black: the credits, or the film's fade)
 	bg.Parent = g
 	if old then
 		old:Destroy()
-	else
-		TweenService:Create(bg, TweenInfo.new(0.6), { BackgroundTransparency = 0 }):Play()
 	end
 	local W, H = 620, 380
 	local box = Instance.new("Frame")
@@ -594,7 +843,7 @@ local function endScreen(d: any)
 	local time = if (d.time or 0) > 0 then "Run time " .. Format.clock(d.time) .. (if d.best then "   NEW BEST!" else "") .. medal .. "   ·   " else ""
 	local stats = UI.text(face, time .. "+" .. Format.short(d.gems or 0) .. " gems", UDim2.new(1, -40, 0, 28), { pos = UDim2.fromOffset(20, 78), stroke = 0, color = Color3.fromRGB(120, 80, 40) })
 	local _ = stats
-	local blurb = UI.text(face, "The valley is mowed. Mayor Thistlewick sleeps soundly... for now.", UDim2.new(1, -40, 0, 26), { pos = UDim2.fromOffset(20, 114), stroke = 0, color = Color3.fromRGB(140, 96, 60) })
+	local blurb = UI.text(face, "The valley is mowed... but something stirs in the corrupted lands beyond.", UDim2.new(1, -40, 0, 26), { pos = UDim2.fromOffset(20, 114), stroke = 0, color = Color3.fromRGB(140, 96, 60) })
 	blurb.TextWrapped = true
 	local chosen = false
 	local again: TextButton
@@ -612,7 +861,7 @@ local function endScreen(d: any)
 	local note = UI.text(face, "", UDim2.new(1, -40, 0, 24), { pos = UDim2.fromOffset(20, 252), stroke = 2, color = MYSTERY })
 	mystery.Activated:Connect(function()
 		Sound.play("denied")
-		note.Text = "A new world is growing somewhere... Not yet, gardener."
+		note.Text = Config.WORLD2.title .. ": " .. Config.WORLD2.name .. ". " .. Config.WORLD2.soon .. ", gardener."
 		local base = mystery.Position
 		for i = 1, 6 do
 			mystery.Position = base + UDim2.fromOffset(if i % 2 == 0 then 6 else -6, 0)
@@ -665,12 +914,12 @@ local function musicOn()
 	end
 end
 
-local function musicDown()
+function musicDown(fade: number?)
 	local s = music
 	music = nil
 	if s then
-		TweenService:Create(s, TweenInfo.new(1.5), { Volume = 0 }):Play()
-		task.delay(1.6, function()
+		TweenService:Create(s, TweenInfo.new(fade or 1.5), { Volume = 0 }):Play()
+		task.delay((fade or 1.5) + 0.1, function()
 			s:Destroy()
 		end)
 	end
@@ -701,6 +950,19 @@ local function stopFilm()
 	end)
 	IntroCast.cleanup()
 	IntroUi.close()
+	-- world 2's corruption, the demon, the glitches, the grade and the dread sounds
+	if corrupt then
+		corrupt.destroy()
+		corrupt = nil
+	end
+	demon = nil -- (it lives in the set)
+	demonReady = false
+	if ungrade then
+		ungrade(0.3)
+		ungrade = nil
+	end
+	Glitch.clear()
+	dreadOff()
 	if set then
 		set:Destroy()
 		set = nil
@@ -730,7 +992,7 @@ local function film(P: Plan): boolean
 	if not villageShots(P, mayor, actors, mode) then
 		return false
 	end
-	return twistShot(P)
+	return worldTwoShots(P, mayor, mode)
 end
 
 -- Play the ending. `d`: the server's runComplete data ({ gems, time, best, wait }).

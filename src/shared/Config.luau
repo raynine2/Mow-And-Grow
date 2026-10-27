@@ -176,6 +176,10 @@ function Config.runMedal(seconds: number)
 	return nil
 end
 
+-- WORLD 2 TEASER (owner, 27 Oct: the ending "teasing world 2 a corrupt world with a demon glitch type of enemy and
+-- boss", and a sneak peek of it in the opening). client/Ending's twist and title, client/Intro's peek (`peek`).
+Config.WORLD2 = { title = "WORLD 2", name = "THE CORRUPTED VALLEY", soon = "COMING SOON", peek = true }
+
 function Config.upgrade(id: string)
 	for _, u in Config.UPGRADES do
 		if u.id == id then

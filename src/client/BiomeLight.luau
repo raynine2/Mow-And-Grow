@@ -87,29 +87,61 @@ end
 
 local current: Look? = nil
 
--- Every preset goes through a softer grade, like Chop A Forest's clean daylight: much less saturation and
--- contrast (they made greens neon and shade near black), ambient light pulled toward neutral (no blue cast), a
--- gentler bloom. (27 Oct polish pass, owner: "lighting so it feels like a complete game": a touch less colour and a
--- touch more contrast for depth, the ambient a little more neutral, the bloom a little softer.)
-local NEUTRAL = Color3.fromRGB(140, 140, 140)
+-- The grade every preset goes through (owner, 27 Oct: "the lighting is sloppy, it should be like Chop A Forest").
+-- What makes Chop A Forest's light read well: a strong warm sun against cool, darker shade (warm key, cool fill)
+-- so every block shows its form; crisp shadows; colour that's rich but not neon; real depth haze toward the horizon
+-- in the area's own colour (the old grade cut the haze to 15% under the place's sky, so everything looked flat);
+-- bloom only on lights, fire and neon. The presets (shared/Zones) give each area its time of day, fog colour and
+-- tint; this turns them into that look.
+local STYLE = {
+	coolFill = Color3.fromRGB(104, 122, 156), -- the shade's colour (sky bounce)
+	ambientMix = 0.4, -- how far the shade is pulled to it
+	ambientScale = 0.72, -- darker shade = more form
+	outdoorScale = 0.84,
+	brightnessScale = 1.22, -- a stronger sun
+	sunTint = Color3.fromRGB(255, 232, 196), -- ColorShift_Top: warm light on the lit faces
+	bounce = Color3.fromRGB(70, 80, 96), -- ColorShift_Bottom: a cool bounce under things
+	saturation = 0.55, -- of the preset's
+	contrast = 0.6,
+	hazeOwnSky = 0.55, -- of the preset's haze when the place has its own sky (the depth fog)
+	densityOwnSky = 0.85,
+	glare = 0.25,
+	bloom = 0.55,
+	bloomThreshold = 0.92,
+	bloomSize = 30,
+	shadowSoftness = 0.16,
+	specular = 0.55,
+}
 local function apply(l: Look)
 	effects()
 	Lighting.ClockTime = l.clock
-	Lighting.Ambient = l.ambient:Lerp(NEUTRAL, 0.5)
-	Lighting.OutdoorAmbient = l.outdoor:Lerp(NEUTRAL, 0.5)
-	Lighting.Brightness = l.brightness
+	Lighting.Ambient = l.ambient:Lerp(STYLE.coolFill, STYLE.ambientMix):Lerp(Color3.new(0, 0, 0), 1 - STYLE.ambientScale)
+	Lighting.OutdoorAmbient = l.outdoor:Lerp(STYLE.coolFill, STYLE.ambientMix * 0.75):Lerp(Color3.new(0, 0, 0), 1 - STYLE.outdoorScale)
+	Lighting.Brightness = l.brightness * STYLE.brightnessScale
+	Lighting.ColorShift_Top = STYLE.sunTint:Lerp(l.tint, 0.35)
+	Lighting.ColorShift_Bottom = STYLE.bounce
+	Lighting.ShadowSoftness = STYLE.shadowSoftness
+	Lighting.EnvironmentSpecularScale = STYLE.specular
+	Lighting.EnvironmentDiffuseScale = 1
+	Lighting.ExposureCompensation = 0
 	color.TintColor = l.tint
-	color.Saturation = l.saturation * 0.32
-	color.Contrast = l.contrast * 0.4
+	color.Saturation = l.saturation * STYLE.saturation
+	color.Contrast = l.contrast * STYLE.contrast
+	color.Brightness = 0.01
 	atmosphere.Color = l.fog
-	atmosphere.Decay = l.fog:Lerp(Color3.new(0, 0, 0), 0.35)
-	-- a sky the owner added (any Sky but the game's "MowALawnSky") stays visible: little haze over it
+	atmosphere.Decay = l.fog:Lerp(Color3.new(0, 0, 0), 0.4)
+	-- a sky the owner added (any Sky but the game's "MowALawnSky") stays visible, with the area's haze over the
+	-- horizon
 	local sky = Lighting:FindFirstChildOfClass("Sky")
 	local ownSky = sky ~= nil and sky.Name ~= "MowALawnSky"
-	atmosphere.Haze = if ownSky then l.haze * 0.15 else l.haze
-	atmosphere.Density = if ownSky then l.density * 0.75 else l.density
+	atmosphere.Haze = if ownSky then l.haze * STYLE.hazeOwnSky else l.haze
+	atmosphere.Density = if ownSky then l.density * STYLE.densityOwnSky else l.density
+	atmosphere.Offset = 0.22
+	atmosphere.Glare = STYLE.glare
 	rays.Intensity = l.sunRays
-	bloom.Intensity = l.bloom * 0.4
+	bloom.Intensity = l.bloom * STYLE.bloom
+	bloom.Threshold = STYLE.bloomThreshold
+	bloom.Size = STYLE.bloomSize
 end
 
 -- Off while something else owns the lighting (the lobby, the class room, a cutscene): set the attribute

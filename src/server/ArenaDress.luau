@@ -3,10 +3,10 @@
 -- log and stone textures (server/VoxelKit); no stretched meshes any more, so nothing pokes through anything:
 --   * the wall runs as straight sections from joint to joint round the ring, each on a stone plinth, with a post
 --     on every joint, so the pieces meet exactly on the curve
---   * each area its own wall: log rails and flower planters (meadow), a board fence with hay (wheat), a white
---     plaster wall with a tiled cap and blossom bushes (blossom), a log palisade (pine), crooked stakes with
---     purple lanterns (swamp), frosted stone with snow and icicles (frost), basalt with glowing seams and braziers
---     (ember), violet stone with a gold cap and crystals (isles)
+--   * each area its own wall: a stone wall with white pickets and a flowering hedge (meadow), a board fence with
+--     hay (wheat), a white plaster wall with a tiled cap and blossom bushes (blossom), a log palisade (pine),
+--     crooked stakes with purple lanterns (swamp), frosted stone with snow and icicles (frost), basalt with glowing
+--     seams and braziers (ember), violet stone with a gold cap and crystals (isles)
 --   * a gatehouse over the entrance: two towers just outside the gap (so the gate bars never cut into them), a
 --     heavy lintel, banners in the area's colour, torches
 --   * props round the inside of the wall in the area's style, none near the entrance; a stone ring round the
@@ -26,7 +26,8 @@ local part, jitter, chop = VoxelKit.part, VoxelKit.jitter, VoxelKit.chop
 local PH = 1.6 -- the plinth's height above the floor
 
 export type Theme = {
-	kind: string, -- the wall: "rails", "boards", "plaster", "palisade", "stakes", "blocks"
+	kind: string, -- the wall: "garden", "rails", "boards", "plaster", "palisade", "stakes", "blocks"
+	picket: Color3?, -- the garden wall's painted pickets
 	stone: Color3, -- tint of the plinth / stone
 	wood: Color3?, -- tint of logs and stakes
 	board: Color3?,
@@ -46,7 +47,7 @@ export type Theme = {
 local FLOWERS = { C(210, 96, 110), C(232, 212, 120), C(236, 236, 230), C(160, 110, 190), C(226, 140, 90) }
 
 local THEME: { [string]: Theme } = {
-	meadow = { kind = "rails", stone = C(214, 214, 202), wood = K.log, timber = K.timber, roof = C(118, 64, 52), top = "lantern", props = { "barrels", "planter", "crates", "bush", "planter" }, leaf = C(70, 140, 60), flowers = FLOWERS },
+	meadow = { kind = "garden", stone = C(214, 214, 202), cap = C(200, 198, 186), wood = K.log, picket = C(244, 242, 232), timber = K.timber, roof = C(118, 64, 52), top = "lantern", props = { "barrels", "planter", "crates", "bush", "planter" }, leaf = C(70, 140, 60), flowers = { C(255, 214, 60), C(255, 255, 255), C(232, 96, 110), C(255, 160, 60) } },
 	wheat = { kind = "boards", stone = C(224, 212, 188), board = C(176, 130, 82), timber = C(112, 80, 54), wood = K.log, roof = C(140, 84, 50), top = "lantern", props = { "hay", "barrels", "hay", "crates", "hay" } },
 	blossom = { kind = "plaster", stone = C(222, 216, 212), timber = C(78, 56, 48), roof = C(76, 82, 100), top = "tile", props = { "stoneLantern", "blossom", "stoneLantern", "blossom", "blossom" }, leaf = C(255, 168, 208), flowers = { C(255, 255, 255), C(255, 214, 230) } },
 	pine = { kind = "palisade", stone = C(186, 196, 190), wood = C(214, 188, 162), timber = C(84, 62, 46), roof = C(70, 96, 70), top = "point", props = { "logs", "rocks", "stump", "rocks", "logs" }, leaf = C(52, 110, 68) },
@@ -148,6 +149,47 @@ SECTION.rails = function(parent, f, L, t, rng, k)
 	part(parent, "RailPost", f * CFrame.new(0, PH + 1.9, 0), Vector3.new(0.9, 3.8, 0.9), jitter(rng, t.wood :: Color3, 0.05), "log")
 	if k % 2 == 0 then
 		VoxelKit.planter(parent, f * CFrame.new(rng:NextNumber(-3, 3), 0, -2.4), 5, t.flowers :: { Color3 }, rng)
+	end
+end
+
+-- The meadow (owner, 27 Oct: remake the first one): a low wall of textured stone with a white picket fence on top
+-- (the meadow's own fences are white pickets), a hedge with flowers along the inside, a planter now and then.
+SECTION.garden = function(parent, f, L, t, rng, k)
+	local ch = 1.3
+	for c = 0, 1 do
+		local off = if c % 2 == 0 then 0 else 1.0
+		for _, piece in chop(rng, -L / 2 - off, L / 2 + 1.0 - off, 1.8, 3.6) do
+			local a, b = math.max(piece[1], -L / 2 - 0.05), math.min(piece[2], L / 2 + 0.05)
+			if b - a > 0.3 then
+				part(parent, "Stone", f * CFrame.new((a + b) / 2, PH + c * ch + ch / 2, 0), Vector3.new(b - a - 0.05, ch - 0.05, 2.2), jitter(rng, t.stone, 0.07), "stone")
+			end
+		end
+	end
+	local top = PH + 2 * ch
+	part(parent, "Cap", f * CFrame.new(0, top + 0.18, 0), Vector3.new(L + 0.2, 0.36, 2.5), jitter(rng, t.cap or t.stone, 0.03), "stone")
+	local y0 = top + 0.36
+	local white = t.picket or C(244, 242, 232)
+	for _, y in { 0.7, 2.0 } do
+		part(parent, "PicketRail", f * CFrame.new(0, y0 + y, 0.18), Vector3.new(L, 0.32, 0.22), white:Lerp(Color3.new(0, 0, 0), 0.08))
+	end
+	local n = math.floor(L / 0.85)
+	for i = 0, n - 1 do
+		local x = -L / 2 + (i + 0.5) * L / n
+		local h = 2.5 + (i % 2) * 0.25
+		part(parent, "Picket", f * CFrame.new(x, y0 + h / 2, 0), Vector3.new(0.5, h, 0.22), jitter(rng, white, 0.02))
+		part(parent, "PicketTip", f * CFrame.new(x, y0 + h + 0.12, 0), Vector3.new(0.3, 0.24, 0.22), jitter(rng, white, 0.02))
+	end
+	-- the hedge along the inside foot, flowers dotted in it
+	for _, piece in chop(rng, -L / 2 + 0.3, L / 2 - 0.3, 1.2, 2.2) do
+		local w = piece[2] - piece[1]
+		local h = rng:NextNumber(1.4, 2.0)
+		part(parent, "Hedge", f * CFrame.new((piece[1] + piece[2]) / 2, h / 2, -2.0), Vector3.new(w + 0.1, h, rng:NextNumber(1.4, 1.8)), jitter(rng, t.leaf :: Color3, 0.1), Enum.Material.Grass)
+		if rng:NextNumber() < 0.7 then
+			part(parent, "Flower", f * CFrame.new((piece[1] + piece[2]) / 2 + rng:NextNumber(-0.4, 0.4), h + 0.15, -2.0 + rng:NextNumber(-0.4, 0.4)), Vector3.one * 0.42, (t.flowers :: { Color3 })[rng:NextInteger(1, #(t.flowers :: { Color3 }))])
+		end
+	end
+	if k % 4 == 2 then
+		VoxelKit.planter(parent, f * CFrame.new(rng:NextNumber(-3, 3), 0, -3.6), 4.4, t.flowers :: { Color3 }, rng)
 	end
 end
 
@@ -260,7 +302,7 @@ local WOOD_KINDS = { rails = true, boards = true, palisade = true, stakes = true
 
 local function post(parent: Instance, jf: CFrame, t: Theme, rng: Random, lit: boolean)
 	local wood = WOOD_KINDS[t.kind]
-	local H = if t.kind == "palisade" then 8.4 elseif t.kind == "blocks" then 7.2 else 6.4
+	local H = if t.kind == "palisade" then 8.4 elseif t.kind == "blocks" then 7.2 elseif t.kind == "garden" then 7.4 else 6.4
 	part(parent, "PostFoot", jf * CFrame.new(0, (PH + 0.4 - 3) / 2, 0), Vector3.new(3.2, PH + 0.4 + 3, 3.2), jitter(rng, t.stone, 0.05), "stone")
 	if wood then
 		local w = if t.kind == "palisade" then 2.0 else 1.5
@@ -486,7 +528,9 @@ local function tower(m: Instance, tf: CFrame, t: Theme, rng: Random)
 				part(m, "Merlon", tf * CFrame.new(sx * (TW / 2 - 0.4), TH + 1.2, sz * (TW / 2 - 0.4)), Vector3.new(1.3, 1.2, 1.3), jitter(rng, t.stone, 0.06), "stone")
 			end
 		end
-		if t.top == "crystal" or t.top == "snow" then
+		if t.top == "lantern" then
+			VoxelKit.lantern(m, tf * CFrame.new(0, TH + 0.6, 0), true)
+		elseif t.top == "crystal" or t.top == "snow" then
 			VoxelKit.crystals(m, tf * CFrame.new(0, TH + 0.6, 0), t.glow :: Color3, rng, 3, true)
 		elseif t.top == "brazier" then
 			local coals = part(m, "Coals", tf * CFrame.new(0, TH + 0.7, 0), Vector3.new(2, 0.2, 2), t.glow :: Color3, Enum.Material.Neon)
@@ -526,15 +570,24 @@ function ArenaDress.gate(ctx: Ctx): Model
 	part(m, "Lintel", lf * CFrame.new(0, TH, 0), Vector3.new(span, 1.5, 2.4), if stone then jitter(rng, t.stone, 0.05) else t.timber, if stone then "stone" else nil)
 	part(m, "Lintel", lf * CFrame.new(0, TH + 1.15, 0), Vector3.new(span - 1.4, 0.8, 1.8), if stone then jitter(rng, t.cap or t.stone, 0.04) else t.timber:Lerp(Color3.new(1, 1, 1), 0.1), if stone then t.capMat or "stone" else nil)
 	if not stone then
-		part(m, "LintelRoof", lf * CFrame.new(0, TH + 1.8, 0), Vector3.new(span - 1, 0.5, 3.2), jitter(rng, t.roof, 0.04))
+		-- a little gabled shingle roof along the lintel, like a garden gate's
+		for i = 0, 2 do
+			local d = 3.6 - i * 1.1
+			part(m, "LintelRoof", lf * CFrame.new(0, TH + 1.75 + i * 0.45, 0), Vector3.new(span - 0.6 - i * 0.3, 0.45, d), jitter(rng, t.roof, 0.04))
+			part(m, "RoofEdge", lf * CFrame.new(0, TH + 1.6 + i * 0.45, 0), Vector3.new(span - 0.5 - i * 0.3, 0.2, d + 0.1), t.timber)
+		end
+		part(m, "RidgeBeam", lf * CFrame.new(0, TH + 3.2, 0), Vector3.new(span - 1.2, 0.35, 0.5), t.timber)
 	end
-	-- banners in the area's colour hanging from the lintel, inside and out (between the gate bars' slots)
+	-- banners in the area's colour (a deeper shade: cloth, not neon) hanging from the lintel, inside and out
+	-- (between the gate bars' slots), each with a gold stripe
+	local cloth = ctx.look.accent:Lerp(Color3.fromRGB(40, 30, 26), 0.3)
 	for _, side in { -1, 1 } do
 		for _, sx in { -1, 1 } do
 			local bx = sx * (span / 2 - 6)
 			part(m, "BannerRod", lf * CFrame.new(bx, TH - 0.9, side * 1.3), Vector3.new(3.0, 0.2, 0.2), K.iron)
-			part(m, "Banner", lf * CFrame.new(bx, TH - 3.3, side * 1.3), Vector3.new(2.6, 4.6, 0.12), ctx.look.accent, Enum.Material.Fabric)
-			part(m, "BannerHem", lf * CFrame.new(bx, TH - 5.65, side * 1.32), Vector3.new(2.6, 0.3, 0.14), ctx.look.accent:Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Fabric)
+			part(m, "Banner", lf * CFrame.new(bx, TH - 3.3, side * 1.3), Vector3.new(2.6, 4.6, 0.12), cloth, Enum.Material.Fabric)
+			part(m, "BannerStripe", lf * CFrame.new(bx, TH - 2.0, side * 1.33), Vector3.new(2.6, 0.35, 0.12), Color3.fromRGB(214, 176, 86), Enum.Material.Fabric)
+			part(m, "BannerHem", lf * CFrame.new(bx, TH - 5.65, side * 1.32), Vector3.new(2.6, 0.3, 0.14), cloth:Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Fabric)
 		end
 	end
 	m.Parent = ctx.model

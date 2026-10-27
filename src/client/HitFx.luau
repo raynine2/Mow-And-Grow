@@ -621,6 +621,21 @@ function HitFx.lean(m: Model?, from: Vector3?, ratio: number?)
 	end
 end
 
+-- The upright pose of clump `m` (before any lean): client/ClumpWound carves its cut on it.
+function HitFx.base(m: Model): CFrame
+	local l = leans[m]
+	return if l then l.base else m:GetPivot()
+end
+
+-- A part added to clump `m` (a voxel of its cut, client/ClumpWound), at `rel` in its upright pose and `size`
+-- big: it leans, wobbles and squashes with the rest. Call it before parenting the part to `m`.
+function HitFx.attach(m: Model, part: BasePart, rel: CFrame, size: Vector3)
+	local l = leanOf(m)
+	table.insert(l.parts, { part = part, rel = rel, size = size })
+	part.Size = size
+	part.CFrame = m:GetPivot() * rel
+end
+
 -- Stop moving `m` (it's falling over: client/Fx animates it from here). Puts it back to its full size and
 -- returns its upright pose.
 function HitFx.release(m: Model): CFrame?

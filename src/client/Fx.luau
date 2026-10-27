@@ -20,6 +20,7 @@ local Confetti = require(script.Parent.Confetti)
 local BossFx = require(script.Parent.BossFx)
 local Moments = require(script.Parent.Moments)
 local HitMeter = require(script.Parent.HitMeter) -- (28 Oct) the soft green hit meter under the crosshair
+local ClumpWound = require(script.Parent.ClumpWound) -- (28 Oct) the cut carved into a clump's stalk, hit by hit
 
 local Fx = {}
 local player = Players.LocalPlayer
@@ -486,6 +487,7 @@ handlers.chip = function(d)
 	if d.label then
 		HitMeter.hit(d)
 	end
+	ClumpWound.hit(d) -- (before the lean: the cut leans with the clump)
 	HitFx.lean(d.model, d.from, d.ratio)
 	-- your swing already drew this hit the moment it landed (HitFx prediction); auto tools and extra targets
 	-- of a wide swing are drawn now

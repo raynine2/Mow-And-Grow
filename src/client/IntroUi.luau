@@ -50,6 +50,53 @@ local speech: { root: Frame, name: TextLabel, text: TextLabel, back: Frame }? = 
 local tale: TextLabel? = nil
 local typing = 0 -- bumps to stop an older typewriter
 
+-- The game's other screens (stock alerts, boss bars, dev tools) are hidden while a film plays and come back after;
+-- the films' own screens (and the one that frees the mouse for SKIP) stay.
+local KEEP = {
+	IntroCinema = true, FilmPicture = true, GlitchFx = true, WorldTwoTitle = true, EndingSnapshot = true,
+	EndCredits = true, MowConfetti = true, MowFreeMouse = true,
+}
+local hiddenGuis: { [ScreenGui]: RBXScriptConnection } = {}
+local guiAdded: RBXScriptConnection? = nil
+
+local function hideOthers(on: boolean)
+	if not on then
+		if guiAdded then
+			guiAdded:Disconnect()
+			guiAdded = nil
+		end
+		for g, conn in hiddenGuis do
+			conn:Disconnect()
+			if g.Parent then
+				g.Enabled = true
+			end
+		end
+		table.clear(hiddenGuis)
+		return
+	end
+	local pg = player:FindFirstChildOfClass("PlayerGui")
+	if not pg then
+		return
+	end
+	local function hide(g: Instance)
+		if g:IsA("ScreenGui") and not KEEP[g.Name] and g.Enabled and not hiddenGuis[g] then
+			g.Enabled = false
+			-- (whatever turns it back on mid-film is turned off again)
+			hiddenGuis[g] = g:GetPropertyChangedSignal("Enabled"):Connect(function()
+				if g.Enabled then
+					g.Enabled = false
+				end
+			end)
+		end
+	end
+	for _, g in pg:GetChildren() do
+		hide(g)
+	end
+	if not guiAdded then
+		guiAdded = pg.ChildAdded:Connect(hide)
+	end
+end
+
 local function screen(): ScreenGui
 	local g = Instance.new("ScreenGui")
 	g.Name = "IntroCinema"
@@ -231,9 +278,11 @@ function IntroUi.open(onSkip: () -> ())
 	buildSpeech(l)
 	local skip = UI.button(l, "SKIP  >>", Color3.fromRGB(70, 70, 86), UDim2.fromOffset(150, 48), onSkip, { pos = UDim2.new(1, -24, 1, -18), anchor = Vector2.new(1, 1), name = "IntroSkip" })
 	skip.ZIndex = 8
+	hideOthers(true)
 end
 
 function IntroUi.close()
+	hideOthers(false)
 	typing += 1
 	if gui then
 		gui:Destroy()

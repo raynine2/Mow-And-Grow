@@ -249,28 +249,13 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 		clone.Parent = folder()
 		run(walkId or idleId, true)
 	end
-	-- Turn its head toward a point (nil: straight ahead); R15 only. The neck is a Motor6D (its C0 turns) or, with
-	-- Roblox's newer avatar joints, an AnimationConstraint, whose C0 is read-only: then the torso's end of the
-	-- joint (its attachment) turns instead.
+	-- Turn its head toward a point (nil: straight ahead); R15 only.
 	local headPart = clone:FindFirstChild("Head")
-	local neckJoint = if headPart then headPart:FindFirstChild("Neck") else nil
-	local setNeck: ((turn: CFrame) -> ())? = nil
-	if neckJoint and neckJoint:IsA("Motor6D") then
-		local motor = neckJoint
-		local base = motor.C0
-		setNeck = function(turn: CFrame)
-			motor.C0 = base * turn
-		end
-	elseif neckJoint and neckJoint:IsA("AnimationConstraint") then
-		local a0, a1 = neckJoint.Attachment0, neckJoint.Attachment1
-		local att = if a0 and a0.Parent ~= headPart then a0 elseif a1 and a1.Parent ~= headPart then a1 else nil
-		if att then
-			local base = att.CFrame
-			setNeck = function(turn: CFrame)
-				att.CFrame = base * turn
-			end
-		end
-	end
+	local neck = (if headPart then headPart:FindFirstChild("Neck") else nil) :: Instance?
+	-- (28 Oct) avatars now joint with AnimationConstraints, whose C0 is read-only (setting it threw every frame and
+	-- stopped the film's camera with it): their neck turns by its torso-side attachment instead
+	local neckAtt: Attachment? = if neck and neck:IsA("AnimationConstraint") then neck.Attachment0 else nil
+	local neckBase = if neckAtt then neckAtt.CFrame elseif neck and neck:IsA("Motor6D") then neck.C0 else CFrame.identity
 	local lookAt: Vector3? = nil
 	local yawNow, pitchNow = 0, 0
 	local function look(target: Vector3?)
@@ -321,7 +306,7 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 				end)
 			end
 		end
-		if setNeck and headPart and headPart.Parent then
+		if neck and neck.Parent then
 			local wantYaw, wantPitch = 0, 0
 			local h = head
 			if lookAt and h then
@@ -335,7 +320,12 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 			local a = math.min(1, dt * 6)
 			yawNow += (wantYaw - yawNow) * a
 			pitchNow += (wantPitch - pitchNow) * a
-			pcall(setNeck, CFrame.Angles(pitchNow, yawNow, 0))
+			local turned = neckBase * CFrame.Angles(pitchNow, yawNow, 0)
+			if neckAtt then
+				neckAtt.CFrame = turned
+			elseif neck:IsA("Motor6D") then
+				(neck :: Motor6D).C0 = turned
+			end
 		end
 	end
 	local function show()

@@ -47,7 +47,10 @@ end
 
 -- The ground under a point (ignores the cast, the characters and anything you can see through).
 function IntroCast.ground(pos: Vector3): Vector3
-	local ignore: { Instance } = { folder() }
+	local ignore: { Instance } = {}
+	if set and set.Parent then
+		table.insert(ignore, set)
+	end
 	for _, p in Players:GetPlayers() do
 		if p.Character then
 			table.insert(ignore, p.Character)
@@ -549,6 +552,8 @@ end
 -- hiding things for the length of the cutscene (this client only)
 -------------------------------------------------------------------------------------------------------------
 function IntroCast.hideCharacters(on: boolean)
+	-- (client/ViewModel shows your held tool again every frame in third person; this tells it not to)
+	Players.LocalPlayer:SetAttribute("CastHidden", if on then true else nil)
 	if on then
 		for _, p in Players:GetPlayers() do
 			local char = p.Character

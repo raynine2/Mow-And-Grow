@@ -268,6 +268,8 @@ end
 -------------------------------------------------------------------------------------------------------------
 local mayor: IntroCast.Mayor? = nil
 local heroCue: FilmAudio.Cue? = nil
+local darkCue: FilmAudio.Cue? = nil
+local leavesSound: Sound? = nil
 local ambBed: FilmAudio.Cue? = nil
 
 -- The ambience bed: the last one fades out as the new one fades in.
@@ -418,9 +420,9 @@ local function grassScenes(P: Plan, m: IntroCast.Mayor): boolean
 	Film.light(LOOKS.night, 1.6)
 	FilmAudio.muffle(0, 0.2)
 	FilmAudio.sfx("impact", { volume = 1 })
-	FilmAudio.music("darkMusic", { fade = 0.6 })
+	darkCue = FilmAudio.music("darkMusic", { fade = 0.6 })
 	bed("ambWind", 1.6, 1.5)
-	FilmAudio.sfx("leaves", { volume = 1.3 })
+	leavesSound = FilmAudio.sfx("leaves", { volume = 1.3 })
 	Film.at(0.35, function()
 		speak("N3", true)
 	end)
@@ -494,6 +496,12 @@ end
 -- III. PRESENT DAY: the Mayor, alone
 -------------------------------------------------------------------------------------------------------------
 local function worryScenes(P: Plan, m: IntroCast.Mayor): boolean
+	if darkCue then
+		darkCue.stop(2)
+		darkCue = nil
+	end
+	FilmAudio.fadeOut(leavesSound, 1.5)
+	leavesSound = nil
 	Film.light(LOOKS.now, 0)
 	Film.grade("gloom", 0)
 	Film.vignette(0.5, 0)
@@ -827,20 +835,27 @@ local function peekScene(P: Plan): boolean
 		return Film.look(from, eyes - UP * (10 - k * 3)), 21 - k * 5, eyes
 	end, { hand = 0.2 })
 	caption.stop()
-	Glitch.burst(1, 0.3)
-	FilmAudio.glitch(1)
 	remove()
 	demon.destroy()
+	if not ok or not playing then
+		ungrade(0)
+		Glitch.clear()
+		return false
+	end
+	Glitch.burst(1, 0.3)
+	FilmAudio.glitch(1)
 	ungrade(0.15)
 	Film.wait(0.2)
 	Glitch.clear()
-	return ok and playing
+	return playing
 end
 
 -- Dip to black and land in your own eyes.
 local function homeScene(): boolean
 	IntroUi.fade(0, 0.3)
-	Film.wait(0.32)
+	if not Film.wait(0.32) then
+		return false
+	end
 	IntroCast.clearSet() -- (the characters stay hidden until the end, so your own head isn't in the shot)
 	mayor = nil
 	local char = player.Character

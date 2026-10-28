@@ -657,8 +657,9 @@ RunService.RenderStepped:Connect(function()
 			thirdPerson = true
 			hideAll()
 		end
-		-- third person: show the real tool in the character's hand again
-		if char then
+		-- third person: show the real tool in the character's hand again (not while a film hides the characters:
+		-- client/IntroCast's CastHidden)
+		if char and not player:GetAttribute("CastHidden") then
 			realTools(char, 0)
 		end
 		return

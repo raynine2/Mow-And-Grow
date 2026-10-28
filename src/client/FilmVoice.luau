@@ -70,6 +70,7 @@ end
 -- Build one line's voice and its wiring; yields while it's made.
 local function build(L: Line, batch: number)
 	local cfg = settings()
+	local f = folder()
 	local tts = make("AudioTextToSpeech")
 	if not tts or not output then
 		L.failed = true
@@ -92,7 +93,7 @@ local function build(L: Line, batch: number)
 			tts.Speed = cfg.voiceSpeed or 1
 			tts.Volume = cfg.voiceVolume or 1.5
 		end
-		tts.Parent = folder()
+		tts.Parent = f
 		-- the demon's voice goes through a distortion and a big reverb
 		local last: Instance = tts
 		if L.who == "demon" then

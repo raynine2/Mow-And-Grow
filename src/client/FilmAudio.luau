@@ -298,6 +298,29 @@ function FilmAudio.glitch(power: number)
 	end)
 end
 
+-- Fade one sound out and throw it away (a long one-shot that shouldn't run into the next scene).
+function FilmAudio.fadeOut(s: Sound?, time: number?)
+	if not s or not s.Parent then
+		return
+	end
+	local t = time or 0.8
+	tween(s, t, { Volume = 0 })
+	task.delay(t + 0.05, function()
+		s:Destroy()
+	end)
+end
+
+-- Everything playing fades out, and the music is clear and full again (the film's sound stays ours: what plays
+-- next, like the credits' music, plays as normal).
+function FilmAudio.hush(time: number?)
+	local t = time or 0.6
+	for _, s in table.clone(live) do
+		FilmAudio.fadeOut(s, t)
+	end
+	FilmAudio.duck(0, 0.3)
+	FilmAudio.muffle(0, 0.3)
+end
+
 -- Everything out (over `fade` seconds) and the game's music and ambience back.
 function FilmAudio.finish(fade: number?)
 	local t = fade or 1.2

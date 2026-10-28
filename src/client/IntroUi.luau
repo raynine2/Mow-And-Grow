@@ -426,6 +426,10 @@ function IntroUi.hush()
 	if sp then
 		for _, l in { sp.name, sp.text } do
 			tween(l, 0.2, { TextTransparency = 1 })
+			local st = l:FindFirstChildOfClass("UIStroke")
+			if st then
+				tween(st, 0.2, { Transparency = 1 })
+			end
 		end
 		tween(sp.back, 0.2, { BackgroundTransparency = 1 })
 	end

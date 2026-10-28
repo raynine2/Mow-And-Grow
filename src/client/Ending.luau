@@ -603,7 +603,7 @@ local function partyScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Acto
 	m.turn(P.right, 0.5)
 	Film.at(0.3, function()
 		local d = speak("E5")
-		Film.at(math.max(d - 0.25, 1.5), function()
+		Film.at(math.min(math.max(d - 0.25, 1.5), 4.4), function()
 			m.act("cheer")
 			for _, actor in actors do
 				actor.play("cheer")
@@ -1366,6 +1366,7 @@ function Ending.play(d: any)
 	IntroUi.fade(0, 0.5)
 	task.wait(0.5)
 	stopFilm()
+	FilmAudio.hush(0.8)
 	cue("credits", "creditsMusic", { fade = 1.5 })
 	if ok and not skipped then
 		playing = true -- (the credits' own flag: their SKIP ends them)

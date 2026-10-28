@@ -259,6 +259,7 @@ local savedEffects: { [Instance]: boolean } = {}
 local lightFrom: { [string]: any } = {}
 local lightTo: { [string]: any } = {}
 local lightStart, lightLen = 0, 0
+local atmoTween: Tween? = nil
 local LIGHT_KEYS = { "ClockTime", "Brightness", "ExposureCompensation", "Ambient", "OutdoorAmbient", "ColorShift_Top", "ColorShift_Bottom" }
 
 local function screen(): ScreenGui
@@ -391,7 +392,12 @@ function Film.light(goal: { [string]: any }, time: number?)
 	local atmo = goal.atmosphere
 	local a = Lighting:FindFirstChildOfClass("Atmosphere")
 	if atmo and a then
-		TweenService:Create(a, TweenInfo.new(math.max(time or 0, 0.01), Enum.EasingStyle.Sine), atmo):Play()
+		if atmoTween then
+			atmoTween:Cancel()
+		end
+		local tw = TweenService:Create(a, TweenInfo.new(math.max(time or 0, 0.01), Enum.EasingStyle.Sine), atmo)
+		tw:Play()
+		atmoTween = tw
 	end
 end
 
@@ -419,6 +425,10 @@ local function stepLight()
 			want = (from + diff * k) % 24
 			if math.abs(cur - want) > 0.004 then
 				Lighting.ClockTime = want
+			end
+		elseif typeof(want) == "number" then
+			if math.abs(cur - want) > 1e-3 then
+				(Lighting :: any)[key] = want
 			end
 		elseif cur ~= want then
 			(Lighting :: any)[key] = want
@@ -649,6 +659,10 @@ function Film.stop(name: string)
 	end
 	table.clear(savedEffects)
 	table.clear(lightTo)
+	if atmoTween then
+		atmoTween:Cancel()
+		atmoTween = nil
+	end
 	if savedLight then
 		for k, val in savedLight :: { [string]: any } do
 			pcall(function()

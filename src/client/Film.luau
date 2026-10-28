@@ -120,6 +120,7 @@ local whipDir = 1
 local freezeUntil = 0
 local frozenCf: CFrame? = nil
 local frameFns: { (dt: number, t: number) -> () } = {}
+local failedFns: { [any]: boolean } = {} -- (each one that errors is reported once)
 local timed: { { at: number, fn: () -> () } } = {}
 local lastCf = CFrame.identity
 local focusDist = 30
@@ -491,10 +492,14 @@ local function render(dt: number)
 			task.spawn(due[i])
 		end
 	end
-	-- the actors
+	-- the actors (one that errors doesn't stop the camera: it's reported once and the film carries on)
 	if not frozen then
 		for _, f in frameFns do
-			f(fdt, clock)
+			local ok, err = pcall(f, fdt, clock)
+			if not ok and not failedFns[f] then
+				failedFns[f] = true
+				warn("[Film] " .. tostring(err))
+			end
 		end
 	end
 	local fn = shot
@@ -596,6 +601,7 @@ function Film.start(name: string)
 	shotOpts = {}
 	trauma, fovPunch, whipT, freezeUntil, blurAmount = 0, 0, -1, 0, 0
 	table.clear(frameFns)
+	table.clear(failedFns)
 	table.clear(timed)
 	handBase = 0.5
 	local cam0 = workspace.CurrentCamera

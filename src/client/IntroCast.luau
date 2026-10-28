@@ -249,10 +249,28 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 		clone.Parent = folder()
 		run(walkId or idleId, true)
 	end
-	-- Turn its head toward a point (nil: straight ahead); R15 only.
+	-- Turn its head toward a point (nil: straight ahead); R15 only. The neck is a Motor6D (its C0 turns) or, with
+	-- Roblox's newer avatar joints, an AnimationConstraint, whose C0 is read-only: then the torso's end of the
+	-- joint (its attachment) turns instead.
 	local headPart = clone:FindFirstChild("Head")
-	local neck = (if headPart then headPart:FindFirstChild("Neck") else nil) :: Motor6D?
-	local neckBase = if neck then neck.C0 else CFrame.identity
+	local neckJoint = if headPart then headPart:FindFirstChild("Neck") else nil
+	local setNeck: ((turn: CFrame) -> ())? = nil
+	if neckJoint and neckJoint:IsA("Motor6D") then
+		local motor = neckJoint
+		local base = motor.C0
+		setNeck = function(turn: CFrame)
+			motor.C0 = base * turn
+		end
+	elseif neckJoint and neckJoint:IsA("AnimationConstraint") then
+		local a0, a1 = neckJoint.Attachment0, neckJoint.Attachment1
+		local att = if a0 and a0.Parent ~= headPart then a0 elseif a1 and a1.Parent ~= headPart then a1 else nil
+		if att then
+			local base = att.CFrame
+			setNeck = function(turn: CFrame)
+				att.CFrame = base * turn
+			end
+		end
+	end
 	local lookAt: Vector3? = nil
 	local yawNow, pitchNow = 0, 0
 	local function look(target: Vector3?)
@@ -303,7 +321,7 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 				end)
 			end
 		end
-		if neck and neck.Parent then
+		if setNeck and headPart and headPart.Parent then
 			local wantYaw, wantPitch = 0, 0
 			local h = head
 			if lookAt and h then
@@ -317,7 +335,7 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 			local a = math.min(1, dt * 6)
 			yawNow += (wantYaw - yawNow) * a
 			pitchNow += (wantPitch - pitchNow) * a
-			neck.C0 = neckBase * CFrame.Angles(pitchNow, yawNow, 0)
+			pcall(setNeck, CFrame.Angles(pitchNow, yawNow, 0))
 		end
 	end
 	local function show()

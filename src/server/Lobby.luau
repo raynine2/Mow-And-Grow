@@ -458,6 +458,10 @@ end
 -------------------------------------------------------------------------------------------------------------
 function Lobby.start()
 	built = require(script.Parent.MapStore).load("Lobby", LobbyBuilder.build) -- the saved map, if the place has one
+	-- (owner, 28 Oct: walking "goes up and down" over the paving) a flat floor over the stones' joints
+	pcall(function()
+		require(script.Parent.WalkPlates).cover(workspace)
+	end)
 	require(script.Parent.LobbyBoards).start() -- the all-time leaderboards
 	for i, def in built.pads do
 		table.insert(pads, {

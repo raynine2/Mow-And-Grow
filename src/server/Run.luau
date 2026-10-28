@@ -760,6 +760,10 @@ function Run.start()
 	info.zone = function()
 		return zone
 	end
+	-- (owner, 28 Oct: walking "goes up and down" over the camp's paving) a flat floor over the stones' joints
+	pcall(function()
+		require(script.Parent.WalkPlates).cover(workspace)
+	end)
 	Loot.start(info.world)
 	Mowers.setup(info.world, info.garageSpawn)
 	Boss.setup(info.world)

@@ -377,7 +377,7 @@ type Panel = {
 local function newPanel(parent: Instance, x0: number, x1: number, color: Color3, calmLook: boolean?): Panel
 	local root = Instance.new("Frame")
 	root.Name = "Panel"
-	root.BackgroundColor3 = if calmLook then color:Lerp(WHITE, 0.55) else color:Lerp(BLACK, 0.84)
+	root.BackgroundColor3 = if calmLook then color:Lerp(WHITE, 0.55) else color:Lerp(BLACK, 0.62)
 	root.BorderSizePixel = 0
 	root.ClipsDescendants = true
 	root.Position = UDim2.fromScale(x0, 0)
@@ -389,7 +389,7 @@ local function newPanel(parent: Instance, x0: number, x1: number, color: Color3,
 	g.Rotation = -90 -- (0 at the bottom)
 	g.Transparency = if calmLook
 		then NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.55, 0.75), NumberSequenceKeypoint.new(1, 0.35) })
-		else NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.55, 0.82), NumberSequenceKeypoint.new(1, 1) })
+		else NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.55, 0.62), NumberSequenceKeypoint.new(1, 0.95) })
 	g.Parent = wash
 	local lines = image(root, "Lines", TEX.lines, color:Lerp(WHITE, 0.45), if calmLook then 1 else 0.68, 2)
 	lines.SizeConstraint = Enum.SizeConstraint.RelativeYY

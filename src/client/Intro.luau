@@ -658,7 +658,10 @@ local function glitchScene(P: Plan, m: IntroCast.Mayor): (boolean, Vector3)
 		local aim = BossView.attWorld("att_head_center") or head
 		spark.CFrame = CFrame.new(sky:Lerp(aim, k * k))
 	end))
-	-- a moment of silence... then the hit
+	-- a build... a moment of silence... then the hit
+	Film.at(0.7, function()
+		FilmAudio.riser("riseDark", HIT_AT - 0.3 - 0.7, { volume = 0.6 })
+	end)
 	Film.at(HIT_AT - 0.3, function()
 		FilmAudio.duck(1, 0.12)
 	end)
@@ -1413,7 +1416,7 @@ local function play()
 	end
 	FilmVoice.prepare(lines)
 	Babble.prepare()
-	FilmAudio.begin({ "storyMusic", "darkMusic", "lonelyMusic", "heroMusic", "impact", "slam", "rumble", "leaves", "brush", "crate", "bigHit", "titleHit", "swipe", "sting", "demonSwell", "growl", "growl2", "servo", "thud", "synthWhomp", "suck", "whomp", "roar" })
+	FilmAudio.begin({ "storyMusic", "darkMusic", "lonelyMusic", "heroMusic", "impact", "slam", "rumble", "leaves", "brush", "crate", "bigHit", "titleHit", "swipe", "sting", "demonSwell", "growl", "growl2", "servo", "thud", "synthWhomp", "suck", "whomp", "roar", "riseDark" })
 	-- (the guardians' models and textures for the King and the roll call)
 	task.spawn(function()
 		local models = ReplicatedStorage:FindFirstChild("BossModels")

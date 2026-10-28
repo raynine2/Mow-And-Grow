@@ -781,6 +781,7 @@ local function creditsScenes(m: IntroCast.Mayor?): boolean
 	end
 	IntroUi.hush()
 	IntroUi.letterbox(false, 0.6)
+	IntroUi.fade(1, 0.5) -- (from the DEV panel's ENDING: CREDITS the black cover is still up)
 	stopCue("party", 1.5)
 	bed("crowd", nil, 1.5)
 	bed("amb", nil, 1.5)
@@ -1098,6 +1099,7 @@ local function holeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 		FilmAudio.glitch(0.8)
 		Glitch.burst(0.5, 0.2)
 		FilmAudio.sfx("synthWhomp", { volume = 0.8, pitch = 0.45 })
+		FilmAudio.riser("riseDark", 0.6, { volume = 0.6 }) -- (it ends just before the hit: a beat of silence)
 	end)
 	Film.at(1.15, function()
 		FilmAudio.duck(1, 0.1)
@@ -1559,7 +1561,7 @@ function Ending.play(d: any)
 	end
 	table.insert(lines, { text = LINES.D1, who = "demon" })
 	FilmVoice.prepare(lines)
-	FilmAudio.begin({ "calmMusic", "flightMusic", "partyMusic", "dreadMusic", "creditsMusic", "heartbeat", "swell", "boom", "crowd", "applause", "impact", "slam", "bigHit", "rumble", "growl", "growl2", "suck", "drone", "revStop", "revBuild", "eerie", "servo", "whomp", "thud", "sting", "bhPull", "roar" })
+	FilmAudio.begin({ "calmMusic", "flightMusic", "partyMusic", "dreadMusic", "creditsMusic", "heartbeat", "swell", "boom", "crowd", "applause", "impact", "slam", "bigHit", "rumble", "growl", "growl2", "suck", "drone", "revStop", "revBuild", "eerie", "servo", "whomp", "thud", "sting", "bhPull", "roar", "riseDark" })
 	task.spawn(function()
 		makersList = makers()
 	end)
@@ -1603,6 +1605,11 @@ function Ending.play(d: any)
 		if not Film.playing then
 			-- (skipped out of the film: start the camera and the light afresh, under the black cover)
 			IntroUi.fade(0, 0.2)
+			for name in table.clone(music) do
+				stopCue(name, 0.3) -- (the party's music and the crowd don't carry on into the night)
+			end
+			FilmAudio.duck(0, 0.1)
+			IntroUi.hush()
 			task.wait(0.2)
 			Film.stop(STEP)
 			Film.start(STEP)

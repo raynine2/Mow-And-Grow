@@ -210,7 +210,8 @@ function GlitchHole.new(centre: Vector3, facing: Vector3, radius: number, parent
 	infall.Texture = TEX.spark
 	infall.Color = ColorSequence.new(PINK, HOT)
 	infall.LightEmission = 1
-	infall.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.6, 1.4), NumberSequenceKeypoint.new(1, 0.2) })
+	local ps = R / 10 -- (sparks sized to the hole: they're seen from far away)
+	infall.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6 * ps), NumberSequenceKeypoint.new(0.6, 1.4 * ps), NumberSequenceKeypoint.new(1, 0.2 * ps) })
 	infall.Squash = NumberSequence.new(-2.5)
 	infall.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.1), NumberSequenceKeypoint.new(0.85, 0.2), NumberSequenceKeypoint.new(1, 1) })
 	infall.Lifetime = NumberRange.new(0.95, 1.05)

@@ -104,9 +104,44 @@ for _ = 1, 6 do
 end
 
 local lastMode = State.mode
+local BIRD_AWAY = CFrame.new(0, -500, 0)
+local birdsAway = false
+-- the nearest character (anyone's: a bird never sits at someone's feet) within `range` of a point
+local function nearestRoot(at: Vector3, range: number): BasePart?
+	local best: BasePart?, bestD = nil, range
+	for _, pl in Players:GetPlayers() do
+		local c = pl.Character
+		local r = c and c:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if r then
+			local d = (r.Position - at).Magnitude
+			if d < bestD then
+				best, bestD = r, d
+			end
+		end
+	end
+	return best
+end
 RunService.Heartbeat:Connect(function(dt)
 	if State.mode ~= lastMode then
 		lastMode = State.mode
+		for _, b in birds do
+			b.pos = randomSpot()
+			b.state = "idle"
+		end
+	end
+	-- while a film plays (client/IntroCast's CastHidden) the birds keep out of the shots, and land again after
+	if player:GetAttribute("CastHidden") then
+		if not birdsAway then
+			birdsAway = true
+			for _, b in birds do
+				for _, pc in b.pieces do
+					pc.part.CFrame = BIRD_AWAY
+				end
+			end
+		end
+		return
+	elseif birdsAway then
+		birdsAway = false
 		for _, b in birds do
 			b.pos = randomSpot()
 			b.state = "idle"
@@ -131,9 +166,10 @@ RunService.Heartbeat:Connect(function(dt)
 				b.timer = 1
 			end
 		else
-			if me and (me.Position - b.pos).Magnitude < 12 then
-				-- startled: flutter up and away from the player
-				local away = Vector3.new(b.pos.X - me.Position.X, 0, b.pos.Z - me.Position.Z)
+			local near = if b.state ~= "fly" then nearestRoot(b.pos, 12) else nil
+			if near then
+				-- startled: flutter up and away from whoever came close
+				local away = Vector3.new(b.pos.X - near.Position.X, 0, b.pos.Z - near.Position.Z)
 				away = if away.Magnitude > 0.1 then away.Unit else Vector3.new(1, 0, 0)
 				b.vel = away * 18 + Vector3.new(0, 10, 0)
 				b.yaw = math.atan2(-away.X, -away.Z)

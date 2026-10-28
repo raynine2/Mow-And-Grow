@@ -278,6 +278,7 @@ function IntroUi.open(onSkip: () -> ())
 	buildSpeech(l)
 	local skip = UI.button(l, "SKIP  >>", Color3.fromRGB(70, 70, 86), UDim2.fromOffset(150, 48), onSkip, { pos = UDim2.new(1, -24, 1, -18), anchor = Vector2.new(1, 1), name = "IntroSkip" })
 	skip.ZIndex = 8
+	skip.Modal = true -- (frees the mouse in first person from the first black frame, so SKIP can always be clicked)
 	hideOthers(true)
 end
 

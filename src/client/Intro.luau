@@ -718,13 +718,7 @@ local function pleaScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	for _, actor in actors do
 		actor.look(P.thick + UP * 3)
 	end
-	local riserDone = false
-	Film.at(0.5, function()
-		if not riserDone then
-			riserDone = true
-			FilmAudio.riser("rise", 5.2, { volume = 0.8 })
-		end
-	end)
+	-- (owner, 28 Oct: a riser here came in loud and harsh under his line: the line and the music carry it now)
 	return Film.run(4.8, function(k)
 		local pos = P.cast - P.fwd * (6.2 - 1.6 * inOut(k)) + UP * (5.2 + 0.6 * k) + P.right * 3.0
 		local look = P.mayorAt + UP * 5 + toGrass * 6 * k
@@ -747,7 +741,7 @@ local function crateScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 		if not playing then
 			return
 		end
-		FilmAudio.sfx("whoosh", { volume = 1.4, pitch = 0.55 })
+		FilmAudio.sfx("whoosh", { volume = 1, pitch = 0.55 })
 		IntroCast.crate(mid, -P.fwd, function()
 			if not playing then
 				return
@@ -759,9 +753,9 @@ local function crateScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 			end)
 			Film.punch(12)
 			Film.flash(Color3.new(1, 1, 1), 0.6, 0.35)
-			FilmAudio.sfx("crate", { volume = 1.2 })
-			FilmAudio.sfx("impact", { volume = 1 })
-			FilmAudio.sfx("bigHit", { volume = 0.8 })
+			-- (one solid hit, not a pile of them: stacked hits got too loud)
+			FilmAudio.sfx("crate", { volume = 0.9 })
+			FilmAudio.sfx("impact", { volume = 0.6 })
 			local g = IntroCast.ground(mid)
 			for i = 1, 5 do
 				local a = i / 5 * math.pi * 2
@@ -779,7 +773,7 @@ local function crateScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 				return
 			end
 			closeTitle = IntroUi.title(P.areaName:upper(), Config.GAME_NAME:upper(), "Mow it ALL to open the next area!")
-			FilmAudio.sfx("titleHit", { volume = 1 })
+			FilmAudio.sfx("titleHit", { volume = 0.7 })
 		end)
 	end)
 	local look = mid + UP * 2.5

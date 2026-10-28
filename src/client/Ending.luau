@@ -863,10 +863,11 @@ local function worldTwoRise(at: Vector3, toward: Vector3, side: Vector3): boolea
 	-- W8: the roar. Pull back hard: jaw wide, arms flung out, lightning everywhere, the picture tearing
 	view = Film.view()
 	d.state.glitch = 1
-	FilmAudio.sfx("roar", { volume = 1.6, pitch = 0.55 })
-	FilmAudio.sfx("roar", { volume = 1.2, pitch = 0.78 })
-	FilmAudio.sfx("growl", { volume = 1.2, pitch = 0.5 })
-	FilmAudio.sfx("bigHit", { volume = 1, pitch = 0.7 })
+	-- (kept below the pain line: stacked roars and hits got too loud)
+	FilmAudio.sfx("roar", { volume = 1.1, pitch = 0.55 })
+	FilmAudio.sfx("roar", { volume = 0.8, pitch = 0.78 })
+	FilmAudio.sfx("growl", { volume = 0.8, pitch = 0.5 })
+	FilmAudio.sfx("bigHit", { volume = 0.6, pitch = 0.7 })
 	Film.shake(1, 0.5)
 	Film.punch(12)
 	Glitch.burst(1, 0.6)

@@ -253,7 +253,14 @@ function FilmAudio.riser(key: string, landIn: number, opts: { volume: number?, p
 		return nil
 	end
 	o.at = (len - landIn) * pitch
-	return FilmAudio.sfx(key, o)
+	local s = FilmAudio.sfx(key, o)
+	if s then
+		-- (starting partway in, a riser is already loud: it fades in instead of blasting in)
+		local full = s.Volume
+		s.Volume = 0
+		tween(s, math.clamp(landIn * 0.6, 0.15, 1.5), { Volume = full }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	end
+	return s
 end
 
 -- The music dips under dialogue: 0 = full, 1 = silent.

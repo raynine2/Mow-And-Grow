@@ -341,10 +341,12 @@ local function lastBladeScenes(P: Plan): boolean
 		FilmAudio.sfx("rareChime", { volume = 0.6, pitch = 1.1 })
 	end)
 	local camAt = g + Vector3.new(14, 2.2, 10)
+	Film.refreshSight()
+	local view = Film.view()
 	ok = Film.run(4.2, function(k)
 		local e = inOut(k)
 		local target = mote.Position:Lerp(g + UP * (8 + 50 * e), 0.5)
-		return Film.look(camAt - UP * (0.6 * e), target), Film.mm(35 - 10 * e), mote.Position
+		return Film.look(Film.clear(camAt - UP * (0.6 * e), g + UP * 2, view), target), Film.mm(35 - 10 * e), mote.Position
 	end, { hand = 0.3 })
 	mote:Destroy()
 	return ok
@@ -618,9 +620,10 @@ local function partyScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Acto
 		end)
 	end)
 	local look = mid2 + UP * 3.6
+	local photoView = Film.view()
 	ok = Film.run(5.4, function(k)
 		local pos = camPos + P.right * (2 * (1 - inOut(k)))
-		return Film.look(pos, look), Film.mm(32), look
+		return Film.look(Film.clear(pos, look, photoView), look), Film.mm(32), look
 	end, { hand = 0.2 })
 	-- (the frozen moment lasts 2.3 s of real time)
 	local t0 = os.clock()

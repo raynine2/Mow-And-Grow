@@ -25,25 +25,27 @@ local Babble = {}
 type Bit = { id: number, from: number, to: number, gain: number? }
 type Voice = { label: string, bits: { Bit }, pitch: number, volume: number }
 
--- (envelopes measured with an AudioAnalyzer, 28 Oct; quiet ones get a gain so they sit level with the rest)
+-- (envelopes measured with an AudioAnalyzer, 28 Oct; quiet ones get a gain so they sit level with the rest; each
+-- voice's `volume` evens out their loudness as measured in Studio: PlaybackLoudness over a whole line, about 150 x
+-- volume for every one of them)
 local VOICES: { [string]: Voice } = {
 	-- APM "Bassoon Special B": two short staccato notes; a pompous, comic grandpa of a voice
-	bassoon = { label = "BASSOON", pitch = 1, volume = 0.85, bits = {
+	bassoon = { label = "BASSOON", pitch = 1, volume = 0.6, bits = {
 		{ id = 1846926898, from = 0.04, to = 0.17 },
 		{ id = 1846926898, from = 0.4, to = 0.62 },
 	} },
 	-- APM "Kazoo For Yoo C": three low kazoo phrases (about a man's speaking pitch)
-	kazoo = { label = "KAZOO", pitch = 0.95, volume = 0.7, bits = {
+	kazoo = { label = "KAZOO", pitch = 0.95, volume = 1.3, bits = {
 		{ id = 1846926430, from = 0.02, to = 0.3 },
 		{ id = 1846926430, from = 0.42, to = 0.66 },
 		{ id = 1846926430, from = 0.8, to = 1.0 },
 	} },
 	-- APM "Tuba Tone J": the loud middle of one long note, a brass-band "wah"
-	tuba = { label = "TUBA", pitch = 1.2, volume = 1.2, bits = {
+	tuba = { label = "TUBA", pitch = 1.2, volume = 1.35, bits = {
 		{ id = 1846987125, from = 0.7, to = 1.6 },
 	} },
 	-- Pro Sound Effects "Male Reaction" 2-5: a man's short closed-mouth "hm"s
-	hum = { label = "HUMMING", pitch = 1, volume = 1, bits = {
+	hum = { label = "HUMMING", pitch = 1, volume = 0.85, bits = {
 		{ id = 9116453449, from = 0.13, to = 0.27, gain = 4.5 },
 		{ id = 9116453436, from = 0.11, to = 0.23, gain = 3 },
 		{ id = 9116453647, from = 0.06, to = 0.17, gain = 6 },

@@ -168,12 +168,16 @@ shows the empty world for a moment (live servers teleport instead).
 
 ## Studio vs. git: please read
 
-**State on 28 Oct, ~11:30: the remade films (`b974198`) are in git, NOT in Studio yet** (the Studio tools only work in
-a turn the owner starts from the Claude app on his PC). Studio still has the ~10:20 film scripts. Ready-made,
-checksum-guarded patches change: `client/Intro`, `IntroCast`, `IntroUi`, `Ending`, `Film`, `FilmAudio`,
-`FilmVoice`, `MayorRig`, `BossView`, `DevPanel`, `server/Run`, `server/PlayerData`, `server/Main.server` (a NaN check), `server/Net` (a comment), `shared/Config`, and make
-the new ModuleScript `client/Babble`. Each script is changed only if its whole text is exactly git's previous
-version. Still: **do not sync with Rojo** (the other session's Studio-only scripts, below).
+**State on 28 Oct, ~14:45: the remade films are in Studio and play-tested** (copied in at ~14:30 with the
+checksum-guarded patches; afterwards all 16 changed scripts were checked against git: `client/Intro`, `IntroCast`,
+`IntroUi`, `Ending`, `Film`, `FilmAudio`, `FilmVoice`, `MayorRig`, `BossView`, `DevPanel`, the new `Babble`,
+`server/Run`, `PlayerData`, `Main`, `Net` and `shared/Config`). In the test: the opening ran start to end with no
+errors; the King rose, about 130 stand-in clumps grew and were swapped for the real ones, every grass part was
+visible again afterwards, the roll call showed all eight bosses about a second each and hid the last one, and the
+camera came back. The run clock read 0:05 right after the film (the ~75 s film didn't count). The ending's Mayor
+lines all played (silent mumble mode). All four voices load and play (each one's loudness was measured and evened
+out). **Not saved yet: the owner presses Ctrl+S.** Still: **do not sync with Rojo** (the other session's Studio-only
+scripts, below).
 
 **State on 28 Oct, ~10:20: Studio and git match for every film script** (checksums): `Film` (with `8353315`'s
 fix), `IntroUi` (`ef22701`), `IntroCast` (the other session fixed the neck bug in Studio first; git took Studio's

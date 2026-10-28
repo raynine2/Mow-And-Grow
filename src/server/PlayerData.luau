@@ -83,6 +83,7 @@ function PlayerData.newRun()
 		started = os.time(),
 		time = 0, -- seconds spent playing this run (server/Run counts it; Best Times uses it)
 		introSeen = false, -- the run's fly-over intro was shown (client/Intro)
+		filmHeld = false, -- the run clock was already held once for the opening film (server/Run)
 	}
 end
 

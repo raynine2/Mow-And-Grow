@@ -65,6 +65,17 @@ function FilmAudio.begin(keys: { string }?)
 	music = group("FilmMusic", MUSIC_VOL)
 	sfx = group("FilmSfx", SFX_VOL)
 	amb = group("FilmAmb", AMB_VOL)
+	-- (owner, 28 Oct: one moment was "earrape" loud) a limiter on the effects, so stacked hits, roars and slams
+	-- can't add up into a blast
+	local sg = sfx :: SoundGroup
+	if not sg:FindFirstChildOfClass("CompressorSoundEffect") then
+		local c = Instance.new("CompressorSoundEffect")
+		c.Threshold = -16
+		c.Ratio = 5
+		c.Attack = 0.003
+		c.Release = 0.25
+		c.Parent = sg
+	end
 	duckLevel = 0
 	local e = (music :: SoundGroup):FindFirstChildOfClass("EqualizerSoundEffect")
 	if not e then

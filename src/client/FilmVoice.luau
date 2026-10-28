@@ -152,14 +152,12 @@ end
 -- Start making the lines (in order, a few a second). Anything already made is kept.
 function FilmVoice.prepare(list: { { text: string, who: string? } })
 	local cfg = settings()
-	if cfg.voice == false then
-		return
-	end
 	local batch = generation
 	local todo: { Line } = {}
 	for _, item in list do
 		local who = item.who or "mayor"
-		if who == "demon" and cfg.demonVoice == false then
+		-- (the demon keeps its voice when the Mayor's text-to-speech is off: he talks in client/Babble then)
+		if (who == "demon" and cfg.demonVoice == false) or (who ~= "demon" and cfg.voice == false) then
 			continue
 		end
 		if not lines[item.text] then

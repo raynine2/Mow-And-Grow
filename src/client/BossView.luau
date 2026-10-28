@@ -421,7 +421,8 @@ ACTIONS.intro = function(v, t, a)
 		end
 		set(v, 0, if t < riseEnd then 0.9 else 1)
 	else
-		if t < 0.05 then
+		if not a.began then
+			a.began = true -- (once, on the first frame, however late it comes on a slow device)
 			v.lift.x = -v.height * 1.05
 		end
 		if t < riseEnd then
@@ -444,6 +445,57 @@ ACTIONS.intro = function(v, t, a)
 		rest(v)
 	end
 	return t < len + 0.4
+end
+
+-- a great breath and a blow (the Dandelion King blowing his seeds over the valley in the opening film): leans back
+-- filling up until `a.land`, then throws himself forward and holds it for `a.hold`
+ACTIONS.blow = function(v, t, a)
+	local land = a.land or 0.8
+	local hold = a.hold or 1.2
+	if t < land then
+		local k = t / land
+		set(v, -0.28 * k, 1 + 0.14 * k, 1.2 * k, -1.2 * k)
+	elseif t < land + 0.45 then
+		set(v, 0.32, 0.88, -0.5, 2.2)
+		v.shake = math.max(v.shake, 0.1 * v.scale / 5)
+	elseif t < land + hold then
+		set(v, 0.18, 0.95, 0, 1.2)
+	else
+		rest(v)
+		return t < land + hold + 0.8
+	end
+	return true
+end
+
+-- a cameo in the opening film's roll call (client/Intro): in a blink it's up out of the ground (or bursts into
+-- bloom), then roars for the rest of `a.len`
+ACTIONS.cameo = function(v, t, a)
+	local len = a.len or 1.2
+	local kind = a.kind or "rise"
+	local up = math.min(0.3, len * 0.3)
+	-- (the start pose once, on the first frame, however late it comes: on a slow phone it can be after 0.03 s)
+	if not a.began then
+		a.began = true
+		if kind == "burst" or kind == "bloom" then
+			v.size.x = 0.08
+		else
+			v.lift.x = -v.height * 0.55
+		end
+	end
+	if kind == "burst" or kind == "bloom" then
+		v.size.target = 1
+	else
+		v.lift.target = 0
+	end
+	if t < up then
+		set(v, 0.15, 0.85) -- coming up, hunched
+	elseif t < len then
+		set(v, -0.32, 1.15, 2, -1) -- the roar
+		v.shake = math.max(v.shake, 0.16 * v.scale / 5)
+	else
+		rest(v)
+	end
+	return t < len + 0.3
 end
 
 -- The critters react: "intro" or "rage", for `len` s.

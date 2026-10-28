@@ -657,6 +657,177 @@ function IntroCast.growGrass(origin: Vector3, time: number, onWave: ((k: number)
 	end)
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- grass that GROWS (owner, 28 Oct: "why don't you show that grass grows"): blades rise out of the soil from their
+-- roots and spring up a little past their size, instead of just appearing. The real clumps are the server's
+-- (other players may be mowing them), so they are only ever hidden and shown: what grows is a film-only copy of
+-- each one, standing exactly where it is, swapped for the real one the moment it's full size.
+-------------------------------------------------------------------------------------------------------------
+local standIns: { [BasePart]: BasePart } = {} -- real part -> its growing copy
+local growGen = 0 -- bumps when the growing is cut short (settleGrass)
+
+local function flatDist(a: Vector3, b: Vector3): number
+	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
+end
+
+-- A film-only copy of a clump part (or any mesh), with nothing that can be touched, hit or seen through walls.
+local function prop(src: BasePart): BasePart
+	local c = src:Clone()
+	for _, ch in c:GetChildren() do
+		ch:Destroy()
+	end
+	c.Anchored = true
+	c.CanCollide = false
+	c.CanQuery = false
+	c.CanTouch = false
+	c.LocalTransparencyModifier = 0
+	return c
+end
+
+-- The copy of `real` squashed into a seed at its root; grow(real) raises it and then swaps it for the real one.
+local function plant(real: BasePart)
+	local c = prop(real)
+	local size, cf = real.Size, real.CFrame
+	c.Size = Vector3.new(size.X * 0.3, 0.05, size.Z * 0.3)
+	c.CFrame = cf * CFrame.new(0, -size.Y / 2 + 0.025, 0) -- (the clumps stand upright: local Y is up)
+	c.Parent = folder()
+	standIns[real] = c
+end
+
+local function grow(real: BasePart, time: number, gen: number)
+	local c = standIns[real]
+	if not c or not c.Parent then
+		return
+	end
+	local tw = tween(c, time, { Size = real.Size, CFrame = real.CFrame }, Enum.EasingStyle.Back)
+	tw.Completed:Once(function()
+		if gen == growGen and standIns[real] == c then
+			standIns[real] = nil
+			c:Destroy()
+			if real.Parent then
+				real.LocalTransparencyModifier = 0
+			end
+		end
+	end)
+end
+
+-- Cut the growing short: the copies go, and every real clump that was waiting is shown (the film is over or was
+-- skipped; hideGrass(false) shows anything still hidden).
+function IntroCast.settleGrass()
+	growGen += 1
+	for real, c in standIns do
+		c:Destroy()
+		if real.Parent then
+			real.LocalTransparencyModifier = 0
+		end
+	end
+	table.clear(standIns)
+end
+
+-- The hidden grass grows back in a wave rolling out from `origin` over `time` seconds. The `count` clumps nearest
+-- `focus` (where the camera looks) rise out of the ground over about a second each, with a springy overshoot; the
+-- rest just appear as the wave passes them (too far off to see them grow). `onWave(k)` is called as it goes (0..1).
+-- (The clumps stay on the hidden list: hideGrass(false) at the end shows any the wave hadn't reached yet.)
+function IntroCast.sproutGrass(origin: Vector3, focus: Vector3, time: number, onWave: ((k: number) -> ())?, count: number?)
+	local gen = growGen
+	local list = table.clone(hiddenGrass)
+	local fromFocus: { [BasePart]: number } = {}
+	local fromOrigin: { [BasePart]: number } = {}
+	for _, p in list do
+		fromFocus[p] = flatDist(p.Position, focus)
+		fromOrigin[p] = flatDist(p.Position, origin)
+	end
+	local near = table.clone(list)
+	table.sort(near, function(a, b)
+		return fromFocus[a] < fromFocus[b]
+	end)
+	for i = 1, math.min(count or 160, #near) do
+		plant(near[i])
+	end
+	table.sort(list, function(a, b)
+		return fromOrigin[a] < fromOrigin[b]
+	end)
+	local far = if #list > 0 then math.max(fromOrigin[list[#list]], 1) else 1
+	task.spawn(function()
+		local n, done = #list, 0
+		local t0 = os.clock()
+		while done < n and gen == growGen do
+			local k = math.clamp((os.clock() - t0) / math.max(time, 0.05), 0, 1)
+			local reach = far * (1 - (1 - k) ^ 1.6) -- (fast at first, easing out at the far edge)
+			while done < n and (fromOrigin[list[done + 1]] <= reach or k >= 1) do
+				done += 1
+				local p = list[done]
+				if p.Parent then
+					if standIns[p] then
+						grow(p, 0.8 + math.random() * 0.6, gen)
+					else
+						p.LocalTransparencyModifier = 0
+					end
+				end
+			end
+			if onWave then
+				onWave(k)
+			end
+			if k >= 1 then
+				break
+			end
+			task.wait()
+		end
+	end)
+end
+
+-- Tall film-only grass rising round a spot (it swallows what stands there): `count` clumps copied from the real
+-- meadow's, in a ring of `radius` (none closer than `inner`), growing from the soil to about `height` studs over
+-- `time` seconds, the nearest first. Returns a function that sinks them back into the ground and removes them.
+function IntroCast.overgrow(at: Vector3, radius: number, height: number, count: number, time: number, inner: number?): (time: number) -> ()
+	local grass = workspace:FindFirstChild("Grass1", true)
+	local template: MeshPart? = nil
+	if grass then
+		for _, d in grass:GetDescendants() do
+			-- (a standing clump's mesh, not a cut patch's stubble)
+			if d:IsA("MeshPart") and d.Transparency < 1 and d.Size.Y > 0.5 and d.Parent and d.Parent.Name == "Clump" then
+				template = d
+				break
+			end
+		end
+	end
+	local made: { { part: BasePart, size: Vector3, cf: CFrame } } = {}
+	local function remove(t: number)
+		for _, g in made do
+			if g.part.Parent then
+				tween(g.part, t, { Size = Vector3.new(g.size.X * 0.3, 0.05, g.size.Z * 0.3), CFrame = g.cf * CFrame.new(0, -g.size.Y / 2 + 0.025, 0) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+				Debris:AddItem(g.part, t + 0.05)
+			end
+		end
+		table.clear(made)
+	end
+	if not template then
+		return remove
+	end
+	local f = folder()
+	local k = height / math.max(template.Size.Y, 0.1)
+	local full = template.Size * k
+	local r0 = math.clamp(inner or 0, 0, radius * 0.9)
+	for i = 1, count do
+		local a = i / count * math.pi * 2 + math.random() * 0.6
+		local r = r0 + (radius - r0) * math.sqrt(math.random())
+		local spot = IntroCast.ground(at + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r))
+		local c = prop(template)
+		local size = full * (0.8 + math.random() * 0.4)
+		local cf = CFrame.new(spot) * CFrame.Angles(0, math.random() * math.pi * 2, 0) * CFrame.new(0, size.Y / 2, 0)
+		c.Size = Vector3.new(size.X * 0.3, 0.05, size.Z * 0.3)
+		c.CFrame = cf * CFrame.new(0, -size.Y / 2 + 0.025, 0)
+		c.Parent = f
+		table.insert(made, { part = c, size = size, cf = cf })
+		task.delay(time * ((r - r0) / math.max(radius - r0, 0.1)) * 0.5, function()
+			if c.Parent then
+				tween(c, time * 0.55, { Size = size, CFrame = cf }, Enum.EasingStyle.Back)
+			end
+		end)
+	end
+	return remove
+end
+
 -- Fade the actors' name tags away (once the party shot is over, so they don't sit on the later cards).
 function IntroCast.untag()
 	local f = set
@@ -687,6 +858,7 @@ end
 
 function IntroCast.cleanup()
 	IntroCast.hideCharacters(false)
+	IntroCast.settleGrass()
 	IntroCast.hideGrass(false)
 	IntroCast.clearSet()
 end

@@ -19,6 +19,7 @@
 --   m.chatter(seconds)      talk without a voice for a while
 --   m.turn(dir, time)       turn on the spot to face a flat direction
 --   m.hop(height)           a little jump
+--   m.hatPop(height)        his top hat blown up off his head, spinning, and landing back on it
 --   m.crouch(amount)        bend the knees (0..1), e.g. cowering
 --   m.closeEyes(on)         eyes shut (content, or wincing) until opened again
 --   m.face() / m.eyes()     world points to frame close-ups on
@@ -159,12 +160,15 @@ export type Mayor = {
 	chatter: (seconds: number) -> (),
 	turn: (dir: Vector3, time: number?) -> (),
 	hop: (height: number?) -> (),
+	hatPop: (height: number?) -> (),
 	crouch: (amount: number) -> (),
 	closeEyes: (on: boolean) -> (),
 	face: () -> Vector3,
 	eyes: () -> Vector3,
 	destroy: () -> (),
 }
+
+local HAT_POP = 0.9 -- seconds the hat is in the air (m.hatPop)
 
 local function lite(): boolean
 	return Potato.on or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
@@ -321,6 +325,8 @@ function MayorRig.new(parent: Instance, feet: CFrame, opts: { lite: boolean?, sc
 	local medal = Vector3.zero
 	local medalVel = Vector3.zero
 	local beatAt, beatPow = 0, 0
+	local hatPopAt, hatPopHeight = -10, 0
+	local hatSpin = Vector3.zero
 
 	local function setBlink(on: boolean)
 		if blinking == on then
@@ -522,6 +528,16 @@ function MayorRig.new(parent: Instance, feet: CFrame, opts: { lite: boolean?, sc
 		moveTo(joints.BrowL, v(0, browLift, 0), 20, 0.7)
 		moveTo(joints.BrowR, v(0, browLift, 0), 20, 0.7)
 		moveTo(joints.Hat, v(0, if poseName == "tipHat" then 0.32 * scale else 0, if poseName == "tipHat" then -0.12 * scale else 0), 12, 0.55)
+		-- the hat blown off his head (m.hatPop): up, two spins, and back down onto it
+		local hp = t - hatPopAt
+		if hp >= 0 and hp < HAT_POP and joints.Hat then
+			local k = hp / HAT_POP
+			joints.Hat.pos = v(0, 4 * hatPopHeight * k * (1 - k) * scale, -0.25 * math.sin(k * math.pi) * scale)
+			joints.Hat.posVel = Vector3.zero
+			hatSpin = v(math.sin(k * math.pi * 2) * 25, k * 720, math.sin(k * math.pi) * 20)
+		else
+			hatSpin = Vector3.zero
+		end
 		moveTo(joints.Stache, v(0, jawOpen * 0.03 * scale, 0), 24, 0.45)
 		local jaw = joints.Jaw
 		if jaw then
@@ -587,6 +603,8 @@ function MayorRig.new(parent: Instance, feet: CFrame, opts: { lite: boolean?, sc
 				extra = Vector3.new(math.clamp(pupilOff.X, -1, 1) * 0.04, math.clamp(pupilOff.Y, -1, 1) * 0.03, 0) * scale
 			elseif name == "Eyes" or name == "Lids" then
 				continue
+			elseif name == "Hat" then
+				a += hatSpin
 			end
 			j.motor.C0 = j.base * CFrame.new(extra) * CFrame.Angles(D(a.X), D(a.Y), D(a.Z))
 		end
@@ -640,6 +658,9 @@ function MayorRig.new(parent: Instance, feet: CFrame, opts: { lite: boolean?, sc
 		end,
 		hop = function(height: number?)
 			hopStart, hopHeight = t, height or 0.6
+		end,
+		hatPop = function(height: number?)
+			hatPopAt, hatPopHeight = t, height or 2.4
 		end,
 		crouch = function(amount: number)
 			crouchAmt = math.clamp(amount, 0, 1)

@@ -193,10 +193,11 @@ local sight = RaycastParams.new()
 sight.FilterType = Enum.RaycastFilterType.Exclude
 sight.IgnoreWater = true
 
--- What the camera may look through: the film's sets, the grass, everyone's characters (call again when things change).
+-- What the camera may look through: the film's sets, the grass, everyone's characters, the boss being shown
+-- (client/BossView; the opening's guardians) (call again when things change).
 function Film.refreshSight(extra: { Instance }?)
 	local skip: { Instance } = {}
-	for _, name in { "IntroSet", "EndingSet", "Corruption", "FilmSet" } do
+	for _, name in { "IntroSet", "EndingSet", "Corruption", "FilmSet", "BossView" } do
 		local f = workspace:FindFirstChild(name)
 		if f then
 			table.insert(skip, f)
@@ -334,8 +335,9 @@ local GRADES: { [string]: { [string]: any } } = {
 	dream = { Brightness = 0.06, Contrast = -0.04, Saturation = -0.1, TintColor = Color3.fromRGB(255, 240, 222) }, -- soft and bright
 }
 
-function Film.grade(name: string, time: number?)
-	local goal = GRADES[name] or GRADES.none
+-- `name`: one of GRADES, or a table of ColorCorrection properties of its own (e.g. a boss's colour)
+function Film.grade(name: any, time: number?)
+	local goal = if type(name) == "table" then name else (GRADES[name] or GRADES.none)
 	local cc = grade
 	if not cc or not cc.Parent then
 		local made = Instance.new("ColorCorrectionEffect")

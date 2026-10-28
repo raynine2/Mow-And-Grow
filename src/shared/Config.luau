@@ -1214,9 +1214,14 @@ Config.SOUNDS = {
 -- real movie with a story ... matching audio".
 -------------------------------------------------------------------------------------------------------------
 Config.FILM = {
-	-- the Mayor speaks his lines out loud (Roblox's text-to-speech, made on each player's device; free). Off: just
-	-- the subtitles. If it can't be made in time, a line plays without a voice.
-	voice = true,
+	-- the Mayor's voice (owner, 28 Oct: the text-to-speech one was "very bland and AI rubbish"): he talks in a
+	-- made-up mumble of licensed sounds, one per syllable (client/Babble): "bassoon", "kazoo", "tuba", "hum", or
+	-- "none" (subtitles only, his jaw still moves). The DEV panel's MAYOR VOICE button plays them one after the
+	-- other so the owner can pick by ear; until then he's silent (the council: a cheap voice is worse than none).
+	babble = "none",
+	-- Roblox's text-to-speech for the Mayor instead (made on each player's device; free). Off since 28 Oct (above).
+	-- If it can't be made in time, a line plays without a voice.
+	voice = false,
 	voiceId = "1", -- British male
 	voicePitch = -1.5, -- semitones
 	voiceSpeed = 0.95,

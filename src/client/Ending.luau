@@ -33,6 +33,7 @@ local IntroUi = require(script.Parent.IntroUi)
 local Film = require(script.Parent.Film)
 local FilmAudio = require(script.Parent.FilmAudio)
 local FilmVoice = require(script.Parent.FilmVoice)
+local Babble = require(script.Parent.Babble) -- (28 Oct) the Mayor's mumble voice
 local Sound = require(script.Parent.Sound)
 local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
@@ -250,6 +251,13 @@ end
 local function speak(key: string, narrated: boolean?, text: string?): number
 	local line = LINES[key]
 	local len, level = FilmVoice.play(line)
+	local tts = len ~= nil
+	local babbling = false
+	if not len and not narrated and key ~= "D1" then
+		-- (the Mayor talks in client/Babble's mumble; the narration is storybook text over the pictures)
+		len, level = Babble.line(line)
+		babbling = Babble.voice() ~= "none"
+	end
 	local dur = len or math.clamp(#line * 0.062, 1.8, 5.5)
 	if narrated then
 		IntroUi.narrate(text or line, dur + 0.6)
@@ -269,8 +277,8 @@ local function speak(key: string, narrated: boolean?, text: string?): number
 			end
 		end
 	end
-	if len then
-		FilmAudio.duck(0.42, 0.25)
+	if tts or babbling then
+		FilmAudio.duck(if babbling then 0.28 else 0.42, 0.25)
 		task.delay(dur, function()
 			if Film.playing then
 				FilmAudio.duck(0, 0.8)
@@ -1270,6 +1278,7 @@ end
 local function stopFilm()
 	Film.stop(STEP)
 	FilmVoice.clear()
+	Babble.stop()
 	IntroCast.cleanup()
 	IntroUi.close()
 	-- world 2's corruption, the demon, the glitches, the grade
@@ -1360,7 +1369,10 @@ function Ending.play(d: any)
 		table.insert(spots, a.pos)
 	end
 	streamIn(spots)
-	FilmVoice.waitFor(LINES.E1, 1.5)
+	Babble.prepare()
+	if (Config.FILM :: any).voice ~= false then
+		FilmVoice.waitFor(LINES.E1, 1.5)
+	end
 	Film.start(STEP)
 	local ok = false
 	if not skipped then

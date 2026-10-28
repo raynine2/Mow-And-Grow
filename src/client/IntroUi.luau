@@ -566,4 +566,49 @@ function IntroUi.title(kicker: string, title: string, sub: string): (number) -> 
 	end
 end
 
+-- A guardian's name slamming in for the roll call (client/Intro): a pill ("GUARDIAN 3 OF 8") in its colour, its
+-- name huge in two tones, its title under it. Low in the frame (the boss fills the top), gone after `life`.
+function IntroUi.bossCard(kicker: string, name: string, title: string, color: Color3, life: number)
+	local l = layer
+	if not l then
+		return
+	end
+	local root = Instance.new("Frame")
+	root.Name = "BossCard"
+	root.BackgroundTransparency = 1
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.Position = UDim2.new(0.5, 0, 1 - BAR, -112)
+	root.Size = UDim2.fromOffset(1000, 170)
+	root.ZIndex = 7
+	root.Parent = l
+	local pill = UI.frame({ size = UDim2.fromOffset(260, 34), pos = UDim2.new(0.5, 0, 0, 18), anchor = Vector2.new(0.5, 0.5), color = color, parent = root, radius = 16, outline = 3 })
+	UI.gradient(pill, color)
+	UI.text(pill, kicker, UDim2.new(1, -20, 1, -8), { pos = UDim2.fromOffset(10, 4), stroke = 2.5 })
+	local big = UI.text(root, name, UDim2.new(1, 0, 0, 88), { pos = UDim2.fromOffset(0, 38), stroke = 6 })
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, WHITE),
+		ColorSequenceKeypoint.new(0.5, WHITE),
+		ColorSequenceKeypoint.new(0.56, color),
+		ColorSequenceKeypoint.new(1, UI.shade(color, 0.8)),
+	})
+	g.Rotation = 90
+	g.Parent = big
+	big.Rotation = -4
+	tween(big, 0.25, { Rotation = 0 }, Enum.EasingStyle.Back)
+	UI.text(root, title, UDim2.new(1, 0, 0, 34), { pos = UDim2.fromOffset(0, 128), stroke = 3.5 })
+	local sc = Instance.new("UIScale")
+	sc.Scale = 1.9
+	sc.Parent = root
+	tween(sc, 0.18, { Scale = 1 }, Enum.EasingStyle.Back)
+	task.delay(life, function()
+		if root.Parent then
+			fadeAll(root, 0.12)
+			task.delay(0.15, function()
+				root:Destroy()
+			end)
+		end
+	end)
+end
+
 return IntroUi

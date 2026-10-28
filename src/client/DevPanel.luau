@@ -31,8 +31,33 @@ local BUTTONS = {
 	{ "FIND A GNOME", "gnome", Color3.fromRGB(230, 180, 40) },
 	{ "ALMOST CLEAR", "almost", Color3.fromRGB(150, 90, 220) },
 	{ "CUT ONE CLUMP", "cutOne", Color3.fromRGB(150, 90, 220) },
+	{ "PLAY OPENING", "playOpening", Color3.fromRGB(255, 170, 40) }, -- (this client only: client/Intro.preview)
 	{ "PLAY ENDING", "playEnding", Color3.fromRGB(255, 70, 150) }, -- (this client only: client/Ending.preview)
+	{ "MAYOR VOICE", "mayorVoice", Color3.fromRGB(170, 110, 255) }, -- (this client only: client/Babble's voices)
 }
+
+-- The Mayor's voice, tried out (owner, 28 Oct): the next of client/Babble's voices, saying two of his lines. It
+-- stays picked on this device for the films (PLAY OPENING / PLAY ENDING) until the game restarts; the one the owner
+-- likes goes into Config.FILM.babble.
+local function nextVoice(btn: TextButton)
+	local Babble = require(script.Parent.Babble)
+	local name = Babble.cycle()
+	local label = btn:FindFirstChild("Label")
+	if label and label:IsA("TextLabel") then
+		label.Text = "VOICE: " .. Babble.label(name)
+	end
+	UI.toast("Mayor voice: " .. Babble.label(name) .. " (just on this device)", "purple")
+	Babble.prepare()
+	task.spawn(function()
+		local t0 = os.clock()
+		while not Babble.ready() and os.clock() - t0 < 3 do
+			task.wait(0.1)
+		end
+		Babble.line("Mowers! At LAST, you've come!")
+		task.wait(2.4)
+		Babble.line("Mow it ALL... and save our valley!")
+	end)
+end
 -- a free egg of every kind in Config.EGGS (hatched by the server with the normal hatch show)
 for _, egg in Config.EGGS do
 	table.insert(BUTTONS, { "GIVE " .. egg.name:upper(), "egg", egg.color, egg.id })
@@ -46,11 +71,19 @@ local function build()
 	built = true
 	local w = UI.window("Dev", "Dev", nil, { size = Vector2.new(780, 620), grid = Vector2.new(220, 78) })
 	for i, b in BUTTONS do
-		local btn = UI.button(w.list, b[1], b[3], UDim2.fromOffset(220, 78), function()
-			if b[2] == "playEnding" then
+		local btn: TextButton
+		btn = UI.button(w.list, b[1], b[3], UDim2.fromOffset(220, 78), function()
+			if b[2] == "mayorVoice" then
+				nextVoice(btn)
+				return
+			elseif b[2] == "playEnding" then
 				-- the ending film, credits and end screen, played right here without finishing the run
 				UI.close()
 				require(script.Parent.Ending).preview()
+				return
+			elseif b[2] == "playOpening" then
+				UI.close()
+				require(script.Parent.Intro).preview()
 				return
 			end
 			State.fire("Dev", b[2], b[4])

@@ -14,7 +14,7 @@ local INBOUND = {
 	"Prompt", -- (kind, key)                product | pass
 	"Party", -- (action, pad, ...)          start | create (pad, size, difficulty, peaceful) | cancel (pad) | load
 	"Ready", -- ()                          client finished loading, send state
-	"Seen", -- (what)                       "intro": the run's fly-over was shown
+	"Seen", -- (what)                       "intro": the run's fly-over was shown ("introStart": it began)
 	"Dev", -- (action, arg)                 dev panel (Studio, or Config.ADMINS / the game's owner)
 	"Hatch", -- (eggId, count)              open a gem egg (Robux eggs go through Prompt)
 	"Pet", -- (action, uid)                 equip | unequip | best | delete

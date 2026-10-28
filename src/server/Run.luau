@@ -34,6 +34,12 @@ local zone = 1 -- the zone the party is working on (highest unlocked)
 local started = false
 local completing = false
 local lastSwing: { [Player]: number } = {}
+-- (28 Oct, the films' council) the opening film doesn't count against your run time: while you watch it your clock
+-- waits (client/Intro says "introStart" when it begins, "intro" when it's over or skipped). Once a run (saved in
+-- the run's data, so rejoining doesn't hold it again), and never longer than FILM_HOLD seconds, whatever a client
+-- sends.
+local FILM_HOLD = 95
+local filmUntil: { [Player]: number } = {}
 local worldDirty = true
 local startedAt = workspace:GetServerTimeNow()
 local devCutting = false -- DevHook clearZone: cut without dropping loot
@@ -887,12 +893,16 @@ function Run.start()
 		local data = PlayerData.get(player)
 		if what == "ending" and id == "again" and endingOpen then
 			sendToLobby({ player }) -- PLAY AGAIN on the end screen: back to the lobby for a new run
+		elseif what == "introStart" and data and data.run and not data.run.introSeen and not data.run.filmHeld then
+			data.run.filmHeld = true
+			filmUntil[player] = os.clock() + FILM_HOLD
 		elseif what == "intro" and data and data.run then
+			filmUntil[player] = nil
 			if not data.run.introSeen then
 				data.run.introSeen = true
 				PlayerData.changed(player) -- (client/FirstLawn's loan note waits for this: it shows right after the film)
 			end
-		elseif what == "news" and data and type(id) == "number" then
+		elseif what == "news" and data and type(id) == "number" and id == id then -- (id == id: not NaN)
 			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)
 		end
 	end)
@@ -940,6 +950,7 @@ function Run.start()
 	Players.PlayerRemoving:Connect(function(p)
 		lastSwing[p] = nil
 		bagWarn[p] = nil
+		filmUntil[p] = nil
 	end)
 
 	-- (the run's loops restart after an error instead of stopping selling or auto-cutting for the whole server)
@@ -952,14 +963,17 @@ function Run.start()
 			task.wait(1)
 		end
 	end)
-	-- the run clock: one second per second you're in the run (the HUD ticks it between updates)
+	-- the run clock: one second per second you're in the run (the HUD ticks it between updates), except while you
+	-- watch the opening film (filmUntil)
 	task.spawn(function()
 		while true do
 			task.wait(1)
 			if started and not completing then
+				local now = os.clock()
 				for _, p in Players:GetPlayers() do
 					local data = PlayerData.get(p)
-					if data and data.run then
+					local watching = filmUntil[p] ~= nil and now < (filmUntil[p] :: number)
+					if data and data.run and not watching then
 						data.run.time = (data.run.time or 0) + 1
 					end
 				end

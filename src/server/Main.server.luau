@@ -212,7 +212,7 @@ end)
 if not Mode.isRun then
 	Net.on("Seen", 1, function(player, what, id)
 		local data = PlayerData.get(player)
-		if what == "news" and data and type(id) == "number" then
+		if what == "news" and data and type(id) == "number" and id == id then -- (id == id: not NaN)
 			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)
 			PlayerData.changed(player)
 		elseif what == "firstLawn" and (id == "stay" or id == "go" or id == "ready") then

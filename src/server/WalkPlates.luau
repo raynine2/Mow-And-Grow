@@ -4,7 +4,8 @@
 -- bed blocks) and the lobby's walks (server/HubPaths: 0.2-stud stones on "Path" beds) both do it. This puts one
 -- invisible plate on top of each bed that carries stones, level with their tops: the feet walk on a flat floor and
 -- the paving looks exactly the same (nothing hand-made is changed). The other areas' camps (server/Outposts) have
--- the same joints in their plazas (0.22 deep): their rows of paving get a plate each too.
+-- the same joints in their plazas (0.22 deep), and the boardwalk camps have gaps between their planks (0.4 deep,
+-- measured in Studio on 28 Oct: a 0.16-0.24 stud bob walking over them): their rows get a plate each too.
 --
 --   WalkPlates.cover(root)   every CampTiles / Paths-with-Stones folder / Outpost plaza under `root` (once each)
 local WalkPlates = {}
@@ -140,8 +141,67 @@ local function coverTiles(folder: Instance): number
 	return made
 end
 
+-- The boardwalk camps (server/Outposts' plank theme): three 1.22-stud planks a 4-stud cell, 0.1-0.14 studs apart, with
+-- stone or ground 0.4 under the gaps. One plate per row of planks (where they're less than 0.3 apart), level with their
+-- tops and as deep as the cell, so the rows touch.
+local function coverPlanks(folder: Instance): number
+	if folder:GetAttribute("WalkPlates") then
+		return 0
+	end
+	folder:SetAttribute("WalkPlates", true)
+	local planks: { BasePart } = {}
+	for _, p in folder:GetChildren() do
+		if p:IsA("BasePart") and p.Name == "Plank" and math.abs(p.CFrame.RightVector.X) > 0.999 then
+			table.insert(planks, p)
+		end
+	end
+	local function top(p: BasePart): number
+		return p.Position.Y + p.Size.Y / 2
+	end
+	table.sort(planks, function(a, b)
+		if math.abs(top(a) - top(b)) > 0.005 then
+			return top(a) < top(b)
+		elseif math.abs(a.Position.Z - b.Position.Z) > 0.005 then
+			return a.Position.Z < b.Position.Z
+		end
+		return a.Position.X < b.Position.X
+	end)
+	local made = 0
+	local i = 1
+	while i <= #planks do
+		local a = planks[i]
+		local j = i
+		while planks[j + 1] do
+			local b, c = planks[j], planks[j + 1]
+			local gap = (c.Position.X - c.Size.X / 2) - (b.Position.X + b.Size.X / 2)
+			if math.abs(top(c) - top(b)) < 0.005 and math.abs(c.Position.Z - b.Position.Z) < 0.005 and math.abs(c.Size.Z - b.Size.Z) < 0.01 and gap > -0.05 and gap < 0.3 then
+				j += 1
+			else
+				break
+			end
+		end
+		local z = planks[j]
+		local x0, x1 = a.Position.X - a.Size.X / 2, z.Position.X + z.Size.X / 2
+		local h = a.Size.Y
+		local p = Instance.new("Part")
+		p.Name = "WalkPlate"
+		p.Anchored = true
+		p.CanCollide = true
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Transparency = 1
+		p.Locked = true
+		p.Size = Vector3.new(x1 - x0, h, a.Size.Z + 0.12)
+		p.CFrame = CFrame.new((x0 + x1) / 2, top(a) - h / 2, a.Position.Z)
+		p.Parent = folder
+		made += 1
+		i = j + 1
+	end
+	return made
+end
+
 -- Every paving under `root`: hand-made CampTiles (Bed + Stone parts), HubPaths walks (Path parts + a Stones folder) and
--- the area camps' plazas (Outpost<z> models: Tile + TileBed parts).
+-- the area camps' plazas (Outpost<z> models: Tile + TileBed parts, or boardwalk Planks).
 function WalkPlates.cover(root: Instance?): number
 	if not root then
 		return 0
@@ -175,6 +235,8 @@ function WalkPlates.cover(root: Instance?): number
 			made += coverFolder(f, beds, stones)
 		elseif string.match(f.Name, "^Outpost%d+$") and f:FindFirstChild("TileBed") then
 			made += coverTiles(f)
+		elseif string.match(f.Name, "^Outpost%d+$") and f:FindFirstChild("Plank") then
+			made += coverPlanks(f)
 		end
 	end
 	return made

@@ -1198,6 +1198,29 @@ local function crateScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	return ok
 end
 
+-- The top of the tallest grass clump within `radius` studs (sideways) of `at`. (The clumps can't be hit by a
+-- raycast, so the camera checks can't see them.)
+local function grassTop(at: Vector3, radius: number): number
+	local top = -math.huge
+	local grass = workspace:FindFirstChild("Grass1", true)
+	if grass then
+		for _, d in grass:GetDescendants() do
+			if d:IsA("Model") and d.Name == "Clump" and flat(d:GetPivot().Position - at).Magnitude < radius then
+				local cf, size = d:GetBoundingBox()
+				top = math.max(top, cf.Position.Y + size.Y / 2)
+			end
+		end
+	end
+	return top
+end
+
+-- The peek's camera, turned `yaw` degrees from straight out past the thick grass: back from it and up over the
+-- clumps (12-14 studs tall: in among them, Studio's test on 28 Oct saw nothing but green).
+local function peekFrom(P: Plan, yaw: number): Vector3
+	local f = P.thick - turn(P.dirK, yaw) * 14
+	return Vector3.new(f.X, math.max(f.Y + 9, grassTop(f, 16) + 3), f.Z)
+end
+
 -- A sneak peek of world 2 (owner, 27 Oct: "have this boss sneak peek in the first cutscene"): the picture glitches
 -- and far beyond the meadow the sky tears open again; in the dark of the tear an eye opens (the glitch demon's, as in
 -- the ending's black hole: client/GlitchHole) and looks straight at us... then it all snaps back. (The council, 28
@@ -1212,9 +1235,16 @@ local function peekScene(P: Plan): boolean
 		Glitch.clear()
 		return false
 	end
-	local from = P.thick - P.dirK * 14 + UP * 9
-	local far = P.thick + P.dirK * 150 + UP * 70
-	local toCam = unit(from - far, -P.dirK)
+	-- (the first turn with nothing solid between the camera and the tear, nor beside it in the frame)
+	local yaw = freeYaw(function(y)
+		return { peekFrom(P, y) }
+	end, function(y)
+		return P.thick + turn(P.dirK, y) * 150 + UP * 70
+	end, { 0, 30, -30, 60, -60, 90, -90 }, 25)
+	local dirK = turn(P.dirK, yaw)
+	local from = peekFrom(P, yaw)
+	local far = P.thick + dirK * 150 + UP * 70
+	local toCam = unit(from - far, -dirK)
 	local C = Corruption.new(far)
 	C.rift(far, toCam, 70, 0.3)
 	local folder = workspace:FindFirstChild("IntroSet") or workspace

@@ -859,6 +859,17 @@ local function twistStage(P: Plan): (Vector3, Vector3)
 							score += 2 -- (under a roof or a tree)
 						end
 					end
+					-- the hole, seen from where the party stands in the camp (Studio's test, 28 Oct: from in front of
+					-- the Tool Shop, its roof hid the bottom half of the hole)
+					local dirS = unit(flat(at - P.cast), P.fwd)
+					local sky = at + UP * HOLE_UP
+					for _, cam in { P.cast - dirS * 11 + UP * 2.2, P.cast + UP * 3 } do
+						for _, h in { -HOLE_R * 0.9, 0 } do
+							if not Film.sees(cam, sky + UP * h) then
+								score += 5
+							end
+						end
+					end
 					if score < best then
 						best, bestAt, bestToward = score, at, toward
 					end
@@ -997,14 +1008,37 @@ local function worldTwoTitle(): boolean
 	return ok
 end
 
--- A camera spot from `list` that sees `target` (and, if given, `also`): the first that does, else the first.
-local function spotFor(list: { Vector3 }, target: Vector3, also: Vector3?): Vector3
-	for _, p in list do
-		if Film.sees(p, target) and (not also or Film.sees(p, also)) then
-			return p
+-- How well a camera at `p` sees a shot: 2 for each of `targets` in sight, 1 off for each edge of the frame (`half`
+-- degrees either side of the first target) with something solid within 30 studs of the lens. (Studio's test, 28 Oct:
+-- the hole half behind a roof, and half the frame filled by whatever stood beside the camera.)
+local function shotScore(p: Vector3, targets: { Vector3 }, half: number): number
+	local score = 0
+	for _, t in targets do
+		if Film.sees(p, t) then
+			score += 2
 		end
 	end
-	return list[1]
+	if (targets[1] - p).Magnitude > 0.5 then
+		local cf = CFrame.lookAt(p, targets[1])
+		for _, a in { -half, half } do
+			if not Film.sees(p + (cf * CFrame.Angles(0, math.rad(a), 0)).LookVector * 30, p) then
+				score -= 1
+			end
+		end
+	end
+	return score
+end
+
+-- The camera spot from `list` that sees the shot best (earlier ones win ties).
+local function bestSpot(list: { Vector3 }, targets: { Vector3 }, half: number?): Vector3
+	local best, bestScore = list[1], -math.huge
+	for _, p in list do
+		local s = shotScore(p, targets, half or 35)
+		if s > bestScore then
+			best, bestScore = p, s
+		end
+	end
+	return best
 end
 
 -- T1-T3: night; the Mayor content on his soapbox... the picture stutters; "W-what was THAT?!"
@@ -1096,13 +1130,16 @@ local function holeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	end
 	-- T4: low behind them, looking out over the meadow: the sky tears... and a black hole bursts open in it
 	Film.refreshSight()
-	local camA = spotFor({
+	local holeEdges = { sky, sky - UP * (HOLE_R * 0.9), sky + hside * (HOLE_R * 1.3), sky - hside * (HOLE_R * 1.3) }
+	local camA = bestSpot({
 		P.cast - dirS * 11 + hside * 4 + UP * 2.2,
 		P.cast - dirS * 9 - hside * 6 + UP * 3,
 		P.cast - dirS * 15 + UP * 6,
 		P.cast + hside * 13 + UP * 3,
 		P.cast - hside * 13 + UP * 3,
-	}, sky, P.cast + UP * 3)
+		P.cast - dirS * 14 + hside * 8 + UP * 10,
+		P.cast - dirS * 14 - hside * 8 + UP * 10,
+	}, { sky, holeEdges[2], holeEdges[3], holeEdges[4], P.cast + UP * 3 }, 40)
 	Film.at(0.5, function()
 		C.rift(sky, -dirS, 64, 0.4)
 		FilmAudio.glitch(0.8)
@@ -1150,12 +1187,14 @@ local function holeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	end
 	local mid = P.cast:Lerp(st.at, 0.55)
 	local look5 = st.at:Lerp(sky, 0.42)
-	local camB = spotFor({
+	local camB = bestSpot({
 		mid + hside * 75 + UP * 16,
 		mid - hside * 75 + UP * 16,
 		mid + hside * 55 - dirS * 30 + UP * 24,
 		mid - hside * 55 - dirS * 30 + UP * 24,
-	}, look5, sky)
+		mid + hside * 70 + UP * 34,
+		mid - hside * 70 + UP * 34,
+	}, { look5, sky, holeEdges[2], st.at + UP * 4 }, 40)
 	local view = Film.view()
 	ok = Film.run(4.0, function(k)
 		local target = look5 + UP * (k * 6)
@@ -1189,7 +1228,13 @@ local function holeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 		FilmAudio.sfx("impact", { volume = 0.9, pitch = 0.9 })
 		FilmAudio.sfx("growl2", { volume = 0.7, pitch = 0.6 })
 	end)
-	local camC = spotFor({ P.cast - dirS * 10 + UP * 1.4, P.cast - dirS * 8 + hside * 5 + UP * 2, P.cast + hside * 10 + UP * 2 }, sky, P.cast + UP * 3)
+	local camC = bestSpot({
+		P.cast - dirS * 10 + UP * 1.4,
+		P.cast - dirS * 8 + hside * 5 + UP * 2,
+		P.cast + hside * 10 + UP * 2,
+		P.cast - hside * 10 + UP * 2,
+		P.cast - dirS * 12 + UP * 6,
+	}, { P.cast + UP * 3, sky, holeEdges[2] }, 40)
 	return Film.run(3.4, function(k)
 		local e = Film.smooth(k * 1.2)
 		local look = (P.cast + UP * 3):Lerp(sky, e)
@@ -1245,7 +1290,14 @@ local function demonScenes(P: Plan): boolean
 	FilmAudio.sfx("rumble", { volume = 1.2, pitch = 0.8 })
 	FilmAudio.sfx("slam", { volume = 1, pitch = 0.6 })
 	Film.shake(0.7, 0.2)
-	local camF = spotFor({ P.cast - dirS * 6 + UP * 2, P.cast + UP * 3, P.cast + dirS * 20 + UP * 2 }, sky + UP * 30)
+	local hside = dirS:Cross(UP)
+	local camF = bestSpot({
+		P.cast - dirS * 6 + UP * 2,
+		P.cast + UP * 3,
+		P.cast + dirS * 20 + UP * 2,
+		P.cast + hside * 12 + UP * 3,
+		P.cast - hside * 12 + UP * 3,
+	}, { sky + UP * 30, sky + UP * HOLE_R * 0.4, sky - UP * (HOLE_R * 0.9) }, 25)
 	ok = Film.run(4.4, function(k)
 		d.state.rise = 0.42 + 0.53 * inOut(math.clamp(k / 0.8, 0, 1))
 		if k > 0.45 and d.state.eyes < 1 then

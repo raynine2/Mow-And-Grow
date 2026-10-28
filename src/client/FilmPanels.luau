@@ -512,21 +512,35 @@ local function lightEyes(p: Panel, color: Color3)
 	cam.Parent = vp
 	vp.CurrentCamera = cam
 	local holder = Instance.new("Model")
-	for _, e in still.eyes do
+	-- (Studio's test, 28 Oct: round balls with a white middle looked like googly eyes.) Narrow almonds slanted down
+	-- toward the middle of the face, a white-hot slit in each and a thin streak of light through it, all facing the
+	-- panel's camera. ViewportFrames draw no glow, so the streak stands in for it.
+	local view = cam.CFrame
+	local mid = view:PointToObjectSpace(still.face).X
+	local w = still.height * 0.07
+	local function piece(name: string, at: Vector3, rot: CFrame, size: Vector3, c: Color3, round: boolean, transparency: number)
 		local b = Instance.new("Part")
-		b.Shape = Enum.PartType.Ball
-		b.Material = Enum.Material.Neon
-		b.Color = color
+		b.Name = name
 		b.Anchored = true
-		b.Size = Vector3.one * still.height * 0.055
-		b.CFrame = CFrame.new(e + Vector3.new(0, 0, -still.height * 0.03))
+		b.Material = Enum.Material.Neon
+		b.Color = c
+		b.Transparency = transparency
+		b.Size = size
+		b.CFrame = CFrame.new(at) * rot
+		if round then
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = b
+		end
 		b.Parent = holder
-		-- a hot white core
-		local c = b:Clone()
-		c.Color = HOT
-		c.Size = Vector3.one * still.height * 0.022
-		c.CFrame = b.CFrame * CFrame.new(0, 0, -still.height * 0.02)
-		c.Parent = holder
+	end
+	for _, e in still.eyes do
+		local slant = if view:PointToObjectSpace(e).X < mid then -0.3 else 0.3
+		local rot = view.Rotation * CFrame.Angles(0, 0, slant)
+		local front = e - view.LookVector * (still.height * 0.03)
+		piece("Eye", front, rot, Vector3.new(w, w * 0.4, w * 0.3), color, true, 0)
+		piece("Slit", front - view.LookVector * (w * 0.08), rot, Vector3.new(w * 0.55, w * 0.12, w * 0.3), HOT, true, 0)
+		piece("Streak", front - view.LookVector * (w * 0.12), rot, Vector3.new(w * 3.2, w * 0.05, 0.02), HOT, false, 0.25)
 	end
 	holder.Parent = vp
 	vp.Parent = p.root

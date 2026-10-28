@@ -1,12 +1,12 @@
--- The screen side of the run's opening cutscene (client/Intro): letterbox bars, a fade to and from black, the
--- lower-third name cards, the Mayor's speech box with typed-out text, the old-film look of the flashback, the
--- big title card and the SKIP button. Everything lives in its own ScreenGui above the HUD, which Intro hides
--- while the cutscene plays.
+-- The screen side of the films (client/Intro, client/Ending): letterbox bars (cut to the cinema's 2.35:1 shape), a
+-- fade to and from black, the lower-third name cards, subtitles (the speaker's name over the line, shown whole and
+-- quietly, like a film's; no typing blips), the narrator's lines, small captions ("LONG AGO..."), the old-film look
+-- of a flashback, the big title card and the SKIP button. Everything lives in its own ScreenGui above the HUD, which
+-- the films hide while they play. Sound is the films' own (client/FilmAudio): nothing here makes a noise.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
-local Sound = require(script.Parent.Sound)
 local UI = require(script.Parent.UI)
 
 local IntroUi = {}
@@ -17,7 +17,10 @@ local BLACK = Color3.new(0, 0, 0)
 local GOLD = Color3.fromRGB(255, 236, 110)
 local ORANGE = Color3.fromRGB(255, 140, 30)
 local GREEN = Color3.fromRGB(110, 220, 70)
-local BAR = 0.11 -- letterbox bar height (share of the screen)
+local BAR = 0.11 -- letterbox bar height (share of the screen; set to the 2.35:1 shape of the screen in open)
+local SUB_FONT = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+local NAME_FONT = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy)
+local TALE_FONT = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
 
 local function tween(obj: Instance, time: number, props: { [string]: any }, style: Enum.EasingStyle?, dir: Enum.EasingDirection?): Tween
 	local t = TweenService:Create(obj, TweenInfo.new(time, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
@@ -43,7 +46,8 @@ local barTop: Frame? = nil
 local barBottom: Frame? = nil
 local cover: Frame? = nil
 local film: Frame? = nil
-local speech: { root: Frame, name: TextLabel, text: TextLabel }? = nil
+local speech: { root: Frame, name: TextLabel, text: TextLabel, back: Frame }? = nil
+local tale: TextLabel? = nil
 local typing = 0 -- bumps to stop an older typewriter
 
 local function screen(): ScreenGui
@@ -106,18 +110,80 @@ local function buildFilm(parent: Instance): Frame
 	return f
 end
 
+-- the subtitles: the speaker's name (small, gold, spaced out) over the line (white, on a soft dark band)
 local function buildSpeech(parent: Instance)
-	local root = UI.frame({ size = UDim2.fromOffset(780, 104), pos = UDim2.new(0.5, 0, 1, -98), anchor = Vector2.new(0.5, 1), color = Color3.fromRGB(28, 22, 36), parent = parent, radius = 18, outline = 3, name = "Speech", transparency = 0.12 })
+	local root = Instance.new("Frame")
+	root.Name = "Subtitles"
+	root.BackgroundTransparency = 1
+	root.AnchorPoint = Vector2.new(0.5, 1)
+	root.Position = UDim2.new(0.5, 0, 1, -108)
+	root.Size = UDim2.fromOffset(980, 96)
 	root.Visible = false
-	local plate = UI.frame({ size = UDim2.fromOffset(270, 38), pos = UDim2.fromOffset(26, -20), color = ORANGE, parent = root, radius = 12, outline = 3, name = "Plate" })
-	UI.gradient(plate, ORANGE)
-	local name = UI.text(plate, "", UDim2.new(1, -16, 1, -8), { pos = UDim2.fromOffset(8, 4), stroke = 2.5 })
-	local text = UI.text(root, "", UDim2.new(1, -48, 1, -34), { pos = UDim2.fromOffset(24, 24), stroke = 2.5, align = Enum.TextXAlignment.Left })
-	text.TextYAlignment = Enum.TextYAlignment.Top
-	text.TextScaled = false
-	text.TextSize = 30
+	root.Parent = parent
+	local back = Instance.new("Frame")
+	back.Name = "Band"
+	back.AnchorPoint = Vector2.new(0.5, 1)
+	back.Position = UDim2.new(0.5, 0, 1, 0)
+	back.Size = UDim2.new(1, 0, 0, 62)
+	back.BackgroundColor3 = BLACK
+	back.BackgroundTransparency = 1
+	back.BorderSizePixel = 0
+	back.Parent = root
+	local g = Instance.new("UIGradient")
+	g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.45), NumberSequenceKeypoint.new(0.8, 0.45), NumberSequenceKeypoint.new(1, 1) })
+	g.Parent = back
+	local name = Instance.new("TextLabel")
+	name.Name = "Speaker"
+	name.BackgroundTransparency = 1
+	name.AnchorPoint = Vector2.new(0.5, 1)
+	name.Position = UDim2.new(0.5, 0, 1, -64)
+	name.Size = UDim2.new(1, 0, 0, 22)
+	name.FontFace = NAME_FONT
+	name.TextSize = 17
+	name.TextColor3 = GOLD
+	name.Text = ""
+	name.Parent = root
+	local ns = Instance.new("UIStroke")
+	ns.Thickness = 1.5
+	ns.Transparency = 0.3
+	ns.Parent = name
+	local text = Instance.new("TextLabel")
+	text.Name = "Line"
+	text.BackgroundTransparency = 1
+	text.AnchorPoint = Vector2.new(0.5, 1)
+	text.Position = UDim2.new(0.5, 0, 1, -6)
+	text.Size = UDim2.new(1, -40, 0, 54)
+	text.FontFace = SUB_FONT
+	text.TextSize = 28
 	text.TextWrapped = true
-	speech = { root = root, name = name, text = text }
+	text.TextColor3 = WHITE
+	text.Text = ""
+	text.Parent = root
+	local ts = Instance.new("UIStroke")
+	ts.Thickness = 2
+	ts.Transparency = 0.25
+	ts.Parent = text
+	speech = { root = root, name = name, text = text, back = back }
+	-- the narrator: centred, a storybook italic
+	local t = Instance.new("TextLabel")
+	t.Name = "Narration"
+	t.BackgroundTransparency = 1
+	t.AnchorPoint = Vector2.new(0.5, 1)
+	t.Position = UDim2.new(0.5, 0, 1, -112)
+	t.Size = UDim2.fromOffset(1000, 80)
+	t.FontFace = TALE_FONT
+	t.TextSize = 32
+	t.TextWrapped = true
+	t.TextColor3 = Color3.fromRGB(255, 246, 228)
+	t.TextTransparency = 1
+	t.Text = ""
+	t.Parent = parent
+	local st = Instance.new("UIStroke")
+	st.Thickness = 2
+	st.Color = Color3.fromRGB(40, 24, 10)
+	st.Transparency = 1
+	st.Parent = t
+	tale = t
 end
 
 -- Build the screen. `onSkip` runs when SKIP is pressed.
@@ -125,6 +191,9 @@ function IntroUi.open(onSkip: () -> ())
 	IntroUi.close()
 	local g = screen()
 	gui = g
+	local cam0 = workspace.CurrentCamera
+	local vp0 = if cam0 then cam0.ViewportSize else Vector2.new(1280, 720)
+	BAR = math.clamp((1 - (vp0.X / math.max(vp0.Y, 1)) / 2.35) / 2, 0.05, 0.13)
 	cover = plain(g, "Cover", BLACK, 0, 10)
 	film = buildFilm(g)
 	local function bar(top: boolean): Frame
@@ -169,7 +238,7 @@ function IntroUi.close()
 	if gui then
 		gui:Destroy()
 	end
-	gui, layer, barTop, barBottom, cover, film, speech = nil, nil, nil, nil, nil, nil, nil
+	gui, layer, barTop, barBottom, cover, film, speech, tale = nil, nil, nil, nil, nil, nil, nil, nil
 end
 
 function IntroUi.letterbox(on: boolean, time: number?)
@@ -241,7 +310,6 @@ function IntroUi.lowerThird(title: string, sub: string, color: Color3?, life: nu
 	local s = UI.text(root, sub, UDim2.fromOffset(460, 30), { pos = UDim2.fromOffset(64, 66), stroke = 3, align = Enum.TextXAlignment.Left, name = "Sub" })
 	s.ZIndex = 6
 	tween(root, 0.45, { Position = UDim2.new(0, 0, BAR, 18) }, Enum.EasingStyle.Back)
-	Sound.play("whoosh", 0.1, 0.25)
 	task.delay(life or 2.6, function()
 		if root.Parent then
 			tween(root, 0.35, { Position = UDim2.new(0, -560, BAR, 18) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
@@ -252,8 +320,9 @@ function IntroUi.lowerThird(title: string, sub: string, color: Color3?, life: nu
 	end)
 end
 
--- The speech box: `who` on the name plate, `line` typed out letter by letter with little ticks.
-function IntroUi.say(who: string, line: string, cps: number?)
+-- A subtitle: `who` over `line`, shown whole with a soft fade and rise (no sound: a voice, if there is one, is the
+-- film's). `life`: seconds until it fades by itself (default: it stays until the next line or hush).
+function IntroUi.say(who: string, line: string, life: number?)
 	local sp = speech
 	if not sp then
 		return
@@ -261,39 +330,104 @@ function IntroUi.say(who: string, line: string, cps: number?)
 	typing += 1
 	local mine = typing
 	sp.root.Visible = true
-	sp.name.Text = who
+	sp.name.Text = string.upper(who)
 	sp.text.Text = line
-	sp.text.MaxVisibleGraphemes = 0
-	local sc = sp.root:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
-	sc.Parent = sp.root
-	sc.Scale = 0.9
-	tween(sc, 0.18, { Scale = 1 }, Enum.EasingStyle.Back)
-	local rate = cps or 40
-	task.spawn(function()
-		local shown = 0
-		local total = utf8.len(line) or #line
-		local start = os.clock()
-		while shown < total and typing == mine and sp.root.Parent do
-			RunService.RenderStepped:Wait()
-			local n = math.min(total, math.floor((os.clock() - start) * rate))
-			if n > shown then
-				if math.floor(n / 3) > math.floor(shown / 3) then
-					Sound.playAt("chip", 1.7 + math.random() * 0.5, 0.08)
-				end
-				shown = n
-				sp.text.MaxVisibleGraphemes = n
+	for _, l in { sp.name, sp.text } do
+		l.TextTransparency = 1
+		tween(l, 0.22, { TextTransparency = 0 })
+		local st = l:FindFirstChildOfClass("UIStroke")
+		if st then
+			st.Transparency = 1
+			tween(st, 0.22, { Transparency = 0.25 })
+		end
+	end
+	sp.back.BackgroundTransparency = 1
+	tween(sp.back, 0.25, { BackgroundTransparency = 0.35 })
+	sp.text.Position = UDim2.new(0.5, 0, 1, 2)
+	tween(sp.text, 0.3, { Position = UDim2.new(0.5, 0, 1, -6) }, Enum.EasingStyle.Quart)
+	if life then
+		task.delay(life, function()
+			if typing == mine then
+				IntroUi.hush()
+			end
+		end)
+	end
+end
+
+-- The narrator (a storybook voice over the pictures): a centred italic line that fades in and, after `life`, out.
+function IntroUi.narrate(line: string, life: number?)
+	local t = tale
+	if not t then
+		return
+	end
+	typing += 1
+	if speech then
+		speech.root.Visible = false
+	end
+	t.Text = line
+	t.TextTransparency = 1
+	local st = t:FindFirstChildOfClass("UIStroke")
+	tween(t, 0.6, { TextTransparency = 0 }, Enum.EasingStyle.Sine)
+	if st then
+		st.Transparency = 1
+		tween(st, 0.6, { Transparency = 0.4 }, Enum.EasingStyle.Sine)
+	end
+	local mine = typing
+	task.delay(life or 3.5, function()
+		if t.Parent and typing == mine then
+			tween(t, 0.6, { TextTransparency = 1 }, Enum.EasingStyle.Sine)
+			if st then
+				tween(st, 0.6, { Transparency = 1 }, Enum.EasingStyle.Sine)
 			end
 		end
-		if typing == mine then
-			sp.text.MaxVisibleGraphemes = -1
+	end)
+end
+
+-- A small caption at the top left, letter-spaced ("LONG AGO...", "PRESENT DAY"), fading in and out.
+function IntroUi.caption(text: string, life: number?)
+	local l = layer
+	if not l then
+		return
+	end
+	local c = Instance.new("TextLabel")
+	c.Name = "Caption"
+	c.BackgroundTransparency = 1
+	c.AnchorPoint = Vector2.new(0, 0)
+	c.Position = UDim2.new(0, 48, BAR, 26)
+	c.Size = UDim2.fromOffset(600, 34)
+	c.FontFace = NAME_FONT
+	c.TextSize = 22
+	c.TextXAlignment = Enum.TextXAlignment.Left
+	c.TextColor3 = Color3.fromRGB(255, 244, 226)
+	c.TextTransparency = 1
+	c.Text = string.gsub(string.upper(text), "(.)", "%1 ")
+	c.ZIndex = 6
+	c.Parent = l
+	local st = Instance.new("UIStroke")
+	st.Thickness = 1.5
+	st.Transparency = 1
+	st.Parent = c
+	tween(c, 0.8, { TextTransparency = 0 }, Enum.EasingStyle.Sine)
+	tween(st, 0.8, { Transparency = 0.4 }, Enum.EasingStyle.Sine)
+	task.delay(life or 3, function()
+		if c.Parent then
+			tween(c, 0.8, { TextTransparency = 1 }, Enum.EasingStyle.Sine)
+			tween(st, 0.8, { Transparency = 1 }, Enum.EasingStyle.Sine)
+			task.delay(0.85, function()
+				c:Destroy()
+			end)
 		end
 	end)
 end
 
 function IntroUi.hush()
 	typing += 1
-	if speech then
-		speech.root.Visible = false
+	local sp = speech
+	if sp then
+		for _, l in { sp.name, sp.text } do
+			tween(l, 0.2, { TextTransparency = 1 })
+		end
+		tween(sp.back, 0.2, { BackgroundTransparency = 1 })
 	end
 end
 

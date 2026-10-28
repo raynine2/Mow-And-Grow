@@ -1,12 +1,15 @@
--- The actors and props of the run's opening cutscene (client/Intro), all built on this client only:
---   * the party: a copy of every player's avatar, lined up in the village, each doing an emote on cue;
---   * Mayor Thistlewick, the village mayor (our own character, built from bricks), on a soapbox;
+-- The actors and props of the films (client/Intro, client/Ending), all built on this client only:
+--   * the party: a copy of every player's avatar, each doing emotes on cue; they can walk in (with their own
+--     walk), drop in, turn their heads to look at something;
+--   * Mayor Thistlewick (client/MayorRig: the voxel sculpture on its rig) on his soapbox;
 --   * the supply crate that drops from the sky and bursts open.
 -- It can also hide the real characters (so nobody wanders through a shot) and, for the flashback, every clump
--- of grass in the first area (the valley "before the grass came").
+-- of grass in the first area (the valley "before the grass came"), and bring it back in a wave.
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+
+local MayorRig = require(script.Parent.MayorRig)
 
 local IntroCast = {}
 
@@ -75,7 +78,20 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the party: copies of everyone's avatars
 -------------------------------------------------------------------------------------------------------------
-export type Actor = { model: Model, head: BasePart?, name: string, play: (kind: string) -> (), tag: () -> (), drop: (onLand: (foot: Vector3) -> ()) -> () }
+export type Actor = {
+	model: Model,
+	head: BasePart?,
+	name: string,
+	spot: CFrame, -- where it stands in the line (feet), facing its way
+	play: (kind: string) -> (),
+	tag: () -> (),
+	drop: (onLand: (foot: Vector3) -> ()) -> (),
+	walk: (from: Vector3, time: number, onStep: ((foot: Vector3) -> ())?) -> (),
+	look: (target: Vector3?) -> (),
+	turnTo: (dir: Vector3) -> (),
+	show: () -> (),
+	update: (dt: number, timeScale: number) -> (),
+}
 
 local EMOTES = { "wave", "cheer", "point", "dance2", "dance", "dance3" }
 
@@ -218,13 +234,118 @@ local function actorFor(p: Player, cf: CFrame, slot: number): Actor?
 			end
 		end)
 	end
+	-- Walk in from `from` to its spot over `time` seconds of film time (with its own walk), then stand and idle.
+	local walking: { from: Vector3, to: Vector3, t: number, len: number, onStep: ((Vector3) -> ())?, stride: number }? = nil
+	local walkId = animationOf(char, "walk") or animationOf(char, "run")
+	local function walk(from: Vector3, time: number, onStep: ((foot: Vector3) -> ())?)
+		local g = IntroCast.ground(from)
+		walking = { from = g, to = cf.Position, t = 0, len = math.max(time, 0.1), onStep = onStep, stride = 0 }
+		local dir = cf.Position - g
+		dir = Vector3.new(dir.X, 0, dir.Z)
+		clone:PivotTo(CFrame.lookAt(g, g + (if dir.Magnitude > 0.01 then dir else cf.LookVector)) * CFrame.new(0, lift, 0))
+		clone.Parent = folder()
+		run(walkId or idleId, true)
+	end
+	-- Turn its head toward a point (nil: straight ahead); R15 only.
+	local headPart = clone:FindFirstChild("Head")
+	local neck = (if headPart then headPart:FindFirstChild("Neck") else nil) :: Motor6D?
+	local neckBase = if neck then neck.C0 else CFrame.identity
+	local lookAt: Vector3? = nil
+	local yawNow, pitchNow = 0, 0
+	local function look(target: Vector3?)
+		lookAt = target
+	end
+	local lastPos: Vector3? = nil
+	local function update(dt: number, timeScale: number)
+		local w = walking
+		if w then
+			w.t += dt
+			local k = math.clamp(w.t / w.len, 0, 1)
+			-- (easing into the last steps)
+			local e = if k < 0.8 then k / 0.8 * 0.85 else 0.85 + (1 - (1 - (k - 0.8) / 0.2) ^ 2) * 0.15
+			local p = w.from:Lerp(w.to, e)
+			local g = Vector3.new(p.X, IntroCast.ground(p).Y, p.Z)
+			local dir = w.to - w.from
+			dir = Vector3.new(dir.X, 0, dir.Z)
+			local face = if k >= 1 then cf.LookVector else (if dir.Magnitude > 0.01 then dir.Unit else cf.LookVector)
+			clone:PivotTo(CFrame.lookAt(g, g + face) * CFrame.new(0, lift, 0))
+			if lastPos then
+				w.stride += (g - lastPos).Magnitude
+				if w.stride > 2.1 then
+					w.stride = 0
+					if w.onStep then
+						w.onStep(g)
+					end
+				end
+			end
+			lastPos = g
+			local speed = (w.to - w.from).Magnitude / w.len
+			local tr = current
+			if tr then
+				pcall(function()
+					tr:AdjustSpeed(math.clamp(speed / 9, 0.45, 1.4) * timeScale)
+				end)
+			end
+			if k >= 1 then
+				walking = nil
+				lastPos = nil
+				clone:PivotTo(final)
+				run(idleId, true)
+			end
+		else
+			local tr = current
+			if tr then
+				pcall(function()
+					tr:AdjustSpeed(timeScale)
+				end)
+			end
+		end
+		if neck and neck.Parent then
+			local wantYaw, wantPitch = 0, 0
+			local h = head
+			if lookAt and h then
+				local root2 = clone:FindFirstChild("HumanoidRootPart") :: BasePart?
+				local base = if root2 then root2.CFrame else clone:GetPivot()
+				local rel = base:VectorToObjectSpace(lookAt - h.Position)
+				local flat = math.sqrt(rel.X * rel.X + rel.Z * rel.Z)
+				wantYaw = math.clamp(math.atan2(-rel.X, -rel.Z), -1.1, 1.1)
+				wantPitch = math.clamp(math.atan2(rel.Y, math.max(flat, 0.01)), -0.5, 0.45)
+			end
+			local a = math.min(1, dt * 6)
+			yawNow += (wantYaw - yawNow) * a
+			pitchNow += (wantPitch - pitchNow) * a
+			neck.C0 = neckBase * CFrame.Angles(pitchNow, yawNow, 0)
+		end
+	end
+	local function show()
+		clone:PivotTo(final)
+		clone.Parent = folder()
+	end
+	-- Turn on the spot to face a flat direction (where it stands from now on).
+	local function turnTo(dir: Vector3)
+		local flatDir = Vector3.new(dir.X, 0, dir.Z)
+		if flatDir.Magnitude < 0.01 then
+			return
+		end
+		local p = final.Position
+		final = CFrame.lookAt(p, p + flatDir)
+		if not walking then
+			clone:PivotTo(final)
+		end
+	end
 	return {
 		model = clone,
 		head = head,
 		name = p.DisplayName,
+		spot = cf,
 		play = play,
 		tag = if head then nameTag(head, p.DisplayName) else function() end,
 		drop = drop,
+		walk = walk,
+		look = look,
+		turnTo = turnTo,
+		show = show,
+		update = update,
 	}
 end
 
@@ -267,15 +388,9 @@ function IntroCast.party(centre: Vector3, fwd: Vector3, right: Vector3): { Actor
 end
 
 -------------------------------------------------------------------------------------------------------------
--- Mayor Thistlewick: a round little mayor in a red coat, gold sash and a tall hat, built from bricks
+-- Mayor Thistlewick (client/MayorRig) on his soapbox
 -------------------------------------------------------------------------------------------------------------
-export type Mayor = { model: Model, head: BasePart, update: (t: number, mode: string) -> (), root: CFrame }
-
-local SKIN = Color3.fromRGB(255, 204, 153)
-local COAT = Color3.fromRGB(168, 38, 48)
-local GOLDC = Color3.fromRGB(245, 196, 52)
-local HAT = Color3.fromRGB(34, 30, 38)
-local PANTS = Color3.fromRGB(52, 54, 74)
+export type Mayor = MayorRig.Mayor
 
 local function brick(parent: Instance, name: string, size: Vector3, color: Color3, material: Enum.Material?): Part
 	local p = Instance.new("Part")
@@ -323,97 +438,21 @@ local function placeAll(parts: { [Part]: CFrame }, at: CFrame)
 	end
 end
 
--- The mayor stands at `pos` (on a soapbox) facing `face`.
-function IntroCast.mayor(pos: Vector3, face: Vector3): Mayor
-	local m = Instance.new("Model")
-	m.Name = "MayorThistlewick"
-	m.Parent = folder()
+-- The Mayor on his soapbox at `pos`, facing `face`. opts: client/MayorRig's (lite, scale).
+function IntroCast.mayor(pos: Vector3, face: Vector3, opts: { lite: boolean?, scale: number? }?): Mayor
+	local f = folder()
 	local ground = IntroCast.ground(pos)
 	local boxH = 1.5
-	local boxCf = CFrame.lookAt(ground, ground + face) * CFrame.new(0, boxH / 2, 0)
-	placeAll(crateParts(m, Vector3.new(3.4, boxH, 3.0), Color3.fromRGB(176, 122, 70), Color3.fromRGB(112, 72, 38)), boxCf)
-	local base = CFrame.lookAt(ground, ground + face) * CFrame.new(0, boxH, 0)
-	local S = 1.2 -- a bit bigger than a player
-
-	-- fixed parts: { part, offset from the feet }; the head and what's on it move with the head
-	local body: { [Part]: CFrame } = {}
-	local face: { [Part]: CFrame } = {}
-	local HEAD_Y = 5.15
-	local function add(name: string, size: Vector3, color: Color3, at: CFrame, material: Enum.Material?): Part
-		local p = brick(m, name, size * S, color, material)
-		body[p] = CFrame.new(at.Position * S) * at.Rotation
-		return p
+	local flatFace = Vector3.new(face.X, 0, face.Z)
+	if flatFace.Magnitude < 0.01 then
+		flatFace = Vector3.zAxis
 	end
-	local function onHead(name: string, size: Vector3, color: Color3, at: CFrame, material: Enum.Material?): Part
-		local p = brick(m, name, size * S, color, material)
-		face[p] = CFrame.new((at.Position - Vector3.new(0, HEAD_Y, 0)) * S) * at.Rotation
-		return p
-	end
-	add("LegL", Vector3.new(0.95, 2, 1), PANTS, CFrame.new(-0.52, 1, 0))
-	add("LegR", Vector3.new(0.95, 2, 1), PANTS, CFrame.new(0.52, 1, 0))
-	add("ShoeL", Vector3.new(1, 0.4, 1.3), HAT, CFrame.new(-0.52, 0.2, -0.15))
-	add("ShoeR", Vector3.new(1, 0.4, 1.3), HAT, CFrame.new(0.52, 0.2, -0.15))
-	add("Torso", Vector3.new(2.2, 2.3, 1.3), COAT, CFrame.new(0, 3.15, 0))
-	add("Belly", Vector3.new(2.0, 1.2, 1.5), COAT, CFrame.new(0, 2.6, -0.1))
-	add("CoatTail", Vector3.new(2.1, 0.9, 1.2), COAT, CFrame.new(0, 1.75, 0.08))
-	add("Sash", Vector3.new(0.42, 2.9, 1.56), GOLDC, CFrame.new(0, 3.0, -0.02) * CFrame.Angles(0, 0, math.rad(38)))
-	add("Button1", Vector3.new(0.26, 0.26, 0.12), GOLDC, CFrame.new(0.42, 3.55, -0.68), Enum.Material.Neon)
-	add("Button2", Vector3.new(0.26, 0.26, 0.12), GOLDC, CFrame.new(-0.42, 2.7, -0.86), Enum.Material.Neon)
-	add("Collar", Vector3.new(1.5, 0.3, 1.0), Color3.new(1, 1, 1), CFrame.new(0, 4.35, -0.05))
-	local head = onHead("Head", Vector3.new(1.7, 1.6, 1.6), SKIN, CFrame.new(0, HEAD_Y, 0))
-	onHead("EyeL", Vector3.new(0.24, 0.34, 0.06), HAT, CFrame.new(-0.36, 5.32, -0.81))
-	onHead("EyeR", Vector3.new(0.24, 0.34, 0.06), HAT, CFrame.new(0.36, 5.32, -0.81))
-	onHead("Brow", Vector3.new(1.3, 0.16, 0.08), Color3.fromRGB(235, 235, 240), CFrame.new(0, 5.62, -0.81))
-	onHead("Nose", Vector3.new(0.36, 0.36, 0.3), Color3.fromRGB(245, 160, 130), CFrame.new(0, 5.02, -0.9))
-	onHead("Stache", Vector3.new(1.0, 0.28, 0.2), Color3.fromRGB(240, 240, 245), CFrame.new(0, 4.78, -0.86))
-	onHead("StacheL", Vector3.new(0.45, 0.24, 0.18), Color3.fromRGB(240, 240, 245), CFrame.new(-0.62, 4.88, -0.84) * CFrame.Angles(0, 0, math.rad(-28)))
-	onHead("StacheR", Vector3.new(0.45, 0.24, 0.18), Color3.fromRGB(240, 240, 245), CFrame.new(0.62, 4.88, -0.84) * CFrame.Angles(0, 0, math.rad(28)))
-	onHead("Brim", Vector3.new(2.2, 0.16, 2.1), HAT, CFrame.new(0, 6.02, 0))
-	onHead("Hat", Vector3.new(1.4, 1.5, 1.4), HAT, CFrame.new(0, 6.82, 0))
-	onHead("HatBand", Vector3.new(1.46, 0.3, 1.46), GOLDC, CFrame.new(0, 6.24, 0))
-
-	-- the arms swing from the shoulders: { upper arm, hand, side }
-	local arms = {}
-	for _, side in { -1, 1 } do
-		local arm = brick(m, if side < 0 then "ArmL" else "ArmR", Vector3.new(0.82, 2.0, 0.85) * S, COAT)
-		local hand = brick(m, if side < 0 then "HandL" else "HandR", Vector3.new(0.9, 0.62, 0.9) * S, Color3.new(1, 1, 1))
-		table.insert(arms, { arm = arm, hand = hand, side = side })
-	end
-	m.PrimaryPart = head
-
-	local function pose(t: number, mode: string)
-		local talk = mode == "talk" or mode == "point"
-		local bob = if talk then math.abs(math.sin(t * 7)) * 0.08 else math.sin(t * 2) * 0.03
-		local lean = if mode == "point" then math.rad(-6) else math.sin(t * 1.3) * math.rad(1.5)
-		local root = base * CFrame.new(0, bob, 0) * CFrame.Angles(lean, 0, 0)
-		for p, rel in body do
-			p.CFrame = root * rel
-		end
-		-- the head nods a little while he talks
-		local nod = if talk then math.sin(t * 9) * math.rad(5) else 0
-		local headCf = root * CFrame.new(0, 4.35 * S, 0) * CFrame.Angles(nod, math.sin(t * 1.7) * math.rad(4), 0) * CFrame.new(0, (HEAD_Y - 4.35) * S, 0)
-		for p, rel in face do
-			p.CFrame = headCf * rel
-		end
-		for _, a in arms do
-			local swing, out
-			if mode == "point" and a.side > 0 then
-				swing, out = math.rad(-95), math.rad(8) -- right arm straight out at the gate
-			elseif mode == "cheer" then
-				swing, out = math.rad(-160) + math.sin(t * 10 + a.side) * 0.15, math.rad(14) * a.side
-			elseif talk then
-				swing = math.rad(-30) + math.sin(t * 5 + a.side * 1.7) * math.rad(28)
-				out = math.rad(18) * a.side
-			else
-				swing, out = math.sin(t * 2 + a.side) * math.rad(4), math.rad(6) * a.side
-			end
-			local shoulder = root * CFrame.new(a.side * 1.5 * S, 4.15 * S, 0) * CFrame.Angles(swing, 0, out)
-			a.arm.CFrame = shoulder * CFrame.new(0, -0.9 * S, 0)
-			a.hand.CFrame = shoulder * CFrame.new(0, -2.0 * S, 0)
-		end
-	end
-	pose(0, "idle")
-	return { model = m, head = head, update = pose, root = base }
+	local base = CFrame.lookAt(ground, ground + flatFace)
+	local box = Instance.new("Model")
+	box.Name = "Soapbox"
+	box.Parent = f
+	placeAll(crateParts(box, Vector3.new(3.4, boxH, 3.0), Color3.fromRGB(176, 122, 70), Color3.fromRGB(112, 72, 38)), base * CFrame.new(0, boxH / 2, 0))
+	return MayorRig.new(f, base * CFrame.new(0, boxH, 0), opts)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -559,6 +598,50 @@ function IntroCast.hideGrass(on: boolean)
 			table.insert(hiddenGrass, d)
 		end
 	end
+end
+
+-- The hidden grass comes back in a wave rolling out from `origin` (nearest first) over `time` seconds; `onWave(k)`
+-- is called as it goes (0..1), for the film's sound and shake.
+function IntroCast.growGrass(origin: Vector3, time: number, onWave: ((k: number) -> ())?)
+	local list = table.clone(hiddenGrass)
+	table.clear(hiddenGrass)
+	local dist: { [BasePart]: number } = {}
+	for _, p in list do
+		dist[p] = (Vector3.new(p.Position.X, 0, p.Position.Z) - Vector3.new(origin.X, 0, origin.Z)).Magnitude
+	end
+	table.sort(list, function(a, b)
+		return dist[a] < dist[b]
+	end)
+	task.spawn(function()
+		local n = #list
+		local done = 0
+		local t0 = os.clock()
+		while done < n do
+			local k = math.clamp((os.clock() - t0) / math.max(time, 0.05), 0, 1)
+			-- quick at first, easing at the far edge
+			local upto = math.floor(n * (1 - (1 - k) ^ 2))
+			while done < upto do
+				done += 1
+				local p = list[done]
+				if p.Parent then
+					p.LocalTransparencyModifier = 0
+				end
+			end
+			if onWave then
+				onWave(k)
+			end
+			if k >= 1 then
+				break
+			end
+			task.wait()
+		end
+		for i = done + 1, n do
+			local p = list[i]
+			if p.Parent then
+				p.LocalTransparencyModifier = 0
+			end
+		end
+	end)
 end
 
 -- Fade the actors' name tags away (once the party shot is over, so they don't sit on the later cards).

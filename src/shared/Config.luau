@@ -1210,6 +1210,73 @@ Config.SOUNDS = {
 }
 
 -------------------------------------------------------------------------------------------------------------
+-- The films (client/Intro, client/Ending; client/Film, FilmAudio, FilmVoice). Owner, 28 Oct: "make it feel like a
+-- real movie with a story ... matching audio".
+-------------------------------------------------------------------------------------------------------------
+Config.FILM = {
+	-- the Mayor speaks his lines out loud (Roblox's text-to-speech, made on each player's device; free). Off: just
+	-- the subtitles. If it can't be made in time, a line plays without a voice.
+	voice = true,
+	voiceId = "1", -- British male
+	voicePitch = -1.5, -- semitones
+	voiceSpeed = 0.95,
+	voiceVolume = 1.6,
+	-- the glitch demon's one line in the ending (a retro voice, pitched right down, distorted)
+	demonVoice = true,
+	demonVoiceId = "9",
+}
+
+-- Film music and sound effects. Licensed only: APM Music ("APMOfficial"), Pro Sound Effects ("ProSoundEffects") and
+-- DistroKid ("DistrokidOfficial") library audio, which Roblox licenses to every experience. Each was checked loading
+-- in Studio on 28 Oct 2026 (len = its length in seconds).
+Config.FILM_SOUNDS = {
+	-- music
+	storyMusic = { id = "rbxassetid://9046390239", volume = 0.5, len = 117.1 }, -- APM: Morning Skies
+	lonelyMusic = { id = "rbxassetid://9046596064", volume = 0.45, len = 61.4 }, -- APM: Alone (a 60)
+	darkMusic = { id = "rbxassetid://9044407196", volume = 0.5, len = 62.0 }, -- APM: Back to the Shadows 60A
+	heroMusic = { id = "rbxassetid://75981022182996", volume = 0.55, len = 163.7 }, -- DistroKid: Epic Trailer Music with Powerful Drums
+	calmMusic = { id = "rbxassetid://114683938950404", volume = 0.5, len = 95.4 }, -- DistroKid: Time Will Heal (Ambience)
+	flightMusic = { id = "rbxassetid://1842932462", volume = 0.5, len = 212.0 }, -- APM: Sunrise (No Choir)
+	partyMusic = { id = "rbxassetid://9043170481", volume = 0.5, len = 61.0 }, -- APM: Dancing for Joy 60 A
+	dreadMusic = { id = "rbxassetid://9046506025", volume = 0.55, len = 110.5 }, -- APM: Imminent Closure (Underscore C)
+	creditsMusic = { id = "rbxassetid://1835176977", volume = 0.5, len = 61.1 }, -- APM: Triumphant Return 60B
+	heartbeat = { id = "rbxassetid://9043365842", volume = 0.5, len = 60.1 }, -- APM: Heartbeat 02 96BPM
+	-- risers, swells and hits (APM)
+	rise = { id = "rbxassetid://9045215347", volume = 0.5, len = 12.5 }, -- Rise Up Rise
+	riseDark = { id = "rbxassetid://9046338207", volume = 0.55, len = 9.1 }, -- Smoldering Fate Rise
+	suck = { id = "rbxassetid://1843028062", volume = 0.5, len = 13.3 }, -- Suck Out Rise
+	swell = { id = "rbxassetid://9040281024", volume = 0.5, len = 5.7 }, -- Amplified Expanse
+	demonSwell = { id = "rbxassetid://9039690720", volume = 0.6, len = 8.1 }, -- Tortured Underbelly Swell
+	revStop = { id = "rbxassetid://9043343295", volume = 0.5, len = 4.1 }, -- Reverse Noise Hard End 09
+	revBuild = { id = "rbxassetid://1837834264", volume = 0.5, len = 4.0 }, -- Reverse Hard Stop (build)
+	drone = { id = "rbxassetid://1841164822", volume = 0.5, len = 10.0 }, -- Drama Drone Hits 15
+	sting = { id = "rbxassetid://1843079916", volume = 0.5, len = 6.9 }, -- Deep Thought - Sting 01
+	impact = { id = "rbxassetid://1843025542", volume = 0.7, len = 6.8 }, -- Deep Impact
+	slam = { id = "rbxassetid://1843023670", volume = 0.6, len = 7.3 }, -- Rumble Slam
+	boom = { id = "rbxassetid://1843024924", volume = 0.5, len = 6.8 }, -- Distant Explosion (fireworks, pitched up)
+	bigHit = { id = "rbxassetid://1843054069", volume = 0.6, len = 7.9 }, -- Bing Bang Boom
+	titleHit = { id = "rbxassetid://122370204111513", volume = 0.6, len = 4.4 }, -- Chasing Sunlight Hit4
+	swipe = { id = "rbxassetid://1837834185", volume = 0.35, len = 4.0 }, -- swipe (whip pans)
+	swipe2 = { id = "rbxassetid://1837834151", volume = 0.35, len = 4.1 },
+	-- Pro Sound Effects
+	crowd = { id = "rbxassetid://9119562636", volume = 0.35, len = 45.2 }, -- Stadium Crowd 2
+	applause = { id = "rbxassetid://9113138035", volume = 0.45, len = 16.4 }, -- Applause Tight 4
+	growl = { id = "rbxassetid://9125471073", volume = 0.7, len = 2.0 }, -- Creature Growls Lion Deep Guttural Rumbling
+	growl2 = { id = "rbxassetid://9113971531", volume = 0.6, len = 1.7 }, -- Creature Growls Lion 4
+	rumble = { id = "rbxassetid://9125876218", volume = 0.6, len = 6.5 }, -- Rock Scrape Deep Bouncy Drags Rumbling Clunks 4
+	crate = { id = "rbxassetid://9120915583", volume = 0.7, len = 1.5 }, -- Wood Impacts 10
+	crate2 = { id = "rbxassetid://9120915994", volume = 0.6, len = 1.1 }, -- Wood Impacts 16
+	thud = { id = "rbxassetid://9120876932", volume = 0.5, len = 0.9 }, -- Wood Fall Wood Pallets Impacts On Dirt 2
+	whomp = { id = "rbxassetid://9113042263", volume = 0.5, len = 0.8 }, -- Acoustic Whomps 9
+	synthWhomp = { id = "rbxassetid://9119874551", volume = 0.5, len = 0.9 }, -- Synth Whomps 33
+	mower = { id = "rbxassetid://9116245012", volume = 0.4, len = 91.6 }, -- Lawn Mower Motor 2
+	leaves = { id = "rbxassetid://9116248055", volume = 0.5, len = 24.5 }, -- Leaf Movement 2
+	brush = { id = "rbxassetid://9116143977", volume = 0.5, len = 2.0 }, -- Kelp Impact Big 26 ("machete on thick brush")
+	eerie = { id = "rbxassetid://9112775414", volume = 0.45, len = 63.7 }, -- Eerie Ambience 2
+	servo = { id = "rbxassetid://9119008083", volume = 0.35, len = 12.9 }, -- Servo Short Bursts (sliced into glitches)
+}
+
+-------------------------------------------------------------------------------------------------------------
 -- UI icons: image asset ids (rbxassetid://...) of icons rendered in Blender (tools/blender) and uploaded.
 -- "" = use the drawn stand-in from client/UI.luau.
 -------------------------------------------------------------------------------------------------------------

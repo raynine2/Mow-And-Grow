@@ -1195,15 +1195,20 @@ local function endScreen(d: any)
 	local _ = stats
 	local blurb = UI.text(face, "The valley is mowed... but something stirs in the corrupted lands beyond.", UDim2.new(1, -40, 0, 26), { pos = UDim2.fromOffset(20, 114), stroke = 0, color = Color3.fromRGB(140, 96, 60) })
 	blurb.TextWrapped = true
+	local preview = type(d.close) == "function" -- (a preview from the DEV panel: nobody is sent anywhere)
 	local chosen = false
 	local again: TextButton
-	again = UI.button(face, "PLAY AGAIN", GREEN, UDim2.fromOffset(250, 64), function()
+	again = UI.button(face, if preview then "BACK TO GAME" else "PLAY AGAIN", GREEN, UDim2.fromOffset(250, 64), function()
 		if chosen then
 			return
 		end
 		chosen = true
-		again.Text = "SEE YOU THERE!"
 		Sound.play("purchase")
+		if preview then
+			d.close()
+			return
+		end
+		again.Text = "SEE YOU THERE!"
 		State.fire("Seen", "ending", "again") -- the server sends you back to the lobby for a new run
 	end, { pos = UDim2.new(0.5, -14, 0, 176), anchor = Vector2.new(1, 0), name = "PlayAgain" })
 	Skin.press(again)
@@ -1231,7 +1236,8 @@ local function endScreen(d: any)
 	local endsAt = (d.receivedAt or os.clock()) + (d.wait or 120)
 	task.spawn(function()
 		while left.Parent do
-			left.Text = ("Back to the lobby in %d s"):format(math.max(0, math.ceil(endsAt - os.clock())))
+			left.Text = if preview then "DEV preview: BACK TO GAME carries on with your run"
+				else ("Back to the lobby in %d s"):format(math.max(0, math.ceil(endsAt - os.clock())))
 			task.wait(0.25)
 		end
 	end)
@@ -1326,7 +1332,7 @@ function Ending.play(d: any)
 	d.receivedAt = os.clock() -- (the server sends everyone back d.wait seconds after this)
 	-- after the boss's own death scene (client/BossFx flies the camera itself): wait for it to hand back
 	local t = os.clock()
-	task.wait(5)
+	task.wait(if d.preview then 0.3 else 5)
 	while cam.CameraType ~= Enum.CameraType.Custom and os.clock() - t < 18 do
 		task.wait(0.1)
 	end
@@ -1377,9 +1383,28 @@ function Ending.play(d: any)
 	if c then
 		c.fade(0.6, 2)
 	end
+	if d.preview then
+		-- (a DEV panel preview: BACK TO GAME on the end screen puts everything back, and it can be played again)
+		d.close = function()
+			if screen then
+				screen:Destroy()
+				screen = nil
+			end
+			FilmAudio.finish(1)
+			UI.gui.Enabled = savedHud
+			controls(true)
+			played = false
+		end
+	end
 	endScreen(d)
 	-- you stay on the end screen until you choose or the server sends everyone back; the HUD stays hidden
 	local _ = savedHud
+end
+
+-- The DEV panel's PLAY ENDING: the whole ending, the credits and the end screen, on this client only, without
+-- finishing the run (nobody is sent anywhere; BACK TO GAME on the end screen carries on).
+function Ending.preview()
+	task.spawn(Ending.play, { gems = 0, time = 0, preview = true })
 end
 
 return Ending

@@ -31,6 +31,7 @@ local BUTTONS = {
 	{ "FIND A GNOME", "gnome", Color3.fromRGB(230, 180, 40) },
 	{ "ALMOST CLEAR", "almost", Color3.fromRGB(150, 90, 220) },
 	{ "CUT ONE CLUMP", "cutOne", Color3.fromRGB(150, 90, 220) },
+	{ "PLAY ENDING", "playEnding", Color3.fromRGB(255, 70, 150) }, -- (this client only: client/Ending.preview)
 }
 -- a free egg of every kind in Config.EGGS (hatched by the server with the normal hatch show)
 for _, egg in Config.EGGS do
@@ -46,6 +47,12 @@ local function build()
 	local w = UI.window("Dev", "Dev", nil, { size = Vector2.new(780, 620), grid = Vector2.new(220, 78) })
 	for i, b in BUTTONS do
 		local btn = UI.button(w.list, b[1], b[3], UDim2.fromOffset(220, 78), function()
+			if b[2] == "playEnding" then
+				-- the ending film, credits and end screen, played right here without finishing the run
+				UI.close()
+				require(script.Parent.Ending).preview()
+				return
+			end
 			State.fire("Dev", b[2], b[4])
 		end, { name = b[2] })
 		btn.LayoutOrder = i

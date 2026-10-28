@@ -590,8 +590,10 @@ function IntroCast.hideCharacters(on: boolean)
 	end
 end
 
--- The first area's grass, gone for the flashback (and back again after).
-function IntroCast.hideGrass(on: boolean)
+-- The first area's grass (or area `zone`'s), gone for the flashback (and back again after). client/Ending hides the
+-- last area's for its first scene: "the last wild grass in the valley was gone" (it's mowed by then, but not in a
+-- DEV preview).
+function IntroCast.hideGrass(on: boolean, zone: number?)
 	if not on then
 		for _, p in hiddenGrass do
 			if p.Parent then
@@ -601,7 +603,7 @@ function IntroCast.hideGrass(on: boolean)
 		table.clear(hiddenGrass)
 		return
 	end
-	local grass = workspace:FindFirstChild("Grass1", true)
+	local grass = workspace:FindFirstChild("Grass" .. (zone or 1), true)
 	if not grass then
 		return
 	end

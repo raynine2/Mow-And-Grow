@@ -514,6 +514,16 @@ function IntroUi.hush()
 		end
 		tween(sp.back, 0.2, { BackgroundTransparency = 1 })
 	end
+	-- the narration line too (Studio's test, 28 Oct evening: bumping `typing` cancelled its fade, so the opening's
+	-- "Until the day something fell out of the sky..." stayed up through the clash and the next two scenes)
+	local t = tale
+	if t then
+		tween(t, 0.2, { TextTransparency = 1 })
+		local st = t:FindFirstChildOfClass("UIStroke")
+		if st then
+			tween(st, 0.2, { Transparency = 1 })
+		end
+	end
 end
 
 -- The title card: a kicker pill, the game's name huge in two tones, a line under it. Punches in and shakes.

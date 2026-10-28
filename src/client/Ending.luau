@@ -468,23 +468,42 @@ local function lastBladeScenes(P: Plan): boolean
 	Film.vignette(0.55, 0)
 	IntroUi.fade(1, 1.2)
 	bed("amb", "ambWind", 1.2, 2)
+	-- "the last wild grass in the valley was gone": mowed by now, but not in a DEV preview (Studio's test, 28 Oct
+	-- evening: the shots were full of it)
+	IntroCast.hideGrass(true, n)
 	Film.refreshSight()
-	-- the camera side: wherever its three shots see it best (the arenas have walls and trees)
+	-- The camera side: the turn where all three shots see it clearly, each from as far back as it can (Studio's test:
+	-- the low shot stood behind the arena's wall). A shot's camera, `k` times its height away:
+	local SHOTS = {
+		{ dists = { 2.4, 2.0, 1.7 }, side = 0.5, up = 0.3 }, -- 1A, wide
+		{ dists = { 1.45, 1.25 }, side = 0.15, up = 0.6 }, -- 1B, medium
+		{ dists = { 1.9, 1.5, 1.25 }, side = -0.35, up = 0.15 }, -- 1C, low
+	}
+	local looks = { feet + UP * (H * 0.55), feet + UP * (H * 0.95), feet + UP * (H * 0.1) }
 	local toCamp = unit(flat(P.camp - feet), P.fwd)
-	local d, bestScore = toCamp, -math.huge
+	local d, bestScore, K = toCamp, -math.huge, { 2.4, 1.45, 1.9 }
 	for _, y in { 0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180 } do
 		local dir = CFrame.Angles(0, math.rad(y), 0):VectorToWorldSpace(toCamp)
-		local side = dir:Cross(UP)
+		local sd = dir:Cross(UP)
 		local score = 0
-		for _, cam in { feet + dir * (H * 2.4) + side * (H * 0.5) + UP * (H * 0.3), feet + dir * (H * 1.45) + UP * (H * 0.6), feet + dir * (H * 1.9) - side * (H * 0.35) + UP * (H * 0.15) } do
-			score += shotScore(cam, { feet + UP * (H * 0.55), feet + UP * (H * 0.95), feet + UP * (H * 0.1) }, 35)
+		local ks = {}
+		for i, sh in SHOTS do
+			ks[i] = sh.dists[#sh.dists]
+			for _, k in sh.dists do
+				local s = shotScore(feet + dir * (H * k) + sd * (H * sh.side) + UP * (H * sh.up), looks, 35)
+				if s >= 5 then
+					ks[i] = k
+					score += 10 + s + k
+					break
+				end
+			end
 		end
 		if score > bestScore then
-			d, bestScore = dir, score
+			d, bestScore, K = dir, score, ks
 		end
 	end
 	local side = d:Cross(UP)
-	local lowCam = feet + d * (H * 1.9) - side * (H * 0.35) + UP * (H * 0.15)
+	local lowCam = feet + d * (H * K[3]) - side * (H * 0.35) + UP * (H * 0.15)
 	if BossView.get() ~= nil then
 		Film.at(0.9, function()
 			IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.6)
@@ -513,7 +532,7 @@ local function lastBladeScenes(P: Plan): boolean
 	-- 1A: beaten, on its knees, the glitch twitching in it; we creep in
 	local ok = Film.run(3.6, function(k)
 		local e = inOut(k)
-		local pos = feet + d * (H * (2.4 - 0.4 * e)) + side * (H * 0.5) + UP * (H * 0.3)
+		local pos = feet + d * (H * (K[1] - 0.35 * e)) + side * (H * 0.5) + UP * (H * 0.3)
 		return Film.look(pos, feet + UP * (H * 0.5)), Film.mm(35), chest
 	end, { hand = 0.25 })
 	if not ok then
@@ -535,7 +554,7 @@ local function lastBladeScenes(P: Plan): boolean
 		cue("calm", "calmMusic", { fade = 2 })
 	end)
 	ok = Film.run(2.2, function(k)
-		local pos = feet + d * (H * (1.45 + 0.1 * k)) + side * (H * 0.15) + UP * (H * 0.6)
+		local pos = feet + d * (H * (K[2] + 0.1 * k)) + side * (H * 0.15) + UP * (H * 0.6)
 		return Film.look(pos, feet + UP * (H * 0.62)), Film.mm(40), chest
 	end, { hand = 0.35 })
 	if not ok then

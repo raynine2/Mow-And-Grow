@@ -3,9 +3,10 @@
 -- joint, every few studs. The run camp's hand-made paving (Workspace.World.Hub.CampTiles: 0.3-stud stones on 8x8
 -- bed blocks) and the lobby's walks (server/HubPaths: 0.2-stud stones on "Path" beds) both do it. This puts one
 -- invisible plate on top of each bed that carries stones, level with their tops: the feet walk on a flat floor and
--- the paving looks exactly the same (nothing hand-made is changed).
+-- the paving looks exactly the same (nothing hand-made is changed). The other areas' camps (server/Outposts) have
+-- the same joints in their plazas (0.22 deep): their rows of paving get a plate each too.
 --
---   WalkPlates.cover(root)   every CampTiles / Paths-with-Stones folder under `root` (once per folder)
+--   WalkPlates.cover(root)   every CampTiles / Paths-with-Stones folder / Outpost plaza under `root` (once each)
 local WalkPlates = {}
 
 -- The stones lying on top of `bed` (a stone's bottom on the bed's top, its middle inside the bed's outline).
@@ -71,7 +72,76 @@ local function coverFolder(folder: Instance, beds: { BasePart }, stones: { BaseP
 	return made
 end
 
--- Every paving under `root`: hand-made CampTiles (Bed + Stone parts) and HubPaths walks (Path parts + a Stones folder).
+-- The area camps' plazas (server/Outposts): a 4-stud grid of "Tile"s standing 0.22 proud of their "TileBed"s, with
+-- 0.35-stud joints between them. One plate per row of beds (level with the tiles' tops), not one per cell.
+local function coverTiles(folder: Instance): number
+	if folder:GetAttribute("WalkPlates") then
+		return 0
+	end
+	folder:SetAttribute("WalkPlates", true)
+	local tiles: { BasePart } = {}
+	local cells = {}
+	for _, p in folder:GetChildren() do
+		if p:IsA("BasePart") and p.Name == "Tile" then
+			table.insert(tiles, p)
+		end
+	end
+	for _, bed in folder:GetChildren() do
+		if bed:IsA("BasePart") and bed.Name == "TileBed" and math.abs(bed.CFrame.RightVector.X) > 0.999 then
+			local bedTop = bed.Position.Y + bed.Size.Y / 2
+			for _, t in tiles do
+				local d = t.Position - bed.Position
+				local h = t.Position.Y + t.Size.Y / 2 - bedTop
+				if math.abs(d.X) < 0.3 and math.abs(d.Z) < 0.3 and h > 0.02 and h < 1 then
+					table.insert(cells, { x = bed.Position.X, z = bed.Position.Z, y = bedTop, h = h, sx = bed.Size.X, sz = bed.Size.Z })
+					break
+				end
+			end
+		end
+	end
+	-- rows: the same height, depth and line; merged where the beds touch end to end
+	table.sort(cells, function(a, b)
+		if math.abs(a.y - b.y) > 0.005 then
+			return a.y < b.y
+		elseif math.abs(a.z - b.z) > 0.005 then
+			return a.z < b.z
+		end
+		return a.x < b.x
+	end)
+	local made = 0
+	local i = 1
+	while i <= #cells do
+		local a = cells[i]
+		local j = i
+		while cells[j + 1] do
+			local b, c = cells[j], cells[j + 1]
+			if math.abs(c.y - b.y) < 0.005 and math.abs(c.z - b.z) < 0.005 and math.abs(c.h - b.h) < 0.005 and math.abs(c.sz - b.sz) < 0.01 and math.abs((c.x - b.x) - (b.sx + c.sx) / 2) < 0.02 then
+				j += 1
+			else
+				break
+			end
+		end
+		local z = cells[j]
+		local x0, x1 = a.x - a.sx / 2, z.x + z.sx / 2
+		local p = Instance.new("Part")
+		p.Name = "WalkPlate"
+		p.Anchored = true
+		p.CanCollide = true
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Transparency = 1
+		p.Locked = true
+		p.Size = Vector3.new(x1 - x0, a.h, a.sz)
+		p.CFrame = CFrame.new((x0 + x1) / 2, a.y + a.h / 2, a.z)
+		p.Parent = folder
+		made += 1
+		i = j + 1
+	end
+	return made
+end
+
+-- Every paving under `root`: hand-made CampTiles (Bed + Stone parts), HubPaths walks (Path parts + a Stones folder) and
+-- the area camps' plazas (Outpost<z> models: Tile + TileBed parts).
 function WalkPlates.cover(root: Instance?): number
 	if not root then
 		return 0
@@ -103,6 +173,8 @@ function WalkPlates.cover(root: Instance?): number
 				end
 			end
 			made += coverFolder(f, beds, stones)
+		elseif string.match(f.Name, "^Outpost%d+$") and f:FindFirstChild("TileBed") then
+			made += coverTiles(f)
 		end
 	end
 	return made

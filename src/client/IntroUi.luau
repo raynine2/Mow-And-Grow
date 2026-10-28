@@ -338,12 +338,23 @@ function IntroUi.film(on: boolean)
 end
 
 -- A name card sliding in at the top left (under the letterbox bar, clear of the speech box): a coloured stripe, a big title, a small line under it.
+-- One at a time (owner, 28 Oct: the area names "overlap when you show everything"): a new card sends the last one off.
+local lastCard: Frame? = nil
+
 function IntroUi.lowerThird(title: string, sub: string, color: Color3?, life: number?)
 	local l = layer
 	if not l then
 		return
 	end
+	local old = lastCard
+	if old and old.Parent then
+		tween(old, 0.12, { Position = UDim2.new(0, -560, BAR, 18) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		task.delay(0.13, function()
+			old:Destroy()
+		end)
+	end
 	local root = Instance.new("Frame")
+	lastCard = root
 	root.Name = "LowerThird"
 	root.BackgroundTransparency = 1
 	root.Position = UDim2.new(0, -520, BAR, 18)

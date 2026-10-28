@@ -655,7 +655,7 @@ local function glitchScene(P: Plan, m: IntroCast.Mayor): (boolean, Vector3)
 		spark.Transparency = 0
 		trail.Enabled = true
 		glow.Brightness = 5
-		local aim = BossView.attWorld("att_head_center") or head
+		local aim = if bossesOk then BossView.attWorld("att_head_center") or head else head
 		spark.CFrame = CFrame.new(sky:Lerp(aim, k * k))
 	end))
 	-- a build... a moment of silence... then the hit
@@ -672,7 +672,7 @@ local function glitchScene(P: Plan, m: IntroCast.Mayor): (boolean, Vector3)
 		glow.Brightness = 0
 		FilmAudio.sfx("impact", { volume = 0.95, pitch = 0.8 })
 		FilmAudio.sfx("synthWhomp", { volume = 0.8, pitch = 0.45 })
-		FilmPanels.impact({ bossModel() }, { at = head })
+		FilmPanels.impact(if bossesOk then { bossModel() } else {}, { at = head })
 		Film.shake(0.55, 1.4)
 		if bossesOk then
 			-- the pink gets in: he staggers, kneels and changes, while the clash plays
@@ -1219,6 +1219,21 @@ local function peekScene(P: Plan): boolean
 	C.rift(far, toCam, 70, 0.3)
 	local folder = workspace:FindFirstChild("IntroSet") or workspace
 	local eye = GlitchHole.eyeProp(folder)
+	-- the dark the eye opens in (the tear torn wide round it)
+	local dark = Instance.new("Part")
+	dark.Name = "PeekDark"
+	dark.Anchored = true
+	dark.CanCollide = false
+	dark.CanQuery = false
+	dark.CanTouch = false
+	dark.CastShadow = false
+	dark.Material = Enum.Material.Neon
+	dark.Color = Color3.new(0, 0, 0)
+	dark.Transparency = 1
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = dark
+	dark.Parent = folder
 	local ungrade = Glitch.grade({ Brightness = -0.32, Contrast = 0.55, Saturation = -0.65, TintColor = Color3.fromRGB(255, 118, 150) }, 0.12)
 	Glitch.static(0.3, 1.6)
 	local caption = Glitch.text(nil, "...something is watching", UDim2.fromScale(0.42, 0.045), UDim2.fromScale(0.5, 0.8), Color3.fromRGB(255, 150, 200))
@@ -1231,11 +1246,16 @@ local function peekScene(P: Plan): boolean
 			FilmAudio.sfx("sting", { volume = 0.6, pitch = 0.9 })
 		end
 		-- (it glares, then narrows)
-		eye.place(far + toCam * 2, toCam, 16, open * (1 - 0.35 * math.clamp((k - 0.75) / 0.25, 0, 1)))
+		local o = open * (1 - 0.35 * math.clamp((k - 0.75) / 0.25, 0, 1))
+		eye.place(far + toCam * 2, toCam, 16, o)
+		dark.Transparency = if o > 0.02 then 0 else 1
+		dark.Size = Vector3.new(27, 15 * o + 0.05, 0.2)
+		dark.CFrame = CFrame.lookAt(far + toCam * 1.4, far + toCam * 3)
 		return Film.look(from, far - UP * (8 - k * 6)), 24 - k * 6, far
 	end, { hand = 0.2 })
 	caption.stop()
 	eye.destroy()
+	dark:Destroy()
 	C.destroy()
 	if not ok or not playing then
 		ungrade(0)

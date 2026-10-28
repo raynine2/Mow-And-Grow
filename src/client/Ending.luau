@@ -167,15 +167,17 @@ local function spark(pos: Vector3, color: Color3, size: number): Part
 	return p
 end
 
+local filmGen = 0 -- (bumps when SKIP restarts the film: a rocket already up doesn't burst into the next scene)
 local FIREWORK_COLORS = { GOLD, Color3.fromRGB(255, 110, 150), Color3.fromRGB(110, 220, 255), GREEN, Color3.fromRGB(255, 150, 60), Color3.fromRGB(200, 140, 255) }
 local function firework(at: Vector3, big: boolean?)
 	local color = FIREWORK_COLORS[math.random(1, #FIREWORK_COLORS)]
 	local rise = spark(at - UP * 30, color, 0.6)
 	TweenService:Create(rise, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = at }):Play()
 	FilmAudio.sfx("swingHand", { volume = 0.9, pitch = 0.55 + math.random() * 0.15 }) -- (the whistle up)
+	local gen = filmGen
 	task.delay(0.8, function()
 		rise:Destroy()
-		if not Film.playing then
+		if not Film.playing or gen ~= filmGen then
 			return
 		end
 		FilmAudio.sfx("boom", { volume = if big then 1 else 0.6 + math.random() * 0.3, pitch = 1.25 + math.random() * 0.35 })
@@ -756,7 +758,7 @@ local function creditPages(m: IntroCast.Mayor?, cr: FilmPanels.Credits): { () ->
 				})
 			end
 			if #items < 3 and mayorStill then
-				table.insert(items, { still = mayorStill, color = GOLD, name = "Mayor Thistlewick", sub = "as himself", span = 3.4, low = 0.2 })
+				table.insert(items, { still = mayorStill, color = GOLD, name = "Mayor Thistlewick", sub = "as himself", span = 3.4, low = 0.2, hold = true })
 			end
 			cr.page(items, if i == 1 then "THE GUARDIANS ~ FREE AT LAST" else "THE GUARDIANS")
 		end)
@@ -873,12 +875,17 @@ end
 -- Where the hole opens and the demon, built for it in steps (a few hundred blocks a frame) and kept out of the
 -- world until it comes out. Called while the credits roll (or as the scene starts, after a SKIP). Yields.
 local preparing = false
+local teaserGen = 0 -- (bumps when the film stops: a search still running then is dropped)
 local function prepareTeaser(P: Plan)
 	if stage or preparing then
 		return
 	end
 	preparing = true
+	local gen = teaserGen
 	local at, toward = twistStage(P)
+	if gen ~= teaserGen then
+		return
+	end
 	local sky = at + UP * HOLE_UP
 	stage = { at = at, toward = toward, sky = sky }
 	task.spawn(function()
@@ -891,12 +898,14 @@ local function prepareTeaser(P: Plan)
 	local base = CFrame.lookAt(sky + UP * 8, sky + UP * 8 + toCamp)
 	local d = Demon.new(base, DEMON_SCALE, Instance.new("Folder"), { yieldEvery = 250 })
 	d.state.rise = 0.42
-	if Film.playing and not demon and preparing then
+	if gen == teaserGen and Film.playing and not demon then
 		demon = d
 	else
 		d.destroy()
 	end
-	preparing = false
+	if gen == teaserGen then
+		preparing = false
+	end
 end
 
 -- The black screen at the very end: TO BE CONTINUED..., then WORLD 2 / THE CORRUPTED VALLEY / COMING SOON,
@@ -1227,6 +1236,7 @@ local function demonScenes(P: Plan): boolean
 	end
 	d.model.Parent = propFolder()
 	d.state.glitch = 0.5
+	d.update(0)
 	local t0 = os.clock()
 	Film.every(function()
 		d.update(os.clock() - t0)
@@ -1474,6 +1484,7 @@ local function stopFilm()
 	end
 	stage = nil
 	preparing = false
+	teaserGen += 1
 	if ungrade then
 		ungrade(0.3)
 		ungrade = nil
@@ -1541,7 +1552,12 @@ function Ending.play(d: any)
 	chapter = if d.from == "credits" then "credits" else "film"
 	skippedAll = false
 	creditsSkipped = false
+	local skipReady = 0 -- (SKIP is ignored for a second after each press: a double tap skips one chapter, not two)
 	IntroUi.open(function()
+		if os.clock() < skipReady then
+			return
+		end
+		skipReady = os.clock() + 1
 		if chapter == "film" then
 			chapter = "skip"
 			Film.playing = false
@@ -1608,7 +1624,8 @@ function Ending.play(d: any)
 			for name in table.clone(music) do
 				stopCue(name, 0.3) -- (the party's music and the crowd don't carry on into the night)
 			end
-			FilmAudio.duck(0, 0.1)
+			FilmAudio.hush(0.3) -- (and the applause, the whistles, the booms)
+			filmGen += 1
 			IntroUi.hush()
 			task.wait(0.2)
 			Film.stop(STEP)

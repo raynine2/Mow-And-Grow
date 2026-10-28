@@ -341,7 +341,9 @@ function FilmPanels.impact(subjects: { Instance? }, opts: ImpactOpts?): boolean
 	end)
 	task.delay(hold, function()
 		root:Destroy()
-		Film.flash(WHITE, 0.45, 0.22)
+		if Film.playing then
+			Film.flash(WHITE, 0.45, 0.22)
+		end
 	end)
 	return true
 end
@@ -370,6 +372,7 @@ type Panel = {
 	t: number,
 	spin: number,
 	silhouette: boolean,
+	static: boolean, -- (the camera holds: the ViewportFrame draws once)
 }
 
 -- One panel from x0 to x1 (shares of the width), dark with a wash of `color`, its glow behind the face. `calmLook`:
@@ -442,6 +445,7 @@ local function newPanel(parent: Instance, x0: number, x1: number, color: Color3,
 		t = 0,
 		spin = if calmLook then 0 else 14,
 		silhouette = false,
+		static = false,
 	}
 end
 
@@ -531,7 +535,9 @@ end
 
 local function stepPanel(p: Panel, dt: number)
 	p.t += dt
-	place(p)
+	if not p.static then
+		place(p)
+	end
 	if p.spin ~= 0 then
 		p.lines.Rotation += p.spin * dt
 	end
@@ -766,7 +772,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the credits: an anime ending's pages
 -------------------------------------------------------------------------------------------------------------
-export type PageItem = { still: Still?, color: Color3, name: string, sub: string?, side: number?, span: number?, low: number? }
+export type PageItem = { still: Still?, color: Color3, name: string, sub: string?, side: number?, span: number?, low: number?, hold: boolean? }
 
 export type Credits = {
 	page: (items: { PageItem }, heading: string) -> (),
@@ -840,6 +846,7 @@ function FilmPanels.credits(): Credits?
 			local p = newPanel(page, edges[i], edges[i + 1], it.color, true)
 			p.push = 0.08
 			setStill(p, it.still, { side = it.side or ((i - (n + 1) / 2) * -10), drift = 8, span = it.span, low = it.low })
+			p.static = it.hold == true -- (a heavy model: its camera holds, so it's drawn once)
 			-- the name plate: a dark band at the bottom, the name big, the line under it small
 			local plate = frame(p.root, "Plate", BLACK, 0.35, 8)
 			plate.Size = UDim2.fromScale(1, 0.2)

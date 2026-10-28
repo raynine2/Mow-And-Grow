@@ -399,7 +399,7 @@ function GlitchHole.new(centre: Vector3, facing: Vector3, radius: number, parent
 			eyeOpen += (eyeGoal - eyeOpen) * math.min(1, dt * (if eyeGoal > eyeOpen then 9 else 14))
 			local cam = workspace.CurrentCamera
 			local toCam = if cam then (cam.CFrame.Position - (centre + offset)).Unit else face
-			ep.place(centre + offset + toCam * R * s * 0.97, toCam, R * s * 1.15, eyeOpen)
+			ep.place(centre + offset + toCam * R * s * 1.02, toCam, R * s * 1.15, eyeOpen)
 		end
 		-- the lumps: torn out, flung up, round and round, smaller and smaller, gone
 		table.clear(moveParts)

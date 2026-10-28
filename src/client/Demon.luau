@@ -409,7 +409,11 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		end
 	end
 
-	update(0)
+	-- (built out of the world, e.g. to come out later: its welds only take their offsets once it's put in, so the
+	-- first pose waits; call update() after parenting it)
+	if model:IsDescendantOf(workspace) then
+		update(0)
+	end
 	return {
 		model = model,
 		state = state,

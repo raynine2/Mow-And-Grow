@@ -1309,10 +1309,15 @@ local function showBanner(c, left: number)
 	f.Parent = gui
 	banner = f
 	do
-		-- the same size on every screen as the rest of the interface (narrow phones get it smaller)
+		-- the same size on every screen as the rest of the interface (narrow phones get it smaller; on a touch screen
+		-- the HUD's own scale: by the width alone it came out a quarter of a phone's height)
 		local cam = workspace.CurrentCamera
 		local sc = Instance.new("UIScale")
 		sc.Scale = if cam then math.clamp(cam.ViewportSize.X / 1100, 0.6, 1) else 1
+		if UI.touch then
+			local hud = UI.gui:FindFirstChildOfClass("UIScale")
+			sc.Scale = math.min(sc.Scale, (if hud then hud.Scale else 0.6) * 1.1)
+		end
 		sc.Parent = f
 	end
 	local _, face = Skin.frame(f, "ui_banner", Vector2.new(W, H), { name = "Sign" })

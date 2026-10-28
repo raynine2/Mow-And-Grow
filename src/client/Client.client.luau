@@ -5,6 +5,7 @@ local State = require(modules:WaitForChild("State"))
 require(modules:WaitForChild("PhonePerf")) -- phones: shadows, bloom and sun rays off (owner, 26 Oct)
 require(modules:WaitForChild("Sound"))
 require(modules:WaitForChild("UI"))
+require(modules:WaitForChild("PhonePreview")) -- Studio only: the phone preview's overlay (client/Device)
 require(modules:WaitForChild("Hud"))
 require(modules:WaitForChild("Windows"))
 require(modules:WaitForChild("PetFollow")) -- everyone's critters following them
@@ -29,6 +30,7 @@ require(modules:WaitForChild("ZoneMood"))
 require(modules:WaitForChild("BiomeLight")) -- the generated world's per-valley lighting (runs)
 require(modules:WaitForChild("EdgeLines")) -- faint lit edges on the voxel trees near you
 require(modules:WaitForChild("Wind"))
+require(modules:WaitForChild("GrassLod")) -- phones and Potato Mode: far grass drawn as cheap stand-ins (report #15)
 require(modules:WaitForChild("Life")) -- trees swaying, wind ribbons, falling leaves, birds overhead
 require(modules:WaitForChild("Combo"))
 require(modules:WaitForChild("FirstLawn")) -- a first-timer's trip to their first lawn, the loan note, reach rings

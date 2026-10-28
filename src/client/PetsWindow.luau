@@ -82,6 +82,7 @@ local eggs = UI.window("Eggs", "Pets", nil, { tabs = TABS, gems = false, size = 
 local pets = UI.window("Pets", "Pets", nil, { tabs = TABS, gems = false, size = Vector2.new(860, 560) })
 for _, w in { eggs, pets } do
 	w.frame.Position = UDim2.new(0.5, -160, 0.55, 0) -- room on the right for the big card
+	w.frame:SetAttribute("ReachRight", 336) -- (the big card, for a phone's layout: client/UI touchFit)
 end
 PetsWindow.TABS = TABS
 
@@ -711,7 +712,7 @@ local function hatchShow(eggId: string, ids: { string })
 			local _ = rar
 		end)
 	end
-	local hint = UI.text(root, "Click to continue", UDim2.fromOffset(300, 24), { pos = UDim2.new(0.5, 0, 1, -40), anchor = Vector2.new(0.5, 1), color = Color3.fromRGB(230, 230, 235), stroke = 1.5 })
+	local hint = UI.text(root, UI.words("Click to continue"), UDim2.fromOffset(300, 24), { pos = UDim2.new(0.5, 0, 1, -40), anchor = Vector2.new(0.5, 1), color = Color3.fromRGB(230, 230, 235), stroke = 1.5 })
 	hint.Visible = false
 	local done = Instance.new("TextButton")
 	done.Text = ""

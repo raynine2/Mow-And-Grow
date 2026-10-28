@@ -14,9 +14,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
+local Device = require(script.Parent.Device)
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
@@ -132,7 +132,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- which step
 -------------------------------------------------------------------------------------------------------------
-local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local touch = Device.touch
 local finished = false -- finished in this session (or never needed)
 local shownThisSession = false
 
@@ -267,6 +267,10 @@ sub.TextWrapped = true
 sub.TextYAlignment = Enum.TextYAlignment.Top
 local subMax = Instance.new("UITextSizeConstraint")
 subMax.MaxTextSize = 21 -- (a short hint stays its old size instead of filling both lines)
+if Device.phone then
+	-- (docked at 0.6 under the quest card, 21 came out under 7 points on a phone: unreadable)
+	subMax.MaxTextSize = 28
+end
 subMax.Parent = sub
 local scale = Instance.new("UIScale")
 scale.Parent = card

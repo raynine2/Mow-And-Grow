@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
+local Device = require(script.Parent.Device)
 local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
 local Potato = require(script.Parent.Potato)
@@ -57,7 +58,7 @@ local HINT_TIME = 15
 local wasRun = false
 local function onMode()
 	local run = State.isRun()
-	hint.Visible = run and not UserInputService.TouchEnabled
+	hint.Visible = run and not Device.touch
 	if run and not wasRun then
 		hintUntil = os.clock() + HINT_TIME
 		-- entering a run: first person, like the video

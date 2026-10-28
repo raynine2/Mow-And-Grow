@@ -9,6 +9,7 @@ local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
+local GrassLod = require(script.Parent.GrassLod)
 local MayorRig = require(script.Parent.MayorRig)
 
 local IntroCast = {}
@@ -562,6 +563,8 @@ end
 function IntroCast.hideCharacters(on: boolean)
 	-- (client/ViewModel shows your held tool again every frame in third person; this tells it not to)
 	Players.LocalPlayer:SetAttribute("CastHidden", if on then true else nil)
+	-- every grass clump real for the film (phones draw far ones as stand-ins: client/GrassLod)
+	GrassLod.hold(on)
 	if on then
 		for _, p in Players:GetPlayers() do
 			local char = p.Character

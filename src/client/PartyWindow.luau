@@ -13,6 +13,7 @@ local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("
 local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
 local Skin = require(script.Parent.Skin)
+local Device = require(script.Parent.Device)
 
 local PartyWindow = {}
 local player = Players.LocalPlayer
@@ -261,10 +262,22 @@ holder.AnchorPoint = Vector2.new(0.5, 0.5)
 holder.BackgroundTransparency = 1
 local scaler = Instance.new("UIScale")
 scaler.Parent = holder
+local home = UDim2.fromScale(0.5, 0.5)
 local function rescale()
-	local cam = workspace.CurrentCamera
-	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	local vp = UI.area()
 	scaler.Scale = math.clamp(math.min(vp.X / 1040, vp.Y / 780) * (UI.size or Config.UI_SIZE or 1), 0.4, 1.1)
+	home = UDim2.fromScale(0.5, 0.5)
+	if UI.touch then
+		-- A phone's screen is short: the window fills its height, and its top-left corner went under Roblox's
+		-- buttons. It slides right to clear them when there's room (28 Oct, the phone pass).
+		local w, h = 980 * scaler.Scale, 720 * scaler.Scale
+		local left, top = (vp.X - w) / 2, (vp.Y - h) / 2
+		local reach = Device.topbarWidth() - gui.AbsolutePosition.X + 6
+		if top < Device.topInset() and left < reach then
+			local dx = math.min(reach - left, math.max(0, vp.X - 6 - (left + w)))
+			home = UDim2.new(0.5, dx, 0.5, 0)
+		end
+	end
 end
 
 local choice = { pad = 0, size = Config.PARTY_MAX, difficulty = "Normal", peaceful = false }
@@ -577,8 +590,8 @@ function PartyWindow.open(d: { [string]: any })
 	rescale()
 	open = true
 	gui.Enabled = true
-	holder.Position = UDim2.fromScale(0.5, 0.56)
-	TweenService:Create(holder, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = UDim2.fromScale(0.5, 0.5) }):Play()
+	holder.Position = home + UDim2.fromScale(0, 0.06)
+	TweenService:Create(holder, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Position = home }):Play()
 end
 
 State.on("fx", function(kind, d)

@@ -121,6 +121,9 @@ local function unglow(m: Model)
 			g.light:Destroy()
 		end
 		glowing[m] = nil
+		if m.Parent then
+			m:SetAttribute("LastClump", nil)
+		end
 	end
 end
 
@@ -132,6 +135,8 @@ local function clearGlow()
 end
 
 local function glow(m: Model, lights: number): boolean
+	-- (this screen only: tells client/GrassLod to keep it the real clump, never its far stand-in)
+	m:SetAttribute("LastClump", true)
 	local cf, size = m:GetBoundingBox()
 	local beam = Instance.new("Part")
 	beam.Name = "LastClumpBeam"

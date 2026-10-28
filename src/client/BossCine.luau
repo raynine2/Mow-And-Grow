@@ -86,9 +86,10 @@ if workspace.CurrentCamera then
 end
 
 -- SKIP (everyone in the arena must press it): the button counts the votes, "SKIP 1/3" (round 2)
-local skip = UI.button(gui, "SKIP", C.purple or Color3.fromRGB(150, 90, 255), UDim2.fromOffset(170, 52), function()
+-- (on a touch screen bigger, and up clear of Roblox's jump button in the bottom-right corner)
+local skip = UI.button(gui, "SKIP", C.purple or Color3.fromRGB(150, 90, 255), if UI.touch then UDim2.fromOffset(210, 66) else UDim2.fromOffset(170, 52), function()
 	State.fire("Boss", "skip")
-end, { pos = UDim2.new(1, -24, 1, -110), anchor = Vector2.new(1, 1), name = "Skip" })
+end, { pos = UDim2.new(1, -24, 1, if UI.touch then -210 else -110), anchor = Vector2.new(1, 1), name = "Skip" })
 skip.Visible = false
 local skipNote = UI.text(skip, "", UDim2.new(1, 0, 0, 22), { pos = UDim2.new(0, 0, 1, 4), stroke = 2 })
 local function setSkipLabel(text: string)

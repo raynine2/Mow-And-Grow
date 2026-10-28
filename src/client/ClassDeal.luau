@@ -1909,8 +1909,8 @@ for _, ch in holder:GetChildren() do
 	end
 end
 local function layoutWide()
-	local cam = workspace.CurrentCamera
-	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	-- (the HUD's area: inside an iPhone's notch, where the class screen is drawn)
+	local vp = UI.area()
 	local gs = UI.gui:FindFirstChildOfClass("UIScale")
 	local fill = holder:FindFirstChild("Fill") :: UIScale?
 	local k = (if gs then gs.Scale else 1) * (if fill then fill.Scale else 1)

@@ -19,8 +19,8 @@
 --     hole.destroy()
 --   GlitchHole.eyeProp(parent) -> Eye     the demon's eye on its own (client/Intro's peek): place(at, toward, width, open)
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
+local Device = require(script.Parent.Device)
 local IntroCast = require(script.Parent.IntroCast)
 local Potato = require(script.Parent.Potato)
 
@@ -44,7 +44,7 @@ local TEX = {
 }
 
 local function light(): boolean
-	return Potato.on or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+	return Potato.on or Device.touch
 end
 
 local function part(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material?, shape: Enum.PartType?): Part

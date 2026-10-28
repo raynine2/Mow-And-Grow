@@ -17,6 +17,8 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
+local Device = require(script.Parent.Device)
+
 local Shared = ReplicatedStorage:WaitForChild("MowALawn")
 local Config = require(Shared:WaitForChild("Config"))
 local PartBuild = require(Shared:WaitForChild("PartBuild"))
@@ -39,7 +41,7 @@ HatchFx.after = nil :: string?
 local TEX = if okAssets and type(Assets) == "table" then Assets.Tex else {}
 local ICONS = if okIcons and type(IconIds) == "table" then IconIds else {}
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
-local MOBILE = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local MOBILE = Device.touch
 local FEW = if MOBILE then 0.6 else 1
 local FONT = (Config.UI and Config.UI.font) or Enum.Font.FredokaOne
 local INK = Color3.fromRGB(28, 18, 30)

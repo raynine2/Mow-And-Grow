@@ -16,6 +16,7 @@ local ORDER = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Se
 
 local win = UI.window("PetIndex", "Pets", nil, { tabs = PetsWindow.TABS, gems = false, size = Vector2.new(860, 560) })
 win.frame.Position = UDim2.new(0.5, -160, 0.55, 0)
+win.frame:SetAttribute("ReachRight", 336) -- (the big card, for a phone's layout: client/UI touchFit)
 win.list.Visible = false -- this tab lays itself out
 local P = win.panel
 

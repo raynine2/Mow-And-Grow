@@ -21,6 +21,7 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local UI = require(script.Parent.UI)
 local Sound = require(script.Parent.Sound)
+local PhonePerf = require(script.Parent.PhonePerf)
 
 local BlackHole = {}
 
@@ -51,8 +52,9 @@ local CHIPS = {
 }
 local CHIP_COUNT = 22
 
+-- (phones too, 28 Oct: no orbiting chips, bursts, pulses or blur there)
 local function potato(): boolean
-	return player:GetAttribute("Potato") == true
+	return player:GetAttribute("Potato") == true or PhonePerf.on
 end
 
 -------------------------------------------------------------------------------------------------------------

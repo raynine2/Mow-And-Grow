@@ -7,9 +7,11 @@
 local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 
+local Device = require(script.Parent.Device)
+
 local PhonePerf = {}
 
-PhonePerf.on = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled and not UserInputService.MouseEnabled
+PhonePerf.on = Device.preview or (Device.touch and not UserInputService.MouseEnabled)
 
 local function keepOff(inst: Instance)
 	if inst:IsA("BloomEffect") or inst:IsA("SunRaysEffect") then

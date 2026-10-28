@@ -6,6 +6,8 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
+local Device = require(script.Parent.Device)
+local PhonePerf = require(script.Parent.PhonePerf)
 local Sound = require(script.Parent.Sound)
 local State = require(script.Parent.State)
 
@@ -49,15 +51,32 @@ UI.gui = gui
 local scale = Instance.new("UIScale")
 scale.Parent = gui
 -- how big the layout is drawn on top of fitting the screen (Config.UI_SIZE; full size on touch-only devices)
-local touchOnly = game:GetService("UserInputService").TouchEnabled and not game:GetService("UserInputService").KeyboardEnabled
+local touchOnly = Device.touch
 UI.size = if touchOnly then (Config.UI_SIZE_TOUCH or 1) else (Config.UI_SIZE or 1)
 UI.touch = touchOnly
-local function rescale()
+-- The area our screens are drawn in, in pixels: the whole screen on a computer, inside the notch and the home bar on
+-- an iPhone held sideways (IgnoreGuiInset keeps a gui out of those; the layout is fitted to what's left).
+function UI.area(): Vector2
+	local a = gui.AbsoluteSize
+	if a.X > 2 and a.Y > 2 then
+		return a
+	end
 	local cam = workspace.CurrentCamera
-	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+	return if cam then cam.ViewportSize else Vector2.new(1280, 720)
+end
+-- Words for this screen: on a touch screen you tap, not click (quest hints and messages come from the server).
+function UI.words(text: string): string
+	if not touchOnly then
+		return text
+	end
+	return (string.gsub(string.gsub(text, "Click", "Tap"), "click", "tap"))
+end
+local function rescale()
+	local vp = UI.area()
 	scale.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720) * UI.size, 0.45, 1.3)
 end
 rescale()
+gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
 if workspace.CurrentCamera then
 	workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
 end
@@ -225,8 +244,12 @@ function UI.dropIn(obj: GuiObject, from: number, dur: number)
 	local j = juice(obj)
 	j.popT, j.popFrom, j.popDur, j.popSine = 0, from, dur, true
 end
--- an idle breath (scale +-amp; `speed` in radians a second, default ~1.8 s a breath)
+-- an idle breath (scale +-amp; `speed` in radians a second, default ~1.8 s a breath). Not on phones (28 Oct, the
+-- phone pass): every breathing button is laid out again every frame, and a 2% breath hardly shows on a phone.
 function UI.breathe(obj: GuiObject, amp: number?, speed: number?)
+	if PhonePerf.on then
+		return
+	end
 	local j = juice(obj)
 	j.amp = amp or 0.02
 	if speed then
@@ -701,9 +724,10 @@ local function leaf(parent: Instance, pos: UDim2, size: number)
 	end
 end
 
--- Red square close button.
+-- Red square close button (bigger on touch screens: on a phone 66 was about 36 points, under the 44 a thumb needs).
 function UI.closeButton(parent: Instance, pos: UDim2, onClick: () -> ()): TextButton
-	local b = UI.button(parent, "X", WOOD.red, UDim2.fromOffset(66, 66), onClick, { pos = pos, anchor = Vector2.new(1, 0), name = "Close" })
+	local size = if touchOnly then 84 else 66
+	local b = UI.button(parent, "X", WOOD.red, UDim2.fromOffset(size, size), onClick, { pos = pos, anchor = Vector2.new(1, 0), name = "Close" })
 	b.ZIndex = 6
 	local label = b:FindFirstChild("Label") :: TextLabel
 	label.ZIndex = 7
@@ -765,6 +789,45 @@ UI.onWindowChanged = Instance.new("BindableEvent")
 
 type Tab = { label: string, window: string, icon: string?, runOnly: boolean? }
 type WindowOpts = { tabs: { Tab }?, grid: Vector2?, gems: boolean?, size: Vector2? }
+
+-- Where a board window goes on a phone or tablet, and how big (28 Oct, the phone pass). A phone's screen is short:
+-- a full-size board fills it top to bottom, so its title (outside the board's top-left corner) landed under
+-- Roblox's own buttons in the top-left corner. The board is drawn as big as fits (never bigger than its own size)
+-- with its title clear of them: slid to the right if there's room, else down, else a little smaller. It may cover
+-- the side buttons (client/Hud tucks them away while it's open). Returns the scale and the middle (layout units).
+local function touchFit(X: number, Y: number, w: number, h: number, extraRight: number): (number, Vector2)
+	local s = math.max(scale.Scale, 0.01)
+	local topW = math.max(0, Device.topbarWidth() - gui.AbsolutePosition.X) / s
+	local topH = Device.topInset() / s
+	-- how far the board reaches from its middle at full size: the title sticks out 14 left and 70 up, the red X 18
+	-- right (or a window's own card beside it: the ReachRight attribute), the lawn along the bottom 24 down
+	local L, R, T, B = X / 2 + 14, X / 2 + math.max(18, extraRight), Y / 2 + 70, Y / 2 + 24
+	local M = 8
+	local k = 1
+	while true do
+		local cx0, cx1 = M + L * k, w - M - R * k
+		local cy0, cy1 = M + T * k, h - M - B * k
+		if cx0 <= cx1 and cy0 <= cy1 then
+			local cx = math.clamp(w / 2, cx0, cx1)
+			local cy = math.clamp(h * 0.55, cy0, cy1)
+			if cx - L * k >= topW + 6 or cy - T * k >= topH + 4 then
+				return k, Vector2.new(cx, cy)
+			end
+			local right = topW + 6 + L * k
+			if right <= cx1 then
+				return k, Vector2.new(right, cy)
+			end
+			local down = topH + 4 + T * k
+			if down <= cy1 then
+				return k, Vector2.new(cx, down)
+			end
+		end
+		if k <= 0.6 then
+			return 0.6, Vector2.new(w / 2, h * 0.55)
+		end
+		k = math.max(0.6, k - 0.02)
+	end
+end
 
 -- Wood grain on a frame: a gradient with light and dark streaks across it.
 function UI.grain(f: GuiObject, base: Color3, rotation: number?): UIGradient
@@ -881,11 +944,20 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 	-- On narrow layouts (16:9 phones, tablets) a big window reached under Roblox's buttons, over the side buttons
 	-- and off the bottom: there it's drawn a little smaller (its resting scale, so the open bounce still works).
 	local function fitWindow()
-		local cam = workspace.CurrentCamera
-		local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
+		local vp = UI.area()
 		local s = math.max(scale.Scale, 0.01)
 		local w, h = vp.X / s, vp.Y / s
 		local k = math.clamp(math.min((w - 300) / holder.Size.X.Offset, (h - 120) / holder.Size.Y.Offset), 0.6, 1)
+		if touchOnly then
+			-- phones and tablets: as big as fits, its title clear of Roblox's buttons (touchFit)
+			local pos
+			k, pos = touchFit(holder.Size.X.Offset, holder.Size.Y.Offset, w, h, tonumber(holder:GetAttribute("ReachRight")) or 0)
+			holder.Position = UDim2.fromOffset(pos.X, pos.Y)
+			local wt = windows[name]
+			if wt then
+				wt.home = holder.Position
+			end
+		end
 		if k < 0.999 or juiced[holder] then
 			UI.scaleBase(holder, k)
 		end
@@ -893,6 +965,7 @@ function UI.window(name: string, title: string, _color: Color3?, opts: WindowOpt
 	fitWindow()
 	scale:GetPropertyChangedSignal("Scale"):Connect(fitWindow)
 	holder:GetPropertyChangedSignal("Size"):Connect(fitWindow)
+	holder:GetAttributeChangedSignal("ReachRight"):Connect(fitWindow)
 	-- the ForgeGUI plank sign as the board (made first, so it draws under everything): grown so its flat inside
 	-- lines up with the plank panel, 20 px in from the board's edge, which keeps every window's layout as it was
 	local S = skin("ui_sign")
@@ -1337,9 +1410,7 @@ toastHolder.Parent = gui
 -- On narrow layouts (16:9 phones, tablets) the strip went over the quest card and the Potato button: lower and
 -- narrower there.
 local function placeToasts()
-	local cam = workspace.CurrentCamera
-	local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
-	local width = vp.X / math.max(scale.Scale, 0.01)
+	local width = UI.area().X / math.max(scale.Scale, 0.01)
 	if width < 1450 then
 		toastHolder.Size = UDim2.fromOffset(600, 200)
 		toastHolder.Position = UDim2.new(0.5, 0, 0, 280)
@@ -1390,7 +1461,7 @@ function UI.toast(text: string, colorName: string?)
 	if #kids >= 3 then
 		kids[1]:Destroy()
 	end
-	local t = UI.text(toastHolder, text, UDim2.fromOffset(700, 38), { color = color, stroke = 3 })
+	local t = UI.text(toastHolder, UI.words(text), UDim2.fromOffset(700, 38), { color = color, stroke = 3 })
 	t.ZIndex = 50
 	bounce(t)
 	fadeOut(t, 3)
@@ -1422,10 +1493,10 @@ function UI.notice(title: string, sub: string?, icon: string?)
 		UI.icon(f, icon, 34, UDim2.fromOffset(14, if sub then 8 else 10)).ZIndex = 46
 		x = 56
 	end
-	local t = UI.text(f, title, UDim2.new(1, -x - 14, 0, 40), { pos = UDim2.fromOffset(x, 6), align = Enum.TextXAlignment.Center, color = Color3.fromRGB(255, 186, 60), stroke = 2.5 })
+	local t = UI.text(f, UI.words(title), UDim2.new(1, -x - 14, 0, 40), { pos = UDim2.fromOffset(x, 6), align = Enum.TextXAlignment.Center, color = Color3.fromRGB(255, 186, 60), stroke = 2.5 })
 	t.ZIndex = 46
 	if sub then
-		local s = UI.text(f, sub, UDim2.new(1, -28, 0, 30), { pos = UDim2.fromOffset(14, 52), color = WOOD.cream, stroke = 2 })
+		local s = UI.text(f, UI.words(sub), UDim2.new(1, -28, 0, 30), { pos = UDim2.fromOffset(14, 52), color = WOOD.cream, stroke = 2 })
 		s.ZIndex = 46
 	end
 	bounce(f)

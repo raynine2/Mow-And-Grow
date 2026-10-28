@@ -176,13 +176,13 @@ shows the empty world for a moment (live servers teleport instead).
 ## Studio vs. git: please read
 
 **State on 28 Oct, ~17:00: round 2 of the films is in Studio and play-tested; round 3's fixes (`c3d8b15`) are in
-git, NOT in Studio yet.** Round 2 went in at ~16:35: `client/Intro`, `Ending`, `IntroUi`, `MayorRig`, `DevPanel`,
+git (with `f0f0f0f`), NOT in Studio yet.** Round 2 went in at ~16:35: `client/Intro`, `Ending`, `IntroUi`, `MayorRig`, `DevPanel`,
 `Demon`, the new `FilmPanels` and `GlitchHole`, and `server/WalkPlates` match `003b8a5` / `1bb94c1` (checksums); the
 old copies are in `ServerStorage.MowALawnBackups.pre_films2_28oct`. A Studio play test was still running when the
 tools closed: stop it first. **Not saved yet: the owner stops the test and presses Ctrl+S.** To copy `c3d8b15` in
 (4 scripts), the same guard: each script's checksum must be round 2's (`Intro` 52929 326942358, `Ending` 61013
 1971095356, `FilmPanels` 33420 282063935, `WalkPlates` 6315 504915688; stop if any differs), back them up to
-`pre_films3_28oct`, stage the patched text, and swap in only if all four come out right (`Intro` 54182 1571591012,
+`pre_films3_28oct`, stage the patched text, and swap in only if all four come out right (`Intro` 54278 668152496,
 `Ending` 62881 1867823068, `FilmPanels` 34350 2112058101, `WalkPlates` 8482 834368617). No Rojo sync (see below).
 
 **State on 28 Oct, ~16:30 (now replaced by the above):** round 2 was in git but not in Studio.

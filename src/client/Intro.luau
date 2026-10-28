@@ -1198,11 +1198,10 @@ local function crateScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	return ok
 end
 
--- The top of the tallest grass clump within `radius` studs (sideways) of `at`. (The clumps can't be hit by a
--- raycast, so the camera checks can't see them.)
-local function grassTop(at: Vector3, radius: number): number
+-- The top of the tallest of the meadow's grass clumps (`grass`: its folder) within `radius` studs (sideways) of
+-- `at`. (The clumps can't be hit by a raycast, so the camera checks can't see them.)
+local function grassTop(grass: Instance?, at: Vector3, radius: number): number
 	local top = -math.huge
-	local grass = workspace:FindFirstChild("Grass1", true)
 	if grass then
 		for _, d in grass:GetDescendants() do
 			if d:IsA("Model") and d.Name == "Clump" and flat(d:GetPivot().Position - at).Magnitude < radius then
@@ -1216,9 +1215,9 @@ end
 
 -- The peek's camera, turned `yaw` degrees from straight out past the thick grass: back from it and up over the
 -- clumps (12-14 studs tall: in among them, Studio's test on 28 Oct saw nothing but green).
-local function peekFrom(P: Plan, yaw: number): Vector3
+local function peekFrom(P: Plan, yaw: number, grass: Instance?): Vector3
 	local f = P.thick - turn(P.dirK, yaw) * 14
-	return Vector3.new(f.X, math.max(f.Y + 9, grassTop(f, 16) + 3), f.Z)
+	return Vector3.new(f.X, math.max(f.Y + 9, grassTop(grass, f, 16) + 3), f.Z)
 end
 
 -- A sneak peek of world 2 (owner, 27 Oct: "have this boss sneak peek in the first cutscene"): the picture glitches
@@ -1236,13 +1235,14 @@ local function peekScene(P: Plan): boolean
 		return false
 	end
 	-- (the first turn with nothing solid between the camera and the tear, nor beside it in the frame)
+	local grass = workspace:FindFirstChild("Grass1", true)
 	local yaw = freeYaw(function(y)
-		return { peekFrom(P, y) }
+		return { peekFrom(P, y, grass) }
 	end, function(y)
 		return P.thick + turn(P.dirK, y) * 150 + UP * 70
 	end, { 0, 30, -30, 60, -60, 90, -90 }, 25)
 	local dirK = turn(P.dirK, yaw)
-	local from = peekFrom(P, yaw)
+	local from = peekFrom(P, yaw, grass)
 	local far = P.thick + dirK * 150 + UP * 70
 	local toCam = unit(from - far, -dirK)
 	local C = Corruption.new(far)

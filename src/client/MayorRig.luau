@@ -165,6 +165,7 @@ export type Mayor = {
 	closeEyes: (on: boolean) -> (),
 	face: () -> Vector3,
 	eyes: () -> Vector3,
+	place: (cf: CFrame) -> (),
 	destroy: () -> (),
 }
 
@@ -673,6 +674,11 @@ function MayorRig.new(parent: Instance, feet: CFrame, opts: { lite: boolean?, sc
 		end,
 		eyes = function(): Vector3
 			return head.CFrame:PointToWorldSpace(eyesLocal)
+		end,
+		-- (28 Oct) stand him somewhere else (any CFrame, tipped over too: the ending's black hole pulls him in)
+		place = function(cf: CFrame)
+			feet = cf
+			self.root = cf
 		end,
 		destroy = function()
 			model:Destroy()

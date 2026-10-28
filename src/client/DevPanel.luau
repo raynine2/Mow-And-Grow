@@ -33,6 +33,8 @@ local BUTTONS = {
 	{ "CUT ONE CLUMP", "cutOne", Color3.fromRGB(150, 90, 220) },
 	{ "PLAY OPENING", "playOpening", Color3.fromRGB(255, 170, 40) }, -- (this client only: client/Intro.preview)
 	{ "PLAY ENDING", "playEnding", Color3.fromRGB(255, 70, 150) }, -- (this client only: client/Ending.preview)
+	{ "OPENING: CLASH", "playClash", Color3.fromRGB(255, 170, 40) }, -- (the opening from the sky tearing open)
+	{ "ENDING: CREDITS", "playCredits", Color3.fromRGB(255, 70, 150) }, -- (the ending from the credits on)
 	{ "MAYOR VOICE", "mayorVoice", Color3.fromRGB(170, 110, 255) }, -- (this client only: client/Babble's voices)
 }
 
@@ -84,6 +86,14 @@ local function build()
 			elseif b[2] == "playOpening" then
 				UI.close()
 				require(script.Parent.Intro).preview()
+				return
+			elseif b[2] == "playClash" then
+				UI.close()
+				require(script.Parent.Intro).preview("glitch")
+				return
+			elseif b[2] == "playCredits" then
+				UI.close()
+				require(script.Parent.Ending).preview("credits")
 				return
 			end
 			State.fire("Dev", b[2], b[4])

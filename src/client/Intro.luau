@@ -1,22 +1,24 @@
 -- The run's opening film (owner, 28 Oct: "remake it ... make it feel like a real movie with a story attached to
--- it"), the first time you're in a new run. About a minute, told by Mayor Thistlewick (client/MayorRig). Remade
--- the same day after the owner saw it ("there isn't a lot going on", "show that grass grows", "show a boss when it
--- mentions a boss") and an LLM council on it: something on screen changes every few seconds, and whatever the
--- story says happens, you see happen.
+-- it"), the first time you're in a new run. Under a minute, told by Mayor Thistlewick (client/MayorRig). Remade
+-- twice that day after the owner saw it ("show that grass grows", "show a boss when it mentions a boss"; then "it's
+-- not his fault", "show it like JJK ... domain clash", "you don't have to show everything", "use impact frames")
+-- and two LLM councils on it: whatever the story says happens, you see happen, and nothing is a list.
 --   I.   ONCE UPON A TIME: a golden storybook memory of the valley before the grass came, mowed neat as a pin; the
---        Mayor proud on his soapbox, tipping his hat... a rumble, his eyes snap open;
---   II.  THE DANDELION KING: out on the bare meadow the ground heaves and the first guardian rises; his eyes flash
---        the demon's pink for a moment; he takes a huge breath and BLOWS his seeds over the valley. Seeds drift
---        down round the Mayor and the grass rises out of the soil, up and up, over his soapbox, up to his
+--        Mayor proud on his soapbox, tipping his hat... the picture glitches; his eyes snap open, up at the sky;
+--   II.  THE GLITCH: out in the meadow the gentle Dandelion King stands in the sun; above him the sky tears open in
+--        pink and a spark drops out of it, straight into him [an impact frame]. The clash (client/FilmPanels): three
+--        tall panels slam in, a guardian in each in its own colour (the King, and two of the others as shadows:
+--        you meet them later), a pink fracture rips across them and every eye snaps pink. It isn't their fault;
+--   III. THE SEEDS: the King, pink in his eyes, takes a huge breath and BLOWS his seeds over the valley. Seeds
+--        drift down round the Mayor and the grass rises out of the soil, up and up, over his soapbox, up to his
 --        moustache (a still, low, daylight shot); then the camera cranes up as the growth rolls out over the land;
---   III. PRESENT DAY: the Mayor alone, looking out at the wall of grass ("If only someone could help us...");
+--   IV.  PRESENT DAY: the Mayor alone, looking out at the wall of grass ("If only someone could help us...");
 --        footsteps behind him;
---   IV.  THE MOWERS: the party (copies of everyone's avatars) walks up in slow motion, the camera passes face by
---        face, the Mayor whirls round ("Mowers! At LAST!");
---   V.   THE PLEA: "Eight lands... and eight terrible GUARDIANS!": a roll call, every boss bursting up and roaring
---        under its own colour, its name slamming in (fewer on phones); then he points: "Mow it ALL...";
---   VI.  the supply crate slams down (it blows his hat off), the title lands on the music's hit; a glitch:
---        something far beyond the meadow opens its eyes; then you're in first person, ready to go.
+--   V.   THE MOWERS: the party (copies of everyone's avatars) walks up in slow motion, the camera passes face by
+--        face, the Mayor whirls round ("Mowers! At LAST!"), then points: "Mow it ALL... and set the guardians FREE!";
+--   VI.  the supply crate slams down [an impact frame] (it blows his hat off), the title lands on the music's hit;
+--        far beyond the meadow the sky tears again and an eye opens in the dark, looking at us; then you're in first
+--        person, ready to go.
 -- The Mayor talks in client/Babble's mumble (Config.FILM.babble; the text-to-speech voice is gone), the
 -- narration is storybook text over the pictures; subtitles always. Camera, light and grade: client/Film; music
 -- and sound: client/FilmAudio (licensed library audio only). SKIP ends it at any moment. Once it has played (or
@@ -41,7 +43,9 @@ local Film = require(script.Parent.Film)
 local FilmAudio = require(script.Parent.FilmAudio)
 local FilmVoice = require(script.Parent.FilmVoice)
 local Glitch = require(script.Parent.Glitch)
-local Demon = require(script.Parent.Demon)
+local Corruption = require(script.Parent.Corruption)
+local FilmPanels = require(script.Parent.FilmPanels)
+local GlitchHole = require(script.Parent.GlitchHole)
 local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
 
@@ -58,6 +62,7 @@ local playing = false
 local played = false
 local worldReady = false
 local previewing = false -- (a replay from the DEV panel: the server isn't told it was seen)
+local startAt: string? = nil -- (a DEV replay from a later beat: Intro.preview)
 local generation = 0 -- bumps every showing
 
 -- the story (N: storybook narration over the pictures) and the Mayor's lines (L), in this order. Short: the
@@ -65,14 +70,14 @@ local generation = 0 -- bumps every showing
 local LINES = {
 	N1 = "Once upon a time, our valley was the tidiest lawn in all the land.",
 	N2 = "Every blade trimmed. Every hedge just so.",
-	N3 = "Until the Dandelion King woke up...",
+	N3 = "Until the day something fell out of the sky...",
+	N3b = "...and got into the valley's gentle guardians.",
 	N4 = "...and the grass never stopped GROWING!",
 	L1 = "If only someone could help us...",
 	L2 = "Mowers! At LAST, you've come!",
-	L3 = "Eight lands... and eight terrible GUARDIANS!",
-	L4 = "Mow it ALL... and save our valley!",
+	L4 = "Mow it ALL... and set the guardians FREE!",
 }
-local ORDER = { "N1", "N2", "N3", "N4", "L1", "L2", "L3", "L4" }
+local ORDER = { "N1", "N2", "N3", "N3b", "N4", "L1", "L2", "L4" }
 
 local flat, unit = Film.flat, Film.unit
 local inOut, out, sine = Film.inOut, Film.out, Film.sine
@@ -380,7 +385,7 @@ local function pastScenes(P: Plan, m: IntroCast.Mayor): boolean
 	local a = P.thick + P.dirK * 34 + UP * 58 + side * 26
 	local b = P.thick - P.dirK * 6 + UP * 30 + side * 10
 	local target = P.cast:Lerp(P.mayorAt, 0.5) + UP * 2
-	local ok = Film.run(5.6, function(k)
+	local ok = Film.run(5.0, function(k)
 		local e = sine(k)
 		local pos = a:Lerp(b, e)
 		return Film.look(pos, target:Lerp(P.mayorAt + UP * 4, e)), Film.mm(24 + 6 * e), P.mayorAt
@@ -392,7 +397,7 @@ local function pastScenes(P: Plan, m: IntroCast.Mayor): boolean
 	Film.at(0.3, function()
 		speak("N2", true)
 	end)
-	Film.at(2.4, function()
+	Film.at(2.1, function()
 		m.act("tipHat")
 		Film.at(1.3, function()
 			m.act("proud")
@@ -407,7 +412,7 @@ local function pastScenes(P: Plan, m: IntroCast.Mayor): boolean
 	end, { 30, -30, 55, -55, 10, -10 })
 	local d0 = turn(face, yaw)
 	local s0 = d0:Cross(UP)
-	ok = Film.run(5.4, function(k)
+	ok = Film.run(4.8, function(k)
 		local e = inOut(k)
 		local f = m.face()
 		local pos = f + d0 * (10.5 - 2.6 * e) + s0 * 3.4 - UP * (1.6 - 0.5 * e)
@@ -416,23 +421,25 @@ local function pastScenes(P: Plan, m: IntroCast.Mayor): boolean
 	if not ok then
 		return false
 	end
-	-- 1C: close on his face, content... a rumble; his eyes snap open
+	-- 1C: close on his face, content... the picture glitches (the music stutters and dies); his eyes snap open, up
 	m.closeEyes(true)
-	Film.at(1.25, function()
+	Film.at(1.1, function()
 		if story then
-			story.tapeStop(1.1)
+			story.tapeStop(0.9)
 		end
-		FilmAudio.sfx("rumble", { volume = 1.1 })
+		FilmAudio.glitch(0.7)
+		Glitch.burst(0.5, 0.22)
+		Film.freeze(0.12)
 		FilmAudio.sfx("synthWhomp", { pitch = 0.6, volume = 0.8 })
-		Film.shake(0.25, 1.2)
+		Film.shake(0.2, 1.4)
 	end)
-	Film.at(1.6, function()
+	Film.at(1.45, function()
 		m.closeEyes(false)
 		m.mood("surprised")
 		m.act("shock")
-		m.look(P.thick + P.dirK * 40 - UP * 2)
+		m.look(P.thick + P.dirK * 30 + UP * 60)
 	end)
-	return Film.run(2.3, function(k, t)
+	return Film.run(2.1, function(k, t)
 		local f = m.face()
 		local push = if t < 1.6 then 0 else out((t - 1.6) / 0.5) * 0.9
 		local pos = f + d0 * (4.8 - push) + s0 * 0.9 + UP * 0.1
@@ -441,20 +448,42 @@ local function pastScenes(P: Plan, m: IntroCast.Mayor): boolean
 end
 
 -------------------------------------------------------------------------------------------------------------
--- II. THE DANDELION KING (owner, 28 Oct: "show that grass grows", "show a boss when it mentions a boss"; the
--- council: the grass needs a cause you can see, and growing only reads in daylight, with the camera still, when
--- it swallows something of a size you know)
+-- II. THE GLITCH and III. THE SEEDS (owner, 28 Oct: "show that grass grows", "show a boss when it mentions a
+-- boss", then "it's not his fault", "show it like JJK ... domain clash"; the councils: the grass needs a cause you
+-- can see, growing only reads in daylight with the camera still, the cause is the pink: show it arrive)
 -------------------------------------------------------------------------------------------------------------
-local fxParts: { Instance } = {} -- the seed clouds and the King's eye glints (in the set: they go with it too)
+local fxParts: { Instance } = {} -- the seed clouds, the spark and the King's eye glints (in the set: they go with it)
+local fxStops: { () -> () } = {} -- their per-frame updates
 local overgrown: ((number) -> ())? = nil -- sinks the film-only tall grass round the soapbox
 local bossShown = false -- (this film showed a boss model: client/BossView is the fights' too)
 local bossesOk = true -- (false when a fight's boss is in client/BossView as the film starts: it's left alone)
+local corrupt: Corruption.Handle? = nil -- the tear in the sky
+local clash: FilmPanels.Clash? = nil
 
 local function clearFx()
+	for _, stop in fxStops do
+		stop()
+	end
+	table.clear(fxStops)
 	for _, p in fxParts do
 		p:Destroy()
 	end
 	table.clear(fxParts)
+	if corrupt then
+		corrupt.destroy()
+		corrupt = nil
+	end
+	if clash then
+		clash.destroy()
+		clash = nil
+	end
+end
+
+-- the boss model client/BossView is showing (for an impact frame's silhouette)
+local function bossModel(): Model?
+	local f = workspace:FindFirstChild("BossView")
+	local m = f and f:FindFirstChildWhichIsA("Model")
+	return if m and m:IsA("Model") then m else nil
 end
 
 -- a boss model's scale for its fight height (as server/Boss works it out)
@@ -510,10 +539,50 @@ local function seedCloud(cf: CFrame, size: Vector3, o: Cloud): ParticleEmitter
 	return e
 end
 
--- 2A-2B: he rises out of the bare meadow and roars; close on his face his eyes flash a strange neon pink (world
--- 2's demon is behind all this); he fills up with a huge breath... and BLOWS his seeds over the valley.
--- Returns where he stands.
-local function kingScenes(P: Plan, m: IntroCast.Mayor): (boolean, Vector3)
+-- The King's eyes burn the demon's pink from now on (glowing balls on his eye points, every frame).
+local function pinkEyes(H: number)
+	local names = BossView.attAll("att_eye")
+	local glints: { BasePart } = {}
+	for i in names do
+		local g = setPart("DemonGlint", Vector3.one * math.max(0.7, H * 0.045), CFrame.new())
+		g.Shape = Enum.PartType.Ball
+		g.Material = Enum.Material.Neon
+		g.Color = FilmPanels.PINK
+		g.Transparency = 0
+		if i == 1 then
+			local l = Instance.new("PointLight")
+			l.Color = FilmPanels.PINK
+			l.Range = H * 0.6
+			l.Brightness = 3
+			l.Shadows = false
+			l.Parent = g
+		end
+		table.insert(glints, g)
+	end
+	table.insert(fxStops, Film.every(function()
+		for i, name in names do
+			local at = BossView.attWorld(name)
+			if at and glints[i] then
+				glints[i].CFrame = CFrame.new(at)
+			end
+		end
+	end))
+end
+
+-- the low shot of him from the camp side: a turn that's clear of the camp's houses and trees
+local function kingYaw(kingFeet: Vector3, toCamp: Vector3, H: number): Vector3
+	local yaw = freeYaw(function(y)
+		return { kingFeet + turn(toCamp, y) * (H * 1.6) + UP * 2.4 }
+	end, function()
+		return kingFeet + UP * (H * 0.9)
+	end, { 0, 15, -15, 30, -30, 45, -45 })
+	return turn(toCamp, yaw)
+end
+
+-- 2A: out in the meadow the gentle Dandelion King stands in the sun (low on the camp side, looking up past him at
+-- the sky); above him the sky tears open in pink and a spark drops out of it, straight into him [an impact frame]:
+-- he staggers and changes (client/BossView's rage, carrying on under the clash). Returns where he stands.
+local function glitchScene(P: Plan, m: IntroCast.Mayor): (boolean, Vector3)
 	local moves = BossMoves.get(1)
 	local H = moves.height
 	local toCamp = -P.dirK
@@ -525,77 +594,182 @@ local function kingScenes(P: Plan, m: IntroCast.Mayor): (boolean, Vector3)
 	Film.vignette(0.45, 0.6)
 	Film.light(LOOKS.day, 0.6)
 	FilmAudio.muffle(0, 0.2)
-	darkCue = FilmAudio.music("darkMusic", { fade = 0.6 })
 	bed("ambWind", 1.4, 1.5)
-	if not bossesOk then
-		return true, kingFeet -- (a fight is on: straight to the growing)
-	end
-	showBoss(1, kingFeet, toCamp)
-	BossView.act("intro", { len = 4.4, kind = moves.intro })
-	BossView.critters("intro", 4)
 	m.look(kingFeet + UP * H * 0.7)
-	FilmAudio.sfx("rumble", { volume = 1 })
-	Film.shake(0.3, 1.4)
-	Film.at(0.4, function()
+	if bossesOk then
+		showBoss(1, kingFeet, toCamp)
+		BossView.critters("intro", 2)
+	end
+	local d0 = kingYaw(kingFeet, toCamp, H)
+	local camAt = IntroCast.ground(kingFeet + d0 * (H * 1.6)) + UP * 2.4
+	local head = kingFeet + UP * (H * 0.8)
+	local sky = kingFeet - d0 * (H * 0.7) + UP * (H * 3.1)
+	local C = Corruption.new(kingFeet)
+	corrupt = C
+	Film.at(0.35, function()
 		speak("N3", true)
 	end)
-	Film.at(2.0, function()
-		FilmAudio.sfx("impact", { volume = 0.6, pitch = 0.8 })
-		Film.shake(0.45, 1.6)
+	Film.at(0.7, function()
+		C.rift(sky, d0, H * 1.5, 0.45)
+		FilmAudio.glitch(0.6)
+		Glitch.burst(0.4, 0.18)
+		FilmAudio.sfx("synthWhomp", { volume = 0.7, pitch = 0.5 })
 	end)
-	Film.at(3.2, function()
-		FilmAudio.sfx("roar", { volume = 0.6, pitch = 0.95 })
-		Film.punch(4)
+	-- the spark: out of the tear, falling faster and faster, a pink streak behind it
+	local spark = setPart("Spark", Vector3.one * math.max(1.2, H * 0.06), CFrame.new(sky))
+	spark.Shape = Enum.PartType.Ball
+	spark.Material = Enum.Material.Neon
+	spark.Color = FilmPanels.PINK
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, 0.5, 0)
+	a0.Parent = spark
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, -0.5, 0)
+	a1.Parent = spark
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Color = ColorSequence.new(Color3.fromRGB(255, 214, 240), FilmPanels.PINK)
+	trail.LightEmission = 1
+	trail.Lifetime = 0.35
+	trail.FaceCamera = true
+	trail.Transparency = NumberSequence.new(0, 1)
+	trail.WidthScale = NumberSequence.new(1, 0.2)
+	trail.Enabled = false
+	trail.Parent = spark
+	local glow = Instance.new("PointLight")
+	glow.Color = FilmPanels.PINK
+	glow.Range = 18
+	glow.Brightness = 0
+	glow.Shadows = false
+	glow.Parent = spark
+	local FALL_AT, HIT_AT = 1.45, 2.65
+	local t0 = Film.now()
+	local hit = false
+	table.insert(fxStops, Film.every(function(_: number, now: number)
+		local t = now - t0
+		if hit or t < FALL_AT then
+			return
+		end
+		local k = math.clamp((t - FALL_AT) / (HIT_AT - FALL_AT), 0, 1)
+		spark.Transparency = 0
+		trail.Enabled = true
+		glow.Brightness = 5
+		local aim = BossView.attWorld("att_head_center") or head
+		spark.CFrame = CFrame.new(sky:Lerp(aim, k * k))
+	end))
+	-- a moment of silence... then the hit
+	Film.at(HIT_AT - 0.3, function()
+		FilmAudio.duck(1, 0.12)
 	end)
-	-- 2A: low in the meadow on the camp side, looking up at him (a turn that's clear of the camp's houses and trees)
-	local yaw = freeYaw(function(y)
-		return { kingFeet + turn(toCamp, y) * (H * 1.3) + UP * 3 }
-	end, function()
-		return kingFeet + UP * (H * 0.6)
-	end, { 0, 15, -15, 30, -30, 45, -45, 60, -60 })
-	local d0 = turn(toCamp, yaw)
-	local camAt = IntroCast.ground(kingFeet + d0 * (H * 1.3)) + UP * 2.6
-	local ok = Film.run(3.8, function(k)
-		local look = kingFeet + UP * (H * (0.3 + 0.35 * inOut(k)))
-		return Film.look(camAt - d0 * (k * 2.5), look, -2 + k * 2), Film.mm(26), look
-	end, { hand = 0.35 })
-	if not ok then
-		return false, kingFeet
-	end
-	-- 2B: his eyes flash the demon's pink, twice
-	local eyeNames = BossView.attAll("att_eye")
-	local glints: { BasePart } = {}
-	for _ in eyeNames do
-		local g = setPart("DemonGlint", Vector3.one * math.max(0.7, H * 0.04), CFrame.new(kingFeet))
-		g.Shape = Enum.PartType.Ball
-		g.Material = Enum.Material.Neon
-		g.Color = Color3.fromRGB(255, 60, 170)
-		table.insert(glints, g)
-	end
-	local stopGlints = Film.every(function()
-		for i, name in eyeNames do
-			local at = BossView.attWorld(name)
-			if at and glints[i] then
-				glints[i].CFrame = CFrame.new(at)
+	Film.at(HIT_AT, function()
+		hit = true
+		spark.Transparency = 1
+		trail.Enabled = false
+		glow.Brightness = 0
+		FilmAudio.sfx("impact", { volume = 0.95, pitch = 0.8 })
+		FilmAudio.sfx("synthWhomp", { volume = 0.8, pitch = 0.45 })
+		FilmPanels.impact({ bossModel() }, { at = head })
+		Film.shake(0.55, 1.4)
+		if bossesOk then
+			-- the pink gets in: he staggers, kneels and changes, while the clash plays
+			BossView.act("rage")
+			pinkEyes(H)
+		end
+		task.delay(0.4, function()
+			if playing then
+				FilmAudio.duck(0, 0.4)
 			end
-		end
+		end)
 	end)
-	local function glint(on: boolean)
-		for _, g in glints do
-			g.Transparency = if on then 0 else 1
-		end
+	local ok = Film.run(HIT_AT + 0.3, function(k, t)
+		-- up at the tear, then down with the spark onto him
+		local e = Film.smooth((t - FALL_AT) / (HIT_AT - FALL_AT))
+		local look = (sky - UP * (H * 0.6)):Lerp(head + UP * (H * 0.25), e)
+		return Film.look(camAt - d0 * (k * 1.2), look), Film.mm(20 + 4 * e), look
+	end, { hand = 0.3 })
+	return ok, kingFeet
+end
+
+-- 2B: the clash (owner: "show it like JJK Yuta domain clash", "you don't have to show everything"). Three tall
+-- panels slam in, a guardian in each in its own colour: the King in the middle, two of the others either side as
+-- shadows (a different two each run: you meet them in their own lands); a pink fracture rips across them and every
+-- eye snaps pink.
+local function clashScene(): boolean
+	local left = math.random(2, 4)
+	local right = math.random(5, math.max(5, #Config.ZONES))
+	local c = FilmPanels.clash({ { z = left, silhouette = true }, { z = 1 }, { z = right, silhouette = true } })
+	if not c then
+		return true
 	end
-	for _, t in { 0.3, 0.62 } do
-		Film.at(t, function()
-			glint(true)
-			FilmAudio.glitch(0.25)
-		end)
-		Film.at(t + 0.2, function()
-			glint(false)
-		end)
+	clash = c
+	IntroUi.hush()
+	table.insert(fxStops, Film.every(c.update))
+	local function slamSound(pitch: number)
+		FilmAudio.sfx("slam", { volume = 0.6, pitch = pitch })
+		FilmAudio.sfx("whomp", { volume = 0.5, pitch = pitch * 0.9 })
 	end
-	-- a huge breath in... and the BLOW
-	Film.at(0.9, function()
+	Film.at(0.1, function()
+		c.slam(1)
+		slamSound(0.95)
+	end)
+	Film.at(0.55, function()
+		c.slam(3)
+		slamSound(0.85)
+	end)
+	Film.at(1.0, function()
+		c.slam(2)
+		FilmAudio.sfx("impact", { volume = 0.7, pitch = 1.05 })
+	end)
+	Film.at(1.15, function()
+		speak("N3b", true)
+	end)
+	Film.at(1.85, function()
+		c.corrupt()
+		FilmAudio.glitch(1)
+		Glitch.burst(0.55, 0.22)
+		FilmAudio.sfx("demonSwell", { volume = 0.75 })
+	end)
+	Film.at(2.35, function()
+		FilmAudio.duck(1, 0.08)
+	end)
+	Film.at(2.55, function()
+		c.snap()
+		FilmAudio.sfx("bigHit", { volume = 0.75, pitch = 0.8 })
+		FilmAudio.sfx("growl2", { volume = 0.6, pitch = 0.75 })
+		task.delay(0.3, function()
+			if playing then
+				FilmAudio.duck(0, 0.5)
+			end
+		end)
+	end)
+	Film.at(3.75, function()
+		c.out(0.35)
+		FilmAudio.sfx("swipe", { volume = 0.9, pitch = 0.8 })
+	end)
+	-- (behind the panels the camera holds still: none of the world shows until they fly off)
+	local hold = Film.lastFrame()
+	local ok = Film.run(4.1, function()
+		return hold, Film.mm(24), nil
+	end, { hand = 0 })
+	clash = nil
+	return ok
+end
+
+-- 2C: back in the meadow the King, changed, the pink burning in his eyes, fills up with a huge breath... and BLOWS
+-- his seeds over the valley.
+local function kingScenes(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolean
+	local moves = BossMoves.get(1)
+	local H = moves.height
+	local toCamp = -P.dirK
+	darkCue = FilmAudio.music("darkMusic", { fade = 0.4 })
+	m.look(kingFeet + UP * H * 0.7)
+	if not bossesOk then
+		return true -- (a fight is on: straight to the growing)
+	end
+	local d0 = kingYaw(kingFeet, toCamp, H)
+	BossView.critters("intro", 3)
+	Film.at(0.1, function()
 		BossView.act("blow", { land = 0.9, hold = 1.4 })
 		local inhale = FilmAudio.sfx("suck", { volume = 0.55, pitch = 1.3 })
 		task.delay(0.9, function()
@@ -605,7 +779,7 @@ local function kingScenes(P: Plan, m: IntroCast.Mayor): (boolean, Vector3)
 	local mouth0 = BossView.attWorld("att_head_center") or (kingFeet + UP * H * 0.8)
 	local feet = IntroCast.ground(P.mayorAt)
 	local light = PhonePerf.on or Potato.on -- (fewer seeds on phones)
-	Film.at(1.8, function()
+	Film.at(1.0, function()
 		local mouth = BossView.attWorld("att_head_center") or mouth0
 		local aim = unit((feet + UP * 6) - mouth, toCamp)
 		local burst = seedCloud(CFrame.lookAt(mouth, mouth + aim), Vector3.new(H * 0.22, H * 0.22, 1), { rate = if light then 300 else 520, speed = NumberRange.new(30, 55), spread = Vector2.new(26, 16), life = NumberRange.new(2.6, 4), scale = 2.2 })
@@ -620,13 +794,10 @@ local function kingScenes(P: Plan, m: IntroCast.Mayor): (boolean, Vector3)
 	end)
 	local side = d0:Cross(UP)
 	local camB = mouth0 + d0 * (H * 0.55) - UP * (H * 0.12) + side * (H * 0.12)
-	ok = Film.run(3.0, function(k)
+	return Film.run(2.8, function(k)
 		local head = BossView.attWorld("att_head_center") or mouth0
 		return Film.look(camB + d0 * (k * 1.5), head), Film.mm(40), head
 	end, { hand = 0.3 })
-	stopGlints()
-	glint(false)
-	return ok, kingFeet
 end
 
 -- 2C: the seeds drift down round the Mayor... and the grass rises out of the soil, over his soapbox, up to his
@@ -689,7 +860,7 @@ local function growScenes(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boole
 			end)
 		end
 	end)
-	local ok = Film.run(5.4, function(k)
+	local ok = Film.run(5.0, function(k)
 		local fov = Film.mm(28 + 4 * Film.smooth(k))
 		return CFrame.lookAt(camAt, look), fov, look
 	end, { hand = 0.04 })
@@ -704,10 +875,10 @@ local function growScenes(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boole
 	end, { 0, 15, -15, 30, -30, 45, -45 })
 	local top = P.thick - turn(P.dirK, craneYaw) * 34 + UP * 38
 	local far = P.thick + turn(P.dirK, craneYaw) * 40
-	Film.at(1.6, function()
+	Film.at(1.2, function()
 		IntroUi.caption("Present day", 3.2)
 	end)
-	return Film.run(3.4, function(k)
+	return Film.run(2.8, function(k)
 		local e = inOut(k)
 		local p = camAt:Lerp(top, e)
 		local at = look:Lerp(far, e)
@@ -835,7 +1006,7 @@ local function heroScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	local n = #actors
 	-- 4A: they walk up in slow motion, low and wide, the light behind them
 	Film.speed(0.55, 0.35)
-	local walkLen = 3.8
+	local walkLen = 3.4
 	for i, actor in actors do
 		local spot = actor.spot.Position
 		local from = walkFrom(spot, -P.fwd)
@@ -867,7 +1038,7 @@ local function heroScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	local a = (if first then flat(first.Position) else flat(P.cast)) - P.right * 2.6
 	local b = (if last then flat(last.Position) else flat(P.cast)) + P.right * 2.6
 	local done = {}
-	local len = math.clamp(1.15 * n + 1.6, 3.0, 6.5)
+	local len = math.clamp(1.05 * n + 1.6, 3.0, 5.2)
 	ok = Film.run(len, function(k)
 		local along = flat(a):Lerp(flat(b), inOut(k))
 		local p = Vector3.new(along.X, headY, along.Z) + P.fwd * 7.6
@@ -906,90 +1077,11 @@ local function heroScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 end
 
 -------------------------------------------------------------------------------------------------------------
--- V. THE PLEA
+-- V. THE PLEA: he whirls round and points at the grass: "Mow it ALL... and set the guardians FREE!" (the roll call of
+-- all eight guardians that stood here is gone: owner, 28 Oct, "you don't have to show everything"; the clash
+-- shows three, the rest wait in their own lands)
 -------------------------------------------------------------------------------------------------------------
--- The roll call (owner, 28 Oct: "show a boss when it mentions a boss, make it unique"): one hard cut per guardian,
--- each bursting up its own way (shared/BossMoves' intro) and roaring at the camera under its own colour, its name
--- and title slamming in. About a second each; phones and Potato Mode see five (each one builds its model). Their
--- funny lines stay for their own fights (client/BossCine).
-local CUT = 0.95
-
-local function rollCall(P: Plan): boolean
-	if not bossesOk then
-		return true -- (a fight's boss is showing: no roll call this time)
-	end
-	local list = if PhonePerf.on or Potato.on then { 1, 2, 4, 6, 8 } else { 1, 2, 3, 4, 5, 6, 7, 8 }
-	local stage = IntroCast.ground(P.thick + P.dirK * 26)
-	-- one way to look at them that's clear of the camp (low, looking up: mostly sky behind them)
-	local baseYaw = freeYaw(function(y)
-		local d = turn(-P.dirK, y)
-		return { stage + d * 40 + UP * 2.4, stage + d * 30 + UP * 2.4 }
-	end, function()
-		return stage + UP * 22
-	end)
-	IntroUi.hush()
-	FilmAudio.duck(0.3, 0.2)
-	local roar: Sound? = nil
-	for i, z in list do
-		local moves = BossMoves.get(z)
-		local zone = Config.ZONES[z]
-		local boss = zone and zone.boss
-		local color: Color3 = if boss and boss.color then boss.color else Color3.new(1, 1, 1)
-		local H = moves.height
-		local lean = if i % 2 == 0 then 1 else -1
-		local d = turn(-P.dirK, baseYaw + lean * 16)
-		showBoss(z, stage, d)
-		BossView.act("cameo", { len = CUT + 0.25, kind = moves.intro })
-		BossView.critters("intro", CUT + 0.3)
-		Film.grade({ Brightness = 0.02, Contrast = 0.24, Saturation = 0.2, TintColor = Color3.new(1, 1, 1):Lerp(color, 0.3) }, 0)
-		IntroUi.bossCard(("GUARDIAN %d OF 8"):format(z), string.upper(if boss then boss.name else moves.rig), moves.title or "", color, CUT - 0.12)
-		FilmAudio.fadeOut(roar, 0.12)
-		FilmAudio.sfx("whomp", { volume = 0.55, pitch = 0.75 + 0.04 * i })
-		Film.at(0.26, function()
-			roar = FilmAudio.sfx("roar", { volume = 0.45, pitch = 0.78 + ((z * 37) % 9) * 0.06 })
-			Film.punch(3)
-		end)
-		local camAt = stage + d * (H * 0.95) + UP * 2.2
-		local ok = Film.run(CUT, function(k)
-			local look = stage + UP * (H * (0.55 + 0.08 * k))
-			return Film.look(camAt - d * (k * H * 0.08), look, lean * 3 * (1 - k)), Film.mm(22), look
-		end, { hand = 0.25 })
-		if not ok then
-			return false
-		end
-	end
-	FilmAudio.fadeOut(roar, 0.4)
-	BossView.hide()
-	Film.grade("hero", 0.2)
-	FilmAudio.duck(0, 0.6)
-	return true
-end
-
 local function pleaScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor }): boolean
-	-- 5A: "Eight lands... and eight terrible GUARDIANS!"
-	m.act("present")
-	m.mood("worried")
-	m.look(P.cast + UP * 3.5)
-	Film.at(0.2, function()
-		speak("L3")
-		Film.at(1.3, function()
-			m.act("fist")
-			m.mood("scared")
-		end)
-	end)
-	local ok = Film.run(3.0, function(k)
-		local f = m.face()
-		local pos = f - P.fwd * (10.5 - 2.5 * inOut(k)) + P.right * 2.8 - UP * 1.8
-		return Film.look(pos, f - UP * 1.4), Film.mm(38 + 12 * k), f
-	end, { hand = 0.3 })
-	if not ok then
-		return false
-	end
-	-- 5B: and here they are
-	if not rollCall(P) then
-		return false
-	end
-	-- 5C: he whirls round and points at the grass: "Mow it ALL!"
 	local toGrass = unit(flat(P.thick - P.mayorAt), P.fwd)
 	m.turn(toGrass, 0.5)
 	m.mood("stern")
@@ -1002,7 +1094,7 @@ local function pleaScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 		actor.look(P.thick + UP * 3)
 	end
 	-- (owner, 28 Oct: a riser here came in loud and harsh under his line: the line and the music carry it now)
-	return Film.run(4.8, function(k)
+	return Film.run(4.4, function(k)
 		local pos = P.cast - P.fwd * (6.2 - 1.6 * inOut(k)) + UP * (5.2 + 0.6 * k) + P.right * 3.0
 		local look = P.mayorAt + UP * 5 + toGrass * 6 * k
 		return Film.look(pos, look), Film.mm(26), P.mayorAt + UP * 5
@@ -1025,7 +1117,14 @@ local function crateScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 			return
 		end
 		FilmAudio.sfx("whoosh", { volume = 1, pitch = 0.55 })
-		IntroCast.crate(mid, -P.fwd, function()
+		-- (the music drops out just before it lands: silence, then the hit)
+		task.delay(0.38, function()
+			if playing then
+				FilmAudio.duck(1, 0.1)
+			end
+		end)
+		local crateModel: Model? = nil
+		crateModel = IntroCast.crate(mid, -P.fwd, function()
 			if not playing then
 				return
 			end
@@ -1035,7 +1134,18 @@ local function crateScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 				Film.speed(1, 0.5)
 			end)
 			Film.punch(12)
-			Film.flash(Color3.new(1, 1, 1), 0.6, 0.35)
+			-- [an impact frame] the crate and the party: black on white, then on orange (not the Mayor: a voxel
+			-- sculpture of thousands of blocks is too many to copy in the blink of a hit)
+			local subjects: { Instance? } = { crateModel }
+			for _, actor in actors do
+				table.insert(subjects, actor.model)
+			end
+			FilmPanels.impact(subjects, { color = Color3.fromRGB(255, 150, 40), at = IntroCast.ground(mid) + UP * 2 })
+			task.delay(0.3, function()
+				if playing then
+					FilmAudio.duck(0, 0.6)
+				end
+			end)
 			-- (one solid hit, not a pile of them: stacked hits got too loud)
 			FilmAudio.sfx("crate", { volume = 0.9 })
 			FilmAudio.sfx("impact", { volume = 0.6 })
@@ -1086,42 +1196,44 @@ local function crateScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 end
 
 -- A sneak peek of world 2 (owner, 27 Oct: "have this boss sneak peek in the first cutscene"): the picture glitches
--- and for a moment, far beyond the meadow on a blood-dark horizon, the glitch demon (client/Demon) looms up and
--- its eyes ignite... then it snaps back.
+-- and far beyond the meadow the sky tears open again; in the dark of the tear an eye opens (the glitch demon's, as in
+-- the ending's black hole: client/GlitchHole) and looks straight at us... then it all snaps back. (The council, 28
+-- Oct: give the glitch a face and a sound, so on a phone it can't look like lag.)
 local function peekScene(P: Plan): boolean
 	FilmAudio.glitch(0.8)
 	Glitch.burst(0.9, 0.35)
 	Film.shake(0.35, 2)
 	FilmAudio.sfx("demonSwell", { volume = 1 })
-	Film.wait(0.3)
+	Film.wait(0.25)
 	if not playing then
 		Glitch.clear()
 		return false
 	end
-	local far = IntroCast.ground(P.thick + P.dirK * 230)
-	local demon = Demon.new(CFrame.lookAt(far, far - P.dirK), 2.4, nil, { lite = true }) -- (far off: the light build)
-	demon.state.rise = 0.82
-	demon.state.glitch = 1
-	local ungrade = Glitch.grade({ Brightness = -0.32, Contrast = 0.55, Saturation = -0.65, TintColor = Color3.fromRGB(255, 118, 150) }, 0.12)
-	Glitch.static(0.35, 1.7)
-	FilmAudio.sfx("growl", { volume = 1, pitch = 0.7 })
-	local t0 = os.clock()
-	local remove = Film.every(function()
-		demon.update(os.clock() - t0)
-	end)
-	local caption = Glitch.text(nil, "...something is waking up", UDim2.fromScale(0.42, 0.045), UDim2.fromScale(0.5, 0.8), Color3.fromRGB(255, 150, 200))
 	local from = P.thick - P.dirK * 14 + UP * 9
-	local ok = Film.run(1.8, function(k)
-		if k > 0.2 and demon.state.eyes < 1 then
-			demon.state.eyes = 1
+	local far = P.thick + P.dirK * 150 + UP * 70
+	local toCam = unit(from - far, -P.dirK)
+	local C = Corruption.new(far)
+	C.rift(far, toCam, 70, 0.3)
+	local folder = workspace:FindFirstChild("IntroSet") or workspace
+	local eye = GlitchHole.eyeProp(folder)
+	local ungrade = Glitch.grade({ Brightness = -0.32, Contrast = 0.55, Saturation = -0.65, TintColor = Color3.fromRGB(255, 118, 150) }, 0.12)
+	Glitch.static(0.3, 1.6)
+	local caption = Glitch.text(nil, "...something is watching", UDim2.fromScale(0.42, 0.045), UDim2.fromScale(0.5, 0.8), Color3.fromRGB(255, 150, 200))
+	local opened = false
+	local ok = Film.run(1.9, function(k)
+		local open = math.clamp((k - 0.22) / 0.18, 0, 1)
+		if open > 0 and not opened then
+			opened = true
 			FilmAudio.sfx("growl2", { volume = 0.8, pitch = 0.8 })
+			FilmAudio.sfx("sting", { volume = 0.6, pitch = 0.9 })
 		end
-		local eyes = demon.eyes()
-		return Film.look(from, eyes - UP * (10 - k * 3)), 21 - k * 5, eyes
+		-- (it glares, then narrows)
+		eye.place(far + toCam * 2, toCam, 16, open * (1 - 0.35 * math.clamp((k - 0.75) / 0.25, 0, 1)))
+		return Film.look(from, far - UP * (8 - k * 6)), 24 - k * 6, far
 	end, { hand = 0.2 })
 	caption.stop()
-	remove()
-	demon.destroy()
+	eye.destroy()
+	C.destroy()
 	if not ok or not playing then
 		ungrade(0)
 		Glitch.clear()
@@ -1203,6 +1315,7 @@ local function finish()
 		end)
 	end
 	previewing = false
+	startAt = nil
 end
 
 local function film()
@@ -1223,11 +1336,19 @@ local function film()
 	-- (client/BossView shows one boss at a time; if a fight's boss is in it, e.g. a rejoin mid-fight, the film's
 	-- guardians stay out of it)
 	bossesOk = BossView.get() == nil
-	if not pastScenes(P, m) then
+	FilmPanels.reset()
+	if startAt == "glitch" then
+		-- (the DEV panel's OPENING: CLASH starts here)
+		IntroCast.hideGrass(true)
+		IntroUi.fade(1, 0.6)
+	elseif not pastScenes(P, m) then
 		return
 	end
-	local ok, kingFeet = kingScenes(P, m)
-	if not ok then
+	local ok, kingFeet = glitchScene(P, m)
+	if not ok or not clashScene() then
+		return
+	end
+	if not kingScenes(P, m, kingFeet) then
 		return
 	end
 	if not growScenes(P, m, kingFeet) then
@@ -1340,12 +1461,14 @@ end)
 State.on("data", maybePlay)
 
 -- The DEV panel's PLAY OPENING: the opening film again, on this client only (the run's "seen it" isn't touched).
-function Intro.preview()
+-- `from`: "glitch" starts at the sky tearing open (the clash), so the owner sees what changed without the rest.
+function Intro.preview(from: string?)
 	if playing then
 		return
 	end
 	played = false
 	previewing = true
+	startAt = from
 	task.spawn(play)
 end
 

@@ -4,8 +4,9 @@
 -- client when the last area's boss falls (server/Run sends runComplete with `ending = true`). It closes the story
 -- the opening film (client/Intro) starts: Mayor Thistlewick's valley, overgrown since "the grass came back and
 -- never stopped growing", is mowed at last.
---   I.   THE LAST BLADE: silence over the last arena; a glow rises from where the last guardian fell and the
---        sunlight breaks through ("The last wild grass in the valley... was gone.");
+--   I.   THE LAST BLADE: the last guardian kneels in its arena with the glitch still in it; the pink tears out of
+--        it, its own colours come back, it bows to us and goes up into the sky as light; the sun breaks through
+--        ("The last wild grass in the valley... was gone.");
 --   II.  THE VALLEY BREATHES: a long flight back over every area, mowed in stripes, each name ticking off;
 --   III. HOMECOMING: the Mayor alone on his soapbox; footsteps; he turns: the Mowers are back ("You... you
 --        actually DID it!");
@@ -25,7 +26,7 @@
 -- Impact frames (client/FilmPanels) on the three big hits after the credits. Camera, light and grade: client/Film;
 -- music and sound: client/FilmAudio (licensed library audio); the Mayor's mumble: client/Babble; the actors and the
 -- screen: client/IntroCast, client/IntroUi, as in the opening. SKIP jumps to the scene after the credits (from the
--- film or the credits), and from there to the end screen.
+-- film or the credits); that scene always plays, and SKIP comes back on its last title, for the end screen.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -50,6 +51,8 @@ local Corruption = require(script.Parent.Corruption) -- the sky tearing, lightni
 local GlitchHole = require(script.Parent.GlitchHole) -- (28 Oct) the black hole it comes out of
 local FilmPanels = require(script.Parent.FilmPanels) -- (28 Oct) the impact frames, the credits' pages
 local BossMoves = require(MowALawn:WaitForChild("BossMoves"))
+local BossRig = require(MowALawn:WaitForChild("BossRig"))
+local BossView = require(script.Parent.BossView) -- (28 Oct evening) the last guardian, freed, in the first scene
 
 local Ending = {}
 local player = Players.LocalPlayer
@@ -63,6 +66,11 @@ local MAKERS_FALLBACK = "The Mow And Grow team" -- the credits name the game's o
 local STEP = "MowEnding"
 
 local played = false
+-- what SKIP does: in the film it jumps to the scene after the credits; in the credits, the same; that scene always
+-- plays (owner, 28 Oct evening: "if you skip it should show you the end teaser"), SKIP comes back on its last title
+-- and goes to the end screen
+local chapter = "film" -- "film" | "skip" | "credits" | "teaser" | "title"
+local skippedAll = false
 
 local LINES = {
 	E1 = "And just like that... the last wild grass in the valley was gone.",
@@ -98,6 +106,39 @@ local function streamIn(spots: { Vector3 })
 	while left > 0 and os.clock() < deadline do
 		task.wait(0.05)
 	end
+end
+
+-- How well a camera at `p` sees a shot: 2 for each of `targets` in sight, 1 off for each edge of the frame (`half`
+-- degrees either side of the first target) with something solid within 30 studs of the lens. (Studio's test, 28 Oct:
+-- the hole half behind a roof, and half the frame filled by whatever stood beside the camera.)
+local function shotScore(p: Vector3, targets: { Vector3 }, half: number): number
+	local score = 0
+	for _, t in targets do
+		if Film.sees(p, t) then
+			score += 2
+		end
+	end
+	if (targets[1] - p).Magnitude > 0.5 then
+		local cf = CFrame.lookAt(p, targets[1])
+		for _, a in { -half, half } do
+			if not Film.sees(p + (cf * CFrame.Angles(0, math.rad(a), 0)).LookVector * 30, p) then
+				score -= 1
+			end
+		end
+	end
+	return score
+end
+
+-- The camera spot from `list` that sees the shot best (earlier ones win ties).
+local function bestSpot(list: { Vector3 }, targets: { Vector3 }, half: number?): Vector3
+	local best, bestScore = list[1], -math.huge
+	for _, p in list do
+		local s = shotScore(p, targets, half or 35)
+		if s > bestScore then
+			best, bestScore = p, s
+		end
+	end
+	return best
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -258,6 +299,10 @@ local function speak(key: string, narrated: boolean?, text: string?): number
 		babbling = Babble.voice() ~= "none"
 	end
 	local dur = len or math.clamp(#line * 0.062, 1.8, 5.5)
+	if key == "D1" and not tts then
+		-- (no voice for the demon, owner 28 Oct evening: Config.FILM.demonVoice) its words over a low growl
+		FilmAudio.sfx("growl", { volume = 0.9, pitch = 0.5 })
+	end
 	if narrated then
 		IntroUi.narrate(text or line, dur + 0.6)
 	else
@@ -296,57 +341,243 @@ local LOOKS = {
 }
 
 -------------------------------------------------------------------------------------------------------------
--- I. THE LAST BLADE
+-- I. THE LAST BLADE: the last guardian, free
 -------------------------------------------------------------------------------------------------------------
-local function lastBladeScenes(P: Plan): boolean
-	Film.light(LOOKS.morning, 0)
-	Film.grade("dream", 0)
-	Film.glow(0.3, 30, 0.1)
-	Film.vignette(0.45, 0)
-	IntroUi.fade(1, 1.6)
-	cue("calm", "calmMusic", { fade = 3 })
-	bed("amb", "ambWind", 1.2, 2)
-	Film.at(1.2, function()
-		speak("E1", true)
-	end)
-	Film.at(0.9, function()
-		IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.6)
-	end)
-	-- 1A: high and slow round the last arena, dust settling
-	local ok = Film.run(5.6, function(k)
-		local a = math.rad(200 + k * 50)
-		local r = 70 - sine(k) * 10
-		local pos = P.arena + Vector3.new(math.cos(a) * r, 36 + k * 6, math.sin(a) * r)
-		return Film.look(pos, P.arena + UP * 6), Film.mm(32), P.arena
-	end, { hand = 0.2 })
-	if not ok then
-		return false
+-- (owner, 28 Oct evening: the ending began on "just a blank ground") 1A: the last guardian kneels in its arena,
+-- beaten, the glitch still in it (its corrupted colours, pink eyes, twitching). 1B: the pink tears out of it in a
+-- spray of glitch blocks [an impact frame, in gold]: its own colours come back and it straightens up. 1C: it bows its
+-- head to us... and goes up into the sky as light, and the sun breaks through. (If a fight's boss is still in
+-- client/BossView, it's left alone: just the light rising.)
+local guardianShown = false
+local guardianEyes: { BasePart } = {}
+local guardianEyesStop: (() -> ())? = nil
+
+local function eyesOut()
+	if guardianEyesStop then
+		guardianEyesStop()
+		guardianEyesStop = nil
 	end
-	-- 1B: down where it fell, a glow rises... and the sun breaks through
-	local g = ground(P.arena)
-	local mote = spark(g + UP * 1, Color3.fromRGB(255, 244, 196), 0.9)
+	for _, g in guardianEyes do
+		g:Destroy()
+	end
+	table.clear(guardianEyes)
+end
+
+local function guardianOff()
+	eyesOut()
+	if guardianShown then
+		guardianShown = false
+		BossView.hide()
+	end
+end
+
+-- its scale for its fight height (as server/Boss and client/Intro work it out)
+local function guardianScale(z: number): number
+	local moves = BossMoves.get(z)
+	local rig = BossRig.load(moves.rig)
+	local h = if rig then rig.bounds[2][2] else 7
+	return moves.height / math.max(1, h)
+end
+
+-- the glitch's pink in its eyes (glowing balls on its eye points, every frame)
+local function guardianPinkEyes(H: number)
+	eyesOut()
+	local names = BossView.attAll("att_eye")
+	for i in names do
+		local g = spark(Vector3.zero, Color3.fromRGB(255, 40, 170), math.max(0.7, H * 0.045))
+		g.Shape = Enum.PartType.Ball
+		if i == 1 then
+			local l = Instance.new("PointLight")
+			l.Color = Color3.fromRGB(255, 40, 170)
+			l.Range = H * 0.6
+			l.Brightness = 3
+			l.Shadows = false
+			l.Parent = g
+		end
+		table.insert(guardianEyes, g)
+	end
+	guardianEyesStop = Film.every(function()
+		for i, name in names do
+			local at = BossView.attWorld(name)
+			if at and guardianEyes[i] then
+				guardianEyes[i].CFrame = CFrame.new(at)
+			end
+		end
+	end)
+end
+
+-- the glitch tearing out of it: blocks of pink, cyan, white and void flung out of its body, spinning and fading
+local function glitchOut(feet: Vector3, H: number)
+	local colors = { Color3.fromRGB(255, 40, 170), Color3.fromRGB(60, 240, 255), Color3.fromRGB(255, 214, 240), Color3.fromRGB(22, 8, 30) }
+	local mid = feet + UP * (H * 0.55)
+	for _ = 1, 26 do
+		local from = feet + UP * (H * (0.2 + math.random() * 0.7)) + Vector3.new(math.random() - 0.5, 0, math.random() - 0.5) * (H * 0.45)
+		local dir = unit(from - mid + UP * (H * 0.25), UP)
+		local c = colors[math.random(1, #colors)]
+		local p = spark(from, c, H * (0.035 + math.random() * 0.05))
+		if c == colors[4] then
+			p.Material = Enum.Material.SmoothPlastic
+		end
+		local t = 0.7 + math.random() * 0.6
+		TweenService:Create(p, TweenInfo.new(t, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Position = from + dir * (H * (0.7 + math.random() * 0.9)),
+			Orientation = Vector3.new(math.random(-180, 180), math.random(-180, 180), 0),
+			Size = Vector3.one * 0.05,
+			Transparency = 1,
+		}):Play()
+		task.delay(t + 0.05, function()
+			p:Destroy()
+		end)
+	end
+end
+
+-- 1C without a guardian (or after it): a light rises from where it stood and the sun breaks through
+local function lightRises(feet: Vector3, camAt: Vector3, len: number): boolean
+	local mote = spark(feet + UP * 1, Color3.fromRGB(255, 244, 196), 0.9)
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 236, 180)
 	light.Range = 22
 	light.Brightness = 3
 	light.Parent = mote
-	TweenService:Create(mote, TweenInfo.new(4.2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), { Position = g + UP * 70, Size = Vector3.one * 0.3 }):Play()
+	TweenService:Create(mote, TweenInfo.new(len, Enum.EasingStyle.Sine, Enum.EasingDirection.In), { Position = feet + UP * 70, Size = Vector3.one * 0.3 }):Play()
 	FilmAudio.sfx("swell", { volume = 0.9 })
 	FilmAudio.sfx("rareChime", { volume = 0.5, pitch = 0.8 })
-	Film.at(2.6, function()
+	Film.at(len * 0.6, function()
 		Film.light({ ExposureCompensation = 0.45 }, 1.4)
 		Film.glow(0.55, 40, 1.2)
 		FilmAudio.sfx("rareChime", { volume = 0.6, pitch = 1.1 })
 	end)
-	local camAt = g + Vector3.new(14, 2.2, 10)
-	Film.refreshSight()
 	local view = Film.view()
-	ok = Film.run(4.2, function(k)
+	local ok = Film.run(len, function(k)
 		local e = inOut(k)
-		local target = mote.Position:Lerp(g + UP * (8 + 50 * e), 0.5)
-		return Film.look(Film.clear(camAt - UP * (0.6 * e), g + UP * 2, view), target), Film.mm(35 - 10 * e), mote.Position
+		local target = mote.Position:Lerp(feet + UP * (8 + 50 * e), 0.5)
+		return Film.look(Film.clear(camAt - UP * (0.6 * e), feet + UP * 2, view), target), Film.mm(35 - 10 * e), mote.Position
 	end, { hand = 0.3 })
 	mote:Destroy()
+	return ok
+end
+
+local function lastBladeScenes(P: Plan): boolean
+	local n = #Config.ZONES
+	local moves = BossMoves.get(n)
+	local H = moves.height
+	local feet = ground(P.arena)
+	Film.light(LOOKS.morning, 0)
+	Film.grade("gloom", 0)
+	Film.glow(0.12, 24, 0.1)
+	Film.vignette(0.55, 0)
+	IntroUi.fade(1, 1.2)
+	bed("amb", "ambWind", 1.2, 2)
+	Film.refreshSight()
+	-- the camera side: wherever its three shots see it best (the arenas have walls and trees)
+	local toCamp = unit(flat(P.camp - feet), P.fwd)
+	local d, bestScore = toCamp, -math.huge
+	for _, y in { 0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180 } do
+		local dir = CFrame.Angles(0, math.rad(y), 0):VectorToWorldSpace(toCamp)
+		local side = dir:Cross(UP)
+		local score = 0
+		for _, cam in { feet + dir * (H * 2.4) + side * (H * 0.5) + UP * (H * 0.3), feet + dir * (H * 1.45) + UP * (H * 0.6), feet + dir * (H * 1.9) - side * (H * 0.35) + UP * (H * 0.15) } do
+			score += shotScore(cam, { feet + UP * (H * 0.55), feet + UP * (H * 0.95), feet + UP * (H * 0.1) }, 35)
+		end
+		if score > bestScore then
+			d, bestScore = dir, score
+		end
+	end
+	local side = d:Cross(UP)
+	local lowCam = feet + d * (H * 1.9) - side * (H * 0.35) + UP * (H * 0.15)
+	if BossView.get() ~= nil then
+		Film.at(0.9, function()
+			IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.6)
+			cue("calm", "calmMusic", { fade = 3 })
+		end)
+		Film.at(1.2, function()
+			speak("E1", true)
+		end)
+		Film.grade("dream", 1.5)
+		return lightRises(feet, lowCam, 5)
+	end
+	guardianShown = true
+	BossView.show(moves.rig, CFrame.lookAt(feet, feet + d), guardianScale(n))
+	BossView.rageNow()
+	-- (its own clock: kneeling till 3.75 s, the nod at 6.3 s, gone into the light from 7.4 s)
+	BossView.act("freed", { free = 3.75, nod = 6.3, fade = 7.4 })
+	guardianPinkEyes(H)
+	local chest = feet + UP * (H * 0.55)
+	local drone = FilmAudio.sfx("drone", { volume = 0.35, pitch = 0.8 })
+	for _, t in { 0.7, 1.9, 2.9 } do
+		Film.at(t, function()
+			Glitch.burst(0.25, 0.1)
+			FilmAudio.glitch(0.3)
+		end)
+	end
+	-- 1A: beaten, on its knees, the glitch twitching in it; we creep in
+	local ok = Film.run(3.6, function(k)
+		local e = inOut(k)
+		local pos = feet + d * (H * (2.4 - 0.4 * e)) + side * (H * 0.5) + UP * (H * 0.3)
+		return Film.look(pos, feet + UP * (H * 0.5)), Film.mm(35), chest
+	end, { hand = 0.25 })
+	if not ok then
+		return false
+	end
+	-- 1B: the pink tears out of it
+	Film.at(0.15, function()
+		FilmPanels.impact({ BossView.get() and BossView.get().model }, { color = GOLD, at = chest })
+		FilmAudio.glitch(1)
+		FilmAudio.sfx("bigHit", { volume = 0.6, pitch = 0.9 })
+		FilmAudio.sfx("swell", { volume = 0.8 })
+		FilmAudio.fadeOut(drone, 0.6)
+		Film.shake(0.5, 0.6)
+		glitchOut(feet, H)
+		eyesOut()
+		BossView.calmNow()
+		Film.grade("dream", 0.9)
+		Film.glow(0.3, 30, 0.9)
+		cue("calm", "calmMusic", { fade = 2 })
+	end)
+	ok = Film.run(2.2, function(k)
+		local pos = feet + d * (H * (1.45 + 0.1 * k)) + side * (H * 0.15) + UP * (H * 0.6)
+		return Film.look(pos, feet + UP * (H * 0.62)), Film.mm(40), chest
+	end, { hand = 0.35 })
+	if not ok then
+		return false
+	end
+	-- 1C: it bows its head to us... and goes up into the sky as light; the sun breaks through
+	Film.at(0.3, function()
+		IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.6)
+	end)
+	Film.at(0.6, function()
+		speak("E1", true)
+	end)
+	local mote: Part? = nil
+	Film.at(1.6, function()
+		local m = spark(chest, Color3.fromRGB(255, 244, 196), 1.2)
+		local light = Instance.new("PointLight")
+		light.Color = Color3.fromRGB(255, 236, 180)
+		light.Range = 26
+		light.Brightness = 4
+		light.Parent = m
+		TweenService:Create(m, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), { Position = chest + UP * 80, Size = Vector3.one * 0.4 }):Play()
+		mote = m
+		FilmAudio.sfx("swell", { volume = 0.9 })
+		FilmAudio.sfx("rareChime", { volume = 0.5, pitch = 0.8 })
+	end)
+	Film.at(2.4, function()
+		Film.light({ ExposureCompensation = 0.45 }, 1.4)
+		Film.glow(0.55, 40, 1.2)
+		FilmAudio.sfx("rareChime", { volume = 0.6, pitch = 1.1 })
+	end)
+	local head = feet + UP * (H * 0.8)
+	ok = Film.run(4.6, function(k)
+		local m = mote
+		local up = if m then m.Position else head
+		local e = Film.smooth((k - 0.35) / 0.65)
+		local target = head:Lerp(up, e)
+		return Film.look(lowCam - side * (H * 0.1 * k), target, -2), Film.mm(30 - 6 * e), target
+	end, { hand = 0.3 })
+	if mote then
+		mote:Destroy()
+	end
+	guardianOff()
 	return ok
 end
 
@@ -923,6 +1154,8 @@ end
 -- glitching, and the word that the valley and everything you earned are safe (the council: a kid who sees the island
 -- and their avatar swallowed thinks their progress is gone).
 local function worldTwoTitle(): boolean
+	chapter = "title"
+	IntroUi.skipShown(true)
 	local W = Config.WORLD2
 	local holder = Instance.new("ScreenGui")
 	holder.Name = "WorldTwoTitle"
@@ -1006,39 +1239,6 @@ local function worldTwoTitle(): boolean
 	end
 	holder:Destroy()
 	return ok
-end
-
--- How well a camera at `p` sees a shot: 2 for each of `targets` in sight, 1 off for each edge of the frame (`half`
--- degrees either side of the first target) with something solid within 30 studs of the lens. (Studio's test, 28 Oct:
--- the hole half behind a roof, and half the frame filled by whatever stood beside the camera.)
-local function shotScore(p: Vector3, targets: { Vector3 }, half: number): number
-	local score = 0
-	for _, t in targets do
-		if Film.sees(p, t) then
-			score += 2
-		end
-	end
-	if (targets[1] - p).Magnitude > 0.5 then
-		local cf = CFrame.lookAt(p, targets[1])
-		for _, a in { -half, half } do
-			if not Film.sees(p + (cf * CFrame.Angles(0, math.rad(a), 0)).LookVector * 30, p) then
-				score -= 1
-			end
-		end
-	end
-	return score
-end
-
--- The camera spot from `list` that sees the shot best (earlier ones win ties).
-local function bestSpot(list: { Vector3 }, targets: { Vector3 }, half: number?): Vector3
-	local best, bestScore = list[1], -math.huge
-	for _, p in list do
-		local s = shotScore(p, targets, half or 35)
-		if s > bestScore then
-			best, bestScore = p, s
-		end
-	end
-	return best
 end
 
 -- T1-T3: night; the Mayor content on his soapbox... the picture stutters; "W-what was THAT?!"
@@ -1516,6 +1716,7 @@ end
 
 -- The film is over (or skipped): clear the set, give the camera and the light back.
 local function stopFilm()
+	guardianOff()
 	Film.stop(STEP)
 	FilmVoice.clear()
 	Babble.stop()
@@ -1579,10 +1780,6 @@ local function film(P: Plan, c: Cast): boolean
 	return partyScenes(P, c.m, c.actors)
 end
 
--- what SKIP does: in the film it jumps to the scene after the credits; in the credits, the same; there, to the end
-local chapter = "film"
-local skippedAll = false
-
 -- Play the ending. `d`: the server's runComplete data ({ gems, time, best, wait }); d.from = "credits" (the DEV
 -- panel) starts at the credits.
 function Ending.play(d: any)
@@ -1615,10 +1812,10 @@ function Ending.play(d: any)
 			Film.playing = false
 		elseif chapter == "credits" then
 			creditsSkipped = true
-		else
+		elseif chapter == "title" then
 			skippedAll = true
 			Film.playing = false
-		end
+		end -- (in the teaser itself SKIP is hidden and does nothing: a second tap can't skip it)
 	end)
 	IntroUi.fade(0, 0.8)
 	-- the black cover is up: the voices start being made, the sounds load, the far places stream in, the makers'
@@ -1670,6 +1867,8 @@ function Ending.play(d: any)
 	-- VI: after the credits (SKIP in the film lands here too)
 	if not skippedAll then
 		chapter = "teaser"
+		IntroUi.skipShown(false)
+		guardianOff()
 		if not Film.playing then
 			-- (skipped out of the film: start the camera and the light afresh, under the black cover)
 			IntroUi.fade(0, 0.2)

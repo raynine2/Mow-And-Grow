@@ -459,6 +459,8 @@ local bossShown = false -- (this film showed a boss model: client/BossView is th
 local bossesOk = true -- (false when a fight's boss is in client/BossView as the film starts: it's left alone)
 local corrupt: Corruption.Handle? = nil -- the tear in the sky
 local clash: FilmPanels.Clash? = nil
+local kingEyesOff: (() -> ())? = nil -- puts out the King's pink eyes
+local kingBurst: ParticleEmitter? = nil -- the seeds out of his mouth
 
 local function clearFx()
 	for _, stop in fxStops do
@@ -476,6 +478,25 @@ local function clearFx()
 	if clash then
 		clash.destroy()
 		clash = nil
+	end
+	kingEyesOff = nil
+	kingBurst = nil
+end
+
+-- The King has done his part: off the set with his pink eyes and his seed spray, at a cut (never in shot). (Owner,
+-- 28 Oct evening, a screenshot of the crane shot over the grass with him in it: "this part looks a bit bad".)
+local function kingGone()
+	if kingEyesOff then
+		kingEyesOff()
+		kingEyesOff = nil
+	end
+	if kingBurst then
+		kingBurst.Rate = 0
+		kingBurst = nil
+	end
+	if bossShown then
+		bossShown = false
+		BossView.hide()
 	end
 end
 
@@ -539,8 +560,9 @@ local function seedCloud(cf: CFrame, size: Vector3, o: Cloud): ParticleEmitter
 	return e
 end
 
--- The King's eyes burn the demon's pink from now on (glowing balls on his eye points, every frame).
-local function pinkEyes(H: number)
+-- The King's eyes burn the demon's pink from now on (glowing balls on his eye points, every frame). Returns a
+-- function that puts them out.
+local function pinkEyes(H: number): () -> ()
 	local names = BossView.attAll("att_eye")
 	local glints: { BasePart } = {}
 	for i in names do
@@ -559,14 +581,21 @@ local function pinkEyes(H: number)
 		end
 		table.insert(glints, g)
 	end
-	table.insert(fxStops, Film.every(function()
+	local stop = Film.every(function()
 		for i, name in names do
 			local at = BossView.attWorld(name)
 			if at and glints[i] then
 				glints[i].CFrame = CFrame.new(at)
 			end
 		end
-	end))
+	end)
+	table.insert(fxStops, stop)
+	return function()
+		stop()
+		for _, g in glints do
+			g:Destroy()
+		end
+	end
 end
 
 -- the low shot of him from the camp side: a turn that's clear of the camp's houses and trees
@@ -677,7 +706,7 @@ local function glitchScene(P: Plan, m: IntroCast.Mayor): (boolean, Vector3)
 		if bossesOk then
 			-- the pink gets in: he staggers, kneels and changes, while the clash plays
 			BossView.act("rage")
-			pinkEyes(H)
+			kingEyesOff = pinkEyes(H)
 		end
 		task.delay(0.4, function()
 			if playing then
@@ -725,7 +754,7 @@ local function clashScene(): boolean
 		FilmAudio.sfx("impact", { volume = 0.7, pitch = 1.05 })
 	end)
 	Film.at(1.15, function()
-		speak("N3b", true)
+		c.caption(LINES.N3b) -- (a manga caption box, not the floating subtitle)
 	end)
 	Film.at(1.85, function()
 		c.corrupt()
@@ -786,6 +815,7 @@ local function kingScenes(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boole
 		local mouth = BossView.attWorld("att_head_center") or mouth0
 		local aim = unit((feet + UP * 6) - mouth, toCamp)
 		local burst = seedCloud(CFrame.lookAt(mouth, mouth + aim), Vector3.new(H * 0.22, H * 0.22, 1), { rate = if light then 300 else 520, speed = NumberRange.new(30, 55), spread = Vector2.new(26, 16), life = NumberRange.new(2.6, 4), scale = 2.2 })
+		kingBurst = burst
 		task.delay(1.1, function()
 			burst.Rate = 40
 		end)
@@ -805,8 +835,9 @@ end
 
 -- 2C: the seeds drift down round the Mayor... and the grass rises out of the soil, over his soapbox, up to his
 -- moustache: a still, low shot in plain daylight (the council: growth only reads when it swallows something of a
--- size you know). He looks round at us and blinks. 2D: the camera cranes up as the growth rolls on to the horizon.
+-- size you know). He looks round at us and blinks; a dip to black (years go by).
 local function growScenes(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolean
+	kingGone()
 	local light = PhonePerf.on or Potato.on
 	local feet = IntroCast.ground(P.mayorAt)
 	local toKing = unit(flat(kingFeet - feet), P.dirK)
@@ -863,30 +894,13 @@ local function growScenes(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boole
 			end)
 		end
 	end)
-	local ok = Film.run(5.0, function(k)
+	Film.at(4.75, function()
+		IntroUi.fade(0, 0.3) -- (a dip to black: years go by. The crane up over the grass went, owner 28 Oct evening)
+	end)
+	return Film.run(5.1, function(k)
 		local fov = Film.mm(28 + 4 * Film.smooth(k))
 		return CFrame.lookAt(camAt, look), fov, look
 	end, { hand = 0.04 })
-	if not ok then
-		return false
-	end
-	-- 2D: up and back over the land, the growth rolling on to the horizon
-	local craneYaw = freeYaw(function(y)
-		return { P.thick - turn(P.dirK, y) * 34 + UP * 38 }
-	end, function()
-		return P.thick + UP * 20
-	end, { 0, 15, -15, 30, -30, 45, -45 })
-	local top = P.thick - turn(P.dirK, craneYaw) * 34 + UP * 38
-	local far = P.thick + turn(P.dirK, craneYaw) * 40
-	Film.at(1.2, function()
-		IntroUi.caption("Present day", 3.2)
-	end)
-	return Film.run(2.8, function(k)
-		local e = inOut(k)
-		local p = camAt:Lerp(top, e)
-		local at = look:Lerp(far, e)
-		return Film.look(p, at), Film.mm(28 - 6 * e), far
-	end, { hand = 0.45 })
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -912,6 +926,10 @@ local function worryScenes(P: Plan, m: IntroCast.Mayor): boolean
 	Film.light(LOOKS.now, 0)
 	Film.grade("gloom", 0)
 	Film.vignette(0.5, 0)
+	IntroUi.fade(1, 0.7)
+	Film.at(0.4, function()
+		IntroUi.caption("Present day", 3.2)
+	end)
 	local lonely = FilmAudio.music("lonelyMusic", { fade = 2.5 })
 	local face = unit(flat(P.thick - P.mayorAt), P.fwd)
 	m.act("lookOut")

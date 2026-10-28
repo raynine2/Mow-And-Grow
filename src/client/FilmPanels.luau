@@ -597,6 +597,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 export type Clash = {
 	slam: (i: number) -> (),
+	caption: (text: string) -> (),
 	corrupt: () -> (),
 	snap: () -> (),
 	out: (time: number) -> (),
@@ -622,11 +623,16 @@ function FilmPanels.clash(list: { { z: number, silhouette: boolean? } }): Clash?
 	local edges = { 0, 0.345, 0.655, 1 }
 	local panels: { Panel } = {}
 	local shown: { boolean } = {}
+	-- (Studio's test and the owner, 28 Oct evening: at 4.4 studs the King's face filled his panel to the edges and the
+	-- shadows either side were black blobs) the middle one: his head and crown; the outer two: head and shoulders,
+	-- so their shapes read against their colour
+	local spans: { number } = {}
 	for i, item in list do
 		local p = newPanel(root, edges[i], edges[i + 1], guardianColor(item.z))
 		p.root.Visible = false
+		spans[i] = if item.silhouette then 8 else 6.2
 		-- the outer two turned in toward the middle, the middle one square on
-		setStill(p, FilmPanels.boss(item.z, false, 10), { silhouette = item.silhouette, side = (i - 2) * -22, drift = (i - 2) * 6, span = 4.4 })
+		setStill(p, FilmPanels.boss(item.z, false, 10), { silhouette = item.silhouette, side = (i - 2) * -22, drift = (i - 2) * 6, span = spans[i], low = if item.silhouette then 0.06 else 0.1 })
 		panels[i] = p
 	end
 	slash(root, 0.345, 7, 0.052, ratio, rng, 8)
@@ -652,40 +658,80 @@ function FilmPanels.clash(list: { { z: number, silhouette: boolean? } }): Clash?
 		end)
 	end
 
+	-- The narration in a box of its own, as a manga's caption (owner, 28 Oct evening: the line floating over the panels
+	-- looked "bugged with the text"): white with a black edge, top left under the letterbox bar, tilted a little; it
+	-- pops in and goes with the panels.
+	function handle.caption(text: string)
+		local old = root:FindFirstChild("Caption")
+		if old then
+			old:Destroy()
+		end
+		local box = frame(root, "Caption", WHITE, 0, 12)
+		box.AnchorPoint = Vector2.new(0, 0)
+		box.Position = UDim2.fromScale(0.03, IntroUi.bar() + 0.03)
+		box.Size = UDim2.fromScale(0.44, 0.085)
+		box.Rotation = -1.5
+		local edge = Instance.new("UIStroke")
+		edge.Thickness = 3
+		edge.Color = BLACK
+		edge.Parent = box
+		local t = label(box, text, BOLD, UDim2.fromScale(0.92, 0.62), UDim2.fromScale(0.04, 0.19), 13, 0)
+		t.TextColor3 = BLACK
+		t.TextXAlignment = Enum.TextXAlignment.Left
+		local sc = Instance.new("UIScale")
+		sc.Scale = 0.6
+		sc.Parent = box
+		tween(sc, 0.25, { Scale = 1 }, Enum.EasingStyle.Back)
+	end
+
+	-- one straight piece of the crack from pa to pb (pixels), `thick` wide, drawn after `delay` s
+	local function crackBit(pa: Vector2, pb: Vector2, thick: number, delay: number)
+		local mid = (pa + pb) / 2
+		local len = (pb - pa).Magnitude
+		local ang = math.deg(math.atan2(pb.Y - pa.Y, pb.X - pa.X))
+		task.delay(delay, function()
+			if not root.Parent then
+				return
+			end
+			for _, s in { { PINK, thick }, { HOT, math.max(2, thick / 3) } } do
+				local f = Instance.new("Frame")
+				f.Name = "Fracture"
+				f.AnchorPoint = Vector2.new(0.5, 0.5)
+				f.BackgroundColor3 = s[1]
+				f.BorderSizePixel = 0
+				f.Position = UDim2.fromOffset(mid.X, mid.Y)
+				f.Size = UDim2.fromOffset(len + s[2], s[2])
+				f.Rotation = ang
+				f.ZIndex = 9
+				f.Parent = root
+			end
+		end)
+	end
+
 	-- the glitch gets in: a pink fracture rips across every panel, the picture tears, the glows turn pink, and the
-	-- lit ones change to their corrupted colours
+	-- lit ones change to their corrupted colours. (Owner, 28 Oct evening, a screenshot of it: the crack ran straight
+	-- through the King's eyes.) The crack runs low, under the faces, falling a little left to right, with branches.
 	function handle.corrupt()
 		local n = 10
 		local pts = {}
 		for i = 0, n do
-			table.insert(pts, Vector2.new(-0.02 + i / n * 1.04, 0.47 + rng:NextNumber(-0.11, 0.11)))
+			table.insert(pts, Vector2.new(-0.02 + i / n * 1.04, 0.6 + i / n * 0.08 + rng:NextNumber(-0.045, 0.045)))
 		end
 		local abs = root.AbsoluteSize
 		local w, h = math.max(abs.X, 1), math.max(abs.Y, 1)
 		for i = 1, n do
 			local a, b = pts[i], pts[i + 1]
-			local pa, pb = Vector2.new(a.X * w, a.Y * h), Vector2.new(b.X * w, b.Y * h)
-			local mid = (pa + pb) / 2
-			local len = (pb - pa).Magnitude
-			local ang = math.deg(math.atan2(pb.Y - pa.Y, pb.X - pa.X))
 			local d = math.abs(i - n / 2 - 0.5)
-			task.delay(d * 0.025, function()
-				if not root.Parent then
-					return
-				end
-				for _, s in { { PINK, 9 }, { HOT, 3 } } do
-					local f = Instance.new("Frame")
-					f.Name = "Fracture"
-					f.AnchorPoint = Vector2.new(0.5, 0.5)
-					f.BackgroundColor3 = s[1]
-					f.BorderSizePixel = 0
-					f.Position = UDim2.fromOffset(mid.X, mid.Y)
-					f.Size = UDim2.fromOffset(len + s[2], s[2])
-					f.Rotation = ang
-					f.ZIndex = 9
-					f.Parent = root
-				end
-			end)
+			crackBit(Vector2.new(a.X * w, a.Y * h), Vector2.new(b.X * w, b.Y * h), 9, d * 0.025)
+			-- every other joint sends a thin branch off up or down
+			if i % 2 == 0 then
+				local from = Vector2.new(b.X * w, b.Y * h)
+				local dir = Vector2.new(rng:NextNumber(0.4, 1) * (if rng:NextNumber() < 0.5 then -1 else 1), if i % 4 == 0 then -1 else 1).Unit
+				local len = h * rng:NextNumber(0.08, 0.16)
+				local kink = from + dir * len * 0.5 + Vector2.new(rng:NextNumber(-1, 1), 0) * len * 0.15
+				crackBit(from, kink, 5, d * 0.025 + 0.05)
+				crackBit(kink, kink + dir * len * 0.5, 3, d * 0.025 + 0.08)
+			end
 		end
 		tearUntil = os.clock() + 0.35
 		kick = 18
@@ -695,7 +741,7 @@ function FilmPanels.clash(list: { { z: number, silhouette: boolean? } }): Clash?
 			tween(p.wash, 0.25, { BackgroundColor3 = PINK })
 			p.spin = 40
 			if not p.silhouette and list[i] then
-				setStill(p, FilmPanels.boss(list[i].z, true, 10), { side = p.side, drift = p.drift, span = 4.4 })
+				setStill(p, FilmPanels.boss(list[i].z, true, 10), { side = p.side, drift = p.drift, span = spans[i], low = 0.1 })
 			end
 		end
 	end
@@ -747,6 +793,16 @@ function FilmPanels.clash(list: { { z: number, silhouette: boolean? } }): Clash?
 		for _, d in root:GetChildren() do
 			if d:IsA("Frame") and d.Name ~= "Panel" then
 				tween(d, time * 0.7, { BackgroundTransparency = 1 })
+			end
+		end
+		local cap = root:FindFirstChild("Caption")
+		if cap then
+			for _, d in cap:GetDescendants() do
+				if d:IsA("TextLabel") then
+					tween(d, time * 0.6, { TextTransparency = 1 })
+				elseif d:IsA("UIStroke") then
+					tween(d, time * 0.6, { Transparency = 1 })
+				end
 			end
 		end
 		tween(root, time, { BackgroundTransparency = 1 })
@@ -924,9 +980,17 @@ function FilmPanels.credits(): Credits?
 			local t = label(page, l, BOLD, UDim2.fromScale(0.84, 0.055), UDim2.fromScale(0.08, 0.2 + (i - 1) * 0.075), 12, 1.5)
 			t.TextXAlignment = Enum.TextXAlignment.Left
 			t.TextTransparency = 1
+			-- (its black outline fades in with it: on its own it showed the lines as black letters first)
+			local edge = t:FindFirstChildOfClass("UIStroke")
+			if edge then
+				edge.Transparency = 1
+			end
 			task.delay(0.3 + i * 0.12, function()
 				if t.Parent then
 					tween(t, 0.5, { TextTransparency = 0 })
+					if edge then
+						tween(edge, 0.5, { Transparency = 0 })
+					end
 				end
 			end)
 		end

@@ -288,6 +288,16 @@ function IntroUi.gui(): ScreenGui?
 	return gui
 end
 
+-- Show or hide the SKIP button (client/Ending hides it while the teaser after the credits plays: owner, 28 Oct
+-- evening, "if you skip it should show you the end teaser").
+function IntroUi.skipShown(on: boolean)
+	local l = layer
+	local b = l and l:FindFirstChild("IntroSkip", true)
+	if b and b:IsA("GuiObject") then
+		b.Visible = on
+	end
+end
+
 function IntroUi.bar(): number
 	return BAR
 end

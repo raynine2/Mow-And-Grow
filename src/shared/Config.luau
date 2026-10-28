@@ -1226,8 +1226,9 @@ Config.FILM = {
 	voicePitch = -1.5, -- semitones
 	voiceSpeed = 0.95,
 	voiceVolume = 1.6,
-	-- the glitch demon's one line in the ending (a retro voice, pitched right down, distorted)
-	demonVoice = true,
+	-- the glitch demon's one line in the ending (a retro voice, pitched right down, distorted). Off (owner, 28 Oct
+	-- evening: "remove the voice from the monster"): its line is a subtitle over a growl.
+	demonVoice = false,
 	demonVoiceId = "9",
 }
 

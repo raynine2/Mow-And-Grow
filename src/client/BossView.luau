@@ -498,6 +498,34 @@ ACTIONS.cameo = function(v, t, a)
 	return t < len + 0.3
 end
 
+-- The ending's first scene (client/Ending; owner, 28 Oct evening: its start was "just a blank ground"): the last
+-- guardian, beaten, slumps on its knees with the glitch still twitching in it until `a.free` s; then it's thrown
+-- back as the glitch tears out of it, stands up tall and breathes; at `a.nod` s it bows its head to us; from
+-- `a.fade` s it shrinks away (into the light client/Ending draws).
+ACTIONS.freed = function(v, t, a)
+	local free, nod, fade = a.free or 3, a.nod or 5, a.fade or 7
+	if t < free then
+		set(v, 0.34, 0.8, -2.2, 1.4, 0, math.sin(t * 2.2) * 0.04)
+		if math.random() < 0.06 then
+			v.shake = math.max(v.shake, 0.06 * v.scale / 5)
+		end
+	elseif t < free + 0.5 then
+		set(v, -0.3, 1.16, 1.5, -1)
+		v.shake = math.max(v.shake, 0.18 * v.scale / 5)
+	elseif t < nod then
+		set(v, -0.06, 1.04, 0.4, 0)
+	elseif t < nod + 0.9 then
+		set(v, 0.22, 0.97, 0, 0.6)
+	elseif t < fade then
+		rest(v)
+	else
+		v.size.target = 0.02
+		v.size.f = 1.3
+		v.size.d = 0.9
+	end
+	return t < fade + 4
+end
+
 -- The critters react: "intro" or "rage", for `len` s.
 function BossView.critters(kind: string, len: number)
 	if view and len > 0.5 then
@@ -551,6 +579,22 @@ end
 -- straight to the rage form (late joiners, skipped cutscenes)
 function BossView.rageNow()
 	BossView.sprout(2)
+end
+
+-- back to its own colours, the rage parts gone (client/Ending: the glitch leaves the last guardian)
+function BossView.calmNow()
+	local v = view
+	if not v then
+		return
+	end
+	v.rageShown = false
+	v.clip = "idle"
+	for _, p in v.parts do
+		if p.rage then
+			p.grow = 0
+		end
+		applyLook(v, p, false)
+	end
 end
 
 -------------------------------------------------------------------------------------------------------------

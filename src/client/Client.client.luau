@@ -16,6 +16,7 @@ require(modules:WaitForChild("ViewModel"))
 require(modules:WaitForChild("Soundscape")) -- footsteps, birds and breeze
 require(modules:WaitForChild("Fx"))
 require(modules:WaitForChild("BossCine")) -- boss fights: the model, effects, cutscenes, your HP (after Fx)
+require(modules:WaitForChild("BossKill")) -- (29 Oct) the summon pad's light pillar, the climactic kill (after BossCine)
 require(modules:WaitForChild("ShopDisplays")) -- tool shop status lamps + turning tools, the camp fountain
 require(modules:WaitForChild("ClassHolo")) -- the CLASSES kiosk's hologram
 require(modules:WaitForChild("BlackHole")) -- the CLASSES black hole: jump in for the class screen

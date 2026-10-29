@@ -33,6 +33,26 @@ local live: { [Model]: { RBXScriptConnection | string } } = {}
 local holder: Folder? = nil
 local nextId = 0
 
+-- (owner, 29 Oct, of the dandelion seeds in the films: "what is this, the thing is very low quality, fix it") the seed
+-- sprite (shared/BossFxIds.seed) is a flat cut-out with hair-thin lines that looks cheap up close: every film effect
+-- that throws seeds throws soft glowing fluff instead (smaller, round, no hard edges).
+local SEED = "rbxassetid://82005483944956"
+local FLUFF = "rbxassetid://128340073434367" -- (BossFxIds.glow: a soft round glow)
+local function fluffy(m: Instance)
+	for _, d in m:GetDescendants() do
+		if d:IsA("ParticleEmitter") and d.Texture == SEED then
+			d.Texture = FLUFF
+			local kp = {}
+			for _, k in d.Size.Keypoints do
+				table.insert(kp, NumberSequenceKeypoint.new(k.Time, k.Value * 0.55, k.Envelope * 0.55))
+			end
+			d.Size = NumberSequence.new(kp)
+			d.LightEmission = math.max(d.LightEmission, 0.45)
+			d.Color = ColorSequence.new(Color3.fromRGB(255, 255, 250), Color3.fromRGB(255, 246, 222))
+		end
+	end
+end
+
 -- The plugin's Emit Module, initialised once (nil if it's missing or broken).
 local function emitApi(): any
 	if api or failed then
@@ -291,6 +311,7 @@ function FilmVfx.play(name: string, at: CFrame | Vector3, opts: Opts?): Model?
 		cf = cam.CFrame * CFrame.new(0, 0, -o.screen)
 	end
 	local m = t:Clone()
+	fluffy(m)
 	trim(m, FilmVfx.budget())
 	resize(m, o.scale or 1)
 	if o.color then

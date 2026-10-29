@@ -174,6 +174,11 @@ local function update()
 		end
 	end
 	challengeChip.frame.Visible = showC
+	-- the Elder Clumps' beams: only your area's, only outside the films
+	local here = if inRun and w then w.zone else nil
+	for _, e in elders do
+		e.beam.LocalTransparencyModifier = if UI.gui.Enabled and e.zone == here then 0 else 1
+	end
 	-- the party bonus
 	local P = Config.PARTY_BONUS
 	local others = #Players:GetPlayers() - 1
@@ -199,8 +204,11 @@ end)
 -------------------------------------------------------------------------------------------------------------
 -- Elder Clumps: a name and an HP bar over each, and a gold beam to find it by
 -------------------------------------------------------------------------------------------------------------
-type Elder = { bb: BillboardGui, fill: Frame, hp: TextLabel, beam: BasePart, conns: { RBXScriptConnection } }
+type Elder = { bb: BillboardGui, fill: Frame, hp: TextLabel, beam: BasePart, zone: number, conns: { RBXScriptConnection } }
 local elders: { [Instance]: Elder } = {}
+-- (owner, 29 Oct: "elder clump should only show when nearby") the name and HP bar only up close; the beam only over
+-- the Elder Clump of the area you're in, and never in a film (the films hide the HUD: UI.gui)
+local LABEL_RANGE = 70
 
 local function removeElder(holder: Instance)
 	local e = elders[holder]
@@ -238,7 +246,7 @@ local function addElder(holder: Instance)
 	bb.Size = UDim2.fromOffset(240, 62)
 	bb.StudsOffsetWorldSpace = Vector3.new(0, height + 4, 0)
 	bb.AlwaysOnTop = true
-	bb.MaxDistance = 500
+	bb.MaxDistance = LABEL_RANGE
 	bb.LightInfluence = 0
 	bb.ResetOnSpawn = false
 	local title = UI.text(bb, "ELDER CLUMP", UDim2.new(1, 0, 0, 28), { color = GOLD, stroke = 3 })
@@ -264,7 +272,7 @@ local function addElder(holder: Instance)
 	beam.CFrame = CFrame.new(spot.Position + Vector3.new(0, height + 84, 0))
 	beam.Parent = workspace
 	TweenService:Create(beam, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Transparency = 0.7 }):Play()
-	local e: Elder = { bb = bb, fill = fill, hp = hp, beam = beam, conns = {} }
+	local e: Elder = { bb = bb, fill = fill, hp = hp, beam = beam, zone = (holder:GetAttribute("ElderZone") or 0) :: number, conns = {} }
 	elders[holder] = e
 	local function show()
 		local now = (holder:GetAttribute("ElderHP") or 0) :: number

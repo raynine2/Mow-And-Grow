@@ -456,11 +456,12 @@ type Cloud = { rate: number, speed: NumberRange, spread: Vector2, life: NumberRa
 local function seedCloud(cf: CFrame, size: Vector3, o: Cloud): ParticleEmitter
 	local p = setPart("Seeds", size, cf)
 	local e = Instance.new("ParticleEmitter")
-	e.Texture = FxIds.seed or "rbxasset://textures/particles/smoke_main.dds"
-	e.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 248, 222))
-	e.LightEmission = 0.15
+	-- (owner, 29 Oct: the seed sprite was "very low quality" up close: soft glowing fluff, as client/FilmVfx's)
+	e.Texture = FxIds.glow or "rbxasset://textures/particles/sparkles_main.dds"
+	e.Color = ColorSequence.new(Color3.fromRGB(255, 255, 250), Color3.fromRGB(255, 246, 222))
+	e.LightEmission = 0.45
 	local s = o.scale or 1
-	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6 * s), NumberSequenceKeypoint.new(1, 0.45 * s) })
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.33 * s), NumberSequenceKeypoint.new(1, 0.25 * s) })
 	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.85, 0.15), NumberSequenceKeypoint.new(1, 1) })
 	e.Lifetime = o.life
 	e.Rate = o.rate

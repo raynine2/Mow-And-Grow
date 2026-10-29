@@ -13,7 +13,7 @@ local out = {}
 local ok = true
 local made = {}
 for _, s in {
-	{ "CampProps", game.ServerScriptService.MowALawn, "ModuleScript", 4, "28534 58245688" },
+	{ "CampProps", game.ServerScriptService.MowALawn, "ModuleScript", 4, "28526 1738834633" },
 	{ "CampDress", game.ServerScriptService.MowALawn, "ModuleScript", 6, "46357 607222462" },
 	{ "CampLife", game.StarterPlayer.StarterPlayerScripts.MowALawnClient, "ModuleScript", 3, "20298 1059054880" },
 } do

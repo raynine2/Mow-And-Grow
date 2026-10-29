@@ -433,7 +433,7 @@ def camp_pavilion(k):
     hip_roof(k, "lower", 6.2, 3.0, 8.3, 10.3, roofm, steps=4, trim=k.mat("VRoof", "@roof2"))
     for sx in (-1, 1):
         for sy in (-1, 1):
-            k.box("upturn%d%d" % (sx, sy), (1.1, 1.1, 0.5), (sx * 5.7, sy * 5.7, 8.55), (0, 0, 45), roofm)
+            k.box("upturn%d%d" % (sx, sy), (1.2, 1.2, 0.45), (sx * 5.9, sy * 5.9, 9.0), (0, 0, 45), roofm)
     k.box("drum", (4.2, 4.2, 0.9), (0, 0, 10.6), m=post)
     hip_roof(k, "upper", 3.2, 0.9, 11.0, 12.9, roofm, steps=4, trim=k.mat("VRoof", "@roof2"))
     k.cyl("finial", 0.22, 1.4, (0, 0, 13.4), m=gold)

@@ -532,9 +532,11 @@ local function sceneryBoxes(near: Vector3, radius: number): { Box }
 	local boxes: { Box } = {}
 	local world = workspace:FindFirstChild("World")
 	local n = 0
-	for _, name in { "Visuals", "Hub", "Ground", "Gates", "Patches", "Ways", "Pads" } do
-		local f = world and world:FindFirstChild(name)
-		if f then
+	-- (30 Oct: every folder of the world but the grass (hidden in the films), water and the invisible bounds: the
+	-- boss arenas and the area camps were missing)
+	local skip = { Grass = true, Liquid = true, Bounds = true, Loot = true, Mowers = true, Crawlers = true, Water = true }
+	for _, f in (if world then world:GetChildren() else {}) do
+		if not skip[f.Name] then
 			for _, d in f:GetDescendants() do
 				n += 1
 				if n % 2000 == 0 then
@@ -601,8 +603,13 @@ local function kingSpot(P: Plan): Vector3
 	local toward = unit(flat(P.thick - P.mayorAt), P.fwd)
 	local boxes = sceneryBoxes(P.mayorAt, 200)
 	local best, bestScore = IntroCast.ground(P.thick + P.dirK * 30), -99
-	for _, dist in { 78, 88, 68, 100, 58, 112 } do
-		for _, yaw in { 0, -10, 10, -20, 20, -30, 30, -40, 40 } do
+	-- (30 Oct, owner: "cant even see dandelion boss in first intro because of house": the tool shop's roof cut
+	-- through him: four points up his middle were clear, a thin roof edge sat between two of them. Now 7 heights x
+	-- his middle and both sides, and the tear over him, must all be clear (22 lines); the search turns further round
+	-- the Mayor (meadow side first) before it settles for the clearest spot.)
+	local full = 7 * 3 + 1
+	for _, yaw in { 0, -10, 10, -20, 20, -30, 30, -40, 40, -55, 55, -70, 70, -90, 90, -110, 110, -135, 135, -160, 160, 180 } do
+		for _, dist in { 78, 88, 68, 100, 58, 112 } do
 			local at = P.mayorAt + turn(toward, yaw) * dist
 			local hit = workspace:Raycast(at + UP * 200, -UP * 400, rp)
 			if hit then
@@ -611,9 +618,11 @@ local function kingSpot(P: Plan): Vector3
 				local side = toCamp:Cross(UP)
 				local eye = P.mayorAt + UP * 8.4 + toCamp * 7.5 - side * 3.6
 				local score = 0
-				for _, k in { 0.95, 0.7, 0.45, 0.2 } do
-					if not blocked(eye, feet + UP * (H * k), boxes) then
-						score += 1
+				for _, k in { 0.97, 0.83, 0.69, 0.55, 0.41, 0.27, 0.13 } do
+					for _, s in { 0, -1, 1 } do
+						if not blocked(eye, feet + UP * (H * k) + side * (H * 0.22 * s), boxes) then
+							score += 1
+						end
 					end
 				end
 				if not blocked(eye, feet + UP * (H * 1.75) + toCamp * (H * 0.3), boxes) then
@@ -622,17 +631,18 @@ local function kingSpot(P: Plan): Vector3
 				for _, s in { 0, 1, -1 } do
 					local p = feet + side * (H * 0.25 * s)
 					if blocked(p + UP * 1.5, p + UP * H, boxes) then
-						score -= 3
+						score -= 10
 					end
 				end
 				if score > bestScore then
 					best, bestScore = feet, score
 				end
-				if score >= 5 then
+				if score >= full then
 					return best
 				end
 			end
 		end
+		task.wait()
 	end
 	return best
 end

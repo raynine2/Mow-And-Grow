@@ -87,6 +87,7 @@ local ROWS = 10 -- half-voxel rows from the root layer up to the tuft (5 voxels)
 -- meet the stalk, so a hole there would show through them)
 local LOW, HIGH = 1, ROWS - 2
 local FLY_MAX = 7 -- removed bits that fly off per hit
+local FIRST_CUT = 0.1 -- how big a cut the first blow opens, however tough the clump (0..1 of the cut sizes below)
 local U = 40 -- a voxel, in the template meshes' units
 local WHITE = Color3.new(1, 1, 1)
 local PITH = Color3.fromRGB(240, 248, 206) -- the pale lime-cream inside of a cut stem (as client/ClumpWound)
@@ -154,7 +155,7 @@ local SHAPES: { [string]: Shape } = {
 	},
 }
 
-type Tones = { floorLit: Color3, floor: Color3, grain: Color3, ceil: Color3, step: Color3, stepCeil: Color3 }
+type Tones = { floor: Color3, wall: Color3, ceil: Color3, deep: Color3, grain: Color3, step: Color3, stepCeil: Color3, fresh: Color3 }
 type Side = { dir: Vector2, row: number, cut: number, seed: number, tool: string }
 type Carve = {
 	m: Model,
@@ -175,20 +176,31 @@ type Carve = {
 }
 local carves: { [Model]: Carve } = {}
 local active = 0
+-- clumps going over (client/Fx "fell"): a blow still on its way doesn't start a new stalk on one
+local falling: { [Model]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
 local function mul(c: Color3, k: number): Color3
 	return Color3.new(math.clamp(c.R * k, 0, 1), math.clamp(c.G * k, 0, 1), math.clamp(c.B * k, 0, 1))
 end
 
+-- (owner, 28 Oct, first look in play: "when you punch it a part becomes invisible": an evenly pale cut read as a
+-- see-through window, not a hole) a hole reads as a hole when it gets darker the deeper and higher you look into it:
+-- the floor catches the light, the side walls are a step down, the ceiling and the back of the hole are in shade,
+-- and the skin round the edge darkens a touch (client/ClumpCarve parts also cast shadows into it).
 local function tonesFor(base: Color3): Tones
-	local inside = PITH:Lerp(base, 0.14)
+	local inside = PITH:Lerp(base, 0.22)
 	return {
-		floorLit = inside:Lerp(WHITE, 0.25), -- the floor of the cut catches the light
-		floor = inside,
-		grain = mul(inside, 0.93), -- faint fibres up the stem
-		ceil = mul(inside, 0.84), -- the top inner wall, a step darker
-		step = inside:Lerp(base, 0.35),
-		stepCeil = mul(inside:Lerp(base, 0.45), 0.86),
+		floor = inside:Lerp(WHITE, 0.12), -- the floor of the cut, lit from above
+		wall = mul(inside:Lerp(base, 0.3), 0.88),
+		ceil = mul(inside:Lerp(base, 0.5), 0.62), -- the top inner wall, in shade
+		deep = mul(inside:Lerp(base, 0.4), 0.72), -- the back of the hole
+		grain = mul(inside:Lerp(base, 0.3), 0.8), -- faint fibres up the stem
+		step = mul(inside:Lerp(base, 0.45), 0.9),
+		stepCeil = mul(inside:Lerp(base, 0.55), 0.6),
+		-- (30 Oct, owner: "even the first hit should show": a first blow only takes the skin off, and the stem
+		-- under it was the side-wall green, so the scuff hardly showed till the second blow went deeper) the back of
+		-- a shallow scuff is fresh, lit pith
+		fresh = mul(inside:Lerp(base, 0.12), 0.97),
 	}
 end
 
@@ -224,23 +236,38 @@ local function skin(cv: Carve, I: number, K: number, vy: number): Color3
 	return cv.colors[(vy - 1) * 9 + I * 3 + K + 1] or cv.tones.step
 end
 
+-- is any neighbour of half-voxel (a, b, r) cut away?
+local function opened(cv: Carve, a: number, b: number, r: number): boolean
+	return (a > 0 and not cv.solid[cellKey(a - 1, b, r)])
+		or (a < N - 1 and not cv.solid[cellKey(a + 1, b, r)])
+		or (b > 0 and not cv.solid[cellKey(a, b - 1, r)])
+		or (b < N - 1 and not cv.solid[cellKey(a, b + 1, r)])
+		or (r > 0 and not cv.solid[cellKey(a, b, r - 1)])
+		or (r < ROWS - 1 and not cv.solid[cellKey(a, b, r + 1)])
+end
+
 local function cellColor(cv: Carve, a: number, b: number, r: number): Color3
 	local ring = math.min(a, N - 1 - a, b, N - 1 - b)
 	if ring == 0 then
-		return skin(cv, a // 2, b // 2, r // 2 + 1) -- the skin round the cut: its dark rim
+		local sk = skin(cv, a // 2, b // 2, r // 2 + 1)
+		return if opened(cv, a, b, r) then mul(sk, 0.8) else sk -- the skin round the cut: its dark rim
 	end
 	local tn = cv.tones
 	local up = r < ROWS - 1 and not cv.solid[cellKey(a, b, r + 1)] -- open above: a floor
 	local down = r > 0 and not cv.solid[cellKey(a, b, r - 1)] -- open below: a ceiling
-	if ring == 1 then
-		return if down and not up then tn.stepCeil else tn.step
-	end
 	if up then
-		return tn.floorLit
+		return tn.floor
 	elseif down then
-		return tn.ceil
+		return if ring == 1 then tn.stepCeil else tn.ceil
+	elseif ring == 1 then
+		-- the skin in front of it is gone: the back of a shallow scuff, facing out into the light
+		local open = (a == 1 and not cv.solid[cellKey(0, b, r)])
+			or (a == N - 2 and not cv.solid[cellKey(N - 1, b, r)])
+			or (b == 1 and not cv.solid[cellKey(a, 0, r)])
+			or (b == N - 2 and not cv.solid[cellKey(a, N - 1, r)])
+		return if open then tn.fresh else tn.step -- else a side wall near the skin
 	end
-	return if (a + b + r // 3) % 3 == 0 then tn.grain else tn.floor
+	return if (a + b + r // 3) % 3 == 0 then tn.grain else tn.deep -- the back of the hole
 end
 
 -- mesh units (from the mesh's middle) -> where that sits in the clump's upright pose
@@ -259,7 +286,7 @@ local function newPart(cv: Carve, rel: CFrame, size: Vector3, color: Color3): Ba
 	p.CanCollide = false
 	p.CanQuery = false
 	p.CanTouch = false
-	p.CastShadow = false
+	p.CastShadow = true -- (shadow falls into the cut)
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
 	p.Material = if cv.src.TextureID == "" then cv.src.Material else Enum.Material.SmoothPlastic
@@ -347,7 +374,7 @@ local function start(m: Model): Carve?
 		for I = 0, 2 do
 			for K = 0, 2 do
 				local pos = centre + Vector3.new((I - 1) * U, (vy - 1) * U + U / 2, (K - 1) * U)
-				local color = if I == 1 and K == 1 then cv.tones.floor else skin(cv, I, K, vy)
+				local color = if I == 1 and K == 1 then cv.tones.deep else skin(cv, I, K, vy)
 				cv.vox[I + K * 3 + (vy - 1) * 9] = newPart(cv, relAt(cv, pos), Vector3.one * U * 1.005 * sc, color)
 			end
 		end
@@ -390,7 +417,8 @@ local function inCut(s: Side, sh: Shape, a: number, b: number, r: number): boole
 	if ring == 2 and ang > math.pi / 2 then
 		return false -- the back of the core always stays: it holds the top up till the last hit
 	end
-	local c = math.clamp(s.cut * 1.04, 0, 1)
+	-- (30 Oct) a blow always opens at least a small cut: a tough clump's first hit used to take a sliver of it
+	local c = math.clamp(FIRST_CUT + (1 - FIRST_CUT) * s.cut * 1.04, 0, 1)
 	local A, B, D = sh.A(c), sh.B(c), sh.D(c)
 	local n = if sh.strand then bump(a, b, 0, s.seed) * 0.75 + bump(a, b, r, s.seed) * 0.25 else bump(a, b, r, s.seed)
 	local lump = 1 + sh.noise * n
@@ -435,6 +463,51 @@ local function fly(cv: Carve, a: number, b: number, r: number, color: Color3, to
 		Size = Vector3.one * s * 0.15,
 	}):Play()
 	Debris:AddItem(p, t + 0.05)
+end
+
+-- (owner, 28 Oct: "make it depending on where you hit the grass ... so it keeps changing depending on where you're
+-- hitting it") Where your crosshair meets the stalk as it stands now (leaning or not): the direction round the
+-- stalk from its middle to that point, and the half-voxel row. The box is widened a little so a near miss at its
+-- edge still counts; nil when the crosshair isn't on the stalk.
+local function aimSpot(cv: Carve, m: Model): (Vector2?, number?)
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return nil, nil
+	end
+	local h = U / 2
+	local cf = m:GetPivot() * cv.rel * CFrame.new(cv.centre * cv.sc) -- the stalk's bottom middle
+	local hx, hy, hz = 3 * h * cv.sc.X, ROWS * h * cv.sc.Y, 3 * h * cv.sc.Z
+	local o = cf:PointToObjectSpace(cam.CFrame.Position)
+	local d = cf:VectorToObjectSpace(cam.CFrame.LookVector)
+	local lo = Vector3.new(-hx * 1.3, 0, -hz * 1.3)
+	local hi = Vector3.new(hx * 1.3, hy, hz * 1.3)
+	local t0, t1 = -math.huge, math.huge
+	for _, ax in { "X", "Y", "Z" } do
+		local oo, dd, l, u = (o :: any)[ax], (d :: any)[ax], (lo :: any)[ax], (hi :: any)[ax]
+		if math.abs(dd) < 1e-6 then
+			if oo < l or oo > u then
+				return nil, nil
+			end
+		else
+			local ta, tb = (l - oo) / dd, (u - oo) / dd
+			if ta > tb then
+				ta, tb = tb, ta
+			end
+			t0, t1 = math.max(t0, ta), math.min(t1, tb)
+			if t0 > t1 then
+				return nil, nil
+			end
+		end
+	end
+	if t0 < 0 or t0 > 40 then
+		return nil, nil
+	end
+	local p = o + d * t0
+	local dir = Vector2.new(p.X / (h * cv.sc.X), p.Z / (h * cv.sc.Z)) -- half-voxels from the middle (3 on a face)
+	if dir.Magnitude < 0.3 then
+		return nil, nil
+	end
+	return dir.Unit, math.clamp(math.floor(p.Y / (h * cv.sc.Y)), LOW, HIGH)
 end
 
 -- The row your crosshair is on where the view line meets the stalk (nil when you aren't looking at it).
@@ -509,7 +582,16 @@ function ClumpCarve.hit(d): boolean
 	if typeof(m) ~= "Instance" or not m:IsA("Model") or not m.Parent or typeof(d.from) ~= "Vector3" or not d.max or d.max <= 0 then
 		return false
 	end
+	if falling[m] then
+		return true -- (30 Oct) it's going over: a blow that lands late doesn't start a new stalk on it
+	end
 	local cv = carves[m]
+	if cv and (cv.src.Parent ~= m or not cv.base.Parent or not cv.top.Parent) then
+		-- (30 Oct) its mesh was swapped under it (streamed out and back in) or a piece went: put it back and start
+		-- over, rather than leave the plant hidden, or doubled with its cut hidden inside
+		restore(cv)
+		cv = nil
+	end
 	if not cv then
 		if active >= MAX_ACTIVE and not makeRoom() then
 			return false
@@ -548,19 +630,31 @@ function ClumpCarve.hit(d): boolean
 	local bottom = (meshCf * CFrame.new(c.centre * c.sc)).Position
 	local cellH = (U / 2) * c.sc.Y
 	local R = (U * 1.5) * c.sc.X
+	-- the cut goes where your crosshair is on the stalk (its side and height); a mower cuts low on the side you
+	-- come from; without an aim, the side facing you at chest height
+	local aimDir, aimR = aimSpot(c, m)
 	local localDir = meshCf:VectorToObjectSpace(Vector3.new(d.from.X - bottom.X, 0, d.from.Z - bottom.Z))
 	local dir = Vector2.new(localDir.X, localDir.Z)
 	dir = if dir.Magnitude > 1e-3 then dir.Unit else Vector2.new(0, 1)
-	local row = sh.row or aimRow(c, bottom, cellH, R) or math.clamp(math.floor(math.min((m:GetAttribute("Height") or 7) * 0.17, 2.8) / cellH), LOW + 1, HIGH - 1)
+	if aimDir and aimDir:Dot(dir) > -0.2 then
+		dir = aimDir
+	end
+	local row = sh.row or aimR or aimRow(c, bottom, cellH, R) or math.clamp(math.floor(math.min((m:GetAttribute("Height") or 7) * 0.17, 2.8) / cellH), LOW + 1, HIGH - 1)
+	-- the same spot again deepens that hole and pulls it a little toward this hit; a new spot starts a hole of its
+	-- own there (a bit bigger the more the clump is cut already), and holes that meet run into each other
 	local side: Side? = nil
+	local most = 0
 	for _, s in c.sides do
-		if s.tool == tool and s.dir:Dot(dir) > 0.62 and math.abs(s.row - row) <= 2 then
+		most = math.max(most, s.cut)
+		if not side and s.tool == tool and s.dir:Dot(dir) > 0.93 and math.abs(s.row - row) <= 1 then
 			side = s
-			break
 		end
 	end
-	if not side then
-		side = { dir = dir, row = row, cut = 0, seed = math.random() * 100, tool = tool }
+	if side then
+		side.dir = (side.dir * 2 + dir).Unit
+		side.row = (side.row * 2 + row) / 3
+	else
+		side = { dir = dir, row = row, cut = most * 0.35, seed = math.random() * 100, tool = tool }
 		table.insert(c.sides, side :: Side)
 	end
 	local s = side :: Side
@@ -673,6 +767,7 @@ end
 -- The clump is falling: mark what stays standing (the root layer and the stalk below the deepest cut, attribute
 -- CarveStump) and return the height (world Y, upright pose) it breaks at; nil when it isn't carved.
 function ClumpCarve.prepareFall(m: Model): number?
+	falling[m] = true
 	local cv = carves[m]
 	if not cv then
 		return nil

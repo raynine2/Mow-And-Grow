@@ -263,11 +263,12 @@ function FilmPanels.reset()
 	lastImpact = -math.huge
 end
 
-export type ImpactOpts = { color: Color3?, hold: number?, at: Vector3? }
+export type ImpactOpts = { color: Color3?, hold: number?, at: Vector3?, invert: boolean? }
 
 -- An impact frame: `subjects` (models or parts in the world) as flat black silhouettes, seen from the film's camera
 -- right now, on white and then on `color` (default the corruption's pink), with speed lines bursting from `at` (a
--- point in the world; default the first subject). The film's clock sticks for the length of it. Returns false
+-- point in the world; default the first subject); `invert`: the second half white on black instead (the opening's,
+-- owner 29 Oct: no more pink and purple over the picture). The film's clock sticks for the length of it. Returns false
 -- when only a soft flash stood in (too soon after the last, the film's budget spent, or "Reduce camera shake").
 function FilmPanels.impact(subjects: { Instance? }, opts: ImpactOpts?): boolean
 	local o = opts or {}
@@ -333,7 +334,12 @@ function FilmPanels.impact(subjects: { Instance? }, opts: ImpactOpts?): boolean
 	-- the second half: black on the colour, the lines turned white, the frame knocked sideways
 	task.delay(hold * 0.5, function()
 		if root.Parent then
-			root.BackgroundColor3 = color
+			if o.invert then
+				root.BackgroundColor3 = BLACK
+				vp.ImageColor3 = WHITE
+			else
+				root.BackgroundColor3 = color
+			end
 			lines.ImageColor3 = WHITE
 			lines.Rotation += 23
 			root.Position = UDim2.fromOffset(math.random(-14, 14), math.random(-8, 8))

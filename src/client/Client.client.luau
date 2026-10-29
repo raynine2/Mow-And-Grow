@@ -40,6 +40,7 @@ require(modules:WaitForChild("WelcomeBack")) -- the welcome-back popup (offline 
 require(modules:WaitForChild("Settings")) -- the gear beside the potato: Potato Mode + Legendary / Mythic in-stock alerts
 require(modules:WaitForChild("ClassFx")) -- the classes' gimmicks on screen, the Grass Titan's stomp
 require(modules:WaitForChild("LootFx"))
+require(modules:WaitForChild("FilmSheet")) -- Studio only: contact sheets of the films' shots for whoever builds them
 require(modules:WaitForChild("Intro"))
 require(modules:WaitForChild("Loading"))
 require(modules:WaitForChild("PartyWindow"))

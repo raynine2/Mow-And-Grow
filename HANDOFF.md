@@ -222,7 +222,7 @@ camp fountain is gone (owner: "remove fountain"): `Workspace.World.Hub.CampDecor
 are in git as data (`tools/vfx-import/`; owner: "skip for now"); `ServerStorage.ClaudeVfxBuf.Explosion` holds the
 first one's data in Studio (harmless). Studio's `Workspace` attribute `ForceMode` is "Run" (Play starts in a run).
 
-**State on 30 Oct: the Potato top-bar pill and "every text in our UI style" are in git, NOT in Studio yet.** New
+**State on 30 Oct ~00:50: the Potato top-bar pill and "every text in our UI style" are in Studio AND git** (patches `tools/studio-patches/2026-10-30-textstyle-pill/`, all reported done; seen on screen: the pill beside Roblox's buttons, the HUD's headlines gold). Also in both: the opening film waits for the King's model to load (`Intro` 62062 1849104164; owner: the bosses loaded late in the trailer) and the SETTINGS gear is hidden (owner: "remove this for now"; `client/Settings` holder.Visible = false). Earlier note: New
 modules `client/PotatoPill` ("Potato: OFF" in Roblox's top bar, beside Roblox's buttons) and `client/TextStyle`
 (every text in PlayerGui and the world gets Fredoka One, the dark outline and, for big white capital headlines, the
 title card's gold-over-orange; opt out with the attribute `KeepFont = true`), each required by one line in

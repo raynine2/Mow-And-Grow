@@ -3,14 +3,15 @@
 -- into the meadow); every other area gets an outpost round its drop-off pad (World.Pads.DropOff<z>, the sell spot):
 --   * a paved plaza level with the pad, built up on stone where the terraced ground falls away (steps at the edge);
 --   * the SHOP and UPGRADES stalls (their prompts open the same windows as R and TAB), a gas pump for mowers;
---   * two log benches (lamp posts and the name: server/CampDress);
+--   * two log benches;
 --   * (until 29 Oct) one thing of its own per area (SPECIAL below: a hay yard, a blossom tree, a campfire ring,
---     mushrooms, an ice-crystal fire pit, a forge, a star-crystal cluster); the camp's landmark does that now.
+--     mushrooms, an ice-crystal fire pit, a forge, a star-crystal cluster).
 -- (29 Oct, owner: "remake every zone hub except 1 to make it a bit bigger and ... feel more alive"; 21:13, "its very
 -- messy and just cluttered fix it and remove unneccerary stuff") the plaza is 24 studs round now, on the flat
--- clearing shared/WorldPlan keeps round every pad (and never inside the boss arena next to it), and
--- server/CampDress adds an entrance arch and lamp posts, a house, the area's landmark and animals round it and
--- three gnome villagers (Blender models: server/CampProps; client/CampLife animates them).
+-- clearing shared/WorldPlan keeps round every pad (and never inside the boss arena next to it). server/CampDress
+-- added an entrance arch and lamp posts, a house, the area's landmark and animals round it and three gnome villagers
+-- (Blender models: server/CampProps; client/CampLife animates them): off since 29 Oct 22:37 (owner: "remove houses
+-- and the dumb shit u added", then picked all of it), DRESS_CAMPS below brings it back.
 -- The camp's centre and radius go on the World as attributes Hub<z> / HubR<z>: no grass grows there
 -- (RunWorld.patches) and the camera lets you out of first person there (client/CameraView).
 -- Built into the run's copy of the world at run start (server/RunWorld.build); nothing in Studio changes.
@@ -25,6 +26,7 @@ local Models = require(script.Parent.Models)
 local Outposts = {}
 
 local R = 24 -- the plaza's radius (20 until 29 Oct)
+local DRESS_CAMPS = false -- server/CampDress's arch, lamp posts, house, landmark, animals, villagers (off: see above)
 local CELL = 4 -- paving grid
 local UP = Vector3.yAxis
 local part = VoxelKit.part
@@ -505,29 +507,33 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 	bench(f, at(-16, 2, right))
 	bench(f, at(16, 5, -right))
 	f.Parent = w
-	-- (29 Oct) the rest of the camp: server/CampDress (the old name board is the arch's sign now)
-	local CampDress = require(script.Parent.CampDress)
-	local ok, err = pcall(CampDress.dress, {
-		w = w,
-		f = f,
-		z = z,
-		base = base,
-		top = top,
-		fwd = fwd,
-		right = right,
-		R = R,
-		rng = rng,
-		info = info,
-		glow = th.glow,
-		lanternPost = function(parent: Instance, p: Vector3, out: Vector3)
-			lanternPost(parent, p, out, th)
-		end,
-	})
-	if not ok then
-		warn(("[Outposts] area %d dressing: %s"):format(z, tostring(err)))
+	-- (29 Oct) the rest of the camp: server/CampDress, when it's on (DRESS_CAMPS); else the camp is the plaza
+	local hubR = R
+	if DRESS_CAMPS then
+		local CampDress = require(script.Parent.CampDress)
+		local ok, err = pcall(CampDress.dress, {
+			w = w,
+			f = f,
+			z = z,
+			base = base,
+			top = top,
+			fwd = fwd,
+			right = right,
+			R = R,
+			rng = rng,
+			info = info,
+			glow = th.glow,
+			lanternPost = function(parent: Instance, p: Vector3, out: Vector3)
+				lanternPost(parent, p, out, th)
+			end,
+		})
+		if not ok then
+			warn(("[Outposts] area %d dressing: %s"):format(z, tostring(err)))
+		end
+		hubR = CampDress.RADIUS
 	end
 	w:SetAttribute("Hub" .. z, base)
-	w:SetAttribute("HubR" .. z, CampDress.RADIUS)
+	w:SetAttribute("HubR" .. z, hubR)
 end
 
 -- Every area's outpost (area 1 has the camp). `gasPump`: RunBuilder's pump maker (adds to info.pumps).

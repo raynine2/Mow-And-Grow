@@ -523,7 +523,7 @@ local LOOKS = {
 	day = { ClockTime = 13.5, ExposureCompensation = 0.05, atmosphere = { Density = 0.25, Haze = 0.9, Glare = 0.5 } },
 	golden = { ClockTime = 17.4, ExposureCompensation = 0.05, atmosphere = { Density = 0.28, Haze = 1.4, Glare = 1.0 } },
 	dusk = { ClockTime = 18.35, ExposureCompensation = -0.1, atmosphere = { Density = 0.32, Haze = 1.8, Glare = 0.6 } },
-	night = { ClockTime = 21.6, ExposureCompensation = -0.35, atmosphere = { Density = 0.36, Haze = 1.2, Glare = 0 } },
+	night = { ClockTime = 21.6, ExposureCompensation = -0.2, atmosphere = { Density = 0.36, Haze = 1.2, Glare = 0 } },
 }
 
 -------------------------------------------------------------------------------------------------------------
@@ -578,7 +578,7 @@ local function guardianPinkEyes(H: number)
 	eyesOut()
 	local names = BossView.attAll("att_eye")
 	for _ in names do
-		local g = spark(Vector3.zero, Color3.fromRGB(255, 40, 170), math.max(0.5, H * 0.03))
+		local g = spark(Vector3.zero, Color3.fromRGB(255, 40, 170), math.max(0.4, H * 0.02))
 		g.Shape = Enum.PartType.Ball
 		table.insert(guardianEyes, g)
 	end
@@ -594,7 +594,8 @@ local function guardianPinkEyes(H: number)
 	local eyes = table.clone(guardianEyes)
 	task.defer(function()
 		for _, g in eyes do
-			local fx = g.Parent and FilmVfx.play("PinkEye", g.CFrame, { follow = g, scale = H / 22 })
+			-- (29 Oct, the ending's contact sheet: at H / 22 the close-up's eyes were two big pink glows)
+			local fx = g.Parent and FilmVfx.play("PinkEye", g.CFrame, { follow = g, scale = H / 34 })
 			if fx then
 				table.insert(guardianEyesFx, fx)
 			end
@@ -943,7 +944,7 @@ local function valleyScenes(P: Plan, cameos: { Cameo }): boolean
 			local h = BossView.attWorld("att_head_center") or (c.feet + UP * (H * 0.8))
 			local pos = h + c.toCam * (H * (1.05 - 0.08 * k)) + c.side * (H * 0.28) - UP * (H * 0.12)
 			return Film.look(pos, h - UP * (H * 0.04), roll * (1 - k)), Film.mm(38), h
-		end, { cut = if i > 1 then "whip" else nil, hand = 0.25 })
+		end, { cut = "whip", hand = 0.25 }) -- (whipped in: its first frames, while the guardian is put in place, are a blur)
 		if not ok then
 			return false
 		end
@@ -1146,20 +1147,22 @@ local function partyScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Acto
 	Film.light(LOOKS.dusk, 1.2)
 	Film.grade("dusk", 1)
 	local sky = P.mayorAt + P.fwd * 22 + UP * 36
-	for i = 0, 6 do
+	for i = 0, 4 do
 		Film.at(0.2 + i * 0.5, function()
-			firework(sky + P.right * math.random(-30, 30) + P.fwd * math.random(-10, 12) + UP * math.random(-5, 9), i == 6)
+			firework(sky + P.right * math.random(-30, 30) + P.fwd * math.random(-10, 12) + UP * math.random(-5, 9), i == 4)
 		end)
 	end
 	m.act("wave")
 	m.look(sky)
 	local f0 = m.face()
-	local sideB = if inside(f0 - P.fwd * 7 + P.right * 2.6 - UP * 3.4) then -1 else 1
+	local sideB = if inside(f0 - P.fwd * 9 + P.right * 2.6 - UP * 3.6) then -1 else 1
+	-- (the Mayor along the bottom of the picture, the fireworks over him: the contact sheet's first try ended on the
+	-- sky alone)
 	ok = Film.run(4.2, function(k)
 		local f = m.face()
-		local pos = f - P.fwd * 7 + P.right * (2.6 * sideB) - UP * 3.4
-		local target = f:Lerp(sky, 0.35 + 0.25 * k)
-		return Film.look(pos, target, -4 * sideB), Film.mm(24), sky
+		local pos = f - P.fwd * 9 + P.right * (2.6 * sideB) - UP * 3.6
+		local target = f:Lerp(sky, 0.16 + 0.1 * k)
+		return Film.look(pos, target, -4 * sideB), Film.mm(20), sky
 	end, { hand = 0.4 })
 	if not ok then
 		return false
@@ -1629,8 +1632,9 @@ local function nightScenes(P: Plan, m: IntroCast.Mayor): boolean
 	end)
 	return Film.run(2.4, function(k)
 		local f = m.face()
-		local pos = f + face * (5.6 - 1.2 * k) - P.right * 1.4 + UP * 0.2
-		return Film.look(pos, f, -8 + k * 3), Film.mm(65), f
+		-- (29 Oct, the contact sheet: at 65 mm and 5.6 studs his voxel face was just blocks)
+		local pos = f + face * (9 - 1.2 * k) - P.right * 1.8 + UP * 0.1
+		return Film.look(pos, f - UP * 0.3, -8 + k * 3), Film.mm(45), f
 	end, { hand = 0.9 })
 end
 
@@ -1874,7 +1878,7 @@ local function demonScenes(P: Plan): boolean
 			Glitch.burst(0.3, 0.08)
 		end
 		local target = riseAt + UP * (4 + d.state.rise * 30)
-		return Film.look(camF, target, -3), Film.mm(18), target
+		return Film.look(camF, target, -3), Film.mm(30), target
 	end, { hand = 0.6 })
 	if not ok then
 		return false
@@ -1888,7 +1892,7 @@ local function demonScenes(P: Plan): boolean
 	end)
 	ok = Film.run(3.2, function(k)
 		local eyes = d.eyes()
-		return Film.look(eyes + toCam * (16 - k * 2.5) - side * 1.5 + UP * 0.4, eyes, -5 + k * 3), Film.mm(70), eyes
+		return Film.look(eyes + toCam * (34 - k * 4) - side * 3 - UP * 4, eyes - UP * 3, -5 + k * 3), Film.mm(35), eyes
 	end, { hand = 0.4 })
 	if not ok then
 		return false
@@ -1923,7 +1927,7 @@ local function demonScenes(P: Plan): boolean
 		d.state.roar = math.clamp(k / 0.25, 0, 1)
 		local e = 1 - (1 - k) ^ 4
 		local eyes = d.eyes()
-		local near = eyes + toCam * 16 + side * 2.5
+		local near = eyes + toCam * 30 + side * 3
 		local far = P.cast + UP * 3
 		local target = eyes:Lerp(sky, e)
 		return Film.look(Film.clear(near:Lerp(far, e), target, view), target), 34 + e * 36, target
@@ -2085,9 +2089,34 @@ local function controls(on: boolean)
 	end)
 end
 
+-- (29 Oct, the contact sheet: the arenas' "MOW THE AREA TO WAKE THE BOSS" labels floated over the shots) the world's
+-- floating labels are off while the film plays (on this client only)
+local hiddenLabels: { BillboardGui } = {}
+local function worldLabels(on: boolean)
+	if on then
+		for _, g in hiddenLabels do
+			if g.Parent then
+				g.Enabled = true
+			end
+		end
+		table.clear(hiddenLabels)
+		return
+	end
+	local w = workspace:FindFirstChild("World")
+	if w then
+		for _, d in w:GetDescendants() do
+			if d:IsA("BillboardGui") and d.Enabled then
+				d.Enabled = false
+				table.insert(hiddenLabels, d)
+			end
+		end
+	end
+end
+
 -- The film is over (or skipped): clear the set, give the camera and the light back.
 local function stopFilm()
 	guardianOff()
+	worldLabels(true)
 	FilmVfx.clear()
 	Film.stop(STEP)
 	FilmVoice.clear()
@@ -2250,6 +2279,7 @@ function Ending.play(d: any)
 	end
 	Film.start(STEP)
 	FilmPanels.reset()
+	worldLabels(false)
 	-- (he faces out over his meadow at first; the Mowers at the arena face the last guardian)
 	local c: Cast = { m = IntroCast.mayor(P.mayorAt, P.fwd), actors = IntroCast.party(P.cast, P.fwd, P.right), arena = IntroCast.party(A.party, -A.d, (-A.d):Cross(UP)) }
 	mayor = c.m

@@ -7,6 +7,7 @@ local Net = {}
 -- client -> server
 local INBOUND = {
 	"Swing", -- ()                          swing the equipped tool
+	"Skill", -- (toolId, skillId)           buy a pip of a weapon's skill tree (server/SkillTrees)
 	"Buy", -- (kind, id)                    tool | upgrade | mower | class | perk
 	"EquipClass", -- (classId)
 	"SpawnMower", -- (mowerId)

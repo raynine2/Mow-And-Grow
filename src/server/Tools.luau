@@ -339,7 +339,7 @@ function Tools.equipped(player: Player)
 	if i > data.run.tool and not (tool:GetAttribute("Loaner") and i == loanIndex(data)) then
 		return nil
 	end
-	return Config.TOOLS[i], tool
+	return require(script.Parent.SkillTrees).boost(player, Config.TOOLS[i], tool), tool -- (30 Oct) with its skill tree
 end
 
 -- Play the default "slash" arm swing (the stock Animate script listens for this).

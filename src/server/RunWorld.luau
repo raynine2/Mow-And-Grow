@@ -521,7 +521,9 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 		return list
 	end
 	local def = Config.ZONES[z]
-	local spacing = math.clamp((def and def.spacing or 11) * 0.9, 7, 13)
+	-- (29 Oct, balance 2; owner: "add more grass in areas so its not too easy") `fill` packs the area's patches
+	-- tighter: x that many clumps, each as big as before (RunWorld.clumpScale still goes by `spacing`)
+	local spacing = math.clamp((def and def.spacing or 11) * 0.9, 7, 13) / math.sqrt(def and def.fill or 1)
 	local scale = RunWorld.clumpScale(z)
 	local rng = Random.new(z * 7919)
 	local ray = RaycastParams.new()

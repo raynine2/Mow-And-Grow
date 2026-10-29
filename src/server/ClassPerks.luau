@@ -1,16 +1,16 @@
 -- Every class's own gimmick (owner, 27 Oct: "make every class feel unique and have its own gimmick, so don't only
 -- increase stats"). The stats in Config.CLASSES stay; on top each class plays differently (Config.CLASSES[i].gimmick
 -- has the name and the line the class cards show):
---   Weed Puller        Root Rip      every 6th swing rips the clump out in one hit
+--   Weed Puller        Root Rip      every 6th swing hits 8x as hard (rips clumps out by the root)
 --   Gardener           Green Thumb   bundles fly to you from much further away
 --   Groundskeeper      Tidy Up       when a clump falls, the 2 nearest clumps take a free hit
---   Lawn Baron         Courier       a full bag sells itself (80%) wherever you are, every 45 s
+--   Lawn Baron         Courier       a full bag sells itself (60%) wherever you are, every 60 s
 --   Hedge Reaper       Reap Wave     every 8th swing sends out a wave that hits every clump round you
---   Mower Specialist   Turbo Deck    ride-on mowers cut 40% wider, drive 20% faster, burn half the fuel
+--   Mower Specialist   Turbo Deck    ride-on mowers cut 25% wider, drive 15% faster, burn 40% less fuel
 --   Grass Titan        Titan Stomp   land from a jump to stomp: every clump round you takes 2 hits (4 s cooldown)
 --   Ultimate Gardener  Midas Touch   every 20th clump you uncover is a mutation (Golden or better)
 --   Lawn Legend        Hot Streak    each clump you cut in a streak adds +5% power (up to +60%); fades 2.5 s after
---   Goat Man           Graze         you eat grass as you walk: clumps round you take a hit every half second
+--   Goat Man           Graze         you eat grass as you walk: clumps round you take a hit every 0.75 s
 -- Server-checked: the only thing a client can ask for is a stomp, and that has a cooldown and needs the class.
 -- server/Run calls in here; client/ClassFx draws the effects ("classFx") and sends the stomp.
 local Players = game:GetService("Players")
@@ -23,15 +23,18 @@ local PlayerData = require(script.Parent.PlayerData)
 local ClassPerks = {}
 
 -- the numbers (Config.CLASS_GIMMICK holds the same in words for the cards)
-local ROOT_RIP_EVERY = 6
+-- (29 Oct, balance 2) the owner: "check our mowers its way too op and some classes". A one-hit rip on every target of a
+-- wide tool let a Weed Puller fell a late area with Bare Hands (any HP, every 6th swing), so the rip is a big hit
+-- now; Courier was 80% every 45 s, Turbo Deck 1.4 / 1.2 / 0.5, Graze every 0.5 s (tools/balance_model.py).
+local ROOT_RIP_EVERY, ROOT_RIP_MULT = 6, 8
 local TIDY_RADIUS, TIDY_COUNT = 12, 2
-local COURIER_CUT, COURIER_COOLDOWN = 0.8, 45
+local COURIER_CUT, COURIER_COOLDOWN = 0.6, 60
 local WAVE_EVERY, WAVE_RADIUS = 8, 14
-local TURBO = { radius = 1.4, speed = 1.2, fuel = 0.5 }
+local TURBO = { radius = 1.25, speed = 1.15, fuel = 0.6 }
 local STOMP_RADIUS, STOMP_HITS, STOMP_COOLDOWN = 12, 2, 4
 local MIDAS_EVERY = 20
 local STREAK_PER, STREAK_MAX, STREAK_WINDOW = 0.05, 0.6, 2.5
-local GRAZE_RADIUS, GRAZE_EVERY = 7, 0.5
+local GRAZE_RADIUS, GRAZE_EVERY = 7, 0.75
 local MAGNET_BONUS = 14
 
 type P = { swings: number, reveals: number, streak: number, streakAt: number, lastStomp: number, lastCourier: number, lastGraze: number, splashing: boolean }
@@ -102,14 +105,14 @@ function ClassPerks.powerMult(player: Player): number
 	return 1 + math.min(STREAK_MAX, s.streak * STREAK_PER)
 end
 
--- A hand-tool swing is about to land: returns the damage to use (Root Rip makes it a one-hit rip).
+-- A hand-tool swing is about to land: returns the damage to use (Root Rip makes it an 8x hit).
 function ClassPerks.swing(player: Player, damage: number, rootPos: Vector3): number
 	local s = state(player)
 	s.swings += 1
 	local id = classOf(player)
 	if id == "WeedPuller" and s.swings % ROOT_RIP_EVERY == 0 then
 		fx("rootRip", rootPos, 4)
-		return math.huge
+		return damage * ROOT_RIP_MULT * ClassPerks.powerMult(player)
 	end
 	if id == "HedgeReaper" and s.swings % WAVE_EVERY == 0 and ClassPerks.hitArea then
 		fx("reapWave", rootPos, WAVE_RADIUS)

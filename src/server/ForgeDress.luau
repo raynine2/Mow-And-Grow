@@ -77,7 +77,7 @@ local function gateInfo(parent: Instance, pos: Vector3, area: string, need: stri
 	title.BackgroundTransparency = 1
 	title.Position = UDim2.fromScale(0.05, 0.06)
 	title.Size = UDim2.fromScale(0.9, 0.5)
-	title.Font = Enum.Font.LuckiestGuy
+	title.Font = Enum.Font.FredokaOne
 	title.TextScaled = true
 	title.Text = string.upper(area)
 	title.TextColor3 = accent

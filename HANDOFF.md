@@ -204,6 +204,15 @@ shows the empty world for a moment (live servers teleport instead).
 
 ## Studio vs. git: please read
 
+**State on 30 Oct: the Potato top-bar pill and "every text in our UI style" are in git, NOT in Studio yet.** New
+modules `client/PotatoPill` ("Potato: OFF" in Roblox's top bar, beside Roblox's buttons) and `client/TextStyle`
+(every text in PlayerGui and the world gets Fredoka One, the dark outline and, for big white capital headlines, the
+title card's gold-over-orange; opt out with the attribute `KeepFont = true`), each required by one line in
+`client/Client`. Font lines changed at the source (Luckiest Guy / Arcade / Gotham to Fredoka One) in `server/LobbyKit`,
+`CampBuildings`, `PropKit`, `BlackHole`, `ForgeDress`, `WorldGen` and `client/ClassHolo`. Copy in by exact
+find/replace (Studio's `Client` differs from git's). Still to see on screen: the pill against Roblox's own buttons
+on a PC and a phone, and the restyled signs, film subtitles and credits.
+
 **State on 29 Oct, ~22:40: the camps are bare (no CampDress):** `Outposts` 26961 421549389 in Studio AND git.
 
 **State on 29 Oct, ~22:35: the windmill fix and the arch's room are in Studio AND git:** `CampLife` 20504 1082693149, `CampDress` 51915 1212517591 (both = git; patches in `tools/studio-patches/2026-10-29-windmill/`). A play test was left running, its camera on a screenshot view with the HUD hidden: Stop puts it all back, then Ctrl+S.

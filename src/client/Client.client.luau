@@ -2,6 +2,7 @@
 local modules = script.Parent
 
 local State = require(modules:WaitForChild("State"))
+require(modules:WaitForChild("TextStyle")) -- every text in our UI style: Fredoka One, the dark outline, gold headlines
 require(modules:WaitForChild("PhonePerf")) -- phones: shadows, bloom and sun rays off (owner, 26 Oct)
 require(modules:WaitForChild("Sound"))
 require(modules:WaitForChild("UI"))

@@ -447,7 +447,7 @@ local function crate(ctx: Ctx, cf: CFrame, s: number)
 	deco(blockAt(ctx, "CrateBrace", cf * CFrame.new(0, 0, -s / 2 - 0.04) * CFrame.Angles(0, 0, math.rad(45)), Vector3.new(0.28, s * 1.25, 0.08), C.timber))
 end
 
--- Chop A Forest's sign style text on the -Z face of `part`.
+-- Sign text in our UI font (Fredoka One) on the -Z face of `part`.
 local function signText(part: BasePart, text: string)
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
@@ -459,7 +459,7 @@ local function signText(part: BasePart, text: string)
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.fromScale(0.9, 0.8)
 	label.Position = UDim2.fromScale(0.05, 0.1)
-	label.Font = Enum.Font.LuckiestGuy
+	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
 	label.Text = text
 	label.TextColor3 = Color3.new(1, 1, 1)

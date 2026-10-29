@@ -501,7 +501,7 @@ local function sign(k: Instance, at: CFrame)
 	title.Name = "Title"
 	title.BackgroundTransparency = 1
 	title.Size = UDim2.fromScale(1, 0.66)
-	title.Font = Enum.Font.LuckiestGuy
+	title.Font = Config.UI.font
 	title.Text = "CLASSES"
 	title.TextScaled = true
 	title.TextColor3 = Color3.new(1, 1, 1)
@@ -519,7 +519,7 @@ local function sign(k: Instance, at: CFrame)
 	sub.BackgroundTransparency = 1
 	sub.Position = UDim2.fromScale(0.2, 0.66)
 	sub.Size = UDim2.fromScale(0.6, 0.32)
-	sub.Font = Enum.Font.LuckiestGuy
+	sub.Font = Config.UI.font
 	sub.Text = "JUMP IN!"
 	sub.TextScaled = true
 	sub.TextColor3 = Color3.fromRGB(140, 235, 255)

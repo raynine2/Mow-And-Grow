@@ -4,7 +4,7 @@
 -- round the drop-off pad, on the flat clearing shared/WorldPlan keeps round every pad), the SHOP and UPGRADES stalls,
 -- the gas pump and two benches. This adds only a few pieces, each one checked to stand on the paving or, round the
 -- plaza, on open ground (off the paths, clear of the boss arena and of everything else):
---   * on the plaza: an entrance arch with the camp's name and four lamp posts;
+--   * on the plaza: an entrance arch (room round it, its way through kept clear) and four lamp posts;
 --   * round it: a house (smoke from its chimney), the area's own landmark and its animals. Golden Wheat Hills: a
 --     windmill, chickens in a pen; Blossom Garden: a pavilion with paper lanterns, koi in a pond; Misty Pine Forest: a
 --     watchtower with a flag, owls; Bubble Swamp: the house on stilts, a pond with a jetty, a rowing boat and frogs;
@@ -137,7 +137,7 @@ local OUTFITS: { [string]: { { Color3 } } } = {
 -------------------------------------------------------------------------------------------------------------
 -- the camp's frame and the ground round it
 -------------------------------------------------------------------------------------------------------------
-type Box = { cf: CFrame, hx: number, hz: number }
+type Box = { cf: CFrame, hx: number, hz: number, bench: boolean? }
 type Disc = { at: Vector2, r: number }
 
 export type Ctx = {
@@ -163,6 +163,7 @@ export type Ctx = {
 	taken: { Disc }?, -- round the plaza: what this has built
 	obstacles: { Box }?, -- on the plaza: the stalls, the pump, the benches, the pad
 	plazaTaken: { Disc }?, -- on the plaza: what this has built
+	archAt: CFrame?, -- on the plaza: the arch (front: out of the camp); its way through stays clear
 	paveRay: RaycastParams?,
 	placed: { string }?, -- for the Output
 }
@@ -478,18 +479,21 @@ end
 -- on the plaza: what stands there already, and whether a spot is paved and clear
 -------------------------------------------------------------------------------------------------------------
 local PAVING = { Tile = true, TileBed = true, Plank = true, Footing = true, Step = true, WalkPlate = true }
+local BENCH = { Log = true, BenchLeg = true } -- server/Outposts' log benches
 
 local function plazaSetup(ctx: Ctx)
 	local boxes: { Box } = {}
-	local function add(cf: CFrame, size: Vector3)
-		table.insert(boxes, footprint(cf, size))
+	local function add(cf: CFrame, size: Vector3, bench: boolean?)
+		local b = footprint(cf, size)
+		b.bench = bench
+		table.insert(boxes, b)
 	end
 	for _, d in ctx.f:GetChildren() do
 		if d:IsA("Model") then
 			local cf, size = d:GetBoundingBox()
 			add(cf, size)
 		elseif d:IsA("BasePart") and not PAVING[d.Name] then
-			add(d.CFrame, d.Size)
+			add(d.CFrame, d.Size, BENCH[d.Name] == true)
 		end
 	end
 	ctx.plazaTaken = {}
@@ -517,10 +521,10 @@ local function plazaSetup(ctx: Ctx)
 	ctx.paveRay = ray
 end
 
--- nothing on the plaza within `r` of world point p
-local function clearOf(ctx: Ctx, p: Vector3, r: number): boolean
+-- nothing on the plaza within `r` of world point p (but a bench when `benchGoes`: it's moved off)
+local function clearOf(ctx: Ctx, p: Vector3, r: number, benchGoes: boolean?): boolean
 	for _, b in ctx.obstacles :: { Box } do
-		if not outside(b, p, r) then
+		if not (benchGoes and b.bench) and not outside(b, p, r) then
 			return false
 		end
 	end
@@ -591,60 +595,198 @@ local function entrance(ctx: Ctx): number
 	return math.deg(math.atan2(s, c))
 end
 
--- The entrance arch where the path comes in, its two feet and the way through on the paving.
+-- The arch's footprint (its posts and roof): 9.1 studs either side of its middle, 1.8 deep.
+local ARCH_HX, ARCH_HZ = 9.1, 1.8
+
+-- how far world point p is from the footprint of an arch at cf
+local function fromArch(cf: CFrame, p: Vector3): number
+	local l = cf:PointToObjectSpace(Vector3.new(p.X, cf.Position.Y, p.Z))
+	local dx, dz = math.max(0, math.abs(l.X) - ARCH_HX), math.max(0, math.abs(l.Z) - ARCH_HZ)
+	return math.sqrt(dx * dx + dz * dz)
+end
+
+-- the gap between the footprint of an arch at cf and box b (two rectangles: from the corners of each to the other)
+local function archGap(cf: CFrame, b: Box): number
+	local g = math.huge
+	for _, sx in { -1, 1 } do
+		for _, sz in { -1, 1 } do
+			g = math.min(g, fromArch(cf, b.cf * Vector3.new(sx * b.hx, 0, sz * b.hz)))
+		end
+	end
+	for k = 0, 10 do
+		for _, z in { -ARCH_HZ, ARCH_HZ } do
+			local p = cf * Vector3.new(-ARCH_HX + k * ARCH_HX / 5, 0, z)
+			local lp = b.cf:PointToObjectSpace(Vector3.new(p.X, b.cf.Position.Y, p.Z))
+			local dx, dz = math.max(0, math.abs(lp.X) - b.hx), math.max(0, math.abs(lp.Z) - b.hz)
+			g = math.min(g, math.sqrt(dx * dx + dz * dz))
+		end
+	end
+	return g
+end
+
+-- How far an arch at cf keeps from the stalls, the pump and what's been built on the plaza (a bench gives way).
+local function roomAt(ctx: Ctx, cf: CFrame): number
+	local room = math.huge
+	for _, b in ctx.obstacles :: { Box } do
+		if not b.bench then
+			room = math.min(room, archGap(cf, b))
+		end
+	end
+	for _, t in ctx.plazaTaken :: { Disc } do
+		room = math.min(room, fromArch(cf, Vector3.new(t.at.X, 0, t.at.Y)) - t.r)
+	end
+	return room
+end
+
+-- Out of the arch's way (for what stands still: lamp posts, a villager standing about, a bench; owner, 29 Oct, after
+-- a lamp post stood in the gateway): a spot of radius r that keeps 2.5 studs from its posts and roof ends and off the
+-- way through it (4.5 either side of its middle, from 4 outside to 8 inside the camp).
+local function offArch(ctx: Ctx, p: Vector3, r: number): boolean
+	local cf = ctx.archAt
+	if not cf then
+		return true
+	end
+	local l = cf:PointToObjectSpace(p) -- (+Z: into the camp)
+	if math.abs(l.X) < ARCH_HX + 2.5 + r and math.abs(l.Z) < ARCH_HZ + 2.5 + r then
+		return false
+	end
+	return not (math.abs(l.X) < 4.5 + r and l.Z > -4 - r and l.Z < 8 + r)
+end
+
+-- A bench closer than 2.5 studs to the arch is carried round the plaza (about its middle) to a clear spot, or else
+-- taken away. Returns what happened (nil: no bench in the way).
+local function benchOut(ctx: Ctx, cf: CFrame): string?
+	local hit: { Vector3 } = {}
+	for _, b in ctx.obstacles :: { Box } do
+		if b.bench and archGap(cf, b) < 2.5 then
+			table.insert(hit, b.cf.Position)
+		end
+	end
+	if #hit == 0 then
+		return nil
+	end
+	-- the whole bench: its logs and legs (one bench is 5 studs long; the two stand on opposite sides)
+	local parts: { BasePart } = {}
+	for _, d in ctx.f:GetChildren() do
+		if d:IsA("BasePart") and BENCH[d.Name] then
+			for _, q in hit do
+				if Vector2.new(d.Position.X - q.X, d.Position.Z - q.Z).Magnitude < 4.5 then
+					table.insert(parts, d)
+					break
+				end
+			end
+		end
+	end
+	local keep: { Box } = {}
+	for _, b in ctx.obstacles :: { Box } do
+		local mine = false
+		for _, p in (if b.bench then parts else {}) do
+			mine = mine or (b.cf.Position - p.Position).Magnitude < 0.05
+		end
+		if not mine then
+			table.insert(keep, b)
+		end
+	end
+	ctx.obstacles = keep
+	if #parts == 0 then
+		return nil
+	end
+	local mid = Vector3.zero
+	for _, p in parts do
+		mid += p.Position
+	end
+	mid /= #parts
+	local c = Vector3.new(ctx.base.X, 0, ctx.base.Z)
+	for _, da in { 15, -15, 30, -30, 45, -45, 60, -60 } do
+		local turn = CFrame.new(c) * CFrame.Angles(0, math.rad(da), 0) * CFrame.new(-c)
+		local to = turn * mid
+		local ok = clearOf(ctx, to, 3.6) and offArch(ctx, to, 3.2)
+		for _, p in parts do
+			ok = ok and paved(ctx, turn * p.Position)
+		end
+		if ok then
+			for _, p in parts do
+				p.CFrame = turn * p.CFrame
+				local b = footprint(p.CFrame, p.Size)
+				b.bench = true
+				table.insert(ctx.obstacles :: { Box }, b)
+			end
+			return string.format("bench moved %+d", da)
+		end
+	end
+	for _, p in parts do
+		p:Destroy()
+	end
+	return "bench taken away"
+end
+
+-- The entrance arch where the path comes in, its two feet and the way through on the paving. Of the spots where it
+-- fits, the one with the most room round it (up to 4 studs from the stalls and the pump; a bench in the way gives
+-- way; owner, 29 Oct: "its very messy and just cluttered"), the nearer the path and the plaza's edge the better.
 local function arch(ctx: Ctx, name: string)
 	local e = entrance(ctx)
+	local best: CFrame?, bestScore, bestDeg, bestDist, bestRoom = nil, -math.huge, 0, 0, 0
 	for _, dist in { ctx.R - 3.6, ctx.R - 4.8, ctx.R - 6, ctx.R - 7.5 } do
 		for _, da in { 0, 12, -12, 24, -24, 36, -36 } do
 			local deg = e + da
 			local d = dirAt(ctx, deg)
 			local p = ctx.base + d * dist
 			local cf = CFrame.lookAt(p, p + d)
-			local ok = clearOf(ctx, p, 2.5)
+			local ok = clearOf(ctx, p, 2.5, true)
 			for _, x in { -7.6, -5, -2.5, 0, 2.5, 5, 7.6 } do
 				for _, z in { -1.1, 1.1 } do
 					ok = ok and paved(ctx, (cf * CFrame.new(x, 0, z)).Position)
 				end
 			end
 			for _, x in { -6.6, 6.6 } do
-				ok = ok and clearOf(ctx, (cf * CFrame.new(x, 0, 0)).Position, 2.2)
+				ok = ok and clearOf(ctx, (cf * CFrame.new(x, 0, 0)).Position, 2.2, true)
 			end
 			if ok then
-				local m = place(ctx, "camp_arch", cf, { collide = true })
-				if not m then
-					return
+				local room = roomAt(ctx, cf)
+				local score = math.min(room, 4) - 0.02 * math.abs(da) - 0.15 * (ctx.R - 3.6 - dist)
+				if score > bestScore + 0.01 then
+					best, bestScore, bestDeg, bestDist, bestRoom = cf, score, deg, dist, room
 				end
-				-- no name board (owner, 29 Oct: "remove every slop part thats ugly like signs"): the board, its rim and
-				-- chains hang between the posts under the beams
-				local left = 0
-				for _, p in m:GetChildren() do
-					if p:IsA("BasePart") then
-						local lp = cf:PointToObjectSpace(p.Position)
-						if math.abs(lp.X) <= 4.7 and lp.Y > 5.5 and lp.Y < 9.05 and math.abs(lp.Z) <= 0.6 then
-							p:Destroy()
-						else
-							left += 1
-						end
-					end
-				end
-				m:SetAttribute("NParts", left) -- (client/CampLife waits for all of them to stream in)
-				local _ = name
-				lamps(ctx, m)
-				for _, g in { "BanL", "BanR" } do
-					tag(m, "CampSway", { ["Group_" .. g] = true })
-				end
-				m:SetAttribute("Amp", 6)
-				m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
-				for _, x in { -6.6, 6.6 } do
-					local q = (cf * CFrame.new(x, 0, 0)).Position
-					table.insert(ctx.plazaTaken :: { Disc }, { at = Vector2.new(q.X, q.Z), r = 1.8 })
-				end
-				table.insert(ctx.placed :: { string }, string.format("arch@%.0f/%.1f", deg, dist))
-				return
 			end
 		end
 	end
-	table.insert(ctx.placed :: { string }, "arch:none")
+	local cf = best
+	if not cf then
+		table.insert(ctx.placed :: { string }, "arch:none")
+		return
+	end
+	local m = place(ctx, "camp_arch", cf, { collide = true })
+	if not m then
+		return
+	end
+	-- no name board (owner, 29 Oct: "remove every slop part thats ugly like signs"): the board, its rim and chains hang
+	-- between the posts under the beams
+	local left = 0
+	for _, p in m:GetChildren() do
+		if p:IsA("BasePart") then
+			local lp = cf:PointToObjectSpace(p.Position)
+			if math.abs(lp.X) <= 4.7 and lp.Y > 5.5 and lp.Y < 9.05 and math.abs(lp.Z) <= 0.6 then
+				p:Destroy()
+			else
+				left += 1
+			end
+		end
+	end
+	m:SetAttribute("NParts", left) -- (client/CampLife waits for all of them to stream in)
+	local _ = name
+	lamps(ctx, m)
+	for _, g in { "BanL", "BanR" } do
+		tag(m, "CampSway", { ["Group_" .. g] = true })
+	end
+	m:SetAttribute("Amp", 6)
+	m.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	for _, x in { -6.6, 6.6 } do
+		local q = (cf * CFrame.new(x, 0, 0)).Position
+		table.insert(ctx.plazaTaken :: { Disc }, { at = Vector2.new(q.X, q.Z), r = 1.8 })
+	end
+	ctx.archAt = cf
+	local bench = benchOut(ctx, cf)
+	table.insert(ctx.placed :: { string }, string.format("arch@%.0f/%.1f room %.1f%s", bestDeg, bestDist, bestRoom, if bench then " (" .. bench .. ")" else ""))
 end
 
 -- Four lamp posts near the edge, between the arch and the stalls.
@@ -656,12 +798,12 @@ local function lampPosts(ctx: Ctx)
 	local n = 0
 	for _, deg in { 42, -42, 138, -138 } do
 		local done = false
-		for _, da in { 0, 8, -8, 16, -16 } do
+		for _, da in { 0, 8, -8, 16, -16, 24, -24 } do
 			for _, inset in { 1.8, 3.2, 4.6 } do
 				if not done then
 					local d = dirAt(ctx, deg + da)
 					local p = ctx.base + d * (ctx.R - inset)
-					if onPlaza(ctx, p, 1.3) then
+					if onPlaza(ctx, p, 1.3) and offArch(ctx, p, 1.3) then
 						lanternPost(ctx.f, p, d)
 						table.insert(ctx.plazaTaken :: { Disc }, { at = Vector2.new(p.X, p.Z), r = 1.2 })
 						done = true
@@ -1037,7 +1179,7 @@ local function people(ctx: Ctx)
 	local n = 0
 	for _, s in { { -14.6, -12.5 }, { 14.6, -12.5 }, { -13, -10 }, { 13, -10 }, { -15, -5 }, { 15, -5 } } do
 		local p = ctx.base + ctx.right * s[1] + ctx.fwd * s[2]
-		if onPlaza(ctx, p, 1.1) then
+		if onPlaza(ctx, p, 1.1) and offArch(ctx, p, 1.1) then
 			villager(ctx, CFrame.lookAt(p, p + ctx.fwd), "idle", { outfit = 1 })
 			table.insert(ctx.plazaTaken :: { Disc }, { at = Vector2.new(p.X, p.Z), r = 1.3 })
 			n += 1

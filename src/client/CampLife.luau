@@ -56,7 +56,9 @@ local function build(m: Model, kind: string): Rig?
 			table.insert(parts, d)
 			table.insert(offs, base:ToObjectSpace(d.CFrame))
 			local g = d:GetAttribute("G")
-			table.insert(group, if type(g) == "string" then g else nil)
+			-- set by the part's own index: table.insert(group, nil) adds nothing, which slid every later group name
+			-- onto the wrong part (the windmill's tower turned with its sails, villagers' arms moved as heads)
+			group[#parts] = if type(g) == "string" then g else nil
 		end
 	end
 	if #parts == 0 then

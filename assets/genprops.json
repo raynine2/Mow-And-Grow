@@ -1,0 +1,20 @@
+{
+  "about": "Props made with Roblox Studio's mesh generator (29 Oct 2026, owner: 'remake all lanterns, gas pumps and all stands', 'you use the wrong backpacks'). Each generation was published as a Model asset on the owner's account; the templates built from them live in the place at ServerStorage.GenProps (server/Models swaps them in by name). To rebuild a template: insert the asset, turn it so its front faces -Z (frontYaw below: the mesh's own front was its -Z for 0, its +Z for 180), stand its feet at the origin (the lamp: under the post), and copy the attributes listed here.",
+  "props": {
+    "lantern_post": { "asset": 124301007398575, "frontYaw": 0, "parts": ["Post", "Lantern"], "notes": "LanternCore (invisible part with a PointLight) at the Lantern's centre; attribute LightAt. Fitted to the old lamp's height at runtime." },
+    "gas_pump": { "asset": 75550896962911, "frontYaw": 0 },
+    "bag_satchel": { "asset": 133218007760236, "frontYaw": 180, "notes": "Grass Satchel: burlap sack with a clover" },
+    "bag_backpack": { "asset": 109945399507805, "frontYaw": 0, "notes": "Clipping Backpack: green canvas, brown straps" },
+    "bag_hiker": { "asset": 72782054380307, "frontYaw": 0, "notes": "Expedition Pack: blue with a red bedroll" },
+    "bag_infinite": { "asset": 119625414552375, "frontYaw": 180, "notes": "Bottomless Sack: purple with cyan stars" },
+    "stall_wheat": { "asset": 96205688428983, "frontYaw": 180, "width": 10.4, "maxHeight": 11.2 },
+    "stall_blossom": { "asset": 100520926354371, "frontYaw": 180, "width": 10.4, "maxHeight": 11.2 },
+    "stall_pine": { "asset": 136276067614823, "frontYaw": 180, "width": 10.4, "maxHeight": 11.2 },
+    "stall_swamp": { "asset": 75687364435544, "frontYaw": 180, "width": 10.4, "maxHeight": 11.2 },
+    "stall_frost": { "asset": 105170457463099, "frontYaw": 180, "width": 10.4, "maxHeight": 11.2 },
+    "stall_ember": { "asset": 89103814786322, "frontYaw": 180, "width": 10.4, "maxHeight": 11.2 },
+    "stall_isles": { "asset": 88184288721473, "frontYaw": 180, "width": 10.4, "maxHeight": 11.2, "notes": "its name goes on the blank panel on the counter's front" }
+  },
+  "stallAttributes": "SignAt (CFrame, the name panel's middle, front toward -Z, tilted with the board), SignSize (Vector2), CounterAt / CounterSize (Vector3: the invisible counter collider the prompt hangs on). Measured with rays on each stall in Studio, then checked by eye with test text.",
+  "unused": { "first market stall (red/white)": 133278987203250, "a small crate-like 'pine' stall": 137115239637512, "two Dandelion King boss tries": [122884474308463, 77357516779226] }
+}

@@ -28,7 +28,9 @@ local VOXEL_SOLID = {
 }
 
 local templates: { [string]: Model } = {}
-local folder = Instance.new("Folder")
+-- (29 Oct) one folder only: a second, empty one (an edit-time require leaves one in the saved place) made the
+-- clients' FindFirstChild pick the empty folder, so the first-person tools never got their models
+local folder = ReplicatedStorage:FindFirstChild("MowALawnModels") or Instance.new("Folder")
 folder.Name = "MowALawnModels"
 folder.Parent = ReplicatedStorage
 
@@ -358,6 +360,64 @@ function Models.placeForge(name: string, parent: Instance, cf: CFrame, want: { h
 	return Models.place(raw.Name, parent, cf, Models.fitScale(raw:GetExtentsSize(), want), noCollide)
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- generated props (ServerStorage.GenProps: made with Roblox's mesh generator in Studio, 29 Oct)
+-------------------------------------------------------------------------------------------------------------
+-- The owner, 29 Oct: "remake all lanterns, gas pumps and all stands" and "you use the wrong backpacks". Every child
+-- of ServerStorage.GenProps is a ready template (textured MeshParts, pivot at the bottom centre, front toward the
+-- pivot's LookVector) named like the game model it replaces: lantern_post (with its own light), gas_pump, the bags
+-- (bag_satchel, bag_backpack, bag_hiker, bag_infinite) and the camps' market stalls (stall_<area>: server/Outposts).
+-- It's fitted into the old template's box (its height, no wider than 1.1 x), so builders keep placing it the same
+-- way; one with no old template is used as it is. Points a builder needs ride along as attributes in the template's
+-- own studs (LightAt: the lamp's glass; SignAt / SignSize: a stall's name board; CounterAt / CounterSize: its
+-- counter) and are scaled with it. The asset ids are in assets/genprops.json.
+local function swapGen(): number
+	local src = ServerStorage:FindFirstChild("GenProps")
+	local n = 0
+	for _, raw in (if src then src:GetChildren() else {}) do
+		if raw:IsA("Model") then
+			local m = raw:Clone()
+			local old = templates[raw.Name]
+			local k = 1
+			if old then
+				local _, size = old:GetBoundingBox()
+				k = Models.fitScale(m:GetExtentsSize(), { height = size.Y, width = size.X * 1.1 })
+			end
+			if math.abs(k - 1) > 0.001 then
+				-- (the parts themselves, as swapForge does: Models.place's ScaleTo is absolute)
+				for _, p in m:GetDescendants() do
+					if p:IsA("BasePart") then
+						p.Size *= k
+						p.CFrame = p.CFrame.Rotation + p.Position * k
+					end
+				end
+				for key, v in m:GetAttributes() do
+					if typeof(v) == "Vector3" or typeof(v) == "Vector2" then
+						m:SetAttribute(key, v * k)
+					elseif typeof(v) == "CFrame" then
+						m:SetAttribute(key, v.Rotation + v.Position * k)
+					end
+				end
+			end
+			m:SetAttribute("Gen", true)
+			m.WorldPivot = CFrame.new()
+			m.Parent = folder
+			if old then
+				old:Destroy()
+			end
+			templates[raw.Name] = m
+			n += 1
+		end
+	end
+	return n
+end
+
+-- Is the template `name` one of the generated props (ServerStorage.GenProps)?
+function Models.isGen(name: string): boolean
+	local t = templates[name]
+	return t ~= nil and t:GetAttribute("Gen") == true
+end
+
 -- Loads every model at the same time (one at a time took ~30 s) and waits at most `timeout` seconds; a model
 -- that isn't loaded by then uses its native-part version if it has one, else its brick fallback.
 function Models.loadAll(timeout: number?)
@@ -538,6 +598,10 @@ function Models.loadAll(timeout: number?)
 		forged += 1
 	end
 	print(("[Models] %d ForgeGUI buildings loaded (%d not loaded)"):format(forged, forgeLeft or 0))
+	local gens = swapGen()
+	if gens > 0 then
+		print(("[Models] %d generated props in use (ServerStorage.GenProps)"):format(gens))
+	end
 end
 
 function Models.has(name: string): boolean

@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
 local VoxelKit = require(script.Parent.VoxelKit)
 local PropKit = require(script.Parent.PropKit)
+local Models = require(script.Parent.Models)
 
 local Outposts = {}
 
@@ -103,12 +104,66 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the shared pieces
 -------------------------------------------------------------------------------------------------------------
+-- The area's generated market stall (owner, 29 Oct: "remake ... all stands"; ServerStorage.GenProps "stall_<area>",
+-- server/Models): a solid counter with the prompt on it and the title on the stall's own name board (the template's
+-- SignAt / SignSize). False when it isn't there.
+local function genStall(m: Model, cf: CFrame, title: string, window: string, area: string): boolean
+	local name = "stall_" .. area
+	if not Models.isGen(name) then
+		return false
+	end
+	local s = Models.place(name, m, cf, 1, true)
+	if not s then
+		return false
+	end
+	local at, size = s:GetAttribute("CounterAt"), s:GetAttribute("CounterSize")
+	local counter = PropKit.collider(m, cf, if typeof(at) == "Vector3" then at else Vector3.new(0, 1.7, -1), if typeof(size) == "Vector3" then size else Vector3.new(9, 3.4, 3))
+	counter.Name = "Counter"
+	local signAt, signSize = s:GetAttribute("SignAt"), s:GetAttribute("SignSize")
+	if typeof(signAt) == "CFrame" and typeof(signSize) == "Vector2" then
+		local board = Instance.new("Part")
+		board.Name = "Board"
+		board.Anchored = true
+		board.CanCollide = false
+		board.CanQuery = false
+		board.CanTouch = false
+		board.CastShadow = false
+		board.Transparency = 1
+		board.Size = Vector3.new(signSize.X, signSize.Y, 0.05)
+		board.CFrame = cf * signAt
+		board.Parent = m
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = Enum.NormalId.Front -- (toward the customers)
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 40
+		gui.LightInfluence = 0.3
+		gui.Parent = board
+		local t = Instance.new("TextLabel")
+		t.BackgroundTransparency = 1
+		t.Size = UDim2.fromScale(1, 1)
+		t.Font = Enum.Font.FredokaOne
+		t.TextScaled = true
+		t.Text = title
+		t.TextColor3 = Color3.fromRGB(255, 240, 200)
+		local st = Instance.new("UIStroke")
+		st.Thickness = 3
+		st.Color = Color3.fromRGB(60, 36, 20)
+		st.Parent = t
+		t.Parent = gui
+	end
+	PropKit.prompt(counter, "Open", title, window, 10)
+	return true
+end
+
 -- A market stall in the camp's voxel style: log posts, a plank counter, a striped cloth awning, a board with its
--- name, and a prompt that opens `window`.
-local function stall(f: Instance, cf: CFrame, title: string, window: string, th: Theme, rng: Random)
+-- name, and a prompt that opens `window`. (The area's generated stall when there is one: genStall.)
+local function stall(f: Instance, cf: CFrame, title: string, window: string, th: Theme, rng: Random, area: string)
 	local m = Instance.new("Model")
 	m.Name = title .. "Stall"
 	m.Parent = f
+	if genStall(m, cf, title, window, area) then
+		return
+	end
 	local counter = part(m, "Counter", cf * CFrame.new(0, 1.7, 0), Vector3.new(9, 3.4, 3), C.board, Enum.Material.WoodPlanks, true)
 	part(m, "CounterTop", cf * CFrame.new(0, 3.55, 0), Vector3.new(9.6, 0.4, 3.6), C.timber, nil, true)
 	for _, x in { -4.3, 4.3 } do
@@ -143,6 +198,17 @@ local function stall(f: Instance, cf: CFrame, title: string, window: string, th:
 end
 
 local function lanternPost(f: Instance, at: Vector3, out: Vector3, th: Theme)
+	-- (29 Oct) the generated lamp post (server/Models: ServerStorage.GenProps), its lantern hanging over the plaza
+	-- and lit in the area's glow
+	if Models.isGen("lantern_post") then
+		local m = Models.place("lantern_post", f, CFrame.lookAt(at, at - out), 0.8, true)
+		local core = m and m:FindFirstChild("LanternCore")
+		local light = core and core:FindFirstChildOfClass("PointLight")
+		if light and th.glow then
+			light.Color = th.glow
+		end
+		return
+	end
 	local cf = CFrame.lookAt(at, at + out)
 	VoxelKit.log(f, cf * CFrame.new(0, 3, 0) * CFrame.Angles(0, 0, math.rad(90)), 6, 0.7, 0.7, C.log)
 	part(f, "Arm", cf * CFrame.new(0, 5.8, 0.8), Vector3.new(0.4, 0.4, 1.8), C.timber)
@@ -328,8 +394,8 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 		local p = base + right * x + fwd * zz
 		return CFrame.lookAt(p, p + (face or fwd))
 	end
-	stall(f, at(-6.5, -11), "SHOP", "Shop", th, rng)
-	stall(f, at(6.5, -11), "UPGRADES", "Upgrades", th, rng)
+	stall(f, at(-6.5, -11), "SHOP", "Shop", th, rng, def.id)
+	stall(f, at(6.5, -11), "UPGRADES", "Upgrades", th, rng, def.id)
 	if gasPump then
 		gasPump(f, base + right * 12 + fwd * -3, info, -right)
 	end

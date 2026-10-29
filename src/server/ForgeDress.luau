@@ -131,10 +131,86 @@ local function titleCase(s: string): string
 	end))
 end
 
+-- How far the walls of the way are either side of `foot` (+across, -across): the world's rock and floor sides
+-- (World.Ground) at a few heights up the archway, from 4 studs up (a low ledge beside a chasm way is no wall: the
+-- pillars may stand on it); nil for a side with none within `reach`.
+local function wallGaps(gate: Instance, foot: Vector3, across: Vector3, reach: number): (number?, number?)
+	local world = gate.Parent and gate.Parent.Parent
+	local ground = world and world:FindFirstChild("Ground")
+	if not ground then
+		return nil, nil
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { ground }
+	local function side(dir: Vector3): number?
+		local best: number? = nil
+		for _, h in { 4, 8, 12, 16 } do
+			local from = foot + Vector3.new(0, h, 0)
+			local hit = workspace:Raycast(from, dir * reach, params)
+			-- (a wall: its face stands up; a slope's or a step's top doesn't count)
+			if hit and math.abs(hit.Normal.Y) < 0.6 then
+				local d = (hit.Position - from).Magnitude
+				best = if best then math.min(best, d) else d
+			end
+		end
+		return best
+	end
+	return side(across), side(-across)
+end
+
+-- Where the archway stands and how wide it is (owner, 29 Oct: "the thing is in the wall, it is almost at every
+-- gate"): the way's width + 4 and centred on the way by default, but narrowed and slid sideways so its pillars
+-- stand clear of the walls either side (the narrow passes' rock walls cut through them).
+local function archFit(gate: Instance, foot: Vector3, along: Vector3, width: number): (Vector3, number)
+	local across = Vector3.new(-along.Z, 0, along.X).Unit
+	local want = width + 4
+	local right, left = wallGaps(gate, foot, across, want / 2 + 8)
+	local margin = 0.4
+	local shift = 0
+	if right and left then
+		want = math.min(want, right + left - 2 * margin)
+		shift = (right - left) / 2
+	elseif right then
+		shift = math.min(0, right - margin - want / 2)
+	elseif left then
+		shift = math.max(0, want / 2 - (left - margin))
+	end
+	want = math.max(want, 10)
+	return foot + across * shift, want
+end
+
+-- An archway the saved world already has (dressed in Studio): fitted the same way, and its label moved over it.
+function ForgeDress.refit(gate: Instance)
+	local arch = gate:FindFirstChild("ForgeArch")
+	if not (arch and arch:IsA("Model")) or arch:GetAttribute("Fitted") then
+		return
+	end
+	local pivot = arch:GetPivot() -- (its feet; its front looks at the players coming up)
+	local look = flat(pivot.LookVector)
+	if look.Magnitude < 0.5 then
+		return
+	end
+	local along = -look.Unit
+	local _, size = arch:GetBoundingBox()
+	local at, want = archFit(gate, pivot.Position, along, size.X - 4)
+	if math.abs(want - size.X) > 0.05 then
+		arch:ScaleTo(arch:GetScale() * want / size.X)
+	end
+	arch:PivotTo(CFrame.lookAt(at, at - along))
+	arch:SetAttribute("Fitted", true)
+	local spot = gate:FindFirstChild("GateInfoSpot")
+	if spot and spot:IsA("BasePart") then
+		local _, now = arch:GetBoundingBox()
+		spot.CFrame = CFrame.new(at + Vector3.new(0, now.Y + 3.2, 0) - along * 1.5)
+	end
+end
+
 -- One gate. Returns true when it has its archway (now or before). Without the model (not loaded) the board
 -- still goes: the label takes its place and the posts / stone arch stay.
 function ForgeDress.gate(gate: Instance): boolean
 	if gate:GetAttribute("ForgeDressed") then
+		ForgeDress.refit(gate) -- (dressed in the saved world: clear of the walls too)
 		return true
 	end
 	local z = gate:GetAttribute("Zone")
@@ -195,14 +271,16 @@ function ForgeDress.gate(gate: Instance): boolean
 	local area = words[1] or kept.area or (def and def.name) or ""
 	local need = if words[3] then titleCase(words[3]) else (kept.need or (Zones.list[z - 1] and Zones.list[z - 1].name) or "the last area")
 	local accent = def and def.palette and def.palette.accent or Color3.fromRGB(255, 214, 60)
-	-- the archway: front toward players coming up, a little wider than the way (more and its pillars stand in the
-	-- walls of the narrow passes)
-	local m = if hasModel then Models.placeForge(name :: string, gate, CFrame.lookAt(foot, foot - along), { width = width + 4, height = (width + 4) * 1.05 }, true) else nil
+	-- the archway: front toward players coming up, a little wider than the way but clear of the walls (archFit)
+	local at, archW = archFit(gate, foot, along, width)
+	local m = if hasModel then Models.placeForge(name :: string, gate, CFrame.lookAt(at, at - along), { width = archW, height = archW * 1.05 }, true) else nil
 	local top = standing
 	if m then
 		m.Name = "ForgeArch"
+		m:SetAttribute("Fitted", true)
 		local _, size = m:GetBoundingBox()
 		top = size.Y
+		foot = at
 	end
 	-- the old board and its post go; with the archway the posts and their glows and the stone arch go too
 	for _, p in gate:GetChildren() do

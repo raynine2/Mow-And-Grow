@@ -128,7 +128,8 @@ local function lifeFor(world: Instance)
 			smoke.Acceleration = Vector3.new(1.2, 0.4, 0.8)
 			smoke.RotSpeed = NumberRange.new(-30, 30)
 			smoke.Parent = spot
-		elseif m:IsA("Model") and m.Name == "lantern_post" then
+		elseif m:IsA("Model") and m.Name == "lantern_post" and not m:FindFirstChild("LanternCore") then
+			-- (the generated lamp post brings its own light: server/Models, ServerStorage.GenProps)
 			-- warm amber glass inside the lantern's open frame (no neon: the hubs' bloom blows neon up into a blob)
 			-- and a soft light round it
 			local s = m:GetScale()

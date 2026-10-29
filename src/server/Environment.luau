@@ -115,6 +115,10 @@ function Environment.spawn(parent: Instance, cf: CFrame)
 	s.Color = Color3.fromRGB(196, 150, 100)
 	s.TopSurface = Enum.SurfaceType.Smooth
 	s.Material = Enum.Material.WoodPlanks
+	-- (unseen: players still spawn on it, but the wooden slab sat on the plaza for nothing and showed in the
+	-- films; owner, 29 Oct: "it's ugly and doesn't belong", as server/HubDressing already did for the village)
+	s.Transparency = 1
+	s.CanCollide = false
 	local decal = s:FindFirstChildOfClass("Decal")
 	if decal then
 		decal:Destroy()

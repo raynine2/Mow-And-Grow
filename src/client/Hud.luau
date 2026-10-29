@@ -627,20 +627,24 @@ State.on("world", function(w)
 		trackText.Text = "BOSS FIGHT!"
 	elseif w.bossWaiting then
 		-- (29 Oct, the bug sweep) the area is mowed and its boss waits on the summon pad: the card said "100.0%
-		-- cleared" and "Mow it all to open ..." with nothing left to mow
-		local here = Config.ZONES[w.zone or 1]
-		local bossName = if here and here.boss then here.boss.name else "boss"
+		-- cleared" with nothing left to mow
 		fill.BackgroundColor3 = C.orange
 		fillGrad.Color = ColorSequence.new(UI.shade(C.orange, 1.15), UI.shade(C.orange, 0.85))
 		fill.Size = UDim2.fromScale(1, 1)
 		trackText.Text = "BOSS AWAKE!"
-		nextText.Text = if nextZone and (w.zone or 1) < zones then ("Beat the %s to open %s"):format(bossName, nextZone.name) else ("Beat the %s!"):format(bossName)
 	else
 		fill.BackgroundColor3 = C.green
 		fillGrad.Color = ColorSequence.new(UI.shade(C.green, 1.15), UI.shade(C.green, 0.85))
 		local pct = w.cut / math.max(1, w.total)
 		fill.Size = UDim2.fromScale(math.clamp(pct, 0, 1), 1)
 		trackText.Text = string.format("%.1f%% cleared", pct * 100)
+	end
+	if w.boss or w.bossWaiting then
+		-- (29 Oct, the bug sweep) the boss opens the next area, not mowing: it said "Mow it all to open ..." while the
+		-- boss waited and all through the fight
+		local here = Config.ZONES[w.zone or 1]
+		local bossName = if here and here.boss then here.boss.name else "boss"
+		nextText.Text = if nextZone and (w.zone or 1) < zones then ("Beat the %s to open %s"):format(bossName, nextZone.name) else ("Beat the %s!"):format(bossName)
 	end
 	pin.Visible = true
 end)

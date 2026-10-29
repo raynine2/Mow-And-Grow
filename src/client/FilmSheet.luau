@@ -6,8 +6,9 @@
 --   Workspace attribute FilmSheet = true (2 frames a shot) or a number (1-4 frames a shot), set before a film starts:
 --     each shot (every client/Film.run) is photographed (CaptureService) at evenly spaced points through it. When the
 --     film ends the frames show in a grid, 12 to a page, each labelled "#shot  Script:line  k  film time"; Right / a
---     click on the sheet turns the page, Left goes back, Escape closes it. Set the attribute FilmSheetShow (any value)
---     to bring the sheet up mid-film. Each frame is printed to the Output too: "[FilmSheet] #3 Intro:415 k0.50 12.3s".
+--     click on the sheet turns the page, Left goes back, Escape closes it (or the attribute FilmSheetPage = a page
+--     number: a test tool's keys don't reach an unfocused Studio). Set the attribute FilmSheetShow (any value) to
+--     bring the sheet up mid-film. Each frame is printed to the Output too: "[FilmSheet] #3 Intro:415 k0.50 12.3s".
 --   Workspace attribute FilmHold = seconds: instead of photographing, the film holds still that long at each of those
 --     points ("[FilmSheet] HOLD ..." in the Output), for an outside screenshot tool.
 --   Workspace attribute PlayFilm = "opening", "clash", "ending" or "credits": plays that film (as the DEV panel's
@@ -241,6 +242,13 @@ if RunService:IsStudio() then
 				require(script.Parent:FindFirstChild("Ending") :: ModuleScript).preview(if which == "credits" then "credits" else nil)
 			end
 		end)
+	end)
+	workspace:GetAttributeChangedSignal("FilmSheetPage"):Connect(function()
+		local n = workspace:GetAttribute("FilmSheetPage")
+		if type(n) == "number" and sheet then
+			page = math.floor(n)
+			draw()
+		end
 	end)
 	workspace:GetAttributeChangedSignal("FilmSheetShow"):Connect(function()
 		if workspace:GetAttribute("FilmSheetShow") ~= nil then

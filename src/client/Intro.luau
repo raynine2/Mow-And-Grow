@@ -352,6 +352,8 @@ local LOOKS = {
 	night = { ClockTime = 18.55, ExposureCompensation = -0.4, atmosphere = { Density = 0.4, Haze = 2.2, Glare = 0 } },
 	now = { ClockTime = 15.6, ExposureCompensation = -0.22, atmosphere = { Density = 0.34, Haze = 1.6, Glare = 0.1 } },
 	hero = { ClockTime = 16.9, ExposureCompensation = 0.02, atmosphere = { Density = 0.27, Haze = 1.0, Glare = 0.7 } },
+	-- the guardians close up (29 Oct, the contact sheet: their bright faces and the pink glow blew out to white)
+	boss = { ClockTime = 13.4, ExposureCompensation = -0.55, atmosphere = { Density = 0.26, Haze = 0.7, Glare = 0.05 } },
 }
 
 -------------------------------------------------------------------------------------------------------------
@@ -479,19 +481,12 @@ local function pinkEyes(H: number): () -> ()
 	local names = BossView.attAll("att_eye")
 	local glints: { BasePart } = {}
 	for i in names do
-		local g = setPart("DemonGlint", Vector3.one * math.max(0.7, H * 0.045), CFrame.new())
+		-- (29 Oct, the contact sheet: with a light on them and bigger, the guardians' faces read as pink blobs)
+		local g = setPart("DemonGlint", Vector3.one * math.max(0.5, H * 0.03), CFrame.new())
 		g.Shape = Enum.PartType.Ball
 		g.Material = Enum.Material.Neon
 		g.Color = FilmPanels.PINK
 		g.Transparency = 0
-		if i == 1 then
-			local l = Instance.new("PointLight")
-			l.Color = FilmPanels.PINK
-			l.Range = H * 0.6
-			l.Brightness = 3
-			l.Shadows = false
-			l.Parent = g
-		end
 		table.insert(glints, g)
 	end
 	local stop = Film.every(function()
@@ -507,7 +502,7 @@ local function pinkEyes(H: number): () -> ()
 	local eyeFx: { Model } = {}
 	task.defer(function()
 		for _, g in glints do
-			local fx = g.Parent and FilmVfx.play("PinkEye", g.CFrame, { follow = g, scale = H / 14 })
+			local fx = g.Parent and FilmVfx.play("PinkEye", g.CFrame, { follow = g, scale = H / 22 })
 			if fx then
 				table.insert(eyeFx, fx)
 			end
@@ -529,9 +524,116 @@ end
 -- chop a forest and vv ultimatum, their intros are so good and worth watching": no establishing pans, no walking,
 -- no shot without someone in it doing something, and every shot checked on a contact sheet: client/FilmSheet)
 -------------------------------------------------------------------------------------------------------------
--- Where the Dandelion King stands: out in the meadow past its thickest grass, seen from the camp over the bare lawn.
+-- The scenery near `near` as boxes: the trees, the camp's props, the hills (CanQuery is off on most of them, so a
+-- raycast goes straight through them: Film.sees can't see a tree). Thousands of parts: spread over a few frames.
+type Box = { cf: CFrame, h: Vector3, p: Vector3, r: number }
+local function sceneryBoxes(near: Vector3, radius: number): { Box }
+	local boxes: { Box } = {}
+	local world = workspace:FindFirstChild("World")
+	local n = 0
+	for _, name in { "Visuals", "Hub", "Ground", "Gates", "Patches", "Ways", "Pads" } do
+		local f = world and world:FindFirstChild(name)
+		if f then
+			for _, d in f:GetDescendants() do
+				n += 1
+				if n % 2000 == 0 then
+					task.wait()
+				end
+				if d:IsA("BasePart") and d.Transparency < 0.95 and d.Size.Magnitude > 3 and flat(d.Position - near).Magnitude < radius then
+					table.insert(boxes, { cf = d.CFrame, h = d.Size / 2, p = d.Position, r = d.Size.Magnitude / 2 })
+				end
+			end
+		end
+	end
+	return boxes
+end
+
+-- (one axis of a line-through-a-box test: the part of the line, t0..t1, inside the box's slab on that axis)
+local function slab(o: number, v: number, e: number, t0: number, t1: number): (number, number)
+	if math.abs(v) < 1e-6 then
+		if o < -e or o > e then
+			return 1, 0
+		end
+		return t0, t1
+	end
+	local u0, u1 = (-e - o) / v, (e - o) / v
+	if u0 > u1 then
+		u0, u1 = u1, u0
+	end
+	return math.max(t0, u0), math.min(t1, u1)
+end
+
+-- Whether the line from `a` to `b` goes through any of the boxes.
+local function blocked(a: Vector3, b: Vector3, boxes: { Box }): boolean
+	local ab = b - a
+	local len2 = math.max(ab:Dot(ab), 1e-6)
+	for _, bx in boxes do
+		local t = math.clamp((bx.p - a):Dot(ab) / len2, 0, 1)
+		if (a + ab * t - bx.p).Magnitude <= bx.r then
+			local la = bx.cf:PointToObjectSpace(a)
+			local d = bx.cf:PointToObjectSpace(b) - la
+			local t0, t1 = slab(la.X, d.X, bx.h.X, 0, 1)
+			if t0 <= t1 then
+				t0, t1 = slab(la.Y, d.Y, bx.h.Y, t0, t1)
+			end
+			if t0 <= t1 then
+				t0, t1 = slab(la.Z, d.Z, bx.h.Z, t0, t1)
+			end
+			if t0 <= t1 then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- Where the Dandelion King stands: out in the meadow, 60-110 studs from the Mayor, on the meadow's floor, where the
+-- tear shot (over the Mayor's shoulder: tearScene) sees all of him and the sky over him, and not in a tree (29 Oct,
+-- two contact sheets: the trees hid him; a raycast can't see them, so the scenery's boxes are checked instead).
 local function kingSpot(P: Plan): Vector3
-	return IntroCast.ground(P.thick + P.dirK * 30)
+	local H = BossMoves.get(1).height
+	local w = workspace:FindFirstChild("World")
+	local floor = w and w:FindFirstChild("Ground")
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Include
+	rp.FilterDescendantsInstances = if floor then { floor } else {}
+	local toward = unit(flat(P.thick - P.mayorAt), P.fwd)
+	local boxes = sceneryBoxes(P.mayorAt, 200)
+	local best, bestScore = IntroCast.ground(P.thick + P.dirK * 30), -99
+	for _, dist in { 78, 88, 68, 100, 58, 112 } do
+		for _, yaw in { 0, -10, 10, -20, 20, -30, 30, -40, 40 } do
+			local at = P.mayorAt + turn(toward, yaw) * dist
+			local hit = workspace:Raycast(at + UP * 200, -UP * 400, rp)
+			if hit then
+				local feet = hit.Position
+				local toCamp = unit(flat(P.mayorAt - feet), -toward)
+				local side = toCamp:Cross(UP)
+				local eye = P.mayorAt + UP * 8.4 + toCamp * 7.5 - side * 3.6
+				local score = 0
+				for _, k in { 0.95, 0.7, 0.45, 0.2 } do
+					if not blocked(eye, feet + UP * (H * k), boxes) then
+						score += 1
+					end
+				end
+				if not blocked(eye, feet + UP * (H * 1.75) + toCamp * (H * 0.3), boxes) then
+					score += 1
+				end
+				for _, s in { 0, 1, -1 } do
+					local p = feet + side * (H * 0.25 * s)
+					if blocked(p + UP * 1.5, p + UP * H, boxes) then
+						score -= 3
+					end
+				end
+				if score > bestScore then
+					best, bestScore = feet, score
+				end
+				if score >= 5 then
+					return best
+				end
+			end
+		end
+	end
+	return best
 end
 
 -- 1: the Mayor on his soapbox, eyes shut, savouring his perfect lawn (a medium close-up: his voxel face reads at
@@ -564,12 +666,12 @@ local function peaceScene(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boole
 		local lamp = setPart("TearLight", Vector3.one * 0.2, CFrame.new(m.face() + face * 7 + UP * 6))
 		local l = Instance.new("PointLight")
 		l.Color = FilmPanels.PINK
-		l.Range = 16
+		l.Range = 12
 		l.Shadows = false
 		l.Brightness = 0
 		l.Parent = lamp
 		table.insert(fxStops, Film.every(function(_: number, now: number)
-			l.Brightness = math.max(0, 2.4 + math.noise(now * 11, 4.2) * 4)
+			l.Brightness = math.max(0, 0.7 + math.noise(now * 11, 4.2) * 1.4)
 		end))
 	end)
 	Film.at(2.55, function()
@@ -607,6 +709,7 @@ local function tearScene(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolea
 	local H = BossMoves.get(1).height
 	local toCamp = unit(flat(P.mayorAt - kingFeet), -P.dirK)
 	Film.light(LOOKS.day, 0.4)
+	Film.glow(0.06, 20, 0.3)
 	bed("ambWind", 1.2, 1.2)
 	if bossesOk then
 		showBoss(1, kingFeet, toCamp)
@@ -618,7 +721,7 @@ local function tearScene(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolea
 	local sky = kingFeet + UP * (H * 1.75) + toCamp * (H * 0.3)
 	local head = kingFeet + UP * (H * 0.8)
 	local f0 = m.face()
-	local camAt = f0 + toCamp * 4.4 - toCamp:Cross(UP) * 2.4 + UP * 0.5
+	local camAt = f0 + toCamp * 7.5 - toCamp:Cross(UP) * 3.6 + UP * 1.4
 	Film.at(0.35, function()
 		if not FilmVfx.play("SkyTear", CFrame.lookAt(sky, camAt), { scale = H * 1.4 / 40 }) then
 			C.rift(sky, toCamp, H * 1.4, 0.45)
@@ -687,10 +790,10 @@ local function tearScene(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolea
 		end)
 	end)
 	-- (wide: the King's feet to the tear over him; a slow push in)
-	local look = kingFeet + UP * (H * 1.05)
+	local look = kingFeet + UP * (H * 0.95)
 	return Film.run(HIT_AT + 0.45, function(k)
-		local pos = camAt + toCamp * (k * 0.8)
-		return Film.look(pos, look), Film.mm(26), look
+		local pos = camAt - toCamp * (k * 1.2)
+		return Film.look(pos, look), Film.mm(28), look
 	end, { hand = 0.25, far = 0.05 })
 end
 
@@ -703,17 +806,15 @@ local function eyesScene(P: Plan, kingFeet: Vector3): boolean
 	local H = BossMoves.get(1).height
 	local toCamp = unit(flat(P.mayorAt - kingFeet), -P.dirK)
 	local side = toCamp:Cross(UP)
-	local aura = FilmVfx.play("KingAura", CFrame.new(kingFeet), { scale = H / 14 })
-	if aura then
-		table.insert(kingFx, aura)
-	end
+	Film.light(LOOKS.boss, 0)
+	Film.glow(0, 16, 0)
 	Film.at(0.2, function()
 		FilmAudio.sfx("growl", { volume = 0.9, pitch = 0.8 })
 	end)
 	return Film.run(1.7, function(k)
 		local h = headOf(kingFeet, H)
-		local pos = h + toCamp * (H * (0.62 - 0.08 * k)) + side * (H * 0.16) - UP * (H * 0.14)
-		return Film.look(pos, h + UP * (H * 0.02)), Film.mm(38), h
+		local pos = h + toCamp * (H * (0.85 - 0.1 * k)) + side * (H * 0.2) - UP * (H * 0.16)
+		return Film.look(pos, h + UP * (H * 0.02)), Film.mm(36), h
 	end, { hand = 0.35 })
 end
 
@@ -727,7 +828,10 @@ local function othersScene(P: Plan, kingFeet: Vector3): boolean
 	local toCamp = unit(flat(P.mayorAt - kingFeet), -P.dirK)
 	local zs = {}
 	for z = 2, #Config.ZONES do
-		table.insert(zs, z)
+		-- (not the Sakura Snapjaw: pink on pink, under the pink spark, read as a blob)
+		if z ~= 3 then
+			table.insert(zs, z)
+		end
 	end
 	-- (two of them, at random)
 	for i = #zs, 2, -1 do
@@ -746,18 +850,18 @@ local function othersScene(P: Plan, kingFeet: Vector3): boolean
 		local side = toCamp:Cross(UP) * (if i == 1 then 1 else -1)
 		Film.at(0.18, function()
 			local h = headOf(kingFeet, H2)
-			FilmVfx.play("SparkHit", CFrame.lookAt(h, h + toCamp), { scale = H2 / 14 })
+			FilmVfx.play("SparkHit", CFrame.lookAt(h, h + toCamp), { scale = H2 / 24 })
 			FilmAudio.sfx("bigHit", { volume = 0.5, pitch = 0.85 + i * 0.12 })
 			FilmAudio.sfx("growl2", { volume = 0.8, pitch = 0.8 + i * 0.1 })
-			Film.flash(FilmPanels.PINK, 0.35, 0.2)
+			Film.flash(Color3.new(1, 1, 1), 0.25, 0.15)
 			Film.shake(0.3, 2)
-			BossView.act("rage")
+			BossView.flinch(true)
 			kingEyesOff = pinkEyes(H2)
 		end)
 		local ok = Film.run(0.95, function(k)
 			local h = headOf(kingFeet, H2)
-			local pos = h + toCamp * (H2 * (0.6 - 0.06 * k)) + side * (H2 * 0.2) - UP * (H2 * 0.15)
-			return Film.look(pos, h, (if i == 1 then 6 else -6)), Film.mm(36), h
+			local pos = h + toCamp * (H2 * (1.15 - 0.06 * k)) + side * (H2 * 0.26) - UP * (H2 * 0.15)
+			return Film.look(pos, h, (if i == 1 then 6 else -6)), Film.mm(40), h
 		end, { cut = "smash", hand = 0.3 })
 		if not ok then
 			return false
@@ -791,8 +895,8 @@ local function blowScene(P: Plan, kingFeet: Vector3): boolean
 	-- 5A: from the side, his cheeks filling
 	local ok = Film.run(0.95, function(k)
 		local h = headOf(kingFeet, H)
-		local pos = h + side * (H * 0.62) + toCamp * (H * 0.22) - UP * (H * 0.06)
-		return Film.look(pos, h), Film.mm(40 + 6 * k), h
+		local pos = h + side * (H * 0.95) + toCamp * (H * 0.3) - UP * (H * 0.08)
+		return Film.look(pos, h), Film.mm(36 + 6 * k), h
 	end, { hand = 0.3 })
 	FilmAudio.fadeOut(inhale, 0.15)
 	if not ok then
@@ -829,6 +933,8 @@ end
 -- (A still shot from the camp's side, in plain daylight: growth only reads when it swallows something you know.)
 local function swallowScene(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolean
 	kingGone()
+	Film.light(LOOKS.day, 0)
+	Film.glow(0.12, 24, 0)
 	local light = PhonePerf.on or Potato.on
 	local feet = IntroCast.ground(P.mayorAt)
 	local face = unit(flat(kingFeet - feet), P.fwd)
@@ -912,10 +1018,13 @@ local function callScene(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolea
 		Film.punch(8)
 	end)
 	local side = toParty:Cross(UP)
+	-- (29 Oct, the contact sheet: 7 studs out and below his face, the camera was inside the tall grass round him (its
+	-- clumps reach ~8 studs out and ~14 up): now 11-12 studs out and just over the grass, the grass along the bottom)
 	return Film.run(2.2, function(k)
 		local f = m.face()
-		local pos = f + toParty * (7.5 - 1.2 * out(k)) + side * 1.6 - UP * 2.6
-		return Film.look(pos, f + UP * 0.4), Film.mm(28), f
+		local pos = f + toParty * (12.5 - 1.5 * out(k)) + side * 1.8
+		pos = Vector3.new(pos.X, math.max(f.Y + 0.3, feet.Y + 14.5), pos.Z)
+		return Film.look(pos, f + UP * 0.4), Film.mm(40), f
 	end, { hand = 0.3 })
 end
 
@@ -941,10 +1050,8 @@ local function dropScene(P: Plan, actors: { IntroCast.Actor }): boolean
 				FilmAudio.sfx("impact", { volume = 0.5, pitch = 1.2 })
 				Film.shake(0.45, 2.2)
 				Film.punch(5)
-				for j = 1, 4 do
-					local a = j / 4 * math.pi * 2
-					HitFx.play("bossRise", at + Vector3.new(math.cos(a), 0, math.sin(a)) * 1.6, Color3.fromRGB(196, 168, 120), false)
-				end
+				-- (one small puff: four of a guardian's rising dust hid the Mower, 29 Oct contact sheet)
+				HitFx.play("bossSlamDust", at, Color3.fromRGB(196, 168, 120), false)
 				actor.play("emote")
 				IntroUi.lowerThird(string.upper(actor.name), "MOWER", GOLD, 1.0)
 			end)
@@ -990,7 +1097,7 @@ local function lineupScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Acto
 	-- (across the line, from in front: far enough back that everyone fits)
 	local half = math.max(1, n - 1) * 4.4 / 2 + 2.6
 	local dist = math.max(9, half / math.tan(math.rad(34)))
-	local dir = (P.fwd * 0.5 + P.right * 0.87).Unit
+	local dir = (P.fwd * 0.87 + P.right * 0.5).Unit
 	return Film.run(2.6, function(k)
 		local pos = centre + dir * (dist - 1.2 * k) + UP * 1.5
 		return Film.look(pos, centre + UP * 3.6, -3 + 3 * k), Film.mm(24), centre + UP * 3
@@ -1012,10 +1119,12 @@ local function pleaScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor 
 		actor.look(m.face())
 	end
 	local side = face:Cross(UP)
+	-- (outside his tall grass and just over it, as in the call)
 	return Film.run(2.9, function(k)
 		local f = m.face()
-		local pos = f - face * (8.5 - 1 * inOut(k)) + side * 3.2 - UP * 1.4
-		return Film.look(pos, f - UP * 0.4), Film.mm(36), f
+		local pos = f - face * (12.5 - 1 * inOut(k)) + side * 3.2
+		pos = Vector3.new(pos.X, math.max(f.Y, feet.Y + 14.3), pos.Z)
+		return Film.look(pos, f - UP * 0.4), Film.mm(40), f
 	end, { hand = 0.3 })
 end
 
@@ -1100,15 +1209,18 @@ local function crateScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 		end)
 	end)
 	local look = mid + UP * 2.5
+	-- (29 Oct, the contact sheet: from the side, level with the party, the nearest Mower's back filled the picture.
+	-- Now in front of them and off to one side (only the side turns, so it never swings round behind them), clear of
+	-- the Mayor's tall grass)
 	local crateYaw = freeYaw(function(y)
-		local r, f = turn(P.right, y), turn(P.fwd, y)
-		return { mid + r * 19 - f * 4 + UP * 5, mid + r * 16 - f * 4 + UP * 6.5 }
+		local r = turn(P.right, y)
+		return { mid + r * 12 + P.fwd * 8 + UP * 5, mid + r * 9.5 + P.fwd * 7 + UP * 6.5 }
 	end, function()
 		return look
-	end, { 0, 180, 20, -20, 160, -160, 40, -40 })
-	local cr, cf = turn(P.right, crateYaw), turn(P.fwd, crateYaw)
+	end, { 0, 180, 15, -15, 165, -165, 30, -30 })
+	local cr = turn(P.right, crateYaw)
 	local ok = Film.run(4.6, function(k)
-		local p = mid + cr * (19 - k * 3) - cf * 4 + UP * (6.5 + k * 1.5)
+		local p = mid + cr * (12 - k * 2.5) + P.fwd * (8 - k) + UP * (5 + k * 1.5)
 		return Film.look(p, look), Film.mm(30), look
 	end, { hand = 0.3 })
 	if closeTitle then
@@ -1240,7 +1352,7 @@ local function peekScene(P: Plan): boolean
 	mesh.MeshType = Enum.MeshType.Sphere
 	mesh.Parent = dark
 	dark.Parent = folder
-	local ungrade = Glitch.grade({ Brightness = -0.14, Contrast = 0.4, Saturation = -0.5, TintColor = Color3.fromRGB(255, 118, 150) }, 0.12)
+	local ungrade = Glitch.grade({ Brightness = -0.2, Contrast = 0.45, Saturation = -0.65, TintColor = Color3.fromRGB(222, 214, 255) }, 0.12)
 	Glitch.static(0.3, 1.6)
 	local caption = Glitch.text(nil, "...something is watching", UDim2.fromScale(0.42, 0.045), UDim2.fromScale(0.5, 0.8), Color3.fromRGB(255, 150, 200))
 	local opened = false

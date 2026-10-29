@@ -137,6 +137,10 @@ end
 workspace:GetAttributeChangedSignal("Challenge"):Connect(readChallenge)
 readChallenge()
 
+-- the Elder Clumps on screen (filled in below; the chips' loop hides and shows their beams)
+type Elder = { bb: BillboardGui, fill: Frame, hp: TextLabel, beam: BasePart, zone: number, conns: { RBXScriptConnection } }
+local elders: { [Instance]: Elder } = {}
+
 -------------------------------------------------------------------------------------------------------------
 -- every quarter second: the chips
 -------------------------------------------------------------------------------------------------------------
@@ -204,8 +208,6 @@ end)
 -------------------------------------------------------------------------------------------------------------
 -- Elder Clumps: a name and an HP bar over each, and a gold beam to find it by
 -------------------------------------------------------------------------------------------------------------
-type Elder = { bb: BillboardGui, fill: Frame, hp: TextLabel, beam: BasePart, zone: number, conns: { RBXScriptConnection } }
-local elders: { [Instance]: Elder } = {}
 -- (owner, 29 Oct: "elder clump should only show when nearby") the name and HP bar only up close; the beam only over
 -- the Elder Clump of the area you're in, and never in a film (the films hide the HUD: UI.gui)
 local LABEL_RANGE = 70

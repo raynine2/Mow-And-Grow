@@ -18,7 +18,12 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("MowALawn")
 local BossMoves = require(Shared:WaitForChild("BossMoves"))
-local Tex = require(Shared:WaitForChild("BossFxIds")) :: { [string]: string }
+local Tex = table.clone(require(Shared:WaitForChild("BossFxIds")) :: { [string]: string })
+-- (owner, 29 Oct, of the white dandelion seeds round the Dandelion King: "white parts are still there with the boss";
+-- the flat seed sprite with its hair-thin lines was "very low quality") every seed in the fights is soft glowing
+-- fluff instead, as in the films (client/FilmVfx): the round glow, about half the size, lit a little from within
+Tex.seed = Tex.glow
+local SEED_SIZE = 0.55
 local Spec = require(script.Parent.BossVfxSpec)
 local PHONE = require(script.Parent.PhonePerf).on -- phones: lighter hits (owner, 26 Oct)
 local BossView = require(script.Parent.BossView)
@@ -89,11 +94,12 @@ local live: any = nil
 local function makeEmitter(def: any, k: number): ParticleEmitter
 	local e = Instance.new("ParticleEmitter")
 	e.Texture = Tex[def.tex] or Tex.dot
-	e.LightEmission = if def.add then 1 else 0
+	e.LightEmission = if def.add then 1 elseif def.tex == "seed" then 0.45 else 0
 	e.LightInfluence = if def.add then 0 else 1
 	e.Brightness = if def.add then 1.4 else 1
 	e.Lifetime = NumberRange.new(def.life[1], def.life[2])
-	local a, b = def.size[1] * k, def.size[2] * k
+	local fluff = if def.tex == "seed" then SEED_SIZE else 1
+	local a, b = def.size[1] * k * fluff, def.size[2] * k * fluff
 	local avg, env = (a + b) / 2, (b - a) / 2
 	if def.grow then
 		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, avg * def.grow[1], env), NumberSequenceKeypoint.new(1, avg * def.grow[2], env) })
@@ -956,7 +962,7 @@ local function burst(pos: Vector3, r: number, light: boolean?)
 	light = light or PHONE -- no thorn / stone spikes on phones
 	if fx == "fluff" then
 		-- dandelion seeds blown up and drifting down, a puff of yellow pollen
-		spray(pos, r, { tex = "seed", colors = { "FFFFFF", "FFF6D0" }, n = 22 * k, size = 1.4, life = { 1.4, 2.4 }, speed = { 8, 18 }, grav = -3, drag = 2, spread = 50 })
+		spray(pos, r, { tex = "seed", colors = { "FFFFFF", "FFF6D0" }, n = 22 * k, size = 1.4 * SEED_SIZE, life = { 1.4, 2.4 }, speed = { 8, 18 }, grav = -3, drag = 2, spread = 50 })
 		spray(pos, r, { tex = "smoke", colors = { "FFE46A", "FFF2A8" }, n = 10 * k, size = r * 0.45, endSize = 1.8, life = { 0.5, 0.9 }, speed = { 3, 8 }, grav = 0, drag = 3, spread = 80 })
 	elseif fx == "thorns" then
 		-- bramble thorns stab out of the floor, leaves fly
@@ -1505,7 +1511,7 @@ local function look(name: string, r: number): Look
 		add(core)
 		glowOn(b, Color3.fromRGB(255, 250, 210), r * 3.2)
 		add(solid("Seed", Enum.PartType.Ball, Vector3.one * r * 0.45, Color3.fromRGB(150, 110, 60)), CFrame.new(0, -r * 0.5, 0))
-		trailOn(b, "seed", Color3.fromRGB(255, 255, 240), 1.2, 10)
+		trailOn(b, "seed", Color3.fromRGB(255, 255, 240), 1.2 * SEED_SIZE, 10)
 		out.lift = r + 1.2
 	elseif name == "golfball" then
 		local b = solid("GolfBall", Enum.PartType.Ball, Vector3.one * r * 2, Color3.fromRGB(245, 245, 245), Enum.Material.SmoothPlastic)

@@ -34,7 +34,7 @@ local function toolCooldown(): number
 	local mult = State.data and State.data.swing or 1 -- Swing Speed upgrades (the server checks the same)
 	for _, def in Config.TOOLS do
 		if def.id == id then
-			return (def.cooldown or 0.4) * mult
+			return (def.cooldown or 0.4) * mult * (tonumber((tool :: Tool):GetAttribute("SkillCooldown")) or 1) -- (30 Oct) skill tree Speed
 		end
 	end
 	return 0.4 * mult

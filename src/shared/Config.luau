@@ -39,6 +39,7 @@ Config.TOOLS = {
 	{ id = "LaserMower", name = "Laser Mower", cost = 1600000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
 }
 Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
+Config.SKILL_TREES = require(script.Parent:WaitForChild("SkillTrees")) -- (30 Oct) weapon skill trees: every number in shared/SkillTrees
 
 -------------------------------------------------------------------------------------------------------------
 -- Run upgrades (coins, Tab menu). Bought one level at a time, reset every run.

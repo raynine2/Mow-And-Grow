@@ -339,6 +339,7 @@ local function onCut(player: Player, patch): boolean
 	end
 	Quests.event(player, "cut", 1)
 	ClassPerks.cut(player, pos) -- Tidy Up, Hot Streak
+	require(script.Parent.SkillTrees).onCut(player, patch) -- (30 Oct) weapon skill trees: mastery points, Harvest
 	data.stats.cut += 1
 	local m = Config.mutation(patch.mut or "None")
 	-- (report #2) a few coins on the spot for every clump (Chop A Forest pays per hit): the HUD counter ticks up

@@ -34,6 +34,7 @@ require(script.Parent.Anims).start() -- our character animations (once uploaded)
 require(script.Parent.ClassPerks) -- tags each player's class (attribute "Class") for the rarity auras, in both modes
 require(script.Parent.BestTimes).start() -- the trophy tag with your best time over your head
 require(script.Parent.Offline).start() -- time away with a saved run pays coins + gems (client/WelcomeBack shows it)
+require(script.Parent.SkillTrees).start() -- (30 Oct) weapon skill trees: mastery points, pips, MASTERED (both modes)
 
 -- Spawn on the world's own SpawnLocation, not one from the place template (the Baseplate's). This only
 -- changes the running game; the place file keeps its parts. The Baseplate is hidden while playing because
@@ -152,6 +153,7 @@ local function snapshot(player: Player, data)
 		medals = data.medals or {}, -- run medals: [Config.RUN_MEDALS id] = runs that earned it (client/AreaGoals)
 		newPlayer = PlayerData.isNew(data), -- Config.FIRST_TIMER: no News window yet (client/NewsWindow)
 		bestTime = data.bestTime,
+		skills = require(script.Parent.SkillTrees).view(data), -- (30 Oct) weapon skill trees (client/SkillTreeWindow)
 		dryRun = data._dryRun == true,
 		run = nil :: any,
 	}

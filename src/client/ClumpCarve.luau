@@ -12,9 +12,9 @@
 --   Push Mower   a ragged chew low down, at blade height (ride-on mowers too)
 --   Weed Whacker a frayed, stringy band (the line shreds the stems)
 --   Laser Mower  a hairline slit that wraps round fast, its walls glowing hot and cooling
--- Inside it's pale: the skin keeps the stalk's colours (the dark rim round the cut), the next ring in is the step,
--- the core the brightest pith; a floor catches the light, a ceiling is a step darker. A few of the removed bits
--- fly off and the freshly opened faces flash white and settle. Near the end only a thin core holds the top up;
+-- Inside it's the stalk's own colour, a little paler (never white: that read as see-through): the skin keeps the
+-- stalk's colours (the dark rim round the cut), the next ring in is the step, the core the pith; a floor catches the
+-- light, a ceiling is a step darker. A few of the removed bits fly off and the freshly opened faces flash and settle. Near the end only a thin core holds the top up;
 -- when it goes, the top breaks off at the cut (client/Fx falls it from there, the stump stays till its stubble
 -- comes: prepareFall). Only on your screen, for your own hits (the server's "chip"); at most MAX_ACTIVE clumps at
 -- once. Anything without a split mesh keeps the overlay cut (client/ClumpWound).
@@ -187,20 +187,23 @@ end
 -- see-through window, not a hole) a hole reads as a hole when it gets darker the deeper and higher you look into it:
 -- the floor catches the light, the side walls are a step down, the ceiling and the back of the hole are in shade,
 -- and the skin round the edge darkens a touch (client/ClumpCarve parts also cast shadows into it).
+-- (29 Oct 22:44, owner, again: "after first punch it becomes a little invisible": the inside was still mostly pith,
+-- near white, and lit by the sky it read as a window onto the sky) the inside is the stalk's own colour, only a
+-- third of the way to pith: lighter than the skin where it's fresh, darker in the shade, never white.
 local function tonesFor(base: Color3): Tones
-	local inside = PITH:Lerp(base, 0.22)
+	local inside = base:Lerp(PITH, 0.32)
 	return {
-		floor = inside:Lerp(WHITE, 0.12), -- the floor of the cut, lit from above
-		wall = mul(inside:Lerp(base, 0.3), 0.88),
-		ceil = mul(inside:Lerp(base, 0.5), 0.62), -- the top inner wall, in shade
-		deep = mul(inside:Lerp(base, 0.4), 0.72), -- the back of the hole
-		grain = mul(inside:Lerp(base, 0.3), 0.8), -- faint fibres up the stem
-		step = mul(inside:Lerp(base, 0.45), 0.9),
-		stepCeil = mul(inside:Lerp(base, 0.55), 0.6),
+		floor = inside, -- the floor of the cut, lit from above
+		wall = mul(inside, 0.78),
+		ceil = mul(inside, 0.5), -- the top inner wall, in shade
+		deep = mul(inside, 0.6), -- the back of the hole
+		grain = mul(inside, 0.68), -- faint fibres up the stem
+		step = mul(base:Lerp(inside, 0.5), 0.82),
+		stepCeil = mul(base:Lerp(inside, 0.5), 0.55),
 		-- (30 Oct, owner: "even the first hit should show": a first blow only takes the skin off, and the stem
 		-- under it was the side-wall green, so the scuff hardly showed till the second blow went deeper) the back of
-		-- a shallow scuff is fresh, lit pith
-		fresh = mul(inside:Lerp(base, 0.12), 0.97),
+		-- a shallow scuff is fresh, lit: a shade lighter than the skin
+		fresh = mul(inside, 0.92),
 	}
 end
 
@@ -732,7 +735,7 @@ function ClumpCarve.hit(d): boolean
 							end)
 							TweenService:Create(p, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Color = color }):Play()
 						else
-							p.Color = color:Lerp(WHITE, 0.6)
+							p.Color = color:Lerp(WHITE, 0.25) -- (a flash, not white: white read as see-through)
 							TweenService:Create(p, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Color = color }):Play()
 						end
 					end

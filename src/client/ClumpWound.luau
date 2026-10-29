@@ -95,15 +95,18 @@ local function tones(base: Color3): Tones
 	-- the fresh inside of a cut grass stem is one pale lime-cream pith in every area, a touch of the area's colour
 	-- in it; the walls a step darker; a dark rim line round the cut fakes the shadow at its edge (like Chop's dark
 	-- bark round pale wood). All baked into colours, so it reads the same on low graphics.
-	local inside = PITH:Lerp(base, 0.14)
+	-- (29 Oct 22:44, owner: "after first punch it becomes a little invisible": near-white pith, lit by the sky, read
+	-- as a see-through patch) the inside is the stalk's own colour a third of the way to pith: still the lightest
+	-- thing on the clump, never white.
+	local inside = base:Lerp(PITH, 0.32)
 	local _ = luma
 	return {
-		floorLit = inside:Lerp(WHITE, 0.25), -- the floor of the cut catches the light
+		floorLit = inside:Lerp(WHITE, 0.06), -- the floor of the cut catches the light
 		floor = inside,
-		grain = mul(inside, 0.92), -- faint fibres running up the stem
-		floorShade = mul(inside, 0.85), -- the top inner wall, a step darker (still far lighter than the stalk)
-		stepLit = inside:Lerp(base, 0.35),
-		stepShade = mul(inside:Lerp(base, 0.45), 0.86),
+		grain = mul(inside, 0.9), -- faint fibres running up the stem
+		floorShade = mul(inside, 0.72), -- the top inner wall, in shade
+		stepLit = mul(base:Lerp(inside, 0.5), 0.92),
+		stepShade = mul(base:Lerp(inside, 0.5), 0.7),
 		rimLit = mul(base, 0.86), -- the torn rim: a darker line round the cut
 		rimShade = mul(base, 0.68),
 	}
@@ -194,7 +197,7 @@ local function addCell(m: Model, w: Wound, key: number, rank: number, tone: numb
 	HitFx.attach(m, p, rel, size) -- (before it's parented: the lean remembers its full size, not the pop-in one)
 	-- pop in: small and white-hot, then out to full size and its own colour (the fresh cut, just made)
 	p.Size = size * Vector3.new(0.35, 0.35, 1)
-	p.Color = color:Lerp(WHITE, 0.75)
+	p.Color = color:Lerp(WHITE, 0.3) -- (29 Oct: a flash, not white: white read as see-through)
 	p.Parent = m
 	TweenService:Create(p, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = size }):Play()
 	TweenService:Create(p, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Color = color }):Play()

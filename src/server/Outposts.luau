@@ -3,18 +3,20 @@
 -- into the meadow); every other area gets an outpost round its drop-off pad (World.Pads.DropOff<z>, the sell spot):
 --   * a paved plaza level with the pad, built up on stone where the terraced ground falls away (steps at the edge);
 --   * the SHOP and UPGRADES stalls (their prompts open the same windows as R and TAB), a gas pump for mowers;
---   * lantern posts round the edge and two log benches (the name is on server/CampDress's arch now);
---   * one thing of its own per area: a hay yard, a blossom tree, a campfire ring, a stilt-lamp boardwalk with
---     mushrooms, an ice-crystal fire pit, a forge with braziers, a star-crystal cluster.
--- (29 Oct, owner: "remake every zone hub except 1 to make it a bit bigger and ... feel more alive") the plaza is
--- 24 studs round now and server/CampDress dresses the camp: an entrance arch, a signpost, a notice board, a well, a
--- market cart, banners and lamps on the plaza; round it a house, tents by a fire, the area's landmark and animals,
--- and gnome villagers (Blender models: server/CampProps; client/CampLife animates them).
+--   * two log benches (lamp posts and the name: server/CampDress);
+--   * (until 29 Oct) one thing of its own per area (SPECIAL below: a hay yard, a blossom tree, a campfire ring,
+--     mushrooms, an ice-crystal fire pit, a forge, a star-crystal cluster); the camp's landmark does that now.
+-- (29 Oct, owner: "remake every zone hub except 1 to make it a bit bigger and ... feel more alive"; 21:13, "its very
+-- messy and just cluttered fix it and remove unneccerary stuff") the plaza is 24 studs round now, on the flat
+-- clearing shared/WorldPlan keeps round every pad (and never inside the boss arena next to it), and
+-- server/CampDress adds an entrance arch and lamp posts, a house, the area's landmark and animals round it and
+-- three gnome villagers (Blender models: server/CampProps; client/CampLife animates them).
 -- The camp's centre and radius go on the World as attributes Hub<z> / HubR<z>: no grass grows there
 -- (RunWorld.patches) and the camera lets you out of first person there (client/CameraView).
 -- Built into the run's copy of the world at run start (server/RunWorld.build); nothing in Studio changes.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.MowALawn.Config)
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
 local VoxelKit = require(script.Parent.VoxelKit)
 local PropKit = require(script.Parent.PropKit)
@@ -55,17 +57,85 @@ local function groundAt(groundParts: { Instance }, x: number, z: number, from: n
 	return if hit then hit.Position.Y else nil
 end
 
+-- (29 Oct, the camps "very messy": a plaza stopped wherever a terrace rose inside it) The terraces rising inside the
+-- plaza (+ `margin`) are cut down to it, in the run's copy of the world: each ground block (World.Ground's "Floor" top
+-- or "FloorSide" body, on the 8-stud grid) reaching above the paving there is split into its columns and those inside
+-- are lowered. A world generated after 29 Oct already has a flat clearing there (shared/WorldPlan, step 5b).
+local function levelPlaza(w: Instance, c: Vector3, top: number, margin: number)
+	local ground = w:FindFirstChild("Ground")
+	if not ground then
+		return
+	end
+	local reach = R + margin
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { ground }
+	local around = workspace:GetPartBoundsInBox(CFrame.new(c.X, top + 40, c.Z), Vector3.new(reach * 2, 80, reach * 2), params)
+	local G = Zones.CELL
+	for _, p in around do
+		local floor = p.Name == "Floor"
+		if (floor or p.Name == "FloorSide") and p.Position.Y + p.Size.Y / 2 > top + 0.05 then
+			local x0, z0 = p.Position.X - p.Size.X / 2, p.Position.Z - p.Size.Z / 2
+			local nx, nz = math.max(1, math.floor(p.Size.X / G + 0.5)), math.max(1, math.floor(p.Size.Z / G + 0.5))
+			local function inside(i: number, j: number): boolean
+				return Vector2.new(x0 + (i + 0.5) * G - c.X, z0 + (j + 0.5) * G - c.Z).Magnitude <= reach
+			end
+			local i0, i1, j0, j1 = math.huge, -math.huge, math.huge, -math.huge
+			for i = 0, nx - 1 do
+				for j = 0, nz - 1 do
+					if inside(i, j) then
+						i0, i1, j0, j1 = math.min(i0, i), math.max(i1, i), math.min(j0, j), math.max(j1, j)
+					end
+				end
+			end
+			if i0 <= i1 then
+				local pTop, pBottom = p.Position.Y + p.Size.Y / 2, p.Position.Y - p.Size.Y / 2
+				-- a copy of the block over columns [ia, ib] x [ja, jb], from b up to t
+				local function piece(ia: number, ib: number, ja: number, jb: number, t: number, b: number)
+					if ia <= ib and ja <= jb and t - b > 0.05 then
+						local q = p:Clone()
+						q.Size = Vector3.new((ib - ia + 1) * G, t - b, (jb - ja + 1) * G)
+						q.CFrame = CFrame.new(x0 + (ia + ib + 1) / 2 * G, (t + b) / 2, z0 + (ja + jb + 1) / 2 * G)
+						q.Parent = p.Parent
+					end
+				end
+				-- round the cut: four strips as they were
+				piece(0, i0 - 1, 0, nz - 1, pTop, pBottom)
+				piece(i1 + 1, nx - 1, 0, nz - 1, pTop, pBottom)
+				piece(i0, i1, 0, j0 - 1, pTop, pBottom)
+				piece(i0, i1, j1 + 1, nz - 1, pTop, pBottom)
+				-- in it, column by column: the top layer down to the ground under the pad (just below the paving), the
+				-- body under it stopping below that
+				local g = top - 0.02
+				for i = i0, i1 do
+					for j = j0, j1 do
+						if not inside(i, j) then
+							piece(i, i, j, j, pTop, pBottom)
+						elseif floor then
+							piece(i, i, j, j, g, g - p.Size.Y)
+						else
+							piece(i, i, j, j, math.min(pTop, g - 1.2), pBottom)
+						end
+					end
+				end
+				p:Destroy()
+			end
+		end
+	end
+end
+
 -- Paving on a 4-stud grid round `c` with its top at `top`; stone underneath where the ground is lower, and a
 -- step outside the edge where the drop is more than a step. Cells where the ground is higher (a terrace above)
 -- are left as they are.
-local function plaza(f: Instance, c: Vector3, top: number, th: Theme, groundParts: { Instance }, rng: Random)
+local function plaza(f: Instance, c: Vector3, top: number, th: Theme, groundParts: { Instance }, rng: Random, avoid: { at: Vector2, r: number }?)
 	local solid = true
 	local cells: { [string]: boolean } = {}
 	local n = math.ceil(R / CELL)
 	for i = -n, n do
 		for j = -n, n do
 			local x, z = c.X + i * CELL, c.Z + j * CELL
-			if Vector2.new(i * CELL, j * CELL).Magnitude <= R then
+			-- (`avoid`: the boss arena next to the isles' camp; its rim would cut through the paving)
+			if Vector2.new(i * CELL, j * CELL).Magnitude <= R and not (avoid and (Vector2.new(x, z) - avoid.at).Magnitude < avoid.r + CELL * 0.75) then
 				local g = groundAt(groundParts, x, z, top)
 				if g and g <= top + 1.2 then
 					cells[i .. ":" .. j] = true
@@ -392,24 +462,48 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 	local f = Instance.new("Model")
 	f.Name = "Outpost" .. z
 	local ground = { w:FindFirstChild("Ground") :: Instance }
-	plaza(f, base, top, th, ground, rng)
-	-- the two stalls behind the pad, facing it; the gas pump to one side
+	levelPlaza(w, base, top, 1.5)
+	local arena = Config.BOSS_ARENAS and Config.BOSS_ARENAS[z]
+	local avoid = if arena then { at = Vector2.new(arena.x, arena.z), r = (Config.BOSS_ARENA_RADIUS or 70) + 3 } else nil
+	plaza(f, base, top, th, ground, rng, avoid)
+	-- the two stalls behind the pad, facing it; the gas pump to one side; a bench either side. (29 Oct, owner: "why is
+	-- the middle so close to the stores": they stood against the pad's 9-stud ring; now set back on the bigger plaza,
+	-- an open ring round the pad.) All of it turns round the pad, as one, until none of it stands in the boss arena
+	-- (the isles' camp has the arena right behind it).
+	local PIECES = { { -7.5, -16, 6.5 }, { 7.5, -16, 6.5 }, { 16, -4, 2.5 }, { -16, 2, 3 }, { 16, 5, 3 } }
+	local cosT, sinT = 1, 0
+	if avoid then
+		for _, deg in { 0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180 } do
+			local a = math.rad(deg)
+			local clear = true
+			for _, pc in PIECES do
+				local x, zz = pc[1] * math.cos(a) + pc[2] * math.sin(a), -pc[1] * math.sin(a) + pc[2] * math.cos(a)
+				local p = base + right * x + fwd * zz
+				if (Vector2.new(p.X, p.Z) - avoid.at).Magnitude < avoid.r + pc[3] + 2 then
+					clear = false
+				end
+			end
+			if clear then
+				cosT, sinT = math.cos(a), math.sin(a)
+				break
+			end
+		end
+	end
+	local function turned(v: Vector3): Vector3
+		local x, zz = v:Dot(right), v:Dot(fwd)
+		return right * (x * cosT + zz * sinT) + fwd * (-x * sinT + zz * cosT)
+	end
 	local function at(x: number, zz: number, face: Vector3?): CFrame
-		local p = base + right * x + fwd * zz
-		return CFrame.lookAt(p, p + (face or fwd))
+		local p = base + turned(right * x + fwd * zz)
+		return CFrame.lookAt(p, p + turned(face or fwd))
 	end
-	stall(f, at(-6.5, -11), "SHOP", "Shop", th, rng, def.id)
-	stall(f, at(6.5, -11), "UPGRADES", "Upgrades", th, rng, def.id)
+	stall(f, at(-7.5, -16), "SHOP", "Shop", th, rng, def.id)
+	stall(f, at(7.5, -16), "UPGRADES", "Upgrades", th, rng, def.id)
 	if gasPump then
-		gasPump(f, base + right * 12 + fwd * -3, info, -right)
+		gasPump(f, at(16, -4).Position, info, turned(-right))
 	end
-	-- benches either side and the special corner across the plaza
-	bench(f, at(-14.5, 1, right))
-	bench(f, at(12, 4, -right))
-	local special = SPECIAL[th.special]
-	if special then
-		special(f, at(-11, 8, -fwd), th, rng)
-	end
+	bench(f, at(-16, 2, right))
+	bench(f, at(16, 5, -right))
 	f.Parent = w
 	-- (29 Oct) the rest of the camp: server/CampDress (the old name board is the arch's sign now)
 	local CampDress = require(script.Parent.CampDress)

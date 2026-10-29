@@ -1375,7 +1375,10 @@ task.spawn(function()
 			c = nil
 		end
 		if c then
-			if shownFor ~= window and left > 20 then
+			-- (29 Oct, the bug sweep) not over a new player's "YOUR FIRST LAWN IS READY!" card (client/FirstLawn): the
+			-- banner waits until that card is gone
+			local cardUp = require(script.Parent.UI).gui:FindFirstChild("FirstLawn") ~= nil
+			if shownFor ~= window and left > 20 and not cardUp then
 				shownFor = window
 				showBanner(c, left)
 			end

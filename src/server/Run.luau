@@ -66,6 +66,9 @@ local function worldState()
 		cut = Field.totalIn(zone) - Field.remainingIn(zone),
 		total = Field.totalIn(zone),
 		boss = Boss.state(),
+		-- (29 Oct, the bug sweep) the area is mowed and its boss waits on the summon pad (the HUD's card said "Mow it
+		-- all to open ..." over a mowed area)
+		bossWaiting = Boss.waiting(zone),
 		sellPos = info and info.sellPos,
 		sellSpots = spots, -- every shredder's pad (the hub's and the drop-off)
 		left = left, -- clumps still standing in the whole map
@@ -970,17 +973,23 @@ function Run.start()
 		end
 	end)
 	-- the run clock: one second per second you're in the run (the HUD ticks it between updates), except while you
-	-- watch the opening film (filmUntil)
+	-- watch the opening film (filmUntil). (29 Oct, the bug sweep: the HUD only heard the time when something else
+	-- changed, so its timer stopped while you walked about.) Every few seconds each player's HUD hears it too.
 	task.spawn(function()
+		local beat = 0
 		while true do
 			task.wait(1)
 			if started and not completing then
+				beat += 1
 				local now = os.clock()
 				for _, p in Players:GetPlayers() do
 					local data = PlayerData.get(p)
 					local watching = filmUntil[p] ~= nil and now < (filmUntil[p] :: number)
 					if data and data.run and not watching then
 						data.run.time = (data.run.time or 0) + 1
+					end
+					if data and data.run and beat % 4 == 0 then
+						Net.send(p, "Fx", "runClock", { time = data.run.time or 0, held = watching })
 					end
 				end
 			end

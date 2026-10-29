@@ -1475,6 +1475,12 @@ function Boss.state()
 	return { name = f.def.name, hp = f.hp, max = f.maxHp, z = f.z, phase = f.phase, state = f.state }
 end
 
+-- (29 Oct, the bug sweep) Whether area z is mowed and its boss waits on the summon pad: awake and not fought yet, or
+-- waiting again after the party went down. (server/Run's world state: the HUD's area card says so.)
+function Boss.waiting(z: number): boolean
+	return ready[z] == true and not beaten[z] and (current == nil or current.z ~= z)
+end
+
 -- Area z is mowed: its boss wakes and the summon pad lights up (once per run).
 function Boss.ready(z: number)
 	if beaten[z] or ready[z] then
@@ -1490,6 +1496,7 @@ function Boss.ready(z: number)
 	ready[z] = true
 	BossArena.setPad(z, "ready")
 	Net.all("Fx", "bossReady", { z = z, pos = arena.padPos, name = Config.ZONES[z].boss.name })
+	changed() -- (29 Oct) the HUD's area card says the boss is waiting
 	task.spawn(function()
 		local stood: { [Player]: number } = {}
 		while ready[z] and not beaten[z] do

@@ -593,11 +593,21 @@ State.on("data", function(d)
 	end
 end)
 
--- the timer shows your own run time (server/Run counts it); it ticks here between updates
-local runTime, runTimeAt = -1, 0
+-- the timer shows your own run time (server/Run counts it); it ticks here between updates. (29 Oct, the bug sweep:
+-- it stopped 5 s after the last update, and updates only came when something else changed, so it froze while you
+-- walked about. server/Run now sends the time every few seconds, "held" while the opening film holds the clock.)
+local runTime, runTimeAt, runHeld = -1, 0, false
+local shownTime = -1
 State.on("data", function(d)
 	if d.run and d.run.time then
-		runTime, runTimeAt = d.run.time, os.clock()
+		runTime, runTimeAt, runHeld = d.run.time, os.clock(), false
+	elseif d.mode == "Run" and not d.run then
+		runTime = -1 -- the run is over: the timer stops where it is
+	end
+end)
+State.on("fx", function(kind: string, p: any)
+	if kind == "runClock" and type(p) == "table" and type(p.time) == "number" then
+		runTime, runTimeAt, runHeld = p.time, os.clock(), p.held == true
 	end
 end)
 State.on("world", function(w)
@@ -615,6 +625,16 @@ State.on("world", function(w)
 		fillGrad.Color = ColorSequence.new(UI.shade(C.red, 1.15), UI.shade(C.red, 0.85))
 		fill.Size = UDim2.fromScale(1, 1)
 		trackText.Text = "BOSS FIGHT!"
+	elseif w.bossWaiting then
+		-- (29 Oct, the bug sweep) the area is mowed and its boss waits on the summon pad: the card said "100.0%
+		-- cleared" and "Mow it all to open ..." with nothing left to mow
+		local here = Config.ZONES[w.zone or 1]
+		local bossName = if here and here.boss then here.boss.name else "boss"
+		fill.BackgroundColor3 = C.orange
+		fillGrad.Color = ColorSequence.new(UI.shade(C.orange, 1.15), UI.shade(C.orange, 0.85))
+		fill.Size = UDim2.fromScale(1, 1)
+		trackText.Text = "BOSS AWAKE!"
+		nextText.Text = if nextZone and (w.zone or 1) < zones then ("Beat the %s to open %s"):format(bossName, nextZone.name) else ("Beat the %s!"):format(bossName)
 	else
 		fill.BackgroundColor3 = C.green
 		fillGrad.Color = ColorSequence.new(UI.shade(C.green, 1.15), UI.shade(C.green, 0.85))
@@ -626,9 +646,15 @@ State.on("world", function(w)
 end)
 task.spawn(function()
 	while true do
-		task.wait(0.5)
+		task.wait(0.25)
 		if currentMode == "Run" and runTime >= 0 then
-			timerText.Text = Format.clock(runTime + math.min(os.clock() - runTimeAt, 5))
+			local t = runTime + (if runHeld then 0 else math.min(os.clock() - runTimeAt, 12))
+			-- (never back by a second or two: the server's seconds run a touch long, so it waits for them instead)
+			if t < shownTime and shownTime - t < 3 then
+				t = shownTime
+			end
+			shownTime = t
+			timerText.Text = Format.clock(t)
 		end
 	end
 end)

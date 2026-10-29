@@ -311,7 +311,9 @@ function ClumpWound.hit(d)
 	end
 	-- (owner, 28 Oct: "yes" to a real notch, "different per weapon") a voxel clump with a split mesh gets its stalk
 	-- really carved, every tool its own way (client/ClumpCarve); the overlay below is for anything else
-	if ClumpCarve.hit(d) then
+	-- (30 Oct) a clump that already has the overlay cut keeps it (its split pieces weren't in yet when it was first
+	-- hit: client/ClumpCarve ready)
+	if not wounds[m] and ClumpCarve.hit(d) then
 		return
 	end
 	local R = m:GetAttribute("Stalk")

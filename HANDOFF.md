@@ -204,6 +204,17 @@ shows the empty world for a moment (live servers teleport instead).
 
 ## Studio vs. git: please read
 
+**State on 29 Oct, ~23:55 (owner's late round), in Studio AND git, each checked by checksum after the patch:**
+`client/ClumpCarve` 30490 390877430 and `client/ClumpWound` 18248 914115975 (the cut's inside is the stalk's own
+colour, not near-white: "after first punch it becomes a little invisible"; seen on screen); `server/RunWorld` 42813
+1016278721 (`sealRim`: 35 squares of rim rock close the holes by the isles' void and the pine coast); the new
+`client/BossKill` 20773 1742596366 plus one line in `client/Client` (Studio 4015 1171987577). Patches:
+`tools/studio-patches/2026-10-29-owner-round/`, `.../2026-10-29-boss-kill/`. **Place content (needs Ctrl+S):** the
+camp fountain is gone (owner: "remove fountain"): `Workspace.World.Hub.CampDecor.camp_fountain` moved to
+`ServerStorage.MowALawnBackups["Removed fountain 2026-10-29 (owner: remove fountain)"]`. The owner's five VFX files
+are in git as data (`tools/vfx-import/`; owner: "skip for now"); `ServerStorage.ClaudeVfxBuf.Explosion` holds the
+first one's data in Studio (harmless). Studio's `Workspace` attribute `ForceMode` is "Run" (Play starts in a run).
+
 **State on 29 Oct, ~22:40: the camps are bare (no CampDress):** `Outposts` 26961 421549389 in Studio AND git.
 
 **State on 29 Oct, ~22:35: the windmill fix and the arch's room are in Studio AND git:** `CampLife` 20504 1082693149, `CampDress` 51915 1212517591 (both = git; patches in `tools/studio-patches/2026-10-29-windmill/`). A play test was left running, its camera on a screenshot view with the HUD hidden: Stop puts it all back, then Ctrl+S.

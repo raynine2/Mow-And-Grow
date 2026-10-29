@@ -41,6 +41,7 @@ type Patch = {
 	mut: string?, -- nil until the first hit reveals it
 	cut: boolean,
 	baseColor: Color3,
+	elder: boolean?, -- (29 Oct) the area's Elder Clump (not counted toward clearing the area)
 }
 
 local patches: { [number]: { [number]: Patch } } = {} -- [zone][index]
@@ -64,6 +65,7 @@ Field.onZoneCleared = nil :: ((number) -> ())?
 Field.onProgress = nil :: (() -> ())?
 Field.forceMutation = nil :: ((Player?, string) -> string?)? -- a class's forced mutation (server/ClassPerks)
 Field.onForced = nil :: ((Player, Vector3) -> ())?
+Field.onElder = nil :: ((Player, Patch) -> ())? -- (29 Oct) an area's Elder Clump fell (server/RunEvents)
 -- Where zone z's clumps stand ({ cf, scale } each). RunBuilder.patches for the plots map; server/Run sets
 -- RunWorld.patches for the generated world.
 Field.spots = nil :: ((number) -> { any })?
@@ -348,16 +350,85 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 	return p
 end
 
+-- (29 Oct, owner: "Elder Clump") The area's Elder Clump (Config.ELDER, server/RunEvents): the spot with the most
+-- clumps round it (deep in a patch, where it towers over the rest), and the clumps it would swallow, which don't grow.
+-- Returns the spot's index (nil: none) and the set of spots to leave out.
+local function elderSpot(z: number, spots: { any }, alreadyCut: boolean): (number?, { [number]: boolean })
+	local skip: { [number]: boolean } = {}
+	local E = Config.ELDER
+	-- (none in the first area: a first-timer's Bare Hands would be at it for half a minute)
+	if alreadyCut or not E or z < (E.fromZone or 1) or #spots < 12 then
+		return nil, skip
+	end
+	local best, bestN = nil, -1
+	for i, a in spots do
+		local n = 0
+		local pa = a.cf.Position
+		for _, b in spots do
+			if (b.cf.Position - pa).Magnitude < 30 then
+				n += 1
+			end
+		end
+		if n > bestN then
+			best, bestN = i, n
+		end
+	end
+	if not best then
+		return nil, skip
+	end
+	local at = spots[best].cf.Position
+	local room = spots[best].scale * (3 * E.scale + 1.5) -- (its own reach plus half a normal clump's)
+	for i, b in spots do
+		if i ~= best and (b.cf.Position - at).Magnitude < room then
+			skip[i] = true
+		end
+	end
+	return best, skip
+end
+
+-- The Elder Clump is a normal clump grown big: `scale` x its size (spawnPatch), `hp` x its HP. Clients find it by
+-- its tag and draw its name, HP bar and beam (client/RunEvents).
+Field.elders = {} :: { [number]: Patch }
+local function makeElder(p: Patch)
+	local E = Config.ELDER
+	p.elder = true
+	p.hp *= E.hp
+	p.maxHp = p.hp
+	p.holder.Name = "ElderPatch"
+	p.holder:SetAttribute("ElderHP", p.hp)
+	p.holder:SetAttribute("ElderMax", p.maxHp)
+	p.holder:SetAttribute("ElderZone", p.z)
+	p.holder:SetAttribute("ElderHeight", p.height)
+	game:GetService("CollectionService"):AddTag(p.holder, "ElderClump")
+	Field.elders[p.z] = p
+end
+
 local function spawnZone(z: number, alreadyCut: boolean)
 	local zoneFolder = PropKit.folder("Grass" .. z, folder :: Folder)
 	patches[z] = {}
 	buckets[z] = {}
 	local spots = spotsFor(z)
-	Field.totals[z] = #spots
-	Field.remaining[z] = if alreadyCut then 0 else #spots
+	local elder, skip = elderSpot(z, spots, alreadyCut)
+	-- (the Elder Clump doesn't count toward clearing the area: it's a bonus)
+	local count = 0
+	for i in spots do
+		if not skip[i] and i ~= elder then
+			count += 1
+		end
+	end
+	Field.totals[z] = count
+	Field.remaining[z] = if alreadyCut then 0 else count
+	local n = 0
 	for i, spot in spots do
-		local p = spawnPatch(zoneFolder, z, i, z, alreadyCut, spot.cf, spot.scale)
-		patches[z][i] = p
+		if skip[i] then
+			continue
+		end
+		n += 1
+		local p = spawnPatch(zoneFolder, z, n, z, alreadyCut, spot.cf, if i == elder then spot.scale * Config.ELDER.scale else spot.scale)
+		if i == elder then
+			makeElder(p)
+		end
+		patches[z][n] = p
 		local pos = spot.cf.Position
 		if alreadyCut then
 			Lawn.mow(pos, z)
@@ -546,7 +617,7 @@ function Field.finishLeftovers(z: number, player: Player): number
 	finishing[z] = true
 	local n = 0
 	for _, p in patches[z] or {} do
-		if not p.cut then
+		if not p.cut and not p.elder then
 			p.hp = 0
 			p.cut = true
 			p.fallDir = p.spot.LookVector
@@ -580,6 +651,9 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 		reveal(p, luck, player)
 	end
 	p.hp = math.max(0, p.hp - amount)
+	if p.elder then
+		p.holder:SetAttribute("ElderHP", p.hp)
+	end
 	if p.hp <= 0 then
 		local away = p.notchDir and -p.notchDir or flatDir(p.spot.Position - from) or Vector3.zAxis
 		p.fallDir = away
@@ -587,10 +661,20 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 		local ok = if Field.onCut then Field.onCut(player, p) else true
 		if not ok then
 			p.hp = math.max(1, p.maxHp * 0.02) -- bag full: stays nearly cut until you empty your bag
+			if p.elder then
+				p.holder:SetAttribute("ElderHP", p.hp)
+			end
 			return false
 		end
 		p.cut = true
 		fell(p, player)
+		if p.elder then
+			-- the Elder Clump: everyone in the run is paid (server/RunEvents); it isn't part of the area's count
+			if Field.onElder then
+				task.spawn(Field.onElder, player, p)
+			end
+			return true
+		end
 		Field.remaining[p.z] -= 1
 		if Field.onProgress then
 			Field.onProgress()
@@ -748,6 +832,9 @@ end
 function Field.devClear(player: Player, z: number, leave: number?)
 	local keep = leave or 0
 	for _, p in patches[z] or {} do
+		if p.elder then
+			continue -- (the Elder Clump isn't part of the area's count)
+		end
 		if not p.cut and keep > 0 then
 			keep -= 1
 		elseif not p.cut then
@@ -773,7 +860,7 @@ end
 -- drop, it pays, and it can set off the area's auto-finish). Returns whether there was one.
 function Field.devCutOne(player: Player, z: number): boolean
 	for _, p in patches[z] or {} do
-		if not p.cut then
+		if not p.cut and not p.elder then
 			damagePatch(player, p, p.hp + 1, 1, p.spot.Position + p.spot.LookVector * 3)
 			return true
 		end

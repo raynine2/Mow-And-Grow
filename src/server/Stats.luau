@@ -1,4 +1,5 @@
 -- Turns a profile (class + perks + run upgrades + passes) into the numbers the game uses.
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 
@@ -53,6 +54,19 @@ function Stats.compute(player: Player, data)
 	s.bundle = data.perks.bundle * Config.perk("bundle").per -- chance of a double bundle
 		+ (if hasPass(player, "DoubleClippings") then 1 else 0) -- 2x Clippings: always double
 	s.gems = (1 + data.perks.gem * Config.perk("gem").per) * (if hasPass(player, "DoubleGems") then 2 else 1)
+	if run then
+		-- (29 Oct, owner: "party bonus") more coins from grass for every other player in the run
+		local pb = Config.PARTY_BONUS
+		if pb then
+			s.sell *= 1 + math.min(pb.max, pb.per * math.max(0, #Players:GetPlayers() - 1))
+		end
+		-- (29 Oct, owner: "Golden Hour") mutation luck x Config.GOLDEN_HOUR.luck while it lasts (server/RunEvents)
+		local gh = Config.GOLDEN_HOUR
+		local goldenUntil = workspace:GetAttribute("GoldenHourUntil")
+		if gh and type(goldenUntil) == "number" and workspace:GetServerTimeNow() < goldenUntil then
+			s.luck *= gh.luck
+		end
+	end
 	return s
 end
 

@@ -858,6 +858,8 @@ function Run.start()
 	end
 	Boss.onDefeated = onBossDefeated
 	Boss.onChanged = pushWorld
+	-- (29 Oct) Elder Clumps, Golden Hour, the area speed challenges
+	require(script.Parent.RunEvents).start()
 
 	-- remotes
 	Net.on("Swing", 12, onSwing)

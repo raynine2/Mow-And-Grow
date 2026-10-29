@@ -524,6 +524,9 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 	-- (29 Oct, balance 2; owner: "add more grass in areas so its not too easy") `fill` packs the area's patches
 	-- tighter: x that many clumps, each as big as before (RunWorld.clumpScale still goes by `spacing`)
 	local spacing = math.clamp((def and def.spacing or 11) * 0.9, 7, 13) / math.sqrt(def and def.fill or 1)
+	-- (the jitter shrinks with the grid: at the old +-1.5 a tighter grid lost a third of its spots to the spacing
+	-- check below, so x1.35 packing only gave ~x1.15 clumps; Studio test 29 Oct)
+	local jit = 1.5 / math.sqrt(def and def.fill or 1)
 	local scale = RunWorld.clumpScale(z)
 	local rng = Random.new(z * 7919)
 	local ray = RaycastParams.new()
@@ -630,8 +633,8 @@ function RunWorld.patches(z: number): { { cf: CFrame, scale: number } }
 			local n = math.ceil(r / spacing)
 			for i = -n, n do
 				for j = -n, n do
-					local x = c.X + (i + (j % 2) * 0.5) * spacing + rng:NextNumber(-1.5, 1.5)
-					local zz = c.Z + j * spacing * 0.87 + rng:NextNumber(-1.5, 1.5)
+					local x = c.X + (i + (j % 2) * 0.5) * spacing + rng:NextNumber(-jit, jit)
+					local zz = c.Z + j * spacing * 0.87 + rng:NextNumber(-jit, jit)
 					local flatD = Vector2.new(x - c.X, zz - c.Z).Magnitude
 					if flatD <= r then
 						local hit = workspace:Raycast(Vector3.new(x, c.Y + 40, zz), Vector3.new(0, -80, 0), ray)

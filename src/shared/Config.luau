@@ -45,7 +45,7 @@ Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
 -------------------------------------------------------------------------------------------------------------
 -- `section` groups them in the upgrades window (Hands / Tool / Gear). Carry comes from bags (Config.BAGS); the old
 -- "carry" upgrade is gone, but levels bought before still count (Config.LEGACY_CARRY_PER bundles each).
-Config.UPGRADE_SECTIONS = { "Hands", "Tool", "Gear" }
+Config.UPGRADE_SECTIONS = { "Hands", "Tool", "Gear", "Mower" }
 Config.UPGRADES = {
 	-- like Chop A Forest's first purchase: until you own it, every swing is a click
 	{ id = "hold", section = "Hands", name = "Hold", desc = "Hold the button to keep cutting", per = 1, base = 20, growth = 1, max = 1 },
@@ -54,6 +54,11 @@ Config.UPGRADES = {
 	{ id = "power", section = "Tool", name = "Power", desc = "+20% cutting power", per = 0.20, base = 100, growth = 3.2, max = 10 },
 	{ id = "speed", section = "Gear", name = "Walk Speed", desc = "+6% walk speed", per = 0.06, base = 250, growth = 3.0, max = 10 },
 	{ id = "sell", section = "Gear", name = "Shredder Boost", desc = "+15% coins per bundle", per = 0.15, base = 300, growth = 3.4, max = 10 },
+	-- (29 Oct, owner: "mower upgrades") for whatever ride-on mower you drive: coins into the mower instead of a
+	-- stronger one, so mowers stay fun without cutting past the tools (server/ClassPerks.mower)
+	{ id = "deck", section = "Mower", name = "Wide Deck", desc = "+6% mower cutting width", per = 0.06, base = 500, growth = 2.8, max = 5 },
+	{ id = "engine", section = "Mower", name = "Engine", desc = "+5% mower top speed", per = 0.05, base = 500, growth = 2.8, max = 5 },
+	{ id = "fuelsaver", section = "Mower", name = "Fuel Saver", desc = "-10% fuel burned", per = 0.10, base = 400, growth = 2.6, max = 5 },
 }
 Config.LEGACY_CARRY_PER = 3
 
@@ -159,6 +164,20 @@ Config.CUT_COINS = 0.25
 -- beacon so you find them; at `autoAt` the leftovers are mowed for you and paid out in coins (no hunting the last
 -- 1%). autoAt = 1 turns the auto-finish off.
 Config.AREA_FINISH = { dings = { 0.25, 0.5, 0.75, 0.9 }, glowAt = 0.95, autoAt = 0.97 }
+-- (29 Oct) THE RUN'S EXTRAS (owner, after balance pass 2: Elder Clump, Golden Hour, speed challenges per area, mower
+-- upgrades, party bonus). server/RunEvents runs them, client/RunEvents shows them.
+-- ELDER CLUMP: from area `fromZone` on, one clump per area grows `scale` x as big with `hp` x the area's grass HP (the
+-- clumps it would cover don't grow; server/Field). It doesn't count toward clearing the area: it's a bonus to chop
+-- down together. When it falls everyone in the run gets `coins` x the area's grass value (x their sell) and `gems`.
+Config.ELDER = { fromZone = 2, scale = 2, hp = 30, coins = 40, gems = { 8, 10, 12, 15, 18, 22, 26, 30 } }
+-- GOLDEN HOUR: `firstAfter` seconds into a run and then every `every` seconds, for `length` seconds new clumps roll
+-- their mutation with x `luck` (server/Stats). The screen glows gold.
+Config.GOLDEN_HOUR = { firstAfter = 240, every = 480, length = 45, luck = 3 }
+-- AREA SPEED CHALLENGE: clear an area within `par` seconds of it opening (the walk there counts) and everyone in
+-- the run gets `gems` (x their gem boosts). Not for the run's first area.
+Config.AREA_CHALLENGE = { par = { 240, 240, 240, 330, 270, 300, 270, 270 }, gems = { 10, 12, 15, 20, 25, 30, 35, 40 } }
+-- PARTY BONUS: +`per` coins from grass for every other player in the run, up to +`max` (server/Stats).
+Config.PARTY_BONUS = { per = 0.1, max = 0.3 }
 -- #16 RUN MEDALS: finish a run under these times. Saved in the profile; `badge` is the Roblox badge to award once
 -- the owner has made it (0 = none). Peaceful runs and runs joined part-way through don't count (like BEST TIMES).
 Config.RUN_MEDALS = {
@@ -213,7 +232,7 @@ Config.BASE_CARRY = 5
 -- (29 Oct, balance 2) The owner: "check our mowers its way too op and some classes ... a full balancing check
 -- on everything and also add more grass in areas so its not too easy". A run model (tools/balance_model.py)
 -- put a first run at ~26 min and one on a gem mower at ~17 (the Monster Mulcher one-shot every area up to the
--- Swamp). Now: `fill` packs every area's patches tighter (x1.35 clumps, x1.5 in the jungle; server/RunWorld),
+-- Swamp). Now: `fill` packs every area's patches tighter (x1.25-1.5 clumps: 749 -> ~1,000; server/RunWorld),
 -- the grass from the Meadow on is tougher (each tool needs 2-3 hits in its own area), the late tools cost
 -- more and the boss coins are halved (coins ran away: millions left over at the end), the mowers cut like the
 -- tools of their areas instead of far past them (a gem mower speeds up the first 4-5 areas; the last three
@@ -224,49 +243,49 @@ Config.BOSSES = true -- clearing an area wakes its boss, and beating the boss op
 Config.ZONES = {
 	{
 		name = "Backyard Lawn", grassName = "Lawn Grass", style = "lawn", hp = 2, value = 2, drops = 1, height = 2, -- (29 Oct, balance 2) hp 3 -> 2
-		spacing = 11, fill = 1.35, scale = 4.0,
+		spacing = 11, fill = 1.25, scale = 4.0,
 		grass = { Color3.fromRGB(110, 210, 70), Color3.fromRGB(90, 195, 60) },
 		ground = Color3.fromRGB(150, 110, 70),
 		boss = { name = "Dandelion King", hp = 400, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
 	},
 	{
 		name = "Flower Meadow", grassName = "Meadow Grass", style = "meadow", model = "tuft_golf", hp = 9, value = 12, drops = 1, height = 2.2, -- (29 Oct, balance 2) hp 12 -> 9
-		spacing = 11.5, fill = 1.35, scale = 6.3, tint = Color3.fromRGB(150, 215, 95),
+		spacing = 11.5, fill = 1.4, scale = 6.3, tint = Color3.fromRGB(150, 215, 95),
 		grass = { Color3.fromRGB(150, 215, 95), Color3.fromRGB(130, 200, 80) },
 		ground = Color3.fromRGB(120, 160, 70),
 		boss = { name = "Bramble Brute", hp = 2000, color = Color3.fromRGB(40, 140, 60), every = 4.2, radius = 9, gems = 15, coins = 500 },
 	},
 	{
 		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 40, value = 45, drops = 1, height = 2.5, -- (29 Oct, balance 2) hp 50 -> 40
-		spacing = 12.5, fill = 1.35, scale = 7.2,
+		spacing = 12.5, fill = 1.4, scale = 7.2,
 		grass = { Color3.fromRGB(70, 200, 90), Color3.fromRGB(55, 180, 75) },
 		ground = Color3.fromRGB(235, 215, 150),
 		boss = { name = "Bunker Thornback", hp = 6000, color = Color3.fromRGB(235, 200, 110), every = 4, radius = 10, gems = 20, coins = 1500 },
 	},
 	{
 		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 180, value = 80, drops = 1, height = 5, -- (29 Oct, balance 2) hp 150 -> 180
-		spacing = 11, fill = 1.35, scale = 4.0,
+		spacing = 11, fill = 1.4, scale = 4.0,
 		grass = { Color3.fromRGB(240, 200, 80), Color3.fromRGB(225, 180, 60) },
 		ground = Color3.fromRGB(140, 95, 55),
 		boss = { name = "Harvest Maw", hp = 90000, color = Color3.fromRGB(240, 200, 80), every = 3.6, radius = 11, gems = 35, coins = 12000 },
 	},
 	{
 		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 1000, value = 300, drops = 2, height = 2.5, -- (29 Oct, balance 2) hp 480 -> 1000
-		spacing = 13.5, fill = 1.35, scale = 5.1, tint = Color3.fromRGB(255, 160, 205),
+		spacing = 13.5, fill = 1.4, scale = 5.1, tint = Color3.fromRGB(255, 160, 205),
 		grass = { Color3.fromRGB(255, 160, 205), Color3.fromRGB(240, 130, 185) },
 		ground = Color3.fromRGB(120, 170, 80),
 		boss = { name = "Sakura Snapjaw", hp = 300000, color = Color3.fromRGB(255, 150, 200), every = 3.5, radius = 11, gems = 45, coins = 40000 },
 	},
 	{
 		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 7000, value = 1100, drops = 2, height = 6.5, -- (29 Oct, balance 2) hp 2000 -> 7000
-		spacing = 12, fill = 1.35, scale = 4.6,
+		spacing = 12, fill = 1.4, scale = 4.6,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
 		boss = { name = "Bog Strangler", hp = 1200000, color = Color3.fromRGB(125, 212, 90), every = 3.3, radius = 12, gems = 55, coins = 150000 },
 	},
 	{
 		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 30000, value = 2400, drops = 2, height = 6, -- (29 Oct, balance 2) hp 4800 -> 30000
-		spacing = 11.5, fill = 1.35, scale = 5.1, tint = Color3.fromRGB(235, 120, 45),
+		spacing = 11.5, fill = 1.4, scale = 5.1, tint = Color3.fromRGB(235, 120, 45),
 		grass = { Color3.fromRGB(235, 120, 45), Color3.fromRGB(215, 95, 40) },
 		ground = Color3.fromRGB(150, 110, 60),
 		boss = { name = "Hollow Harvest", hp = 4000000, color = Color3.fromRGB(255, 140, 40), every = 3.1, radius = 13, gems = 65, coins = 500000 },

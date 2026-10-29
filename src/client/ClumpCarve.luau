@@ -30,6 +30,53 @@ local WeaponFx = require(script.Parent.WeaponFx)
 local ClumpCarve = {}
 local player = Players.LocalPlayer
 local templates = ReplicatedStorage:WaitForChild("ClumpCarve", 10)
+-- (29 Oct, owner: "when you punch grass the top part becomes invisible for like a split second") the split meshes
+-- weren't downloaded until the first hit needed them (Studio: every one "None"), so the clump's top was gone until they
+-- came in. Now they're all fetched at the start, and the whole clump stays on screen until a carve's pieces are
+-- drawn (hideWhenLoaded).
+local ContentProvider = game:GetService("ContentProvider")
+if templates then
+	task.spawn(function()
+		pcall(ContentProvider.PreloadAsync, ContentProvider, templates:GetDescendants())
+	end)
+end
+
+local function fetched(p: BasePart): boolean
+	local id = if p:IsA("MeshPart") then p.MeshId else ""
+	if id == "" then
+		return true
+	end
+	local ok, status = pcall(ContentProvider.GetAssetFetchStatus, ContentProvider, id)
+	return not ok or status == Enum.AssetFetchStatus.Success
+end
+
+-- Hide the clump's own mesh once the carve's pieces are drawn (at most 1.5 s later; `still`: the carve is on).
+local function hideWhenLoaded(src: BasePart, pieces: { BasePart }, still: () -> boolean)
+	local function ready(): boolean
+		for _, p in pieces do
+			if not fetched(p) then
+				return false
+			end
+		end
+		return true
+	end
+	if ready() then
+		src.Transparency = 1
+		return
+	end
+	local t0 = os.clock()
+	local conn: RBXScriptConnection? = nil
+	conn = RunService.Heartbeat:Connect(function()
+		if ready() or os.clock() - t0 > 1.5 or not still() then
+			if conn then
+				conn:Disconnect()
+			end
+			if still() and src.Parent then
+				src.Transparency = 1
+			end
+		end
+	end)
+end
 
 -- (a carve you walked away from, 40+ studs and 10+ s since its last hit, is put back to the plain mesh to free its
 -- slot when a new clump needs one; ~100 small parts each at most)
@@ -288,7 +335,11 @@ local function start(m: Model): Carve?
 			cv.top = p
 		end
 	end
-	src.Transparency = 1 -- (on this screen only; clones of it stay hidden too: client/Fx's falling copy)
+	-- the clump's own mesh goes (on this screen only; clones of it stay hidden too: client/Fx's falling copy) once
+	-- the pieces are drawn
+	hideWhenLoaded(src, { cv.base, cv.top }, function()
+		return cv.base.Parent ~= nil
+	end)
 	for i = 0, N * N * ROWS - 1 do
 		cv.solid[i] = true
 	end

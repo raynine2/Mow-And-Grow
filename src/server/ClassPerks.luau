@@ -168,11 +168,25 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- mowers (Turbo Deck) and pickup reach (Green Thumb)
 -------------------------------------------------------------------------------------------------------------
+local NO_TURBO = { radius = 1, speed = 1, fuel = 1 }
+-- The ride-on mower multipliers: Turbo Deck, times the run's mower upgrades (29 Oct, owner: "mower upgrades":
+-- Config.UPGRADES section "Mower": Wide Deck, Engine, Fuel Saver).
 function ClassPerks.mower(player: Player): { radius: number, speed: number, fuel: number }
-	if ClassPerks.is(player, "MowerSpecialist") then
-		return TURBO
+	local base = if ClassPerks.is(player, "MowerSpecialist") then TURBO else NO_TURBO
+	local data = PlayerData.get(player)
+	local up = data and data.run and data.run.upgrades
+	if not up then
+		return base
 	end
-	return { radius = 1, speed = 1, fuel = 1 }
+	local function boost(id: string): number
+		local u = Config.upgrade(id)
+		return (up[id] or 0) * (if u then u.per else 0)
+	end
+	return {
+		radius = base.radius * (1 + boost("deck")),
+		speed = base.speed * (1 + boost("engine")),
+		fuel = base.fuel * math.max(0.2, 1 - boost("fuelsaver")),
+	}
 end
 
 function ClassPerks.reachBonus(player: Player): number

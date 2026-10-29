@@ -302,6 +302,14 @@ end
 -- Called every 0.5 s by the run: burn fuel while moving.
 function Mowers.burn(dt: number)
 	for player, m in active do
+		-- (29 Oct) the Engine upgrade (Config.UPGRADES "engine", server/ClassPerks.mower) counts while you drive
+		local mdef = Config.mower(m:GetAttribute("MowerId"))
+		if mdef then
+			local top = mdef.speed * require(script.Parent.ClassPerks).mower(player).speed
+			if m:GetAttribute("Speed") ~= top then
+				m:SetAttribute("Speed", top)
+			end
+		end
 		local drivingModel = Mowers.driving(player)
 		local body = m.PrimaryPart
 		if drivingModel and body then

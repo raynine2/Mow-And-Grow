@@ -35,6 +35,7 @@ require(modules:WaitForChild("Life")) -- trees swaying, wind ribbons, falling le
 require(modules:WaitForChild("Combo"))
 require(modules:WaitForChild("FirstLawn")) -- a first-timer's trip to their first lawn, the loan note, reach rings
 require(modules:WaitForChild("AreaGoals")) -- area dings, the last clumps glowing, run medals by the timer
+require(modules:WaitForChild("RunEvents")) -- (29 Oct) Golden Hour, the speed challenge, the party bonus, Elder Clumps
 require(modules:WaitForChild("RarityFx")) -- rarer = cooler: class auras, pet glow-ups, the rare-restock banner
 require(modules:WaitForChild("WelcomeBack")) -- the welcome-back popup (offline earnings) + the lobby's CONTINUE RUN button
 require(modules:WaitForChild("Settings")) -- the gear beside the potato: Potato Mode + Legendary / Mythic in-stock alerts

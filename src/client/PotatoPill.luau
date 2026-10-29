@@ -15,7 +15,9 @@ local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local TextService = game:GetService("TextService")
 
-local Device = require(script.Parent.Device)
+-- (client/Device comes with the phone pass, which a copy of the game may not have yet: without it, no phone preview)
+local deviceModule = script.Parent:FindFirstChild("Device")
+local Device: any = if deviceModule then require(deviceModule :: ModuleScript) else { preview = false }
 local Potato = require(script.Parent.Potato)
 local UI = require(script.Parent.UI)
 

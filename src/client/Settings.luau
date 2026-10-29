@@ -70,6 +70,9 @@ task.spawn(function()
 	holder.BackgroundTransparency = 1
 	holder.Size = UDim2.fromOffset(84, 74)
 	holder.Parent = hud
+	-- (30 Oct, owner: "remove this for now": hidden; Potato Mode is the top-bar pill, client/PotatoPill, and the saved
+	-- choices still load above. Set this to true to bring the gear back.)
+	holder.Visible = false
 	local function follow()
 		holder.Position = potato.Position -- (the potato button is hidden: the gear takes its spot)
 	end

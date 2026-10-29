@@ -1564,8 +1564,20 @@ local function play()
 	Babble.prepare()
 	FilmAudio.begin({ "storyMusic", "darkMusic", "heroMusic", "impact", "rumble", "leaves", "brush", "crate", "bigHit", "titleHit", "swipe", "swipe2", "sting", "demonSwell", "growl", "growl2", "thud", "synthWhomp", "suck", "whomp", "riseDark" })
 	-- (the guardians' models and textures for the King and the roll call)
+	-- (30 Oct, owner: "de bosses spawnen niet goed in of laden niet goed in de trailer en komen later pas": the film
+	-- didn't wait for them, so on a fresh client the King's meshes and paint were still downloading when his shots
+	-- came up, and he popped in late. The black cover now waits for the King (his shots come first), at most 8 s; the
+	-- other guardians load right behind him, before their shots ~5 s later.)
+	local kingReady = false
 	task.spawn(function()
 		local models = ReplicatedStorage:FindFirstChild("BossModels")
+		local king = models and models:FindFirstChild(BossMoves.get(1).rig)
+		if king then
+			pcall(function()
+				ContentProvider:PreloadAsync({ king })
+			end)
+		end
+		kingReady = true
 		if models then
 			pcall(function()
 				ContentProvider:PreloadAsync(models:GetChildren())
@@ -1580,6 +1592,10 @@ local function play()
 	streamIn({ entry, entry + inward * 50, entry + inward * 110, if typeof(camp) == "Vector3" then camp else hub:Lerp(entry, 0.4) })
 	if (Config.FILM :: any).voice ~= false then
 		FilmVoice.waitFor(LINES.N1, 1.5)
+	end
+	local waitUntil = os.clock() + 8
+	while not kingReady and playing and os.clock() < waitUntil do
+		task.wait(0.05)
 	end
 	if not playing then
 		return

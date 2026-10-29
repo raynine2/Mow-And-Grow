@@ -2,16 +2,24 @@
 -- cutscene ... with end credits at the end where it prompts you to go to the next world or do the same mission
 -- again"; 28 Oct: "remake it ... make it feel like a real movie with a story attached to it"). Played on every
 -- client when the last area's boss falls (server/Run sends runComplete with `ending = true`). It closes the story
--- the opening film (client/Intro) starts: Mayor Thistlewick's valley, overgrown since "the grass came back and
--- never stopped growing", is mowed at last.
---   I.   THE LAST BLADE: the last guardian kneels in its arena with the glitch still in it; the pink tears out of
---        it, its own colours come back, it bows to us and goes up into the sky as light; the sun breaks through
---        ("The last wild grass in the valley... was gone.");
---   II.  THE VALLEY BREATHES: a long flight back over every area, mowed in stripes, each name ticking off;
---   III. HOMECOMING: the Mayor alone on his soapbox; footsteps; he turns: the Mowers are back ("You... you
---        actually DID it!");
---   IV.  THE CELEBRATION: cheering, music, confetti, fireworks over the village at dusk, and the group photo
---        ("Everyone... say GRASS!"), frozen for a moment as a snapshot;
+-- the opening film (client/Intro) starts: Mayor Thistlewick's valley, overgrown since the pink got into its
+-- guardians, is mowed at last.
+-- Remade on 29 Oct the way the opening was (owner: "do the same u did for intro for the outro"; of both films:
+-- "sometimes the camera just pans to the ground or just some useless thing"): no flight over the ground, no walking,
+-- no shot of nothing. Every shot has someone in it doing something; the cameras keep out of the trees and the ruins
+-- (the scenery as boxes: a raycast goes through most of it); every shot was checked on a contact sheet in Studio
+-- (client/FilmSheet).
+--   I.   THE LAST BLADE: in its arena the last guardian kneels in front of the Mowers (copies of everyone's avatars,
+--        where they beat it), the glitch still in it; close on its face the pink TEARS out of it [an impact frame, in
+--        gold]; its own colours come back, it stands up tall over them... and bows; then it goes up as light and the
+--        sun breaks through over the Mowers ("And just like that... the last wild grass in the valley was gone.");
+--   II.  THE VALLEY BREATHES: the guardians back home in their own lands, free, in their own colours, one after
+--        another, each bowing as its land's name comes up; the Dandelion King last, the one the pink fell on first;
+--   III. HOMECOMING: sunset; the Mayor alone on his soapbox, looking out over his meadow... THUD: behind him the Mowers
+--        drop out of the sky one after another, as they did in the opening; he spins round: "You... you actually DID
+--        it!";
+--   IV.  THE CELEBRATION: cheering, confetti, fireworks over the camp at dusk, and the group photo ("Everyone... say
+--        GRASS!"), frozen for a moment as a snapshot;
 --   V.   THE CREDITS (owner, 28 Oct: "end credits, maybe take inspiration from JJK"): an anime ending, calm
 --        after the party: STARRING the party, each in a panel of their own colour; the eight guardians, free at
 --        last, in their own colours; the Mayor "as himself"; the makers (client/FilmPanels);
@@ -23,10 +31,13 @@
 --        demon (client/Demon) heaves itself up out of the hole: "This valley... is MINE."; it roars and the hole
 --        swallows everything. TO BE CONTINUED; WORLD 2, THE CORRUPTED VALLEY, COMING SOON; your progress is safe.
 --        Then the end screen: PLAY AGAIN (back to the lobby for a new run) and a locked "???" (world 2).
--- Impact frames (client/FilmPanels) on the three big hits after the credits. Camera, light and grade: client/Film;
--- music and sound: client/FilmAudio (licensed library audio); the Mayor's mumble: client/Babble; the actors and the
--- screen: client/IntroCast, client/IntroUi, as in the opening. SKIP jumps to the scene after the credits (from the
--- film or the credits); that scene always plays, and SKIP comes back on its last title, for the end screen.
+-- Impact frames (client/FilmPanels) on the guardian set free and the three big hits after the credits. Camera, light
+-- and grade: client/Film; music and sound: client/FilmAudio (licensed library audio); the effects: client/FilmVfx
+-- (VFX Forge templates, the old code as the fallback); the Mayor's mumble: client/Babble; the actors and the screen:
+-- client/IntroCast, client/IntroUi, as in the opening. SKIP jumps to the scene after the credits (from the film or
+-- the credits); that scene always plays, and SKIP comes back on its last title, for the end screen.
+local ContentProvider = game:GetService("ContentProvider")
+local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -53,6 +64,8 @@ local FilmPanels = require(script.Parent.FilmPanels) -- (28 Oct) the impact fram
 local BossMoves = require(MowALawn:WaitForChild("BossMoves"))
 local BossRig = require(MowALawn:WaitForChild("BossRig"))
 local BossView = require(script.Parent.BossView) -- (28 Oct evening) the last guardian, freed, in the first scene
+local FilmVfx = require(script.Parent.FilmVfx) -- (29 Oct) the effects as VFX Forge templates (old ones: the fallback)
+local HitFx = require(script.Parent.HitFx) -- (29 Oct) the dust where the Mowers land
 
 local Ending = {}
 local player = Players.LocalPlayer
@@ -77,7 +90,7 @@ local LINES = {
 	E2 = "Meadow by meadow, hill by hill... the whole valley could breathe again.",
 	E3 = "You... you actually DID it!",
 	E4 = "Every meadow, every hill, every last blade... MOWED!",
-	E5 = "Spawn Village is SAVED! Now, everyone... say GRASS!",
+	E5 = "The valley is SAVED! Now, everyone... say GRASS!",
 	E6 = "Ahh... peace and quiet. At last.",
 	E8 = "W-what was THAT?!",
 	D1 = "This valley... is MINE.",
@@ -108,23 +121,172 @@ local function streamIn(spots: { Vector3 })
 	end
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- keeping the camera out of the scenery (29 Oct, as client/Intro does): most of the trees and props can't be hit
+-- by a raycast (CanQuery is off on them), so Film.sees can't see them. The scenery round the film's places is
+-- taken as boxes, in a grid (Ending.play builds it under the black cover, and drops it at the end).
+-------------------------------------------------------------------------------------------------------------
+type Box = { cf: CFrame, h: Vector3, p: Vector3, r: number }
+type Boxes = { list: { Box }, grid: { [number]: { number } }, mark: { [number]: number }, tick: number }
+local CELL = 32
+local scenery: Boxes? = nil
+
+local function cellOf(v: number): number
+	return math.floor(v / CELL)
+end
+
+-- The scenery within `r` studs (sideways) of any of `places`, as boxes. Thousands of parts: spread over frames.
+local function sceneryBoxes(places: { { at: Vector3, r: number } }): Boxes
+	local B: Boxes = { list = {}, grid = {}, mark = {}, tick = 0 }
+	local world = workspace:FindFirstChild("World")
+	local n = 0
+	for _, name in { "Visuals", "Hub", "Ground", "Gates", "Patches", "Ways", "Pads", "Arenas" } do
+		local f = world and world:FindFirstChild(name)
+		if f then
+			for _, d in f:GetDescendants() do
+				n += 1
+				if n % 3000 == 0 then
+					task.wait()
+				end
+				if d:IsA("BasePart") and d.Transparency < 0.95 and d.Size.Magnitude > 3 then
+					local p = d.Position
+					local near = false
+					for _, pl in places do
+						if flat(p - pl.at).Magnitude < pl.r then
+							near = true
+							break
+						end
+					end
+					if near then
+						local cf, h = d.CFrame, d.Size / 2
+						table.insert(B.list, { cf = cf, h = h, p = p, r = h.Magnitude })
+						local id = #B.list
+						-- (the cells its upright bounding box covers)
+						local ex = math.abs(cf.XVector.X) * h.X + math.abs(cf.YVector.X) * h.Y + math.abs(cf.ZVector.X) * h.Z
+						local ez = math.abs(cf.XVector.Z) * h.X + math.abs(cf.YVector.Z) * h.Y + math.abs(cf.ZVector.Z) * h.Z
+						for ix = cellOf(p.X - ex), cellOf(p.X + ex) do
+							for iz = cellOf(p.Z - ez), cellOf(p.Z + ez) do
+								local key = ix * 65536 + iz
+								local cell = B.grid[key]
+								if cell then
+									table.insert(cell, id)
+								else
+									B.grid[key] = { id }
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return B
+end
+
+-- (one axis of a line-through-a-box test: the part of the line, t0..t1, inside the box's slab on that axis)
+local function slab(o: number, v: number, e: number, t0: number, t1: number): (number, number)
+	if math.abs(v) < 1e-6 then
+		if o < -e or o > e then
+			return 1, 0
+		end
+		return t0, t1
+	end
+	local u0, u1 = (-e - o) / v, (e - o) / v
+	if u0 > u1 then
+		u0, u1 = u1, u0
+	end
+	return math.max(t0, u0), math.min(t1, u1)
+end
+
+-- Whether the line from `a` to `b` goes through any of the scenery's boxes.
+local function blocked(a: Vector3, b: Vector3): boolean
+	local B = scenery
+	if not B then
+		return false
+	end
+	B.tick += 1
+	local tick = B.tick
+	local ab = b - a
+	local len2 = math.max(ab:Dot(ab), 1e-6)
+	for ix = cellOf(math.min(a.X, b.X)), cellOf(math.max(a.X, b.X)) do
+		for iz = cellOf(math.min(a.Z, b.Z)), cellOf(math.max(a.Z, b.Z)) do
+			local cell = B.grid[ix * 65536 + iz]
+			if cell then
+				for _, id in cell do
+					if B.mark[id] ~= tick then
+						B.mark[id] = tick
+						local bx = B.list[id]
+						local t = math.clamp((bx.p - a):Dot(ab) / len2, 0, 1)
+						if (a + ab * t - bx.p).Magnitude <= bx.r then
+							local la = bx.cf:PointToObjectSpace(a)
+							local d = bx.cf:PointToObjectSpace(b) - la
+							local t0, t1 = slab(la.X, d.X, bx.h.X, 0, 1)
+							if t0 <= t1 then
+								t0, t1 = slab(la.Y, d.Y, bx.h.Y, t0, t1)
+							end
+							if t0 <= t1 then
+								t0, t1 = slab(la.Z, d.Z, bx.h.Z, t0, t1)
+							end
+							if t0 <= t1 then
+								return true
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return false
+end
+
+-- Whether a camera at `p` would stand inside something of the scenery.
+local function inside(p: Vector3): boolean
+	return blocked(p - UP * 0.1, p + UP * 0.1)
+end
+
+-- Whether `from` sees `to`: nothing solid between them (a raycast: the ground, the buildings) and none of the
+-- scenery's boxes either (the trees and props a raycast goes through).
+local function sees(from: Vector3, to: Vector3): boolean
+	return Film.sees(from, to) and not blocked(from, to)
+end
+
+local function turn(v: Vector3, deg: number): Vector3
+	return CFrame.Angles(0, math.rad(deg), 0):VectorToWorldSpace(v)
+end
+
+local YAWS = { 0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180 }
+
+-- Which way the sun lies (flat) at `clock` o'clock, to keep faces in the light: read with the clock set for a
+-- moment (the film sets its own light afterwards).
+local function sunAt(clock: number): Vector3
+	local was = Lighting.ClockTime
+	Lighting.ClockTime = clock
+	local d = Lighting:GetSunDirection()
+	Lighting.ClockTime = was
+	return unit(flat(d), Vector3.zAxis)
+end
+
 -- How well a camera at `p` sees a shot: 2 for each of `targets` in sight, 1 off for each edge of the frame (`half`
--- degrees either side of the first target) with something solid within 30 studs of the lens. (Studio's test, 28 Oct:
--- the hole half behind a roof, and half the frame filled by whatever stood beside the camera.)
+-- degrees either side of the first target) with something solid within 30 studs of the lens, 6 off if it stands
+-- inside something. (Studio's test, 28 Oct: the hole half behind a roof, and half the frame filled by whatever
+-- stood beside the camera.)
 local function shotScore(p: Vector3, targets: { Vector3 }, half: number): number
 	local score = 0
 	for _, t in targets do
-		if Film.sees(p, t) then
+		if sees(p, t) then
 			score += 2
 		end
 	end
 	if (targets[1] - p).Magnitude > 0.5 then
 		local cf = CFrame.lookAt(p, targets[1])
 		for _, a in { -half, half } do
-			if not Film.sees(p + (cf * CFrame.Angles(0, math.rad(a), 0)).LookVector * 30, p) then
+			if not sees(p + (cf * CFrame.Angles(0, math.rad(a), 0)).LookVector * 30, p) then
 				score -= 1
 			end
 		end
+	end
+	if inside(p) then
+		score -= 6
 	end
 	return score
 end
@@ -144,14 +306,27 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- where everything is
 -------------------------------------------------------------------------------------------------------------
+-- Where area z's guardian was fought: its arena's middle.
+local function arenaOf(z: number): Vector3
+	local w = workspace:FindFirstChild("World")
+	local arenas = w and w:FindFirstChild("Arenas")
+	local a = arenas and arenas:FindFirstChild("Arena" .. z)
+	if a and a:IsA("Model") then
+		return a:GetPivot().Position
+	end
+	local at = w and w:GetAttribute("Arena" .. z)
+	if typeof(at) == "Vector3" then
+		return at
+	end
+	return Config.zoneCentre(z)
+end
+
 type Plan = { arena: Vector3, areas: { { pos: Vector3, name: string } }, camp: Vector3, fwd: Vector3, right: Vector3, cast: Vector3, mayorAt: Vector3, sprout: Vector3 }
 
 local function plan(): Plan
 	local n = #Config.ZONES
 	local w = workspace:FindFirstChild("World")
-	local arenas = w and w:FindFirstChild("Arenas")
-	local a = arenas and arenas:FindFirstChild("Arena" .. n)
-	local arena = if a and a:IsA("Model") then a:GetPivot().Position else Config.zoneCentre(n)
+	local arena = arenaOf(n)
 	local areas = {}
 	for z = n, 1, -1 do
 		local def = Config.ZONES[z]
@@ -212,6 +387,17 @@ local filmGen = 0 -- (bumps when SKIP restarts the film: a rocket already up doe
 local FIREWORK_COLORS = { GOLD, Color3.fromRGB(255, 110, 150), Color3.fromRGB(110, 220, 255), GREEN, Color3.fromRGB(255, 150, 60), Color3.fromRGB(200, 140, 255) }
 local function firework(at: Vector3, big: boolean?)
 	local color = FIREWORK_COLORS[math.random(1, #FIREWORK_COLORS)]
+	-- (VFX Forge's firework: the rocket, the burst, its light; the old one below if it's missing)
+	if FilmVfx.play("Firework", at, { color = color, scale = if big then 1.25 else 1 }) then
+		FilmAudio.sfx("swingHand", { volume = 0.9, pitch = 0.55 + math.random() * 0.15 }) -- (the whistle up)
+		local gen = filmGen
+		task.delay(0.8, function()
+			if Film.playing and gen == filmGen then
+				FilmAudio.sfx("boom", { volume = if big then 1 else 0.6 + math.random() * 0.3, pitch = 1.25 + math.random() * 0.35 })
+			end
+		end)
+		return
+	end
 	local rise = spark(at - UP * 30, color, 0.6)
 	TweenService:Create(rise, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = at }):Play()
 	FilmAudio.sfx("swingHand", { volume = 0.9, pitch = 0.55 + math.random() * 0.15 }) -- (the whistle up)
@@ -343,20 +529,27 @@ local LOOKS = {
 -------------------------------------------------------------------------------------------------------------
 -- I. THE LAST BLADE: the last guardian, free
 -------------------------------------------------------------------------------------------------------------
--- (owner, 28 Oct evening: the ending began on "just a blank ground") 1A: the last guardian kneels in its arena,
--- beaten, the glitch still in it (its corrupted colours, pink eyes, twitching). 1B: the pink tears out of it in a
--- spray of glitch blocks [an impact frame, in gold]: its own colours come back and it straightens up. 1C: it bows its
--- head to us... and goes up into the sky as light, and the sun breaks through. (If a fight's boss is still in
--- client/BossView, it's left alone: just the light rising.)
+-- (owner, 28 Oct evening: the ending began on "just a blank ground"; 29 Oct: "do the same u did for intro for the
+-- outro") 1A: in its arena the last guardian kneels in front of the Mowers, beaten, the glitch still in it (its
+-- corrupted colours, pink eyes, twitching); low behind the Mowers we creep in. 1B: close on its face the pink tears
+-- out of it in a spray of glitch blocks [an impact frame, in gold]: its own colours come back. 1C: from the side,
+-- wide: it stands up tall over the Mowers... and bows its head to them; they cheer. 1D: low behind them again: it
+-- goes up as light and the sun breaks through. (If a fight's boss is still in client/BossView, it's left alone:
+-- just the Mowers and the light.)
 local guardianShown = false
 local guardianEyes: { BasePart } = {}
 local guardianEyesStop: (() -> ())? = nil
+local guardianEyesFx: { Model } = {} -- (VFX Forge: the glints riding on them)
 
 local function eyesOut()
 	if guardianEyesStop then
 		guardianEyesStop()
 		guardianEyesStop = nil
 	end
+	for _, fx in guardianEyesFx do
+		FilmVfx.stop(fx)
+	end
+	table.clear(guardianEyesFx)
 	for _, g in guardianEyes do
 		g:Destroy()
 	end
@@ -379,21 +572,14 @@ local function guardianScale(z: number): number
 	return moves.height / math.max(1, h)
 end
 
--- the glitch's pink in its eyes (glowing balls on its eye points, every frame)
+-- the glitch's pink in its eyes (small glowing balls on its eye points, every frame). (29 Oct, as the opening's: with
+-- a light on them and bigger, the guardians' faces read as pink blobs on the contact sheet.)
 local function guardianPinkEyes(H: number)
 	eyesOut()
 	local names = BossView.attAll("att_eye")
-	for i in names do
-		local g = spark(Vector3.zero, Color3.fromRGB(255, 40, 170), math.max(0.7, H * 0.045))
+	for _ in names do
+		local g = spark(Vector3.zero, Color3.fromRGB(255, 40, 170), math.max(0.5, H * 0.03))
 		g.Shape = Enum.PartType.Ball
-		if i == 1 then
-			local l = Instance.new("PointLight")
-			l.Color = Color3.fromRGB(255, 40, 170)
-			l.Range = H * 0.6
-			l.Brightness = 3
-			l.Shadows = false
-			l.Parent = g
-		end
 		table.insert(guardianEyes, g)
 	end
 	guardianEyesStop = Film.every(function()
@@ -404,10 +590,24 @@ local function guardianPinkEyes(H: number)
 			end
 		end
 	end)
+	-- (VFX Forge) each eye burning pink, riding on its glint (placed next frame)
+	local eyes = table.clone(guardianEyes)
+	task.defer(function()
+		for _, g in eyes do
+			local fx = g.Parent and FilmVfx.play("PinkEye", g.CFrame, { follow = g, scale = H / 22 })
+			if fx then
+				table.insert(guardianEyesFx, fx)
+			end
+		end
+	end)
 end
 
 -- the glitch tearing out of it: blocks of pink, cyan, white and void flung out of its body, spinning and fading
 local function glitchOut(feet: Vector3, H: number)
+	-- (VFX Forge's version; the old tweened blocks if it's missing)
+	if FilmVfx.play("GlitchTearOut", CFrame.new(feet + UP * (H * 0.55)), { scale = H / 14 }) then
+		return
+	end
 	local colors = { Color3.fromRGB(255, 40, 170), Color3.fromRGB(60, 240, 255), Color3.fromRGB(255, 214, 240), Color3.fromRGB(22, 8, 30) }
 	local mid = feet + UP * (H * 0.55)
 	for _ = 1, 26 do
@@ -431,37 +631,80 @@ local function glitchOut(feet: Vector3, H: number)
 	end
 end
 
--- 1C without a guardian (or after it): a light rises from where it stood and the sun breaks through
-local function lightRises(feet: Vector3, camAt: Vector3, len: number): boolean
-	local mote = spark(feet + UP * 1, Color3.fromRGB(255, 244, 196), 0.9)
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 236, 180)
-	light.Range = 22
-	light.Brightness = 3
-	light.Parent = mote
-	TweenService:Create(mote, TweenInfo.new(len, Enum.EasingStyle.Sine, Enum.EasingDirection.In), { Position = feet + UP * 70, Size = Vector3.one * 0.3 }):Play()
-	FilmAudio.sfx("swell", { volume = 0.9 })
-	FilmAudio.sfx("rareChime", { volume = 0.5, pitch = 0.8 })
-	Film.at(len * 0.6, function()
-		Film.light({ ExposureCompensation = 0.45 }, 1.4)
-		Film.glow(0.55, 40, 1.2)
-		FilmAudio.sfx("rareChime", { volume = 0.6, pitch = 1.1 })
-	end)
-	local view = Film.view()
-	local ok = Film.run(len, function(k)
-		local e = inOut(k)
-		local target = mote.Position:Lerp(feet + UP * (8 + 50 * e), 0.5)
-		return Film.look(Film.clear(camAt - UP * (0.6 * e), feet + UP * 2, view), target), Film.mm(35 - 10 * e), mote.Position
-	end, { hand = 0.3 })
-	mote:Destroy()
-	return ok
+-- Where the last guardian kneels and where the Mowers stand in front of it (in its arena), turned so that all of the
+-- scene's shots see them (the ruins' pillars, the trees round the arena: the scenery's boxes), with the morning sun
+-- on its face. `d`: from the guardian toward the Mowers (and the cameras behind them); `s`: the side 1C films from.
+type ArenaPlan = { feet: Vector3, d: Vector3, side: Vector3, s: number, H: number, party: Vector3 }
+local function arenaPlan(P: Plan): ArenaPlan
+	local n = #Config.ZONES
+	local H = BossMoves.get(n).height
+	local feet = ground(P.arena)
+	local toCamp = unit(flat(P.camp - feet), P.fwd)
+	local sun = sunAt(LOOKS.morning.ClockTime)
+	local chest, head, high = feet + UP * (H * 0.4), feet + UP * (H * 0.65), feet + UP * (H * 1.05)
+	local best: ArenaPlan = { feet = feet, d = toCamp, side = toCamp:Cross(UP), s = 1, H = H, party = ground(feet + toCamp * (H * 0.8)) }
+	local bestScore = -math.huge
+	for _, y in YAWS do
+		local d = turn(toCamp, y)
+		local side = d:Cross(UP)
+		local pc = ground(feet + d * (H * 0.8))
+		local score = 2 * math.max(0, d:Dot(sun))
+		-- the Mowers stand on the arena's floor, not up a step or in a pillar
+		if math.abs(pc.Y - feet.Y) > 4 then
+			score -= 6
+		end
+		for _, k in { -6, 0, 6 } do
+			local p = pc + side * k
+			if blocked(p + UP * 0.6, p + UP * 6) then
+				score -= 4
+			end
+		end
+		-- 1A and 1D: low behind them
+		for _, cam in { pc + d * 8 + side * 2.2 + UP * 2.6, pc + d * 10.8 - side * 2.4 + UP * 1.4 } do
+			if inside(cam) then
+				score -= 6
+			end
+			for _, t in { chest, head, high } do
+				if sees(cam, t) then
+					score += 1
+				end
+			end
+		end
+		-- 1B: close on its face
+		local camB = head + d * (H * 0.6) + side * (H * 0.12)
+		if inside(camB) then
+			score -= 4
+		elseif sees(camB, head) then
+			score += 1
+		end
+		-- 1C: from one side or the other, wide
+		local mid = feet:Lerp(pc, 0.5)
+		local bestC, sC = -math.huge, 1
+		for _, s in { 1, -1 } do
+			local camC = mid + side * (s * H * 1.15) + d * (H * 0.1) + UP * (H * 0.2)
+			local sc = if inside(camC) then -4 else 0
+			for _, t in { chest, head, pc + UP * 2.5 } do
+				if sees(camC, t) then
+					sc += 1
+				end
+			end
+			if sc > bestC then
+				bestC, sC = sc, s
+			end
+		end
+		score += bestC
+		if score > bestScore then
+			bestScore = score
+			best = { feet = feet, d = d, side = side, s = sC, H = H, party = pc }
+		end
+	end
+	return best
 end
 
-local function lastBladeScenes(P: Plan): boolean
+local function lastBladeScenes(P: Plan, A: ArenaPlan, mowers: { IntroCast.Actor }): boolean
 	local n = #Config.ZONES
 	local moves = BossMoves.get(n)
-	local H = moves.height
-	local feet = ground(P.arena)
+	local H, feet, d, side, pc = A.H, A.feet, A.d, A.side, A.party
 	Film.light(LOOKS.morning, 0)
 	Film.grade("gloom", 0)
 	Film.glow(0.12, 24, 0.1)
@@ -472,273 +715,321 @@ local function lastBladeScenes(P: Plan): boolean
 	-- evening: the shots were full of it)
 	IntroCast.hideGrass(true, n)
 	Film.refreshSight()
-	-- The camera side: the turn where all three shots see it clearly, each from as far back as it can (Studio's test:
-	-- the low shot stood behind the arena's wall). A shot's camera, `k` times its height away:
-	local SHOTS = {
-		{ dists = { 2.4, 2.0, 1.7 }, side = 0.5, up = 0.3 }, -- 1A, wide
-		{ dists = { 1.45, 1.25 }, side = 0.15, up = 0.6 }, -- 1B, medium
-		{ dists = { 1.9, 1.5, 1.25 }, side = -0.35, up = 0.15 }, -- 1C, low
-	}
-	local looks = { feet + UP * (H * 0.55), feet + UP * (H * 0.95), feet + UP * (H * 0.1) }
-	local toCamp = unit(flat(P.camp - feet), P.fwd)
-	local d, bestScore, K = toCamp, -math.huge, { 2.4, 1.45, 1.9 }
-	for _, y in { 0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180 } do
-		local dir = CFrame.Angles(0, math.rad(y), 0):VectorToWorldSpace(toCamp)
-		local sd = dir:Cross(UP)
-		local score = 0
-		local ks = {}
-		for i, sh in SHOTS do
-			ks[i] = sh.dists[#sh.dists]
-			for _, k in sh.dists do
-				local s = shotScore(feet + dir * (H * k) + sd * (H * sh.side) + UP * (H * sh.up), looks, 35)
-				if s >= 5 then
-					ks[i] = k
-					score += 10 + s + k
-					break
-				end
+	local chest = feet + UP * (H * 0.45)
+	-- (the cameras behind the Mowers look through a gap in their row: 4.4 studs apart, the middle one in the middle)
+	local gap = if #mowers % 2 == 1 then 2.2 else 0
+	-- the Mowers, where they beat it, facing it
+	for _, a in mowers do
+		a.show()
+		a.look(feet + UP * (H * 0.6))
+	end
+	-- (a fight's boss still in client/BossView, e.g. a DEV preview in a fight: it's left alone, just the light)
+	local alone = BossView.get() ~= nil
+	if not alone then
+		guardianShown = true
+		BossView.show(moves.rig, CFrame.lookAt(feet, feet + d), guardianScale(n), moves)
+		BossView.rageNow()
+		-- (its own clock: kneeling till 3.3 s, the bow at 5.6 s, gone into the light from 7.9 s)
+		BossView.act("freed", { free = 3.3, nod = 5.6, fade = 7.9 })
+		guardianPinkEyes(H)
+		local function head(): Vector3
+			return BossView.attWorld("att_head_center") or (feet + UP * (H * 0.65))
+		end
+		local drone = FilmAudio.sfx("drone", { volume = 0.35, pitch = 0.8 })
+		for _, t in { 0.7, 1.9, 2.7 } do
+			Film.at(t, function()
+				Glitch.burst(0.25, 0.1)
+				FilmAudio.glitch(0.3)
+				BossView.flinch(false)
+			end)
+		end
+		-- 1A: beaten, on its knees in front of the Mowers, the glitch twitching in it; low behind them, creeping in
+		local ok = Film.run(3.0, function(k)
+			local pos = pc + d * (8 - 1.6 * inOut(k)) + side * gap + UP * 2.6
+			return Film.look(pos, chest + UP * (H * 0.05)), Film.mm(35), chest
+		end, { hand = 0.25 })
+		if not ok then
+			return false
+		end
+		-- 1B: close on its face: the pink tears out of it [an impact frame, in gold]; its own colours come back
+		Film.at(0.3, function()
+			local v = BossView.get()
+			FilmPanels.impact({ v and v.model }, { color = GOLD, at = chest })
+			FilmAudio.glitch(1)
+			FilmAudio.sfx("bigHit", { volume = 0.6, pitch = 0.9 })
+			FilmAudio.sfx("swell", { volume = 0.8 })
+			FilmAudio.fadeOut(drone, 0.6)
+			Film.shake(0.5, 0.6)
+			glitchOut(feet, H)
+			eyesOut()
+			BossView.calmNow()
+			Film.grade("dream", 0.9)
+			Film.glow(0.3, 30, 0.9)
+			cue("calm", "calmMusic", { fade = 2 })
+		end)
+		ok = Film.run(1.6, function(k)
+			local h = head()
+			local pos = h + d * (H * (0.6 + 0.06 * k)) + side * (H * 0.12) - UP * (H * 0.06)
+			return Film.look(pos, h), Film.mm(40), h
+		end, { hand = 0.35 })
+		if not ok then
+			return false
+		end
+		-- 1C: from the side, wide: it stands up tall over the Mowers... and bows its head to them; they cheer
+		Film.at(0.3, function()
+			IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.2)
+		end)
+		Film.at(1.5, function()
+			for i, a in mowers do
+				task.delay((i - 1) * 0.08, function()
+					a.play("cheer")
+				end)
 			end
+		end)
+		local mid = feet:Lerp(pc, 0.5)
+		local sd = side * A.s
+		local look = feet:Lerp(pc, 0.3) + UP * (H * 0.42)
+		ok = Film.run(2.8, function(k)
+			local pos = mid + sd * (H * (1.15 - 0.05 * k)) + d * (H * 0.1) + UP * (H * 0.2)
+			return Film.look(pos, look), Film.mm(24), look
+		end, { hand = 0.3 })
+		if not ok then
+			return false
 		end
-		if score > bestScore then
-			d, bestScore, K = dir, score, ks
-		end
 	end
-	local side = d:Cross(UP)
-	local lowCam = feet + d * (H * K[3]) - side * (H * 0.35) + UP * (H * 0.15)
-	if BossView.get() ~= nil then
-		Film.at(0.9, function()
-			IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.6)
-			cue("calm", "calmMusic", { fade = 3 })
-		end)
-		Film.at(1.2, function()
-			speak("E1", true)
-		end)
-		Film.grade("dream", 1.5)
-		return lightRises(feet, lowCam, 5)
-	end
-	guardianShown = true
-	BossView.show(moves.rig, CFrame.lookAt(feet, feet + d), guardianScale(n))
-	BossView.rageNow()
-	-- (its own clock: kneeling till 3.75 s, the nod at 6.3 s, gone into the light from 7.4 s)
-	BossView.act("freed", { free = 3.75, nod = 6.3, fade = 7.4 })
-	guardianPinkEyes(H)
-	local chest = feet + UP * (H * 0.55)
-	local drone = FilmAudio.sfx("drone", { volume = 0.35, pitch = 0.8 })
-	for _, t in { 0.7, 1.9, 2.9 } do
-		Film.at(t, function()
-			Glitch.burst(0.25, 0.1)
-			FilmAudio.glitch(0.3)
-		end)
-	end
-	-- 1A: beaten, on its knees, the glitch twitching in it; we creep in
-	local ok = Film.run(3.6, function(k)
-		local e = inOut(k)
-		local pos = feet + d * (H * (K[1] - 0.35 * e)) + side * (H * 0.5) + UP * (H * 0.3)
-		return Film.look(pos, feet + UP * (H * 0.5)), Film.mm(35), chest
-	end, { hand = 0.25 })
-	if not ok then
-		return false
-	end
-	-- 1B: the pink tears out of it
-	Film.at(0.15, function()
-		FilmPanels.impact({ BossView.get() and BossView.get().model }, { color = GOLD, at = chest })
-		FilmAudio.glitch(1)
-		FilmAudio.sfx("bigHit", { volume = 0.6, pitch = 0.9 })
-		FilmAudio.sfx("swell", { volume = 0.8 })
-		FilmAudio.fadeOut(drone, 0.6)
-		Film.shake(0.5, 0.6)
-		glitchOut(feet, H)
-		eyesOut()
-		BossView.calmNow()
-		Film.grade("dream", 0.9)
-		Film.glow(0.3, 30, 0.9)
-		cue("calm", "calmMusic", { fade = 2 })
-	end)
-	ok = Film.run(2.2, function(k)
-		local pos = feet + d * (H * (K[2] + 0.1 * k)) + side * (H * 0.15) + UP * (H * 0.6)
-		return Film.look(pos, feet + UP * (H * 0.62)), Film.mm(40), chest
-	end, { hand = 0.35 })
-	if not ok then
-		return false
-	end
-	-- 1C: it bows its head to us... and goes up into the sky as light; the sun breaks through
-	Film.at(0.3, function()
-		IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.6)
-	end)
-	Film.at(0.6, function()
+	-- 1D: it goes up as light... the sun breaks through over the Mowers; low behind them, looking up
+	Film.at(0.2, function()
 		speak("E1", true)
+		if alone then
+			IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.2)
+		end
 	end)
-	local mote: Part? = nil
-	Film.at(1.6, function()
+	local camAt = pc + d * 10.8 - side * gap + UP * 1.4
+	local light: Part? = nil
+	Film.at(0.45, function()
 		local m = spark(chest, Color3.fromRGB(255, 244, 196), 1.2)
-		local light = Instance.new("PointLight")
-		light.Color = Color3.fromRGB(255, 236, 180)
-		light.Range = 26
-		light.Brightness = 4
-		light.Parent = m
-		TweenService:Create(m, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), { Position = chest + UP * 80, Size = Vector3.one * 0.4 }):Play()
-		mote = m
+		local pl = Instance.new("PointLight")
+		pl.Color = Color3.fromRGB(255, 236, 180)
+		pl.Range = 30
+		pl.Brightness = 4
+		pl.Shadows = false
+		pl.Parent = m
+		TweenService:Create(m, TweenInfo.new(3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), { Position = chest + UP * 90, Size = Vector3.one * 0.4 }):Play()
+		light = m
 		FilmAudio.sfx("swell", { volume = 0.9 })
 		FilmAudio.sfx("rareChime", { volume = 0.5, pitch = 0.8 })
+		-- (VFX Forge) the light's gold trail, and the pillar where it stood
+		FilmVfx.play("GoldRise", m.CFrame, { follow = m, scale = math.max(1, H / 14) })
+		FilmVfx.play("GoldPillar", CFrame.new(feet), { scale = H / 14 })
 	end)
-	Film.at(2.4, function()
+	Film.at(1.3, function()
 		Film.light({ ExposureCompensation = 0.45 }, 1.4)
 		Film.glow(0.55, 40, 1.2)
 		FilmAudio.sfx("rareChime", { volume = 0.6, pitch = 1.1 })
+		FilmVfx.play("SunBreak", CFrame.lookAt(chest + UP * 85, camAt)) -- (VFX Forge: the sun breaking through)
+		for i, a in mowers do
+			task.delay((i - 1) * 0.1, function()
+				a.look(feet + UP * (H * 1.4))
+				a.play("wave")
+			end)
+		end
 	end)
-	local head = feet + UP * (H * 0.8)
-	ok = Film.run(4.6, function(k)
-		local m = mote
-		local up = if m then m.Position else head
-		local e = Film.smooth((k - 0.35) / 0.65)
-		local target = head:Lerp(up, e)
-		return Film.look(lowCam - side * (H * 0.1 * k), target, -2), Film.mm(30 - 6 * e), target
+	Film.at(2.9, function()
+		Film.flash(Color3.fromRGB(255, 246, 222), 0.9, 0.7)
+	end)
+	local ok = Film.run(3.4, function(k)
+		local look = feet + UP * (H * (0.5 + 0.35 * inOut(k)))
+		return Film.look(camAt + d * (0.8 * k), look, -2), Film.mm(20), look
 	end, { hand = 0.3 })
-	if mote then
-		mote:Destroy()
+	if light then
+		light:Destroy()
 	end
 	guardianOff()
 	return ok
 end
 
 -------------------------------------------------------------------------------------------------------------
--- II. THE VALLEY BREATHES: the flight back over every area to the village
+-- II. THE VALLEY BREATHES (owner, 29 Oct, of both films: "the camera just pans to the ground": the flight back over
+-- every area looked down at the ground for thirteen seconds): the guardians back home in their own lands, free, in
+-- their own colours, one after another, each standing tall and bowing as its land's name comes up (the opening
+-- showed the pink falling on them). The Dandelion King last: the one it fell on first.
 -------------------------------------------------------------------------------------------------------------
--- (owner, 28 Oct: the area names "overlap when you show everything") the flight keeps one speed over the areas and
--- eases only at its two ends, so every area gets the same moment (about 1.4 s) for its name; the names come one at
--- a time (client/IntroUi.lowerThird). A cubic ease had raced over the middle ones half a second apart.
-local function cruise(k: number): number
-	local a = 0.14 -- (the share of the flight spent speeding up, and slowing down)
-	k = math.clamp(k, 0, 1)
-	local v = 1 / (1 - a)
-	if k < a then
-		return v * k * k / (2 * a)
-	elseif k > 1 - a then
-		local r = 1 - k
-		return 1 - v * r * r / (2 * a)
+type Cameo = { z: number, feet: Vector3, toCam: Vector3, side: Vector3, H: number }
+local CAMEO = 1.15 -- seconds each (the King's is longer)
+
+-- Three of the guardians between the first and the last, at random (a different three each time), then the King.
+local function cameoZones(): { number }
+	local n = #Config.ZONES
+	local zs = {}
+	for z = 2, n - 1 do
+		table.insert(zs, z)
 	end
-	return v * (k - a / 2)
+	for i = #zs, 2, -1 do
+		local j = math.random(1, i)
+		zs[i], zs[j] = zs[j], zs[i]
+	end
+	local list = {}
+	for i = 1, math.min(3, #zs) do
+		table.insert(list, zs[i])
+	end
+	if n > 1 then
+		table.insert(list, 1)
+	end
+	return list
 end
 
-local function valleyScenes(P: Plan): boolean
-	Film.light(LOOKS.day, 0)
-	Film.glow(0.25, 28, 0.6)
-	Film.grade("hero", 0.8)
-	stopCue("calm", 2.5)
-	cue("flight", "flightMusic", { fade = 2.5 })
+-- Where a guardian stands (its arena's middle) and its camera (clear of the scenery, the sun on its face).
+local function cameoPlan(P: Plan, z: number, sun: Vector3): Cameo
+	local H = BossMoves.get(z).height
+	local feet = ground(arenaOf(z))
+	local base = unit(flat(P.camp - feet), P.fwd)
+	local best: Cameo = { z = z, feet = feet, toCam = base, side = base:Cross(UP), H = H }
+	local bestScore = -math.huge
+	local h = feet + UP * (H * 0.8)
+	for _, y in YAWS do
+		local toCam = turn(base, y)
+		for _, s in { 1, -1 } do
+			local side = toCam:Cross(UP) * s
+			local cam = h + toCam * (H * 1.05) + side * (H * 0.28) - UP * (H * 0.12)
+			local score = 2 * math.max(0, toCam:Dot(sun))
+			if inside(cam) then
+				score -= 8
+			end
+			if sees(cam, h) then
+				score += 3
+			end
+			for _, t in { feet + UP * (H * 0.45), h + side * (H * 0.35), h - side * (H * 0.35) } do
+				if sees(cam, t) then
+					score += 1
+				end
+			end
+			if score > bestScore then
+				bestScore = score
+				best = { z = z, feet = feet, toCam = toCam, side = side, H = H }
+			end
+		end
+	end
+	return best
+end
+
+local function valleyScenes(P: Plan, cameos: { Cameo }): boolean
+	Film.light(LOOKS.golden, 0)
+	Film.grade("dream", 0)
+	Film.glow(0.25, 28, 0.3)
+	Film.vignette(0.35, 0.3)
+	stopCue("calm", 2)
+	cue("flight", "flightMusic", { fade = 1.5 })
 	bed("amb", "ambBirds", 1.2, 2)
-	Film.at(1.0, function()
+	Film.at(0.3, function()
 		speak("E2", true)
 	end)
-	local pts = {}
-	for i, area in P.areas do
-		table.insert(pts, area.pos + UP * (78 - (i % 2) * 14))
+	guardianShown = true
+	for i, c in cameos do
+		local mv = BossMoves.get(c.z)
+		local def = Config.ZONES[c.z]
+		local last = i == #cameos
+		BossView.show(mv.rig, CFrame.lookAt(c.feet, c.feet + c.toCam), guardianScale(c.z), mv)
+		-- (it stands tall, then bows: client/BossView's "freed" without the kneeling)
+		BossView.act("freed", { free = -1, nod = 0.3, fade = 99 })
+		Film.at(0.1, function()
+			local name = if def and def.name then def.name else ("Area " .. c.z)
+			local who = if def and def.boss then def.boss.name else mv.rig
+			IntroUi.lowerThird(string.upper(name), who .. " ~ free", GREEN, if last then 1.6 else 1.0)
+			FilmAudio.sfx("rareChime", { volume = 0.4, pitch = 0.8 + i * 0.08 })
+		end)
+		local H = c.H
+		local roll = if i % 2 == 0 then 4 else -4
+		local ok = Film.run(if last then 1.7 else CAMEO, function(k)
+			local h = BossView.attWorld("att_head_center") or (c.feet + UP * (H * 0.8))
+			local pos = h + c.toCam * (H * (1.05 - 0.08 * k)) + c.side * (H * 0.28) - UP * (H * 0.12)
+			return Film.look(pos, h - UP * (H * 0.04), roll * (1 - k)), Film.mm(38), h
+		end, { cut = if i > 1 then "whip" else nil, hand = 0.25 })
+		if not ok then
+			return false
+		end
 	end
-	table.insert(pts, P.camp + UP * 58 - P.fwd * 40)
-	local legs = #pts - 1
-	local named = {}
-	local len = 13
-	return Film.run(len, function(k)
-		local e = cruise(k)
-		local pos = Film.spline(pts, e)
-		local ahead = Film.spline(pts, math.min(1, e + 0.06))
-		local i = math.clamp(math.floor(e * legs) + 1, 1, legs)
-		local u = e * legs - (i - 1)
-		local area = P.areas[i]
-		if area and not named[i] and u > 0.15 then
-			named[i] = true
-			IntroUi.lowerThird(string.upper(area.name), "MOWED", GREEN, 1.6)
-			FilmAudio.sfx("rareChime", { volume = 0.35, pitch = 0.8 + i * 0.07 })
-		end
-		-- bank into the turns
-		local d1 = flat(ahead - pos)
-		local d2 = flat(Film.spline(pts, math.min(1, e + 0.12)) - ahead)
-		local bank = 0
-		if d1.Magnitude > 0.1 and d2.Magnitude > 0.1 then
-			bank = math.clamp(d1.Unit:Cross(d2.Unit).Y * 60, -12, 12)
-		end
-		return Film.look(pos, ahead - UP * 62, bank), Film.mm(20), ahead - UP * 60
-	end, { hand = 0.25 })
+	guardianOff()
+	return true
 end
 
 -------------------------------------------------------------------------------------------------------------
--- III. HOMECOMING
+-- III. HOMECOMING (29 Oct: no walking; the Mowers come home the way they came in the opening, out of the sky)
 -------------------------------------------------------------------------------------------------------------
-local function walkFrom(spot: Vector3, back: Vector3): Vector3
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	local skip: { Instance } = {}
-	local s = workspace:FindFirstChild("IntroSet")
-	if s then
-		table.insert(skip, s)
-	end
-	local w = workspace:FindFirstChild("World")
-	local g = w and w:FindFirstChild("Grass")
-	if g then
-		table.insert(skip, g)
-	end
-	for _, pl in Players:GetPlayers() do
-		if pl.Character then
-			table.insert(skip, pl.Character)
-		end
-	end
-	params.FilterDescendantsInstances = skip
-	for _, dist in { 15, 11, 8, 5 } do
-		if not workspace:Raycast(spot + UP * 2.5, back * dist, params) then
-			return spot + back * dist
-		end
-	end
-	return spot + back * 3
-end
-
 local function homeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor }): boolean
 	Film.light(LOOKS.golden, 0)
 	Film.grade("dusk", 0)
 	Film.glow(0.3, 30, 0.2)
+	Film.vignette(0.45, 0.2)
 	bed("amb", "ambWind", 1, 1.5)
+	stopCue("flight", 3)
 	local face = P.fwd
 	m.act("lookOut")
 	m.mood("neutral")
 	m.look(P.mayorAt + face * 40 + UP * 3)
-	-- 3A: the Mayor alone on his soapbox at sunset, looking out over his mowed meadow
-	local view = Film.view()
 	Film.refreshSight()
-	local ok = Film.run(4.2, function(k)
+	-- 3A: the Mayor alone on his soapbox at sunset, looking out over his meadow, waiting (in front of him, off to one
+	-- side, on his face)
+	local head = m.face()
+	local yaw = 30
+	for _, y in { 30, -30, 45, -45, 20, -20, 60, -60 } do
+		local cam = head + turn(face, y) * 8.5 - UP * 0.6
+		if not inside(cam) and sees(cam, head) then
+			yaw = y
+			break
+		end
+	end
+	local d0 = turn(face, yaw)
+	local ok = Film.run(2.6, function(k)
 		local f = m.face()
-		local pos = f - face * (8.5 - 1.2 * inOut(k)) + P.right * 3.2 + UP * 0.8
-		return Film.look(Film.clear(pos, f, view), f + face * 14 - UP * 2), Film.mm(45), f
+		local pos = f + d0 * (8.5 - 1.0 * inOut(k)) - UP * 0.6
+		return Film.look(pos, f - UP * 0.5), Film.mm(45), f
+	end, { hand = 0.25 })
+	if not ok then
+		return false
+	end
+	-- 3B: THUD. Behind him the Mowers drop out of the sky one after another, each in a puff of dust; he jumps and
+	-- spins round (from the side, wide: him in front, them landing behind him)
+	local mid = P.cast:Lerp(P.mayorAt, 0.5)
+	local sgn = 1
+	for _, s in { 1, -1 } do
+		local cam = mid + P.right * (s * 15) + P.fwd * 1.5 + UP * 3.2
+		if not inside(cam) and sees(cam, mid + UP * 3) and sees(cam, P.cast + UP * 3) and sees(cam, P.mayorAt + UP * 6) then
+			sgn = s
+			break
+		end
+	end
+	for i, actor in actors do
+		Film.at(0.2 + (i - 1) * 0.16, function()
+			FilmAudio.sfx("swipe2", { volume = 0.6, pitch = 0.7 + i * 0.05 })
+			actor.drop(function(at: Vector3)
+				if not Film.playing then
+					return
+				end
+				FilmAudio.sfx("thud", { volume = 1.1, pitch = 0.8 + math.random() * 0.1 })
+				Film.shake(0.35, 2.4)
+				-- (one small puff each: more hid the Mowers on the opening's contact sheet)
+				HitFx.play("bossSlamDust", at, Color3.fromRGB(196, 168, 120), false)
+				actor.play("emote")
+			end)
+		end)
+	end
+	Film.at(0.7, function()
+		m.hop(0.7)
+		m.mood("surprised")
+		m.act("shock")
+		m.turn(-P.fwd, 0.45)
+		m.look(P.cast + UP * 3)
+		FilmAudio.sfx("whomp", { volume = 0.7, pitch = 1.5 })
+	end)
+	ok = Film.run(2.6, function(k)
+		local pos = mid + P.right * (sgn * (15 - 1.5 * k)) + P.fwd * 1.5 + UP * 3.2
+		return Film.look(pos, mid + UP * 3.2), Film.mm(26), mid
 	end, { hand = 0.3 })
 	if not ok then
 		return false
 	end
-	-- 3B: footsteps; the Mowers walk up out of the sunset; he turns
-	local walk = 4.2
-	for i, actor in actors do
-		local from = walkFrom(actor.spot.Position, -P.fwd)
-		Film.at((i - 1) * 0.15, function()
-			actor.walk(from, walk - (i - 1) * 0.15, function()
-				FilmAudio.sfx("stepGrass", { volume = 1.3, pitch = 0.9 })
-				FilmAudio.sfx("thud", { volume = 0.22, pitch = 0.85 + math.random() * 0.1 })
-			end)
-		end)
-	end
-	Film.at(0.9, function()
-		m.mood("surprised")
-		m.act("idle")
-		m.turn(-P.fwd, 1.0)
-		m.look(P.cast + UP * 3)
-	end)
-	view = Film.view()
-	ok = Film.run(walk, function(k)
-		-- over his shoulder, toward them
-		local f = m.face()
-		local pos = f + face * 4.6 + P.right * 2.2 + UP * 0.6
-		local target = P.cast - P.fwd * (6 - 6 * k) + UP * 3
-		return Film.look(Film.clear(pos, target, view), target), Film.mm(50), target
-	end, { hand = 0.35, far = 0.2 })
-	if not ok then
-		return false
-	end
-	-- 3C: his face: "You... you actually DID it!"
+	-- 3C: his face: "You... you actually DID it!" (a medium close-up: his voxel face reads at this size, as in the
+	-- opening)
 	for _, actor in actors do
 		actor.look(m.face())
 	end
@@ -747,13 +1038,13 @@ local function homeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 		m.act("present")
 		speak("E3")
 	end)
-	Film.at(1.6, function()
+	Film.at(1.5, function()
 		m.hop(0.5)
 	end)
-	return Film.run(3.4, function(k)
+	return Film.run(2.8, function(k)
 		local f = m.face()
-		local pos = f - P.fwd * (5.4 - 0.9 * out(k)) - P.right * 1.2 - UP * 0.25
-		return Film.look(pos, f - UP * 0.15), Film.mm(70), f
+		local pos = f - P.fwd * (8.5 - 1.0 * out(k)) - P.right * 1.8 - UP * 0.5
+		return Film.look(pos, f - UP * 0.2), Film.mm(45), f
 	end, { hand = 0.25 })
 end
 
@@ -802,6 +1093,17 @@ local function snapshot()
 	end)
 end
 
+-- Which side of the camp's line (P.right, +1 or -1) a camera `dist` studs out to the side of `at` sees it from.
+local function clearSide(P: Plan, at: Vector3, dist: number, up: number, back: number?): number
+	for _, s in { 1, -1 } do
+		local cam = at + P.right * (s * dist) - P.fwd * (back or 0) + UP * up
+		if not inside(cam) and sees(cam, at + UP * 3) then
+			return s
+		end
+	end
+	return 1
+end
+
 local function partyScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor }): boolean
 	-- 4A: "Every meadow, every hill... MOWED!" the party cheers, the music kicks in
 	stopCue("flight", 1.2)
@@ -818,53 +1120,62 @@ local function partyScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Acto
 			actor.play("cheer")
 		end)
 	end
+	local mid = P.cast:Lerp(P.mayorAt, 0.5)
+	local s4 = clearSide(P, mid, 17, 2.6, 2)
 	Film.at(1.0, function()
-		Confetti.burst(140)
+		-- (VFX Forge's confetti cannons by the party, firing toward the camera's side; the old screen confetti if
+		-- they're missing)
+		local spot = ground(mid)
+		if not FilmVfx.play("ConfettiPop", CFrame.lookAt(spot, spot + P.right * s4)) then
+			Confetti.burst(140)
+		end
 	end)
-	Film.at(2.6, function()
+	Film.at(2.4, function()
 		m.act("cheer")
 		m.hop(0.6)
 	end)
-	local mid = P.cast:Lerp(P.mayorAt, 0.5)
 	local view = Film.view()
-	local ok = Film.run(4.6, function(k)
-		local pos = mid + P.right * (17 - 2 * k) - P.fwd * 2 + UP * (2.6 + k)
+	local ok = Film.run(3.8, function(k)
+		local pos = mid + P.right * (s4 * (17 - 2 * k)) - P.fwd * 2 + UP * (2.6 + k)
 		return Film.look(Film.clear(pos, mid + UP * 3, view), mid + UP * 3.2), Film.mm(28), mid
 	end, { hand = 0.4 })
 	if not ok then
 		return false
 	end
-	-- 4B: dusk; fireworks over the village, lighting everyone up; low, looking up past the Mayor
+	-- 4B: dusk; fireworks over the camp, lighting everyone up; low, looking up past the Mayor
 	Film.light(LOOKS.dusk, 1.2)
 	Film.grade("dusk", 1)
 	local sky = P.mayorAt + P.fwd * 22 + UP * 36
-	for i = 0, 8 do
+	for i = 0, 6 do
 		Film.at(0.2 + i * 0.5, function()
-			firework(sky + P.right * math.random(-30, 30) + P.fwd * math.random(-10, 12) + UP * math.random(-5, 9), i == 8)
+			firework(sky + P.right * math.random(-30, 30) + P.fwd * math.random(-10, 12) + UP * math.random(-5, 9), i == 6)
 		end)
 	end
 	m.act("wave")
 	m.look(sky)
-	ok = Film.run(4.8, function(k)
+	local f0 = m.face()
+	local sideB = if inside(f0 - P.fwd * 7 + P.right * 2.6 - UP * 3.4) then -1 else 1
+	ok = Film.run(4.2, function(k)
 		local f = m.face()
-		local pos = f - P.fwd * 7 + P.right * 2.6 - UP * 3.4
+		local pos = f - P.fwd * 7 + P.right * (2.6 * sideB) - UP * 3.4
 		local target = f:Lerp(sky, 0.35 + 0.25 * k)
-		return Film.look(pos, target, -4), Film.mm(24), sky
+		return Film.look(pos, target, -4 * sideB), Film.mm(24), sky
 	end, { hand = 0.4 })
 	if not ok then
 		return false
 	end
 	-- 4C: the group photo: everyone turns to us; "say GRASS!"; flash, the picture stops
 	local mid2 = P.cast:Lerp(P.mayorAt, 0.5)
-	local camPos = mid2 + P.right * 17 + UP * 4.6
+	local s5 = clearSide(P, mid2, 17, 4.6)
+	local camPos = mid2 + P.right * (s5 * 17) + UP * 4.6
 	for _, actor in actors do
-		actor.turnTo(P.right)
+		actor.turnTo(P.right * s5)
 		actor.look(camPos)
 		actor.play("wave")
 	end
 	m.act("present")
 	m.look(camPos)
-	m.turn(P.right, 0.5)
+	m.turn(P.right * s5, 0.5)
 	Film.at(0.3, function()
 		local d = speak("E5")
 		Film.at(math.min(math.max(d - 0.25, 1.5), 4.4), function()
@@ -886,7 +1197,7 @@ local function partyScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Acto
 	local look = mid2 + UP * 3.6
 	local photoView = Film.view()
 	ok = Film.run(5.4, function(k)
-		local pos = camPos + P.right * (2 * (1 - inOut(k)))
+		local pos = camPos + P.right * (s5 * 2 * (1 - inOut(k)))
 		return Film.look(Film.clear(pos, look, photoView), look), Film.mm(32), look
 	end, { hand = 0.2 })
 	-- (the frozen moment lasts 2.3 s of real time)
@@ -1095,17 +1406,17 @@ local function twistStage(P: Plan): (Vector3, Vector3)
 					local score = math.abs(at.Y - P.cast.Y) * 0.5
 					-- room for it: nothing overhead where it stands (a tree, a roof) across its shoulders
 					for _, off in { Vector3.zero, side * 12, -side * 12, toward * 8 } do
-						if not Film.sees(at + off + UP * 1.5, at + off + UP * 70) then
+						if not sees(at + off + UP * 1.5, at + off + UP * 70) then
 							score += 6
 						end
 					end
 					for _, cam in { at - toward * 30 + UP * 3 - side * 6, at - toward * 40 + UP * 14 + side * 22, at - toward * 50 + UP * 3 + side * 10, at - toward * 72 + UP * 22 + side * 20 } do
 						for _, h in { 4, 22, 42 } do
-							if not Film.sees(cam, at + UP * h) then
+							if not sees(cam, at + UP * h) then
 								score += 4
 							end
 						end
-						if not Film.sees(cam + UP * 0.5, cam + UP * 60) then
+						if not sees(cam + UP * 0.5, cam + UP * 60) then
 							score += 2 -- (under a roof or a tree)
 						end
 					end
@@ -1115,7 +1426,7 @@ local function twistStage(P: Plan): (Vector3, Vector3)
 					local sky = at + UP * HOLE_UP
 					for _, cam in { P.cast - dirS * 11 + UP * 2.2, P.cast + UP * 3 } do
 						for _, h in { -HOLE_R * 0.9, 0 } do
-							if not Film.sees(cam, sky + UP * h) then
+							if not sees(cam, sky + UP * h) then
 								score += 5
 							end
 						end
@@ -1154,9 +1465,13 @@ local function prepareTeaser(P: Plan)
 			player:RequestStreamAroundAsync(at, 4)
 		end)
 	end)
-	-- it faces the camp; its waist sits inside the hole (it rises up out of the top of it)
+	-- It faces the camp and comes up out of the top of the hole, a little in front of it: its waist ends at the rim,
+	-- so the whole demon shows (owner, 28 Oct night: "I can't see the demon well through the black hole ... maybe it
+	-- sits a bit above it"; it used to stand in the middle of the black ball, waist deep in it).
 	local toCamp = unit(flat(P.cast - sky), -toward)
-	local base = CFrame.lookAt(sky + UP * 8, sky + UP * 8 + toCamp)
+	local riseAt = sky + UP * (HOLE_R * 0.85) + toCamp * (HOLE_R * 0.35)
+	;(stage :: any).rise = riseAt
+	local base = CFrame.lookAt(riseAt, riseAt + toCamp)
 	local d = Demon.new(base, DEMON_SCALE, Instance.new("Folder"), { yieldEvery = 250 })
 	d.state.rise = 0.42
 	if gen == teaserGen and Film.playing and not demon then
@@ -1293,6 +1608,7 @@ local function nightScenes(P: Plan, m: IntroCast.Mayor): boolean
 	Film.freeze(0.34)
 	Film.shake(0.45, 1)
 	Glitch.burst(0.85, 0.5)
+	FilmVfx.play("NightStutter", CFrame.new(), { screen = 9 }) -- (VFX Forge: glitch bars over the picture)
 	FilmAudio.glitch(1)
 	FilmAudio.sfx("revStop", { volume = 0.9 })
 	IntroUi.say(MAYOR, "Ahh... p#@ce an% q/!et... a7 l@$t.", 1.4)
@@ -1334,7 +1650,9 @@ local function holeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	local sky = st.sky
 	local dirS = unit(flat(st.at - P.cast), P.fwd) -- from the camp toward the hole
 	local hside = dirS:Cross(UP)
-	local H = GlitchHole.new(sky, -dirS, HOLE_R, propFolder())
+	-- (VFX Forge plays its halo, disk, falling sparks and shock ring: the hole leaves out its own)
+	local forgeHole = FilmVfx.has("HoleDisk") and FilmVfx.has("HoleHalo")
+	local H = GlitchHole.new(sky, -dirS, HOLE_R, propFolder(), { bare = forgeHole })
 	hole = H
 	Film.every(H.update)
 	local C = Corruption.new(st.at)
@@ -1360,7 +1678,10 @@ local function holeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 		P.cast - dirS * 14 - hside * 8 + UP * 10,
 	}, { sky, holeEdges[2], holeEdges[3], holeEdges[4], P.cast + UP * 3 }, 40)
 	Film.at(0.5, function()
-		C.rift(sky, -dirS, 64, 0.4)
+		-- (VFX Forge's tear; the old one if it's missing)
+		if not FilmVfx.play("SkyTear", CFrame.lookAt(sky, sky - dirS), { scale = 64 / 40 }) then
+			C.rift(sky, -dirS, 64, 0.4)
+		end
 		FilmAudio.glitch(0.8)
 		Glitch.burst(0.5, 0.2)
 		FilmAudio.sfx("synthWhomp", { volume = 0.8, pitch = 0.45 })
@@ -1372,6 +1693,11 @@ local function holeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	end)
 	Film.at(1.4, function()
 		H.open(1.0)
+		FilmVfx.play("HoleOpen", H.diskCf, { scale = HOLE_R / 30 })
+		if forgeHole then
+			FilmVfx.play("HoleDisk", H.diskCf, { scale = HOLE_R / 30, life = 90 })
+			FilmVfx.play("HoleHalo", CFrame.new(sky), { scale = HOLE_R / 30, life = 90 })
+		end
 		FilmPanels.impact(castOf(actors, nil), { at = sky })
 		FilmAudio.sfx("impact", { volume = 1, pitch = 0.7 })
 		FilmAudio.sfx("bigHit", { volume = 0.6, pitch = 0.6 })
@@ -1394,13 +1720,23 @@ local function holeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 	-- T5: it pulls: lumps of the island tear out of the meadow, round and up into it; lightning; the wind
 	H.chunks(st.at, 55, 44, 3.4)
 	H.chunks(P.cast:Lerp(st.at, 0.35), 26, 14, 3.6)
+	-- (VFX Forge) the ground tearing where the lumps come out
+	for i, spot in { { st.at, 0, 30 }, { st.at, 0.7, 40 }, { st.at, 1.4, 22 }, { P.cast:Lerp(st.at, 0.35), 0.4, 14 } } do
+		Film.at(spot[2] :: number, function()
+			local a = math.random() * math.pi * 2
+			local r = math.random() * (spot[3] :: number)
+			FilmVfx.play("LumpTear", CFrame.new(ground((spot[1] :: Vector3) + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r))), { scale = if i == 4 then 0.8 else 1.2 })
+		end)
+	end
 	FilmAudio.sfx("bhPull", { volume = 1, pitch = 0.55 })
 	FilmAudio.sfx("rumble", { volume = 1.1 })
 	FilmAudio.sfx("drone", { volume = 0.8 })
 	Film.shake(0.4, 0.15)
 	for i = 0, 3 do
 		Film.at(0.4 + i * 0.85, function()
-			C.bolt(sky + Vector3.new(math.random(-20, 20), -HOLE_R, math.random(-20, 20)), st.at + Vector3.new(math.random(-40, 40), 0, math.random(-40, 40)))
+			local strike = st.at + Vector3.new(math.random(-40, 40), 0, math.random(-40, 40))
+			C.bolt(sky + Vector3.new(math.random(-20, 20), -HOLE_R, math.random(-20, 20)), strike)
+			FilmVfx.play("BoltHit", CFrame.new(ground(strike)), { scale = 1.4 }) -- (VFX Forge: where it strikes)
 			FilmAudio.sfx("boom", { volume = 0.5, pitch = 0.55 + math.random() * 0.15 })
 		end)
 	end
@@ -1430,6 +1766,13 @@ local function holeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 		end, function(cf: CFrame)
 			a.model:PivotTo(cf)
 		end, 2.7 - math.min(i, 6) * 0.05, 0.15 + (i - 1) * 0.16)
+		-- (VFX Forge) the glitch round them as they go
+		Film.at(0.15 + (i - 1) * 0.16, function()
+			local root = a.model.PrimaryPart or a.model:FindFirstChild("HumanoidRootPart")
+			if root and root:IsA("BasePart") then
+				FilmVfx.play("LiftAura", root.CFrame, { follow = root })
+			end
+		end)
 	end
 	m.act("shock")
 	m.mood("scared")
@@ -1468,17 +1811,20 @@ local function demonScenes(P: Plan): boolean
 	local H = hole :: GlitchHole.Hole
 	local sky = st.sky
 	local dirS = unit(flat(st.at - P.cast), P.fwd)
+	local riseAt = (st :: any).rise or (sky + UP * 8) -- (where the demon comes up: prepareTeaser)
 	-- T7: close on the hole from the camp side: in the dark, an eye opens and looks at us
 	H.eye(true)
 	FilmAudio.riser("suck", 0.55, { volume = 0.8 })
+	local camE = sky - dirS * (HOLE_R * 3.6) - UP * 10
 	Film.at(0.55, function()
+		local toCam = unit(camE - sky, -dirS)
+		FilmVfx.play("EyeOpen", CFrame.lookAt(sky + toCam * (HOLE_R * 1.05), camE), { scale = HOLE_R * 1.15 / 16 }) -- (VFX Forge)
 		FilmAudio.sfx("growl2", { volume = 1, pitch = 0.7 })
 		FilmAudio.sfx("impact", { volume = 0.7, pitch = 1.1 })
 		Film.punch(6)
 		Film.shake(0.4, 1.4)
 		Glitch.burst(0.6, 0.2)
 	end)
-	local camE = sky - dirS * (HOLE_R * 3.6) - UP * 10
 	local ok = Film.run(2.2, function(k)
 		return Film.look(camE + dirS * (k * 6), sky), Film.mm(45 + 10 * k), sky
 	end, { hand = 0.3 })
@@ -1509,6 +1855,7 @@ local function demonScenes(P: Plan): boolean
 	FilmAudio.sfx("rumble", { volume = 1.2, pitch = 0.8 })
 	FilmAudio.sfx("slam", { volume = 1, pitch = 0.6 })
 	Film.shake(0.7, 0.2)
+	FilmVfx.play("DemonRise", CFrame.new(riseAt), { scale = HOLE_R / 30 }) -- (VFX Forge: smoke, blocks)
 	local hside = dirS:Cross(UP)
 	local camF = bestSpot({
 		P.cast - dirS * 6 + UP * 2,
@@ -1516,7 +1863,7 @@ local function demonScenes(P: Plan): boolean
 		P.cast + dirS * 20 + UP * 2,
 		P.cast + hside * 12 + UP * 3,
 		P.cast - hside * 12 + UP * 3,
-	}, { sky + UP * 30, sky + UP * HOLE_R * 0.4, sky - UP * (HOLE_R * 0.9) }, 25)
+	}, { riseAt + UP * 30, sky + UP * HOLE_R * 0.4, sky - UP * (HOLE_R * 0.9) }, 25)
 	ok = Film.run(4.4, function(k)
 		d.state.rise = 0.42 + 0.53 * inOut(math.clamp(k / 0.8, 0, 1))
 		if k > 0.45 and d.state.eyes < 1 then
@@ -1526,7 +1873,7 @@ local function demonScenes(P: Plan): boolean
 		if math.random() < 0.05 then
 			Glitch.burst(0.3, 0.08)
 		end
-		local target = sky + UP * (HOLE_R * 0.4 + d.state.rise * 30)
+		local target = riseAt + UP * (4 + d.state.rise * 30)
 		return Film.look(camF, target, -3), Film.mm(18), target
 	end, { hand = 0.6 })
 	if not ok then
@@ -1548,6 +1895,9 @@ local function demonScenes(P: Plan): boolean
 	end
 	-- T10: the roar: pull back hard; the hole swells over it, over everything [an impact frame]; black
 	d.state.glitch = 1
+	-- (VFX Forge: the roar's rings, lines and shards laid over the picture, an impact frame: placed in the world, the
+	-- hole in front of the camera hid them)
+	FilmVfx.play("DemonRoar", CFrame.new(), { screen = 14, scale = 0.35 })
 	-- (kept below the pain line: stacked roars and hits got too loud)
 	FilmAudio.sfx("roar", { volume = 1.1, pitch = 0.55 })
 	FilmAudio.sfx("roar", { volume = 0.8, pitch = 0.78 })
@@ -1558,6 +1908,8 @@ local function demonScenes(P: Plan): boolean
 	FilmAudio.glitch(1)
 	Film.at(1.0, function()
 		H.grow(3.4, 1.8)
+		-- (VFX Forge: the final swell, laid over the picture: by now the hole has swallowed the view)
+		FilmVfx.play("HoleSwell", CFrame.new(), { screen = 12, scale = 0.14 })
 		FilmAudio.sfx("bhPull", { volume = 1, pitch = 0.45 })
 	end)
 	Film.at(2.3, function()
@@ -1736,6 +2088,7 @@ end
 -- The film is over (or skipped): clear the set, give the camera and the light back.
 local function stopFilm()
 	guardianOff()
+	FilmVfx.clear()
 	Film.stop(STEP)
 	FilmVoice.clear()
 	Babble.stop()
@@ -1757,6 +2110,7 @@ local function stopFilm()
 	stage = nil
 	preparing = false
 	teaserGen += 1
+	scenery = nil
 	if ungrade then
 		ungrade(0.3)
 		ungrade = nil
@@ -1772,7 +2126,7 @@ local function stopFilm()
 	end
 end
 
-type Cast = { m: IntroCast.Mayor, actors: { IntroCast.Actor } }
+type Cast = { m: IntroCast.Mayor, actors: { IntroCast.Actor }, arena: { IntroCast.Actor } }
 
 -- The Mayor and the party (copies of everyone's avatars), moving every frame of the film.
 local function castUpdates(c: Cast)
@@ -1782,15 +2136,24 @@ local function castUpdates(c: Cast)
 		for _, actor in c.actors do
 			actor.update(dt, s)
 		end
+		for _, actor in c.arena do
+			actor.update(dt, s)
+		end
 	end)
 end
 
-local function film(P: Plan, c: Cast): boolean
+local function film(P: Plan, c: Cast, A: ArenaPlan, cameos: { Cameo }): boolean
 	IntroUi.letterbox(true, 0.8)
-	if not lastBladeScenes(P) then
+	local ok = lastBladeScenes(P, A, c.arena)
+	-- (the Mowers at the arena go; the camp's come home later, out of the sky)
+	for _, a in c.arena do
+		a.model:Destroy()
+	end
+	table.clear(c.arena)
+	if not ok then
 		return false
 	end
-	if not valleyScenes(P) then
+	if not valleyScenes(P, cameos) then
 		return false
 	end
 	if not homeScenes(P, c.m, c.actors) then
@@ -1845,23 +2208,50 @@ function Ending.play(d: any)
 	end
 	table.insert(lines, { text = LINES.D1, who = "demon" })
 	FilmVoice.prepare(lines)
-	FilmAudio.begin({ "calmMusic", "flightMusic", "partyMusic", "dreadMusic", "creditsMusic", "heartbeat", "swell", "boom", "crowd", "applause", "impact", "slam", "bigHit", "rumble", "growl", "growl2", "suck", "drone", "revStop", "revBuild", "eerie", "servo", "whomp", "thud", "sting", "bhPull", "roar", "riseDark" })
+	FilmAudio.begin({ "calmMusic", "flightMusic", "partyMusic", "dreadMusic", "creditsMusic", "heartbeat", "swell", "boom", "crowd", "applause", "impact", "slam", "bigHit", "rumble", "growl", "growl2", "suck", "drone", "revStop", "revBuild", "eerie", "servo", "whomp", "thud", "sting", "bhPull", "roar", "riseDark", "swipe2", "rareChime" })
 	task.spawn(function()
 		makersList = makers()
 	end)
 	local P = plan()
+	local zones = cameoZones()
 	local spots = { P.arena, P.camp, P.sprout }
 	for _, a in P.areas do
 		table.insert(spots, a.pos)
 	end
+	for _, z in zones do
+		table.insert(spots, arenaOf(z))
+	end
+	-- (the guardians' models, their paint and meshes, load while the cover is up)
+	local models = ReplicatedStorage:FindFirstChild("BossModels")
+	if models then
+		task.spawn(function()
+			pcall(function()
+				ContentProvider:PreloadAsync(models:GetChildren())
+			end)
+		end)
+	end
 	streamIn(spots)
+	-- the scenery round the camp and the arenas, as boxes (the cameras keep out of it), and the shots' plans
+	local places = { { at = P.camp, r = 260 }, { at = P.arena, r = 150 } }
+	for _, z in zones do
+		table.insert(places, { at = arenaOf(z), r = 120 })
+	end
+	Film.refreshSight() -- (what the plans' raycasts look through: the characters, the grass, the film's sets)
+	scenery = sceneryBoxes(places)
+	local A = arenaPlan(P)
+	local sun = sunAt(LOOKS.golden.ClockTime)
+	local cameos: { Cameo } = {}
+	for _, z in zones do
+		table.insert(cameos, cameoPlan(P, z, sun))
+	end
 	Babble.prepare()
 	if (Config.FILM :: any).voice ~= false then
 		FilmVoice.waitFor(LINES.E1, 1.5)
 	end
 	Film.start(STEP)
 	FilmPanels.reset()
-	local c: Cast = { m = IntroCast.mayor(P.mayorAt, P.fwd), actors = IntroCast.party(P.cast, P.fwd, P.right) } -- (he faces out over his meadow at first)
+	-- (he faces out over his meadow at first; the Mowers at the arena face the last guardian)
+	local c: Cast = { m = IntroCast.mayor(P.mayorAt, P.fwd), actors = IntroCast.party(P.cast, P.fwd, P.right), arena = IntroCast.party(A.party, -A.d, (-A.d):Cross(UP)) }
 	mayor = c.m
 	Film.refreshSight()
 	castUpdates(c)
@@ -1875,7 +2265,7 @@ function Ending.play(d: any)
 	end
 	-- I-IV: the film
 	if chapter == "film" then
-		run(film, P, c)
+		run(film, P, c, A, cameos)
 	end
 	-- V: the credits (and while they roll, the hole's place is chosen and the demon built)
 	if chapter == "film" or chapter == "credits" then
@@ -1895,6 +2285,7 @@ function Ending.play(d: any)
 				stopCue(name, 0.3) -- (the party's music and the crowd don't carry on into the night)
 			end
 			FilmAudio.hush(0.3) -- (and the applause, the whistles, the booms)
+			FilmVfx.clear() -- (and the film's VFX Forge effects)
 			filmGen += 1
 			IntroUi.hush()
 			task.wait(0.2)

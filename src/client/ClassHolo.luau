@@ -115,10 +115,10 @@ local function face(card: Part, side: Enum.NormalId): Face
 		s.Parent = t
 		return t
 	end
-	local name = label(26, 50, 40, Enum.Font.LuckiestGuy)
+	local name = label(26, 50, 40, Config.UI.font)
 	name.TextScaled = true
-	local rarity = label(80, 34, 30, Enum.Font.GothamBold)
-	local clock = label(132, 30, 24, Enum.Font.GothamBold)
+	local rarity = label(80, 34, 30, Config.UI.font)
+	local clock = label(132, 30, 24, Config.UI.font)
 	clock.TextColor3 = Color3.fromRGB(214, 200, 255)
 	-- the scan shimmer: a bright band that sweeps down the card on every change
 	local shimmer = Instance.new("Frame")
@@ -154,7 +154,7 @@ local function face(card: Part, side: Enum.NormalId): Face
 	news.Size = UDim2.new(1, 0, 0.22, 0)
 	news.Position = UDim2.fromScale(0.5, 0.32)
 	news.AnchorPoint = Vector2.new(0.5, 0.5)
-	news.Font = Enum.Font.LuckiestGuy
+	news.Font = Config.UI.font
 	news.TextScaled = true
 	news.Text = "NEW CARDS!"
 	news.TextColor3 = Color3.fromRGB(255, 236, 140)

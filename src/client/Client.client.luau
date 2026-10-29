@@ -2,6 +2,7 @@
 local modules = script.Parent
 
 local State = require(modules:WaitForChild("State"))
+require(modules:WaitForChild("TextStyle")) -- every text in our UI style: Fredoka One, the dark outline, gold headlines
 require(modules:WaitForChild("PhonePerf")) -- phones: shadows, bloom and sun rays off (owner, 26 Oct)
 require(modules:WaitForChild("Sound"))
 require(modules:WaitForChild("UI"))
@@ -41,6 +42,7 @@ require(modules:WaitForChild("RunEvents")) -- (29 Oct) Golden Hour, the speed ch
 require(modules:WaitForChild("RarityFx")) -- rarer = cooler: class auras, pet glow-ups, the rare-restock banner
 require(modules:WaitForChild("WelcomeBack")) -- the welcome-back popup (offline earnings) + the lobby's CONTINUE RUN button
 require(modules:WaitForChild("Settings")) -- the gear beside the potato: Potato Mode + Legendary / Mythic in-stock alerts
+require(modules:WaitForChild("PotatoPill")) -- the "Potato: OFF" pill in Roblox's top bar, beside Roblox's buttons
 require(modules:WaitForChild("ClassFx")) -- the classes' gimmicks on screen, the Grass Titan's stomp
 require(modules:WaitForChild("LootFx"))
 require(modules:WaitForChild("FilmSheet")) -- Studio only: contact sheets of the films' shots for whoever builds them

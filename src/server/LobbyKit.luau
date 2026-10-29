@@ -88,7 +88,7 @@ local function spot(parent: Instance, cf: CFrame, size: Vector3, name: string): 
 end
 LobbyKit.spot = spot
 
--- Big sign text: Luckiest Guy with an orange gradient and a thick brown outline on a part's front face.
+-- Big sign text: our UI font (Fredoka One) with an orange gradient and a thick brown outline on a part's front face.
 local function signText(part: BasePart, text: string, colors: { Color3 }?, pps: number?): TextLabel
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
@@ -101,7 +101,7 @@ local function signText(part: BasePart, text: string, colors: { Color3 }?, pps: 
 	l.BackgroundTransparency = 1
 	l.Size = UDim2.fromScale(0.9, 0.8)
 	l.Position = UDim2.fromScale(0.05, 0.1)
-	l.Font = Enum.Font.LuckiestGuy
+	l.Font = Config.UI.font
 	l.TextScaled = true
 	l.Text = text
 	l.TextColor3 = Color3.new(1, 1, 1)
@@ -668,7 +668,7 @@ function LobbyKit.eventBoard(parent: Instance, at: CFrame, ev: { title: string, 
 	banner.BackgroundTransparency = 1
 	banner.Size = UDim2.fromScale(0.7, 0.3)
 	banner.Position = UDim2.fromScale(0.04, 0.04)
-	banner.Font = Enum.Font.LuckiestGuy
+	banner.Font = Config.UI.font
 	banner.TextScaled = true
 	banner.Text = "🎃 " .. ev.title
 	banner.TextColor3 = Color3.new(1, 1, 1)
@@ -694,9 +694,9 @@ function LobbyKit.eventBoard(parent: Instance, at: CFrame, ev: { title: string, 
 	bb.MaxDistance = 160
 	bb.Parent = holder
 	local top = text(bb, ev.name .. " ARRIVES IN", UDim2.fromScale(1, 0.38), UDim2.fromScale(0, 0), rgb(214, 140, 255), nil, "Heading")
-	top.Font = Enum.Font.LuckiestGuy
+	top.Font = Config.UI.font
 	local count = text(bb, "", UDim2.fromScale(1, 0.58), UDim2.fromScale(0, 0.4), Color3.new(1, 1, 1), nil, "Time")
-	count.Font = Enum.Font.LuckiestGuy
+	count.Font = Config.UI.font
 	local cg = Instance.new("UIGradient")
 	cg.Color = ColorSequence.new(rgb(255, 214, 90), rgb(255, 128, 30))
 	cg.Rotation = 90

@@ -79,7 +79,7 @@ local function signText(part: BasePart, lines: { { text: string, color: Color3, 
 		t.LayoutOrder = i
 		t.BackgroundTransparency = 1
 		t.Size = UDim2.new(0.94, 0, l.size / total * 0.86, 0)
-		t.Font = Enum.Font.Arcade
+		t.Font = Enum.Font.FredokaOne
 		t.TextScaled = true
 		t.Text = l.text
 		t.TextColor3 = l.color
@@ -401,7 +401,7 @@ local function pad(parent: Instance, name: string, at: Vector3, radius: number, 
 	t.BackgroundTransparency = 1
 	t.Size = UDim2.fromScale(0.7, 0.3)
 	t.Position = UDim2.fromScale(0.15, 0.35)
-	t.Font = Enum.Font.Arcade
+	t.Font = Enum.Font.FredokaOne
 	t.TextScaled = true
 	t.TextColor3 = Color3.new(1, 1, 1)
 	t.Text = label

@@ -1442,4 +1442,19 @@ if Config.WORLD_GEN then
 	end
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- The area camps' gnome villagers (owner, 29 Oct: "make it feel more alive"; server/CampDress, client/CampLife):
+-- what they say when you walk up to one (a line each time, in turn). `any`: for an area without its own.
+-------------------------------------------------------------------------------------------------------------
+Config.CAMP_LINES = {
+	any = { "Welcome to the camp!", "Sell your clippings at the shredder!", "Mow it all and the boss wakes up!", "Nice bag of grass you've got!" },
+	wheat = { "Fresh hay, fresh coins!", "The windmill never stops turning.", "Mind the chickens, they peck!", "Golden wheat sells for gold!", "The boss waits in the arena. Gulp." },
+	blossom = { "Shh, the koi are shy.", "The petals fall all day here.", "Tea in the pavilion later?", "Pink grass sells for a pretty penny!", "Water the flowers, mow the grass!" },
+	pine = { "It's misty up in the tower.", "Hoo! The owls see everything.", "Mind the logs, they roll.", "Chop, chop! I mean... mow, mow!", "The fire keeps the fog away." },
+	swamp = { "Ribbit! Oops, wrong villager.", "The fish aren't biting today.", "Mind your boots, it's boggy!", "My house has legs. Fancy, right?", "Bubbles mean something's down there..." },
+	frost = { "Brrr! Mow fast to stay warm!", "The penguins love visitors.", "The snowman's name is Gerald.", "Ice grass sells like hot cakes!", "Keep your hands in your mittens!" },
+	ember = { "Careful, the ground is hot!", "Fresh from the forge!", "The salamanders keep the lava warm.", "Ash on your boots? Normal here.", "Strike while the iron's hot!" },
+	isles = { "The stars are close tonight.", "Make a wish on a wisp!", "The telescope sees far, far away...", "Crystals hum if you listen.", "Mowing among the stars!" },
+}
+
 return Config

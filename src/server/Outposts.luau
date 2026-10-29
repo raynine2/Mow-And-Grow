@@ -3,10 +3,14 @@
 -- into the meadow); every other area gets an outpost round its drop-off pad (World.Pads.DropOff<z>, the sell spot):
 --   * a paved plaza level with the pad, built up on stone where the terraced ground falls away (steps at the edge);
 --   * the SHOP and UPGRADES stalls (their prompts open the same windows as R and TAB), a gas pump for mowers;
---   * lantern posts round the edge, two log benches and a signboard with the area's name;
+--   * lantern posts round the edge and two log benches (the name is on server/CampDress's arch now);
 --   * one thing of its own per area: a hay yard, a blossom tree, a campfire ring, a stilt-lamp boardwalk with
 --     mushrooms, an ice-crystal fire pit, a forge with braziers, a star-crystal cluster.
--- The plaza's centre and radius go on the World as attributes Hub<z> / HubR<z>: no grass grows there
+-- (29 Oct, owner: "remake every zone hub except 1 to make it a bit bigger and ... feel more alive") the plaza is
+-- 24 studs round now and server/CampDress dresses the camp: an entrance arch, a signpost, a notice board, a well, a
+-- market cart, banners and lamps on the plaza; round it a house, tents by a fire, the area's landmark and animals,
+-- and gnome villagers (Blender models: server/CampProps; client/CampLife animates them).
+-- The camp's centre and radius go on the World as attributes Hub<z> / HubR<z>: no grass grows there
 -- (RunWorld.patches) and the camera lets you out of first person there (client/CameraView).
 -- Built into the run's copy of the world at run start (server/RunWorld.build); nothing in Studio changes.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -18,7 +22,7 @@ local Models = require(script.Parent.Models)
 
 local Outposts = {}
 
-local R = 20 -- the plaza's radius
+local R = 24 -- the plaza's radius (20 until 29 Oct)
 local CELL = 4 -- paving grid
 local UP = Vector3.yAxis
 local part = VoxelKit.part
@@ -400,24 +404,36 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 		gasPump(f, base + right * 12 + fwd * -3, info, -right)
 	end
 	-- benches either side and the special corner across the plaza
-	bench(f, at(-12, 2, right))
+	bench(f, at(-14.5, 1, right))
 	bench(f, at(12, 4, -right))
 	local special = SPECIAL[th.special]
 	if special then
-		special(f, at(-9, 9, -fwd), th, rng)
-	end
-	signboard(f, at(7, 13, fwd), string.upper(def.name) .. " CAMP")
-	-- lantern posts round the edge (not in front of the stalls)
-	for i = 0, 7 do
-		local a = (i + 0.5) / 8 * math.pi * 2
-		local dir = (fwd * math.cos(a) + right * math.sin(a))
-		if dir:Dot(fwd) > -0.7 then
-			lanternPost(f, base + dir * (R - 1.5), dir, th)
-		end
+		special(f, at(-11, 8, -fwd), th, rng)
 	end
 	f.Parent = w
+	-- (29 Oct) the rest of the camp: server/CampDress (the old name board is the arch's sign now)
+	local CampDress = require(script.Parent.CampDress)
+	local ok, err = pcall(CampDress.dress, {
+		w = w,
+		f = f,
+		z = z,
+		base = base,
+		top = top,
+		fwd = fwd,
+		right = right,
+		R = R,
+		rng = rng,
+		info = info,
+		glow = th.glow,
+		lanternPost = function(parent: Instance, p: Vector3, out: Vector3)
+			lanternPost(parent, p, out, th)
+		end,
+	})
+	if not ok then
+		warn(("[Outposts] area %d dressing: %s"):format(z, tostring(err)))
+	end
 	w:SetAttribute("Hub" .. z, base)
-	w:SetAttribute("HubR" .. z, R)
+	w:SetAttribute("HubR" .. z, CampDress.RADIUS)
 end
 
 -- Every area's outpost (area 1 has the camp). `gasPump`: RunBuilder's pump maker (adds to info.pumps).

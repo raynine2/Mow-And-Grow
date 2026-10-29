@@ -32,6 +32,7 @@ require(modules:WaitForChild("EdgeLines")) -- faint lit edges on the voxel trees
 require(modules:WaitForChild("Wind"))
 require(modules:WaitForChild("GrassLod")) -- phones and Potato Mode: far grass drawn as cheap stand-ins (report #15)
 require(modules:WaitForChild("Life")) -- trees swaying, wind ribbons, falling leaves, birds overhead
+require(modules:WaitForChild("CampLife")) -- (29 Oct) the area camps: villagers, animals, windmill sails, banners
 require(modules:WaitForChild("Combo"))
 require(modules:WaitForChild("FirstLawn")) -- a first-timer's trip to their first lawn, the loan note, reach rings
 require(modules:WaitForChild("AreaGoals")) -- area dings, the last clumps glowing, run medals by the timer

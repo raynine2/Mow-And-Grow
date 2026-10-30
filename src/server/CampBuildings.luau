@@ -27,6 +27,9 @@ local Models = require(script.Parent.Models)
 
 local CampBuildings = {}
 CampBuildings.ON = true
+-- (30 Oct) server/ShopRoom fills the Tool Shop's room (Chop A Forest's layout: tool boards, fireplace, table) and its
+-- yard: the old shelves, counter, barrels, crates, sconces and aisle rug are left out
+CampBuildings.ROOM = true
 CampBuildings.PUMP = CFrame.new(13.6, 0, -7) -- the gas pump, in the garage's space
 
 local ROW = 1.6 -- one log (with its chinking)
@@ -703,11 +706,13 @@ local function shopYard(ctx: Ctx, top: number, ridge: number)
 			p.Shape = Enum.PartType.Cylinder
 		end
 	end
-	barrel(ctx, Vector3.new(-PORCH.hx - 1.6, 0, -13.4), 2.6)
-	barrel(ctx, Vector3.new(-PORCH.hx - 1.3, 0, -11.2), 2.4)
-	crate(ctx, CFrame.new(PORCH.hx + 1.7, 1.1, -13.2) * CFrame.Angles(0, math.rad(8), 0), 2.2)
-	crate(ctx, CFrame.new(PORCH.hx + 1.6, 2.2 + 0.85, -13.1) * CFrame.Angles(0, math.rad(-12), 0), 1.7)
-	crate(ctx, CFrame.new(PORCH.hx + 1.4, 0.8, -10.8), 1.6)
+	if not CampBuildings.ROOM then
+		barrel(ctx, Vector3.new(-PORCH.hx - 1.6, 0, -13.4), 2.6)
+		barrel(ctx, Vector3.new(-PORCH.hx - 1.3, 0, -11.2), 2.4)
+		crate(ctx, CFrame.new(PORCH.hx + 1.7, 1.1, -13.2) * CFrame.Angles(0, math.rad(8), 0), 2.2)
+		crate(ctx, CFrame.new(PORCH.hx + 1.6, 2.2 + 0.85, -13.1) * CFrame.Angles(0, math.rad(-12), 0), 1.7)
+		crate(ctx, CFrame.new(PORCH.hx + 1.4, 0.8, -10.8), 1.6)
+	end
 	-- planters either side of the door
 	for _, sx in { -1, 1 } do
 		planter(ctx, CFrame.new(sx * 6.4, SHOP.floor + 0.5, SHOP.z0 - 0.9), 2.4)
@@ -805,7 +810,7 @@ local function shopDetails(ctx: Ctx, top: number)
 	for _, z in { -3.5, 10.5 } do
 		block(ctx, "Purlin", Vector3.new(0, top - 0.45, z), Vector3.new(2 * (SHOP.x - T), 0.8, 0.8), C.timber)
 	end
-	for _, sx in { -1, 1 } do
+	for _, sx in (if CampBuildings.ROOM then {} else { -1, 1 }) do
 		local wx = sx * (SHOP.x - T - 0.2)
 		deco(block(ctx, "SconceBack", Vector3.new(wx, y + 7, 7.4), Vector3.new(0.2, 1.2, 0.8), C.timber))
 		deco(block(ctx, "SconceArm", Vector3.new(wx - sx * 0.45, y + 7, 7.4), Vector3.new(0.7, 0.15, 0.15), C.iron))
@@ -821,8 +826,10 @@ local function shopInside(ctx: Ctx, top: number)
 	local zi0, zi1 = SHOP.z0 + T, SHOP.z1 - T
 	local xi = SHOP.x - T
 	-- a woven rug down the aisle
-	deco(block(ctx, "Rug", Vector3.new(0, y + 0.04, (zi0 + zi1) / 2 - 1.5), Vector3.new(5.4, 0.08, zi1 - zi0 - 6), Color3.fromRGB(112, 52, 46), Enum.Material.Fabric))
-	deco(block(ctx, "Rug", Vector3.new(0, y + 0.06, (zi0 + zi1) / 2 - 1.5), Vector3.new(3.8, 0.08, zi1 - zi0 - 7.6), Color3.fromRGB(150, 116, 70), Enum.Material.Fabric))
+	if not CampBuildings.ROOM then
+		deco(block(ctx, "Rug", Vector3.new(0, y + 0.04, (zi0 + zi1) / 2 - 1.5), Vector3.new(5.4, 0.08, zi1 - zi0 - 6), Color3.fromRGB(112, 52, 46), Enum.Material.Fabric))
+		deco(block(ctx, "Rug", Vector3.new(0, y + 0.06, (zi0 + zi1) / 2 - 1.5), Vector3.new(3.8, 0.08, zi1 - zi0 - 7.6), Color3.fromRGB(150, 116, 70), Enum.Material.Fabric))
+	end
 	-- tie beams front to back, a ridge beam and the chandelier
 	for _, x in { -14, -7, 0, 7, 14 } do
 		block(ctx, "TieBeam", Vector3.new(x, top - 0.45, (zi0 + zi1) / 2), Vector3.new(0.9, 0.9, zi1 - zi0), C.timber)
@@ -845,6 +852,9 @@ local function shopInside(ctx: Ctx, top: number)
 		pointLight(core, 26, 0.55)
 	end
 	-- shelves of goods on both side walls, barrels and crates in the front corners
+	if CampBuildings.ROOM then
+		return
+	end
 	for _, sx in { -1, 1 } do
 		for _, z in { -2.6, 10.6 } do
 			shelf(ctx, CFrame.new(sx * (xi - 0.7), y, z) * CFrame.Angles(0, math.rad(sx * 90), 0), 4.4)
@@ -879,7 +889,9 @@ function CampBuildings.shop(parent: Instance, at: CFrame, withSign: boolean?): b
 	shopPorch(ctx, withSign == true)
 	shopYard(ctx, top, top + roof.steps * roof.rise)
 	shopInside(ctx, top)
-	shopCounter(ctx)
+	if not CampBuildings.ROOM then
+		shopCounter(ctx)
+	end
 	shopDetails(ctx, top)
 	-- a lantern post at each front corner of the porch, the lantern hanging toward the steps
 	for _, sx in { -1, 1 } do

@@ -20,7 +20,7 @@ local YELLOW = Color3.fromRGB(255, 206, 60)
 local GREY = Color3.fromRGB(150, 150, 160)
 local NEAR = 9
 
-type Display = { folder: Instance, id: string, index: number, cost: number, item: Model?, base: CFrame?, lamp: BasePart?, price: TextLabel? }
+type Display = { folder: Instance, id: string, index: number, cost: number, item: Model?, base: CFrame?, lamp: BasePart?, price: TextLabel?, prompt: ProximityPrompt?, robux: string? }
 local displays: { Display } = {}
 
 local function toolIndex(id: string): (number, any)
@@ -30,6 +30,45 @@ local function toolIndex(id: string): (number, any)
 		end
 	end
 	return 0, nil
+end
+
+-- (30 Oct) With streaming the display's parts can arrive after its folder: fill in whatever is still missing (the
+-- tool, the lamp, the price, the prompt). Returns true when something new turned up.
+local function fill(s: Display): boolean
+	local f = s.folder
+	local found = false
+	if not (s.item and s.item.Parent) then
+		for _, c in f:GetChildren() do
+			if c:IsA("Model") and c:GetAttribute("DisplayItem") then
+				s.item = c
+				s.base = c:GetPivot()
+				found = true
+			end
+		end
+	end
+	if not (s.lamp and s.lamp.Parent) then
+		local lamp = f:FindFirstChild("StatusLamp")
+		if lamp and lamp:IsA("BasePart") then
+			s.lamp = lamp
+			found = true
+		end
+	end
+	if not (s.price and s.price.Parent) then
+		local priceGui = f:FindFirstChild("PriceText")
+		local price = priceGui and priceGui:FindFirstChildWhichIsA("TextLabel", true)
+		if price then
+			s.price = price
+			found = true
+		end
+	end
+	if not (s.prompt and s.prompt.Parent) then
+		local prompt = f:FindFirstChildWhichIsA("ProximityPrompt", true)
+		if prompt then
+			s.prompt = prompt
+			found = true
+		end
+	end
+	return found
 end
 
 local function scan()
@@ -47,7 +86,19 @@ local function scan()
 				end
 				local priceGui = f:FindFirstChild("PriceText")
 				local price = priceGui and priceGui:FindFirstChildWhichIsA("TextLabel", true)
-				table.insert(displays, { folder = f, id = id, index = i, cost = def.cost, item = item, base = item and item:GetPivot(), lamp = f:FindFirstChild("StatusLamp") :: BasePart?, price = price })
+				local robux = f:GetAttribute("RobuxText")
+				table.insert(displays, {
+					folder = f,
+					id = id,
+					index = i,
+					cost = def.cost,
+					item = item,
+					base = item and item:GetPivot(),
+					lamp = f:FindFirstChild("StatusLamp") :: BasePart?,
+					price = price,
+					prompt = f:FindFirstChildWhichIsA("ProximityPrompt", true),
+					robux = if type(robux) == "string" then robux else nil,
+				})
 			end
 		end
 	end
@@ -56,8 +107,9 @@ end
 local function refresh()
 	local d = State.data
 	local run = d and d.run
+	local nextUp = run and Config.nextToolIndex(run, d and d.tools)
 	for _, s in displays do
-		local owned = run ~= nil and s.index <= (run.tool or 0)
+		local owned = run ~= nil and Config.ownsTool(run, d and d.tools, s.index)
 		local afford = run ~= nil and (run.coins or 0) >= s.cost
 		local col = if owned then GREEN elseif afford then YELLOW else GREY
 		if s.lamp then
@@ -66,8 +118,16 @@ local function refresh()
 			s.lamp.Transparency = if owned or afford then 0.35 else 0.15
 		end
 		if s.price then
-			s.price.Text = if owned then "OWNED" else "$" .. Format.commas(s.cost)
-			s.price.TextColor3 = if owned then GREEN elseif afford then Color3.fromRGB(150, 245, 100) else Color3.fromRGB(200, 196, 190)
+			s.price.Text = if owned then "OWNED" else (s.robux or "$" .. Format.commas(s.cost))
+			s.price.TextColor3 = if owned then GREEN elseif afford or s.robux then Color3.fromRGB(150, 245, 100) else Color3.fromRGB(200, 196, 190)
+		end
+		-- (30 Oct, owner: buy with a hold-E prompt) your next tool, when you can afford it: holding E buys it
+		-- (client/Input reads BuyNow); otherwise the prompt opens the tool's popup (coins, Robux this run / forever)
+		local p = s.prompt
+		if p and p.Parent then
+			local buyNow = not owned and afford and s.index == nextUp and not s.robux
+			p:SetAttribute("BuyNow", buyNow or nil)
+			p.ActionText = if owned then "Owned" elseif buyNow then "Buy $" .. Format.short(s.cost) elseif s.robux then "Buy" else "View"
 		end
 	end
 end
@@ -95,6 +155,17 @@ task.spawn(function()
 			scannedWorld = world
 			scan()
 			refresh()
+		else
+			-- parts streamed in since: pick them up and colour them
+			local any = false
+			for _, s in displays do
+				if fill(s) then
+					any = true
+				end
+			end
+			if any then
+				refresh()
+			end
 		end
 		task.wait(2)
 	end
@@ -145,7 +216,10 @@ RunService.RenderStepped:Connect(function(dt)
 		local mid = current.base * CFrame.new(current.base:PointToObjectSpace(box.Position))
 		local pivotFromMid = mid:ToObjectSpace(current.base)
 		local lift = math.min(spinAngle * 0.6, 0.35)
-		current.item:PivotTo(CFrame.new(mid.Position + Vector3.new(0, lift, 0)) * CFrame.Angles(0, spinAngle, 0) * (mid - mid.Position) * pivotFromMid)
+		-- (30 Oct) a gentle sway on the spot instead of a full turn: the tools hang on boards against the wall now, and a
+		-- full turn swung half of a long tool (the Mega Scythe) into the wall
+		local sway = math.sin(spinAngle * 1.3) * 0.42
+		current.item:PivotTo(CFrame.new(mid.Position + Vector3.new(0, lift, 0)) * CFrame.Angles(0, sway, 0) * (mid - mid.Position) * pivotFromMid)
 	end
 end)
 

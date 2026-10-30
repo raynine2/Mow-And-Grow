@@ -10,6 +10,7 @@ local Format = require(ReplicatedStorage.MowALawn.Format)
 local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 local CampBuildings = require(script.Parent.CampBuildings)
+local ShopRoom = require(script.Parent.ShopRoom)
 local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
 local Landmarks = require(script.Parent.Landmarks)
@@ -167,10 +168,13 @@ local function wallDisplay(shop: Instance, at: CFrame, tool, x: number)
 	end
 	-- the tool across the pegs
 	local target = base * CFrame.new(Vector3.new(0, 3.9, -0.85) * fs)
-	local m = Models.place(TOOL_MODEL[tool.id], d, target * HANG, 1, true)
+	-- (30 Oct) the Mega Scythe's blade now stands out from its shaft (server/PartModels/tool_scythe): it lies flat on
+	-- the board, the shaft across it and the blade up, a bit bigger than the rest (the top tool, $300,000)
+	local scythe = tool.id == "MegaScythe"
+	local m = Models.place(TOOL_MODEL[tool.id], d, target * (if scythe then CFrame.Angles(0, math.rad(90), 0) else HANG), 1, true)
 	if m then
 		local _, size = m:GetBoundingBox()
-		local fit = 4.4 * fs / math.max(size.X, size.Y, size.Z)
+		local fit = (if scythe then 5.2 else 4.4) * fs / math.max(size.X, size.Y, size.Z)
 		if fit < 1 then
 			m:ScaleTo(fit)
 		end
@@ -238,16 +242,22 @@ local function toolShop(m: Instance, info)
 	if Config.HUB_SIGNS and not voxel then
 		PropKit.cabinSign(shop, at, S, "TOOL SHOP", PropKit.TITLE)
 	end
-	for i, id in WALL_TOOLS do
-		local t = toolDef(id)
-		if t then
-			wallDisplay(shop, at, t, (i - 2.5) * 8.4)
+	if voxel and CampBuildings.ROOM and ShopRoom.ON then
+		-- (30 Oct) Chop A Forest's shop layout: every tool on a board, the Mega Scythe on the spotlight board, the
+		-- fireplace, the table, the yard (server/ShopRoom)
+		ShopRoom.build(shop, at, Config.HUB_SIGNS)
+	else
+		for i, id in WALL_TOOLS do
+			local t = toolDef(id)
+			if t then
+				wallDisplay(shop, at, t, (i - 2.5) * 8.4)
+			end
 		end
-	end
-	for id, x in FLOOR_TOOLS do
-		local t = toolDef(id)
-		if t then
-			floorDisplay(shop, at, t, x)
+		for id, x in FLOOR_TOOLS do
+			local t = toolDef(id)
+			if t then
+				floorDisplay(shop, at, t, x)
+			end
 		end
 	end
 	-- the Guide arrow points just outside the door ("Counter" looks out of the door)

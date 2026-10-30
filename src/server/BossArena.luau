@@ -16,6 +16,7 @@ local BossMoves = require(ReplicatedStorage.MowALawn.BossMoves)
 local Net = require(script.Parent.Net)
 local Models = require(script.Parent.Models)
 local ArenaDress = require(script.Parent.ArenaDress)
+local ArenaGrand = require(script.Parent.ArenaGrand) -- (30 Oct) stands, crowd, statue, lights, glitch, barrier
 local VoxelKit = require(script.Parent.VoxelKit)
 
 local BossArena = {}
@@ -33,6 +34,7 @@ export type Arena = {
 	pad: BasePart,
 	bars: { { part: BasePart, open: CFrame, shut: CFrame } },
 	closed: boolean,
+	down: boolean?, -- (29 Oct) the boss is beaten: the invisible wall has sunk, mowers may drive in
 }
 
 local arenas: { [number]: Arena } = {}
@@ -393,6 +395,27 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 		local gw = part(model, { Name = "GateCollider", Size = Vector3.new(gapW + 2, 26, 2), CFrame = gateCf * CFrame.new(0, 13, -0.5), Transparency = 1, CanCollide = false })
 		gw.CanQuery = false
 	end
+	-- (30 Oct, owner: the arena rework) stands with a gnome crowd and banners, the boss in stone with ruins, light
+	-- towers, glitch cracks, and the glitch barrier in the gate (server/ArenaGrand)
+	if look then
+		local okG, errG = pcall(ArenaGrand.build, {
+			z = z,
+			world = world,
+			model = model,
+			centre = centre,
+			r = r,
+			facing = facing,
+			look = look,
+			rig = def.rig,
+			bossName = bossName,
+			bars = bars,
+			gateCf = gateCf,
+			gapW = gapW,
+		})
+		if not okG then
+			warn("[BossArena] arena " .. z .. " extras: " .. tostring(errG))
+		end
+	end
 
 	-- the boss's spot (back of the arena, looking at the entrance) and the summon pad
 	local bossPos = centre - facing * (r * 0.28)
@@ -569,6 +592,57 @@ function BossArena.setGate(z: number, closed: boolean)
 	end
 end
 
+-- (owner, 29 Oct: "make the invisible bar around the boss arena go down when the boss is defeated") The tall
+-- invisible colliders over the wall drop for good once area z's boss is beaten: with `animate` they light up as a
+-- glowing ring in the arena's colour for a moment and sink into the ground (~1.2 s; the clients add a soft whoosh
+-- and a dust ring, "arenaWallDown"); without, they just go (a saved run loading past this area). The themed wall
+-- itself stays as it is. Never comes back in that run.
+function BossArena.dropWall(z: number, animate: boolean?)
+	local a = arenas[z]
+	if not a or a.down then
+		return
+	end
+	a.down = true
+	if a.gateWall then
+		a.gateWall.CanCollide = false
+	end
+	local wall = a.model:FindFirstChild("Wall")
+	if not wall then
+		return
+	end
+	local theme = ArenaDress.look(z) or THEMES[BossMoves.get(z).arena] or THEMES.meadow
+	local cols = {}
+	for _, c in wall:GetChildren() do
+		if c:IsA("BasePart") and c.Name == "Collider" then
+			table.insert(cols, c)
+		end
+	end
+	if not animate then
+		for _, c in cols do
+			c:Destroy()
+		end
+		return
+	end
+	for i, c in cols do
+		c.CanCollide = false
+		c.CanTouch = false
+		c.CastShadow = false
+		c.Material = Enum.Material.Neon
+		c.Color = theme.accent
+		c.Transparency = 0.82
+		local sink = TweenService:Create(c, TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0, false, 0.25 + (i % 6) * 0.03), {
+			CFrame = c.CFrame - Vector3.new(0, c.Size.Y + 1, 0),
+			Transparency = 1,
+		})
+		sink:Play()
+		sink.Completed:Once(function()
+			c:Destroy()
+		end)
+	end
+	ArenaGrand.heal(a.model) -- (30 Oct) the floor's glitch fades out
+	Net.all("Fx", "arenaWallDown", { pos = a.centre, r = a.radius, color = theme.accent })
+end
+
 -- The pad's look and words: "locked" (mow first), "ready" (stand here), "busy" (fighting), "done" (beaten).
 function BossArena.setPad(z: number, mode: string, text: string?)
 	local a = arenas[z]
@@ -603,7 +677,7 @@ function BossArena.mowerLoop()
 			local root = mower and mower.PrimaryPart
 			if root then
 				for z, a in arenas do
-					if BossArena.inside(z, root.Position, 2) then
+					if not a.down and BossArena.inside(z, root.Position, 2) then
 						local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
 						if hum then
 							hum.Sit = false

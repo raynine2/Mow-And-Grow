@@ -29,6 +29,7 @@ local BossFx = require(script.Parent.BossFx)
 local BossView = require(script.Parent.BossView)
 local BossVfx = require(script.Parent.BossVfx)
 local BossAdds = require(script.Parent.BossAdds) -- the minions
+local Omen = require(script.Parent.BossOmen) -- (30 Oct) the scary wake-up, the roar's impact frames
 require(script.Parent.BossPlayers) -- HP bars over every fighter's head, dizzy stars (round 2)
 
 local BossCine = {}
@@ -467,6 +468,14 @@ end
 local H: { [string]: (any) -> () } = {}
 
 H.bossReady = function(d)
+	-- (30 Oct, owner: "make better fx with boss spawning to make it feel more scary") client/BossOmen: the eye, the
+	-- bleeding screen, the summoning circle and dark beam on the pad, the thorned banner (it plays the roar too); the old
+	-- beam and card when it can't
+	local ok, shown = pcall(Omen.awake, d)
+	if ok and shown then
+		clearBeam()
+		return
+	end
 	beam(d.pos, zoneColor(d.z))
 	local card = BossFx.titleCard("BOSS AWAKE", d.name:upper(), "Stand on the glowing pad in its arena to fight!", 0.3, zoneColor(d.z))
 	BossFx.fadeCard(card, 3)
@@ -475,6 +484,7 @@ end
 
 H.bossIntro = function(d)
 	clearBeam()
+	Omen.clear()
 	BossFx.resetHp()
 	startView(d.rig, d.cf, d.scale, d.z, d.arena)
 	BossFx.setPhase(1)
@@ -519,6 +529,7 @@ H.bossIntro = function(d)
 		task.delay(math.max(0, 4.8 - (len - left)), say, d.line, 2.6)
 		task.delay(math.max(0, 5.4 - (len - left)), function()
 			Sound.play("roar", 0.05, 1)
+			Omen.roar(d.z) -- (the impact frames)
 			if BossVfx.shake then
 				BossVfx.shake(10, 0.8)
 			end
@@ -526,6 +537,7 @@ H.bossIntro = function(d)
 	else
 		task.delay(0.6, function()
 			Sound.play("roar", 0.05, 0.9)
+			Omen.roar(d.z, true)
 		end)
 	end
 end

@@ -52,7 +52,8 @@ end
 
 -- One entry in the left list.
 local function entry(list: Instance, order: number, n, selected: boolean, isNew: boolean, onClick: () -> ())
-	local color = if selected then W.tabOn else Color3.fromRGB(176, 120, 72)
+	-- (grass-galaxy: the others violet like the windows' tabs, not the garden kit's brown)
+	local color = if selected then W.tabOn elseif C.theme == "galaxy" then W.tabWood else Color3.fromRGB(176, 120, 72)
 	-- a tinted ForgeGUI tile (the picked one bright, with a ring and sparkles)
 	local b = Skin.tile(color, selected, Vector2.new(272, 78))
 	b.Name = "News_" .. n.id

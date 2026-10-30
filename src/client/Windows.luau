@@ -252,7 +252,7 @@ index.refresh = function()
 			if got then
 				have += 1
 			end
-			local color = if got then (m.color or zone.grass[1]) else Color3.fromRGB(60, 52, 48)
+			local color = if got then (m.color or zone.grass[1]) elseif C.theme == "galaxy" then Color3.fromRGB(70, 48, 140) else Color3.fromRGB(60, 52, 48)
 			local cell = UI.frame({ size = UDim2.fromOffset(118, 92), color = color, parent = row, radius = 12, outline = 3 })
 			cell.LayoutOrder = i
 			UI.gradient(cell, color)
@@ -302,7 +302,7 @@ function Windows.gnomeShelf(list: Instance, d, order: number)
 	layout.Parent = row
 	for i, g in G.list do
 		local n = got[g.id] or 0
-		local color = if n > 0 then (if g.diamond then Color3.fromRGB(120, 200, 235) else Color3.fromRGB(232, 172, 44)) else Color3.fromRGB(110, 94, 80)
+		local color = if n > 0 then (if g.diamond then Color3.fromRGB(120, 200, 235) else Color3.fromRGB(232, 172, 44)) elseif C.theme == "galaxy" then Color3.fromRGB(70, 48, 140) else Color3.fromRGB(110, 94, 80)
 		local cell = UI.frame({ size = UDim2.fromOffset(76, 108), color = color, parent = row, radius = 12, outline = 3 })
 		cell.LayoutOrder = i
 		UI.gradient(cell, color)

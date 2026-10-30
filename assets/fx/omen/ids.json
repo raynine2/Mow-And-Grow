@@ -1,0 +1,9 @@
+{
+ "_note": "The boss-omen pictures (client/BossOmen, 30 Oct 2026). ForgeGUI made eye, banner, ring and beam (beam made seamless and ring squared here); vignette and lines are drawn by tools/omen_textures.py. Uploaded to ForgeGUI and published to Roblox through its connection for @RayanPoepHoof; shared/IconIds has the Roblox ids.",
+ "omen_eye": { "forge_job": "33f4118a-71e1-41c4-a26d-49af0631ae54:1", "forge": "f0cc124c-6544-4450-a587-0f78d5c7dca1", "roblox": 112397504018633 },
+ "omen_banner": { "forge_job": "f2be3ec9-af04-444f-9206-f873b179e134:1", "forge": "300d1ba6-ee34-4b0d-b1c3-dbdb803e25f5", "roblox": 83618748137117 },
+ "omen_ring": { "forge_job": "acc1da4e-9ade-4385-a1cf-722f02f445f9:0", "forge": "30fbfe7b-798f-4b3f-b72d-a3cebc6ea09c", "roblox": 113039136612686 },
+ "omen_beam": { "forge_job": "d4481f5b-2255-46aa-9e54-ea38f0797647:0", "forge": "cbc882ea-3764-4b97-b7bb-0c037d9e0bd7", "roblox": 115404613156820 },
+ "omen_vignette": { "forge": "4c241534-8dde-47e1-9bfe-7f40d3e0afba", "roblox": 77424499357327 },
+ "omen_lines": { "forge": "deb7af0c-335e-4122-9a35-9019e401458e", "roblox": 139240077469365 }
+}

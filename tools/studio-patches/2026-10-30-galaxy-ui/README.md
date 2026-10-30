@@ -31,3 +31,25 @@ hotbar and the first-mastery celebration). Use `../mkcreate_buf.py` to send it i
 
 Checked on screen in a run: the HUD plates and round buttons, the Upgrades window (Hold bought: MAX and MAXED; Iron
 Fists bought to 2/5 with the run's coins; the pager to Garden Scissors: LOCKED), the shop, the pets window.
+
+## Round 2 (30 Oct, later): the other windows, and the boss waking up
+
+Run in Edit mode, in this order. `c1`/`c2`, `c5`/`c7`, `c6`, `d2` are anchored (Studio's copies of PartyWindow,
+ClassDeal, Windows and BossCine differ from git's: other sessions' work), the rest are guarded by checksum.
+1. `c1_partywindow`, `c2_partywindow_sizes`: Create Party + Saved Runs in the galaxy kit (the owner's picture of Chop A
+   Forest's, no event panel): a grass ribbon with each panel's name and a violet glow behind it, violet and night
+   colours, SAVED RUNS a glass card (the area's picture with AREA n / N and the difficulty on it, your face, SOLO RUN,
+   clumps cut and time played, LOAD GAME, "Next up: ...") or an empty card under the moon.
+2. `c3_news_entry` (the updates list's other entries violet), `c4_skin_banner` (the hanging sign, CLASS IN STOCK and
+   the first-run coach card, on the galaxy panel), `c5_classdeal_night` (the class stand is its night-sky edition under
+   the galaxy theme: starfield, violet tabs, rocket timer; the guild's cork only in the garden theme),
+   `c6_windows_index` (the Index's empty mutation and gnome cells violet), `c7_classdeal_seals` (the odds stay on the
+   rarity-coloured wax seals).
+3. The boss waking (owner: "make better fx with boss spawning to make it feel more scary etc use forge gui"):
+   `d1_install_bossomen` (new client/BossOmen), `d2_bosscine_omen` (BossCine calls it: bossReady, the intro's roars;
+   the old beam and card stay as the fallback), `d3_iconids_omen` (the pictures' ids), `d4_bossomen_kicker`.
+
+Checked on screen in a lobby play test (the 3D view was black: the PC's screen was locked, so only the 2D could be
+seen): the party window empty and with a run (Expert, area 5), News, the Index, the class stand; the boss wake-up's eye
+over the bleeding screen, the BOSS AWAKE banner, the impact frame. **Not seen yet:** the circle and beam on the summon
+pad (3D).

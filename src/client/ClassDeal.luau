@@ -142,7 +142,9 @@ local function glass(g: GuiObject, top: Color3?, bottom: Color3?, stars: number?
 	end
 end
 -- GARDENERS' GUILD look
-local GUILD = Skin.has("ui_cork")
+-- (30 Oct) under the grass-galaxy theme (Config.UI.theme) the stand is the night-sky edition again: starfield, violet
+-- glass, moon card backs; the guild's cork, parchment and chalk only in the garden theme
+local GUILD = Skin.has("ui_cork") and Config.UI.theme ~= "galaxy"
 local WOOD_INK = Color3.fromRGB(58, 32, 14)
 local TAB_OFF = if GUILD then Color3.fromRGB(150, 96, 50) else Color3.fromRGB(110, 70, 190)
 -- turn a drawn glass panel into a cork notice board in a wooden frame (keeps its size and children)
@@ -1039,8 +1041,8 @@ local function card(c, order: number, d, stock: { string }): GuiObject
 	local chance = Config.CLASS_CHANCE[c.id]
 	if chance and chance > 0 then
 		local chip = UI.frame({ size = UDim2.fromOffset(48, 22), pos = UDim2.new(1, 6, 0, -10), anchor = Vector2.new(1, 0), color = Color3.fromRGB(22, 14, 40), parent = b, radius = 7, outline = 2, name = "Chance" })
-		if GUILD and Skin.has("wax_seal") then
-			-- the odds on a wax seal in the card's rarity colour
+		if (GUILD or Config.UI.theme == "galaxy") and Skin.has("wax_seal") then
+			-- the odds on a wax seal in the card's rarity colour (the night-sky edition keeps them too)
 			chip.Size = UDim2.fromOffset(50, 50)
 			chip.Position = UDim2.new(1, 14, 0, -18)
 			chip.BackgroundTransparency = 1

@@ -83,6 +83,7 @@ Skin.THEMES = {
 		ui_badge = "gg_badge",
 		ui_bar = "gg_bar",
 		ui_soil = "gg_inset", -- (the Pets window's critter-burrow soil boxes)
+		ui_banner = "gg_panel", -- (the hanging sign: CLASS IN STOCK, the first-run coach card)
 	},
 }
 local function themed(key: string): string

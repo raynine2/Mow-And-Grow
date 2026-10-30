@@ -29,6 +29,23 @@ local RED = Color3.fromRGB(230, 74, 74)
 local BLUE = Color3.fromRGB(56, 140, 255)
 local WHITE = Color3.new(1, 1, 1)
 
+-- (30 Oct, owner: "remake the ui ... to a grass galaxy theme") Under Config.UI.theme "galaxy" the window is the night
+-- sky in a rim of grass like the others: a grass-green ribbon for each panel's name, the wood colours violet and
+-- night blue, and SAVED RUNS a glass card with a picture of your run's area instead of the paper journal.
+local GALAXY = Config.UI.theme == "galaxy"
+local NIGHT = Color3.fromRGB(30, 18, 70)
+local GLASS = Color3.fromRGB(44, 26, 96)
+local LEAF = Color3.fromRGB(126, 222, 64)
+local STAR = Color3.fromRGB(240, 234, 255)
+local DIM = Color3.fromRGB(196, 182, 240)
+local LILAC = Color3.fromRGB(120, 92, 214)
+if GALAXY then
+	INK = Color3.fromRGB(22, 10, 48)
+	BROWN = Color3.fromRGB(92, 64, 168)
+	DARK = Color3.fromRGB(52, 36, 104)
+	BLUE = Color3.fromRGB(128, 84, 236)
+end
+
 -------------------------------------------------------------------------------------------------------------
 -- small builders
 -------------------------------------------------------------------------------------------------------------
@@ -146,6 +163,49 @@ local function setButtonColor(b: TextButton, color: Color3)
 	end
 end
 
+-- The panel's name. Grass-galaxy: a grass-green ribbon across the board's top rim (twinkling sparkles at its
+-- ends) and a soft violet glow behind the board; otherwise big words above it.
+local function twinkle(img: GuiObject, period: number)
+	if img:IsA("ImageLabel") then
+		TweenService:Create(img, TweenInfo.new(period, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { ImageTransparency = 0.75 }):Play()
+	end
+end
+
+local function boardTitle(parent: Instance, title: string, size: UDim2, pos: UDim2)
+	if not (GALAXY and Skin.has("gg_ribbon")) then
+		text(parent, title, UDim2.new(size.X.Scale, size.X.Offset, 0, 52), pos - UDim2.fromOffset(0, 62), WHITE, 4)
+		return
+	end
+	if Skin.has("glow_soft") then
+		local glow = UI.icon(parent, "glow_soft", 10, pos + UDim2.fromOffset(size.X.Offset / 2, size.Y.Offset / 2), Vector2.new(0.5, 0.5))
+		glow.Name = "Glow"
+		glow.Size = UDim2.fromOffset(size.X.Offset + 170, size.Y.Offset + 170)
+		glow.ZIndex = 0
+		if glow:IsA("ImageLabel") then
+			glow.ScaleType = Enum.ScaleType.Stretch
+			glow.ImageColor3 = Color3.fromRGB(150, 96, 255)
+			glow.ImageTransparency = 0.45
+		end
+	end
+	local w = math.min(size.X.Offset - 70, 170 + #title * 19)
+	local r = Instance.new("Frame")
+	r.Name = "Title"
+	r.BackgroundTransparency = 1
+	r.AnchorPoint = Vector2.new(0.5, 0.5)
+	r.Size = UDim2.fromOffset(w, 66)
+	r.Position = pos + UDim2.fromOffset(size.X.Offset / 2, -6)
+	r.ZIndex = 8
+	r.Parent = parent
+	local _art, face = Skin.frame(r, "gg_ribbon", Vector2.new(w, 66), { name = "Art", tint = LEAF, maxScale = 0.42 })
+	text(face, title, UDim2.new(1, -16, 0.84, 0), UDim2.new(0, 8, 0.06, 0), WHITE, 3.5)
+	if Skin.has("sparkle") then
+		for i, p in { { 0, 2, 26 }, { 1, 8, 20 }, { 1, -6, 30 } } do
+			local s = UI.icon(r, "sparkle", p[3], UDim2.new(p[1], (if p[1] == 0 then -8 else 8) + i, 0, p[2]), Vector2.new(0.5, 0.5))
+			twinkle(s, 0.9 + i * 0.35)
+		end
+	end
+end
+
 -- A wooden board (the window's two panels): the ForgeGUI plank sign (or an orange log frame round a paper page),
 -- with the grass strip and daisies the other windows have.
 local function board(parent: Instance, title: string, size: UDim2, pos: UDim2): Frame
@@ -175,7 +235,7 @@ local function board(parent: Instance, title: string, size: UDim2, pos: UDim2): 
 				g.Parent = strip
 			end
 		end
-		text(parent, title, UDim2.new(size.X.Scale, size.X.Offset, 0, 52), pos - UDim2.fromOffset(0, 62), WHITE, 4)
+		boardTitle(parent, title, size, pos)
 		return page
 	end
 	local outer = frame(parent, size, pos, WOOD, 22)
@@ -193,19 +253,26 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- CHAPTER 1 / THE LAWN, the page arrows (one chapter for now) and dots, over the picture
 local function mapCardTop(card: Frame, parent: Instance)
-	local chapter = frame(card, UDim2.fromOffset(150, 30), UDim2.new(0.5, -75, 1, -86), Color3.fromRGB(70, 44, 26), 15)
+	local chapter = frame(card, UDim2.fromOffset(150, 30), UDim2.new(0.5, -75, 1, -86), if GALAXY then NIGHT else Color3.fromRGB(70, 44, 26), 15)
 	chapter.BackgroundTransparency = 0.1
+	if GALAXY then
+		stroke(chapter, 2, LEAF)
+	end
 	text(chapter, "CHAPTER 1", UDim2.new(1, -16, 0.7, 0), UDim2.new(0, 8, 0.15, 0), Color3.fromRGB(255, 186, 80), 0)
 	text(card, "THE LAWN", UDim2.new(1, -40, 0, 46), UDim2.new(0, 20, 1, -54), WHITE, 4)
 	for side = -1, 1, 2 do
 		local arrow = frame(card, UDim2.fromOffset(46, 52), UDim2.new(if side < 0 then 0 else 1, if side < 0 then 10 else -56, 0.5, -40), BLUE, 12)
 		stroke(arrow, 3)
-		gradient(arrow, Color3.fromRGB(96, 170, 255), Color3.fromRGB(40, 110, 230))
+		if GALAXY then
+			gradient(arrow, Color3.fromRGB(176, 136, 255), Color3.fromRGB(96, 52, 210))
+		else
+			gradient(arrow, Color3.fromRGB(96, 170, 255), Color3.fromRGB(40, 110, 230))
+		end
 		text(arrow, if side < 0 then "<" else ">", UDim2.fromScale(0.8, 0.8), UDim2.fromScale(0.1, 0.1), WHITE, 2)
 		arrow.BackgroundTransparency = 0.25
 	end
 	for i = 0, 1 do
-		local dot = frame(parent, UDim2.fromOffset(if i == 0 then 30 else 16, 14), UDim2.new(0.5, -26 + i * 40, 0, 218), if i == 0 then Color3.fromRGB(190, 220, 190) else Color3.fromRGB(60, 50, 44), 7)
+		local dot = frame(parent, UDim2.fromOffset(if i == 0 then 30 else 16, 14), UDim2.new(0.5, -26 + i * 40, 0, 218), if i == 0 then (if GALAXY then LEAF else Color3.fromRGB(190, 220, 190)) else (if GALAXY then GLASS else Color3.fromRGB(60, 50, 44)), 7)
 		stroke(dot, 2)
 	end
 end
@@ -310,7 +377,7 @@ local function refresh()
 end
 
 local function difficultyRow(page: Frame)
-	text(page, "DIFFICULTY", UDim2.fromOffset(160, 22), UDim2.fromOffset(18, 236), Color3.fromRGB(120, 70, 34), 0, Enum.TextXAlignment.Left)
+	text(page, "DIFFICULTY", UDim2.fromOffset(160, 22), UDim2.fromOffset(18, 236), if GALAXY then LEAF else Color3.fromRGB(120, 70, 34), if GALAXY then 2 else 0, Enum.TextXAlignment.Left)
 	for i, d in DIFFS do
 		refs["diff" .. d.id] = button(page, d.label, UDim2.fromOffset(118, 58), UDim2.fromOffset(14 + (i - 1) * 128, 262), BROWN, function()
 			if (refs.wins or 0) >= d.wins then
@@ -335,7 +402,7 @@ local function peacefulRow(page: Frame)
 	local card = box(page, UDim2.new(1, -28, 0, 104), UDim2.fromOffset(14, 334))
 	text(card, "🕊️", UDim2.fromOffset(44, 44), UDim2.fromOffset(10, 10), WHITE, 0)
 	text(card, "PEACEFUL MODE", UDim2.fromOffset(190, 28), UDim2.fromOffset(60, 10), WHITE, 2, Enum.TextXAlignment.Left)
-	text(card, "A calm run - no night, just you and the grass", UDim2.fromOffset(220, 18), UDim2.fromOffset(60, 40), Color3.fromRGB(240, 210, 170), 0, Enum.TextXAlignment.Left)
+	text(card, "A calm run - no night, just you and the grass", UDim2.fromOffset(220, 18), UDim2.fromOffset(60, 40), if GALAXY then DIM else Color3.fromRGB(240, 210, 170), 0, Enum.TextXAlignment.Left)
 	refs.off = button(card, "OFF", UDim2.fromOffset(52, 40), UDim2.new(1, -118, 0, 12), RED, function()
 		choice.peaceful = false
 		refresh()
@@ -345,8 +412,11 @@ local function peacefulRow(page: Frame)
 		refresh()
 	end)
 	for i, chip in { "🌙 No night", "🏆 Wins count" } do
-		local c = frame(card, UDim2.fromOffset(120, 24), UDim2.fromOffset(14 + (i - 1) * 130, 68), Color3.fromRGB(70, 42, 24), 8)
-		text(c, chip, UDim2.new(1, -10, 0.8, 0), UDim2.new(0, 5, 0.1, 0), Color3.fromRGB(230, 200, 160), 0)
+		local c = frame(card, UDim2.fromOffset(120, 24), UDim2.fromOffset(14 + (i - 1) * 130, 68), if GALAXY then NIGHT else Color3.fromRGB(70, 42, 24), if GALAXY then 12 else 8)
+		if GALAXY then
+			stroke(c, 1.5, LILAC)
+		end
+		text(c, chip, UDim2.new(1, -10, 0.8, 0), UDim2.new(0, 5, 0.1, 0), if GALAXY then STAR else Color3.fromRGB(230, 200, 160), 0)
 	end
 end
 
@@ -354,13 +424,16 @@ local function partyRow(page: Frame)
 	local card = box(page, UDim2.new(1, -28, 0, 62), UDim2.fromOffset(14, 450))
 	text(card, "PARTY", UDim2.fromOffset(80, 28), UDim2.fromOffset(14, 17), WHITE, 2, Enum.TextXAlignment.Left)
 	refs.people = text(card, "", UDim2.fromOffset(110, 30), UDim2.fromOffset(100, 16), Color3.fromRGB(255, 220, 160), 0)
-	button(card, "-", UDim2.fromOffset(42, 42), UDim2.new(1, -164, 0, 6), Color3.fromRGB(230, 200, 150), function()
+	button(card, "-", UDim2.fromOffset(42, 42), UDim2.new(1, -164, 0, 6), if GALAXY then LILAC else Color3.fromRGB(230, 200, 150), function()
 		choice.size = math.max(1, choice.size - 1)
 		refresh()
 	end)
-	local box = frame(card, UDim2.fromOffset(54, 46), UDim2.new(1, -114, 0, 8), Color3.fromRGB(40, 26, 18), 10)
+	local box = frame(card, UDim2.fromOffset(54, 46), UDim2.new(1, -114, 0, 8), if GALAXY then NIGHT else Color3.fromRGB(40, 26, 18), 10)
+	if GALAXY then
+		stroke(box, 2, LEAF)
+	end
 	refs.size = text(box, "", UDim2.fromScale(0.7, 0.75), UDim2.fromScale(0.15, 0.12), WHITE, 0)
-	button(card, "+", UDim2.fromOffset(42, 42), UDim2.new(1, -54, 0, 6), Color3.fromRGB(230, 200, 150), function()
+	button(card, "+", UDim2.fromOffset(42, 42), UDim2.new(1, -54, 0, 6), if GALAXY then LILAC else Color3.fromRGB(230, 200, 150), function()
 		choice.size = math.min(Config.PARTY_MAX, choice.size + 1)
 		refresh()
 	end)
@@ -394,7 +467,7 @@ end
 
 local HAND = Enum.Font.PatrickHand -- handwriting, for the journal
 local PEN = Color3.fromRGB(40, 58, 120) -- blue ballpoint
-local JOURNAL = Skin.has("ui_page")
+local JOURNAL = Skin.has("ui_page") and not GALAXY
 
 -- handwritten text in blue pen
 local function hand(parent: Instance, t: string, size: UDim2, pos: UDim2, color: Color3?, rot: number?): TextLabel
@@ -433,7 +506,7 @@ local function buildRight()
 		journalPage(page)
 		hand(page, "Your runs save by themselves - jump back in!", UDim2.new(1, -90, 0, 26), UDim2.fromOffset(62, 22), nil, -1).ZIndex = 3
 	else
-		text(page, "Your runs save by themselves - jump back in", UDim2.new(1, -40, 0, 22), UDim2.fromOffset(20, 14), Color3.fromRGB(150, 90, 40), 0)
+		text(page, "Your runs save by themselves - jump back in", UDim2.new(1, -40, 0, 22), UDim2.fromOffset(20, 14), if GALAXY then DIM else Color3.fromRGB(150, 90, 40), 0)
 	end
 	local list = frame(page, UDim2.new(1, -28, 1, -60), UDim2.fromOffset(14, 46), WHITE)
 	list.BackgroundTransparency = 1
@@ -522,9 +595,153 @@ local function journalRun(list: Frame, run: { [string]: any }, now: number)
 	b.ZIndex = 6
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- SAVED RUNS under the grass-galaxy theme (30 Oct): your run on a glass card (a picture of its area with the area
+-- and the difficulty on it, your face, the clumps cut and the time played, LOAD GAME), or an empty card with the moon.
+-------------------------------------------------------------------------------------------------------------
+local DIFF_COLOR = { Normal = Color3.fromRGB(86, 200, 70), Hard = Color3.fromRGB(245, 146, 40), Expert = Color3.fromRGB(232, 64, 84) }
+
+-- the difficulty's name as the window shows it (Config.DIFFICULTY's label when the place has one)
+local function diffName(id: string?): string
+	local defs = (Config :: any).DIFFICULTY
+	local d = defs and (defs[id or "Normal"] or defs.Normal)
+	return string.upper(if d and d.label then d.label else (id or "Normal"))
+end
+
+local function clock(seconds: number): string
+	local s = math.max(0, math.floor(seconds))
+	if s >= 3600 then
+		return ("%dh %02dm"):format(s // 3600, (s % 3600) // 60)
+	end
+	return ("%d:%02d"):format(s // 60, s % 60)
+end
+
+local function short(n: number): string
+	if n >= 1e6 then
+		return ("%.1fM"):format(n / 1e6)
+	elseif n >= 1e4 then
+		return ("%.1fK"):format(n / 1e3)
+	end
+	return tostring(math.floor(n))
+end
+
+-- your face in a grass-green ring
+local function headshot(parent: Instance, size: number, pos: UDim2): Frame
+	local ring = frame(parent, UDim2.fromOffset(size, size), pos, LEAF, size // 2)
+	ring.Name = "Face"
+	stroke(ring, 3)
+	local head = Instance.new("ImageLabel")
+	head.Size = UDim2.new(1, -8, 1, -8)
+	head.Position = UDim2.fromOffset(4, 4)
+	head.BackgroundColor3 = GLASS
+	corner(head, size // 2)
+	head.Parent = ring
+	task.spawn(function()
+		local ok, img = pcall(function()
+			return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+		end)
+		if ok then
+			head.Image = img
+		end
+	end)
+	return ring
+end
+
+-- a night-glass pill: an icon and a number with its word
+local function statChip(parent: Instance, pic: string, value: string, word: string, pos: UDim2, w: number)
+	local chip = frame(parent, UDim2.fromOffset(w, 50), pos, NIGHT, 16)
+	chip.Name = "Stat"
+	chip.BackgroundTransparency = 0.1
+	stroke(chip, 2, LILAC)
+	UI.icon(chip, pic, 38, UDim2.new(0, 8, 0.5, 0), Vector2.new(0, 0.5))
+	text(chip, value, UDim2.new(1, -58, 0, 25), UDim2.fromOffset(52, 4), STAR, 2, Enum.TextXAlignment.Left)
+	text(chip, word, UDim2.new(1, -58, 0, 17), UDim2.fromOffset(52, 29), DIM, 0, Enum.TextXAlignment.Left)
+end
+
+local function starRun(list: Frame, run: { [string]: any }, now: number)
+	local W = 384
+	local card = Skin.frame(list, "gg_card", Vector2.new(W, 442), { name = "RunCard", maxScale = 0.32 })
+	card.Position = UDim2.fromOffset(0, 0)
+	-- the area's picture, a night shade over its foot so the words read
+	local zoneN = run.zone or 1
+	local zone = Config.ZONES[zoneN]
+	local pic = Instance.new("ImageLabel")
+	pic.Name = "Picture"
+	pic.BackgroundColor3 = Color3.fromRGB(90, 160, 80)
+	pic.Image = Config.ICONS.scene_lawn or ""
+	pic.ScaleType = Enum.ScaleType.Crop
+	pic.Size = UDim2.fromOffset(W - 36, 206)
+	pic.Position = UDim2.fromOffset(18, 18)
+	corner(pic, 16)
+	stroke(pic, 3)
+	pic.Parent = card
+	local veil = frame(pic, UDim2.fromScale(1, 1), UDim2.new(), NIGHT, 16)
+	veil.Name = "Veil"
+	local fade = Instance.new("UIGradient")
+	fade.Rotation = 90
+	fade.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 1), NumberSequenceKeypoint.new(1, 0.1) })
+	fade.Parent = veil
+	local area = frame(pic, UDim2.fromOffset(124, 30), UDim2.fromOffset(10, 10), NIGHT, 15)
+	area.BackgroundTransparency = 0.15
+	stroke(area, 2, LEAF)
+	text(area, ("AREA %d / %d"):format(zoneN, #Config.ZONES), UDim2.new(1, -16, 0.66, 0), UDim2.new(0, 8, 0.17, 0), LEAF, 0)
+	local dc = DIFF_COLOR[run.difficulty or "Normal"] or DIFF_COLOR.Normal
+	local diff = frame(pic, UDim2.fromOffset(116, 32), UDim2.new(1, -126, 0, 9), dc, 16)
+	stroke(diff, 3)
+	gradient(diff, shade(dc, 1.2), shade(dc, 0.82))
+	text(diff, diffName(run.difficulty), UDim2.new(1, -16, 0.7, 0), UDim2.new(0, 8, 0.14, 0), WHITE, 2)
+	text(pic, string.upper(zone and zone.name or "The Lawn"), UDim2.new(1, -112, 0, 34), UDim2.new(0, 96, 1, -46), WHITE, 3, Enum.TextXAlignment.Left)
+	-- you, and the run
+	headshot(card, 76, UDim2.fromOffset(26, 180))
+	text(card, "SOLO RUN", UDim2.fromOffset(250, 30), UDim2.fromOffset(112, 232), WHITE, 2.5, Enum.TextXAlignment.Left)
+	text(card, "started " .. ago(run.started or now, now), UDim2.fromOffset(250, 18), UDim2.fromOffset(112, 264), DIM, 0, Enum.TextXAlignment.Left)
+	local half = math.floor((W - 36 - 10) / 2)
+	statChip(card, "clover", short(run.cut or 0), "clumps cut", UDim2.fromOffset(18, 292), half)
+	statChip(card, "stopwatch", clock(run.time or 0), "played", UDim2.fromOffset(28 + half, 292), half)
+	local b = button(card, "LOAD GAME", UDim2.fromOffset(W - 36, 64), UDim2.fromOffset(18, 358), GREEN, function()
+		State.fire("Party", "load")
+		close()
+	end)
+	b.ZIndex = 2
+	-- what's next
+	local nextZone = Config.ZONES[zoneN + 1]
+	if nextZone then
+		local line = frame(list, UDim2.new(1, 0, 0, 28), UDim2.fromOffset(0, 460), WHITE)
+		line.BackgroundTransparency = 1
+		local s = UI.icon(line, "sparkle", 22, UDim2.new(0, 22, 0.5, 0), Vector2.new(0.5, 0.5))
+		twinkle(s, 1.1)
+		text(line, "Next up: " .. nextZone.name, UDim2.new(1, -50, 1, 0), UDim2.fromOffset(40, 0), LEAF, 2, Enum.TextXAlignment.Left)
+	end
+end
+
+local function noRuns(list: Frame)
+	-- (in the middle of the page, so it doesn't look like something's missing below it)
+	local card = Skin.frame(list, "gg_card", Vector2.new(384, 360), { name = "Empty", maxScale = 0.32, pos = UDim2.fromOffset(0, 56) })
+	if card:IsA("ImageLabel") then
+		card.ImageTransparency = 0.15
+	end
+	local moon = UI.icon(card, "moon", 146, UDim2.new(0.5, 0, 0, 30), Vector2.new(0.5, 0))
+	moon.Rotation = -8
+	for i, p in { { -104, 60, 34 }, { 100, 42, 26 }, { 84, 150, 22 }, { -84, 166, 18 } } do
+		local s = UI.icon(card, "sparkle", p[3], UDim2.new(0.5, p[1], 0, p[2]), Vector2.new(0.5, 0.5))
+		twinkle(s, 0.8 + i * 0.3)
+	end
+	text(card, "NO SAVED RUNS YET", UDim2.new(1, -60, 0, 38), UDim2.fromOffset(30, 200), WHITE, 3)
+	text(card, "Start one on the left - it shows up here.", UDim2.new(1, -70, 0, 22), UDim2.fromOffset(35, 252), DIM, 0)
+	text(card, "Your run saves by itself.", UDim2.new(1, -70, 0, 20), UDim2.fromOffset(35, 284), LEAF, 0)
+end
+
 local function fillRuns(run: { [string]: any }?, now: number)
 	local list = refs.runs :: Frame
 	list:ClearAllChildren()
+	if GALAXY then
+		if run then
+			starRun(list, run, now)
+		else
+			noRuns(list)
+		end
+		return
+	end
 	if not run then
 		if JOURNAL then
 			hand(list, "No saved runs yet...", UDim2.new(1, -80, 0, 32), UDim2.fromOffset(48, 46)).ZIndex = 4

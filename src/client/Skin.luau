@@ -30,7 +30,10 @@ Skin.FRAMES = {
 	ui_ribbon = { w = 1024, h = 178, slice = Rect.new(140, 40, 884, 140), face = { 125, 14, 125, 42 }, fallback = Color3.fromRGB(240, 240, 240), radius = 6 },
 	ui_sign = { w = 1024, h = 436, slice = Rect.new(140, 120, 884, 300), face = { 48, 48, 48, 70 }, fallback = Color3.fromRGB(240, 222, 200), radius = 14 },
 	-- (the garden pass: a blank seed packet lying sideways, crimped edge on the left; white, tinted per use)
-	ui_packet = { w = 768, h = 574, slice = Rect.new(170, 150, 640, 430), face = { 160, 110, 60, 100 }, fallback = Color3.fromRGB(240, 236, 228), radius = 10 },
+	-- (30 Oct, owner: "fix broken ui": the packet is drawn slanted, so a tall middle row squashed into the shop's
+	-- short tabs left a seam across them, a broken crimp and steps at the right end. Now the middle row is 5 rows
+	-- thin: the top half meets the bottom half and the whole height scales evenly; only the middle stretches wide)
+	ui_packet = { w = 768, h = 574, slice = Rect.new(170, 285, 640, 290), face = { 160, 110, 60, 100 }, fallback = Color3.fromRGB(240, 236, 228), radius = 10 },
 	-- (the themed pass, 22 Oct 2026: garden shed tags, critter-burrow soil, guild notice board, garden journal)
 	ui_tag = { w = 502, h = 784, slice = Rect.new(110, 110, 392, 670), face = { 75, 72, 68, 78 }, fallback = Color3.fromRGB(240, 200, 150), radius = 18 },
 	-- (the soil box only stretches a thin strip of its grassy top, so the leaf clumps near the corners keep their shape)

@@ -1373,6 +1373,16 @@ Config.UI = {
 	pink = Color3.fromRGB(255, 110, 190),
 	panel = Color3.fromRGB(255, 245, 225),
 	dark = Color3.fromRGB(45, 40, 65),
+	-- (30 Oct, owner: "remake the ui ... to a grass galaxy theme mix ... use forge gui") "galaxy": the windows, cards,
+	-- buttons, plates, ribbons and round menu buttons are the ForgeGUI grass-galaxy kit (assets/icons/gg_*.png: a night
+	-- sky inside, a rim of grass and clovers), client/Skin swaps them in. "garden": the wooden garden kit from before.
+	theme = "galaxy",
+	-- the galaxy kit's colours: words on the night sky, the dim line under them, the glass cards, the grass
+	night = Color3.fromRGB(30, 18, 70),
+	glass = Color3.fromRGB(58, 34, 112),
+	starText = Color3.fromRGB(240, 234, 255),
+	dimText = Color3.fromRGB(190, 176, 236),
+	leaf = Color3.fromRGB(126, 222, 64),
 }
 
 -------------------------------------------------------------------------------------------------------------

@@ -54,6 +54,7 @@ require(modules:WaitForChild("LobbyFX"))
 -- after Windows: the card deal takes over the "Classes" window
 require(modules:WaitForChild("ClassDeal"))
 require(modules:WaitForChild("GemUpgrades")) -- takes over the "Perks" window (GEMS stall)
+require(modules:WaitForChild("UpgradesWindow")) -- (30 Oct) takes over "Upgrades": grass-galaxy boxes, the weapons' skills a page each
 require(modules:WaitForChild("SkillTreeWindow")) -- (30 Oct) weapon skill trees: the SKILLS button, K, gold MASTERED trees
 
 State.fire("Ready")

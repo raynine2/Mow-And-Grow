@@ -803,7 +803,17 @@ local touchButton: Frame? = nil -- beside the SETTINGS gear (phone, tablet)
 local dot: Frame? = nil
 local anyReady = false
 
+-- (30 Oct, owner: the skills go in the Upgrades window, a page a weapon, instead of their own window) K and the notes
+-- open Upgrades on the best weapon's page (client/UpgradesWindow); there's no SKILLS button any more. This module still
+-- marks the hotbar's MASTERED weapons and celebrates a first mastery. IN_UPGRADES = false brings the old window back.
+local IN_UPGRADES = true
+local Upgrades = if IN_UPGRADES then require(script.Parent:WaitForChild("UpgradesWindow")) :: any else nil
+
 local function openWindow()
+	if Upgrades then
+		Upgrades.openSkills()
+		return
+	end
 	UI.open("SkillTree")
 end
 
@@ -860,6 +870,9 @@ end
 
 -- Put the button where it belongs (Hud rebuilds its side column when the mode changes, so this runs again then).
 local function placeButton()
+	if IN_UPGRADES then
+		return -- (no SKILLS button: the skills are in the Upgrades window)
+	end
 	local hud = UI.gui:FindFirstChild("Hud")
 	local side = hud and hud:FindFirstChild("SideButtons")
 	if not hud or not side or not side:IsA("GuiObject") then
@@ -956,7 +969,7 @@ State.on("data", function(d)
 		if seenData and now and not noted[def.id] and os.clock() - lastNote > 20 and not UI.isOpen("SkillTree") then
 			noted[def.id] = true
 			lastNote = os.clock()
-			UI.toast(("★ Your %s can learn a skill! %s"):format(def.name, if UI.touch then "Tap SKILLS" else "Press K"), "yellow")
+			UI.toast(("★ Your %s can learn a skill! %s"):format(def.name, if IN_UPGRADES then (if UI.touch then "Tap UPGRADES" else "Press TAB") elseif UI.touch then "Tap SKILLS" else "Press K"), "yellow")
 		end
 	end
 	seenData = true

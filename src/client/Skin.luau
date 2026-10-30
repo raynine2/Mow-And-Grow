@@ -52,7 +52,51 @@ Skin.FRAMES = {
 	card_mythic = { w = 665, h = 871, slice = Rect.new(213, 226, 452, 645), face = { 113, 118, 112, 117 }, fallback = Color3.fromRGB(220, 50, 80), radius = 14 },
 	card_secret = { w = 740, h = 935, slice = Rect.new(237, 243, 503, 692), face = { 107, 117, 107, 104 }, fallback = Color3.fromRGB(40, 40, 50), radius = 14 },
 	card_ribbon = { w = 925, h = 290, slice = Rect.new(330, 110, 595, 170), face = { 130, 30, 130, 100 }, fallback = Color3.fromRGB(240, 240, 240), radius = 6 },
+	-- (30 Oct, the grass-galaxy kit, owner: "remake the ui ... grass galaxy theme mix ... use forge gui"; ForgeGUI art,
+	-- trimmed, assets/icons/gg_*.png): a night sky with a nebula inside a rim of grass and clovers. The 9-slice centres
+	-- keep the corner clovers, stars and ribbon tails whole; the faces are the flat insides.
+	gg_panel = { w = 1024, h = 554, slice = Rect.new(140, 140, 884, 414), face = { 62, 62, 62, 60 }, fallback = Color3.fromRGB(40, 24, 90), radius = 24 },
+	gg_card = { w = 494, h = 512, slice = Rect.new(100, 110, 394, 402), face = { 36, 36, 36, 36 }, fallback = Color3.fromRGB(58, 34, 112), radius = 18 },
+	gg_button = { w = 768, h = 239, slice = Rect.new(120, 100, 648, 140), face = { 28, 16, 28, 40 }, fallback = Color3.fromRGB(240, 240, 240), radius = 12 },
+	gg_plate = { w = 768, h = 200, slice = Rect.new(100, 90, 600, 120), face = { 30, 30, 130, 30 }, fallback = Color3.fromRGB(36, 22, 74), radius = 999 },
+	gg_ribbon = { w = 1024, h = 169, slice = Rect.new(150, 60, 874, 110), face = { 120, 20, 120, 30 }, fallback = Color3.fromRGB(240, 240, 240), radius = 6 },
+	gg_badge = { w = 496, h = 512, slice = Rect.new(150, 150, 346, 360), face = { 110, 100, 110, 130 }, fallback = Color3.fromRGB(40, 24, 90), radius = 999 },
+	gg_inset = { w = 1024, h = 408, slice = Rect.new(70, 70, 954, 338), face = { 26, 26, 26, 26 }, fallback = Color3.fromRGB(20, 14, 70), radius = 16 },
+	gg_bar = { w = 768, h = 84, slice = Rect.new(60, 30, 708, 54), face = { 17, 16, 17, 16 }, fallback = Color3.fromRGB(30, 20, 60), radius = 999 },
 } :: { [string]: FrameDef }
+
+-- The theme (Config.UI.theme): under "galaxy" the garden kit's frames are drawn with the grass-galaxy kit's art, so
+-- every window, card, button, plate and ribbon changes at once. A key keeps its garden art while its galaxy piece
+-- isn't uploaded. The themed pieces that read differently (the cream paper, the cork board, the soil box) are restyled
+-- in their own windows.
+Skin.THEMES = {
+	galaxy = {
+		ui_sign = "gg_panel",
+		ui_pcard = "gg_card",
+		ui_card = "gg_card",
+		ui_tile = "gg_card",
+		ui_tag = "gg_card",
+		ui_inset = "gg_inset",
+		ui_button = "gg_button",
+		ui_plate = "gg_plate",
+		ui_ribbon = "gg_ribbon",
+		ui_badge = "gg_badge",
+		ui_bar = "gg_bar",
+		ui_soil = "gg_inset", -- (the Pets window's critter-burrow soil boxes)
+	},
+}
+local function themed(key: string): string
+	local map = Skin.THEMES[Config.UI and Config.UI.theme or ""]
+	local to = map and map[key]
+	if to then
+		local id = Config.ICONS and Config.ICONS[to]
+		if id and id ~= "" then
+			return to
+		end
+	end
+	return key
+end
+Skin.themed = themed
 
 local function artId(key: string): string?
 	local id = Config.ICONS and Config.ICONS[key]
@@ -72,6 +116,7 @@ end
 type FrameProps = { pos: UDim2?, anchor: Vector2?, name: string?, stretch: boolean?, boost: number?, maxScale: number?, tint: Color3? }
 function Skin.frame(parent: Instance, key: string, size: Vector2, props: FrameProps?): (GuiObject, Frame)
 	local o = props or {}
+	key = themed(key)
 	local def = Skin.FRAMES[key]
 	local id = artId(key)
 	local k = math.min(size.X / def.w, size.Y / def.h)

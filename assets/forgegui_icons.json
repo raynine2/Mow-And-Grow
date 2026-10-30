@@ -483,5 +483,45 @@
  "cw_WeedPuller": {
   "forge": "89878096-1b88-4097-a2c7-37533917b97c",
   "roblox": 73831556962991
+ },
+ "gg_card": {
+  "forge": "c86c74b6-fc1c-4526-ae7e-f2f05e87448a",
+  "roblox": 116661174752297
+ },
+ "gg_button": {
+  "forge": "fb803927-bbb8-4751-8bbb-095ff7c11c48",
+  "roblox": 96028183123649
+ },
+ "gg_plate": {
+  "forge": "a9cfc4da-fab5-4b65-ad87-c8271b846d96",
+  "roblox": 125780341641090
+ },
+ "gg_close": {
+  "forge": "09ba157a-5799-46cb-a8f5-15d28b033fea",
+  "roblox": 121847525218809
+ },
+ "gg_tuft": {
+  "forge": "daca53ab-08ef-4678-94cb-072304b475fc",
+  "roblox": 83087025409800
+ },
+ "gg_panel": {
+  "forge": "447511f7-e110-43cd-9582-0134b060bcf5",
+  "roblox": 132476287132779
+ },
+ "gg_badge": {
+  "forge": "ef279c3d-8f90-42e5-a7d5-93d3d72efa3b",
+  "roblox": 79543216145859
+ },
+ "gg_ribbon": {
+  "forge": "5ddd7b88-273b-43df-9900-36cddbd176ad",
+  "roblox": 120027284700711
+ },
+ "gg_inset": {
+  "forge": "b33b6f52-0f73-4000-8f34-842b4e33273a",
+  "roblox": 107128954403371
+ },
+ "gg_bar": {
+  "forge": "c49b14da-0595-47f7-8aea-d09824c370ac",
+  "roblox": 127234105615077
  }
 }

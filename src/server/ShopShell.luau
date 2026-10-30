@@ -1,0 +1,83 @@
+-- SHOP SHELL (30 Oct evening, owner: "the house at spawn feels a bit idk"; picked: remake it with ForgeGUI and keep
+-- the room made earlier that day, server/ShopRoom). A ForgeGUI cabin (shared/ForgeModelIds "toolshop_shell") stands
+-- round the log lodge server/CampBuildings builds, a little bigger than it, so from outside you see only the cabin and
+-- from inside only the lodge's own walls, roof and room, as before. The lodge's walls keep their collisions; the
+-- cabin has none and no queries, so you (and the camera) go in through its doorway to the lodge's door.
+-- The lodge's outside-only bits that would poke through the cabin go: the porch (its roof boards, posts, rails, sign,
+-- lanterns; the deck and steps stay, invisible, to walk on), the window boxes and shutters, the chimney, the firewood
+-- and the medallion on the roof. The yard in front (fence, flower beds, wheelbarrow, gnome, mailbox) stays.
+-- Coordinates are the lodge's (server/CampBuildings): y 0 the ground, -Z out of the door, the walls x -22.2..22.2,
+-- z -9.8..16.9, the main roof up to y 26.3 over z -11..18.6, the door x -6..6, y up to 13.
+local Models = require(script.Parent.Models)
+
+local ShopShell = {}
+
+ShopShell.ON = true
+local NAME = "toolshop_shell"
+
+-- what of the lodge's outside goes (part names in ShopBuilding)
+local GONE: { [string]: boolean } = {}
+for _, n in {
+	"PorchBase", "PorchBeam", "PorchPost", "Baluster", "Rail", "Doormat", "Corbel", "KneeBrace", "SignBoard", "SignFrame",
+	"SignChain", "Lantern", "LanternBar", "LanternBase", "LanternCap", "LanternCore", "LanternGlass", "Post", "PostFoot",
+	"Chimney", "ChimneyCap", "ChimneySmoke", "BadgeBlade", "BadgeGrip", "BadgeHandle", "Planter", "Soil", "Flower",
+	"Leaves", "Shutter", "ShutterBatten", "ShutterBrace", "SillBracket", "Firewood",
+} do
+	GONE[n] = true
+end
+local WALK_ON: { [string]: boolean } = { Deck = true, DeckFascia = true, Step = true }
+
+-- How the cabin sits round the lodge (lodge coordinates): its middle, and the size it's fitted into.
+local FIT = { z = 3.8, y = -0.6, width = 56, depth = 36, height = 40 }
+
+local function strip(shop: Instance, at: CFrame)
+	local building = shop:FindFirstChild("ShopBuilding")
+	local inv = at:Inverse()
+	for _, p in (if building then building:GetDescendants() else {}) do
+		if not p:IsA("BasePart") then
+			continue
+		end
+		local rel = inv * p.Position
+		-- the porch's roof boards (in front of the lodge's own roof)
+		local porchRoof = (p.Name == "Roof" or p.Name == "RoofEdge" or p.Name == "Barge") and rel.Z < -11.2
+		if GONE[p.Name] or porchRoof then
+			p:Destroy()
+		elseif WALK_ON[p.Name] then
+			p.Transparency = 1
+			p.CastShadow = false
+		end
+	end
+	-- the medallion on the roof (the yard's highest pieces)
+	local yard = shop:FindFirstChild("ShopYard")
+	for _, p in (if yard then yard:GetDescendants() else {}) do
+		if p:IsA("BasePart") and (inv * p.Position).Y > 12 then
+			p:Destroy()
+		end
+	end
+end
+
+-- The cabin round the lodge at `at` (server/RunBuilder's tool shop). Returns false (and changes nothing) when the
+-- model isn't loaded.
+function ShopShell.dress(shop: Instance, at: CFrame): boolean
+	if not ShopShell.ON or not Models.has("forge_" .. NAME) then
+		return false
+	end
+	-- (the 30 Oct ForgeGUI meshes face their -Z; server/Models turns templates for a -X front, so a quarter turn
+	-- back here, and the template's Z is the width: like server/ArenaForge)
+	local cf = at * CFrame.new(0, FIT.y, FIT.z) * CFrame.Angles(0, math.pi / 2, 0)
+	local m = Models.placeForge(NAME, shop, cf, { depth = FIT.width, width = FIT.depth, height = FIT.height }, true)
+	if not m then
+		return false
+	end
+	m.Name = "ShopShell"
+	for _, p in m:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.CanQuery = false
+			p.CanTouch = false
+		end
+	end
+	strip(shop, at)
+	return true
+end
+
+return ShopShell

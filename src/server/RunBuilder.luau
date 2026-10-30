@@ -11,6 +11,7 @@ local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 local CampBuildings = require(script.Parent.CampBuildings)
 local ShopRoom = require(script.Parent.ShopRoom)
+local ShopShell = require(script.Parent.ShopShell) -- (30 Oct evening) the ForgeGUI cabin round the Tool Shop
 local Environment = require(script.Parent.Environment)
 local Ground = require(script.Parent.Ground)
 local Landmarks = require(script.Parent.Landmarks)
@@ -259,6 +260,11 @@ local function toolShop(m: Instance, info)
 				floorDisplay(shop, at, t, x)
 			end
 		end
+	end
+	-- (30 Oct evening, owner: "the house at spawn feels a bit idk"; picked: remake it with ForgeGUI, keep the room)
+	-- the ForgeGUI cabin round the log lodge (server/ShopShell); the lodge is the room inside it
+	if voxel then
+		ShopShell.dress(shop, at)
 	end
 	-- the Guide arrow points just outside the door ("Counter" looks out of the door)
 	promptSpot(shop, at * CFrame.new(0, 2, -6 * S), "Counter")

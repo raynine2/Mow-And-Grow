@@ -47,3 +47,17 @@ owner's account and cut into pieces with Studio's segment_mesh (how: `tools/boss
   the eight new models in `ReplicatedStorage.BossModels` (the old ones in `ServerStorage.MowALawnBackups.
   pre_jointed_30oct`). Checked in Studio fights: the Jungle Titan raises both fists and slams them down, the
   scarecrow swings its pitchfork arm, the reaper lifts its scythe; no errors.
+
+## Then: glitch fixes (30 Oct, owner, with a picture of the Dandelion King's staff flying off his fist: "some things are very buggy and glitched like this please fix all")
+
+- **`9_BossLife_reach`** (whole module; Studio = git 29996 2032289703): each boss has a `reach` in `BossLife.FEEL`
+  (how far its arms may swing: dandelion 0 so the staff never leaves his fist, sakura 0.75, jungle 1, the rest
+  0.5..0.6) and tighter limits on the arm raise, the roar spread and the head turn and nod.
+- **Three bosses back on their old models.** Side by side, the ForgeGUI copies of the Sakura (purple, faceted, no
+  eyes or lantern), the Frost Thornback (washed out, no face, sand bunker gone, its flag floating as a loose piece)
+  and the Bramble (darker, less detail) looked clearly worse than the originals, and the bramble and frost turtle got
+  no arms from the cut anyway. Their originals are back in `ReplicatedStorage.BossModels` (one piece, so the
+  whole-body life from the first section); the copies are kept in `ServerStorage.MowALawnBackups.
+  jointed_replaced_30oct`. Jungle Titan, Hollow, Bog, Harvest and Dandelion keep the jointed copies (close to the
+  originals).
+- Checked in Studio fights, one per boss: nothing came off, floated or sank; no errors from the game's scripts.

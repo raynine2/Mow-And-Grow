@@ -26,3 +26,24 @@ Checked in a Studio run (BossGod on, DevHook `clearZone`, `boss fight 5`, `boss 
 King walked 50 studs in 10 s rocking on its rim (lowest point of the disc -0.15..+3.8 studs off the floor), the bog
 hopped 36 studs in 8 s with squash and stretch, rage and death ran with no errors, and the life attachment goes
 with the model. After this, Studio's BossLife is git's exact text (19003 62316987).
+
+## Then: arms that move (30 Oct, owner: "ik heb het ook over de armen bv die bewegen niet")
+
+The old models can't be cut (another account), so each boss was remade as a near-identical ForgeGUI copy on the
+owner's account and cut into pieces with Studio's segment_mesh (how: `tools/bosses/joint_tool.luau`). A piece's
+`Limb` attribute says what it is (head, armL, armR, body, base) and a `Joint` attachment where it turns.
+
+- **`client/BossLife`**: a jointed boss swings its arms as it walks, raises its fists over its head when it rears
+  back for a hit and slams them down, throws them wide to roar, flails them when it shakes, turns its head to watch
+  you (the body only a little), nods as it steps, jolts when hit, droops when it dies; its disc stays flat
+  (`BossLife.setup`, `turn`, `flatCf`, `attPoint`). The eyes and other effect points follow the head.
+- **`client/BossView`**: builds the `Limb` pieces, turns them about their joints, carries the disc flat and leans
+  the body about its hips.
+- What each boss got: Jungle Titan, Sakura, Harvest Reaper and the pumpkin reaper (hollow): head and both arms
+  (the reaper's scythe hand on its own). Bog: both sets of tentacles. Dandelion King: the staff swings from his fist
+  (his head came out with the leaf skirt, so it stays with the body). Bramble and the Frost Thornback (bunker): the
+  cut found no clean arms, so only the disc is separate (the body leans over a flat disc).
+- In Studio: `7_update_BossLife_limbs` (whole module, replaces the two earlier versions), `8_BossView_limbs`, and
+  the eight new models in `ReplicatedStorage.BossModels` (the old ones in `ServerStorage.MowALawnBackups.
+  pre_jointed_30oct`). Checked in Studio fights: the Jungle Titan raises both fists and slams them down, the
+  scarecrow swings its pitchfork arm, the reaper lifts its scythe; no errors.

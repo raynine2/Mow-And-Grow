@@ -10,6 +10,11 @@ Run in Edit mode (each refuses unless the script is the copy it was made for):
 2. `p2_skin_packet_slice` (Skin 23460 668338792 -> 23797 845675608): the packet's middle row is 5 rows thin
    (Rect 170, 285, 640, 290), so the whole height scales evenly and only the middle stretches wide.
 
-**In Studio (30 Oct): both applied.** Checked on screen: p1 (straight tabs, names 22 px high on a 1560x793
-view, FEATURED fits on one line). p2 was checked on a test image at the tabs' real size and at 3x (no seam,
-the crimp and the right end whole); the real store with p2 still needs one look in Play.
+3. `p3_shopwindow_packet_pieces` (ShopWindow 17239 1319058608 -> 19536 733977539): p2 took the seam away but on
+   the real tabs (this small) Roblox's 9-slice still drew a step at the right end, the end piece higher than the
+   rest (it drew fine at 3x). The tabs now draw the picture as three pieces of the one image cut with
+   ImageRectOffset (crimped left end, middle stretched wide, right end), each scaled to the tab's height by the
+   same amount, so they line up exactly. p2 stays (Skin's packet is only used here, as the stand-in path).
+
+**In Studio (30 Oct): all three applied, Studio = git.** Checked twice in Play: FEATURED open and MOWERS open,
+every tab one unbroken packet (no seam, no step at the right end), names one size, FEATURED on one line.

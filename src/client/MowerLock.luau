@@ -404,6 +404,9 @@ local function watch(p: ProximityPrompt)
 	local holder = p.Parent
 	if not kind then
 		-- (a pump's Pump attribute is set just after its prompt is made: look again when it arrives)
+		if p.ActionText ~= "Refuel" then
+			return
+		end
 		local c: RBXScriptConnection? = nil
 		c = p.AttributeChanged:Connect(function()
 			if kindOf(p) then

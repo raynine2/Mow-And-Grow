@@ -28,6 +28,10 @@ function GemShop.buyPerk(player: Player, data, id: string)
 end
 
 function GemShop.buyGemMower(player: Player, data, id: string)
+	if Config.MOWERS_LOCKED then -- (30 Oct: no mower can be bought while they're locked, shared/Config MOWERS_LOCKED)
+		Net.notify(player, Config.MOWERS_LOCKED_TEXT, "yellow")
+		return
+	end
 	local m = Config.mower(id)
 	if not m or m.currency ~= "gems" then
 		return

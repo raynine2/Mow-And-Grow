@@ -656,6 +656,10 @@ local function buyVacuum(player: Player, data)
 end
 
 local function buyCoinMower(player: Player, data, id: string)
+	if Config.MOWERS_LOCKED then -- (30 Oct: no mower can be bought while they're locked, shared/Config MOWERS_LOCKED)
+		Net.notify(player, Config.MOWERS_LOCKED_TEXT, "yellow")
+		return
+	end
 	local def = Config.mower(id)
 	if not def or def.currency ~= "coins" then
 		return

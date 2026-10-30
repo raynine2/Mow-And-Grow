@@ -265,6 +265,10 @@ function Mowers.despawn(player: Player)
 end
 
 function Mowers.spawn(player: Player, id: string): boolean
+	if Config.MOWERS_LOCKED then -- (30 Oct: the ride-on mowers are locked for the release, shared/Config MOWERS_LOCKED)
+		Net.notify(player, Config.MOWERS_LOCKED_TEXT, "yellow")
+		return false
+	end
 	local data = PlayerData.get(player)
 	local def = Config.mower(id)
 	if not data or not data.run or not def or not Mowers.owns(data, id) then
@@ -334,6 +338,10 @@ end
 
 -- Fill the player's mower at a pump. Returns fuel added.
 function Mowers.refuel(player: Player, pumpPos: Vector3, pricePerFuel: number): number
+	if Config.MOWERS_LOCKED then -- (30 Oct: gas is locked with the mowers, shared/Config MOWERS_LOCKED)
+		Net.notify(player, Config.MOWERS_LOCKED_TEXT, "yellow")
+		return 0
+	end
 	local data = PlayerData.get(player)
 	local m = active[player]
 	if not data or not data.run or not m or not m.PrimaryPart then

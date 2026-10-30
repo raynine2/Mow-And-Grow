@@ -38,6 +38,7 @@ local TAG_COLOR = {
 	BEST = Color3.fromRGB(230, 60, 80),
 	FOREVER = Color3.fromRGB(80, 170, 255),
 	POPULAR = Color3.fromRGB(255, 120, 170),
+	SOON = Color3.fromRGB(60, 200, 255), -- (30 Oct: the locked ride-on mowers)
 	SUPER = Color3.fromRGB(255, 190, 40),
 	["BEST VALUE"] = Color3.fromRGB(230, 60, 80),
 }
@@ -195,6 +196,17 @@ local function mowerBanner(d, m): Banner?
 	local owned = table.find(d.mowers, m.id) ~= nil
 	local icon = pic(MOWER_ICON[m.id], "pushmower")
 	local stats = ("Power %s  -  Speed %d  -  Fuel %d"):format(Format.short(m.damage), m.speed, m.fuel)
+	if Config.MOWERS_LOCKED then
+		-- (30 Oct: the ride-on mowers are locked for the release, shared/Config MOWERS_LOCKED: shown, not sold)
+		return {
+			title = m.name,
+			desc = "Coming in a future update",
+			icon = icon,
+			color = m.color,
+			tags = { "SOON" },
+			prices = { { text = "🔒 SOON", enabled = false, onClick = function() end } },
+		}
+	end
 	if m.currency == "gems" then
 		return {
 			title = m.name,
@@ -226,7 +238,7 @@ CONTENT.Featured = function(d)
 	local out = {}
 	classBanners(d, out)
 	local rocket = Config.mower("RocketMower")
-	if rocket and not table.find(d.mowers, rocket.id) then
+	if rocket and not table.find(d.mowers, rocket.id) and not Config.MOWERS_LOCKED then
 		table.insert(out, mowerBanner(d, rocket) :: Banner)
 	end
 	if not d.passes.VIP then
@@ -244,7 +256,7 @@ end
 CONTENT.Tools = function(d)
 	local out = {}
 	local trial = Config.mower("TrialMower")
-	if trial and State.isRun() then
+	if trial and State.isRun() and not Config.MOWERS_LOCKED then
 		table.insert(out, mowerBanner(d, trial) :: Banner)
 	end
 	table.insert(out, {

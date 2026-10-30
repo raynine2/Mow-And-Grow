@@ -23,6 +23,7 @@ require(modules:WaitForChild("ClassHolo")) -- the CLASSES kiosk's hologram
 require(modules:WaitForChild("BlackHole")) -- the CLASSES black hole: jump in for the class screen
 require(modules:WaitForChild("MowFx")) -- lawn stripes behind mowers, the clippings chute, soft rings, reaper wisps
 require(modules:WaitForChild("MowerFx")) -- ride-on mowers: turning wheels and blade, exhaust puffs, auras
+require(modules:WaitForChild("MowerLock")) -- (30 Oct) mowers locked for the release: holographic locks on the garage and pumps
 require(modules:WaitForChild("Input"))
 require(modules:WaitForChild("Guide"))
 require(modules:WaitForChild("SellPointer")) -- bag full: an arrow beside you pointing to the nearest sell spot

@@ -259,6 +259,10 @@ function Monetization.start()
 				Net.notify(player, "That isn't available where you are.", "yellow")
 				return
 			end
+			if p.mower and Config.MOWERS_LOCKED then -- (30 Oct: never take Robux for a locked mower, shared/Config MOWERS_LOCKED)
+				Net.notify(player, Config.MOWERS_LOCKED_TEXT, "yellow")
+				return
+			end
 			MarketplaceService:PromptProductPurchase(player, p.id)
 		elseif kind == "pass" then
 			local p = Config.PASSES[key]

@@ -1458,4 +1458,43 @@ Config.CAMP_LINES = {
 	isles = { "The stars are close tonight.", "Make a wish on a wisp!", "The telescope sees far, far away...", "Crystals hum if you listen.", "Mowing among the stars!" },
 }
 
+-------------------------------------------------------------------------------------------------------------
+-- (30 Oct, owner: "for game release i want to close of the mower system including gas etc and release it in a later
+-- update ... just a lock on it") The ride-on mowers and their gas are LOCKED for the release. Everything stays in
+-- the game; while MOWERS_LOCKED is on:
+--   * the server refuses every way in: spawning (server/Mowers.spawn), gas (Mowers.refuel), buying one for coins
+--     (server/Run), gems (server/GemShop) or Robux (server/Monetization never prompts a mower product)
+--   * the upgrades window has no Mower section (those upgrades only power ride-on mowers), the Robux mowers leave the
+--     product list, and the store's Mowers tab shows them locked (client/ShopWindow)
+--   * the quest "Get a ride-on mower" becomes "Beat the Backyard boss" at the same step of the chain (a saved run's
+--     quest number still fits)
+--   * the garage, every gas pump and the lobby's garage wear a holographic lock with their prompts off
+--     (client/MowerLock)
+-- Set it to false for the mower update: everything comes back as it was.
+-------------------------------------------------------------------------------------------------------------
+Config.MOWERS_LOCKED = true
+Config.MOWERS_LOCKED_TEXT = "🔒 Ride-on mowers & gas are coming in a future update!"
+if Config.MOWERS_LOCKED then
+	local sections = {}
+	for _, s in Config.UPGRADE_SECTIONS do
+		if s ~= "Mower" then
+			table.insert(sections, s)
+		end
+	end
+	Config.UPGRADE_SECTIONS = sections
+	local order = {}
+	for _, key in Config.PRODUCT_ORDER do
+		local p = Config.PRODUCTS[key]
+		if not (p and p.mower) then
+			table.insert(order, key)
+		end
+	end
+	Config.PRODUCT_ORDER = order
+	for i, q in Config.QUESTS do
+		if q.event == "mower" then
+			Config.QUESTS[i] = { title = "Beat the Backyard boss", hint = "Clear the lawn, then stand on the glowing pad in its arena", event = "boss", goal = 1, reward = q.reward }
+		end
+	end
+end
+
 return Config

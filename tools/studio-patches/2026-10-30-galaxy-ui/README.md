@@ -25,7 +25,7 @@ Run in Edit mode, in this order (each refuses a script it wasn't made for):
    Client's require of UpgradesWindow.
 4. `b6_install_upgradeswindow` (installs the first version), then `b7_upgradeswindow_fixes`, `b8_skin_soil`.
 
-Not in Studio yet: `i_skilltreewindow` (client/SkillTreeWindow with its window turned off: the MASTERED marks on the
+(Installed later on 30 Oct, byte-for-byte, with the Client require; K opens Upgrades on the skills page in a run, checked.) Was not in Studio at first: `i_skilltreewindow` (client/SkillTreeWindow with its window turned off: the MASTERED marks on the
 hotbar and the first-mastery celebration). Use `../mkcreate_buf.py` to send it in parts (it's 41 KB), then
 `../2026-10-30-skill-trees/p_client.luau`. Until then K does nothing in Studio; buying skills works (checked).
 

@@ -306,5 +306,25 @@
  "fa_altar_isles": {
   "roblox": "119007137788084",
   "forge_job": "3c694fc9-d3ea-40d4-a511-349ad5ed0f06"
+ },
+ "toolshop_shell_a": {
+  "roblox": "140559480856788",
+  "forge_job": "9f7d869b-2645-429c-87de-eb7aeb1c708f",
+  "note": "30 Oct: log cabin round the Tool Shop's lodge (server/ShopShell), variant A; not fitted yet"
+ },
+ "toolshop_shell_b": {
+  "roblox": "122723594322982",
+  "forge_job": "d202f498-050c-4611-90bf-fb2f3e5cdcb9",
+  "note": "30 Oct: storybook cottage with awning, variant B; not fitted yet"
+ },
+ "toolshop_open_a": {
+  "roblox": null,
+  "forge_job": "7e20302e-9825-4980-85e5-f9cdda298de0",
+  "note": "30 Oct: open-front shop, not used (the owner kept the room)"
+ },
+ "toolshop_open_b": {
+  "roblox": null,
+  "forge_job": "84fcfea9-9b56-45a3-9928-1ffc67697d7a",
+  "note": "30 Oct: open-front shop, not used (the owner kept the room)"
  }
 }

@@ -24,6 +24,11 @@ local VoxelKit = require(script.Parent.VoxelKit)
 
 local ArenaGrand = {}
 
+-- (30 Oct evening, owner: "revamp every arena remove unneccery stuff also use forge gui"; picked: the stands and
+-- crowd, the statue and ruins, the glitch cracks and pixels, the light towers all go) only the glitch barrier is
+-- built now; server/ArenaForge dresses the arenas with ForgeGUI models. true brings the rest back.
+ArenaGrand.EXTRAS = false
+
 local C = Color3.fromRGB
 local K = VoxelKit.C
 local part, jitter = VoxelKit.part, VoxelKit.jitter
@@ -596,13 +601,16 @@ function ArenaGrand.build(ctx: Ctx)
 	local folder = Instance.new("Folder")
 	folder.Name = "Grand"
 	folder.Parent = ctx.model
+	barrier(ctx, folder)
+	if not ArenaGrand.EXTRAS then
+		return
+	end
 	local m = matsFor(ctx.look)
 	local rng = Random.new(ctx.z * 977 + 13)
 	stands(ctx, folder, m, rng)
 	local statueDeg = statue(ctx, folder, m, rng)
 	towers(ctx, folder, m, rng)
 	cracks(ctx, folder, statueDeg, rng)
-	barrier(ctx, folder)
 	-- no grass under the stands (server/RunWorld keeps grass ArenaRadius + 6 away from every arena's middle)
 	-- (deferred: server/BossArena sets the plain radius after this; the grass is placed long after both)
 	local world, wide = ctx.world, ctx.r + OUT
@@ -610,6 +618,11 @@ function ArenaGrand.build(ctx: Ctx)
 		world:SetAttribute("ArenaRadius", math.max(world:GetAttribute("ArenaRadius") or 0, wide))
 	end)
 end
+
+-- (30 Oct evening) for server/ArenaForge's stands: what's already there, clearing scenery, the ground's height
+ArenaGrand.isBlocked = isBlocked
+ArenaGrand.clearBox = clearBox
+ArenaGrand.groundY = groundY
 
 -- The glitch in arena z's floor heals (fades) once its boss is beaten (server/BossArena.dropWall).
 function ArenaGrand.heal(model: Instance)

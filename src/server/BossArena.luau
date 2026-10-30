@@ -17,6 +17,7 @@ local Net = require(script.Parent.Net)
 local Models = require(script.Parent.Models)
 local ArenaDress = require(script.Parent.ArenaDress)
 local ArenaGrand = require(script.Parent.ArenaGrand) -- (30 Oct) stands, crowd, statue, lights, glitch, barrier
+local ArenaForge = require(script.Parent.ArenaForge) -- (30 Oct evening) the ForgeGUI wall, gateway, stands, altar
 local VoxelKit = require(script.Parent.VoxelKit)
 
 local BossArena = {}
@@ -321,8 +322,11 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	local yaw0 = math.atan2(facing.X, facing.Z)
 	local builder = WALL[def.arena] or WALL.meadow
 	-- the area's voxel wall, pillars and props (server/ArenaDress); the boss-themed part wall below otherwise
-	local ctx = if look then { model = model, centre = centre, r = r, facing = facing, segs = segs, segW = segW, yaw0 = yaw0, look = look } else nil
-	local dressed = ctx ~= nil and ArenaDress.wall(ctx)
+	local ctx = if look then { model = model, centre = centre, r = r, facing = facing, segs = segs, segW = segW, yaw0 = yaw0, look = look, world = world } else nil
+	-- (30 Oct evening, owner: "revamp every arena ... use forge gui") the area's ForgeGUI set when its five models
+	-- are loaded (server/ArenaForge), else the voxel one
+	local forge = ctx ~= nil and ArenaForge.ready(look)
+	local dressed = ctx ~= nil and (if forge then ArenaForge.wall(ctx) else ArenaDress.wall(ctx))
 	for i = 0, segs - 1 do
 		local a = yaw0 + (i + 0.5) / segs * 2 * math.pi
 		local gap = i == 0 or i == segs - 1 -- the two segments either side of the facing direction
@@ -345,8 +349,9 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	-- the theme's ForgeGUI gateway (owner, 26 Oct: "remake the boss areas with forgegui"), its front to the
 	-- outside, the boss's name floating over it; the brick arch and board when the model isn't loaded
 	-- (the area's block gateway, its towers standing on the wall's ends either side of the gap: server/ArenaDress)
-	local forgeGate = if ctx
-		then ArenaDress.gate(ctx)
+	local forgeGate = if forge
+		then ArenaForge.gate(ctx)
+		elseif ctx then ArenaDress.gate(ctx)
 		else Models.placeForge("arena_" .. tostring(def.arena), model, CFrame.lookAt(gatePos, gatePos + facing), { width = gapW + 3, height = 26 }, true)
 	if forgeGate then
 		forgeGate.Name = "ArenaGate"
@@ -415,6 +420,12 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 		if not okG then
 			warn("[BossArena] arena " .. z .. " extras: " .. tostring(errG))
 		end
+		if forge then
+			local okS, errS = pcall(ArenaForge.stands, ctx, world)
+			if not okS then
+				warn("[BossArena] arena " .. z .. " stands: " .. tostring(errS))
+			end
+		end
 	end
 
 	-- the boss's spot (back of the arena, looking at the entrance) and the summon pad
@@ -430,7 +441,10 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	-- the ForgeGUI summoning altar round the pad: sunk so its top is just above the floor (the pad is read by
 	-- distance, server/Boss, so nothing about standing on it changes)
 	-- (a block ring in the area's colours when that model isn't loaded: server/ArenaDress)
-	if ctx then
+	if forge then
+		ArenaForge.altar(ctx, padPos)
+		padRing.Transparency = 1
+	elseif ctx then
 		ArenaDress.altar(ctx, padPos)
 		padRing.Transparency = 1
 	elseif Models.has("forge_altar") then

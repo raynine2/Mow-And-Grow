@@ -142,5 +142,169 @@
  "arena_ruins": {
   "roblox": "84244292155553",
   "forge_job": "d61b618c-329d-438b-b376-9ec0367dcb07"
+ },
+ "fa_gate_meadow": {
+  "roblox": "129770097058610",
+  "forge_job": "424ce3d5-a27d-4df3-a59e-52cc9845dd15"
+ },
+ "fa_wall_meadow": {
+  "roblox": "120766023623867",
+  "forge_job": "ebec0c43-5713-489c-a124-f3c89bfede86"
+ },
+ "fa_stand_meadow": {
+  "roblox": "110907999411348",
+  "forge_job": "f5c8f455-8424-461e-a0fc-a81ce37bda2f"
+ },
+ "fa_pillar_meadow": {
+  "roblox": "105133001761293",
+  "forge_job": "07ce2a51-ecf3-43f2-943f-fa31cc34f867"
+ },
+ "fa_altar_meadow": {
+  "roblox": "124710432202154",
+  "forge_job": "4b8d9047-564d-4904-bbfb-5d544cb6ea81"
+ },
+ "fa_gate_wheat": {
+  "roblox": "102466645634477",
+  "forge_job": "19a27fb6-1e4d-4902-af5c-2f97473cab3b"
+ },
+ "fa_wall_wheat": {
+  "roblox": "109474813435785",
+  "forge_job": "1793eade-f92f-4f90-a8de-439ae081aca2"
+ },
+ "fa_stand_wheat": {
+  "roblox": "129898275646125",
+  "forge_job": "57e9702a-2f1b-4da7-b9e5-f3515d40da8a"
+ },
+ "fa_pillar_wheat": {
+  "roblox": "94990899912378",
+  "forge_job": "652dc54a-3d15-4f99-837f-645610bd4442"
+ },
+ "fa_altar_wheat": {
+  "roblox": "133236930633086",
+  "forge_job": "527c9960-b2c0-4954-9866-f1e7bb4eae20"
+ },
+ "fa_gate_blossom": {
+  "roblox": "114733481201359",
+  "forge_job": "b4113a6d-5c4d-4276-b03f-8bfa494291e0"
+ },
+ "fa_wall_blossom": {
+  "roblox": "130118787373342",
+  "forge_job": "1c06df47-c732-4bfd-a0d9-1b359d3a006e"
+ },
+ "fa_stand_blossom": {
+  "roblox": "113861896016274",
+  "forge_job": "47edff7b-31dc-436f-b1c1-c4e96e96db51"
+ },
+ "fa_pillar_blossom": {
+  "roblox": "71071513136954",
+  "forge_job": "734b5be2-4549-42da-b282-85f2525508c6"
+ },
+ "fa_altar_blossom": {
+  "roblox": "109395861850040",
+  "forge_job": "3c7dd3bf-7070-4175-8415-4c12bf78f0a3"
+ },
+ "fa_gate_pine": {
+  "roblox": "124924673020400",
+  "forge_job": "3d9a5087-1936-451a-8911-a140854c37ff"
+ },
+ "fa_wall_pine": {
+  "roblox": "124773352909801",
+  "forge_job": "03b4fa95-ceee-46de-914a-7379af9555ea"
+ },
+ "fa_stand_pine": {
+  "roblox": "81004340605079",
+  "forge_job": "0a97f0f0-77a4-44ea-908e-00e02e017fc3"
+ },
+ "fa_pillar_pine": {
+  "roblox": "84520134530881",
+  "forge_job": "c9d9d67c-cf99-4929-9ebd-b4852d71d39d"
+ },
+ "fa_altar_pine": {
+  "roblox": "84380187243114",
+  "forge_job": "8da4708f-96e5-4ae1-aed6-9abae29dd122"
+ },
+ "fa_gate_swamp": {
+  "roblox": "85086031107069",
+  "forge_job": "80c775b4-ea87-41ea-a165-febd0cd4d837"
+ },
+ "fa_wall_swamp": {
+  "roblox": "93480049943227",
+  "forge_job": "444cc3a6-12a7-4a46-ad52-6cf0e20a6860"
+ },
+ "fa_stand_swamp": {
+  "roblox": "82784340099233",
+  "forge_job": "9fdb31a0-2ac2-4945-99eb-40fc0f24edb6"
+ },
+ "fa_pillar_swamp": {
+  "roblox": "91654852877902",
+  "forge_job": "ebbacdd6-6086-4edb-91cd-e64d062de466"
+ },
+ "fa_altar_swamp": {
+  "roblox": "86544913890067",
+  "forge_job": "e82ccaa1-b820-4390-b76b-52675ed02c50"
+ },
+ "fa_gate_frost": {
+  "roblox": "101187980964319",
+  "forge_job": "5364f817-5250-43aa-af14-14910e2828eb"
+ },
+ "fa_wall_frost": {
+  "roblox": "111404872633727",
+  "forge_job": "c0712538-8e6f-4bc0-8f9b-76a7545b31e6"
+ },
+ "fa_stand_frost": {
+  "roblox": "80090706994725",
+  "forge_job": "7eb09880-9261-40b4-bab3-c5e06da6f428"
+ },
+ "fa_pillar_frost": {
+  "roblox": null,
+  "forge_job": "95e645eb-e935-4cb0-a812-04fe463cf165",
+  "note": "ForgeGUI outcome_unknown on 30 Oct: ask the owner before requesting again"
+ },
+ "fa_altar_frost": {
+  "roblox": "136433189604632",
+  "forge_job": "261cb633-e062-44c9-8398-813f1a6db1f9"
+ },
+ "fa_gate_ember": {
+  "roblox": "95076390161061",
+  "forge_job": "6c05f5a0-239d-4504-ae3f-6e2c9fe98260"
+ },
+ "fa_wall_ember": {
+  "roblox": "123033122534620",
+  "forge_job": "8daeb6e2-ca00-4d73-b1e3-66106ddebc14"
+ },
+ "fa_stand_ember": {
+  "roblox": null,
+  "forge_job": "bf0ca635-ed1e-4148-9926-cbdca86ca3ac",
+  "note": "ForgeGUI outcome_unknown on 30 Oct: ask the owner before requesting again"
+ },
+ "fa_pillar_ember": {
+  "roblox": "130367320854928",
+  "forge_job": "5ee98092-580a-42e5-ae9a-b999b053f226"
+ },
+ "fa_altar_ember": {
+  "roblox": "119812176658007",
+  "forge_job": "2e1e906a-7612-4272-add8-bda65b1de6c1"
+ },
+ "fa_gate_isles": {
+  "roblox": null,
+  "forge_job": "4fb3edb6-6643-4ab9-96f7-fac43fd1051f",
+  "note": "ForgeGUI outcome_unknown on 30 Oct: ask the owner before requesting again"
+ },
+ "fa_wall_isles": {
+  "roblox": null,
+  "forge_job": "b136b0b0-43bd-4919-be49-2a1b311e1f5f",
+  "note": "ForgeGUI outcome_unknown on 30 Oct: ask the owner before requesting again"
+ },
+ "fa_stand_isles": {
+  "roblox": "103109458842759",
+  "forge_job": "ec80a295-72a7-415b-abe8-13b8fac074b3"
+ },
+ "fa_pillar_isles": {
+  "roblox": "95648603217909",
+  "forge_job": "7076f2ab-d909-4363-b451-95949bacd6f9"
+ },
+ "fa_altar_isles": {
+  "roblox": "119007137788084",
+  "forge_job": "3c694fc9-d3ea-40d4-a511-349ad5ed0f06"
  }
 }

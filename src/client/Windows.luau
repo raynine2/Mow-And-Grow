@@ -214,6 +214,7 @@ upgrades.refresh = function()
 		end
 	end
 	moneyLine(upgrades.list, 99, "Your money: $" .. Format.commas(d.run.coins))
+	moneyLine(upgrades.list, 100, "Weapon upgrades: SKILLS (K). Every weapon has its own tree") -- (30 Oct) client/SkillTreeWindow
 end
 
 -- INDEX: every grass type x mutation; the ones you've collected show their colour, the rest a lock.

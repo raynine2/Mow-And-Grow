@@ -1,4 +1,4 @@
--- Main: start the skill trees, and the snapshot's skills
+-- Main: start the skill trees, and the snapshot's skills (this run's pips, what is mastered)
 -- Studio's copy differs from git's, so each change is anchored on a short piece of one line that both copies have;
 -- it must be found exactly once, and nothing changes if the script isn't the copy this was made for.
 local m = game.ServerScriptService.MowALawn.Main
@@ -16,12 +16,12 @@ end
 -- { kind, anchor, text }: "after" adds `text` as a new line after the anchor's line; "swap" replaces the anchor
 local edits = {
 	{ "after", [======[		bestTime = data.bestTime,]======], [======[		skills = require(script.Parent.SkillTrees).view(data), -- (30 Oct) weapon skill trees (client/SkillTreeWindow)]======] },
-	{ "after", [======[require(script.Parent.Offline).start()]======], [======[require(script.Parent.SkillTrees).start() -- (30 Oct) weapon skill trees: mastery points, pips, MASTERED (both modes)]======] },
+	{ "after", [======[require(script.Parent.Offline).start()]======], [======[require(script.Parent.SkillTrees).start() -- (30 Oct) weapon skill trees: buying pips (runs), MASTERED for good]======] },
 }
 for k, e in edits do
 	local i, j = string.find(s, e[2], 1, true)
 	if not i or string.find(s, e[2], j + 1, true) then
-		return "edit " .. k .. ": anchor not found once"
+		return "NOT CHANGED: edit " .. k .. ": anchor not found once"
 	end
 	if e[1] == "after" then
 		local nl = string.find(s, "\n", j, true) or #s

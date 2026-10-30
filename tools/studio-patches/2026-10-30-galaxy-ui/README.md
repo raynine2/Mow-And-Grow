@@ -56,3 +56,7 @@ pad (3D).
 4. `e1_loading_night` (guarded): the loading screen at night under the galaxy theme (starry violet sky, nebula glows,
    the moon, night clouds, moonlit hills and trees, fireflies, the galaxy bar). Checked on screen (a preview built in
    a play test).
+5. The Mower Specialist hidden while the mowers are locked (owner: "Verbergen tot mowers open"): `f1_config_hide_mowerclass`
+   (never dealt, the odds worked out again without it), `f2_monetization_hidden_class` (its Robux product refused),
+   `f3_classdeal_hidden` (its card left out of the stand unless you own it). All anchored, applied; checked: the
+   stand's row without it, the new odds on the seals (Hedge Reaper 39%, Grass Titan 14%, ...).

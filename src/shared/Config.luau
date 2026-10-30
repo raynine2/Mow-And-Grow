@@ -874,7 +874,7 @@ function Config.rollStock(rng: Random, lucky: boolean): { string }
 	local pool = {}
 	for _, c in Config.CLASSES do
 		local w = Config.STOCK_WEIGHTS[c.rarity]
-		if w then
+		if w and not (c :: any).hidden then -- (hidden: never dealt, see MOWERS_LOCKED below)
 			if lucky then
 				w *= Config.LUCKY_MULT[c.rarity] or 1
 			end
@@ -907,7 +907,9 @@ end
 -- Worked out once by dealing 20,000 times with a fixed seed, so every client shows the same numbers.
 Config.CLASS_CHANCE = {} :: { [string]: number }
 Config.CLASS_CHANCE_LUCKY = {} :: { [string]: number }
-do
+function Config.workOutClassOdds()
+	table.clear(Config.CLASS_CHANCE)
+	table.clear(Config.CLASS_CHANCE_LUCKY)
 	local N = 20000
 	for _, mode in { { Config.CLASS_CHANCE, false }, { Config.CLASS_CHANCE_LUCKY, true } } do
 		local rng = Random.new(424242)
@@ -922,6 +924,7 @@ do
 		end
 	end
 end
+Config.workOutClassOdds()
 
 -------------------------------------------------------------------------------------------------------------
 -- Pets: garden critters hatched from eggs, owned forever. Up to PET_EQUIP follow you and add their boosts.
@@ -1500,6 +1503,15 @@ if Config.MOWERS_LOCKED then
 		end
 	end
 	Config.PRODUCT_ORDER = order
+	-- (30 Oct, owner: hide it until the mowers open) the Mower Specialist's perk only works on ride-on mowers: the class
+	-- is never dealt (so it can't be bought with gems), its Robux product is refused (server/Monetization) and its card
+	-- is left out of the stand (client/ClassDeal); whoever has it keeps it. The odds on the cards are worked out again.
+	for _, c in Config.CLASSES do
+		if c.id == "MowerSpecialist" then
+			(c :: any).hidden = true
+		end
+	end
+	Config.workOutClassOdds()
 	for i, q in Config.QUESTS do
 		if q.event == "mower" then
 			Config.QUESTS[i] = { title = "Beat the Backyard boss", hint = "Clear the lawn, then stand on the glowing pad in its arena", event = "boss", goal = 1, reward = q.reward }

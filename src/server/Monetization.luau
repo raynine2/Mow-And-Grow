@@ -259,6 +259,11 @@ function Monetization.start()
 				Net.notify(player, "That isn't available where you are.", "yellow")
 				return
 			end
+			local cls = if p.class then Config.class(p.class) :: any else nil
+			if cls and cls.hidden then -- (30 Oct: a class hidden until its feature opens, shared/Config MOWERS_LOCKED)
+				Net.notify(player, Config.MOWERS_LOCKED_TEXT, "yellow")
+				return
+			end
 			if p.mower and Config.MOWERS_LOCKED then -- (30 Oct: never take Robux for a locked mower, shared/Config MOWERS_LOCKED)
 				Net.notify(player, Config.MOWERS_LOCKED_TEXT, "yellow")
 				return

@@ -1598,6 +1598,9 @@ function ClassDeal.refresh()
 		if tab == "stock" and c.gems <= 0 and not owned then
 			continue
 		end
+		if (c :: any).hidden and not owned then
+			continue -- (30 Oct: hidden until its feature opens, shared/Config MOWERS_LOCKED)
+		end
 		card(c, i, d, stock)
 	end
 	if tab == "limited" and not row:FindFirstChildWhichIsA("GuiObject") then

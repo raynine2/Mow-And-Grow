@@ -1267,6 +1267,14 @@ Config.FILM = {
 -- Film music and sound effects. Licensed only: APM Music ("APMOfficial"), Pro Sound Effects ("ProSoundEffects") and
 -- DistroKid ("DistrokidOfficial") library audio, which Roblox licenses to every experience. Each was checked loading
 -- in Studio on 28 Oct 2026 (len = its length in seconds).
+-- (30 Oct, owner: "the bosses are very stiff and dont do alot they are just a statue") between its moves a boss
+-- prowls towards one of the fighters (server/Boss); the client rocks it along (client/BossLife)
+Config.BOSS_PROWL = {
+	speed = 7, -- studs a second for a 40-stud boss (a bigger one strides faster)
+	keep = 9, -- it stops this far short of the fighter (from the edge of its body)
+	pause = 0.35, -- seconds it stands after a move before it sets off
+}
+
 Config.FILM_SOUNDS = {
 	-- music
 	storyMusic = { id = "rbxassetid://9046390239", volume = 0.5, len = 117.1 }, -- APM: Morning Skies

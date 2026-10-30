@@ -14,6 +14,8 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("MowALawn")
 local BossRig = require(Shared:WaitForChild("BossRig"))
 local BossMoves = require(Shared:WaitForChild("BossMoves"))
+-- (30 Oct) a life of their own for the one-piece bosses: breathing, a rocking walk, watching you, fidgets
+local BossLife = require(script.Parent:WaitForChild("BossLife"))
 
 local BossView = {}
 
@@ -715,12 +717,21 @@ local function step(dt: number)
 	v.clipBlend += math.clamp(want - v.clipBlend, -dt / 0.6, dt / 0.6)
 	local base = placement(v, dt)
 	-- the overlay: about the feet, squash keeps the volume
-	local sy = v.squash.x
+	-- (30 Oct, owner: "the bosses are very stiff and dont do alot they are just a statue") client/BossLife gives a
+	-- one-piece model a life of its own on top of the moves (breathing, swaying, a rocking walk, watching you,
+	-- growls and stomps between moves) and lets the moves lean it much further: it rocks on its disc's rim
+	-- (BossLife.rim), so the disc never sinks into the floor or floats
+	local life = if v.rig.solid then BossLife.step(v, dt) else nil
+	local soft = if life then life.soft else 1
+	local sy = (1 + (v.squash.x - 1) * (if life then life.squash else 1)) * (if life then life.sy else 1)
 	local sxz = 1 / math.sqrt(math.max(0.3, sy))
 	local sz = v.size.x
 	local jitter = if v.shake > 0 then Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * v.shake * 2 else Vector3.zero
-	local overlay = CFrame.new(Vector3.new(0, v.lift.x, -v.fwd.x) + jitter)
-		* CFrame.Angles(-v.pitch.x, v.twist.x, v.roll.x)
+	local pitch = v.pitch.x * soft + (if life then life.pitch else 0)
+	local roll = v.roll.x * soft + (if life then life.roll else 0)
+	local lift = if life then BossLife.dip(v, v.lift.x) + life.lift + BossLife.rim(v, pitch, roll) else v.lift.x
+	local overlay = CFrame.new(Vector3.new(0, lift, -v.fwd.x) + jitter)
+		* CFrame.Angles(-pitch, v.twist.x + (if life then life.twist else 0), roll)
 	local O = overlay
 	local ox, oy, oz = O.XVector * sxz * sz, O.YVector * sy * sz, O.ZVector * sxz * sz
 	local op = O.Position
@@ -887,6 +898,7 @@ function BossView.flinch(big: boolean)
 	v.pitch.v -= if big then 1.6 else 0.7
 	v.squash.v -= if big then 1.2 else 0.5
 	v.shake = math.max(v.shake, (if big then 0.2 else 0.08) * v.scale / 5)
+	BossLife.flinch(v, big) -- (30 Oct) a one-piece boss shudders too
 end
 
 -- the world position of an attachment point (att_eye, att_scepter_core ...), following its group

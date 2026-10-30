@@ -53,3 +53,6 @@ Checked on screen in a lobby play test (the 3D view was black: the PC's screen w
 seen): the party window empty and with a run (Expert, area 5), News, the Index, the class stand; the boss wake-up's eye
 over the bleeding screen, the BOSS AWAKE banner, the impact frame. **Not seen yet:** the circle and beam on the summon
 pad (3D).
+4. `e1_loading_night` (guarded): the loading screen at night under the galaxy theme (starry violet sky, nebula glows,
+   the moon, night clouds, moonlit hills and trees, fireflies, the galaxy bar). Checked on screen (a preview built in
+   a play test).

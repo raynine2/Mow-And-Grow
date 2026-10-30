@@ -16,20 +16,33 @@ local TweenService = game:GetService("TweenService")
 
 local IconIds = require(script.Parent:WaitForChild("IconIds")) :: { [string]: string }
 local gameName = "Mow A Lawn"
+-- (30 Oct, the grass-galaxy theme: Config.UI.theme "galaxy") the same countryside at night: a starry violet sky with
+-- nebula glows, the moon instead of the sun, twinkling stars, moonlit hills and trees, fireflies over the grass, and
+-- the galaxy kit's bar
+local GALAXY = false
 pcall(function()
-	gameName = (require(script.Parent:WaitForChild("Config")) :: any).GAME_NAME or gameName
+	local C = require(script.Parent:WaitForChild("Config")) :: any
+	gameName = C.GAME_NAME or gameName
+	GALAXY = C.UI ~= nil and C.UI.theme == "galaxy"
 end)
 
 local LoadingScreen = {}
 
 local WHITE = Color3.fromRGB(250, 250, 252)
 local INK = Color3.fromRGB(58, 32, 14) -- the art's dark-brown outline
+if GALAXY then
+	INK = Color3.fromRGB(22, 12, 48) -- (night: a deep violet outline)
+end
 local FONT = Enum.Font.FredokaOne
 
 -- the bar, in the 1280 x 720 stage: the wooden frame and the groove inside it
 local BAR = { x = 240, y = 562, w = 800, h = 92 }
 local BAR_SLICE, BAR_SRC = Rect.new(90, 60, 934, 105), Vector2.new(1024, 165)
 local BAR_FACE = { 47, 52, 49, 44 }
+local BAR_KEY = "ui_bar"
+if GALAXY and IconIds.gg_bar then
+	BAR_KEY, BAR_SLICE, BAR_SRC, BAR_FACE = "gg_bar", Rect.new(60, 30, 708, 54), Vector2.new(768, 84), { 17, 16, 17, 16 }
+end
 
 local LINES = {
 	"Sharpening the blades",
@@ -61,7 +74,7 @@ local function img(parent: Instance, key: string, size: UDim2, pos: UDim2, ancho
 end
 
 -- a picture of a known pixel size, `h` tall, standing with its bottom centre at (x, y), warmed by the evening light
-local GOLD_TINT = Color3.fromRGB(255, 226, 196)
+local GOLD_TINT = if GALAXY then Color3.fromRGB(140, 150, 216) else Color3.fromRGB(255, 226, 196) -- (galaxy: moonlit)
 local function standing(parent: Instance, key: string, src: Vector2, h: number, x: number, y: number): ImageLabel?
 	if not IconIds[key] then
 		return nil
@@ -145,6 +158,45 @@ local function hills(parent: Instance, shapes: { { number } }, color: Color3, to
 	end
 end
 
+-- the night sky (galaxy theme): soft nebula clouds and a field of stars, each twinkling at its own pace
+local function nightSky(world: Frame)
+	for _, n in { { 330, 150, 780, 430, Color3.fromRGB(150, 70, 230), 0.5 }, { 950, 110, 640, 360, Color3.fromRGB(60, 120, 255), 0.66 }, { 640, 330, 1400, 360, Color3.fromRGB(235, 90, 170), 0.72 } } do
+		local g = img(world, "glow_soft", UDim2.fromOffset(n[3], n[4]), UDim2.fromOffset(n[1], n[2]))
+		g.ScaleType = Enum.ScaleType.Stretch
+		g.ImageColor3 = n[5]
+		g.ImageTransparency = n[6]
+	end
+	local rng = Random.new(42)
+	for _ = 1, 90 do
+		local sz = rng:NextInteger(2, 4)
+		local star = frame(world, UDim2.fromOffset(sz, sz), UDim2.fromOffset(rng:NextInteger(0, 1280), rng:NextInteger(0, 440)), Color3.fromRGB(255, 250, 235), sz)
+		star.Name = "Star"
+		star.AnchorPoint = Vector2.new(0.5, 0.5)
+		star.BackgroundTransparency = rng:NextNumber(0.05, 0.5)
+		TweenService:Create(star, TweenInfo.new(rng:NextNumber(0.8, 2.2), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, rng:NextNumber(0, 2)), { BackgroundTransparency = 0.92 }):Play()
+	end
+	for i, p in { { 210, 80, 28 }, { 760, 150, 18 }, { 1180, 52, 24 }, { 470, 34, 16 } } do
+		local sp = img(world, "sparkle", UDim2.fromOffset(p[3], p[3]), UDim2.fromOffset(p[1], p[2]))
+		TweenService:Create(sp, TweenInfo.new(1.2 + i * 0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { ImageTransparency = 0.85 }):Play()
+	end
+end
+
+-- fireflies drifting over the grass (galaxy theme)
+local function fireflies(world: Frame)
+	local rng = Random.new(7)
+	for _ = 1, 18 do
+		local x, y = rng:NextInteger(40, 1240), rng:NextInteger(500, 690)
+		local f = img(world, "glow_soft", UDim2.fromOffset(24, 24), UDim2.fromOffset(x, y))
+		f.Name = "Firefly"
+		f.ScaleType = Enum.ScaleType.Stretch
+		f.ImageColor3 = Color3.fromRGB(196, 255, 110)
+		f.ImageTransparency = 0.15
+		local core = frame(f, UDim2.fromOffset(4, 4), UDim2.fromScale(0.5, 0.5), Color3.fromRGB(244, 255, 200), 2)
+		core.AnchorPoint = Vector2.new(0.5, 0.5)
+		TweenService:Create(f, TweenInfo.new(rng:NextNumber(2, 4), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, rng:NextNumber(0, 2)), { Position = UDim2.fromOffset(x + rng:NextInteger(-40, 40), y - rng:NextInteger(20, 60)), ImageTransparency = 0.75 }):Play()
+	end
+end
+
 -------------------------------------------------------------------------------------------------------------
 -- the countryside (a 1280 x 720 world scaled to cover the screen)
 -------------------------------------------------------------------------------------------------------------
@@ -153,7 +205,12 @@ local function scene(group: Instance): Scene
 	local sky = frame(group, UDim2.fromScale(1, 1), UDim2.new(), WHITE)
 	sky.Name = "Sky"
 	local sg = Instance.new("UIGradient")
-	sg.Color = ColorSequence.new({
+	sg.Color = if GALAXY then ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(8, 6, 30)),
+		ColorSequenceKeypoint.new(0.4, Color3.fromRGB(34, 20, 86)),
+		ColorSequenceKeypoint.new(0.72, Color3.fromRGB(92, 42, 140)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(176, 84, 160)),
+	}) else ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(92, 120, 214)),
 		ColorSequenceKeypoint.new(0.45, Color3.fromRGB(250, 170, 120)),
 		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(255, 214, 140)),
@@ -167,6 +224,9 @@ local function scene(group: Instance): Scene
 	world.BackgroundTransparency = 1
 	local scale = Instance.new("UIScale")
 	scale.Parent = world
+	if GALAXY then
+		nightSky(world)
+	end
 
 	-- the low evening sun, right of the logo, with soft rays fanning out and a warm halo
 	local SUN = Vector2.new(1060, 330)
@@ -174,16 +234,17 @@ local function scene(group: Instance): Scene
 	if IconIds.ui_rays then
 		local r = img(world, "ui_rays", UDim2.fromOffset(900, 900), UDim2.fromOffset(SUN.X, SUN.Y))
 		r.ScaleType = Enum.ScaleType.Stretch
-		r.ImageColor3 = Color3.fromRGB(255, 236, 190)
-		r.ImageTransparency = 0.82
+		r.ImageColor3 = if GALAXY then Color3.fromRGB(190, 180, 255) else Color3.fromRGB(255, 236, 190)
+		r.ImageTransparency = if GALAXY then 0.88 else 0.82
 		rays = r
 	end
 	local halo = img(world, "glow_soft", UDim2.fromOffset(476, 476), UDim2.fromOffset(SUN.X, SUN.Y))
 	halo.ScaleType = Enum.ScaleType.Stretch
-	halo.ImageColor3 = Color3.fromRGB(255, 200, 120)
-	halo.ImageTransparency = 0.05
-	local sun = img(world, "bg_sun", UDim2.fromOffset(170, 170), UDim2.fromOffset(SUN.X, SUN.Y))
-	sun.ImageColor3 = Color3.fromRGB(255, 220, 170)
+	halo.ImageColor3 = if GALAXY then Color3.fromRGB(170, 150, 255) else Color3.fromRGB(255, 200, 120)
+	halo.ImageTransparency = if GALAXY then 0.3 else 0.05
+	local moon = GALAXY and IconIds.moon ~= nil
+	local sun = img(world, if moon then "moon" else "bg_sun", UDim2.fromOffset(if moon then 150 else 170, if moon then 160 else 170), UDim2.fromOffset(SUN.X, SUN.Y))
+	sun.ImageColor3 = if moon then Color3.new(1, 1, 1) else Color3.fromRGB(255, 220, 170)
 	if not IconIds.bg_sun then
 		sun.BackgroundTransparency = 0
 		sun.BackgroundColor3 = Color3.fromRGB(255, 220, 90)
@@ -206,23 +267,30 @@ local function scene(group: Instance): Scene
 			if c[4] < 60 then
 				f.ImageTransparency = 0.15 -- far away: a touch hazier
 			end
+			if GALAXY then
+				f.ImageColor3 = Color3.fromRGB(116, 104, 190) -- (night clouds)
+				f.ImageTransparency = 0.35
+			end
 			table.insert(clouds, { f = f, speed = c[5] })
 		end
 	end
 
 	-- far hills, hazy blue-green, then the near hills in fresh green running down to the bottom of the screen, with a
 	-- hint of mowed stripes fading in toward the front
-	hills(world, { { 150, 496, 660, 240 }, { 640, 480, 760, 220 }, { 1120, 498, 680, 250 }, { 1500, 504, 560, 210 } }, Color3.fromRGB(170, 160, 150), Color3.fromRGB(226, 196, 170), 3)
+	hills(world, { { 150, 496, 660, 240 }, { 640, 480, 760, 220 }, { 1120, 498, 680, 250 }, { 1500, 504, 560, 210 } }, if GALAXY then Color3.fromRGB(50, 42, 108) else Color3.fromRGB(170, 160, 150), if GALAXY then Color3.fromRGB(96, 80, 170) else Color3.fromRGB(226, 196, 170), 3)
 	-- a little windmill on the far hills, in the haze
 	local mill = standing(world, "bg_windmill", Vector2.new(603, 768), 150, 1150, 470)
 	if mill then
 		mill.ImageTransparency = 0.1
+		if GALAXY then
+			mill.ImageColor3 = Color3.fromRGB(70, 60, 132)
+		end
 	end
-	hills(world, { { -60, 566, 780, 240 }, { 740, 556, 860, 230 }, { 1400, 570, 720, 240 } }, Color3.fromRGB(110, 170, 70), Color3.fromRGB(200, 214, 110), 4)
-	local ground = frame(world, UDim2.fromOffset(2400, 300), UDim2.fromOffset(-560, 600), Color3.fromRGB(110, 170, 70))
+	hills(world, { { -60, 566, 780, 240 }, { 740, 556, 860, 230 }, { 1400, 570, 720, 240 } }, if GALAXY then Color3.fromRGB(34, 96, 58) else Color3.fromRGB(110, 170, 70), if GALAXY then Color3.fromRGB(86, 168, 96) else Color3.fromRGB(200, 214, 110), 4)
+	local ground = frame(world, UDim2.fromOffset(2400, 300), UDim2.fromOffset(-560, 600), if GALAXY then Color3.fromRGB(34, 96, 58) else Color3.fromRGB(110, 170, 70))
 	ground.Name = "Ground"
 	for i = 0, 2400 / 110 do
-		local stripe = frame(ground, UDim2.fromOffset(55, 300), UDim2.fromOffset(i * 110, 0), Color3.fromRGB(130, 184, 80))
+		local stripe = frame(ground, UDim2.fromOffset(55, 300), UDim2.fromOffset(i * 110, 0), if GALAXY then Color3.fromRGB(48, 118, 72) else Color3.fromRGB(130, 184, 80))
 		stripe.Name = "Stripe"
 		local sg2 = Instance.new("UIGradient")
 		sg2.Rotation = 90
@@ -234,14 +302,17 @@ local function scene(group: Instance): Scene
 	standing(world, "bg_tree2", Vector2.new(649, 768), 250, 1205, 650)
 	standing(world, "bg_bush2", Vector2.new(768, 670), 120, 180, 720)
 	standing(world, "bg_bush", Vector2.new(768, 586), 110, 1100, 722)
+	if GALAXY then
+		fireflies(world)
+	end
 	-- soft dark edges and a darker bottom, so the bar and the writing read
 	for _, side in { 0, 1 } do
-		local v = frame(group, UDim2.new(0.22, 0, 1, 0), UDim2.fromScale(side * 0.78, 0), Color3.fromRGB(34, 18, 8))
+		local v = frame(group, UDim2.new(0.22, 0, 1, 0), UDim2.fromScale(side * 0.78, 0), if GALAXY then Color3.fromRGB(10, 6, 30) else Color3.fromRGB(34, 18, 8))
 		local vg = Instance.new("UIGradient")
 		vg.Transparency = NumberSequence.new(if side == 0 then 0.75 else 1, if side == 0 then 1 else 0.75)
 		vg.Parent = v
 	end
-	local shade = frame(group, UDim2.fromScale(1, 1), UDim2.new(), Color3.fromRGB(30, 20, 8))
+	local shade = frame(group, UDim2.fromScale(1, 1), UDim2.new(), if GALAXY then Color3.fromRGB(8, 4, 24) else Color3.fromRGB(30, 20, 8))
 	local sh = Instance.new("UIGradient")
 	sh.Rotation = 90
 	sh.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.7, 1), NumberSequenceKeypoint.new(1, 0.5) })
@@ -258,7 +329,8 @@ local SPARKLES = { { 310, 120, 40 }, { 1006, 336, 44 }, { 742, 34, 26 } }
 type Title = { logo: GuiObject, shadow: GuiObject?, pop: UIScale, glows: { ImageLabel }, sparkles: { ImageLabel } }
 local function title(stage: Frame): Title
 	local glows = {}
-	for _, gl in { { 1060, 660, Color3.fromRGB(255, 232, 150), 0.25 }, { 640, 400, Color3.new(1, 1, 1), 0.45 } } do
+	local glowSpecs = if GALAXY then { { 1060, 660, Color3.fromRGB(160, 120, 255), 0.35 }, { 640, 400, Color3.fromRGB(220, 236, 255), 0.55 } } else { { 1060, 660, Color3.fromRGB(255, 232, 150), 0.25 }, { 640, 400, Color3.new(1, 1, 1), 0.45 } }
+	for _, gl in glowSpecs do
 		local g = img(stage, "glow_soft", UDim2.fromOffset(gl[1], gl[2]), UDim2.fromOffset(LOGO_AT.X, LOGO_AT.Y))
 		g.ScaleType = Enum.ScaleType.Stretch
 		g.ImageColor3 = gl[3]
@@ -270,7 +342,7 @@ local function title(stage: Frame): Title
 	if IconIds.logo then
 		local s = img(stage, "logo", UDim2.fromOffset(LOGO.X, LOGO.Y), UDim2.fromOffset(LOGO_AT.X + 8, LOGO_AT.Y + 12))
 		s.Name = "LogoShadow"
-		s.ImageColor3 = Color3.fromRGB(16, 30, 10)
+		s.ImageColor3 = if GALAXY then Color3.fromRGB(10, 6, 30) else Color3.fromRGB(16, 30, 10)
 		s.ImageTransparency = 0.5
 		Instance.new("UIScale").Parent = s
 		shadow = s
@@ -303,7 +375,7 @@ local function bar(stage: Frame): Bar
 	local holder = frame(stage, UDim2.fromOffset(BAR.w, BAR.h), UDim2.fromOffset(BAR.x, BAR.y), WHITE)
 	holder.Name = "Bar"
 	holder.BackgroundTransparency = 1
-	local wood, k = sliced(holder, "ui_bar", BAR.w, BAR.h, BAR_SLICE, BAR_SRC)
+	local wood, k = sliced(holder, BAR_KEY, BAR.w, BAR.h, BAR_SLICE, BAR_SRC)
 	wood.Name = "Wood"
 	local gx, gy = BAR.x + BAR_FACE[1] * k, BAR.y + BAR_FACE[2] * k
 	local gw, gh = BAR.w - (BAR_FACE[1] + BAR_FACE[3]) * k, BAR.h - (BAR_FACE[2] + BAR_FACE[4]) * k
@@ -447,7 +519,7 @@ function LoadingScreen.build(player: Player?): ScreenGui
 	-- fetch the pictures first, ahead of the rest of the game (each shows as soon as it arrives)
 	task.spawn(function()
 		local list = {}
-		for _, key in { "logo", "glow_soft", "bg_sun", "bg_cloud", "bg_cloud2", "ui_rays", "bg_windmill", "bg_tree", "bg_tree2", "bg_bush", "bg_bush2", "ui_bar", "ui_grass", "pushmower", "sparkle" } do
+		for _, key in { "logo", "glow_soft", "bg_sun", "bg_cloud", "bg_cloud2", "ui_rays", "bg_windmill", "bg_tree", "bg_tree2", "bg_bush", "bg_bush2", "ui_bar", "ui_grass", "pushmower", "sparkle", "moon", "gg_bar" } do
 			if IconIds[key] then
 				table.insert(list, IconIds[key])
 			end
@@ -471,7 +543,7 @@ function LoadingScreen.build(player: Player?): ScreenGui
 		local t = os.clock() - start
 		refit()
 		-- the sky: the sun turns slowly, the clouds drift right and come round again
-		S.sun.Rotation = t * 4
+		S.sun.Rotation = if GALAXY then math.sin(t * 0.7) * 5 else t * 4 -- (the moon only rocks)
 		if S.rays then
 			S.rays.Rotation = -t * 2.5
 		end

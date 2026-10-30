@@ -74,6 +74,7 @@ function PlayerData.newRun()
 		coins = 0,
 		tool = 1, -- index into Config.TOOLS of the best tool owned
 		upgrades = { power = 0, speed = 0, sell = 0, swing = 0, grasp = 0 }, -- (old runs may also have "carry")
+		skills = {}, -- (30 Oct) weapon skill tree pips this run: [toolId] = { [skillId] = pips } (server/SkillTrees)
 		bag = 0, -- index into Config.BAGS of the best bag bought (0 = none)
 		vacuum = false, -- the Leaf Vacuum
 		mowers = {}, -- coin mowers bought this run: [id] = true

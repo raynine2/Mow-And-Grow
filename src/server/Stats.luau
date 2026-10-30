@@ -35,7 +35,8 @@ function Stats.compute(player: Player, data)
 	end
 
 	local s = {}
-	s.power = (1 + (class.power or 0) + pet.power + level("power") * per("power")) * (if vip then 1.15 else 1)
+	s.power = (1 + (class.power or 0) + pet.power) * (if vip then 1.15 else 1)
+	s.mowerPower = (1 + (class.power or 0) + pet.power + level("power") * per("power")) * (if vip then 1.15 else 1) -- (30 Oct) ride-on mowers keep the old Power upgrade ("Mower Blades"); the tools get theirs from their skill trees (server/SkillTrees)
 	s.carry = Config.BASE_CARRY
 		+ (class.carry or 0)
 		+ (if bag then bag.carry else 0)

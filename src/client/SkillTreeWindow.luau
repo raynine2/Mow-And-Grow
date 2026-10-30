@@ -1,14 +1,19 @@
 -- SKILL TREE (owner, 30 Oct: "an skill tree like chop a forest for every weapon ... when u max the skill tree for
--- said weapon make it gold so its like u earned something ... use the ui we already have here"). Chop A Forest's
--- Upgrades window, ours, in client/GemUpgrades' look: one weapon a page (the arrows, or the row of weapons along the
--- bottom), its three skills as cards with level pips, and the picked skill's details (what it does, now > next, the
--- price, a big BUY) on the right. A weapon you've never owned shows LOCKED. When every pip of a weapon is bought its
--- page turns gold (GOLD -> ORANGE like our titles) with a crown and MASTERED, and the moment it happens gets a banner,
--- confetti and a gold burst. The numbers are shared/SkillTrees (Config.SKILL_TREES); server/SkillTrees checks every
--- buy, this only draws.
--- Opened with K or the SKILLS button: a badge in client/Hud's side column on a computer (added from here, Hud is not
--- changed), a small button beside the SETTINGS gear on a phone or tablet (the side column is full there: Roblox's
--- jump button sits under it).
+-- said weapon make it gold so its like u earned something ... use the ui we already have here"; then: the pips are
+-- bought with the run's coins and reset every run, MASTERED stays for good, and the trees replace the Upgrades
+-- window's "Tool" section). Chop A Forest's Upgrades window, ours, in client/GemUpgrades' look: one weapon a page (the
+-- arrows, or the row of weapons along the bottom), its three skills as cards with level pips, and the picked skill's
+-- details (what it does, now > next, the price in coins, a big BUY) on the right.
+--   * Only your best weapon learns (a weapon you've moved on from says OLD WEAPON); one you don't own in this run is
+--     LOCKED; in the lobby every page says skills are bought in a run.
+--   * A weapon MASTERED once (every pip full in some run) has a gold page (GOLD -> ORANGE like our titles) with a crown
+--     and a MASTERED ribbon in every run after, even at 0 pips, and a "★ MASTERED" mark on its tile here and on its
+--     hotbar slot (client/Hud's hotbar, marked from here: Hud is not changed). The first time gets a banner, confetti
+--     and a gold burst (server/SkillTrees sends "skillMastered" only then).
+-- The numbers are shared/SkillTrees (Config.SKILL_TREES); server/SkillTrees checks every buy, this only draws.
+-- Opened with K or the SKILLS button: a badge in client/Hud's side column on a computer (added from here), a small
+-- button beside the SETTINGS gear on a phone or tablet (the side column is full there: Roblox's jump button sits
+-- under it).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -41,7 +46,9 @@ local GOLD = Color3.fromRGB(255, 236, 110)
 local ORANGE = Color3.fromRGB(255, 140, 30)
 local AMBER = Color3.fromRGB(255, 196, 40) -- MAX / MASTERED buttons and ribbons
 local GREY = Color3.fromRGB(110, 116, 132)
-local MINT = Color3.fromRGB(150, 255, 120) -- bonus numbers on the blue cards
+local MINT = Color3.fromRGB(150, 255, 120) -- bonus numbers on the blue cards, prices you can pay
+local SHORT = Color3.fromRGB(255, 120, 110) -- a price you can't pay yet
+local DIM = Color3.fromRGB(196, 200, 214) -- a price that isn't for now (lobby, locked, old weapon)
 -- the title style (client/IntroUi's title card): gold on top, a sharp step to orange
 local TITLE_GOLD = ColorSequence.new({
 	ColorSequenceKeypoint.new(0, GOLD),
@@ -49,7 +56,7 @@ local TITLE_GOLD = ColorSequence.new({
 	ColorSequenceKeypoint.new(0.56, ORANGE),
 	ColorSequenceKeypoint.new(1, UI.shade(ORANGE, 0.85)),
 })
--- the insides of the cards: blue, gold once mastered, grey while locked
+-- the insides of the cards: blue, gold once mastered (for good), grey while locked
 type Theme = { top: Color3, bottom: Color3, base: Color3, box: Color3, rays: Color3, value: Color3 }
 local THEME: { [string]: Theme } = {
 	normal = { top = Color3.fromRGB(110, 190, 255), bottom = Color3.fromRGB(30, 100, 220), base = BLUE, box = Color3.fromRGB(20, 50, 130), rays = Color3.fromRGB(200, 235, 255), value = MINT },
@@ -57,38 +64,79 @@ local THEME: { [string]: Theme } = {
 	locked = { top = Color3.fromRGB(150, 156, 170), bottom = Color3.fromRGB(80, 86, 102), base = GREY, box = Color3.fromRGB(40, 44, 56), rays = Color3.fromRGB(205, 205, 215), value = Color3.fromRGB(215, 215, 225) },
 }
 
--- the weapons with a tree, in shop order
+-- the weapons with a tree, in shop order; and which one an icon is (client/Hud's hotbar names its icons by key)
 local ORDER = {}
+local BY_ICON: { [string]: string } = {}
 for _, t in Config.TOOLS do
-	if Tree.tree(t.id) then
+	local tree = Tree.tree(t.id)
+	if tree then
 		table.insert(ORDER, t)
+		BY_ICON[tree.icon] = t.id
 	end
 end
 
 -------------------------------------------------------------------------------------------------------------
--- the player's trees (State.data.skills, from server/SkillTrees.view)
+-- the player's trees (State.data.skills, from server/SkillTrees.view: { inRun, best, trees = { [toolId] = { levels,
+-- owned (this run), mastered (for good) } } }) and the run's coins (State.data.run.coins)
 -------------------------------------------------------------------------------------------------------------
-local function toolView(d, id: string)
+local function allOf(d)
 	local all = d and d.skills
-	local v = all and all[id]
+	return if type(all) == "table" and type(all.trees) == "table" then all else nil
+end
+
+local function toolView(d, id: string)
+	local all = allOf(d)
+	local v = all and all.trees[id]
 	if type(v) == "table" then
 		return v
 	end
-	return { mp = 0, earned = 0, owned = id == ORDER[1].id, mastered = false, levels = {} }
+	return { owned = false, mastered = false, levels = {} }
 end
 
--- The next pip of a skill: (mastery points, gems, can buy it now, why not: "locked" | "max" | "mp" | "gems"), by the
--- same rule the server buys with (shared/SkillTrees.check).
-local function nextPip(d, id: string, skillId: string): (number?, number, boolean, string?)
-	local ok, why, mp, gems = Tree.check(id, skillId, toolView(d, id), (d and d.gems) or 0)
-	return mp, gems, ok, why
+local function coinsOf(d): number
+	local run = d and d.run
+	return if type(run) == "table" then tonumber(run.coins) or 0 else 0
 end
 
--- How many of a weapon's skills could take a pip right now.
+local function isBest(d, id: string): boolean
+	local all = allOf(d)
+	return all ~= nil and all.best == id
+end
+
+local function inRun(d): boolean
+	local all = allOf(d)
+	return all ~= nil and all.inRun == true
+end
+
+-- every weapon's pips this run, for the one-full-tree-a-run rule
+local function runSkills(d)
+	local rs = {}
+	for _, def in ORDER do
+		rs[def.id] = toolView(d, def.id).levels
+	end
+	return rs
+end
+
+-- The next pip of a skill: (coins, can buy it now, why not: "lobby" | "locked" | "max" | "past" | "oneARun" |
+-- "coins"), by the same rule the server buys with (shared/SkillTrees.check).
+local function nextPip(d, id: string, skillId: string): (number?, boolean, string?)
+	local v = toolView(d, id)
+	local ok, why, price = Tree.check(id, skillId, {
+		levels = v.levels,
+		owned = v.owned == true,
+		best = isBest(d, id),
+		coins = coinsOf(d),
+		runSkills = runSkills(d),
+		inRun = inRun(d),
+	})
+	return price, ok, why
+end
+
+-- How many of a weapon's skills could take a pip right now (only ever the best weapon's).
 local function affordable(d, id: string): number
 	local n = 0
 	for _, sk in Tree.TREES[id].skills do
-		local _, _, can = nextPip(d, id, sk.id)
+		local _, can = nextPip(d, id, sk.id)
 		if can then
 			n += 1
 		end
@@ -99,32 +147,12 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the window
 -------------------------------------------------------------------------------------------------------------
-local w = UI.window("SkillTree", "Skill Tree", nil, { gems = true, size = Vector2.new(1000, 600) })
+local w = UI.window("SkillTree", "Skill Tree", nil, { size = Vector2.new(1000, 600) })
 w.list.Visible = false -- laid out below
 local P = w.panel
 local title = w.title :: TextLabel
 title.Position = UDim2.fromOffset(60, -70)
 UI.icon(w.frame, "star", 92, UDim2.fromOffset(-30, -76)).ZIndex = 9
-
--- the gem box (gems pay for the top pips): blue, with a green + that opens the shop (as in client/GemUpgrades)
-local gemBox = w.frame:FindFirstChild("GemBox") :: GuiObject?
-if gemBox then
-	if gemBox:IsA("Frame") then
-		gemBox.Size = UDim2.fromOffset(250, 60)
-		gemBox.BackgroundColor3 = Color3.fromRGB(30, 70, 170)
-		local st = gemBox:FindFirstChildOfClass("UIStroke")
-		if st then
-			st.Color = Color3.fromRGB(10, 26, 70)
-		end
-		UI.gradient(gemBox, Color3.fromRGB(34, 80, 190))
-	else
-		gemBox.Size = UDim2.fromOffset(250, 60)
-	end
-	local plus = UI.button(gemBox, "+", C.green, UDim2.fromOffset(46, 46), function()
-		UI.open("Store")
-	end, { pos = UDim2.new(1, -8, 0.5, 0), anchor = Vector2.new(1, 0.5), name = "More" })
-	UI.raise(plus, 8)
-end
 
 -- the sunken box behind the cards, then one see-through layer per part (each rebuilt on its own)
 UI.section(P, UDim2.fromOffset(928, 392), UDim2.fromOffset(16, 70))
@@ -147,8 +175,8 @@ w.pop = { cardsL, stripL } -- (UI.open pops these in)
 
 local page = 1 -- index into ORDER
 local picked: { [string]: string } = {} -- [toolId] = the skill whose details show
-local lastKey = "" -- what the page was drawn for (an MP change alone only updates the number)
-local mpLabel: TextLabel? = nil
+local lastKey = "" -- what the page was drawn for (the coins alone only update the number)
+local coinLabel: TextLabel? = nil
 local wasOpen = false
 local openedOnce = false
 local upgraded = false -- a pip was bought while open: a burst round your character when it closes
@@ -184,8 +212,8 @@ local function cardInside(face: Frame, theme: Theme, raysSize: number, raysY: nu
 	return inner
 end
 
--- "★ 70   (gem) 40": icons and numbers in a row, centred in `parent`.
-local function priceRow(parent: Instance, mp: number, gems: number, h: number, mpColor: Color3, gemColor: Color3)
+-- "(coin) 1,300": the coin and the number in a row, centred in `parent`.
+local function priceRow(parent: Instance, coins: number, h: number, color: Color3)
 	local row = Instance.new("Frame")
 	row.Name = "Price"
 	row.BackgroundTransparency = 1
@@ -198,24 +226,23 @@ local function priceRow(parent: Instance, mp: number, gems: number, h: number, m
 	layout.Padding = UDim.new(0, 4)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = row
-	local function part(order: number, icon: string, amount: number, color: Color3)
-		local ic = UI.icon(row, icon, h, nil, nil)
-		ic.LayoutOrder = order
-		local t = UI.text(row, Format.commas(amount), UDim2.fromOffset(0, h), { color = color, stroke = 2, textSize = math.floor(h * 0.8) })
-		t.TextWrapped = false
-		t.AutomaticSize = Enum.AutomaticSize.X
-		t.LayoutOrder = order + 1
-	end
-	part(1, "star", mp, mpColor)
-	if gems > 0 then
-		local gap = Instance.new("Frame")
-		gap.BackgroundTransparency = 1
-		gap.Size = UDim2.fromOffset(6, 1)
-		gap.LayoutOrder = 3
-		gap.Parent = row
-		part(4, "gem", gems, gemColor)
-	end
+	local ic = UI.icon(row, "coin", h, nil, nil)
+	ic.LayoutOrder = 1
+	local t = UI.text(row, Format.commas(coins), UDim2.fromOffset(0, h), { color = color, stroke = 2, textSize = math.floor(h * 0.8) })
+	t.TextWrapped = false
+	t.AutomaticSize = Enum.AutomaticSize.X
+	t.LayoutOrder = 2
 	return row
+end
+
+-- The colour of a price: green if you can buy it, red if only the coins are short, pale if it isn't for now.
+local function priceColor(can: boolean, why: string?): Color3
+	if can then
+		return MINT
+	elseif why == "coins" or why == "oneARun" then
+		return SHORT
+	end
+	return DIM
 end
 
 -- the arrows: the weapon before / after (round the ends)
@@ -250,51 +277,57 @@ local function buildHeader(def, v, theme: Theme)
 	end
 end
 
--- Mastery points (the plate with the star), what earns them, and the tree's pips as a bar.
-local function buildInfo(def, v)
-	UI.clear(infoL)
-	local plate, face = Skin.frame(infoL, "ui_plate", Vector2.new(200, 48), { pos = UDim2.fromOffset(64, 80), name = "Points" })
-	local points = UI.text(face, Format.commas(v.mp or 0), UDim2.new(1, -36, 1, -4), { pos = UDim2.fromOffset(30, 2), align = Enum.TextXAlignment.Left, stroke = 3 })
-	points.ZIndex = plate.ZIndex + 2
-	mpLabel = points
-	local star = UI.icon(infoL, "star", 62, UDim2.fromOffset(32, 72))
-	star.ZIndex = plate.ZIndex + 3
-	local head, hint, hintColor
-	if not v.owned then
-		head, hint, hintColor = "LOCKED", ("Buy the %s in a run to open this tree"):format(def.name), W.cream
+-- What the page says about the weapon in this run: a headline and a hint.
+local function pageNote(d, def, v): (string, string, Color3)
+	local have, total = Tree.pips(def.id, v.levels)
+	local gold = "★ Mastered for good: it stays gold in every run."
+	if not inRun(d) then
+		return "BOUGHT IN A RUN", if v.mastered then gold else "Skills cost a run's coins and reset when it ends.", if v.mastered then GOLD else W.cream
+	elseif not v.owned then
+		return "LOCKED", ("Buy the %s in this run to train it."):format(def.name), W.cream
+	elseif have >= total then
+		return "MAXED!", "Every skill maxed this run. ★ Mastered for good!", GOLD
+	elseif not isBest(d, def.id) then
+		return "OLD WEAPON", "Only your best weapon learns: this tree is done for this run.", W.cream
+	elseif Tree.fullCount(runSkills(d)) >= Tree.MAX_FULL_PER_RUN then
+		return "ONE MAXED A RUN", "You've maxed a weapon this run: all but this tree's last pip.", W.cream
 	elseif v.mastered then
-		head, hint, hintColor = "MASTERED!", "Every skill is maxed. It's gold now!", GOLD
-	else
-		-- (only clumps from the weapon's own area on count: shared/SkillTrees `from`)
-		local from = Tree.tree(def.id).from
-		local zone = if from > 1 then Config.ZONES and Config.ZONES[from] else nil
-		local per = Tree.POINTS.clump
-		head, hint, hintColor = "MASTERY POINTS", if zone then ("+%d per clump, %s and later"):format(per, zone.name) else ("+%d per clump you chop with it"):format(per), W.cream
+		return "★ MASTERED", "Gold for good. Its pips are new each run: buy them again!", GOLD
 	end
+	return "THIS RUN", ("Pips cost coins and reset every run. Max all %d to master it!"):format(total), W.cream
+end
+
+-- The run's coins (a plate with a coin), what this weapon can do this run, and the tree's pips as a bar.
+local function buildInfo(d, def, v)
+	UI.clear(infoL)
+	local plate, face = Skin.frame(infoL, "ui_plate", Vector2.new(200, 48), { pos = UDim2.fromOffset(64, 80), name = "Coins" })
+	local amount = UI.text(face, Format.commas(coinsOf(d)), UDim2.new(1, -36, 1, -4), { pos = UDim2.fromOffset(30, 2), align = Enum.TextXAlignment.Left, stroke = 3 })
+	amount.ZIndex = plate.ZIndex + 2
+	coinLabel = amount
+	local coin = UI.icon(infoL, "coin", 58, UDim2.fromOffset(34, 74))
+	coin.ZIndex = plate.ZIndex + 3
+	local head, hint, hintColor = pageNote(d, def, v)
 	UI.text(infoL, head, UDim2.fromOffset(370, 22), { pos = UDim2.fromOffset(282, 80), align = Enum.TextXAlignment.Left, color = if v.mastered then GOLD else Color3.fromRGB(255, 186, 60), stroke = 2.5 })
 	UI.text(infoL, hint, UDim2.fromOffset(370, 20), { pos = UDim2.fromOffset(282, 104), align = Enum.TextXAlignment.Left, color = hintColor, stroke = 1.5 })
 	local have, total = Tree.pips(def.id, v.levels)
-	local bar, fill, label = Skin.bar(infoL, Vector2.new(262, 44), if v.owned then C.green else GREY, { pos = UDim2.fromOffset(666, 80), name = "Pips" })
+	local _bar, fill, label = Skin.bar(infoL, Vector2.new(262, 44), if v.owned then C.green else GREY, { pos = UDim2.fromOffset(666, 80), name = "Pips" })
 	fill.Size = UDim2.fromScale(math.clamp(have / math.max(1, total), 0, 1), 1)
-	label.Text = if v.mastered then "MASTERED!" else ("%d / %d PIPS"):format(have, total)
+	label.Text = if have >= total then "MAXED!" elseif v.mastered then ("★ %d / %d PIPS"):format(have, total) else ("%d / %d PIPS"):format(have, total)
 	if v.mastered then
 		goldify(fill)
 	end
-	local _ = bar
 end
 
 -- The price of a card's next pip at its foot (MAXED once full).
 local function costTag(card: GuiObject, d, def, sk)
-	local mp, gems, can, why = nextPip(d, def.id, sk.id)
+	local price, can, why = nextPip(d, def.id, sk.id)
 	local tag = UI.frame({ size = UDim2.fromOffset(150, 34), pos = UDim2.new(0.5, 0, 0, 244), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(14, 22, 48), parent = card, radius = 999, outline = 0, name = "Cost" })
 	tag.BackgroundTransparency = 0.35
-	if why == "max" or not mp then
+	if why == "max" or not price then
 		UI.text(tag, "MAXED", UDim2.new(1, -10, 1, -8), { pos = UDim2.fromOffset(5, 4), color = GOLD, stroke = 2 })
 		return
 	end
-	local mine = toolView(d, def.id).mp or 0
-	local gemsOk = ((d and d.gems) or 0) >= gems
-	priceRow(tag, mp, gems, 24, if can or mine >= mp then MINT else Color3.new(1, 1, 1), if gemsOk then Color3.fromRGB(150, 220, 255) else Color3.new(1, 1, 1))
+	priceRow(tag, price, 24, priceColor(can, why))
 end
 
 -- One skill card: the level ribbon, its picture on rays, its name, what it does now, the pips and the next price.
@@ -355,24 +388,39 @@ end
 -- Try to buy the next pip (the server checks it all again; this only saves a pointless request and says why not).
 local function tryBuy(def, sk)
 	local d = State.data
-	local mp, gems, can, why = nextPip(d, def.id, sk.id)
+	local price, can, why = nextPip(d, def.id, sk.id)
 	if can then
 		State.fire("Skill", def.id, sk.id)
 		return
 	end
 	Sound.play("denied")
-	if why == "locked" then
-		UI.toast(("Buy the %s in a run to open its skill tree!"):format(def.name), "red")
+	if why == "lobby" then
+		UI.toast("Weapon skills are bought in a run, with its coins.", "red")
+	elseif why == "locked" then
+		UI.toast(("Buy the %s in this run to open its skill tree!"):format(def.name), "red")
+	elseif why == "past" then
+		UI.toast(("Only your best weapon learns skills: the %s's tree is done for this run."):format(def.name), "red")
 	elseif why == "max" then
 		UI.toast(sk.name .. " is maxed!", "yellow")
-	elseif why == "mp" and mp then
-		UI.toast(("%s more mastery points: chop grass with the %s!"):format(Format.commas(mp - (toolView(d, def.id).mp or 0)), def.name), "red")
-	elseif why == "gems" then
-		UI.toast(("%s more gems needed"):format(Format.commas(gems - ((d and d.gems) or 0))), "red")
+	elseif why == "oneARun" then
+		UI.toast("One weapon can be maxed a run: this last pip waits for the next run.", "red")
+	elseif why == "coins" and price then
+		UI.toast(("%s more coins needed"):format(Format.commas(math.ceil(price - coinsOf(d)))), "red")
 	end
 end
 
--- The picked skill, big: what it does, now > next, the price and BUY (or LOCKED / MAXED / MASTERED).
+-- What the big button says for the picked skill's next pip.
+type Look = { text: string, color: Color3 }
+local BUTTON: { [string]: Look } = {
+	lobby = { text = "IN A RUN", color = W.grey },
+	locked = { text = "LOCKED", color = W.grey },
+	past = { text = "OLD WEAPON", color = W.grey },
+	max = { text = "MAXED", color = AMBER },
+	oneARun = { text = "ONE A RUN", color = W.grey },
+	coins = { text = "BUY", color = W.grey },
+}
+
+-- The picked skill, big: what it does, now > next, the price and BUY (or IN A RUN / LOCKED / OLD WEAPON / MAXED).
 local function buildDetail(d, def, v, theme: Theme)
 	UI.clear(detailL)
 	local sk = Tree.skill(def.id, picked[def.id]) or Tree.tree(def.id).skills[1]
@@ -397,25 +445,17 @@ local function buildDetail(d, def, v, theme: Theme)
 	local now = Tree.text(sk.id, level)
 	local values = if level >= Tree.PIPS then now .. "  MAX" else ("%s  ▶  %s"):format(now, Tree.text(sk.id, level + 1))
 	UI.text(box, values, UDim2.new(1, -12, 0, 26), { pos = UDim2.fromOffset(6, 20), color = theme.value, stroke = 2 })
-	local mp, gems, can, why = nextPip(d, def.id, sk.id)
-	if mp and v.owned then
+	local price, can, why = nextPip(d, def.id, sk.id)
+	if price then
 		local slot = Instance.new("Frame")
 		slot.BackgroundTransparency = 1
 		slot.Size = UDim2.new(1, -40, 0, 28)
 		slot.Position = UDim2.fromOffset(20, 220)
 		slot.Parent = holder
-		local enough = (v.mp or 0) >= mp
-		priceRow(slot, mp, gems, 28, if enough then MINT else Color3.fromRGB(255, 120, 110), if ((d and d.gems) or 0) >= gems then Color3.fromRGB(150, 220, 255) else Color3.fromRGB(255, 120, 110))
+		priceRow(slot, price, 28, priceColor(can, why))
 	end
-	local text, color = "BUY", if can then C.green else W.grey
-	if v.mastered then
-		text, color = "MASTERED", AMBER
-	elseif why == "locked" then
-		text, color = "LOCKED", W.grey
-	elseif why == "max" then
-		text, color = "MAXED", AMBER
-	end
-	local b = UI.button(holder, text, color, UDim2.fromOffset(200, 48), function()
+	local look: Look = if can then { text = "BUY", color = C.green } else BUTTON[why or ""] or BUTTON.coins
+	local b = UI.button(holder, look.text, look.color, UDim2.fromOffset(200, 48), function()
 		tryBuy(def, sk)
 	end, { pos = UDim2.new(0.5, 0, 1, -18), anchor = Vector2.new(0.5, 1), name = "Buy" })
 	UI.raise(b, 6)
@@ -424,7 +464,18 @@ local function buildDetail(d, def, v, theme: Theme)
 	end
 end
 
--- Every weapon along the bottom: gold when mastered, dark with a lock when not owned, a red dot when a pip is ready.
+-- A "★ MASTERED" tag along the foot of a tile (the window's weapon row, the HUD's hotbar).
+local function masteredTag(parent: GuiObject, width: number, y: number, z: number): Frame
+	local tag = UI.frame({ size = UDim2.fromOffset(width, 18), pos = UDim2.new(0.5, 0, 1, y), anchor = Vector2.new(0.5, 1), color = AMBER, parent = parent, radius = 999, outline = 2, name = "Mastered" })
+	goldify(tag)
+	tag.ZIndex = z
+	local t = UI.text(tag, "★ MASTERED", UDim2.new(1, -6, 1, -2), { pos = UDim2.fromOffset(3, 1), stroke = 1.5, textSize = 12 })
+	t.ZIndex = z + 1
+	return tag
+end
+
+-- Every weapon along the bottom: gold with a crown and "★ MASTERED" when mastered (for good), blue when owned in
+-- this run, a lock when not, a red dot when a pip is ready.
 local function buildStrip(d)
 	UI.clear(stripL)
 	local size, gap = 68, 12
@@ -445,12 +496,14 @@ local function buildStrip(d)
 				ic.ImageTransparency = 0.45
 			end
 			UI.icon(tile, "lock", 28, UDim2.new(1, 4, 1, 4), Vector2.new(1, 1))
-		elseif v.mastered then
+		end
+		if v.mastered then
 			local crown = UI.icon(tile, "crown", 32, UDim2.new(1, 8, 0, -12), Vector2.new(1, 0))
 			crown.Rotation = 14
+			masteredTag(tile, 78, 12, tile.ZIndex + 3)
 		end
 		local dot = Skin.dot(tile, UDim2.fromOffset(6, 6), 18)
-		dot.Visible = v.owned and affordable(d, def.id) > 0
+		dot.Visible = affordable(d, def.id) > 0
 		tile.MouseButton1Click:Connect(function()
 			page = i
 			lastKey = ""
@@ -459,34 +512,44 @@ local function buildStrip(d)
 	end
 end
 
--- A weapon never owned: a dark LOCKED sheet over its cards (Chop A Forest's look).
-local function buildLock(def, v)
+-- A dark sheet over the cards when the page's weapon can't learn here: in the lobby (skills are bought in a run), or
+-- not owned in this run (LOCKED, Chop A Forest's look). A mastered weapon's sheet says so in gold.
+local function buildLock(d, def, v)
 	UI.clear(lockL)
-	if v.owned then
+	local lobby = not inRun(d)
+	if v.owned and not lobby then
 		return
 	end
-	local f = UI.frame({ size = UDim2.fromOffset(624, 316), pos = UDim2.fromOffset(28, 134), color = Color3.fromRGB(20, 22, 34), parent = lockL, radius = 18, outline = 0, name = "Locked" })
+	local f = UI.frame({ size = UDim2.fromOffset(624, 316), pos = UDim2.fromOffset(28, 134), color = if v.mastered then Color3.fromRGB(60, 34, 6) else Color3.fromRGB(20, 22, 34), parent = lockL, radius = 18, outline = 0, name = "Locked" })
 	f.BackgroundTransparency = 0.3
-	local lock = UI.icon(f, "lock", 100, UDim2.new(0.5, 0, 0, 56), Vector2.new(0.5, 0))
-	Skin.bob(lock, 3, 1.5)
-	UI.text(f, "LOCKED", UDim2.fromOffset(320, 58), { pos = UDim2.new(0.5, 0, 0, 164), anchor = Vector2.new(0.5, 0), stroke = 4 })
-	UI.text(f, ("Buy the %s in a run to open its skill tree"):format(def.name), UDim2.new(1, -60, 0, 26), { pos = UDim2.new(0.5, 0, 0, 228), anchor = Vector2.new(0.5, 0), color = W.cream, stroke = 2 })
+	local icon = UI.icon(f, if lobby then "coin" else "lock", 100, UDim2.new(0.5, 0, 0, 40), Vector2.new(0.5, 0))
+	Skin.bob(icon, 3, 1.5)
+	local head = UI.text(f, if lobby then "IN A RUN" else "LOCKED", UDim2.fromOffset(420, 58), { pos = UDim2.new(0.5, 0, 0, 146), anchor = Vector2.new(0.5, 0), stroke = 4 })
+	if v.mastered then
+		local g = Instance.new("UIGradient")
+		g.Color = TITLE_GOLD
+		g.Rotation = 90
+		g.Parent = head
+	end
+	local sub = if lobby then "Skills are bought with a run's coins, and reset when it ends" else ("Buy the %s in this run to train its skills"):format(def.name)
+	UI.text(f, sub, UDim2.new(1, -60, 0, 26), { pos = UDim2.new(0.5, 0, 0, 208), anchor = Vector2.new(0.5, 0), color = W.cream, stroke = 2 })
+	if v.mastered then
+		UI.text(f, "★ MASTERED for good: gold in every run", UDim2.new(1, -60, 0, 26), { pos = UDim2.new(0.5, 0, 0, 242), anchor = Vector2.new(0.5, 0), color = GOLD, stroke = 2 })
+	end
 end
 
 -------------------------------------------------------------------------------------------------------------
 -- drawing it
 -------------------------------------------------------------------------------------------------------------
--- What a page shows apart from the mastery number: rebuilt only when this changes.
+-- What a page shows apart from the coin number: rebuilt only when this changes.
 local function pageKey(d): string
-	local parts = { tostring(page) }
+	local parts = { tostring(page), tostring(inRun(d)), tostring(allOf(d) and allOf(d).best) }
 	for _, def in ORDER do
 		local v = toolView(d, def.id)
 		table.insert(parts, def.id .. (if v.owned then "o" else "-") .. (if v.mastered then "m" else "-") .. (picked[def.id] or ""))
 		for _, sk in Tree.TREES[def.id].skills do
-			local mp, gems, can = nextPip(d, def.id, sk.id)
-			local mine = v.mp or 0
-			local gemsOk = ((d and d.gems) or 0) >= gems
-			table.insert(parts, Tree.level(v.levels, sk.id) .. (if can then "+" else "") .. (if mp and mine >= mp then "m" else "") .. (if gemsOk then "g" else ""))
+			local _, can, why = nextPip(d, def.id, sk.id)
+			table.insert(parts, Tree.level(v.levels, sk.id) .. (if can then "+" else "") .. (why or ""))
 		end
 	end
 	return table.concat(parts, "|")
@@ -503,13 +566,14 @@ local function firstOpen(def, v): string
 	return skills[1].id
 end
 
--- Opening the window shows the weapon in your hand, or (the first time) the best one you own.
+-- Opening the window shows the weapon in your hand, or (the first time) your best one this run.
 local function pickPage(d)
 	local char = player.Character
 	local tool = char and char:FindFirstChildOfClass("Tool")
 	local held = tool and tool:GetAttribute("ToolId")
 	local first = not openedOnce
 	openedOnce = true
+	local best = allOf(d) and allOf(d).best
 	for i, def in ORDER do
 		if def.id == held then
 			page = i
@@ -518,7 +582,7 @@ local function pickPage(d)
 	end
 	if first then
 		for i, def in ORDER do
-			if toolView(d, def.id).owned then
+			if def.id == best then
 				page = i
 			end
 		end
@@ -533,14 +597,14 @@ local function rebuild(d)
 		picked[def.id] = firstOpen(def, v)
 	end
 	buildHeader(def, v, theme)
-	buildInfo(def, v)
+	buildInfo(d, def, v)
 	UI.clear(cardsL)
 	for i, sk in Tree.tree(def.id).skills do
 		buildCard(i, d, def, sk, v, theme)
 	end
 	buildDetail(d, def, v, theme)
 	buildStrip(d)
-	buildLock(def, v)
+	buildLock(d, def, v)
 	-- a pip just bought: its card bounces with a burst of sparkles; a tree just mastered: every card bursts gold
 	local b = bumped
 	if b and b.tool == def.id then
@@ -569,9 +633,9 @@ w.refresh = function()
 		lastKey = ""
 	end
 	local key = pageKey(d)
-	local label = mpLabel
+	local label = coinLabel
 	if key == lastKey and label and label.Parent then
-		label.Text = Format.commas(toolView(d, ORDER[page].id).mp or 0)
+		label.Text = Format.commas(coinsOf(d))
 		return
 	end
 	lastKey = key
@@ -589,7 +653,8 @@ UI.onWindowChanged.Event:Connect(function(name)
 end)
 
 -------------------------------------------------------------------------------------------------------------
--- the moment a weapon is mastered: a gold banner (the title style, punched in with a shockwave), confetti, fanfare
+-- the first time a weapon is mastered: a gold banner (the title style, punched in with a shockwave), confetti,
+-- fanfare (server/SkillTrees sends "skillMastered" only that once; maxing it again in a later run doesn't)
 -------------------------------------------------------------------------------------------------------------
 local banner: Frame? = nil
 local function goldBanner(text: string, sub: string)
@@ -680,7 +745,7 @@ local function celebrate(toolId: string)
 	end
 	celebrating[toolId] = true
 	lastKey = ""
-	goldBanner(string.upper(def.name) .. " MASTERED!", "Every skill maxed: your " .. def.name .. " is gold now!")
+	goldBanner(string.upper(def.name) .. " MASTERED!", "Every skill maxed: your " .. def.name .. " is gold for good!")
 	Sound.play("victory")
 	Confetti.burst(160)
 	task.delay(0.7, Confetti.burst, 110)
@@ -701,7 +766,36 @@ State.on("fx", function(kind: string, p: any)
 end)
 
 -------------------------------------------------------------------------------------------------------------
--- the SKILLS button, K, and the red dot / note when a weapon can learn something
+-- the "★ MASTERED" tag on a mastered weapon's slot in client/Hud's hotbar (Hud rebuilds its slots when the tools
+-- change: Hud.Hotbar.SlotN.Body.Icon_<key>, the key being the tree's icon; the tag goes with the slot)
+-------------------------------------------------------------------------------------------------------------
+local function markHotbar()
+	local hud = UI.gui:FindFirstChild("Hud")
+	local hotbar = hud and hud:FindFirstChild("Hotbar")
+	if not hotbar then
+		return
+	end
+	for _, slot in hotbar:GetChildren() do
+		local body = slot:FindFirstChild("Body")
+		if body and body:IsA("GuiObject") then
+			local id = nil
+			for _, c in body:GetChildren() do
+				local key = string.match(c.Name, "^Icon_(.+)$")
+				id = id or (key and BY_ICON[key])
+			end
+			local want = id ~= nil and toolView(State.data, id).mastered == true
+			local tag = body:FindFirstChild("Mastered")
+			if want and not tag then
+				masteredTag(body, 80, 6, 6)
+			elseif tag and not want then
+				tag:Destroy()
+			end
+		end
+	end
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- the SKILLS button, K, and the red dot / note when your best weapon can learn something
 -------------------------------------------------------------------------------------------------------------
 local SIDE_STEP = 126 -- one badge in client/Hud's side column (116 tall, 10 apart)
 local badge: GuiButton? = nil -- in the side column (computer)
@@ -826,10 +920,17 @@ task.spawn(function()
 	side:GetPropertyChangedSignal("Size"):Connect(later)
 	side:GetPropertyChangedSignal("AnchorPoint"):Connect(later)
 	placeButton()
+	local hotbar = (hud :: Instance):WaitForChild("Hotbar", 10)
+	if hotbar then
+		hotbar.ChildAdded:Connect(function()
+			task.defer(markHotbar)
+		end)
+	end
 	-- (the SETTINGS gear appears a moment later and moves with the screen: keep beside it)
 	while true do
 		task.wait(1)
 		placeButton()
+		markHotbar()
 	end
 end)
 
@@ -842,26 +943,28 @@ UserInputService.InputBegan:Connect(function(input, processed)
 	end
 end)
 
--- The red dot on the button while any weapon can learn something, and a note when one first can.
-local ready: { [string]: boolean } = {}
+-- The red dot on the button while your best weapon can learn something, and a note the first time it can (once a
+-- weapon: coins come in all the time, so the dot does the rest).
+local noted: { [string]: boolean } = {}
 local seenData = false
 local lastNote = 0
 State.on("data", function(d)
 	local any = false
 	for _, def in ORDER do
-		local now = toolView(d, def.id).owned and affordable(d, def.id) > 0
+		local now = affordable(d, def.id) > 0
 		any = any or now
-		if seenData and now and not ready[def.id] and os.clock() - lastNote > 20 and not UI.isOpen("SkillTree") then
+		if seenData and now and not noted[def.id] and os.clock() - lastNote > 20 and not UI.isOpen("SkillTree") then
+			noted[def.id] = true
 			lastNote = os.clock()
-			UI.toast(("★ Your %s can learn a new skill! %s"):format(def.name, if UI.touch then "Tap SKILLS" else "Press K"), "yellow")
+			UI.toast(("★ Your %s can learn a skill! %s"):format(def.name, if UI.touch then "Tap SKILLS" else "Press K"), "yellow")
 		end
-		ready[def.id] = now
 	end
 	seenData = true
 	anyReady = any
 	if dot then
 		dot.Visible = any
 	end
+	markHotbar()
 end)
 
 return SkillTreeWindow

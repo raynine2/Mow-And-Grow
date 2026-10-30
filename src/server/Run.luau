@@ -339,7 +339,7 @@ local function onCut(player: Player, patch): boolean
 	end
 	Quests.event(player, "cut", 1)
 	ClassPerks.cut(player, pos) -- Tidy Up, Hot Streak
-	require(script.Parent.SkillTrees).onCut(player, patch) -- (30 Oct) weapon skill trees: mastery points, Harvest
+	require(script.Parent.SkillTrees).onCut(player, patch) -- (30 Oct) weapon skill trees: Harvest
 	data.stats.cut += 1
 	local m = Config.mutation(patch.mut or "None")
 	-- (report #2) a few coins on the spot for every clump (Chop A Forest pays per hit): the HUD counter ticks up
@@ -462,7 +462,7 @@ local function autoTick()
 				if fuel > 0 then
 					-- (report #12) a zero-turn mows a wide swath centred on its deck out front (Config.MOWERS swath / ahead)
 					local pos = (mower.PrimaryPart.CFrame * CFrame.new(0, 0, -(mdef.ahead or 0))).Position
-					local dmg = mdef.damage * stats.power * ClassPerks.powerMult(player)
+					local dmg = mdef.damage * (stats.mowerPower or stats.power) * ClassPerks.powerMult(player)
 					if groundFull(player) then
 						warnBagFull(player)
 					else
@@ -810,7 +810,7 @@ function Run.start()
 		if not data or not data.run then
 			return 0
 		end
-		local def = Config.TOOLS[math.clamp(data.run.tool or 1, 1, #Config.TOOLS)]
+		local def = require(script.Parent.SkillTrees).boost(player, Config.TOOLS[math.clamp(data.run.tool or 1, 1, #Config.TOOLS)]) -- (30 Oct) with its skill tree
 		return (def and def.damage or 1) * Stats.compute(player, data).power * ClassPerks.powerMult(player)
 	end
 	ClassPerks.sellAnywhere = function(player: Player, cut: number): number

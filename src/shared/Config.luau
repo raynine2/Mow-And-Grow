@@ -46,13 +46,13 @@ Config.SKILL_TREES = require(script.Parent:WaitForChild("SkillTrees")) -- (30 Oc
 -------------------------------------------------------------------------------------------------------------
 -- `section` groups them in the upgrades window (Hands / Tool / Gear). Carry comes from bags (Config.BAGS); the old
 -- "carry" upgrade is gone, but levels bought before still count (Config.LEGACY_CARRY_PER bundles each).
-Config.UPGRADE_SECTIONS = { "Hands", "Tool", "Gear", "Mower" }
+Config.UPGRADE_SECTIONS = { "Hands", "Gear", "Mower" }
 Config.UPGRADES = {
 	-- like Chop A Forest's first purchase: until you own it, every swing is a click
 	{ id = "hold", section = "Hands", name = "Hold", desc = "Hold the button to keep cutting", per = 1, base = 20, growth = 1, max = 1 },
 	{ id = "swing", section = "Hands", name = "Swing Speed", desc = "-6% time between swings", per = 0.06, base = 30, growth = 2.6, max = 10 },
 	{ id = "grasp", section = "Hands", name = "Grasp", desc = "+1.5 studs pickup reach", per = 1.5, base = 60, growth = 2.5, max = 10 },
-	{ id = "power", section = "Tool", name = "Power", desc = "+20% cutting power", per = 0.20, base = 100, growth = 3.2, max = 10 },
+	{ id = "power", section = "Mower", name = "Mower Blades", desc = "+20% ride-on mower cutting power", per = 0.20, base = 100, growth = 3.2, max = 10 }, -- (30 Oct) was the "Tool" section's Power: the tools' power is in their skill trees now (shared/SkillTrees); the id stays, so a saved run's levels keep powering its mowers
 	{ id = "speed", section = "Gear", name = "Walk Speed", desc = "+6% walk speed", per = 0.06, base = 250, growth = 3.0, max = 10 },
 	{ id = "sell", section = "Gear", name = "Shredder Boost", desc = "+15% coins per bundle", per = 0.15, base = 300, growth = 3.4, max = 10 },
 	-- (29 Oct, owner: "mower upgrades") for whatever ride-on mower you drive: coins into the mower instead of a

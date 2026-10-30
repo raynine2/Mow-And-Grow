@@ -262,7 +262,8 @@ end
 local function sign(lock: Model, centre: Vector3, s: number)
 	local anchor = part(lock, Vector3.new(0.2, 0.2, 0.2), CYAN, Enum.Material.SmoothPlastic, 1)
 	anchor.Anchored = true
-	anchor.CFrame = CFrame.new(centre + Vector3.new(0, (BODY.Y / 2 + LEG + ARC_R + 1.9) * s, 0))
+	-- (just clear of the shackle at the top of its bob: on the garage it stays under the GARAGE board)
+	anchor.CFrame = CFrame.new(centre + Vector3.new(0, (BODY.Y / 2 + LEG + ARC_R + 1.75) * s, 0))
 	local g = Instance.new("BillboardGui")
 	g.Size = UDim2.new(9 * s, 0, 2.7 * s, 0)
 	g.LightInfluence = 0
@@ -369,6 +370,29 @@ local function kindOf(p: ProximityPrompt): string?
 	return nil
 end
 
+-- which way the garage's door looks out: of the prompt's front and back, the side with open air (the other side is the
+-- shutter, right behind it)
+local function outward(holder: BasePart): Vector3
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Exclude
+	local skip: { Instance } = { folder, holder }
+	if player.Character then
+		table.insert(skip, player.Character)
+	end
+	rp.FilterDescendantsInstances = skip
+	local look = holder.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	if flat.Magnitude < 0.1 then
+		return Vector3.zero
+	end
+	flat = flat.Unit
+	local function free(d: Vector3): number
+		local hit = workspace:Raycast(holder.Position + Vector3.new(0, 1.5, 0), d * 14, rp)
+		return if hit then hit.Distance else 14
+	end
+	return if free(-flat) > free(flat) then -flat else flat
+end
+
 local function placeFor(kind: string, holder: BasePart): (Vector3, Vector3, number, number)
 	if kind == "pump" then
 		-- over the pump: a small lock, its projector on the pump's top
@@ -376,13 +400,18 @@ local function placeFor(kind: string, holder: BasePart): (Vector3, Vector3, numb
 		local s = 0.62
 		return top + Vector3.new(0, (BODY.Y / 2 + 1.6) * s, 0), top, 1.1, s
 	elseif kind == "garage" then
-		-- in front of the garage's open door: a big lock over the bay
-		local floor = ground(holder.Position)
+		-- in front of the garage's door, clear of it as it turns (a big lock over the bay), the sign in front of the
+		-- facade's beam
+		local floor = ground(holder.Position + outward(holder) * 4.2)
 		local s = 1.25
-		return floor + Vector3.new(0, (BODY.Y / 2 + 2.6) * s, 0), floor, 3.4, s
+		return floor + Vector3.new(0, (BODY.Y / 2 + 1.9) * s, 0), floor, 3, s
 	else
-		-- the lobby: over the mower on its turntable, the ring round the turntable
-		local floor = ground(holder.Position)
+		-- the lobby: over the mower on its turntable, the ring on the turntable's top round it (not the ground under the
+		-- prompt: that's the mower's roof)
+		local cf, size = holder.CFrame, holder.Size
+		local height = math.abs(cf.RightVector.Y) * size.X + math.abs(cf.UpVector.Y) * size.Y + math.abs(cf.LookVector.Y) * size.Z
+		-- (a little over its top: the turntable's studs stay under the ring)
+		local floor = holder.Position + Vector3.new(0, height / 2 + 0.2, 0)
 		local s = 1.3
 		return floor + Vector3.new(0, 4.6 + (BODY.Y / 2 + 1.4) * s, 0), floor, 5.6, s
 	end

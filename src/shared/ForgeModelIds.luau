@@ -104,4 +104,7 @@ return {
 	fa_altar_isles = 119007137788084,
 	-- the Tool Shop's cabin (server/ShopShell; 31 Oct, owner: "the house at spawn feels a bit idk"); front -Z
 	toolshop_shell = 140559480856788,
+	-- the Mega Scythe (server/Models FORGE_TOOLS; 31 Oct, owner: "revamp the mega sytche model witth forgegui"); it
+	-- stands up its +Y (the head at the top), the blade out to its +X
+	megascythe = 77652345413074,
 }

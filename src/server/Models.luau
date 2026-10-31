@@ -368,6 +368,137 @@ function Models.placeForge(name: string, parent: Instance, cf: CFrame, want: { h
 end
 
 -------------------------------------------------------------------------------------------------------------
+-- ForgeGUI tools (31 Oct, owner: "revamp the mega sytche model witth forgegui")
+-------------------------------------------------------------------------------------------------------------
+-- A ForgeGUI mesh that takes over a tool template's look. The template keeps its frame (for the scythe: the grip
+-- at the origin, the snath along -Z at y 0, the head at its far end with the blade rising +Y and sweeping back
+-- toward the hands), so the held tool (server/Tools), the first-person view (client/ViewModel) and the shop boards
+-- hold and place it as before. `turn` takes the mesh's own axes to the template's, `length` is its size along the
+-- template's Z (the snath) in the template's studs, `center` where its middle goes. `glow`: the painted texture lit
+-- as its own emissive mask in that tint (the bright blade shines, the dark snath stays dark). `light`: a violet
+-- light in the blade's curve; `gem`: a faint one at the pommel; `sparkle`: a box (centre, size) the blade's
+-- sparkles drift from.
+type ForgeTool = {
+	forge: string,
+	turn: CFrame,
+	length: number,
+	center: Vector3,
+	glow: Color3?,
+	light: Vector3?,
+	gem: Vector3?,
+	sparkle: { at: Vector3, size: Vector3 }?,
+}
+local FORGE_TOOLS: { [string]: ForgeTool } = {
+	tool_scythe = {
+		forge = "megascythe",
+		-- (the mesh stands up its +Y, the head at the top, the blade out to its +X: the head goes to -Z, the blade to +Y)
+		turn = CFrame.fromMatrix(Vector3.zero, Vector3.new(0, 1, 0), Vector3.new(0, 0, -1), Vector3.new(-1, 0, 0)),
+		-- (measured in Studio: like the part model, the butt at z 2.6, the snath's axis at y 0, the head at -5.25,
+		-- the blade up to y 5.4 with its tip back at z -1.4, the side grip at -2.5)
+		length = 9.7,
+		center = Vector3.new(0, 1.95, -2.25),
+		glow = Color3.fromRGB(230, 120, 255),
+		light = Vector3.new(0, 3.4, -4.2),
+		gem = Vector3.new(0, 0, 2.35),
+		sparkle = { at = Vector3.new(0, 3.8, -4), size = Vector3.new(0.5, 3, 4.5) },
+	},
+}
+
+-- an unseen point in a tool template (a light's or an emitter's)
+local function marker(model: Model, name: string, at: Vector3, size: Vector3?): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Size = size or Vector3.new(0.1, 0.1, 0.1)
+	p.Transparency = 1
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.CFrame = CFrame.new(at)
+	p.Parent = model
+	return p
+end
+
+local function lightAt(model: Model, name: string, at: Vector3, color: Color3, range: number, brightness: number)
+	local p = marker(model, name, at)
+	local l = Instance.new("PointLight")
+	l.Color = color
+	l.Range = range
+	l.Brightness = brightness
+	l.Parent = p
+end
+
+local function swapTools(): number
+	local n = 0
+	for name, t in FORGE_TOOLS do
+		local raw = forgeRaw[t.forge]
+		local body = raw and raw:FindFirstChild("Body") :: MeshPart?
+		if not body then
+			continue
+		end
+		local model = Instance.new("Model")
+		model.Name = name
+		local mesh = body:Clone()
+		mesh.Size *= t.length / math.abs(t.turn:VectorToWorldSpace(mesh.Size).Z)
+		mesh.CFrame = CFrame.new(t.center) * t.turn
+		mesh.Anchored = true
+		mesh.CanCollide = false
+		mesh.CanQuery = false
+		mesh.CanTouch = false
+		mesh.Parent = model
+		local sa = mesh:FindFirstChildWhichIsA("SurfaceAppearance")
+		if sa and t.glow then
+			local glow = t.glow
+			pcall(function()
+				local ok, map = pcall(function()
+					return sa.ColorMapContent
+				end)
+				sa.EmissiveMaskContent = if ok and map then map else Content.fromUri(sa.ColorMap)
+				sa.EmissiveTint = glow
+				sa.EmissiveStrength = 2
+			end)
+		end
+		if t.light then
+			lightAt(model, "BladeLight", t.light, Color3.fromRGB(190, 110, 255), 9, 1.3)
+		end
+		if t.gem then
+			lightAt(model, "PommelGem", t.gem, Color3.fromRGB(230, 190, 255), 3.5, 1)
+		end
+		if t.sparkle then
+			local box = marker(model, "BladeSparkles", t.sparkle.at, t.sparkle.size)
+			local e = Instance.new("ParticleEmitter")
+			e.Name = "EdgeSparkle"
+			e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+			e.Shape = Enum.ParticleEmitterShape.Box
+			e.Color = ColorSequence.new(Color3.fromRGB(255, 235, 255), Color3.fromRGB(186, 84, 255))
+			e.LightEmission = 1
+			e.LightInfluence = 0
+			e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.22), NumberSequenceKeypoint.new(1, 0) })
+			e.Transparency = NumberSequence.new(0.1, 1)
+			e.Lifetime = NumberRange.new(0.5, 0.9)
+			e.Rate = 6
+			e.Speed = NumberRange.new(0.2, 0.6)
+			e.SpreadAngle = Vector2.new(180, 180)
+			e.Rotation = NumberRange.new(0, 360)
+			e.RotSpeed = NumberRange.new(-90, 90)
+			e.Drag = 2
+			e.Parent = box
+		end
+		model.WorldPivot = CFrame.new()
+		model:SetAttribute("ForgeTool", true)
+		model.Parent = folder
+		local old = templates[name]
+		if old then
+			old:Destroy()
+		end
+		templates[name] = model
+		n += 1
+	end
+	return n
+end
+
+-------------------------------------------------------------------------------------------------------------
 -- generated props (ServerStorage.GenProps: made with Roblox's mesh generator in Studio, 29 Oct)
 -------------------------------------------------------------------------------------------------------------
 -- The owner, 29 Oct: "remake all lanterns, gas pumps and all stands" and "you use the wrong backpacks". Every child
@@ -609,6 +740,10 @@ function Models.loadAll(timeout: number?)
 		task.wait(0.1)
 	end
 	swapForge()
+	local tools = swapTools()
+	if tools > 0 then
+		print(("[Models] %d tools remade with ForgeGUI"):format(tools))
+	end
 	local forged = 0
 	for _ in forgeRaw do
 		forged += 1

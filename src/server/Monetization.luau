@@ -23,7 +23,7 @@ local function toolOwned(data, product): boolean
 	if product.forever then
 		return false
 	end
-	return data.run ~= nil and data.run.tool >= index
+	return data.run ~= nil and Config.ownsTool(data.run, data.tools, index)
 end
 
 -- Already owns what this (non-tool) product gives? Gems, eggs and restocks can always be bought again.
@@ -88,21 +88,21 @@ local function grant(player: Player, data, key: string, product): boolean
 			return false
 		end
 		local def = Config.TOOLS[index]
+		if not data.run then
+			data.run = PlayerData.newRun() -- ready for the next run
+		end
+		-- (29 Oct) only the tool bought: the coin ladder (run.tool) stays where it is, so the ones before it aren't free
 		if product.forever then
 			data.tools[def.id] = true
 			Net.notify(player, def.name .. " is yours in every run!", "purple")
 		else
+			data.run.extra = data.run.extra or {}
+			data.run.extra[def.id] = true
 			Net.notify(player, def.name .. " is yours for this run!", "purple")
-		end
-		if not data.run then
-			data.run = PlayerData.newRun() -- ready for the next run
-		end
-		if index > data.run.tool then
-			data.run.tool = index
 		end
 		if Mode.current == "Run" then
 			Tools.give(player)
-			Quests.event(player, "tool", data.run.tool)
+			Quests.event(player, "tool", Config.bestTool(data.run, data.tools))
 		end
 	elseif product.class then
 		data.classes[product.class] = true

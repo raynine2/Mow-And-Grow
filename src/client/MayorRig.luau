@@ -25,11 +25,11 @@
 --   m.face() / m.eyes()     world points to frame close-ups on
 --   m.destroy()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("MowALawn")
 local SculptKit = require(Shared:WaitForChild("SculptKit"))
 local Shape = require(Shared:WaitForChild("MayorShape")) :: any
-local Device = require(script.Parent.Device)
 local Potato = require(script.Parent.Potato)
 
 local MayorRig = {}
@@ -172,7 +172,7 @@ export type Mayor = {
 local HAT_POP = 0.9 -- seconds the hat is in the air (m.hatPop)
 
 local function lite(): boolean
-	return Potato.on or Device.touch
+	return Potato.on or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
 end
 
 -- smooth noise in -1..1 (one octave of value noise on a line)

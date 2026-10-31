@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local PartBuild = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("PartBuild"))
+local PhonePerf = require(script.Parent.PhonePerf)
 
 local PetFollow = {}
 
@@ -347,7 +348,8 @@ RunService.RenderStepped:Connect(function(dt)
 	-- the 3D egg hatch (client/HatchFx) plays right in front of the camera: pets would stand in the shot
 	local hatching = cam ~= nil and cam:FindFirstChild("HatchFx") ~= nil
 	-- Potato Mode: only your own pets and other players' close by
-	local potato = Players.LocalPlayer:GetAttribute("Potato") == true
+	-- (29 Oct: phones too, for a steady 60 fps in a full server)
+	local potato = Players.LocalPlayer:GetAttribute("Potato") == true or PhonePerf.on
 	for p, fs in followers do
 		local char = p.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?

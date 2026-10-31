@@ -7,7 +7,6 @@ local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 
-local Device = require(script.Parent.Device)
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 
@@ -104,7 +103,7 @@ local function build()
 
 	local open = UI.button(UI.gui, "DEV", RED, UDim2.fromOffset(96, 46), function()
 		UI.open("Dev")
-	end, { pos = UDim2.new(0, 16, 0.5, if Device.touch then 236 else 120), name = "DevButton" }) -- (under the gem counter and, on a phone, the backpack)
+	end, { pos = UDim2.new(0, 16, 0.5, if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then 176 else 120), name = "DevButton" }) -- (under the gem counter, not on its icon)
 	open.ZIndex = 5
 
 	UserInputService.InputBegan:Connect(function(input, processed)

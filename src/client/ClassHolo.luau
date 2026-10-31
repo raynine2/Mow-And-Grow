@@ -246,7 +246,7 @@ local function build(lens: BasePart): Holo
 	light.Range = 8
 	light.Parent = card
 	local chime = Instance.new("Sound")
-	chime.SoundId = Config.SOUNDS.rareChime or ""
+	chime.SoundId = (Config.SOUNDS.rareChime or {}).id or "" -- (29 Oct: was the whole table, so it never played)
 	chime.Volume = 0.22
 	chime.RollOffMaxDistance = 45
 	chime.RollOffMinDistance = 8

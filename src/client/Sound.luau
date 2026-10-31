@@ -1,5 +1,6 @@
 -- Sound effects and music. Ids live in Config.SOUNDS (licensed audio only: Roblox-owned assets or the
--- engine's built-in rbxasset sounds). A missing id is silent, never an error.
+-- engine's built-in rbxasset sounds, and since 29 Oct our own sounds made with ForgeGUI). A missing id is silent,
+-- never an error. A sound can list a few takes in `ids` (footsteps, pet chirps): each play picks one of them.
 local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
@@ -18,17 +19,44 @@ musicGroup.Name = "MowALawnMusic"
 musicGroup.Volume = 0.35
 musicGroup.Parent = SoundService
 
-local templates: { [string]: Sound } = {}
+local templates: { [string]: { Sound } } = {}
 for key, def in Config.SOUNDS do
-	if def.id and def.id ~= "" then
-		local s = Instance.new("Sound")
-		s.Name = "Sfx_" .. key
-		s.SoundId = def.id
-		s.Volume = def.volume or 0.5
-		s.SoundGroup = group
-		s.Parent = SoundService
-		templates[key] = s
+	local list: { Sound } = {}
+	for i, id in (def :: any).ids or { def.id } do
+		if id and id ~= "" then
+			local s = Instance.new("Sound")
+			s.Name = "Sfx_" .. key .. (if i > 1 then "_" .. i else "")
+			s.SoundId = id
+			s.Volume = def.volume or 0.5
+			s.SoundGroup = group
+			s.Parent = SoundService
+			table.insert(list, s)
+		end
 	end
+	if #list > 0 then
+		templates[key] = list
+	end
+end
+
+-- one of the sound's takes (the same one each time if it has just one). (31 Oct) A key with a `fallback` plays only
+-- the takes that have loaded; while none has (a new upload the game hasn't been given access to yet never loads),
+-- it plays its fallback sound instead of nothing.
+local function take(key: string, depth: number?): Sound?
+	local list = templates[key]
+	local fallback = (Config.SOUNDS[key] :: any) and (Config.SOUNDS[key] :: any).fallback
+	if list and fallback and (depth or 0) < 2 then
+		local ready = {}
+		for _, s in list do
+			if s.IsLoaded then
+				table.insert(ready, s)
+			end
+		end
+		if #ready == 0 then
+			return take(fallback, (depth or 0) + 1)
+		end
+		return ready[math.random(1, #ready)]
+	end
+	return list and list[math.random(1, #list)]
 end
 
 local lastPlayed: { [string]: number } = {}
@@ -36,7 +64,7 @@ local lastPlayed: { [string]: number } = {}
 -- Play a one-shot. `pitchVariation` randomises the pitch a little so repeated sounds don't drone; `volume`
 -- scales the sound's own volume (a softer copy for other players' hits, say).
 function Sound.play(key: string, pitchVariation: number?, volume: number?)
-	local t = templates[key]
+	local t = take(key)
 	if not t then
 		return
 	end
@@ -57,7 +85,7 @@ end
 
 -- Play a one-shot at an exact pitch (rising coin ticks, combo notes).
 function Sound.playAt(key: string, pitch: number, volume: number?)
-	local t = templates[key]
+	local t = take(key)
 	if not t then
 		return
 	end

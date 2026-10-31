@@ -28,6 +28,7 @@ local Spec = require(script.Parent.BossVfxSpec)
 local PHONE = require(script.Parent.PhonePerf).on -- phones: lighter hits (owner, 26 Oct)
 local BossView = require(script.Parent.BossView)
 local Sound = require(script.Parent.Sound)
+local SoundConfig = require(Shared:WaitForChild("Config")) -- (29 Oct) boss move cues
 
 local VFXLib = ReplicatedStorage:WaitForChild("VFXLib", 10)
 local Budget = VFXLib and (require((VFXLib :: Instance):WaitForChild("Budget")) :: any)
@@ -93,7 +94,14 @@ local live: any = nil
 
 local function makeEmitter(def: any, k: number): ParticleEmitter
 	local e = Instance.new("ParticleEmitter")
-	e.Texture = Tex[def.tex] or Tex.dot
+	-- (30 Oct) a sprite from shared/BossFxIds, or one of VFXLib's (Star4, RingThin, SmokePuff4x4 ... by name)
+	e.Texture = Tex[def.tex] or (Assets and Assets[def.tex]) or Tex.dot
+	if def.flip then
+		pcall(function()
+			e.FlipbookLayout = (Enum.ParticleFlipbookLayout :: any)[def.flip]
+			e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+		end)
+	end
 	e.LightEmission = if def.add then 1 elseif def.tex == "seed" then 0.45 else 0
 	e.LightInfluence = if def.add then 0 else 1
 	e.Brightness = if def.add then 1.4 else 1
@@ -101,7 +109,10 @@ local function makeEmitter(def: any, k: number): ParticleEmitter
 	local fluff = if def.tex == "seed" then SEED_SIZE else 1
 	local a, b = def.size[1] * k * fluff, def.size[2] * k * fluff
 	local avg, env = (a + b) / 2, (b - a) / 2
-	if def.grow then
+	if def.twinkle then
+		-- a glint: pops up to full size partway through its life and shrinks away
+		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.45, avg, env), NumberSequenceKeypoint.new(1, 0) })
+	elseif def.grow then
 		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, avg * def.grow[1], env), NumberSequenceKeypoint.new(1, avg * def.grow[2], env) })
 	else
 		local endK = def.size[3] or 1
@@ -233,7 +244,123 @@ local function aura(v: any, accent: Color3, k: number)
 	m.Color = ColorSequence.new(accent, Color3.new(1, 1, 1))
 	m.Rate = rate(Spec.shared.moteRate)
 	m.Parent = motesHost
-	return { pool = pool, glow = glow, glowDecal = d2, motes = m, motesHost = motesHost }
+	-- (30 Oct, owner: "make them look cool and high quality") a rune circle and a thin ring turning on the floor under
+	-- it, glints rising with the motes, and (not on phones) a faint column of energy going up through it
+	local function floorDecal(name: string, size: number, tex: string?, color: Color3, t: number): (Part, Decal)
+		local p = host(name, Vector3.new(size, 0.05, size))
+		local d = Instance.new("Decal")
+		d.Face = Enum.NormalId.Top
+		d.Texture = tex or Tex.glow
+		d.Color3 = color
+		d.Transparency = t
+		d.Parent = p
+		return p, d
+	end
+	local rune, runeDecal = floorDecal("AuraRune", foot * 2.1, Assets and Assets.RuneCircle, accent, 0.55)
+	local ring, ringDecal = floorDecal("AuraRing", foot * 2.9, Assets and Assets.RingThin, accent, 0.45)
+	local glint = Instance.new("ParticleEmitter")
+	glint.Texture = (Assets and Assets.Star4) or Tex.spark
+	glint.LightEmission = 1
+	glint.LightInfluence = 0
+	glint.Shape = Enum.ParticleEmitterShape.Disc
+	glint.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	glint.EmissionDirection = Enum.NormalId.Top
+	glint.Lifetime = NumberRange.new(1.2, 2.2)
+	glint.Speed = NumberRange.new(2 * k, 4.5 * k)
+	glint.SpreadAngle = Vector2.new(8, 8)
+	glint.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.4, 0.9 * k, 0.3 * k), NumberSequenceKeypoint.new(1, 0) })
+	glint.Rotation = NumberRange.new(0, 360)
+	glint.RotSpeed = NumberRange.new(-90, 90)
+	glint.Color = ColorSequence.new(Color3.new(1, 1, 1), accent)
+	glint.Rate = rate(5)
+	glint.Parent = motesHost
+	local column, beam
+	if not PHONE then
+		column = host("AuraColumn")
+		local a0 = Instance.new("Attachment")
+		a0.Parent = column
+		local a1 = Instance.new("Attachment")
+		a1.Position = Vector3.new(0, v.height * 1.25, 0)
+		a1.Parent = column
+		beam = Instance.new("Beam")
+		beam.Attachment0, beam.Attachment1 = a0, a1
+		beam.Texture = (Assets and Assets.EnergyNoise) or Tex.smoke
+		beam.TextureMode = Enum.TextureMode.Stretch
+		beam.TextureSpeed = 0.35
+		beam.LightEmission = 1
+		beam.LightInfluence = 0
+		beam.FaceCamera = true
+		beam.Width0 = foot * 1.7
+		beam.Width1 = foot * 0.6
+		beam.Segments = 1
+		beam.Color = ColorSequence.new(accent)
+		beam.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.82), NumberSequenceKeypoint.new(0.5, 0.9), NumberSequenceKeypoint.new(1, 1) })
+		beam.Parent = column
+	end
+	return { pool = pool, glow = glow, glowDecal = d2, motes = m, motesHost = motesHost, glint = glint,
+		rune = rune, runeDecal = runeDecal, ring = ring, ringDecal = ringDecal, column = column, beam = beam, spin = 0 }
+end
+
+-- (30 Oct) the rage burst, once as the rage form breaks out: a white flash, a shockwave ring racing out over the floor,
+-- sparks, glints and a puff of dark smoke
+local function rageBurst(v: any, accent: Color3, k: number)
+	local base: CFrame? = v.base
+	if not base then
+		return
+	end
+	local feet = base.Position
+	local chest = feet + Vector3.new(0, v.height * 0.55, 0)
+	local foot = math.max(v.rig.bounds[2][1], v.rig.bounds[2][3]) * v.scale
+	local fire = Color3.fromRGB(255, 96, 48)
+	-- the shockwave on the floor
+	local wave = host("RageWave", Vector3.new(foot, 0.05, foot))
+	wave.CFrame = CFrame.new(feet + Vector3.new(0, 0.12, 0))
+	local d = Instance.new("Decal")
+	d.Face = Enum.NormalId.Top
+	d.Texture = (Assets and Assets.RingShock) or Tex.glow
+	d.Color3 = fire
+	d.Transparency = 0.05
+	d.Parent = wave
+	TweenService:Create(wave, TweenInfo.new(0.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(foot * 7, 0.05, foot * 7) }):Play()
+	TweenService:Create(d, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Transparency = 1 }):Play()
+	-- the burst itself
+	local h = host("RageBurst")
+	h.CFrame = CFrame.new(chest)
+	local function burst(tex: string?, n: number, life: { number }, size: NumberSequence, speed: { number }, color: ColorSequence, add: boolean, extra: ((ParticleEmitter) -> ())?)
+		local e = Instance.new("ParticleEmitter")
+		e.Texture = tex or Tex.dot
+		e.LightEmission = if add then 1 else 0
+		e.LightInfluence = if add then 0 else 1
+		e.Lifetime = NumberRange.new(life[1], life[2])
+		e.Size = size
+		e.Speed = NumberRange.new(speed[1] * k, speed[2] * k)
+		e.SpreadAngle = Vector2.new(180, 180)
+		e.Rotation = NumberRange.new(0, 360)
+		e.RotSpeed = NumberRange.new(-120, 120)
+		e.Color = color
+		e.Rate = 0
+		e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.7, 0.3), NumberSequenceKeypoint.new(1, 1) })
+		if extra then
+			extra(e)
+		end
+		e.Parent = h
+		e:Emit(count(n))
+	end
+	burst(Tex.glow, 3, { 0.18, 0.28 }, NumberSequence.new(foot * 0.6, foot * 2.2), { 0, 0 }, ColorSequence.new(Color3.new(1, 1, 1), fire), true)
+	burst((Assets and Assets.Spark) or Tex.spark, 40, { 0.5, 0.9 }, NumberSequence.new(0.9 * k, 0), { 18, 40 }, ColorSequence.new(Color3.fromRGB(255, 220, 120), fire), true, function(e)
+		e.Drag = 3
+		e.Acceleration = Vector3.new(0, -12 * k, 0)
+	end)
+	burst((Assets and Assets.SmokePuff4x4) or Tex.smoke, 10, { 0.9, 1.4 }, NumberSequence.new(3 * k, 7 * k), { 4, 10 }, ColorSequence.new(Color3.fromRGB(40, 24, 30), Color3.fromRGB(70, 40, 40)), false, function(e)
+		e.Drag = 2.5
+		pcall(function()
+			e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+			e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+		end)
+	end)
+	burst((Assets and Assets.Star4) or Tex.spark, 14, { 0.4, 0.8 }, NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 2.4 * k), NumberSequenceKeypoint.new(1, 0) }), { 6, 16 }, ColorSequence.new(accent, Color3.new(1, 1, 1)), true)
+	Debris:AddItem(wave, 1)
+	Debris:AddItem(h, 2)
 end
 
 function BossVfx.start(z: number, arenaCentre: Vector3?)
@@ -242,12 +369,12 @@ function BossVfx.start(z: number, arenaCentre: Vector3?)
 	if not v then
 		return
 	end
-	local spec = Spec.bosses[v.rigName]
+	local spec = Spec.bosses[v.style or v.rigName] or Spec.bosses[v.rigName]
 	if not spec then
 		return
 	end
 	local k = v.scale / KIT
-	BossVfx.setStyle(v.rigName)
+	BossVfx.setStyle(v.style or v.rigName)
 	local L = { z = z, k = k, spec = spec, ems = {} :: { Em }, glows = {} :: { Glow }, lights = {} :: { Light }, rage = false, t = 0, arena = arenaCentre, stones = nil :: any }
 	local accent = hex(spec.accent)
 	L.aura = aura(v, accent, k)
@@ -278,6 +405,11 @@ function BossVfx.stop()
 			live.aura.pool:Destroy()
 			live.aura.glow:Destroy()
 			live.aura.motesHost:Destroy()
+			live.aura.rune:Destroy()
+			live.aura.ring:Destroy()
+			if live.aura.column then
+				live.aura.column:Destroy()
+			end
 		end
 		if live.stones then
 			for _, s in live.stones do
@@ -326,6 +458,21 @@ function BossVfx.setRage(on: boolean)
 		L.aura.motes.Rate = rate(Spec.shared.moteRate * (if on then Spec.shared.moteRage else 1))
 		local accent = hex(L.spec.accent)
 		L.aura.motes.Color = if on then ColorSequence.new(hex(Spec.shared.rageMote), accent) else ColorSequence.new(accent, Color3.new(1, 1, 1))
+		-- (30 Oct) the floor runes and the column burn rage-red, and the glints come faster
+		local col = if on then hex(Spec.shared.rageMote) else accent
+		TweenService:Create(L.aura.runeDecal, TweenInfo.new(0.4), { Color3 = col, Transparency = if on then 0.3 else 0.55 }):Play()
+		TweenService:Create(L.aura.ringDecal, TweenInfo.new(0.4), { Color3 = col }):Play()
+		L.aura.glint.Rate = rate(if on then 12 else 5)
+		L.aura.glint.Color = ColorSequence.new(Color3.new(1, 1, 1), col)
+		if L.aura.beam then
+			L.aura.beam.Color = ColorSequence.new(col)
+		end
+		if on then
+			local v = BossView.get()
+			if v then
+				rageBurst(v, accent, L.k)
+			end
+		end
 	end
 	-- the Jungle Titan's temple stones
 	local st = L.spec.stones
@@ -418,6 +565,12 @@ local function update(dt: number)
 		put(L.aura.glow, flatCf)
 		put(L.aura.motesHost, CFrame.new(feet.X, floorY + 0.3, feet.Z) * CFrame.Angles(0, 0, math.rad(90)))
 		L.aura.glowDecal.Transparency = 0.68 + 0.06 * math.sin(L.t * 2)
+		L.aura.spin += dt * (if L.rage then 0.9 else 0.3)
+		put(L.aura.rune, CFrame.new(feet.X, floorY + 0.09, feet.Z) * CFrame.Angles(0, L.aura.spin, 0))
+		put(L.aura.ring, CFrame.new(feet.X, floorY + 0.08, feet.Z) * CFrame.Angles(0, -L.aura.spin * 1.6, 0))
+		if L.aura.column then
+			put(L.aura.column, CFrame.new(feet.X, floorY + 0.2, feet.Z))
+		end
 	end
 	if L.stones then
 		local st = L.spec.stones
@@ -454,6 +607,7 @@ local STYLE: { [string]: { tex: string, accent: string, fx: string, warn: string
 	dandelion = { tex = "seed", accent = "FFE46A", fx = "fluff", warn = "FF5A3C" },
 	bramble = { tex = "leaf", accent = "FF4D6D", fx = "thorns", warn = "E0284A" },
 	bunker = { tex = "sand", accent = "FFE14D", fx = "geyser", warn = "FF7A1A" },
+	frost = { tex = "sand", accent = "9FE8FF", fx = "geyser", warn = "3FA0FF" }, -- (29 Oct) the Frost Thornback
 	harvest = { tex = "strand", accent = "F0C850", fx = "chaff", warn = "E8501E" },
 	sakura = { tex = "petal", accent = "FF9FCD", fx = "bloom", warn = "FF3D8B" },
 	bog = { tex = "bubble", accent = "9DFF5A", fx = "splash", warn = "C8E62A" },
@@ -874,8 +1028,71 @@ local function shakeFor(pos: Vector3, power: number)
 		if BossVfx.shake then
 			BossVfx.shake(power * k, 0.35)
 		end
-		Sound.playAt("slam", 0.9 + math.random() * 0.15, 0.3 + 0.5 * k)
 	end
+end
+
+-- (owner, 29 Oct: "double check if every sound of every boss attack fits, dont keep copy and pasting the same
+-- loud BOOM sound ... make it satisfying and minimal") Each move lands with its own short, soft cue, quieter
+-- the further away you are; only the heavy moves (a slam, a leap, the quake) get the boss's real slam. Many
+-- shapes landing together (a geyser field, a lob of seeds) make one sound, not a drum roll.
+-- { key, pitch, volume, fallback key while the key isn't in Config.SOUNDS yet }
+type Cue = { any }
+local CUE: { [string]: Cue } = {
+	slam = { "slam", 1.0, 0.55 }, -- Scepter Smash: the one real boom
+	leap = { "slam", 1.12, 0.5 }, -- Blossom Leap
+	star = { "slam", 0.9, 0.5 }, -- Temple Quake
+	burrow = { "fellLand", 0.75, 0.6 }, -- Shell Ambush: the shell bursting up out of the sand
+	combo = { "punch", 0.8, 0.5 }, -- Knuckle Combo: three meaty knuckle thumps
+	cone = { "swingBlade", 0.75, 0.55 }, -- Rake Swipe
+	sweep = { "lunge", 1.0, 0.55, "swingBlade" }, -- Snap Lunge (31 Oct: the owner's dash whoosh; was a low blade swish)
+	swing = { "bladeSlash", 0.92, 0.5, "slice" }, -- Reaper Swing (31 Oct: the owner's katana slash, one per slice; was a slice)
+	fan = { "slice", 1.05, 0.4 }, -- Pitchfork Thrust
+	cross = { "bossWhomp", 0.9, 0.45, "burst" }, -- Royal Decree
+	ring = { "bossWhomp", 1.05, 0.4, "burst" }, -- Petal Blizzard
+	rings = { "bossWhomp", 0.95, 0.4, "burst" }, -- Crop Circles
+	wave = { "rustle", 0.7, 0.5 }, -- Sand Wave
+	hedges = { "fellCrunch", 0.9, 0.45 }, -- Hedge Rows
+	safe = { "burst", 0.75, 0.5 }, -- Pollen Bomb: a soft pollen poof
+	grid = { "burst", 1.2, 0.35 }, -- Geyser Field: bubbly pops
+	tide = { "bossWhomp", 0.7, 0.45, "burst" }, -- Rising Bog
+	laser = { "zapBeam", 1.0, 0.45, "bossZap" }, -- Rune Lasers (31 Oct: the owner's energy beam; was a zap)
+	gaze = { "zapStrike", 0.95, 0.6, "bossZap" }, -- Titan's Gaze firing (31 Oct: the owner's lightning strike)
+	dash = { "fireBurst", 0.85, 0.55, "whoosh" }, -- Hellfire Dash (31 Oct: the owner's fire burst; was a whoosh)
+	mark = { "bladeHit", 0.9, 0.55, "bossThud" }, -- Reaper's Mark (31 Oct: the scythe strikes where it locked; was a thud)
+	-- (31 Oct) the Reaper's pumpkins go off with the owner's fire burst. The 5th field is the shortest gap between two
+	-- of them (5 Jack Bombs 0.15 s apart make 2 bursts, not 5).
+	mines = { "fireBurst", 1.08, 0.38, "bossThud", 0.45 }, -- Jack Bombs
+	boom = { "fireBurst", 0.95, 0.5, "bossThud", 0.3 }, -- a Jack-o'-Minion blowing up
+	pillars = { "bossThud", 0.7, 0.5, "fellLand" }, -- Stone Pillars
+	intro = { "slam", 0.85, 0.6 }, -- the boss landing in its intro
+}
+-- small things raining down (lobs, meteors, dives, mines, bounces, spirals, hazards): a light tap each
+local TAP: Cue = { "bossThud", 1.15, 0.28, "chip" }
+local lastCue: { [string]: number } = {}
+local lastAnyCue = 0
+local function cue(kind: string, pos: Vector3)
+	local now = os.clock()
+	local gap = (CUE[kind] and CUE[kind][5]) or 0.12
+	if now - (lastCue[kind] or 0) < gap or now - lastAnyCue < 0.05 then
+		return
+	end
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return
+	end
+	local d = (root.Position - pos).Magnitude
+	if d > 110 then
+		return
+	end
+	lastCue[kind] = now
+	lastAnyCue = now
+	local c = CUE[kind] or TAP
+	local key = c[1]
+	if not SoundConfig.SOUNDS[key] and c[4] then
+		key = c[4]
+	end
+	local k = 1 - d / 110
+	Sound.playAt(key, c[2] * (0.95 + math.random() * 0.1), c[3] * (0.35 + 0.65 * k))
 end
 
 -- a one-shot spray of particles at `pos`
@@ -1006,6 +1223,7 @@ end
 function BossVfx.impact(z: number, s: any, kind: string, floorColor: Color3?)
 	local def = BossMoves.get(z)
 	local ring = accentColor()
+	cue(kind, s.pos)
 	if s.type == "circle" then
 		burst(s.pos, s.r)
 		dust(s.pos, s.r, def.dust, 10)
@@ -1056,6 +1274,16 @@ end
 
 -- Play a move's impacts at their land times.
 function BossVfx.playImpacts(z: number, msg: any, floorColor: Color3?)
+	-- (31 Oct, owner's vfx_sfx_all.zip) the Titan's Gaze charging up: the owner's electric charge, timed to fade
+	-- out as the gaze fires
+	if msg.kind == "gaze" and msg.shapes[1] then
+		local lead = msg.at + msg.shapes[1].land - workspace:GetServerTimeNow() - 2.1
+		task.delay(math.max(0, lead), function()
+			if live then
+				Sound.play("zapCharge", 0.03)
+			end
+		end)
+	end
 	for _, s in msg.shapes do
 		local wait = msg.at + s.land - workspace:GetServerTimeNow()
 		task.delay(math.max(0, wait), function()
@@ -1240,6 +1468,7 @@ end
 local PATCH = {
 	thorns = { color = Color3.fromRGB(70, 110, 45), tex = "leaf", rise = Color3.fromRGB(150, 60, 50), add = false },
 	sand = { color = Color3.fromRGB(225, 200, 130), tex = "sand", rise = Color3.fromRGB(240, 220, 160), add = false },
+	ice = { color = Color3.fromRGB(200, 236, 255), tex = "sand", rise = Color3.fromRGB(235, 250, 255), add = false },
 	fire = { color = Color3.fromRGB(255, 110, 30), tex = "flame", rise = Color3.fromRGB(255, 170, 60), add = true },
 	bubble = { color = Color3.fromRGB(110, 200, 80), tex = "bubble", rise = Color3.fromRGB(170, 255, 140), add = true },
 	flame = { color = Color3.fromRGB(255, 110, 30), tex = "flame", rise = Color3.fromRGB(255, 170, 60), add = true },
@@ -1725,6 +1954,15 @@ local function stepMover(mv: Mv, now: number, dt: number, me: BasePart?)
 		if pe then
 			pe.Enabled = t >= 0 and t <= mv.dur
 		end
+		-- (29 Oct) the beam can be jumped: JUMP! when it's about to sweep over you
+		if me and m.jump and t >= 0 and t <= mv.dur then
+			local rel = Vector3.new(me.Position.X - m.o.X, 0, me.Position.Z - m.o.Z)
+			local along = rel:Dot(dir)
+			local ahead = (Vector3.new(dir.Z, 0, -dir.X) * math.sign(m.w)):Dot(rel) -- the side the beam is turning towards
+			if along > 0 and along < m.len and ahead > -1 and ahead < 9 then
+				jumpHint()
+			end
+		end
 		if t >= -0.3 and t <= mv.dur then
 			BossView.setTarget(CFrame.lookAt(m.o, m.o + dir))
 		end
@@ -1826,6 +2064,13 @@ end
 function BossVfx.trail(d: any)
 	for dist = 0, d.len, 7 do
 		patch(d.from + d.dir * dist, d.width * 0.45, "fire", d.life)
+	end
+	-- (31 Oct, owner's vfx_sfx.zip) the trail catching and roaring up: the owner's fire tornado, quieter further away
+	local mid = d.from + d.dir * (d.len * 0.5)
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local far = if root then (root.Position - mid).Magnitude else math.huge
+	if far < 110 then
+		Sound.playAt("fireSpin", 0.95 + math.random() * 0.1, 0.45 * (0.35 + 0.65 * (1 - far / 110)))
 	end
 end
 

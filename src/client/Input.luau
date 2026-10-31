@@ -106,6 +106,13 @@ end)
 -- stall prompts open windows
 -------------------------------------------------------------------------------------------------------------
 ProximityPromptService.PromptTriggered:Connect(function(prompt)
+	-- (30 Oct) a shop board's hold-E buys your next tool straight away when you can afford it (client/ShopDisplays
+	-- sets BuyNow on the prompt); otherwise it opens the tool's popup like any stall
+	local item = prompt:GetAttribute("Item")
+	if prompt:GetAttribute("BuyNow") == true and type(item) == "string" then
+		State.fire("Buy", "tool", item)
+		return
+	end
 	local window = prompt:GetAttribute("Window")
 	if type(window) == "string" then
 		-- prompts can carry an item id (tool frames on the cabin wall, mower displays)

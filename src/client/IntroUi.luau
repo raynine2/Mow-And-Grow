@@ -102,9 +102,6 @@ local function screen(): ScreenGui
 	g.Name = "IntroCinema"
 	g.ResetOnSpawn = false
 	g.IgnoreGuiInset = true
-	-- the whole screen, even an iPhone's notch and home bar (the black fades and bars covered all but those strips);
-	-- the words and SKIP keep inside them (the layer, below)
-	g.ScreenInsets = Enum.ScreenInsets.None
 	g.DisplayOrder = 20
 	g.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	g.Parent = player:WaitForChild("PlayerGui")
@@ -263,19 +260,13 @@ function IntroUi.open(onSkip: () -> ())
 	l.Parent = g
 	local sc = Instance.new("UIScale")
 	sc.Parent = l
-	-- the layer fills the screen's safe area (the HUD's area: client/UI), centred in it
 	local function rescale()
-		local vp = UI.area()
+		local cam = workspace.CurrentCamera
+		local vp = if cam then cam.ViewportSize else Vector2.new(1280, 720)
 		sc.Scale = math.clamp(math.min(vp.X / 1280, vp.Y / 720), 0.45, 1.6)
 		l.Size = UDim2.fromOffset(vp.X / sc.Scale, vp.Y / sc.Scale)
-		local full = g.AbsoluteSize
-		if full.X > 2 then
-			local mid = UI.gui.AbsolutePosition - g.AbsolutePosition + vp / 2
-			l.Position = UDim2.fromOffset(mid.X, mid.Y)
-		end
 	end
 	rescale()
-	g:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
 	local cam = workspace.CurrentCamera
 	if cam then
 		local conn = cam:GetPropertyChangedSignal("ViewportSize"):Connect(rescale)
@@ -285,9 +276,7 @@ function IntroUi.open(onSkip: () -> ())
 	end
 	layer = l
 	buildSpeech(l)
-	-- (bigger on a touch screen: 150 x 48 was a fiddly 80 x 26 points on a phone)
-	local skipSize = if UI.touch then UDim2.fromOffset(200, 68) else UDim2.fromOffset(150, 48)
-	local skip = UI.button(l, "SKIP  >>", Color3.fromRGB(70, 70, 86), skipSize, onSkip, { pos = UDim2.new(1, -24, 1, -18), anchor = Vector2.new(1, 1), name = "IntroSkip" })
+	local skip = UI.button(l, "SKIP  >>", Color3.fromRGB(70, 70, 86), UDim2.fromOffset(150, 48), onSkip, { pos = UDim2.new(1, -24, 1, -18), anchor = Vector2.new(1, 1), name = "IntroSkip" })
 	skip.ZIndex = 8
 	skip.Modal = true -- (frees the mouse in first person from the first black frame, so SKIP can always be clicked)
 	hideOthers(true)

@@ -23,6 +23,7 @@ local Loot = require(script.Parent.Loot)
 local Models = require(script.Parent.Models)
 local BestTimes = require(script.Parent.BestTimes)
 local Night = require(script.Parent.Night)
+local Analytics = require(script.Parent.Analytics) -- (29 Oct) where players quit (Creator Dashboard)
 local Guns = require(script.Parent.Guns)
 local BossArena = require(script.Parent.BossArena)
 local ClassPerks = require(script.Parent.ClassPerks)
@@ -118,6 +119,13 @@ end
 local function unlock(z: number, gateShow: number?)
 	zone = z
 	Field.unlock(z)
+	Analytics.area(z)
+	-- (29 Oct) every area before z is done: its boss is beaten and its arena's invisible wall is down
+	if Config.BOSSES then
+		for b = 1, z - 1 do
+			Boss.markBeaten(b)
+		end
+	end
 	-- every gate between two open plots opens (the newest area's gates sink when its banner shows)
 	for _, g in info.gates do
 		if g.b <= z then
@@ -184,6 +192,9 @@ local function completeRun(ending: boolean?)
 			data.gems += gems
 			data.stats.runs += 1
 			local time = if data.run then data.run.time or 0 else 0
+			if ending then
+				Analytics.complete(p, time)
+			end
 			-- a Peaceful Mode run doesn't count for the BEST TIMES board, nor one joined part-way through
 			local skipped = data.run ~= nil and data.run.skipped == true
 			local best = if Night.peaceful or skipped then nil else BestTimes.submit(p, data, time)
@@ -217,7 +228,7 @@ local function onAreaCleared(z: number)
 		if data and data.run then
 			local gems = math.floor(def.gems * Stats.compute(p, data).gems)
 			data.gems += gems
-			data.run.coins += def.coins
+			data.run.coins += math.floor(def.coins * Stats.reward) -- (29 Oct) x the difficulty reward
 			PlayerData.changed(p)
 			Net.send(p, "Fx", "reward", { kind = "area", coins = def.coins, gems = gems, title = Config.ZONES[z].name:upper() .. " CLEARED!" })
 		end
@@ -234,6 +245,7 @@ local function onAreaCleared(z: number)
 end
 
 local function onBossDefeated(z: number, _damageBy: { [Player]: number }, noHit: { [Player]: boolean }?)
+	Analytics.event("BossDefeated", z)
 	Guns.clear() -- the crate and the guns go with the boss
 	local def = Config.ZONES[z].boss
 	for _, p in Players:GetPlayers() do
@@ -247,7 +259,7 @@ local function onBossDefeated(z: number, _damageBy: { [Player]: number }, noHit:
 				gems += math.floor(def.gems * (Config.BOSS_NOHIT_GEMS or 0))
 			end
 			data.gems += gems
-			data.run.coins += def.coins
+			data.run.coins += math.floor(def.coins * Stats.reward) -- (29 Oct) x the difficulty reward
 			data.stats.bosses += 1
 			-- the in-game trophy, and the boss's Roblox badge once the owner has made it (Config.BOSS_BADGES)
 			local rig = require(ReplicatedStorage.MowALawn.BossMoves).get(z).rig
@@ -431,22 +443,32 @@ local function onSwing(player: Player, look: any)
 	Tools.slash(tool)
 	local stats = Stats.compute(player, data)
 	local damage = def.damage * stats.power * ClassPerks.powerMult(player)
-	local cutDamage = ClassPerks.swing(player, def.damage * stats.power, root.Position) -- Root Rip, Reap Wave
+	local cutDamage, gimmick = ClassPerks.swing(player, def.damage * stats.power, root.Position) -- Root Rip, Reap Wave
 	-- the camera's look direction from the client picks the clump (checked: a unit vector; else the body's facing)
 	local aim = root.CFrame.LookVector
 	if typeof(look) == "Vector3" and look.Magnitude > 0.5 and look.Magnitude < 1.5 and look.X == look.X then
 		aim = look.Unit
 	end
+	local hit = false
 	if groundFull(player) then
 		warnBagFull(player)
 	else
-		Field.hitAim(player, root.Position, aim, def.radius, cutDamage, def.targets, stats.luck)
+		hit = Field.hitAim(player, root.Position, aim, def.radius, cutDamage, def.targets, stats.luck) > 0
 	end
 	if Boss.inReach(root.Position, def.radius) then
 		Boss.damage(player, damage * Config.BOSS_TOOL_MULT)
+		hit = true
 	end
-	Boss.hitAdds(player, root.Position, def.radius) -- the boss's minions pop
-	Night.hit(player, root.Position, def.radius, damage)
+	if Boss.hitAdds(player, root.Position, def.radius) then -- the boss's minions pop
+		hit = true
+	end
+	if (Night.hit(player, root.Position, def.radius, damage) or 0) > 0 then
+		hit = true
+	end
+	-- (29 Oct) the class gimmick shows only when the swing struck something (no BOOM at the air)
+	local flat = Vector3.new(aim.X, 0, aim.Z)
+	local at = root.Position + (if flat.Magnitude > 0.1 then flat.Unit * 3 else Vector3.zero)
+	ClassPerks.landed(player, gimmick, hit, at, def.damage * stats.power)
 end
 
 -- Auto tools and mowers cut every tick.
@@ -505,7 +527,8 @@ local function endTutorial(player: Player, data)
 				name = t.name
 			end
 		end
-		local nextTool = Config.TOOLS[data.run.tool + 1]
+		local ni = Config.nextToolIndex(data.run, data.tools)
+		local nextTool = ni and Config.TOOLS[ni]
 		Net.send(player, "Fx", "loanOver", { name = name, next = nextTool and nextTool.name, cost = nextTool and nextTool.cost })
 		task.delay(0.6, Tools.give, player)
 	end
@@ -562,10 +585,11 @@ local function sellLoop()
 end
 
 local function buyTool(player: Player, data, id: string)
-	local before = Config.TOOLS[data.run.tool]
-	local nextIndex = data.run.tool + 1
-	local def = Config.TOOLS[nextIndex]
-	if not def or def.id ~= id then
+	local before = Config.TOOLS[Config.bestTool(data.run, data.tools)]
+	-- (29 Oct) the next one up the coin ladder that isn't owned yet (a Robux tool is skipped, not bought twice)
+	local nextIndex = Config.nextToolIndex(data.run, data.tools)
+	local def = nextIndex and Config.TOOLS[nextIndex]
+	if not nextIndex or not def or def.id ~= id then
 		Net.notify(player, "Buy the tools in order!", "red")
 		return
 	end
@@ -576,9 +600,10 @@ local function buyTool(player: Player, data, id: string)
 	data.run.coins -= def.cost
 	data.run.tool = nextIndex
 	Tools.give(player)
-	Quests.event(player, "tool", nextIndex)
+	Quests.event(player, "tool", Config.bestTool(data.run, data.tools))
 	-- (report #13) `ring`: the reach grows on the ground from the old tool's to the new one's (client/FirstLawn)
 	Net.send(player, "Fx", "purchase", { big = true, item = def.name, ring = { from = before and before.radius or 0, to = def.radius, color = def.color } })
+	Analytics.event("ShopBuy", def.cost, def.id, player)
 end
 
 local function buyUpgrade(player: Player, data, id: string)
@@ -604,6 +629,7 @@ local function buyUpgrade(player: Player, data, id: string)
 	-- (report #13) Grasp shows its new pickup reach growing on the ground (client/FirstLawn)
 	local ring = if id == "grasp" then { from = reach, to = Stats.compute(player, data).grasp, color = Color3.fromRGB(120, 230, 120) } else nil
 	Net.send(player, "Fx", "purchase", { ring = ring })
+	Analytics.event("ShopBuy", cost, "upgrade_" .. tostring(id), player)
 end
 
 -- The Leaf Vacuum rides on your back (it works on its own, you don't hold it).
@@ -639,6 +665,7 @@ local function buyBag(player: Player, data, id: string)
 	Quests.event(player, "bag", nextIndex)
 	Carry.refresh(player)
 	Net.send(player, "Fx", "purchase", { big = true, item = def.name })
+	Analytics.event("ShopBuy", def.cost, "bag_" .. tostring(def.id), player)
 end
 
 local function buyVacuum(player: Player, data)
@@ -683,9 +710,30 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- players
 -------------------------------------------------------------------------------------------------------------
+-- (30 Oct, owner: "run saves", CONTINUE puts you back where you were) past area 1, you appear in the camp of the area
+-- the party is on (its plaza: the World attribute Hub<z>), not back in area 1's village, and respawn there too.
+local function toCamp(char: Model)
+	if zone <= 1 or not info or not info.world then
+		return
+	end
+	local hub = info.world:GetAttribute("Hub" .. zone)
+	if typeof(hub) ~= "Vector3" then
+		return
+	end
+	local a = math.random() * math.pi * 2
+	local at = hub + Vector3.new(math.cos(a) * 5, 0, math.sin(a) * 5)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { char }
+	local hit = workspace:Raycast(at + Vector3.new(0, 40, 0), Vector3.new(0, -80, 0), params)
+	local y = if hit then hit.Position.Y else hub.Y
+	char:PivotTo(CFrame.new(at.X, y + 3.5, at.Z) * CFrame.Angles(0, a + math.pi, 0))
+end
+
 local function setupPlayer(player: Player, data)
 	if not data.run then
 		data.run = PlayerData.newRun()
+		data.run.difficulty = Run.difficulty
 		-- (report #1, Config.FIRST_TIMER) a first-timer's first run: a starter tool on loan until the first sale (walk
 		-- into the grass to mow it), and the intro film after that sale instead of before the first cut
 		if PlayerData.isNew(data) then
@@ -717,6 +765,7 @@ local function setupPlayer(player: Player, data)
 		Tools.give(player)
 		Carry.refresh(player)
 		showVacuum(player)
+		toCamp(char)
 	end
 	player.CharacterAdded:Connect(onCharacter)
 	if player.Character then
@@ -726,6 +775,24 @@ end
 
 -- The party's host decides where the run starts (their saved zone). Profiles load in any order after a teleport,
 -- so the host's is waited for (up to 20 s) before the first loaded player decides instead.
+-- (owner, 29 Oct) the run's difficulty: boss HP / damage / speed (server/Boss) and coin + gem rewards (server/Stats)
+Run.difficulty = "Normal"
+function Run.setDifficulty(id: string)
+	local D = Config.DIFFICULTY[id] or Config.DIFFICULTY.Normal
+	Run.difficulty = if Config.DIFFICULTY[id] then id else "Normal"
+	Boss.difficulty = D
+	Stats.reward = D.reward
+	ReplicatedStorage:SetAttribute("Difficulty", Run.difficulty) -- the HUD's label
+	for _, p in Players:GetPlayers() do
+		local data = PlayerData.get(p)
+		if data and data.run then
+			data.run.difficulty = Run.difficulty -- a saved run remembers it
+		end
+	end
+end
+
+-- (30 Oct) how far the host's saved run had mowed its area ({ z, n, pct }: server/Field.restoreCut puts it back)
+local resumeCut: { [string]: number }? = nil
 local function waitForHost(): number
 	local start = os.clock()
 	local deadline = start + 60
@@ -745,8 +812,13 @@ local function waitForHost(): number
 					end
 				end
 				local hd = PlayerData.get(host)
+				-- (owner, 29 Oct) the difficulty the party picked (sent with the teleport; a loaded run keeps its own;
+				-- the Workspace attribute "Difficulty" picks one in Studio)
+				local pick = (type(tpData) == "table" and tpData.difficulty) or (hd and hd.run and hd.run.difficulty) or workspace:GetAttribute("Difficulty")
+				Run.setDifficulty(if type(pick) == "string" and Config.DIFFICULTY[pick] then pick else "Normal")
 				-- Peaceful Mode (picked in the Create Party window, sent with the teleport) decides for the whole party
 				Night.peaceful = (type(tpData) == "table" and tpData.peaceful == true) or (hd ~= nil and hd.peaceful == true)
+				resumeCut = if hd and hd.run and type(hd.run.areaCut) == "table" then hd.run.areaCut else nil
 				return if hd and hd.run then math.clamp(hd.run.zone, 1, #Config.ZONES) else 1
 			end
 		end
@@ -814,7 +886,7 @@ function Run.start()
 		if not data or not data.run then
 			return 0
 		end
-		local def = require(script.Parent.SkillTrees).boost(player, Config.TOOLS[math.clamp(data.run.tool or 1, 1, #Config.TOOLS)]) -- (30 Oct) with its skill tree
+		local def = Config.TOOLS[Config.bestTool(data.run, data.tools)]
 		return (def and def.damage or 1) * Stats.compute(player, data).power * ClassPerks.powerMult(player)
 	end
 	ClassPerks.sellAnywhere = function(player: Player, cut: number): number
@@ -957,6 +1029,19 @@ function Run.start()
 			warn("[Run] gnomes: " .. tostring(errG))
 		end
 		unlock(startZone)
+		-- (30 Oct, owner: "run saves") a saved run comes back with its area as far mowed as it was
+		local rc = resumeCut
+		if rc and rc.z == startZone and (tonumber(rc.n) or 0) > 0 then
+			-- (by the share that was mowed when the save has it: if an update changes how many clumps the area has,
+			-- it still comes back as far along)
+			local total = Field.totalIn(startZone)
+			local pct = tonumber(rc.pct)
+			local n = if pct and total > 0 then math.floor(math.clamp(pct, 0, 1) * total + 0.5) else tonumber(rc.n) or 0
+			local okR, errR = pcall(Field.restoreCut, startZone, n)
+			if not okR then
+				warn("[Run] restoring the saved area: " .. tostring(errR))
+			end
+		end
 		started = true
 		PlayerData.onLoaded(setupPlayer)
 	end)
@@ -992,6 +1077,14 @@ function Run.start()
 					local watching = filmUntil[p] ~= nil and now < (filmUntil[p] :: number)
 					if data and data.run and not watching then
 						data.run.time = (data.run.time or 0) + 1
+					end
+					-- (30 Oct) how far the party's area is mowed, so a saved run comes back like that (server/Field.restoreCut)
+					-- (each player keeps their own progress: someone whose own saved run is further on than this party's
+					-- area keeps the progress of their own area)
+					if data and data.run and data.run.zone == zone then
+						local total = Field.totalIn(zone)
+						local cut = math.max(0, total - Field.remainingIn(zone))
+						data.run.areaCut = { z = zone, n = cut, pct = if total > 0 then cut / total else 0 }
 					end
 					if data and data.run and beat % 4 == 0 then
 						Net.send(p, "Fx", "runClock", { time = data.run.time or 0, held = watching })
@@ -1199,6 +1292,13 @@ function Run.dev(cmd: string, ...)
 		Night.skipTo(false)
 	elseif cmd == "zone" then
 		unlock(math.clamp(tonumber((...)) or 1, 1, #Config.ZONES))
+	elseif cmd == "mutate" then
+		-- (30 Oct) every clump uncovered from now on gets this mutation ("None" or nil: back to the normal rolls)
+		local id = (...)
+		Field.devMutation = if type(id) == "string" and id ~= "None" then id else nil
+	elseif cmd == "restoreCut" then
+		-- (30 Oct) cut n clumps of the current area quietly, as a saved run comes back (server/Field.restoreCut)
+		Field.restoreCut(zone, tonumber((...)) or 50)
 	end
 end
 

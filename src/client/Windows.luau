@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 local Format = require(ReplicatedStorage.MowALawn:WaitForChild("Format"))
+local Sound = require(script.Parent.Sound)
 local UI = require(script.Parent.UI)
 local Skin = require(script.Parent.Skin)
 local State = require(script.Parent.State)
@@ -200,7 +201,7 @@ upgrades.refresh = function()
 	local order = 0
 	for _, section in Config.UPGRADE_SECTIONS do
 		order += 1
-		local title = if section == "Tool" then "Tool - " .. (Config.TOOLS[d.run.tool] or Config.TOOLS[1]).name else section
+		local title = if section == "Tool" then "Tool - " .. (Config.TOOLS[Config.bestTool(d.run, d.tools)] or Config.TOOLS[1]).name else section
 		UI.heading(upgrades.list, order, title)
 		order += 1
 		local row = cardRow(upgrades.list, order, 0)
@@ -388,6 +389,100 @@ local TOOL_DESC = {
 	LaserMower = "The ultimate mower. Lasers. Need we say more?",
 }
 local TOOL_ICON = { Hands = "hands", Scissors = "scissors", Sickle = "sickle", PushMower = "pushmower", WeedWhacker = "whacker", MegaScythe = "scythe", LaserMower = "lasermower" }
+-- (owner, 29 Oct: "make the weapons be able to be bought by robux just like how you buy it with coins but make an
+-- extra option for buy weapon for only this run and also buy weapon permanently. the coins buy button sits
+-- inbetween these 2 robux options") [R$ THIS RUN] [BUY $coins] [R$ FOREVER]. The Robux products are
+-- Config.PRODUCTS.ToolOnce<id> / ToolForever<id> (server/Monetization grants them; a forever weapon lifts every
+-- run's weapon to it from the start). The price shown is the product's real price on Roblox, read once.
+local MarketplaceService = game:GetService("MarketplaceService")
+local livePrice: { [number]: number } = {}
+local function priceOf(key: string): number?
+	local p = Config.PRODUCTS[key]
+	if not p then
+		return nil
+	end
+	local cached = livePrice[p.id]
+	if cached then
+		return cached
+	end
+	if p.id ~= 0 and livePrice[p.id] == nil then
+		livePrice[p.id] = p.robux -- (asked once; the Config price until Roblox answers)
+		task.spawn(function()
+			local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, p.id, Enum.InfoType.Product)
+			if ok and type(info) == "table" and type(info.PriceInRobux) == "number" then
+				livePrice[p.id] = info.PriceInRobux
+				if toolView.frame.Visible then
+					toolView.refresh()
+				end
+			end
+		end)
+	end
+	return p.robux
+end
+local ROBUX_BLUE = Color3.fromRGB(64, 156, 250)
+local function robuxButton(name: string, pos: UDim2): TextButton
+	local b = UI.button(toolView.frame, "", ROBUX_BLUE, UDim2.fromOffset(140, 66), function() end, { pos = pos, anchor = Vector2.new(0.5, 1), name = name })
+	local label = b:FindFirstChild("Label") :: TextLabel?
+	if label then
+		label.RichText = true
+	end
+	-- (over the popup's corner daisy, which sits on ZIndex 5)
+	b.ZIndex = 6
+	for _, g in b:GetDescendants() do
+		if g:IsA("GuiObject") then
+			g.ZIndex = 6
+		end
+	end
+	return b
+end
+local onceBtn, foreverBtn
+local function robuxButtons(def, owned: boolean, d)
+	if not onceBtn then
+		-- the coin button in the middle, a Robux button either side of it
+		toolView.action.Size = UDim2.fromOffset(170, 66)
+		onceBtn = robuxButton("RobuxRun", UDim2.new(0.5, -165, 1, -24))
+		foreverBtn = robuxButton("RobuxForever", UDim2.new(0.5, 165, 1, -24))
+		onceBtn.MouseButton1Click:Connect(function()
+			if onceBtn:GetAttribute("Key") then
+				State.fire("Prompt", "product", onceBtn:GetAttribute("Key"))
+			else
+				Sound.play("denied")
+			end
+		end)
+		foreverBtn.MouseButton1Click:Connect(function()
+			if foreverBtn:GetAttribute("Key") then
+				State.fire("Prompt", "product", foreverBtn:GetAttribute("Key"))
+			else
+				Sound.play("denied")
+			end
+		end)
+	end
+	local onceKey, foreverKey = def.once, def.forever
+	local has = onceKey ~= nil and Config.PRODUCTS[onceKey] ~= nil
+	onceBtn.Visible = has
+	foreverBtn.Visible = has
+	if not has then
+		toolView.action.Size = UDim2.fromOffset(260, 66) -- Bare Hands: just the one button
+		return
+	end
+	toolView.action.Size = UDim2.fromOffset(170, 66)
+	local foreverOwned = table.find(d.tools or {}, def.id) ~= nil
+	if owned then
+		UI.setButton(onceBtn, "OWNED", W.grey)
+		onceBtn:SetAttribute("Key", nil)
+	else
+		UI.setButton(onceBtn, ("R$ %s\nTHIS RUN"):format(Format.commas(priceOf(onceKey) or 0)), ROBUX_BLUE)
+		onceBtn:SetAttribute("Key", onceKey)
+	end
+	if foreverOwned then
+		UI.setButton(foreverBtn, "OWNED\nFOREVER", W.grey)
+		foreverBtn:SetAttribute("Key", nil)
+	else
+		UI.setButton(foreverBtn, ("R$ %s\nFOREVER"):format(Format.commas(priceOf(foreverKey) or 0)), Color3.fromRGB(150, 90, 255))
+		foreverBtn:SetAttribute("Key", foreverKey)
+	end
+end
+
 State.on("openFor", function(window, item)
 	if window == "ToolView" and type(item) == "string" then
 		viewTool = item
@@ -422,8 +517,9 @@ toolView.refresh = function()
 	local kind = if def.kind == "auto" then "Cuts around you" else ("Cuts %d patch%s per swing"):format(def.targets, if def.targets > 1 then "es" else "")
 	UI.popupRow(toolView.list, 3, "upgrade", "Damage " .. Format.short(def.damage), kind, Color3.new(1, 1, 1))
 	moneyLine(toolView.list, 4, "Your money: $" .. Format.commas(d.run.coins))
-	local owned = index <= d.run.tool
-	local nextUp = index == d.run.tool + 1
+	-- (29 Oct) owned: up the coin ladder, or bought with Robux on its own; next: the next coin buy (Config.nextToolIndex)
+	local owned = Config.ownsTool(d.run, d.tools, index)
+	local nextUp = index == Config.nextToolIndex(d.run, d.tools)
 	if owned then
 		UI.setButton(toolView.action, "OWNED", W.grey)
 		toolView.onAction = function()
@@ -436,9 +532,11 @@ toolView.refresh = function()
 			State.fire("Buy", "tool", def.id)
 		end
 	else
-		UI.setButton(toolView.action, "BUY " .. Config.TOOLS[index - 1].name:upper() .. " FIRST", W.grey)
+		local first = Config.TOOLS[Config.nextToolIndex(d.run, d.tools) or (index - 1)] or Config.TOOLS[index - 1]
+		UI.setButton(toolView.action, "BUY " .. first.name:upper() .. " FIRST", W.grey)
 		toolView.onAction = function() end
 	end
+	robuxButtons(def, owned, d)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -845,7 +943,8 @@ local _ = UI.popupWindow("Tools", "Tool Shop", "")
 State.on("openFor", function(window)
 	if window == "Tools" then
 		local d = data()
-		local nextTool = d and d.run and Config.TOOLS[d.run.tool + 1]
+		local ni = d and d.run and Config.nextToolIndex(d.run, d.tools)
+		local nextTool = ni and Config.TOOLS[ni]
 		viewTool = if nextTool then nextTool.id else Config.TOOLS[#Config.TOOLS].id
 		task.defer(function()
 			UI.open("ToolView")

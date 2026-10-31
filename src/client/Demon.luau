@@ -16,8 +16,8 @@
 -- and call `update(t)` every frame (each body group's blocks are welded to one root, so a frame moves a few roots).
 -- `destroy()` when done.
 -- Phones and Potato Mode get the LITE build (bigger voxels, half the parts).
+local UserInputService = game:GetService("UserInputService")
 
-local Device = require(script.Parent.Device)
 local Potato = require(script.Parent.Potato)
 local Shape = require(script.Parent.DemonShape)
 
@@ -99,7 +99,7 @@ function Demon.preload(lite: boolean?)
 end
 
 function Demon.lite(): boolean
-	return Potato.on or Device.touch
+	return Potato.on or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
 end
 
 -------------------------------------------------------------------------------------------------------------

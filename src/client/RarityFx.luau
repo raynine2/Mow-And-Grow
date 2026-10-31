@@ -236,7 +236,7 @@ end
 -- Every frame a mover gets the frame `f`: t (clock), feet (ground point under the player, world-aligned),
 -- head (the top of the head), root (HumanoidRootPart CFrame), yaw (the player's facing, yaw only), calm (1 standing,
 -- 0 running), ground (how strong the ground pieces show: calm, dimmer in boss fights).
-type Frame = { t: number, feet: Vector3, head: Vector3, headCF: CFrame, root: CFrame, yaw: CFrame, calm: number, ground: number, hue: number, player: Player? }
+type Frame = { t: number, feet: Vector3, head: Vector3, headCF: CFrame, root: CFrame, yaw: CFrame, calm: number, ground: number, hue: number, player: Player?, char: Model? }
 type Mover = { part: BasePart, at: (Frame) -> CFrame, body: boolean } -- body: hidden in your own first-person view
 type Fade = { decal: Decal?, part: BasePart?, beam: Beam?, base: number } -- a ground piece that dims with calm/ground
 type Aura = {
@@ -899,6 +899,27 @@ local BUILD: { [string]: () -> Aura } = {
 	LawnLegend = buildLawnLegend,
 	GoatMan = buildGoatMan,
 }
+-- (31 Oct, owner: "revamp all the effects of every class ... make them look as high quality as SOLS RNG") the class
+-- auras now live in client/ClassAuras, built from the blocks above; the builders above stay as the fallback (if that
+-- module fails to load, or one of its auras fails to build).
+local OLD_BUILD = table.clone(BUILD)
+do
+	local ok, res = pcall(function()
+		return require(script.Parent:WaitForChild("ClassAuras", 10) :: ModuleScript)({
+			piece = piece, flat = flat, seq = seq, bright = bright, emitter = emitter, trail = trail, beamRing = beamRing,
+			pulse = pulse, newAura = newAura, move = move, fades = fades, addEmitter = addEmitter, groundDisc = groundDisc,
+			groundRing = groundRing, outline = outline, bodyBox = bodyBox, feetTrail = feetTrail, light = light, ringOf = ringOf,
+			RANK = RANK, folder = folder, FX = FX, BFX = BFX, Sound = Sound, Config = Config,
+		})
+	end)
+	if ok and type(res) == "table" then
+		for classId, build in res do
+			BUILD[classId] = build
+		end
+	else
+		warn("[RarityFx] client/ClassAuras failed to load, using the old auras:", res)
+	end
+end
 
 -------------------------------------------------------------------------------------------------------------
 -- auras on players
@@ -919,6 +940,11 @@ end
 local function form(w: Worn)
 	local a = w.aura
 	local feet = w.root.Position - Vector3.new(0, 2.7, 0)
+	-- (client/ClassAuras) each class's own entrance on top
+	local onForm = (a :: any).onForm
+	if onForm then
+		task.spawn(onForm, a, feet, w)
+	end
 	pulse(feet, 1, 6 + a.rank * 1.6, a.color, 0.7 + a.rank * 0.08, 0)
 	if a.rank >= RANK.Legendary then
 		pulse(feet, 1, 4 + a.rank, WHITE, 0.5, 0.2)
@@ -941,7 +967,16 @@ local function attach(key: any, char: Model, classId: any, p: Player?)
 	if not build or not char or not root or not hum then
 		return
 	end
-	local aura = (build :: () -> Aura)()
+	local okBuild, built = pcall(build :: () -> Aura)
+	if not okBuild then
+		warn("[RarityFx] aura failed to build for", classId, built)
+		local old = OLD_BUILD[classId]
+		if not old then
+			return
+		end
+		built = old()
+	end
+	local aura = built :: Aura
 	aura.model.Name = char.Name .. "_Aura"
 	if aura.outline then
 		aura.outline.Adornee = char
@@ -1057,7 +1092,7 @@ end)
 -------------------------------------------------------------------------------------------------------------
 local parts: { BasePart } = {}
 local cfs: { CFrame } = {}
-local frame: Frame = { t = 0, feet = Vector3.zero, head = Vector3.zero, headCF = CFrame.identity, root = CFrame.identity, yaw = CFrame.identity, calm = 1, ground = 1, hue = 0, player = nil }
+local frame: Frame = { t = 0, feet = Vector3.zero, head = Vector3.zero, headCF = CFrame.identity, root = CFrame.identity, yaw = CFrame.identity, calm = 1, ground = 1, hue = 0, player = nil, char = nil }
 
 local function stepAura(w: Worn, dt: number, camPos: Vector3)
 	local a = w.aura
@@ -1087,6 +1122,7 @@ local function stepAura(w: Worn, dt: number, camPos: Vector3)
 	frame.head = if head and head.Parent then head.Position + Vector3.new(0, head.Size.Y / 2, 0) else rcf.Position + Vector3.new(0, 2.5, 0)
 	frame.headCF = if head and head.Parent then head.CFrame else rcf * CFrame.new(0, 2, 0)
 	frame.player = w.player
+	frame.char = w.char -- (client/ClassAuras: effects that ride on the hands)
 	frame.yaw = CFrame.Angles(0, math.atan2(-look.X, -look.Z), 0)
 	frame.calm = w.calm
 	local fighting = w.player ~= nil and (w.player :: Player):GetAttribute("BossHP") ~= nil
@@ -1100,8 +1136,12 @@ local function stepAura(w: Worn, dt: number, camPos: Vector3)
 	end
 	for _, m in a.movers do
 		if not (m.body and firstPerson) then
-			table.insert(parts, m.part)
-			table.insert(cfs, m.at(frame))
+			-- (one broken piece must not stop every aura moving)
+			local okAt, cf = pcall(m.at, frame)
+			if okAt then
+				table.insert(parts, m.part)
+				table.insert(cfs, cf)
+			end
 		end
 	end
 	-- ground pieces dim while running / fighting (only written when it changes)
@@ -1141,7 +1181,11 @@ local function stepAura(w: Worn, dt: number, camPos: Vector3)
 		end
 	end
 	if a.tick then
-		a.tick(a, frame)
+		local okTick, err = pcall(a.tick, a, frame)
+		if not okTick then
+			a.tick = nil
+			warn("[RarityFx] aura tick failed:", err)
+		end
 	end
 end
 
@@ -1309,15 +1353,10 @@ local function showBanner(c, left: number)
 	f.Parent = gui
 	banner = f
 	do
-		-- the same size on every screen as the rest of the interface (narrow phones get it smaller; on a touch screen
-		-- the HUD's own scale: by the width alone it came out a quarter of a phone's height)
+		-- the same size on every screen as the rest of the interface (narrow phones get it smaller)
 		local cam = workspace.CurrentCamera
 		local sc = Instance.new("UIScale")
 		sc.Scale = if cam then math.clamp(cam.ViewportSize.X / 1100, 0.6, 1) else 1
-		if UI.touch then
-			local hud = UI.gui:FindFirstChildOfClass("UIScale")
-			sc.Scale = math.min(sc.Scale, (if hud then hud.Scale else 0.6) * 1.1)
-		end
 		sc.Parent = f
 	end
 	local _, face = Skin.frame(f, "ui_banner", Vector2.new(W, H), { name = "Sign" })

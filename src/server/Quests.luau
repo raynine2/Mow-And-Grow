@@ -32,7 +32,7 @@ function Quests.event(player: Player, kind: string, amount: number?)
 		-- the next quest may already be done (e.g. you bought the scissors early)
 		local nextQ = Config.QUESTS[run.quest.i]
 		if nextQ and nextQ.event == "tool" then
-			Quests.event(player, "tool", run.tool)
+			Quests.event(player, "tool", Config.bestTool(run, data.tools))
 		elseif nextQ and nextQ.event == "bag" and (run.bag or 0) > 0 then
 			Quests.event(player, "bag", run.bag)
 		end

@@ -87,10 +87,9 @@ if workspace.CurrentCamera then
 end
 
 -- SKIP (everyone in the arena must press it): the button counts the votes, "SKIP 1/3" (round 2)
--- (on a touch screen bigger, and up clear of Roblox's jump button in the bottom-right corner)
-local skip = UI.button(gui, "SKIP", C.purple or Color3.fromRGB(150, 90, 255), if UI.touch then UDim2.fromOffset(210, 66) else UDim2.fromOffset(170, 52), function()
+local skip = UI.button(gui, "SKIP", C.purple or Color3.fromRGB(150, 90, 255), UDim2.fromOffset(170, 52), function()
 	State.fire("Boss", "skip")
-end, { pos = UDim2.new(1, -24, 1, if UI.touch then -210 else -110), anchor = Vector2.new(1, 1), name = "Skip" })
+end, { pos = UDim2.new(1, -24, 1, -110), anchor = Vector2.new(1, 1), name = "Skip" })
 skip.Visible = false
 local skipNote = UI.text(skip, "", UDim2.new(1, 0, 0, 22), { pos = UDim2.new(0, 0, 1, 4), stroke = 2 })
 local function setSkipLabel(text: string)
@@ -457,7 +456,7 @@ local function startView(rig: string, cf: CFrame, sc: number, z: number, arena: 
 	fight.z = z
 	fight.arena = arena
 	fight.floor = floorColor(z)
-	BossView.show(rig, cf, sc)
+	BossView.show(rig, cf, sc, BossMoves.get(z)) -- (29 Oct) with the area's skin (the Frost Thornback)
 	local home = mirror and mirror:GetAttribute("Home")
 	if typeof(home) == "CFrame" then
 		BossView.setHome(home)
@@ -643,6 +642,12 @@ H.bossRage = function(d)
 		BossVfx.rageBurst()
 		Sound.play("burst", 0.05, 0.8)
 	end)
+	-- (31 Oct, owner's vfx_sfx_all.zip) a dark riser whose boom (1.17 s in) lands with the roar
+	if d.len - left < 2.13 then
+		task.delay(2.13 - (d.len - left), function()
+			Sound.play("rageRise", 0.02)
+		end)
+	end
 	task.delay(math.max(0, 3.3 - (d.len - left)), function()
 		Sound.play("roar", 0.02, 1)
 		BossFx.screenFlash(Color3.fromRGB(255, 60, 40), 0.55, 0.5)

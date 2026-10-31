@@ -104,7 +104,8 @@ local function pickTarget(): Vector3?
 	if w.boss then
 		return nil
 	end
-	local nextTool = Config.TOOLS[run.tool + 1]
+	local ni = Config.nextToolIndex(run, d.tools)
+	local nextTool = ni and Config.TOOLS[ni]
 	if nextTool and run.coins >= nextTool.cost and run.carry == 0 then
 		local shop = findPart({ "TOOL SHOP", "Counter" })
 		if shop then

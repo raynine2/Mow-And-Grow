@@ -4,6 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 
 local Stats = {}
+-- (owner, 29 Oct) the run's difficulty reward (Config.DIFFICULTY[...].reward): coins and gems x this. Set by server/Run.
+Stats.reward = 1
 
 -- Game pass ownership is cached per player by Monetization; it sets these attributes on the player.
 local function hasPass(player: Player, key: string): boolean
@@ -67,6 +69,11 @@ function Stats.compute(player: Player, data)
 		if gh and type(goldenUntil) == "number" and workspace:GetServerTimeNow() < goldenUntil then
 			s.luck *= gh.luck
 		end
+	end
+	-- (29 Oct) Hard pays +50%, Expert +100% (in a run only)
+	if run then
+		s.sell *= Stats.reward
+		s.gems *= Stats.reward
 	end
 	return s
 end

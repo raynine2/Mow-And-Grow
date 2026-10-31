@@ -66,9 +66,30 @@ end
 -- building
 -------------------------------------------------------------------------------------------------------------
 local function applyLook(v, p: Part, rage: boolean)
+	-- (29 Oct) a boss can wear a skin over its rig's colours (BossMoves.list[z].skin: the Frost Thornback)
+	local sk = v.skin and v.skin[p.mat]
+	if sk then
+		local c = if rage and sk.rc then sk.rc else sk.c
+		local m = if rage and sk.rm then sk.rm else sk.m
+		p.part.Color = hex(c)
+		pcall(function()
+			p.part.Material = (Enum.Material :: any)[m]
+		end)
+		p.part.Transparency = if p.rage and not v.rageShown then 1 else (sk.t or 0)
+		return
+	end
 	local looks = v.rig.looks[p.mat]
 	local lk = looks and (if rage then looks.r else looks.n)
 	if not lk then
+		-- (29 Oct) the ForgeGUI models are painted (a SurfaceAppearance): the rage form tints the paint red-hot
+		local sa = p.part:FindFirstChildOfClass("SurfaceAppearance")
+		if sa then
+			pcall(function()
+				(sa :: any).Color = if rage and p.group ~= "body" then Color3.fromRGB(255, 205, 195)
+					elseif rage then Color3.fromRGB(255, 168, 150)
+					else Color3.new(1, 1, 1)
+			end)
+		end
 		return
 	end
 	p.part.Color = hex(lk.c)
@@ -78,6 +99,7 @@ local function applyLook(v, p: Part, rage: boolean)
 	p.part.Transparency = if p.rage and not v.rageShown then 1 else (lk.t or 0)
 end
 
+local nextSkin: any = nil -- (29 Oct) the skin BossView.show is building with
 local function build(rigName: string, scale: number): any?
 	local rig = BossRig.load(rigName)
 	local models = ReplicatedStorage:FindFirstChild("BossModels")
@@ -150,6 +172,8 @@ local function build(rigName: string, scale: number): any?
 	local v = {
 		rigName = rigName,
 		rig = rig,
+		skin = nextSkin and nextSkin.skin or nil,
+		style = nextSkin and nextSkin.style or rigName, -- client/BossVfx's effect style
 		model = model,
 		parts = parts,
 		atts = atts,
@@ -725,6 +749,8 @@ local function step(dt: number)
 	v.clipBlend += math.clamp(want - v.clipBlend, -dt / 0.6, dt / 0.6)
 	local base = placement(v, dt)
 	-- the overlay: about the feet, squash keeps the volume
+	-- (29 Oct) a one-piece ForgeGUI model (rig.solid) stands on its own ground disc: it leans and squashes less, so
+	-- the disc doesn't lift off the floor
 	-- (30 Oct, owner: "the bosses are very stiff and dont do alot they are just a statue") client/BossLife gives a
 	-- one-piece model a life of its own on top of the moves (breathing, swaying, a rocking walk, watching you,
 	-- growls and stomps between moves) and lets the moves lean it much further: it rocks on its disc's rim
@@ -845,13 +871,17 @@ end)
 -- public
 -------------------------------------------------------------------------------------------------------------
 -- Show the boss `rig` standing at `cf` (feet, facing) at `scale`.
-function BossView.show(rig: string, cf: CFrame, scale: number)
-	if view and view.rigName == rig and math.abs(view.scale - scale) < 0.01 then
+-- `look`: the area's BossMoves entry (its skin and effect style), if it has one.
+function BossView.show(rig: string, cf: CFrame, scale: number, look: any?)
+	local skin = look and look.skin or nil
+	if view and view.rigName == rig and view.skin == skin and math.abs(view.scale - scale) < 0.01 then
 		view.targetCf = cf
 		return view
 	end
 	BossView.hide()
+	nextSkin = if look and look.skin then look else nil
 	local v = build(rig, scale)
+	nextSkin = nil
 	if not v then
 		return nil
 	end

@@ -20,7 +20,6 @@ local Sound = require(script.Parent.Sound)
 local Skin = require(script.Parent.Skin)
 local Potato = require(script.Parent.Potato)
 local Coach = require(script.Parent.Coach)
-local Device = require(script.Parent.Device)
 
 local Hud = {}
 local C = UI.colors
@@ -74,18 +73,16 @@ local function counter(y: number, icon: string, plus: boolean?)
 	local ic = UI.icon(f, icon, 78, UDim2.fromOffset(0, 0))
 	ic.ZIndex = plate.ZIndex + 3
 	if plus then
-		-- (bigger on a touch screen: 40 was about 22 points on a phone)
-		local ps = if Device.touch then 54 else 40
-		local p = UI.button(f, "+", C.green, UDim2.fromOffset(ps, ps), function()
+		local p = UI.button(f, "+", C.green, UDim2.fromOffset(40, 40), function()
 			UI.open("Store")
-		end, { pos = UDim2.fromOffset(298 - ps / 2, 38 - ps / 2), name = "Plus" })
+		end, { pos = UDim2.fromOffset(278, 18), name = "Plus" })
 		p.ZIndex = plate.ZIndex + 3
 		Skin.press(p)
 	end
 	return f, t, ic
 end
 -- (a little lower on phones and tablets: the coach card docks under the quest there and covered the coins)
-local TOUCH_HUD = Device.touch
+local TOUCH_HUD = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local coinBox, coinText, coinIcon = counter(if TOUCH_HUD then 4 else -56, "coin")
 local gemBox, gemText, gemIcon = counter(if TOUCH_HUD then 90 else 30, "gem", true)
 
@@ -126,11 +123,6 @@ local questTitle = UI.text(questFace, "", UDim2.new(1, -14, 0, 26), { pos = UDim
 local _, questFill, questCount = Skin.bar(questFace, Vector2.new(250, 30), C.green, { pos = UDim2.fromOffset(0, 48), name = "Bar" })
 local questHint = UI.text(questFace, "", UDim2.new(1, -18, 0, 16), { pos = UDim2.fromOffset(2, 80), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(140, 96, 60), stroke = 0 })
 ;(questHint:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
-if Device.phone then
-	-- (the small lines a little taller on a phone: at 16-18 they were 9 points, too small to read)
-	questNum.Size = UDim2.new(1, -40, 0, 20)
-	questHint.Size = UDim2.new(1, -18, 0, 20)
-end
 
 -------------------------------------------------------------------------------------------------------------
 -- Potato Mode (top-left, beside the quest card): low graphics for slow devices (client/Potato), saved
@@ -182,10 +174,6 @@ local _, fill, trackText = Skin.bar(infoFace, Vector2.new(250, 34), C.green, { p
 local fillGrad = fill:FindFirstChildOfClass("UIGradient") :: UIGradient
 local nextText = UI.text(infoFace, "", UDim2.new(1, -4, 0, 18), { pos = UDim2.fromOffset(2, 70), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(140, 96, 60), stroke = 0 })
 ;(nextText:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
-if Device.phone then
-	areaText.Size = UDim2.fromOffset(120, 21)
-	nextText.Size = UDim2.new(1, -4, 0, 21)
-end
 
 -- Keep clear of Roblox's own screen bits, which don't shrink with our UIScale: the quest scroll sits just below the
 -- top bar (Roblox logo, menu, chat). Making room for the player list is off (RESERVE_PLAYER_LIST): the game has no
@@ -195,22 +183,14 @@ local RESERVE_PLAYER_LIST = false
 local function dodgeCoreUi()
 	local sc = UI.gui:FindFirstChildOfClass("UIScale")
 	local s = if sc then sc.Scale else 1
-	local inset = Device.topInset()
+	local inset = game:GetService("GuiService"):GetGuiInset().Y
 	quest.Position = UDim2.fromOffset(14, math.max(66, (inset + 2) / s + 14))
 	potato.Position = UDim2.fromOffset(14 + 330 + 10, quest.Position.Y.Offset)
-	if Device.phone then
-		-- A phone's screen is short, and Roblox's thumbstick rests in its bottom-left corner, over where the backpack
-		-- was: the coins, the gems and the backpack go up the left side, right under the quest card.
-		local y = quest.Position.Y.Offset + quest.Size.Y.Offset + 12
-		coinBox.Position = UDim2.fromOffset(10, y)
-		gemBox.Position = UDim2.fromOffset(10, y + 86)
-		bag.Position = UDim2.fromOffset(10, y + 172)
-	end
 	local listOn = false
 	pcall(function()
 		listOn = RESERVE_PLAYER_LIST and StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.PlayerList)
 	end)
-	local list = if listOn and not Device.touch then 190 / s else 0
+	local list = if listOn and not UserInputService.TouchEnabled then 190 / s else 0
 	info.Position = UDim2.new(1, -14 - list, 0, 54)
 end
 dodgeCoreUi()
@@ -261,7 +241,6 @@ local function roundButton(label: string, icon: string, key: string, window: str
 	;(tag:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(28, 16, 8)
 	UI.gradient(tag, Color3.fromRGB(70, 42, 20))
 	UI.text(tag, key, UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1.5 })
-	tag.Visible = not Device.touch -- (keys mean nothing on a touch screen)
 	UI.text(body, label, UDim2.fromOffset(124, 26), { pos = UDim2.new(0.5, 0, 0, 86), anchor = Vector2.new(0.5, 0), stroke = 3.5 })
 	sideDots[window] = Skin.dot(body, UDim2.fromOffset(16, 14))
 	Skin.press(b, body)
@@ -285,7 +264,8 @@ local sideMode = "Lobby"
 local sideScale = Instance.new("UIScale")
 sideScale.Parent = side
 local function placeSide()
-	if Device.touch then
+	local touch = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	if touch then
 		sideScale.Scale = 0.8
 		side.AnchorPoint = Vector2.new(1, 0)
 		side.Position = UDim2.new(1, -12, 0, if sideMode == "Run" then 240 else 118)
@@ -411,7 +391,6 @@ local function buildSlot(i: number, t: Tool): Slot
 	;(num:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(28, 16, 8)
 	UI.text(num, tostring(i), UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1.5 })
 	num.ZIndex = 4
-	num.Visible = not Device.touch -- (the 1-7 keys)
 	Skin.press(b, body)
 	b.MouseButton1Click:Connect(function()
 		Sound.play("click")
@@ -585,8 +564,8 @@ State.on("data", function(d)
 		show(quest, questOn and not Coach.active())
 		if q then
 			questNum.Text = ("QUEST %d/%d"):format(q.index, q.total)
-			questTitle.Text = UI.words(q.title)
-			questHint.Text = UI.words(q.hint or "")
+			questTitle.Text = q.title
+			questHint.Text = q.hint or ""
 			questFill.Size = UDim2.fromScale(math.clamp(q.progress / math.max(1, q.goal), 0, 1), 1)
 			questCount.Text = ("%s/%s"):format(Format.short(q.progress), Format.short(q.goal))
 		end
@@ -774,8 +753,7 @@ UI.onWindowChanged.Event:Connect(function(name)
 		local a0 = centre - full * w.AnchorPoint - Vector2.new(30, 70)
 		local a1 = a0 + full + Vector2.new(60, 100)
 		for _, h in root:GetChildren() do
-			-- (on a touch screen the side buttons too: a board fitted to a phone may cover them, client/UI touchFit)
-			if h:IsA("GuiObject") and h.Visible and (h.Name ~= "SideButtons" or Device.touch) and h.AbsoluteSize.X > 0 then
+			if h:IsA("GuiObject") and h.Visible and h.Name ~= "SideButtons" and h.AbsoluteSize.X > 0 then
 				local b0, b1 = h.AbsolutePosition, h.AbsolutePosition + h.AbsoluteSize
 				if a0.X < b1.X and b0.X < a1.X and a0.Y < b1.Y and b0.Y < a1.Y then
 					h.Visible = false

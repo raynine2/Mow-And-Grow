@@ -82,12 +82,6 @@ task.spawn(function()
 	local panel = UI.frame({ size = UDim2.fromOffset(330, 40 + #ROWS * 46), pos = UDim2.fromOffset(0, 80), color = Color3.fromRGB(34, 22, 66), parent = holder, radius = 14, outline = 3, name = "Panel" })
 	panel.Visible = false
 	panel.ZIndex = 20
-	if UI.touch then
-		-- (a size up on a touch screen: the ON / OFF switches were about 21 points tall on a phone)
-		local big = Instance.new("UIScale")
-		big.Scale = 1.25
-		big.Parent = panel
-	end
 	UI.text(panel, "SETTINGS", UDim2.new(1, -20, 0, 26), { pos = UDim2.fromOffset(12, 6), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(255, 205, 80), stroke = 2 }).ZIndex = 21
 	local buttons: { [string]: TextButton } = {}
 	local function paint()

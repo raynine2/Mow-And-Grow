@@ -162,6 +162,10 @@ local function snapshot(player: Player, data)
 		for id in run.mowers do
 			table.insert(runMowers, id)
 		end
+		local runExtra = {}
+		for id in run.extra or {} do
+			table.insert(runExtra, id)
+		end
 		local muts = 0
 		for _, b in run.carry do
 			if b.m then
@@ -172,6 +176,7 @@ local function snapshot(player: Player, data)
 			zone = run.zone,
 			coins = run.coins,
 			tool = run.tool,
+			extra = runExtra, -- (29 Oct) tools bought with Robux for this run only (Config.ownsTool)
 			upgrades = run.upgrades,
 			mowers = runMowers,
 			trial = run.trial,
@@ -201,6 +206,19 @@ Net.on("Graphics", 2, function(player, potato)
 	if data and type(potato) == "boolean" and data.potato ~= potato then
 		data.potato = potato
 		PlayerData.changed(player)
+	end
+end)
+
+-- (30 Oct, owner: the scythe inspect in third person too) an inspect is played on your client; this passes its
+-- name on to everyone else so their client/RiderPose plays it on your character
+Net.on("Inspect", 4, function(player, clip)
+	if type(clip) ~= "string" or #clip > 40 or not clip:match("^Inspect%w+$") then
+		return
+	end
+	for _, other in Players:GetPlayers() do
+		if other ~= player then
+			Net.send(other, "Inspect", player, clip)
+		end
 	end
 end)
 
@@ -293,6 +311,16 @@ if RunService:IsStudio() then
 			data[b] = c
 		elseif cmd == "save" and data then
 			data._dryRun = not b -- ("save", player, true) lets this Studio session save for real
+		elseif cmd == "dump" and data then
+			-- (30 Oct, run-saves test) what the DataStore would be sent: a JSON round trip like UpdateAsync's, so a
+			-- value a DataStore can't hold (a mixed or sparse table, NaN, an Instance) shows up in Studio
+			local HttpService = game:GetService("HttpService")
+			local okE, json = pcall(HttpService.JSONEncode, HttpService, data)
+			if not okE then
+				return { ok = false, err = tostring(json) }
+			end
+			local okD, back = pcall(HttpService.JSONDecode, HttpService, json)
+			return { ok = okD, bytes = #json, json = json, back = if okD then back else nil }
 		elseif Mode.isRun then
 			(system :: any).dev(cmd, a, b) -- ("boss", "fight", 3) etc.: see Run.dev
 		end

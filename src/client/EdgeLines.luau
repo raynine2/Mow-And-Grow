@@ -1,16 +1,13 @@
 -- Edge lines (client): a faint light outline along the edges of the trees, bushes and landmarks, which gives
 -- Catch a Brainrot's voxel scenery its crisp look. Kept subtle and off the ground and grass, so the world
 -- doesn't look like a hologram. Drawn with SelectionBoxes, only on the
--- blocks near the camera (they're cheap but not free), recycled as you move. Tablets get a smaller radius, phones
--- none at all (28 Oct, the phone pass: every SelectionBox is drawn on its own, up to 1400 of them, and lines this
--- thin hardly show on a phone's screen).
+-- blocks near the camera (they're cheap but not free), recycled as you move. Phones get a smaller radius.
 local Players = game:GetService("Players")
-
-local Device = require(script.Parent.Device)
+local UserInputService = game:GetService("UserInputService")
 
 local EdgeLines = {}
 
-local MOBILE = Device.touch
+local MOBILE = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local RADIUS = if MOBILE then 90 else 150
 local CAP = if MOBILE then 1400 else 3200
 local CELL = 32
@@ -118,9 +115,6 @@ local function scan(world: Instance)
 end
 
 task.spawn(function()
-	if Device.phone then
-		return
-	end
 	local world = workspace:WaitForChild("World", 120)
 	if not world then
 		return

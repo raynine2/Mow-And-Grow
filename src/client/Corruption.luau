@@ -11,8 +11,8 @@
 -- Every count goes through `budget` (Potato Mode and phones get fewer blocks). Nothing runs until a film calls it.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
-local Device = require(script.Parent.Device)
 local IntroCast = require(script.Parent.IntroCast)
 local Potato = require(script.Parent.Potato)
 
@@ -36,7 +36,7 @@ pcall(function()
 end)
 
 local function budget(n: number): number
-	local k = if Potato.on then 0.4 elseif Device.touch then 0.6 else 1
+	local k = if Potato.on then 0.4 elseif UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then 0.6 else 1
 	return math.max(1, math.floor(n * k + 0.5))
 end
 

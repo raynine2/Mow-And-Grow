@@ -13,6 +13,7 @@ local FxIds = require(ReplicatedStorage.MowALawn:WaitForChild("FxIds")) :: { [st
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local UI = require(script.Parent.UI)
+local WeaponVfx = require(script.Parent.WeaponVfx) -- (28 Oct) the glint of a gem popping out of the stump
 
 local LootFx = {}
 local player = Players.LocalPlayer
@@ -20,6 +21,9 @@ local player = Players.LocalPlayer
 type Pop = { model: Model | BasePart, target: CFrame, t: number, scale: number? }
 local pops: { Pop } = {}
 local spinners: { [Instance]: CFrame } = {}
+
+-- (28 Oct, owner's brief: "a gem pops up from the stump") set below, once bodyColor exists
+local gemGlint: (Instance, Vector3) -> () = function() end
 
 local function pivotOf(m: Instance): CFrame?
 	if m:IsA("Model") then
@@ -50,8 +54,23 @@ local function onDrop(m: Instance)
 	if not target then
 		return
 	end
+	-- (30 Oct, multiplayer check) someone else's drop: only they can pick it up (server/Loot), so here it shows faded
+	-- instead of looking like yours and then doing nothing when you walk over it
+	local owner = m:GetAttribute("Owner")
+	if type(owner) == "number" and owner ~= player.UserId then
+		local parts: { Instance } = if m:IsA("BasePart") then { m } else {}
+		for _, d in m:GetDescendants() do
+			table.insert(parts, d)
+		end
+		for _, d in parts do
+			if d:IsA("BasePart") then
+				d.LocalTransparencyModifier = 0.6
+			end
+		end
+	end
 	if m:GetAttribute("Spin") then
 		spinners[m] = target
+		gemGlint(m, target.Position)
 	end
 	table.insert(pops, { model = m :: any, target = target, t = 0 })
 	setPivot(m, target * CFrame.new(0, -1, 0))
@@ -182,6 +201,12 @@ local function bodyColor(m: Instance): Color3
 		end
 	end
 	return if best then (best :: BasePart).Color else Color3.fromRGB(120, 200, 80)
+end
+
+-- a glint, a soft glow and sparkles in the gem's colour as it hops out (client/WeaponVfx "GemPop")
+gemGlint = function(m: Instance, at: Vector3)
+	local color = bodyColor(m)
+	task.delay(0.12, WeaponVfx.gemPop, at + Vector3.new(0, 1.6, 0), color) -- (near the top of its hop)
 end
 
 -- Fly a copy of the picked-up drop into you: a hop up and an arc that homes in on your middle, spinning and

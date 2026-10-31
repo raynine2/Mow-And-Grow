@@ -714,7 +714,8 @@ end
 
 local function bossCard(name: string, z: number): Card
 	local card = titleCard(("ZONE %d BOSS"):format(z), name:upper(), "Dodge the red circles!", 0.72, C.red or Color3.fromRGB(230, 60, 60))
-	Sound.play("slam")
+	-- (29 Oct) a swish for the card: the boss's rise just slammed, a second boom 0.2 s later was one too many
+	Sound.play("whoosh", 0.05)
 	return card
 end
 

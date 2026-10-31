@@ -121,9 +121,6 @@ local function unglow(m: Model)
 			g.light:Destroy()
 		end
 		glowing[m] = nil
-		if m.Parent then
-			m:SetAttribute("LastClump", nil)
-		end
 	end
 end
 
@@ -135,8 +132,6 @@ local function clearGlow()
 end
 
 local function glow(m: Model, lights: number): boolean
-	-- (this screen only: tells client/GrassLod to keep it the real clump, never its far stand-in)
-	m:SetAttribute("LastClump", true)
 	local cf, size = m:GetBoundingBox()
 	local beam = Instance.new("Part")
 	beam.Name = "LastClumpBeam"
@@ -240,7 +235,13 @@ local function updateChip()
 	for _, m in Config.RUN_MEDALS do
 		if now < m.minutes * 60 then
 			label.Visible = true
-			label.Text = ("%s under %d:00"):format(m.name:upper(), m.minutes)
+			-- (29 Oct) a Hard / Expert run says so in front of the medal
+			local diff = Config.DIFFICULTY[ReplicatedStorage:GetAttribute("Difficulty") or "Normal"]
+			if diff and diff.label ~= "MEDIUM" then
+				label.Text = ("%s %s %d:00"):format(diff.label, m.name:upper(), m.minutes) -- (fits the chip on one line)
+			else
+				label.Text = ("%s under %d:00"):format(m.name:upper(), m.minutes)
+			end
 			label.TextColor3 = m.color
 			return
 		end

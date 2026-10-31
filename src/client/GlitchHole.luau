@@ -18,9 +18,12 @@
 --     hole.horizon, hole.centre, hole.radius
 --     hole.destroy()
 --   GlitchHole.eyeProp(parent) -> Eye     the demon's eye on its own (client/Intro's peek): place(at, toward, width, open)
+-- (29 Oct) GlitchHole.new(..., { bare = true }): the halo, the disk's spirals, the falling sparks and the opening's
+-- shock ring are left out: client/Ending plays them as VFX Forge templates (client/FilmVfx) and keeps this hole's
+-- horizon, rim, glitches, lumps, lifting and eye. hole.diskCf: the disk's frame (its plane = XZ).
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
-local Device = require(script.Parent.Device)
 local IntroCast = require(script.Parent.IntroCast)
 local Potato = require(script.Parent.Potato)
 
@@ -44,7 +47,7 @@ local TEX = {
 }
 
 local function light(): boolean
-	return Potato.on or Device.touch
+	return Potato.on or (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
 end
 
 local function part(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material?, shape: Enum.PartType?): Part
@@ -130,6 +133,7 @@ export type Hole = {
 	horizon: Part,
 	centre: Vector3,
 	radius: number,
+	diskCf: CFrame,
 	open: (time: number) -> (),
 	chunks: (around: Vector3, radius: number, count: number, time: number) -> (),
 	take: (get: () -> CFrame, set: (CFrame) -> (), time: number, delay: number?) -> (),
@@ -143,7 +147,8 @@ export type Hole = {
 type Lump = { parts: { BasePart }, rel: { CFrame }, sizes: { Vector3 }, start: Vector3, t: number, len: number, a0: number, side: number, spin: Vector3, s: number, gone: boolean }
 type Taken = { get: () -> CFrame, set: (CFrame) -> (), t: number, len: number, from: CFrame?, a0: number, side: number, axis: Vector3, gone: boolean }
 
-function GlitchHole.new(centre: Vector3, facing: Vector3, radius: number, parent: Instance?): Hole
+function GlitchHole.new(centre: Vector3, facing: Vector3, radius: number, parent: Instance?, opts: { bare: boolean? }?): Hole
+	local bare = opts ~= nil and opts.bare == true
 	local folder = Instance.new("Folder")
 	folder.Name = "GlitchHole"
 	local R = radius
@@ -179,15 +184,17 @@ function GlitchHole.new(centre: Vector3, facing: Vector3, radius: number, parent
 	lens.Adornee = horizon
 	lens.Parent = horizon
 	local spins: { { img: ImageLabel, speed: number } } = {}
-	image(lens, "Halo", TEX.glow, 1, PINK, 0.25, 1)
-	table.insert(spins, { img = image(lens, "Swirl", TEX.spiral, 0.86, Color3.fromRGB(255, 120, 210), 0.45, 2), speed = 70 })
-	table.insert(spins, { img = image(lens, "Arc", TEX.ring, 0.62, Color3.fromRGB(255, 90, 190), 0.15, 3), speed = -28 })
-	image(lens, "Photon", TEX.ringThin, 0.47, HOT, 0, 4)
+	if not bare then
+		image(lens, "Halo", TEX.glow, 1, PINK, 0.25, 1)
+		table.insert(spins, { img = image(lens, "Swirl", TEX.spiral, 0.86, Color3.fromRGB(255, 120, 210), 0.45, 2), speed = 70 })
+		table.insert(spins, { img = image(lens, "Arc", TEX.ring, 0.62, Color3.fromRGB(255, 90, 190), 0.15, 3), speed = -28 })
+		image(lens, "Photon", TEX.ringThin, 0.47, HOT, 0, 4)
+	end
 
 	-- the accretion disk: spirals and a hot inner ring, seen from above and below
 	local disk = part(folder, "Disk", Vector3.new(D * 2, 0.05, D * 2), diskCf, BLACK)
 	disk.Transparency = 1
-	for _, f in { Enum.NormalId.Top, Enum.NormalId.Bottom } do
+	for _, f in if bare then {} else { Enum.NormalId.Top, Enum.NormalId.Bottom } do
 		local sg = Instance.new("SurfaceGui")
 		sg.Name = "Disk" .. f.Name
 		sg.Face = f
@@ -206,22 +213,24 @@ function GlitchHole.new(centre: Vector3, facing: Vector3, radius: number, parent
 	-- sparks falling in from all round (a shell emitting inward)
 	local shell = part(folder, "Infall", Vector3.one * R * 4.4, CFrame.new(centre), BLACK, nil, Enum.PartType.Ball)
 	shell.Transparency = 1
-	local infall = Instance.new("ParticleEmitter")
-	infall.Texture = TEX.spark
-	infall.Color = ColorSequence.new(PINK, HOT)
-	infall.LightEmission = 1
-	local ps = R / 10 -- (sparks sized to the hole: they're seen from far away)
-	infall.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6 * ps), NumberSequenceKeypoint.new(0.6, 1.4 * ps), NumberSequenceKeypoint.new(1, 0.2 * ps) })
-	infall.Squash = NumberSequence.new(-2.5)
-	infall.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.1), NumberSequenceKeypoint.new(0.85, 0.2), NumberSequenceKeypoint.new(1, 1) })
-	infall.Lifetime = NumberRange.new(0.95, 1.05)
-	infall.Speed = NumberRange.new(R * 2.1, R * 2.3)
-	infall.Orientation = Enum.ParticleOrientation.VelocityParallel
-	infall.Shape = Enum.ParticleEmitterShape.Sphere
-	infall.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
-	infall.ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward
-	infall.Rate = 0
-	infall.Parent = shell
+	local infall: ParticleEmitter? = if bare then nil else Instance.new("ParticleEmitter")
+	if infall then
+		infall.Texture = TEX.spark
+		infall.Color = ColorSequence.new(PINK, HOT)
+		infall.LightEmission = 1
+		local ps = R / 10 -- (sparks sized to the hole: they're seen from far away)
+		infall.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6 * ps), NumberSequenceKeypoint.new(0.6, 1.4 * ps), NumberSequenceKeypoint.new(1, 0.2 * ps) })
+		infall.Squash = NumberSequence.new(-2.5)
+		infall.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.1), NumberSequenceKeypoint.new(0.85, 0.2), NumberSequenceKeypoint.new(1, 1) })
+		infall.Lifetime = NumberRange.new(0.95, 1.05)
+		infall.Speed = NumberRange.new(R * 2.1, R * 2.3)
+		infall.Orientation = Enum.ParticleOrientation.VelocityParallel
+		infall.Shape = Enum.ParticleEmitterShape.Sphere
+		infall.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+		infall.ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward
+		infall.Rate = 0
+		infall.Parent = shell
+	end
 	folder.Parent = parent or workspace
 
 	local size = 0.001 -- everything's scale (0..1, more to swallow)
@@ -269,6 +278,7 @@ function GlitchHole.new(centre: Vector3, facing: Vector3, radius: number, parent
 	hole.horizon = horizon
 	hole.centre = centre
 	hole.radius = R
+	hole.diskCf = diskCf
 
 	function hole.grow(scale: number, time: number)
 		sizeFrom, sizeTo, sizeStart, sizeLen = size, scale, os.clock(), math.max(time, 0.01)
@@ -276,15 +286,19 @@ function GlitchHole.new(centre: Vector3, facing: Vector3, radius: number, parent
 
 	function hole.open(time: number)
 		hole.grow(1, time)
-		infall.Rate = if light() then 30 else 60
+		if infall then
+			infall.Rate = if light() then 30 else 60
+		end
 		TweenService:Create(glowLight, TweenInfo.new(time, Enum.EasingStyle.Quad), { Range = 60 }):Play()
-		-- a shock ring bursting out of the pinprick
-		local ring = part(folder, "Shock", Vector3.new(0.4, R, R), diskCf * CFrame.Angles(0, 0, math.rad(90)), HOT, Enum.Material.Neon, Enum.PartType.Cylinder)
-		ring.Transparency = 0.1
-		TweenService:Create(ring, TweenInfo.new(0.7, Enum.EasingStyle.Quart), { Size = Vector3.new(0.4, D * 3.2, D * 3.2), Transparency = 1 }):Play()
-		task.delay(0.75, function()
-			ring:Destroy()
-		end)
+		-- a shock ring bursting out of the pinprick (bare: client/Ending's VFX Forge one)
+		if not bare then
+			local ring = part(folder, "Shock", Vector3.new(0.4, R, R), diskCf * CFrame.Angles(0, 0, math.rad(90)), HOT, Enum.Material.Neon, Enum.PartType.Cylinder)
+			ring.Transparency = 0.1
+			TweenService:Create(ring, TweenInfo.new(0.7, Enum.EasingStyle.Quart), { Size = Vector3.new(0.4, D * 3.2, D * 3.2), Transparency = 1 }):Play()
+			task.delay(0.75, function()
+				ring:Destroy()
+			end)
+		end
 		hole.glitch(0.25)
 	end
 

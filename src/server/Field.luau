@@ -495,8 +495,9 @@ local function query(pos: Vector3, radius: number): { Patch }
 	return out
 end
 
+Field.devMutation = nil :: string? -- (30 Oct) Studio tests: every uncovered clump gets this mutation (DevHook "mutate")
 local function reveal(p: Patch, luck: number, by: Player?)
-	local mut = Config.rollMutation(rng, luck)
+	local mut = Field.devMutation or Config.rollMutation(rng, luck)
 	-- a class can force one (the Ultimate Gardener's Midas Touch: server/ClassPerks)
 	local forced = if Field.forceMutation then Field.forceMutation(by, mut) else nil
 	if forced then
@@ -645,6 +646,23 @@ function Field.finishLeftovers(z: number, player: Player): number
 	return n
 end
 
+-- (28 Oct, owner's brief: "other players see a lighter version of your effects") a hit is also sent to the other
+-- players near it (client/Fx "chipOther" draws a light copy), one every 0.15 s per hitter at most
+local sharedAt: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
+local function shareHit(player: Player, d: { [string]: any })
+	local now = os.clock()
+	if now - (sharedAt[player] or 0) < 0.15 then
+		return
+	end
+	sharedAt[player] = now
+	for _, other in game:GetService("Players"):GetPlayers() do
+		local root = other ~= player and other.Character and other.Character:FindFirstChild("HumanoidRootPart")
+		if root and (root.Position - d.pos).Magnitude < 90 then
+			Net.send(other, "Fx", "chipOther", d)
+		end
+	end
+end
+
 -- `from`: where the hit comes from (the cutter); the notch faces it and the clump falls away from it.
 local function damagePatch(player: Player, p: Patch, amount: number, luck: number, from: Vector3): boolean
 	if p.mut == nil then
@@ -713,6 +731,14 @@ local function damagePatch(player: Player, p: Patch, amount: number, luck: numbe
 			dealt = amount, -- (28 Oct) client/HitMeter shows the bite this hit took
 			z = p.z, -- (28 Oct) client/ClumpWound tints the cut to the area's grass / the mutation
 			mut = p.mut,
+		})
+		shareHit(player, {
+			pos = p.part.Position,
+			hitPos = (p.stalkAt or p.spot.Position) + Vector3.new(0, math.min(h * 0.35, 4), 0),
+			color = if first then first.stem.Color elseif p.voxel and Zones.list[p.z] then Zones.list[p.z].palette.grass[1] else p.baseColor,
+			model = p.model or p.holder,
+			mut = p.mut,
+			by = player.UserId,
 		})
 	end
 	return true
@@ -910,6 +936,44 @@ function Field.hideSpots(z: number, n: number, apart: number?): { CFrame }
 		end
 	end
 	return out
+end
+
+-- (30 Oct, owner: "run saves: fix / revamp") A saved run comes back with its area as far mowed as it was: `n` clumps
+-- of area z are cut at the start, quietly (stubble, no loot, no effects), the ones nearest the area's camp first (where
+-- you'd have started). Never the last one: the area still has to be finished by hand. Returns how many it cut.
+function Field.restoreCut(z: number, n: number): number
+	local list = patches[z]
+	if not list then
+		return 0
+	end
+	local world = folder and folder.Parent
+	local hub = world and world:GetAttribute("Hub" .. z)
+	local standing = {}
+	for _, p in list do
+		if not p.cut and not p.elder then
+			table.insert(standing, p)
+		end
+	end
+	if typeof(hub) == "Vector3" then
+		table.sort(standing, function(a, b)
+			return (a.spot.Position - hub).Magnitude < (b.spot.Position - hub).Magnitude
+		end)
+	end
+	local count = math.max(0, math.min(math.floor(n), #standing - 1))
+	for i = 1, count do
+		local p = standing[i]
+		p.hp = 0
+		p.cut = true
+		stubble(p)
+		Field.remaining[z] -= 1
+		if i % 40 == 0 then
+			task.wait()
+		end
+	end
+	if count > 0 and Field.onProgress then
+		Field.onProgress()
+	end
+	return count
 end
 
 function Field.unlock(z: number)

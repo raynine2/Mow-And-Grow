@@ -1,6 +1,7 @@
 -- The egg hatch: tap-to-open at the hatching shrine (the owner's reference: a TikTok "spirits hatching" clip).
--- The camera cuts to a shrine built just for the hatch (client-only, far from the map): a rock altar with a glowing
--- plate, two huge curved claws arching over it, stone pillars with purple fire, autumn pines blurred behind.
+-- The camera cuts to a scene built just for the hatch (client-only, far from the map): since 30 Oct a "glitch garden"
+-- at dusk (a mossy stone pedestal with the glowing plate under a rose arch, box hedges, voxel trees, glitch cracks
+-- and pixels in a striped lawn: see buildShrine).
 -- The egg floats on the plate under a pulsing TAP TO OPEN. Every tap punches it (white starburst, sparks, a tick that
 -- climbs in pitch); some taps UPGRADE it: a swirl of crescent slashes in the next rarity's colour wraps the egg and the
 -- egg turns that colour, climbing the rarity ladder until it reaches what's really inside. The last tap blows it open
@@ -16,8 +17,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-
-local Device = require(script.Parent.Device)
 
 local Shared = ReplicatedStorage:WaitForChild("MowALawn")
 local Config = require(Shared:WaitForChild("Config"))
@@ -41,7 +40,7 @@ HatchFx.after = nil :: string?
 local TEX = if okAssets and type(Assets) == "table" then Assets.Tex else {}
 local ICONS = if okIcons and type(IconIds) == "table" then IconIds else {}
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
-local MOBILE = Device.touch
+local MOBILE = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local FEW = if MOBILE then 0.6 else 1
 local FONT = (Config.UI and Config.UI.font) or Enum.Font.FredokaOne
 local INK = Color3.fromRGB(28, 18, 30)
@@ -124,65 +123,17 @@ local function light(parent: Instance, color: Color3, brightness: number, range:
 	return l
 end
 
--- a voxel pine like the reference's background (three stacked, shrinking, turned blocks)
-local function pine(parent: Instance, at: Vector3, h: number, color: Color3)
-	part(parent, Vector3.new(0.9, h * 0.35, 0.9) * (h / 10), CFrame.new(at + Vector3.new(0, h * 0.16, 0)), Color3.fromRGB(90, 60, 40))
+-- a voxel tree in the game's style: a trunk and a few stacked, slightly turned leaf blocks
+local function tree(parent: Instance, at: Vector3, h: number, leaf: Color3, trunk: Color3)
+	part(parent, Vector3.new(h * 0.12, h * 0.42, h * 0.12), CFrame.new(at + Vector3.new(0, h * 0.21, 0)), trunk)
+	local rng = Random.new(math.floor(at.X * 13 + at.Z * 7))
 	for i = 0, 2 do
-		local w = h * (0.62 - i * 0.16)
-		local y = h * (0.32 + i * 0.22)
-		part(parent, Vector3.new(w, h * 0.24, w), CFrame.new(at + Vector3.new(0, y, 0)) * CFrame.Angles(0, math.rad(45 * (i % 2) + 10), 0), color:Lerp(Color3.new(1, 1, 1), i * 0.06))
+		local w = h * (0.62 - i * 0.14)
+		local off = Vector3.new(rng:NextNumber(-0.08, 0.08) * h, h * (0.46 + i * 0.17), rng:NextNumber(-0.08, 0.08) * h)
+		part(parent, Vector3.new(w, h * 0.22, w), CFrame.new(at + off) * CFrame.Angles(0, math.rad(rng:NextNumber(-20, 20)), 0), leaf:Lerp(Color3.new(1, 1, 1), i * 0.05))
 	end
 end
 
--- one claw: a chain of tapering blocks that rises from the ground and curls in over the altar
-local function claw(parent: Instance, side: number)
-	local col = Color3.fromRGB(235, 120, 55)
-	local n = 8
-	local pos = Vector3.new(7.4 * side, 0, 0.6)
-	local ang = math.rad(-10)
-	for i = 1, n do
-		local a = i / n
-		local len = 2.0 - a * 0.45
-		local w = 2.8 * (1 - a * 0.8)
-		ang += math.rad(3 + a * a * 30) -- straight-ish trunk, the hook at the tip
-		local dir = Vector3.new(-math.sin(ang) * side, math.cos(ang), 0)
-		local mid = pos + dir * (len / 2)
-		local cf = CFrame.lookAt(mid, mid + dir) * CFrame.Angles(-math.pi / 2, 0, 0)
-		part(parent, Vector3.new(w, len + 0.25, w * 0.8), ORIGIN * cf, col:Lerp(Color3.fromRGB(255, 200, 120), a * 0.6))
-		pos += dir * len
-	end
-	-- a small spur near the base, like the reference
-	local spur = CFrame.new(5.4 * side, 1.6, 1.4) * CFrame.Angles(0, 0, math.rad(-35 * side))
-	part(parent, Vector3.new(0.9, 2.6, 0.8), ORIGIN * spur, Color3.fromRGB(250, 160, 80))
-end
-
-local function brazier(parent: Instance, x: number)
-	local stone = Color3.fromRGB(205, 200, 210)
-	local base = CFrame.new(x, 0, -2.2)
-	part(parent, Vector3.new(1.8, 0.6, 1.8), ORIGIN * base * CFrame.new(0, 0.3, 0), stone:Lerp(Color3.new(0, 0, 0), 0.15))
-	part(parent, Vector3.new(5, 1.1, 1.1), ORIGIN * base * CFrame.new(0, 3, 0) * CFrame.Angles(0, 0, math.pi / 2), stone, nil, Enum.PartType.Cylinder)
-	part(parent, Vector3.new(1.7, 0.5, 1.7), ORIGIN * base * CFrame.new(0, 5.6, 0), stone)
-	local bowl = part(parent, Vector3.new(1.4, 0.5, 1.4), ORIGIN * base * CFrame.new(0, 6.05, 0), Color3.fromRGB(70, 50, 80))
-	local att = Instance.new("Attachment")
-	att.Position = Vector3.new(0, 0.4, 0)
-	att.Parent = bowl
-	local flame = emitter(att, {
-		Texture = TEX.FlameToon4x4 or SPARKLE,
-		FlipbookLayout = if TEX.FlameToon4x4 then Enum.ParticleFlipbookLayout.Grid4x4 else Enum.ParticleFlipbookLayout.None,
-		FlipbookMode = Enum.ParticleFlipbookMode.Loop,
-		Color = ColorSequence.new(Color3.fromRGB(230, 120, 255), Color3.fromRGB(120, 40, 220)),
-		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.5), NumberSequenceKeypoint.new(1, 0.4) }),
-		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) }),
-		Lifetime = NumberRange.new(0.5, 0.8),
-		Speed = NumberRange.new(2.5, 4),
-		SpreadAngle = Vector2.new(10, 10),
-		EmissionDirection = Enum.NormalId.Top,
-		Rate = 22 * FEW,
-		Brightness = 2,
-	})
-	flame.Enabled = true
-	light(bowl, Color3.fromRGB(190, 90, 255), 2, 9)
-end
 
 type Stage = {
 	folder: Folder,
@@ -192,7 +143,7 @@ type Stage = {
 	camCF: CFrame,
 	shake: number,
 	gui: ScreenGui,
-	dof: DepthOfFieldEffect,
+	dof: DepthOfFieldEffect?,
 	cc: ColorCorrectionEffect,
 	plateLight: PointLight,
 	rays: ImageLabel,
@@ -202,61 +153,170 @@ type Stage = {
 	confetti: { Instance }?,
 	moodSet: { [string]: any },
 	bloom: { [Instance]: { number } },
+	anim: RBXScriptConnection?,
 }
 
+
+-- (30 Oct, owner: "improve the background quality, make it match our game style, also fix the flickering ... it has
+-- to look high quality, well polished while still running easily on mobile phones 60fps"; answers: a "glitch garden",
+-- the WHOLE scene was blinking, keep tap-to-open, the length and the sounds.)
+-- THE BLINK: client/BiomeLight holds Lighting.ClockTime to the area's clock 15 times a second and re-applies the
+-- whole look every 2 s, while the hatch set its own dusk clock every frame: the two fought, so the sky and every
+-- light flipped between day and dusk. The hatch now pauses BiomeLight (the "HatchActive" attribute on the player)
+-- for as long as it's up, and gives it back after.
+-- THE SCENE: a garden at dusk where the glitch has got in: a mowed lawn in stripes, a mossy stone pedestal with the
+-- glowing plate in a ring of flowers, a rose arch over it, box hedges and topiaries either side, voxel trees behind,
+-- a pale moon in a deep purple sky; magenta and cyan glitch cracks in the lawn and pixels drifting up out of them,
+-- fireflies. Everything moves slowly and smoothly (no strobing). Built from about 400 plain parts, 2 lights, one
+-- RenderStepped for the small animations; no shadows, no depth of field on phones.
+local MAGENTA = Color3.fromRGB(255, 70, 200)
+local CYAN = Color3.fromRGB(70, 230, 255)
 local function buildShrine(): Stage
 	local cam = workspace.CurrentCamera
 	local folder = Instance.new("Folder")
-	folder.Name = "HatchShrine"
-	-- ground
-	part(folder, Vector3.new(2, 140, 140), ORIGIN * CFrame.new(0, -1, -20) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(70, 82, 52), Enum.Material.Grass, Enum.PartType.Cylinder)
-	part(folder, Vector3.new(1, 17, 17), ORIGIN * CFrame.new(0, -0.45, 0) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(92, 62, 46), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-	-- the altar: chunky dark-red rock blocks, the glowing plate on top
-	local rock = Color3.fromRGB(96, 40, 36)
-	local rng = Random.new(7)
-	for i = 1, 10 do
-		local a = (i / 10) * math.pi * 2
-		local r = 1.7 + rng:NextNumber() * 0.6
-		local h = 2.2 + rng:NextNumber() * 1.3
-		part(folder, Vector3.new(1.6 + rng:NextNumber(), h, 1.6 + rng:NextNumber()), ORIGIN * CFrame.new(math.cos(a) * r, h / 2, math.sin(a) * r) * CFrame.Angles(0, a + rng:NextNumber(), math.rad(rng:NextNumber() * 10 - 5)), rock:Lerp(Color3.fromRGB(80, 30, 30), rng:NextNumber() * 0.6))
+	folder.Name = "HatchGarden"
+	local rng = Random.new(31)
+	local function at(x: number, y: number, z: number): CFrame
+		return ORIGIN * CFrame.new(x, y, z)
 	end
-	part(folder, Vector3.new(3.4, 3.2, 3.4), ORIGIN * CFrame.new(0, 1.7, 0), rock)
-	part(folder, Vector3.new(0.5, 4.6, 4.6), ORIGIN * CFrame.new(0, PLATE_Y - 0.3, 0) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(110, 60, 45), nil, Enum.PartType.Cylinder)
-	local plate = part(folder, Vector3.new(0.12, 3.7, 3.7), ORIGIN * CFrame.new(0, PLATE_Y - 0.02, 0) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(255, 150, 60), Enum.Material.Neon, Enum.PartType.Cylinder)
-	local plateLight = light(plate, Color3.fromRGB(255, 150, 70), 1.6, 12)
-	-- rubble steps in front, bones scattered
-	for i = -2, 2 do
-		part(folder, Vector3.new(1.4, 0.9, 1.2), ORIGIN * CFrame.new(i * 1.3, 0.45, 3.1 + math.abs(i) * 0.2) * CFrame.Angles(0, i * 0.3, 0), rock:Lerp(Color3.new(0, 0, 0), 0.25))
+	-- the lawn: a big disc with mowed stripes running across the view
+	part(folder, Vector3.new(2, 170, 170), at(0, -1, -25) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(48, 92, 58), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+	local light1, dark1 = Color3.fromRGB(74, 132, 70), Color3.fromRGB(58, 108, 60)
+	for i = 0, 21 do
+		local z = 24 - i * 4.5
+		local half = math.sqrt(math.max(0, 85 * 85 - (z + 25) ^ 2))
+		if half > 2 then
+			part(folder, Vector3.new(half * 2, 0.06, 4.5), at(0, 0.03, z - 2.25), if i % 2 == 0 then light1 else dark1)
+		end
 	end
-	local bone = Color3.fromRGB(245, 225, 200)
-	for _, b in { { 3.6, 2.4, 20 }, { -3.8, 2.8, -30 }, { 4.6, 3.6, 70 }, { -2.6, 3.9, 50 } } do
-		part(folder, Vector3.new(1.6, 0.35, 0.35), ORIGIN * CFrame.new(b[1], 0.2, b[2]) * CFrame.Angles(0, math.rad(b[3]), 0), bone)
-		part(folder, Vector3.new(0.55, 0.55, 0.55), ORIGIN * CFrame.new(b[1] + 0.7, 0.3, b[2]) * CFrame.Angles(0, math.rad(b[3]), 0), bone)
+	-- the pedestal: mossy stone in voxel steps, the glowing plate on top (PLATE_Y)
+	local stone = Color3.fromRGB(150, 156, 170)
+	local stoneDark = Color3.fromRGB(112, 116, 132)
+	local moss = Color3.fromRGB(96, 168, 76)
+	part(folder, Vector3.new(6.4, 0.8, 6.4), at(0, 0.4, 0), stoneDark)
+	part(folder, Vector3.new(5.0, 0.6, 5.0), at(0, 1.1, 0), stone)
+	part(folder, Vector3.new(3.2, 1.8, 3.2), at(0, 2.3, 0), stone:Lerp(stoneDark, 0.3))
+	part(folder, Vector3.new(4.6, 0.5, 4.6), at(0, PLATE_Y - 0.25, 0), stone)
+	for k = 0, 7 do
+		local a = k / 8 * math.pi * 2 + 0.3
+		local r = if k % 2 == 0 then 2.2 else 2.9
+		local y = if k % 2 == 0 then PLATE_Y - 0.25 else 0.85
+		part(folder, Vector3.new(0.9, 0.35, 0.9) * rng:NextNumber(0.8, 1.2), at(math.cos(a) * r, y + 0.2, math.sin(a) * r) * CFrame.Angles(0, a, 0), moss:Lerp(Color3.new(0, 0, 0), rng:NextNumber(0, 0.15)))
 	end
-	part(folder, Vector3.new(1.4, 1.2, 1.3), ORIGIN * CFrame.new(3.4, 0.6, 2.2) * CFrame.Angles(0, -0.5, 0), bone) -- a skull
-	claw(folder, -1)
-	claw(folder, 1)
-	brazier(folder, -4.3)
-	brazier(folder, 4.3)
-	-- autumn pines behind, out of focus
-	local pal = { Color3.fromRGB(190, 120, 46), Color3.fromRGB(170, 82, 40), Color3.fromRGB(200, 152, 62), Color3.fromRGB(40, 72, 82) }
-	for i = 1, 30 do
-		local x = rng:NextNumber(-40, 40)
-		local z = rng:NextNumber(-48, -14)
-		pine(folder, (ORIGIN * CFrame.new(x, 0, z)).Position, rng:NextNumber(10, 18), pal[rng:NextInteger(1, #pal)])
+	part(folder, Vector3.new(0.5, 4.2, 4.2), at(0, PLATE_Y - 0.1, 0) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(90, 70, 120), nil, Enum.PartType.Cylinder)
+	local plate = part(folder, Vector3.new(0.12, 3.7, 3.7), at(0, PLATE_Y - 0.02, 0) * CFrame.Angles(0, 0, math.pi / 2), Color3.fromRGB(255, 150, 230), Enum.Material.Neon, Enum.PartType.Cylinder)
+	local plateLight = light(plate, Color3.fromRGB(255, 150, 220), 1.6, 14)
+	-- the flower ring round it
+	local FLOW = { Color3.fromRGB(255, 120, 170), Color3.fromRGB(255, 220, 90), Color3.fromRGB(250, 250, 240), Color3.fromRGB(190, 130, 255), Color3.fromRGB(255, 160, 90) }
+	for k = 0, 27 do
+		local a = k / 28 * math.pi * 2
+		local r = 4.3 + rng:NextNumber(0, 1.4)
+		local x, z = math.cos(a) * r, math.sin(a) * r
+		local h = rng:NextNumber(0.5, 1.1)
+		part(folder, Vector3.new(0.14, h, 0.14), at(x, h / 2, z), Color3.fromRGB(70, 140, 60))
+		part(folder, Vector3.new(0.42, 0.3, 0.42), at(x, h + 0.1, z) * CFrame.Angles(0, a, 0), FLOW[rng:NextInteger(1, #FLOW)])
+		if k % 3 == 0 then
+			part(folder, Vector3.new(0.55, 0.5, 0.55), at(x + 0.4, 0.25, z + 0.3), moss)
+		end
 	end
-	-- a few at the sides, set well back and low so they frame the shrine without crowding it
-	for i = 1, 6 do
-		pine(folder, (ORIGIN * CFrame.new((if i % 2 == 0 then 1 else -1) * rng:NextNumber(16, 26), 0, rng:NextNumber(-12, -4))).Position, rng:NextNumber(8, 12), pal[rng:NextInteger(1, #pal)])
+	-- the rose arch behind the pedestal
+	local white = Color3.fromRGB(206, 198, 222)
+	local leaf = Color3.fromRGB(64, 128, 70)
+	local archZ, archR, archY = -6.5, 6.2, 7.0
+	for _, sx in { -1, 1 } do
+		part(folder, Vector3.new(0.7, archY, 0.7), at(sx * archR, archY / 2, archZ), white)
+		part(folder, Vector3.new(1.3, 0.5, 1.3), at(sx * archR, 0.25, archZ), stoneDark)
+		for k = 0, 4 do
+			part(folder, Vector3.new(1.0, 1.1, 0.9) * rng:NextNumber(0.85, 1.15), at(sx * (archR + rng:NextNumber(-0.25, 0.25)), 1.2 + k * 1.3, archZ + rng:NextNumber(-0.2, 0.2)), leaf:Lerp(Color3.new(0, 0, 0), rng:NextNumber(0, 0.2)))
+		end
 	end
-	-- the dusk sky: the game's painted skybox doesn't follow the clock, so the shrine gets its own backdrop, walls
-	-- far behind with a deep-blue gradient (unlit, so it reads like a sky), blurred by the depth of field
+	local SEG = 9
+	for k = 0, SEG do
+		local a = math.pi * k / SEG
+		local x, y = math.cos(a) * archR, archY + math.sin(a) * archR * 0.55
+		-- along the curve: the tangent of (cos a, 0.55 sin a)
+		local along = math.atan2(0.55 * math.cos(a), -math.sin(a))
+		part(folder, Vector3.new(2.5, 0.55, 0.7), at(x, y, archZ) * CFrame.Angles(0, 0, along), white)
+		part(folder, Vector3.new(1.3, 1.1, 1.1) * rng:NextNumber(0.8, 1.2), at(x + rng:NextNumber(-0.3, 0.3), y + 0.35, archZ + rng:NextNumber(-0.25, 0.25)), leaf:Lerp(Color3.new(0, 0, 0), rng:NextNumber(0, 0.2)))
+		if k % 2 == 1 then
+			part(folder, Vector3.new(0.5, 0.5, 0.5), at(x + 0.3, y + 0.75, archZ - 0.45), FLOW[1 + k % 2])
+		end
+	end
+	-- box hedges with topiary balls either side
+	for _, sx in { -1, 1 } do
+		for k = 0, 2 do
+			local x, z = sx * (11 + k * 1.2), -1 - k * 6
+			part(folder, Vector3.new(3.2, 2.6, 5.6), at(x, 1.3, z), leaf)
+			part(folder, Vector3.new(2.6, 0.6, 5.0), at(x, 2.9, z), leaf:Lerp(Color3.new(1, 1, 1), 0.06))
+		end
+		local tz = 3.6
+		part(folder, Vector3.new(1.4, 1.2, 1.4), at(sx * 8.4, 0.6, tz), Color3.fromRGB(176, 106, 76))
+		part(folder, Vector3.new(0.4, 1.6, 0.4), at(sx * 8.4, 2.0, tz), Color3.fromRGB(110, 76, 52))
+		part(folder, Vector3.new(2.6, 2.6, 2.6), at(sx * 8.4, 3.9, tz), leaf:Lerp(Color3.new(1, 1, 1), 0.04), nil, Enum.PartType.Ball)
+	end
+	-- voxel trees behind, darker as they go back (dusk)
+	local trunk = Color3.fromRGB(86, 60, 50)
+	for i = 1, 16 do
+		local x = rng:NextNumber(-55, 55)
+		local z = rng:NextNumber(-48, -18)
+		if math.abs(x) < 9 and z > -26 then
+			x += 14 * (if x < 0 then -1 else 1)
+		end
+		local depth = (z + 18) / -30
+		local col = Color3.fromRGB(46, 96, 72):Lerp(Color3.fromRGB(40, 50, 92), depth)
+		tree(folder, (at(x, 0, z)).Position, rng:NextNumber(12, 19), col, trunk)
+	end
+	for _, sx in { -1, 1 } do
+		tree(folder, (at(sx * rng:NextNumber(17, 22), 0, rng:NextNumber(-12, -7))).Position, rng:NextNumber(10, 13), Color3.fromRGB(52, 110, 74), trunk)
+	end
+	-- the glitch cracks in the lawn: zigzags of magenta and cyan running out from the pedestal
+	local cracks: { BasePart } = {}
+	for i = 0, 5 do
+		local a = math.rad(-150 + i * 60 + rng:NextNumber(-12, 12))
+		local p = Vector3.new(math.cos(a) * 3.6, 0.07, math.sin(a) * 3.6)
+		local col = if i % 2 == 0 then MAGENTA else CYAN
+		for _ = 1, 5 do
+			local turn = a + math.rad(rng:NextNumber(-35, 35))
+			local len = rng:NextNumber(1.2, 2.2)
+			local d = Vector3.new(math.cos(turn), 0, math.sin(turn)) * len
+			local mid = p + d / 2
+			local c = part(folder, Vector3.new(0.16, 0.05, len + 0.1), ORIGIN * CFrame.lookAt(mid, mid + d), col, Enum.Material.Neon)
+			c.Transparency = 0.25
+			table.insert(cracks, c)
+			p += d
+		end
+	end
+	-- glitch pixels: little neon cubes that drift up out of the cracks and fade (animated below)
+	local pixels: { { p: BasePart, x: number, z: number, t: number, speed: number } } = {}
+	for i = 1, math.floor(18 * FEW + 0.5) do
+		local a = rng:NextNumber(0, math.pi * 2)
+		local r = rng:NextNumber(3.5, 13)
+		local px = part(folder, Vector3.one * rng:NextNumber(0.18, 0.34), at(math.cos(a) * r, 0, math.sin(a) * r - 2), if i % 2 == 0 then MAGENTA else CYAN, Enum.Material.Neon)
+		table.insert(pixels, { p = px, x = math.cos(a) * r, z = math.sin(a) * r - 2, t = rng:NextNumber(0, 6), speed = rng:NextNumber(0.6, 1.1) })
+	end
+	-- fireflies over the lawn
+	local flyHolder = part(folder, Vector3.new(30, 4, 16), at(0, 3.5, -4), WHITE)
+	flyHolder.Transparency = 1
+	local flies = emitter(flyHolder, {
+		Texture = TEX.Glow or SPARKLE,
+		Color = ColorSequence.new(Color3.fromRGB(230, 255, 150)),
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.32), NumberSequenceKeypoint.new(0.7, 0.28), NumberSequenceKeypoint.new(1, 0) }),
+		Transparency = NumberSequence.new(0.1),
+		Lifetime = NumberRange.new(4, 6),
+		Speed = NumberRange.new(0.3, 0.8),
+		SpreadAngle = Vector2.new(180, 180),
+		Acceleration = Vector3.new(0, 0.15, 0),
+		Rate = 7 * FEW,
+		Brightness = 2,
+	})
+	flies.Enabled = true
+	-- the sky: one far wall with a deep purple dusk gradient (unlit), pixel stars and a pale moon
 	local function skyWall(cf: CFrame, w: number, h: number)
-		local p = part(folder, Vector3.new(w, h, 1), ORIGIN * cf, Color3.fromRGB(20, 26, 70))
+		local p = part(folder, Vector3.new(w, h, 1), ORIGIN * cf, Color3.fromRGB(20, 16, 50))
 		local sg = Instance.new("SurfaceGui")
 		sg.Face = Enum.NormalId.Front
 		sg.LightInfluence = 0
-		sg.CanvasSize = Vector2.new(64, 64)
+		sg.CanvasSize = Vector2.new(256, 64)
 		sg.Parent = p
 		local f = Instance.new("Frame")
 		f.BorderSizePixel = 0
@@ -266,15 +326,59 @@ local function buildShrine(): Stage
 		local g = Instance.new("UIGradient")
 		g.Rotation = 90
 		g.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(8, 10, 38)),
-			ColorSequenceKeypoint.new(0.45, Color3.fromRGB(16, 22, 66)),
-			ColorSequenceKeypoint.new(0.78, Color3.fromRGB(36, 46, 116)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(86, 80, 156)),
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(12, 10, 40)),
+			ColorSequenceKeypoint.new(0.45, Color3.fromRGB(40, 24, 92)),
+			ColorSequenceKeypoint.new(0.78, Color3.fromRGB(118, 56, 150)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(250, 146, 168)),
 		})
 		g.Parent = f
+		local srng = Random.new(5)
+		for _ = 1, 46 do
+			local st = Instance.new("Frame")
+			st.BorderSizePixel = 0
+			local sz = if srng:NextNumber() < 0.2 then 2 else 1
+			st.Size = UDim2.fromOffset(sz, sz)
+			st.Position = UDim2.fromScale(srng:NextNumber(), srng:NextNumber(0, 0.55))
+			st.BackgroundColor3 = if srng:NextNumber() < 0.15 then CYAN else Color3.fromRGB(255, 250, 235)
+			st.BackgroundTransparency = srng:NextNumber(0, 0.5)
+			st.Parent = f
+		end
 	end
-	-- one wall, big enough to fill the whole view (the camera only ever looks this way); Front faces the shrine
 	skyWall(CFrame.new(0, 70, -75) * CFrame.Angles(0, math.pi, 0), 700, 170)
+	local moonAnchor = part(folder, Vector3.one, at(-26, 38, -70), WHITE)
+	moonAnchor.Transparency = 1
+	local moonBoard = Instance.new("BillboardGui")
+	moonBoard.Adornee = moonAnchor
+	moonBoard.LightInfluence = 0
+	moonBoard.Size = UDim2.fromScale(26, 26)
+	moonBoard.Parent = moonAnchor
+	local moonGlow = Instance.new("ImageLabel")
+	moonGlow.BackgroundTransparency = 1
+	moonGlow.Size = UDim2.fromScale(1, 1)
+	moonGlow.Image = TEX.Glow or ""
+	moonGlow.ImageColor3 = Color3.fromRGB(200, 220, 255)
+	moonGlow.ImageTransparency = 0.45
+	moonGlow.Parent = moonBoard
+	local moon = Instance.new("Frame")
+	moon.AnchorPoint = Vector2.new(0.5, 0.5)
+	moon.Position = UDim2.fromScale(0.5, 0.5)
+	moon.Size = UDim2.fromScale(0.34, 0.34)
+	moon.BackgroundColor3 = Color3.fromRGB(240, 244, 255)
+	moon.BorderSizePixel = 0
+	moon.Parent = moonBoard
+	local mc = Instance.new("UICorner")
+	mc.CornerRadius = UDim.new(0.5, 0)
+	mc.Parent = moon
+	-- a glitch ring round the moon, slowly turning
+	local ring = Instance.new("ImageLabel")
+	ring.BackgroundTransparency = 1
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	ring.Position = UDim2.fromScale(0.5, 0.5)
+	ring.Size = UDim2.fromScale(0.62, 0.62)
+	ring.Image = TEX.RingThin or TEX.VS_Ring or ""
+	ring.ImageColor3 = MAGENTA
+	ring.ImageTransparency = 0.35
+	ring.Parent = moonBoard
 	-- rays behind the reveal (hidden until then)
 	local raysAnchor = part(folder, Vector3.one, ORIGIN * CFrame.new(0, PLATE_Y + 3.2, -1.5), WHITE)
 	raysAnchor.Transparency = 1
@@ -289,6 +393,10 @@ local function buildShrine(): Stage
 	rays.Image = (Config.ICONS and Config.ICONS.ui_rays ~= "" and Config.ICONS.ui_rays) or ICONS.ui_rays or TEX.VS_Starburst or ""
 	rays.ImageTransparency = 1
 	rays.Parent = raysBoard
+	-- a soft cyan glow from under the pedestal (the glitch), the second light
+	local under = part(folder, Vector3.one, at(0, 0.6, 1.5), WHITE)
+	under.Transparency = 1
+	light(under, Color3.fromRGB(110, 220, 255), 0.8, 12)
 	folder.Parent = cam
 
 	local s = {} :: Stage
@@ -303,22 +411,28 @@ local function buildShrine(): Stage
 	s.plateLight = plateLight
 	s.rays = rays
 	s.raysBoard = raysBoard
-	s.dof = Instance.new("DepthOfFieldEffect")
-	s.dof.Name = "HatchDOF"
-	s.dof.FocusDistance = 17
-	s.dof.InFocusRadius = 6
-	s.dof.NearIntensity = 0
-	s.dof.FarIntensity = 0.8
-	s.dof.Parent = Lighting
+	-- pause client/BiomeLight while the garden is up (see THE BLINK above)
+	local player = Players.LocalPlayer
+	player:SetAttribute("HatchActive", true)
+	if not MOBILE then
+		local dof = Instance.new("DepthOfFieldEffect")
+		dof.Name = "HatchDOF"
+		dof.FocusDistance = 17
+		dof.InFocusRadius = 8
+		dof.NearIntensity = 0
+		dof.FarIntensity = 0.55
+		dof.Parent = Lighting
+		s.dof = dof
+	end
 	s.cc = Instance.new("ColorCorrectionEffect")
 	s.cc.Name = "HatchGrade"
-	s.cc.Saturation = 0.2
-	s.cc.Contrast = 0.08
-	s.cc.TintColor = Color3.fromRGB(235, 228, 255)
+	s.cc.Saturation = 0.18
+	s.cc.Contrast = 0.06
+	s.cc.TintColor = Color3.fromRGB(240, 232, 255)
 	s.cc.Parent = Lighting
-	-- dusk at the shrine like the reference (deep blue sky, warm lights): the world's lighting is put back on close
+	-- dusk in the garden; the world's lighting is put back on close
 	s.mood = {}
-	local MOOD = { ClockTime = 19.4, Brightness = 1.4, ExposureCompensation = -0.15, Ambient = Color3.fromRGB(96, 84, 128), OutdoorAmbient = Color3.fromRGB(92, 96, 150) }
+	local MOOD = { ClockTime = 19.2, Brightness = 1.3, ExposureCompensation = -0.1, Ambient = Color3.fromRGB(104, 90, 140), OutdoorAmbient = Color3.fromRGB(112, 104, 168) }
 	for prop, v in MOOD do
 		s.mood[prop] = (Lighting :: any)[prop];
 		(Lighting :: any)[prop] = v
@@ -332,20 +446,36 @@ local function buildShrine(): Stage
 			b.Haze = 0
 		elseif b:IsA("BloomEffect") then
 			s.bloom[b] = { b.Intensity, b.Threshold }
-			b.Intensity = math.min(b.Intensity, 0.35)
-			b.Threshold = math.max(b.Threshold, 1.5)
+			b.Intensity = math.min(b.Intensity, 0.4)
+			b.Threshold = math.max(b.Threshold, 1.3)
 		elseif b:IsA("SunRaysEffect") then
 			s.bloom[b] = { b.Intensity, b.Spread }
 			b.Intensity = 0
 		end
 	end
-	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	-- the slow living bits: the cracks breathe, the pixels drift up and fade, the moon ring turns
+	local clock = 0
+	s.anim = RunService.RenderStepped:Connect(function(dt)
+		clock += dt
+		local breathe = 0.25 + 0.2 * (0.5 + 0.5 * math.sin(clock * 2.2))
+		for i, c in cracks do
+			c.Transparency = breathe + (i % 3) * 0.05
+		end
+		for _, px in pixels do
+			local life = (clock * px.speed + px.t) % 4
+			local k = life / 4
+			px.p.CFrame = ORIGIN * CFrame.new(px.x + math.sin(life * 1.3 + px.t) * 0.4, 0.2 + life * 1.6, px.z) * CFrame.Angles(life, life * 0.7, 0)
+			px.p.Transparency = math.clamp(k * k * 1.1, 0, 1)
+		end
+		ring.Rotation = clock * 6
+	end)
+	local playerGui = player:WaitForChild("PlayerGui")
 	s.gui = Instance.new("ScreenGui")
 	s.gui.Name = "HatchGui"
 	s.gui.IgnoreGuiInset = true
 	s.gui.DisplayOrder = 60
 	s.gui.ResetOnSpawn = false
-	-- every other screen (HUD, banners, the DEV button) steps aside: only the shrine and the hatch UI on screen.
+	-- every other screen (HUD, banners, the DEV button) steps aside: only the garden and the hatch UI on screen.
 	-- The confetti layer comes along (it lives in the main UI screen), and goes back on close.
 	s.hiddenGuis = {}
 	s.confetti = nil
@@ -363,6 +493,7 @@ local function buildShrine(): Stage
 	s.gui.Parent = playerGui
 	return s
 end
+
 
 -------------------------------------------------------------------------------------------------------------
 -- screen bits
@@ -978,8 +1109,13 @@ local function close(s: Stage, after: string?, onDone: (() -> ())?)
 	end
 	flash(s, Color3.new(0, 0, 0), 1, 0.45)
 	task.delay(0.12, function()
+		if s.anim then
+			s.anim:Disconnect()
+		end
 		s.folder:Destroy()
-		s.dof:Destroy()
+		if s.dof then
+			s.dof:Destroy()
+		end
 		s.cc:Destroy()
 		for prop, v in s.mood do
 			(Lighting :: any)[prop] = v
@@ -995,6 +1131,8 @@ local function close(s: Stage, after: string?, onDone: (() -> ())?)
 		end
 		s.cam.CameraType = s.oldType
 		s.cam.CFrame = s.oldCF
+		-- client/BiomeLight takes the lighting back (it re-applies the area's look at once)
+		Players.LocalPlayer:SetAttribute("HatchActive", nil)
 	end)
 	task.delay(0.5, function()
 		if s.confetti and s.confetti[2].Parent then
@@ -1105,8 +1243,9 @@ function HatchFx.play(eggId: string, ids: { string }, fresh: { boolean }?, onDon
 				end
 				task.delay(0.2, prompt.Destroy, prompt)
 			end
-			Sound.play("burst")
-			Sound.playAt("slam", 1, 0.9)
+			-- (29 Oct: the egg's own sounds, ForgeGUI) a bright pop and a sparkle, over a soft low thump
+			Sound.play("eggPop", 0.05)
+			Sound.playAt("slam", 1, 0.5)
 			for _, e in eggs do
 				e.burst = true
 				starburst(e, WHITE, 11 * e.scale, 0.55)
@@ -1124,8 +1263,8 @@ function HatchFx.play(eggId: string, ids: { string }, fresh: { boolean }?, onDon
 			s.shake = 1
 			return
 		end
-		Sound.playAt("click", pitch, 0.9)
-		Sound.playAt("punch", pitch, 0.6)
+		Sound.playAt("eggWobble", pitch, 0.9)
+		Sound.playAt("eggCrack", pitch, 0.5 + math.min(tapIdx, 6) * 0.08) -- (the shell gives a little more each tap)
 		for _, e in eggs do
 			e.punch = 1
 			e.tilt = (math.random() - 0.5) * 2
@@ -1262,7 +1401,7 @@ function HatchFx.play(eggId: string, ids: { string }, fresh: { boolean }?, onDon
 				s.rays.ImageColor3 = c
 				TweenService:Create(s.rays, TweenInfo.new(0.4), { ImageTransparency = 0.55 }):Play()
 				if best.rank >= RANK.Legendary then
-					Sound.play("victory")
+					Sound.play("hatchLegend")
 					Sound.play("rareChime")
 					Confetti.burst(math.floor(70 * FEW))
 				elseif best.rank >= RANK.Epic then
@@ -1271,6 +1410,7 @@ function HatchFx.play(eggId: string, ids: { string }, fresh: { boolean }?, onDon
 				else
 					Sound.play("reveal")
 				end
+				task.delay(0.45, Sound.play, "petChirp", 0.08) -- (and the new pet says hello)
 				resultScreen(s, eggDef, eggs, best, finish)
 			end
 			if phase == "result" then

@@ -59,6 +59,15 @@ local function dressWithModel(tool: Tool, handle: BasePart, id: string)
 			weld(p, handle)
 		end
 	end
+	-- (31 Oct, owner: "when i hit there are random white things above me") a held model with its own swing-trail
+	-- spots (server/Models FORGE_TOOLS `trail`: the ForgeGUI scythe's blade) carries the swing trail there, not on
+	-- the hidden brick blade out beside it
+	local t0, t1 = m:FindFirstChild("TrailA", true), m:FindFirstChild("TrailB", true)
+	local trail = tool:FindFirstChild("ReapTrail", true)
+	if trail and trail:IsA("Trail") and t0 and t0:IsA("Attachment") and t1 and t1:IsA("Attachment") then
+		trail.Attachment0 = t0
+		trail.Attachment1 = t1
+	end
 end
 
 -- Simple brick models for each tool (covered by the Blender model when it's loaded). The handle is what the hand

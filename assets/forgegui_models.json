@@ -326,5 +326,25 @@
   "roblox": null,
   "forge_job": "84fcfea9-9b56-45a3-9928-1ffc67697d7a",
   "note": "30 Oct: open-front shop, not used (the owner kept the room)"
+ },
+ "megascythe_a": {
+  "roblox": "73946318724269",
+  "forge_job": "713257d4-d5ec-4065-826f-0208427b30f7",
+  "note": "31 Oct: Mega Scythe from a picture of the part model; too close to the old one, not used"
+ },
+ "megascythe_b": {
+  "roblox": "77145495656411",
+  "forge_job": "ea94decb-8cd1-4b68-b907-e515d243ca48",
+  "note": "31 Oct: 'epic' take from the same picture; too close to the old one, not used"
+ },
+ "megascythe": {
+  "roblox": "77652345413074",
+  "forge_job": "44b462b6-750d-4376-ac0c-64f92597aad4",
+  "note": "31 Oct: the Mega Scythe in use (ForgeModelIds.megascythe, server/Models FORGE_TOOLS); prompt only, no picture"
+ },
+ "megascythe_d": {
+  "roblox": null,
+  "forge_job": "7606ae2f-ef68-4b6b-bff3-b5bc9acf74c2",
+  "note": "31 Oct: royal gold take; outcome_unknown, not re-run"
  }
 }

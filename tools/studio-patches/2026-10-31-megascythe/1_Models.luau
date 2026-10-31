@@ -1,4 +1,4 @@
--- Installs Models (git's exact text, 29793 805048841) into game.ServerScriptService.MowALawn. Run in Edit mode.
+-- Installs Models (git's exact text, 30078 946404422) into game.ServerScriptService.MowALawn. Run in Edit mode.
 local src = [======[
 -- Blender models in the game. tools/upload_models.py uploads assets/models/*.glb and writes their ids into
 -- shared/ModelIds.luau; at server start this loads them (InsertService), gives every MeshPart the Roblox
@@ -377,9 +377,10 @@ end
 -- toward the hands), so the held tool (server/Tools), the first-person view (client/ViewModel) and the shop boards
 -- hold and place it as before. `turn` takes the mesh's own axes to the template's, `length` is its size along the
 -- template's Z (the snath) in the template's studs, `center` where its middle goes. `light`: a violet light in the
--- blade's curve; `gem`: a faint one at the pommel; `sparkle`: spots along the blade sparkles drift from. (All on
--- attachments in the mesh, no helper parts: client/ViewModel shows every part of the tool you hold, an unseen one
--- too. No emissive glow from the texture: a game script may not set a SurfaceAppearance's EmissiveMaskContent.)
+-- blade's curve; `gem`: a faint one at the pommel; `sparkle`: spots along the blade sparkles drift from; `trail`:
+-- the blade's root and tip, where server/Tools hangs the swing trail ("TrailA", "TrailB"). (All attachments in the
+-- mesh, no helper parts: client/ViewModel shows every part of the tool you hold, an unseen one too. No emissive glow
+-- from the texture: a game script may not set a SurfaceAppearance's EmissiveMaskContent.)
 type ForgeTool = {
 	forge: string,
 	turn: CFrame,
@@ -388,6 +389,7 @@ type ForgeTool = {
 	light: Vector3?,
 	gem: Vector3?,
 	sparkle: { Vector3 }?,
+	trail: { Vector3 }?,
 }
 local FORGE_TOOLS: { [string]: ForgeTool } = {
 	tool_scythe = {
@@ -401,6 +403,7 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 		light = Vector3.new(0, 3.4, -4.2),
 		gem = Vector3.new(0, 0, 2.35),
 		sparkle = { Vector3.new(0, 2.6, -6.2), Vector3.new(0, 4, -5.2), Vector3.new(0, 4.6, -4), Vector3.new(0, 5, -2.9), Vector3.new(0, 5.2, -1.9) },
+		trail = { Vector3.new(0, 2.6, -5.6), Vector3.new(0, 5.15, -1.7) },
 	},
 }
 
@@ -463,6 +466,10 @@ local function swapTools(): number
 			e.RotSpeed = NumberRange.new(-90, 90)
 			e.Drag = 2
 			e.Parent = spot(mesh, "Sparkle", at)
+		end
+		if t.trail then
+			spot(mesh, "TrailA", t.trail[1])
+			spot(mesh, "TrailB", t.trail[2])
 		end
 		model.WorldPivot = CFrame.new()
 		model:SetAttribute("ForgeTool", true)
@@ -796,17 +803,17 @@ local function hashOf(t)
 	end
 	return #t .. " " .. x
 end
-if hashOf(src) ~= "29793 805048841" then
+if hashOf(src) ~= "30078 946404422" then
 	return "NOT INSTALLED: the pasted text is " .. hashOf(src)
 end
 local folder = game.ServerScriptService.MowALawn
 local old = folder:FindFirstChild("Models")
 if old then
 	local now = hashOf(old.Source)
-	if now == "29793 805048841" then
+	if now == "30078 946404422" then
 		return "Models is already this version: " .. now
 	end
-	local known = { ["24821 1150832697"] = true, ["29867 1371068930"] = true, ["30280 1317326361"] = true }
+	local known = { ["24821 1150832697"] = true, ["29867 1371068930"] = true, ["30280 1317326361"] = true, ["29793 805048841"] = true }
 	if not known[now] then
 		return "NOT CHANGED: Models is there but is " .. now .. " (not a version this replaces)"
 	end

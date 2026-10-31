@@ -105,20 +105,38 @@ function ClassPerks.powerMult(player: Player): number
 	return 1 + math.min(STREAK_MAX, s.streak * STREAK_PER)
 end
 
--- A hand-tool swing is about to land: returns the damage to use (Root Rip makes it an 8x hit).
-function ClassPerks.swing(player: Player, damage: number, rootPos: Vector3): number
+-- A hand-tool swing is about to land: returns the damage to use (Root Rip makes it an 8x hit) and the
+-- gimmick it carries ("rootRip" / "reapWave" / nil). Nothing shows yet: server/Run calls ClassPerks.landed once
+-- it knows whether the swing hit anything.
+-- (owner, 29 Oct: "when you hit the air with the finishing combo ... it still makes a loud BOOM sound even if
+-- you're not hitting anything") Only swings that land count toward the rip and the wave, and their effect and
+-- sound only play on a hit, so a swing at the air is just a swoosh.
+function ClassPerks.swing(player: Player, damage: number, rootPos: Vector3): (number, string?)
+	local s = state(player)
+	local id = classOf(player)
+	if id == "WeedPuller" and (s.swings + 1) % ROOT_RIP_EVERY == 0 then
+		return damage * ROOT_RIP_MULT * ClassPerks.powerMult(player), "rootRip"
+	end
+	if id == "HedgeReaper" and (s.swings + 1) % WAVE_EVERY == 0 and ClassPerks.hitArea then
+		return damage * ClassPerks.powerMult(player), "reapWave"
+	end
+	return damage * ClassPerks.powerMult(player), nil
+end
+
+-- The swing from ClassPerks.swing is in: `hit` says whether it struck anything (a clump, the boss, a minion, a
+-- crawler); `at` is where to draw the gimmick. A miss doesn't count.
+function ClassPerks.landed(player: Player, gimmick: string?, hit: boolean, at: Vector3, damage: number)
+	if not hit then
+		return
+	end
 	local s = state(player)
 	s.swings += 1
-	local id = classOf(player)
-	if id == "WeedPuller" and s.swings % ROOT_RIP_EVERY == 0 then
-		fx("rootRip", rootPos, 4)
-		return damage * ROOT_RIP_MULT * ClassPerks.powerMult(player)
+	if gimmick == "rootRip" then
+		fx("rootRip", at, 4)
+	elseif gimmick == "reapWave" and ClassPerks.hitArea then
+		fx("reapWave", at, WAVE_RADIUS)
+		task.defer(ClassPerks.hitArea, player, at, WAVE_RADIUS, damage)
 	end
-	if id == "HedgeReaper" and s.swings % WAVE_EVERY == 0 and ClassPerks.hitArea then
-		fx("reapWave", rootPos, WAVE_RADIUS)
-		task.defer(ClassPerks.hitArea, player, rootPos, WAVE_RADIUS, damage)
-	end
-	return damage * ClassPerks.powerMult(player)
 end
 
 -------------------------------------------------------------------------------------------------------------

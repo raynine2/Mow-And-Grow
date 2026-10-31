@@ -14,10 +14,17 @@ local IS_STUDIO = RunService:IsStudio()
 local LOCK_STALE = 300 -- a lock older than this (no autosave for 5 min) belongs to a dead server
 local AUTOSAVE = 60
 
+-- (30 Oct, owner: test saves in Studio on their own key) the Workspace attribute SaveTest = true (set it before Play)
+-- makes a Studio test load AND save like a live server, but on "<SAVE_KEY>_StudioTest", never the players' real
+-- saves. (Studio needs Game Settings > Security > "Enable Studio Access to API Services" for any DataStore.)
+local SAVE_TEST = IS_STUDIO and workspace:GetAttribute("SaveTest") == true
 local store: DataStore? = nil
 pcall(function()
-	store = DataStoreService:GetDataStore(Config.SAVE_KEY)
+	store = DataStoreService:GetDataStore(if SAVE_TEST then Config.SAVE_KEY .. "_StudioTest" else Config.SAVE_KEY)
 end)
+if SAVE_TEST then
+	print("[PlayerData] SaveTest: this Studio session saves to " .. Config.SAVE_KEY .. "_StudioTest")
+end
 
 local profiles: { [Player]: any } = {}
 local loadedCallbacks: { (Player, any) -> () } = {}
@@ -72,7 +79,8 @@ function PlayerData.newRun()
 	return {
 		zone = 1, -- highest zone unlocked
 		coins = 0,
-		tool = 1, -- index into Config.TOOLS of the best tool owned
+		tool = 1, -- index into Config.TOOLS of the last tool bought with coins (they're bought in order)
+		extra = {}, -- tools bought with Robux for this run only: [id] = true (Config.ownsTool)
 		upgrades = { power = 0, speed = 0, sell = 0, swing = 0, grasp = 0 }, -- (old runs may also have "carry")
 		skills = {}, -- (30 Oct) weapon skill tree pips this run: [toolId] = { [skillId] = pips } (server/SkillTrees)
 		bag = 0, -- index into Config.BAGS of the best bag bought (0 = none)
@@ -140,7 +148,7 @@ local function load(player: Player)
 	if not store then
 		return reconcile(deepCopy(DEFAULT)), "nostore"
 	end
-	if IS_STUDIO then
+	if IS_STUDIO and not SAVE_TEST then
 		local ok, data = retry(function()
 			return store:GetAsync(key(player))
 		end, 2)
@@ -269,12 +277,18 @@ local function onJoin(player: Player)
 	local data, why = load(player)
 	if not player.Parent then
 		-- left while loading: the load took the session lock, so give it back (or their next join waits ~40 s)
-		if data and not IS_STUDIO then
+		if data and (not IS_STUDIO or SAVE_TEST) then
 			profiles[player] = data
 			write(player, true)
 			profiles[player] = nil
 		end
 		return
+	end
+	if not data and SAVE_TEST then
+		-- (a Studio save test without DataStore access: play on with a blank, unsaved profile instead of a kick)
+		warn("[PlayerData] SaveTest: couldn't load (" .. tostring(why) .. "). Is Studio Access to API Services on?")
+		data = reconcile(deepCopy(DEFAULT))
+		data._dryRun = true
 	end
 	if not data then
 		player:Kick(
@@ -284,8 +298,8 @@ local function onJoin(player: Player)
 		)
 		return
 	end
-	if IS_STUDIO then
-		data._dryRun = true -- Studio tests never save
+	if IS_STUDIO and not SAVE_TEST and not data._dryRun then
+		data._dryRun = true -- Studio tests never save (unless SaveTest: see the top)
 	end
 	profiles[player] = data
 	for _, fn in loadedCallbacks do

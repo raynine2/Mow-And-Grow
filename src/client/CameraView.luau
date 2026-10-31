@@ -12,6 +12,7 @@ local Device = require(script.Parent.Device)
 local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
 local Potato = require(script.Parent.Potato)
+local Canopy = require(script.Parent.Canopy) -- (30 Oct) your eye ducks under low grass tufts (the clump flicker fix)
 
 local CameraView = {}
 local player = Players.LocalPlayer
@@ -479,7 +480,8 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 	landDip *= math.exp(-dt * 9)
 	-- (the old shake jumped the camera to a new random spot every frame: the jitter that made hits feel rough;
 	-- shakes are the smooth tilt below now)
-	hum.CameraOffset = Vector3.new(bobX, bobY - landDip, 0)
+	-- (30 Oct) minus how far client/Canopy ducks your eye under a low grass tuft (else it sat inside the tuft: flicker)
+	hum.CameraOffset = Vector3.new(bobX, bobY - landDip - Canopy.dip(), 0)
 
 	-- a slight lean into strafes and with the steps (first person only)
 	local lateral = flat:Dot(cam.CFrame.RightVector)

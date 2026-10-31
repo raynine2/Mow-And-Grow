@@ -25,6 +25,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local HitFx = require(script.Parent.HitFx)
+local HitMeter = require(script.Parent.HitMeter) -- (31 Oct) kept off the hole (HitMeter.avoid)
 local WeaponFx = require(script.Parent.WeaponFx)
 
 local ClumpCarve = {}
@@ -35,9 +36,62 @@ local templates = ReplicatedStorage:WaitForChild("ClumpCarve", 10)
 -- came in. Now they're all fetched at the start, and the whole clump stays on screen until a carve's pieces are
 -- drawn (hideWhenLoaded).
 local ContentProvider = game:GetService("ContentProvider")
+-- (31 Oct, owner, after the fix below: "you didn't fix it yet, it's still invisible on first hit") fetched isn't
+-- drawn: a mesh is only read in for drawing once a part showing it is on screen, so the first carve of each kind of
+-- clump drew its pieces some frames late, after the clump's own mesh had already gone. Now, once they're fetched,
+-- every piece is drawn for a moment as a speck behind the crosshair (under the loading screen if that's still up),
+-- then parked out of sight for good, so its mesh stays read in; till that's done a carve keeps the clump's own mesh
+-- up longer (hideSoon).
+local warmed = false
+local function warmUp()
+	local cam = workspace.CurrentCamera
+	if not templates or not cam then
+		warmed = true
+		return
+	end
+	local holder = Instance.new("Model")
+	holder.Name = "ClumpCarveWarm"
+	local copies: { BasePart } = {}
+	for _, tpl in templates:GetChildren() do
+		for _, t in tpl:GetChildren() do
+			if t:IsA("MeshPart") then
+				local p = t:Clone()
+				p.Anchored = true
+				p.CanCollide = false
+				p.CanQuery = false
+				p.CanTouch = false
+				p.CastShadow = false
+				p.Transparency = 0
+				local ms = t.MeshSize
+				p.Size = ms / math.max(ms.X, ms.Y, ms.Z, 1e-3) * 0.012 -- about ten pixels across
+				p.Parent = holder
+				table.insert(copies, p)
+			end
+		end
+	end
+	holder.Parent = cam
+	local frames = 0
+	local conn: RBXScriptConnection? = nil
+	conn = RunService.RenderStepped:Connect(function()
+		frames += 1
+		local c = workspace.CurrentCamera
+		local at = if c then c.CFrame * CFrame.new(0, 0, -0.6) else CFrame.new()
+		local done = frames > 40
+		for _, p in copies do
+			p.CFrame = if done then CFrame.new(0, -5000, 0) else at
+		end
+		if done then
+			if conn then
+				conn:Disconnect()
+			end
+			warmed = true
+		end
+	end)
+end
 if templates then
 	task.spawn(function()
 		pcall(ContentProvider.PreloadAsync, ContentProvider, templates:GetDescendants())
+		warmUp()
 	end)
 end
 
@@ -48,6 +102,20 @@ local function fetched(p: BasePart): boolean
 	end
 	local ok, status = pcall(ContentProvider.GetAssetFetchStatus, ContentProvider, id)
 	return not ok or status == Enum.AssetFetchStatus.Success
+end
+
+-- (30 Oct, the clump flicker) the clump's own mesh goes two drawn frames after its pieces are in: a fresh mesh
+-- part can take a frame to show, and for that frame the clump was gone. (The pieces sit exactly where the mesh is,
+-- so the two frames of overlap don't show.)
+local function hideSoon(src: BasePart, still: () -> boolean)
+	task.spawn(function()
+		for _ = 1, if warmed then 3 else 12 do -- (31 Oct: a frame more, for slow phones; longer till warmUp is done)
+			RunService.RenderStepped:Wait()
+		end
+		if still() and src.Parent then
+			src.Transparency = 1
+		end
+	end)
 end
 
 -- Hide the clump's own mesh once the carve's pieces are drawn (at most 1.5 s later; `still`: the carve is on).
@@ -61,7 +129,7 @@ local function hideWhenLoaded(src: BasePart, pieces: { BasePart }, still: () -> 
 		return true
 	end
 	if ready() then
-		src.Transparency = 1
+		hideSoon(src, still)
 		return
 	end
 	local t0 = os.clock()
@@ -71,16 +139,47 @@ local function hideWhenLoaded(src: BasePart, pieces: { BasePart }, still: () -> 
 			if conn then
 				conn:Disconnect()
 			end
-			if still() and src.Parent then
-				src.Transparency = 1
-			end
+			hideSoon(src, still)
 		end
 	end)
 end
 
+-- (31 Oct, owner: "when you first enter the game and punch a piece of grass, the grass turns invisible for a split
+-- second ... not every first hit ... shows that you've punched a hole") right after you join, the split meshes can
+-- still be downloading (the preload above queues behind everything else the game loads). A carve then waited for
+-- them with the clump's own mesh still up, so the hole hid behind it (up to 1.5 s), and if they still weren't in it
+-- hid the mesh anyway, and the clump was gone till they came. Now a clump is only carved once its pieces are in;
+-- till then a hit gets the overlay cut (client/ClumpWound), which shows at once, and that clump keeps it.
+-- (31 Oct) does this clump have split pieces at all (else it keeps the overlay cut: client/ClumpWound)?
+local function hasPieces(m: Model): boolean
+	if not templates then
+		return false
+	end
+	for _, ch in m:GetChildren() do
+		if ch:IsA("MeshPart") and templates:FindFirstChild(ch.Name) then
+			return true
+		end
+	end
+	return false
+end
+
+local function piecesIn(m: Model): boolean
+	if not templates then
+		return false
+	end
+	for _, ch in m:GetChildren() do
+		local tpl = if ch:IsA("MeshPart") then templates:FindFirstChild(ch.Name) else nil
+		if tpl then
+			local b, t = tpl:FindFirstChild("Base"), tpl:FindFirstChild("Top")
+			return b ~= nil and t ~= nil and fetched(b :: BasePart) and fetched(t :: BasePart)
+		end
+	end
+	return false
+end
+
 -- (a carve you walked away from, 40+ studs and 10+ s since its last hit, is put back to the plain mesh to free its
 -- slot when a new clump needs one; ~100 small parts each at most)
-local MAX_ACTIVE = 8
+local MAX_ACTIVE = 12 -- (31 Oct: was 8; and when it's full, the clump you hit longest ago gives its slot up: makeRoom)
 local N = 6 -- half-voxels across the stalk (it is 3 voxels wide)
 local ROWS = 10 -- half-voxel rows from the root layer up to the tuft (5 voxels)
 -- the rows a cut may open: the bottom and top rows stay (the root layer and the tuft have no faces where they
@@ -88,6 +187,7 @@ local ROWS = 10 -- half-voxel rows from the root layer up to the tuft (5 voxels)
 local LOW, HIGH = 1, ROWS - 2
 local FLY_MAX = 7 -- removed bits that fly off per hit
 local FIRST_CUT = 0.1 -- how big a cut the first blow opens, however tough the clump (0..1 of the cut sizes below)
+local MIN_DEPTH = 2.0 -- (31 Oct) how deep a cut's middle goes at least (half-voxels in from the skin: inCut)
 local U = 40 -- a voxel, in the template meshes' units
 local WHITE = Color3.new(1, 1, 1)
 local PITH = Color3.fromRGB(240, 248, 206) -- the pale lime-cream inside of a cut stem (as client/ClumpWound)
@@ -207,6 +307,23 @@ local function tonesFor(base: Color3): Tones
 	}
 end
 
+-- (31 Oct, owner: "it still doesn't make a hole sometimes") a mutated clump is painted one flat colour on its first
+-- hit (server/Field reveal), often glowing (Neon) or glassy: its inside came out the same colour a shade lighter,
+-- with no shading at all on the glowing ones, and the hole didn't read. Its inside is now a shade DARKER than its
+-- skin (a hole in shadow), and only the skin keeps the glow or the glass (partMaterial).
+local function flatTones(base: Color3): Tones
+	return {
+		floor = mul(base, 0.8),
+		wall = mul(base, 0.6),
+		ceil = mul(base, 0.38),
+		deep = mul(base, 0.45),
+		grain = mul(base, 0.52),
+		step = mul(base, 0.68),
+		stepCeil = mul(base, 0.45),
+		fresh = mul(base, 0.72),
+	}
+end
+
 -- a fixed little number per cell and cut (-1..1): the lumpy edge of a torn cut
 local function bump(a: number, b: number, r: number, seed: number): number
 	local h = math.sin(a * 12.9898 + b * 4.1414 + r * 78.233 + seed * 37.719) * 43758.5453
@@ -282,7 +399,16 @@ local function cellPos(cv: Carve, a: number, b: number, r: number): Vector3
 	return cv.centre + Vector3.new((a - 2.5) * U / 2, (r + 0.5) * U / 2, (b - 2.5) * U / 2)
 end
 
-local function newPart(cv: Carve, rel: CFrame, size: Vector3, color: Color3): BasePart
+-- (31 Oct) a flat-painted (mutated) clump's skin keeps its paint's material; everything else is smooth, so the
+-- inside of a cut is shaded
+local function partMaterial(cv: Carve, skinPart: boolean): Enum.Material
+	if cv.src.TextureID == "" and skinPart then
+		return cv.src.Material
+	end
+	return Enum.Material.SmoothPlastic
+end
+
+local function newPart(cv: Carve, rel: CFrame, size: Vector3, color: Color3, skinPart: boolean?): BasePart
 	local p = Instance.new("Part")
 	p.Name = "Carve"
 	p.Anchored = true
@@ -292,11 +418,41 @@ local function newPart(cv: Carve, rel: CFrame, size: Vector3, color: Color3): Ba
 	p.CastShadow = true -- (shadow falls into the cut)
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Material = if cv.src.TextureID == "" then cv.src.Material else Enum.Material.SmoothPlastic
+	p.Material = partMaterial(cv, skinPart == true)
 	p.Color = color
 	HitFx.attach(cv.m, p, rel, size) -- leans, wobbles and squashes with the clump
 	p.Parent = cv.m
 	return p
+end
+
+-- (31 Oct) Dress the carve like its clump again: a mutation repaints the clump on its first hit (server/Field
+-- reveal), and that can land a moment after the carve started; the pieces, the stalk and the cut's inside follow.
+local function redress(cv: Carve)
+	local src = cv.src :: MeshPart
+	for _, p in { cv.base, cv.top } do
+		if p.Parent then
+			if (p :: MeshPart).TextureID ~= src.TextureID then
+				(p :: MeshPart).TextureID = src.TextureID
+			end
+			p.Color = src.Color
+			p.Material = src.Material
+		end
+	end
+	if src.TextureID ~= "" then
+		return -- (a textured clump's stalk takes its colours from its voxels: nothing to repaint)
+	end
+	cv.tones = flatTones(src.Color)
+	for k, p in cv.vox do
+		local I, K = k % 3, (k // 3) % 3
+		local core = I == 1 and K == 1
+		p.Color = if core then cv.tones.deep else src.Color
+		p.Material = partMaterial(cv, not core)
+	end
+	for key, p in cv.cells do
+		local a, b, r = key % N, (key // N) % N, key // (N * N)
+		p.Color = cellColor(cv, a, b, r)
+		p.Material = partMaterial(cv, math.min(a, N - 1 - a, b, N - 1 - b) == 0)
+	end
 end
 
 -- Swap the clump for its split pieces and build its stalk in whole voxels.
@@ -346,7 +502,7 @@ local function start(m: Model): Carve?
 		split = {},
 		sides = {},
 		last = os.clock(),
-		tones = tonesFor(if src.TextureID == "" then src.Color else Color3.new(avg.X, avg.Y, avg.Z)),
+		tones = if src.TextureID == "" then flatTones(src.Color) else tonesFor(Color3.new(avg.X, avg.Y, avg.Z)),
 	}
 	for _, t in { baseT, topT } do
 		local p = (t :: MeshPart):Clone()
@@ -378,9 +534,17 @@ local function start(m: Model): Carve?
 			for K = 0, 2 do
 				local pos = centre + Vector3.new((I - 1) * U, (vy - 1) * U + U / 2, (K - 1) * U)
 				local color = if I == 1 and K == 1 then cv.tones.deep else skin(cv, I, K, vy)
-				cv.vox[I + K * 3 + (vy - 1) * 9] = newPart(cv, relAt(cv, pos), Vector3.one * U * 1.005 * sc, color)
+				cv.vox[I + K * 3 + (vy - 1) * 9] = newPart(cv, relAt(cv, pos), Vector3.one * U * 1.005 * sc, color, not (I == 1 and K == 1))
 			end
 		end
+	end
+	-- (31 Oct) a mutation's paint can land after this: follow it (redress)
+	for _, prop in { "TextureID", "Color", "Material" } do
+		src:GetPropertyChangedSignal(prop):Connect(function()
+			if carves[m] == cv then
+				redress(cv)
+			end
+		end)
 	end
 	return cv
 end
@@ -403,7 +567,7 @@ local function splitVox(cv: Carve, k: number)
 				local a, b, r = I * 2 + da, K * 2 + db, vy * 2 + dr
 				local key = cellKey(a, b, r)
 				if cv.solid[key] then
-					cv.cells[key] = newPart(cv, relAt(cv, cellPos(cv, a, b, r)), Vector3.one * (U / 2) * 1.01 * cv.sc, cellColor(cv, a, b, r))
+					cv.cells[key] = newPart(cv, relAt(cv, cellPos(cv, a, b, r)), Vector3.one * (U / 2) * 1.01 * cv.sc, cellColor(cv, a, b, r), math.min(a, N - 1 - a, b, N - 1 - b) == 0)
 				end
 			end
 		end
@@ -422,7 +586,10 @@ local function inCut(s: Side, sh: Shape, a: number, b: number, r: number): boole
 	end
 	-- (30 Oct) a blow always opens at least a small cut: a tough clump's first hit used to take a sliver of it
 	local c = math.clamp(FIRST_CUT + (1 - FIRST_CUT) * s.cut * 1.04, 0, 1)
-	local A, B, D = sh.A(c), sh.B(c), sh.D(c)
+	-- (31 Oct, owner: "the hits still don't show a hole if it's your first hit") a tough clump's first blow only took
+	-- the skin off, which read as a colour change, not a hole: every cut now goes at least two half-voxels deep in its
+	-- middle (into the shaded step behind the skin)
+	local A, B, D = sh.A(c), sh.B(c), math.max(sh.D(c), MIN_DEPTH)
 	local n = if sh.strand then bump(a, b, 0, s.seed) * 0.75 + bump(a, b, r, s.seed) * 0.25 else bump(a, b, r, s.seed)
 	local lump = 1 + sh.noise * n
 	local qa = ang / (A * lump)
@@ -535,6 +702,62 @@ local function aimRow(cv: Carve, bottom: Vector3, cellH: number, R: number): num
 	return math.clamp(math.floor(y / cellH), LOW + 1, HIGH - 1)
 end
 
+-- (31 Oct, owner: "it still doesn't make a hole sometimes") Standing on higher ground than the clump (the map's
+-- 2-stud terraces), or with your eye up in its tuft, you look down on the tuft and it hides the top of the stalk,
+-- where the cut was going (your crosshair's row, even when the tuft was in the way of it). The cut now goes to the
+-- row nearest that one whose skin you can actually see from your camera on that side (a ray to it doesn't meet the
+-- tuft); if none can be seen it stays where it was.
+local seeParams = RaycastParams.new()
+seeParams.FilterType = Enum.RaycastFilterType.Include
+local function visibleRow(cv: Carve, meshCf: CFrame, dir: Vector2, row: number): number
+	local cam = workspace.CurrentCamera
+	local top = cv.top
+	if not cam or not top or not top.Parent then
+		return row
+	end
+	local eye = cam.CFrame.Position
+	local was = top.CanQuery
+	top.CanQuery = true
+	seeParams.FilterDescendantsInstances = { top }
+	local function seen(r: number): boolean
+		-- the middle of the stalk's skin on that side at row r, a little outside it
+		local p = cv.centre + Vector3.new(dir.X * 3.3 * U / 2, (r + 0.5) * U / 2, dir.Y * 3.3 * U / 2)
+		local wp = (meshCf * CFrame.new(p * cv.sc)).Position
+		-- (from the stalk to your eye: your eye is often inside the tuft's collision hull, and a ray that starts inside
+		-- a part never hits it)
+		return workspace:Raycast(wp, eye - wp, seeParams) == nil
+	end
+	-- (the cut reaches a row or so above its middle: that has to show too)
+	local function clear(r: number): boolean
+		return seen(r) and seen(r + 1)
+	end
+	local best: number? = if clear(row) then row else nil
+	if not best then
+		for d = 1, HIGH - LOW do
+			for _, rr in { row - d, row + d } do
+				if not best and rr >= LOW + 1 and rr <= HIGH - 2 and clear(rr) then
+					best = rr
+				end
+			end
+			if best then
+				break
+			end
+		end
+	end
+	if not best then
+		-- (nothing shows whole: at least where the middle of the cut shows)
+		for d = 0, HIGH - LOW do
+			for _, rr in { row - d, row + d } do
+				if not best and rr >= LOW + 1 and rr <= HIGH - 2 and seen(rr) then
+					best = rr
+				end
+			end
+		end
+	end
+	top.CanQuery = was
+	return best or row
+end
+
 -- Put a carve back to the plain mesh (frees its slot).
 local function restore(cv: Carve)
 	for _, p in cv.vox do
@@ -573,6 +796,16 @@ local function makeRoom(): boolean
 			oldest = cv
 		end
 	end
+	if not oldest then
+		-- (31 Oct, owner: "it still doesn't make a hole sometimes") hitting clump after clump without finishing them,
+		-- the ninth found every slot taken by clumps still near you and got the flat overlay patch (client/ClumpWound)
+		-- instead of a hole: now the one you hit longest ago gives its slot up, wherever it is
+		for _, cv in carves do
+			if now - cv.last > 1.5 and (not oldest or cv.last < oldest.last) then
+				oldest = cv
+			end
+		end
+	end
 	if oldest then
 		restore(oldest)
 	end
@@ -596,6 +829,21 @@ function ClumpCarve.hit(d): boolean
 		cv = nil
 	end
 	if not cv then
+		if not d.late and hasPieces(m) and not piecesIn(m) then
+			-- (31 Oct) its pieces aren't in yet (just after you join): it's carved the moment they are (at most 4 s
+			-- on), instead of getting the flat overlay patch (client/ClumpWound), which doesn't read as a hole
+			task.spawn(function()
+				local t0 = os.clock()
+				while not piecesIn(m) and os.clock() - t0 < 4 and m.Parent do
+					task.wait(0.1)
+				end
+				if m.Parent and not falling[m] then
+					d.late = true
+					ClumpCarve.hit(d)
+				end
+			end)
+			return true
+		end
 		if active >= MAX_ACTIVE and not makeRoom() then
 			return false
 		end
@@ -616,16 +864,7 @@ function ClumpCarve.hit(d): boolean
 	local c = cv :: Carve
 	c.last = os.clock()
 	-- keep the pieces dressed like the original (a mutation repaints it on the first hit)
-	for _, p in { c.base, c.top } do
-		if p.TextureID ~= (c.src :: MeshPart).TextureID then
-			p.TextureID = (c.src :: MeshPart).TextureID
-		end
-		p.Color = c.src.Color
-		p.Material = c.src.Material
-	end
-	if c.src.TextureID == "" then
-		c.tones = tonesFor(c.src.Color)
-	end
+	redress(c)
 	local tool = toolNow()
 	local sh = SHAPES[tool]
 	local upright = HitFx.base(m)
@@ -643,6 +882,14 @@ function ClumpCarve.hit(d): boolean
 		dir = aimDir
 	end
 	local row = sh.row or aimR or aimRow(c, bottom, cellH, R) or math.clamp(math.floor(math.min((m:GetAttribute("Height") or 7) * 0.17, 2.8) / cellH), LOW + 1, HIGH - 1)
+	-- (31 Oct, owner: "some pieces of grass still don't show a hole on your first punch") looking at the top of the
+	-- stalk or at the tuft (your eye is up there), the cut went into the top rows, right under the tuft: in its shade,
+	-- behind the lip of its underside, and the hit meter under the crosshair covered the rest. Now a hand tool's cut
+	-- stays at least two rows below the tuft, where it's in the light.
+	if not sh.row then
+		row = math.clamp(row, LOW + 1, HIGH - 2)
+		row = visibleRow(c, meshCf, dir, row) -- (31 Oct) where you can see it (visibleRow)
+	end
 	-- the same spot again deepens that hole and pulls it a little toward this hit; a new spot starts a hole of its
 	-- own there (a bit bigger the more the clump is cut already), and holes that meet run into each other
 	local side: Side? = nil
@@ -662,6 +909,17 @@ function ClumpCarve.hit(d): boolean
 	end
 	local s = side :: Side
 	s.cut += (if type(d.dealt) == "number" then d.dealt else d.max * 0.25) / d.max
+	-- (31 Oct) keep the hit meter off this hole (HitMeter.avoid)
+	do
+		local cam = workspace.CurrentCamera
+		if cam and not sh.row then
+			local p = c.centre + Vector3.new(s.dir.X * 3 * U / 2, (s.row + 0.5) * U / 2, s.dir.Y * 3 * U / 2)
+			local sp, on = cam:WorldToViewportPoint((meshCf * CFrame.new(p * c.sc)).Position)
+			if on and cam.ViewportSize.Y > 0 then
+				HitMeter.avoid(sp.Y / cam.ViewportSize.Y)
+			end
+		end
+	end
 	-- what this hit takes out
 	local removed = {}
 	for r = LOW, HIGH do
@@ -730,7 +988,7 @@ function ClumpCarve.hit(d): boolean
 							p.Color = sh.hot
 							task.delay(0.45, function()
 								if p.Parent then
-									p.Material = if c.src.TextureID == "" then c.src.Material else Enum.Material.SmoothPlastic
+									p.Material = partMaterial(c, math.min(a, N - 1 - a, b, N - 1 - b) == 0)
 								end
 							end)
 							TweenService:Create(p, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Color = color }):Play()

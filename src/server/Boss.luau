@@ -28,6 +28,7 @@ local BossFighters = require(script.Parent.BossFighters)
 local PlayerData = require(script.Parent.PlayerData)
 
 local Boss = {}
+Boss.difficulty = Config.DIFFICULTY.Normal -- (29 Oct) set by server/Run from the party's pick
 
 Boss.onDefeated = nil :: ((number, { [Player]: number }, { [Player]: boolean }) -> ())?
 Boss.onChanged = nil :: (() -> ())?
@@ -216,7 +217,8 @@ local function strike(f: Fight, s: Shape, kind: string)
 	local dmg = math.floor((BossMoves.DAMAGE[kind] or 25) * f.curve.damage + 0.5)
 	for _, p in BossFighters.list() do
 		local root = rootOf(p)
-		if root and math.abs(root.Position.Y - f.arena.centre.Y) < 14 and BossMoves.inShape(s, root.Position) then
+		local y = if root then root.Position.Y - f.arena.centre.Y else 0
+		if root and math.abs(y) < 14 and not ((s :: any).jump and y > BossMoves.JUMP_CLEAR) and BossMoves.inShape(s, root.Position) then
 			BossFighters.hit(p, dmg, s.pos)
 		end
 	end
@@ -430,7 +432,8 @@ MOVES.cross = function(f, move, target, tele)
 	local off = if rng:NextNumber() < 0.5 then 0 else math.pi / 4
 	local shapes = {}
 	for k = 0, 3 do
-		table.insert(shapes, { type = "strip", pos = f.cf.Position, dir = rot(flat(base).Unit, off + k * math.pi / 2), length = R(f) * 2, width = move.width, land = tele + 0.2 } :: Shape)
+		-- (owner, 29 Oct: "you cant jump over the line attack that the first boss lights up") a well-timed jump clears it
+		table.insert(shapes, { type = "strip", pos = f.cf.Position, dir = rot(flat(base).Unit, off + k * math.pi / 2), length = R(f) * 2, width = move.width, land = tele + 0.2, jump = true } :: Shape)
 	end
 	return play(f, move, shapes)
 end
@@ -440,7 +443,8 @@ MOVES.beam = function(f, move, target, tele)
 	local root = rootOf(target) :: BasePart
 	local sign = if rng:NextNumber() < 0.5 then 1 else -1
 	local a = angleOf(dirTo(f, root.Position)) - sign * 0.5
-	local m = { type = "beam", o = f.cf.Position, a0 = a, w = sign * move.speed, len = R(f) * 2, width = move.width, dur = move.turn / move.speed, look = move.look, rehit = 0.9, delay = tele }
+	-- (29 Oct) the beam runs low along the floor: jump it as it sweeps past (jump = true, like the sand waves)
+	local m = { type = "beam", o = f.cf.Position, a0 = a, w = sign * move.speed, len = R(f) * 2, width = move.width, dur = move.turn / move.speed, look = move.look, rehit = 0.9, delay = tele, jump = true }
 	return runMovers(f, move, { m }, nil, true)
 end
 
@@ -1329,6 +1333,9 @@ local function reset(f: Fight, why: string)
 	token += 1
 	clearAdds(f)
 	Net.all("Fx", "bossReset", { z = f.z, why = why })
+	pcall(function()
+		require(script.Parent.Analytics).event("BossWipe", f.z, why) -- (29 Oct) where fights are lost
+	end)
 	BossFighters.stop()
 	BossArena.setGate(f.z, false)
 	BossArena.setPad(f.z, "ready")
@@ -1354,6 +1361,7 @@ local function defeat(f: Fight)
 		BossFighters.stop()
 		BossArena.setGate(f.z, false)
 		BossArena.setPad(f.z, "done")
+		BossArena.dropWall(f.z, true) -- (29 Oct) the invisible wall sinks away
 		publish(nil)
 		if Boss.onDefeated then
 			Boss.onDefeated(f.z, snapshot, noHit)
@@ -1604,6 +1612,13 @@ function Boss.spawn(z: number)
 		hidden = false,
 	}
 	local base = (Config.BOSS_HP and Config.BOSS_HP[z]) or def.hp
+	-- (owner, 29 Oct) the run's difficulty (server/Run sets Boss.difficulty): more HP, harder hits, faster attacks
+	local D = Boss.difficulty
+	base = math.floor(base * D.hp + 0.5)
+	f.curve.damage *= D.dmg
+	f.curve.tele = math.max(0.75, f.curve.tele * D.speed)
+	f.curve.tele2 = math.max(0.65, f.curve.tele2 * D.speed)
+	f.curve.gap *= D.speed
 	f.maxHp = base
 	f.hp = base
 	current = f
@@ -1761,6 +1776,19 @@ end
 
 function Boss.beaten(z: number): boolean
 	return beaten[z] == true
+end
+
+-- (29 Oct) A run loading (or a dev jump) past area z: its boss counts as beaten, its pad says BEATEN and its
+-- arena's invisible wall is gone, as it was when the boss fell.
+function Boss.markBeaten(z: number)
+	if beaten[z] or (current and current.z == z) then
+		return
+	end
+	beaten[z] = true
+	ready[z] = nil
+	BossArena.setGate(z, false)
+	BossArena.setPad(z, "done")
+	BossArena.dropWall(z, false)
 end
 
 -- Studio / dev panel helpers: ready <z> (light the pad) | to <z> (put the player on the pad) | fight <z> (start now)

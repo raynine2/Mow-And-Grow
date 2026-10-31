@@ -178,7 +178,9 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	local step = acc
 	acc = 0
-	if player:GetAttribute("BiomeLightOff") or not Config.WORLD_GEN then
+	-- ("HatchActive": client/HatchFx's garden owns the lighting; its own flag, so it never undoes a film's or the class
+	-- room's "BiomeLightOff" or gets undone by them)
+	if player:GetAttribute("BiomeLightOff") or player:GetAttribute("HatchActive") or not Config.WORLD_GEN then
 		current = nil
 		lastApplied = nil
 		return

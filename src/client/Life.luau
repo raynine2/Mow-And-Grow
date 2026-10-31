@@ -20,7 +20,7 @@ local Life = {}
 local player = Players.LocalPlayer
 
 local WIND = Vector3.new(0.8, 0, 0.6).Unit -- where the wind blows to
-local SWAY_RADIUS = 130 -- (Potato Mode and phones: 60)
+local SWAY_RADIUS = 130 -- (Potato Mode: 60)
 local SWAY_BUDGET = 400 -- swaying parts moved per frame at most (a part-built tree is about six leaf blocks)
 
 local folder = Instance.new("Folder")
@@ -137,7 +137,8 @@ local nearSet: { [Sway]: boolean } = {}
 local nearAt: Vector3? = nil
 local nearClock = 0
 local function swayRadius(): number
-	return if player:GetAttribute("Potato") or PhonePerf.on then 60 else SWAY_RADIUS
+	-- (29 Oct, phones: "stable 60 fps") a phone sways the trees near you only
+	return if player:GetAttribute("Potato") then 60 elseif PhonePerf.on then 80 else SWAY_RADIUS
 end
 local function pickNear(at: Vector3)
 	local r = swayRadius() + 20
@@ -171,7 +172,7 @@ local function swayStep(at: Vector3, t: number)
 	end
 	local axis = Vector3.yAxis:Cross(WIND) -- tips lean downwind
 	local radius = swayRadius()
-	local budget = if player:GetAttribute("Potato") or PhonePerf.on then 150 else SWAY_BUDGET
+	local budget = if player:GetAttribute("Potato") then 150 elseif PhonePerf.on then 180 else SWAY_BUDGET
 	local done = 0
 	local tries = 0
 	while done < budget and tries < n do

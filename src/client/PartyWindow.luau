@@ -356,7 +356,17 @@ local function close()
 	gui.Enabled = false
 end
 
-local DIFFS = { { id = "Normal", label = "NORMAL", wins = 0 }, { id = "Hard", label = "HARD", wins = 1 }, { id = "Expert", label = "EXPERT", wins = 5 } }
+-- (owner, 29 Oct) Medium / Hard / Expert, from Config.DIFFICULTY (the id "Normal" is shown as MEDIUM)
+local DIFFS = {}
+for _, id in Config.DIFFICULTY_ORDER do
+	local d = Config.DIFFICULTY[id]
+	table.insert(DIFFS, { id = id, label = d.label, wins = d.wins })
+end
+local function diffLabel(id: string?): string
+	local d = Config.DIFFICULTY[id or "Normal"] or Config.DIFFICULTY.Normal
+	return d.label
+end
+local DIFF_INK = { Normal = Color3.fromRGB(60, 150, 70), Hard = Color3.fromRGB(220, 120, 30), Expert = Color3.fromRGB(200, 50, 60) }
 
 local function refresh()
 	for _, d in DIFFS do
@@ -567,7 +577,7 @@ local function journalRun(list: Frame, run: { [string]: any }, now: number)
 	local lines = {
 		{ "Solo run", 30, Color3.fromRGB(30, 40, 90) },
 		{ ("Area %d of %d"):format(run.zone or 1, #Config.ZONES), 24 },
-		{ ("%d clumps cut"):format(run.cut or 0), 24 },
+		{ ("%d%% of it mowed"):format(math.floor((tonumber(run.pct) or 0) * 100 + 0.5)), 24 },
 		{ "started " .. ago(run.started or now, now), 24 },
 	}
 	local y = 22
@@ -580,9 +590,10 @@ local function journalRun(list: Frame, run: { [string]: any }, now: number)
 	stamp.BackgroundTransparency = 1
 	stamp.Rotation = 10
 	stamp.ZIndex = 4
-	local ss = stroke(stamp, 3, Color3.fromRGB(60, 150, 70))
+	local ink = DIFF_INK[run.difficulty or "Normal"] or DIFF_INK.Normal
+	local ss = stroke(stamp, 3, ink)
 	ss.Transparency = 0.15
-	local st = text(stamp, "NORMAL", UDim2.new(1, -10, 1, -10), UDim2.fromOffset(5, 5), Color3.fromRGB(60, 150, 70), 0)
+	local st = text(stamp, diffLabel(run.difficulty), UDim2.new(1, -10, 1, -10), UDim2.fromOffset(5, 5), ink, 0)
 	st.TextTransparency = 0.15
 	st.ZIndex = 5
 	if nextZone then
@@ -593,6 +604,35 @@ local function journalRun(list: Frame, run: { [string]: any }, now: number)
 		close()
 	end)
 	b.ZIndex = 6
+	-- (30 Oct, owner: "run saves") START A NEW RUN deletes this save (a second tap within 3 s to be sure); CREATE with a
+	-- saved run takes it along (your friends join your area)
+	local armed = 0
+	local fresh: TextButton
+	fresh = button(list, "START A NEW RUN", UDim2.new(1, -140, 0, 42), UDim2.fromOffset(84, 362), BROWN, function()
+		local label = fresh:FindFirstChildOfClass("TextLabel")
+		if os.clock() - armed > 3 then
+			armed = os.clock()
+			if label then
+				label.Text = "TAP AGAIN TO DELETE IT"
+			end
+			setButtonColor(fresh, RED)
+			task.delay(3, function()
+				if fresh.Parent and os.clock() - armed >= 3 then
+					if label then
+						label.Text = "START A NEW RUN"
+					end
+					setButtonColor(fresh, BROWN)
+				end
+			end)
+			return
+		end
+		State.fire("Party", "wipe")
+		list:ClearAllChildren()
+		hand(list, "Run deleted.", UDim2.new(1, -80, 0, 32), UDim2.fromOffset(48, 46)).ZIndex = 4
+		hand(list, "Press CREATE on the left for a fresh one!", UDim2.new(1, -80, 0, 24), UDim2.fromOffset(48, 86), Color3.fromRGB(110, 110, 130)).ZIndex = 4
+	end)
+	fresh.ZIndex = 6
+	hand(list, "Playing with friends? CREATE brings this run along.", UDim2.new(1, -60, 0, 22), UDim2.fromOffset(44, 414), Color3.fromRGB(110, 110, 130)).ZIndex = 4
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -691,6 +731,19 @@ local function starRun(list: Frame, run: { [string]: any }, now: number)
 	gradient(diff, shade(dc, 1.2), shade(dc, 0.82))
 	text(diff, diffName(run.difficulty), UDim2.new(1, -16, 0.7, 0), UDim2.new(0, 8, 0.14, 0), WHITE, 2)
 	text(pic, string.upper(zone and zone.name or "The Lawn"), UDim2.new(1, -112, 0, 34), UDim2.new(0, 96, 1, -46), WHITE, 3, Enum.TextXAlignment.Left)
+	-- (30 Oct, owner: "run saves") how far the area was mowed (server/Run keeps it in the save every second)
+	local pct = math.floor(math.clamp(tonumber(run.pct) or 0, 0, 1) * 100 + 0.5)
+	local mowed = frame(pic, UDim2.fromOffset(124, 28), UDim2.fromOffset(10, 46), NIGHT, 14)
+	mowed.Name = "Mowed"
+	mowed.BackgroundTransparency = 0.15
+	mowed.ClipsDescendants = true
+	stroke(mowed, 2, LILAC)
+	if pct > 0 then
+		local fill = frame(mowed, UDim2.new(pct / 100, 0, 1, 0), UDim2.new(), LEAF, 14)
+		fill.Name = "Fill"
+		fill.BackgroundTransparency = 0.5
+	end
+	text(mowed, pct .. "% MOWED", UDim2.new(1, -16, 0.64, 0), UDim2.new(0, 8, 0.18, 0), STAR, 1.5)
 	-- you, and the run
 	headshot(card, 76, UDim2.fromOffset(26, 180))
 	text(card, "SOLO RUN", UDim2.fromOffset(250, 30), UDim2.fromOffset(112, 232), WHITE, 2.5, Enum.TextXAlignment.Left)
@@ -703,6 +756,33 @@ local function starRun(list: Frame, run: { [string]: any }, now: number)
 		close()
 	end)
 	b.ZIndex = 2
+	-- (30 Oct, owner: "run saves") START A NEW RUN deletes this save (a second tap within 3 s to be sure); CREATE with a
+	-- saved run takes it along (your friends join your area)
+	local armed = 0
+	local fresh: TextButton
+	fresh = button(list, "START A NEW RUN", UDim2.fromOffset(W - 120, 46), UDim2.fromOffset(60, 498), LILAC, function()
+		local label = fresh:FindFirstChildOfClass("TextLabel")
+		if os.clock() - armed > 3 then
+			armed = os.clock()
+			if label then
+				label.Text = "TAP AGAIN TO DELETE IT"
+			end
+			setButtonColor(fresh, RED)
+			task.delay(3, function()
+				if fresh.Parent and os.clock() - armed >= 3 then
+					if label then
+						label.Text = "START A NEW RUN"
+					end
+					setButtonColor(fresh, LILAC)
+				end
+			end)
+			return
+		end
+		State.fire("Party", "wipe")
+		list:ClearAllChildren()
+		text(list, "RUN DELETED", UDim2.new(1, -60, 0, 38), UDim2.fromOffset(30, 160), WHITE, 3)
+		text(list, "Press CREATE on the left for a fresh one!", UDim2.new(1, -70, 0, 22), UDim2.fromOffset(35, 210), DIM, 0)
+	end)
 	-- what's next
 	local nextZone = Config.ZONES[zoneN + 1]
 	if nextZone then
@@ -777,10 +857,10 @@ local function fillRuns(run: { [string]: any }?, now: number)
 		end
 	end)
 	text(card, "SOLO RUN", UDim2.fromOffset(200, 30), UDim2.fromOffset(68, 18), WHITE, 2, Enum.TextXAlignment.Left)
-	local chips = { { "NORMAL", GREEN }, { ("🌿 %d clumps"):format(run.cut or 0), Color3.fromRGB(70, 42, 24) }, { "🕒 " .. ago(run.started or now, now), Color3.fromRGB(70, 42, 24) } }
+	local chips = { { diffLabel(run.difficulty), GREEN }, { ("🌿 %d clumps"):format(run.cut or 0), Color3.fromRGB(70, 42, 24) }, { "🕒 " .. ago(run.started or now, now), Color3.fromRGB(70, 42, 24) } }
 	local x = 14
 	for _, c in chips do
-		local w = if c[1] == "NORMAL" then 80 else 118
+		local w = if c[1] == diffLabel(run.difficulty) then 80 else 118
 		local chip = frame(card, UDim2.fromOffset(w, 26), UDim2.fromOffset(x, 66), c[2], 8)
 		stroke(chip, 2)
 		text(chip, c[1], UDim2.new(1, -10, 0.78, 0), UDim2.new(0, 5, 0.11, 0), WHITE, 0)

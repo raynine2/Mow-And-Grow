@@ -457,7 +457,7 @@ local function startView(rig: string, cf: CFrame, sc: number, z: number, arena: 
 	fight.z = z
 	fight.arena = arena
 	fight.floor = floorColor(z)
-	BossView.show(rig, cf, sc)
+	BossView.show(rig, cf, sc, BossMoves.get(z)) -- (29 Oct) with the area's skin (the Frost Thornback)
 	local home = mirror and mirror:GetAttribute("Home")
 	if typeof(home) == "CFrame" then
 		BossView.setHome(home)
@@ -643,6 +643,12 @@ H.bossRage = function(d)
 		BossVfx.rageBurst()
 		Sound.play("burst", 0.05, 0.8)
 	end)
+	-- (31 Oct, owner's vfx_sfx_all.zip) a dark riser whose boom (1.17 s in) lands with the roar
+	if d.len - left < 2.13 then
+		task.delay(2.13 - (d.len - left), function()
+			Sound.play("rageRise", 0.02)
+		end)
+	end
 	task.delay(math.max(0, 3.3 - (d.len - left)), function()
 		Sound.play("roar", 0.02, 1)
 		BossFx.screenFlash(Color3.fromRGB(255, 60, 40), 0.55, 0.5)

@@ -91,11 +91,14 @@ local function folder(): Folder
 	return f
 end
 
+-- (31 Oct) the class auras' VFX Forge templates (ReplicatedStorage.AuraVFX, built by BuildAuraVfx) play through here too
 function FilmVfx.template(name: string): Model?
-	local f = ReplicatedStorage:FindFirstChild("FilmVFX")
-	local t = f and f:FindFirstChild(name)
-	if t and t:IsA("Model") and t.PrimaryPart then
-		return t
+	for _, folderName in { "FilmVFX", "AuraVFX" } do
+		local f = ReplicatedStorage:FindFirstChild(folderName)
+		local t = f and f:FindFirstChild(name)
+		if t and t:IsA("Model") and t.PrimaryPart then
+			return t
+		end
 	end
 	return nil
 end
@@ -412,6 +415,18 @@ if RunService:IsStudio() and RunService:IsClient() then
 		if name and cam then
 			local at = cam.CFrame * CFrame.new(0, -6, -40)
 			FilmVfx.play(name, CFrame.lookAt(at.Position, cam.CFrame.Position), { scale = tonumber(scale) or 1 })
+		end
+	end)
+	-- (31 Oct, for the aura lab) FilmVfxPlayAt = "<template>;x,y,z;scale;n" plays it right there (n: any new number)
+	workspace:GetAttributeChangedSignal("FilmVfxPlayAt"):Connect(function()
+		local v = workspace:GetAttribute("FilmVfxPlayAt")
+		if type(v) ~= "string" or v == "" then
+			return
+		end
+		local name, x, y, z, scale = string.match(v, "^([^;]+);([^,]+),([^,]+),([^;]+);([^;]*)")
+		local px, py, pz = tonumber(x), tonumber(y), tonumber(z)
+		if name and px and py and pz then
+			FilmVfx.play(name, Vector3.new(px, py, pz), { scale = tonumber(scale) or 1 })
 		end
 	end)
 end

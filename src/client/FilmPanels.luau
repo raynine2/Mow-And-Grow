@@ -171,6 +171,13 @@ function FilmPanels.boss(z: number, rage: boolean?, height: number?): Still?
 				if info.rage and not rage then
 					d.Transparency = 1
 				end
+				-- (29 Oct) a painted ForgeGUI model: the rage still tints the paint (as client/BossView does)
+				local sa = d:FindFirstChildOfClass("SurfaceAppearance")
+				if sa and not lk and rage then
+					pcall(function()
+						(sa :: any).Color = Color3.fromRGB(255, 168, 150)
+					end)
+				end
 			end
 		elseif d:IsA("BaseScript") or d:IsA("Sound") or d:IsA("ParticleEmitter") then
 			d:Destroy()

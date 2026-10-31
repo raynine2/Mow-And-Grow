@@ -14,6 +14,7 @@ local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local HitFx = require(script.Parent.HitFx)
 local CameraView = require(script.Parent.CameraView)
+local PhonePerf = require(script.Parent.PhonePerf)
 local FxIds = require(ReplicatedStorage.MowALawn:WaitForChild("FxIds")) :: { [string]: string }
 local SellFx = require(script.Parent.SellFx)
 local Confetti = require(script.Parent.Confetti)
@@ -23,6 +24,8 @@ local HitMeter = require(script.Parent.HitMeter) -- (28 Oct) the soft green hit 
 local WeaponFx = require(script.Parent.WeaponFx) -- (28 Oct) each tool's own hit look / sound / bite number
 local ClumpWound = require(script.Parent.ClumpWound) -- (28 Oct) the cut carved into a clump's stalk, hit by hit
 local ClumpCarve = require(script.Parent.ClumpCarve) -- (28 Oct) real notches: a carved clump breaks at its cut
+local ViewAnims = require(script.Parent.ViewAnims) -- (28 Oct) keyframed swings: when your blow lands
+local WeaponVfx = require(script.Parent.WeaponVfx) -- (28 Oct) each weapon's rebuilt look, falls and dust
 local GnomeHunt = require(script.Parent.GnomeHunt) -- (27 Oct) the Golden Gnome hunt: found gnomes, the gold strip
 
 local Fx = {}
@@ -299,7 +302,14 @@ local handlers = {}
 local lastCutSound = 0
 
 handlers.cut = function(d)
-	if not near(d.pos, 140) then
+	-- (29 Oct) a phone only bursts other players' cuts close by (a zero-turn cuts many a second)
+	if not near(d.pos, if PhonePerf.on and d.by ~= player.UserId then 60 else 140) then
+		return
+	end
+	-- (28 Oct) your swing that cut it may still be on its way: it bursts on the frame the blow lands
+	local waitHit = if d.timber then 0 else HitFx.contactWait(d.pos)
+	if waitHit > 0.01 then
+		task.delay(waitHit, handlers.cut, d)
 		return
 	end
 	local m = Config.mutation(d.mut or "None")
@@ -307,7 +317,8 @@ handlers.cut = function(d)
 	local mine = d.by == player.UserId
 	-- the clump comes apart: splinters, blade bits, tumbling clippings, dust, a ground ring (sized to the clump;
 	-- the fallen clump itself flashes white and pops where it lies)
-	HitFx.play("cut", d.pos, color, mine, nil, Config.ZONES[d.z] and Config.ZONES[d.z].style, { scale = d.scale, pop = d.model })
+	-- (28 Oct) a felled top landing gets client/WeaponVfx's sideways dust and blades (timber, dir)
+	HitFx.play("cut", d.pos, color, mine, nil, Config.ZONES[d.z] and Config.ZONES[d.z].style, { scale = d.scale, pop = d.model, timber = d.timber, dir = d.dir } :: any)
 	if not mine and near(d.pos, 60) then
 		Sound.play("fellLand", 0.1, 0.4) -- someone else's clump landing nearby
 	end
@@ -341,6 +352,12 @@ handlers.fell = function(d)
 	if not near(d.pos, 200) then
 		return
 	end
+	-- (28 Oct) your swing that felled it may still be on its way: it goes over on the frame the blow lands
+	local waitHit = HitFx.contactWait(d.pos)
+	if waitHit > 0.01 then
+		task.delay(waitHit, handlers.fell, d)
+		return
+	end
 	local m = d.model :: Model?
 	local T = d.time or 0.7
 	local land = d.land or d.pos
@@ -349,7 +366,7 @@ handlers.fell = function(d)
 	local function impact(popModel: Model?)
 		-- (the camera's part of it is in client/HitFx's "cut": a shake for a clump you chopped, a small bump for a
 		-- mower's; there used to be a jolt here for every fall, even other players' and every mower cut)
-		handlers.cut({ pos = land, color = d.color, mut = d.mut, z = d.z, by = d.by, scale = scale, model = popModel, timber = true })
+		handlers.cut({ pos = land, color = d.color, mut = d.mut, z = d.z, by = d.by, scale = scale, model = popModel, timber = true, dir = d.dir })
 	end
 	if d.by == player.UserId then
 		Sound.play("fellCrunch", 0.08) -- the stems giving way as it starts to go
@@ -422,6 +439,15 @@ handlers.fell = function(d)
 	local rel = CFrame.new(hinge):ToObjectSpace(startCf)
 	-- a puff of dust where it gives way
 	handlers.poof({ pos = foot, scale = math.max(1.5, (radius or 1.6) * 0.7) })
+	-- (28 Oct, owner's brief: "grass blades + a few leaves flying out as the top falls") out of the break, the way
+	-- it goes over, in the clump's colour (a mutated clump's in its mutation's)
+	if d.by == player.UserId then
+		local topH = (m:GetAttribute("Height") :: number?) or d.height or 6
+		local burstAt = Vector3.new(foot.X, (breakY or foot.Y) + topH * 0.3, foot.Z)
+		local mutDef = Config.mutation(d.mut or "None")
+		-- (`foot`: an auto tool's kill plays its bite look there too: client/WeaponVfx.fall)
+		WeaponVfx.fall(burstAt, dir, mutDef.color or d.color or Color3.fromRGB(120, 190, 80), scale or 1, foot)
+	end
 	local start = os.clock()
 	local conn: RBXScriptConnection
 	conn = RunService.RenderStepped:Connect(function()
@@ -504,30 +530,44 @@ function Fx.hpBar(pos: Vector3, label: string, hp: number, max: number)
 end
 
 handlers.chip = function(d)
-	-- (owner, 28 Oct: "copy that [Chop's hit progress] but make it look soothing"): the HitMeter under the
-	-- crosshair replaces the orange billboard bar (Fx.hpBar stays for anything else that wants it)
-	if d.label then
-		HitMeter.hit(d)
-	end
-	-- (28 Oct) the bite this hit took, floating up in the tool's colour (hand tools: auto tools chip too fast)
-	local tid = heldToolId()
-	-- (owner, 28 Oct: "drop both": no floating bite number; WeaponFx.bite stays for later use)
-	if false and WeaponFx.family(WeaponFx.eventFor(tid)) ~= "auto" and d.max and d.max > 0 then
-		WeaponFx.bite(d.hitPos or d.pos, d.dealt or 0, (d.dealt or 0) / d.max, WeaponFx.accent(tid))
-	end
-	ClumpWound.hit(d) -- (before the lean: the cut leans with the clump)
-	HitFx.lean(d.model, d.from, d.ratio)
-	-- your swing already drew this hit the moment it landed (HitFx prediction); auto tools and extra targets
-	-- of a wide swing are drawn now
-	if not HitFx.wasPredicted(d.pos) then
-		local id = heldToolId()
-		local auto = false
-		for _, t in Config.TOOLS do
-			if t.id == id and t.kind == "auto" then
-				auto = true
-			end
+	-- (28 Oct) your own swing: the cut opens, the clump leans and the meter ticks on the frame your blow lands (the
+	-- server can answer before your fist gets there; HitFx knows when the swing's clip makes contact)
+	local predicted, hitAt = HitFx.wasPredicted(d.pos)
+	local id = heldToolId()
+	local auto = false
+	for _, t in Config.TOOLS do
+		if t.id == id and t.kind == "auto" then
+			auto = true
 		end
-		HitFx.play(if auto then WeaponFx.eventFor(id) elseif id == "Hands" then "punch" else WeaponFx.eventFor(id), d.pos, d.color, true)
+	end
+	local mutColor = if d.mut and d.mut ~= "None" then Config.mutation(d.mut).color else nil
+	if d.model and mutColor then
+		HitFx.setMut(d.model, mutColor) -- its bits glow from now on
+	end
+	local function land()
+		-- (owner, 28 Oct: "copy that [Chop's hit progress] but make it look soothing"): the HitMeter under the
+		-- crosshair replaces the orange billboard bar (Fx.hpBar stays for anything else that wants it)
+		if d.label then
+			HitMeter.hit(d)
+		end
+		-- (28 Oct) the bite this hit took, floating up in the tool's colour (hand tools: auto tools chip too fast)
+		-- (owner, 28 Oct: "drop both": no floating bite number; WeaponFx.bite stays for later use)
+		if false and WeaponFx.family(WeaponFx.eventFor(id)) ~= "auto" and d.max and d.max > 0 then
+			WeaponFx.bite(d.hitPos or d.pos, d.dealt or 0, (d.dealt or 0) / d.max, WeaponFx.accent(id))
+		end
+		ClumpWound.hit(d) -- (before the lean: the cut leans with the clump)
+		HitFx.lean(d.model, d.from, d.ratio)
+		-- your swing already drew this hit the moment it landed (HitFx prediction); auto tools and extra targets
+		-- of a wide swing are drawn now
+		if not predicted then
+			HitFx.play(if auto then WeaponFx.eventFor(id) elseif id == "Hands" then "punch" else WeaponFx.eventFor(id), d.pos, d.color, true, nil, nil, { mut = mutColor } :: any)
+		end
+	end
+	local wait = if predicted and hitAt then hitAt - os.clock() elseif not auto then HitFx.swingWait() else 0
+	if wait > 0.01 then
+		task.delay(wait, land)
+	else
+		land()
 	end
 end
 
@@ -567,9 +607,47 @@ handlers.reveal = function(d)
 	if not near(d.pos, 160) or not m.color then
 		return
 	end
-	HitFx.play("reveal", d.pos, m.color, true)
+	-- (28 Oct) your blow that found it may still be on its way: the golden moment bursts on the frame it lands
+	local waitHit = HitFx.contactWait(d.pos)
+	if waitHit > 0.01 then
+		task.delay(waitHit, handlers.reveal, d)
+		return
+	end
+	local clump = HitFx.clumpAt(d.pos)
+	HitFx.setMut(clump, m.color) -- its chips glow from this hit on
+	-- (owner's brief: "the big ring flash + bloom + star sparkles: mutated clumps only, in the mutation's colour")
+	-- a glow ball, a soft ring rolling out and star sparkles where the blow landed (client/WeaponVfx); your own find
+	-- close by also swells the bloom and washes the screen softly
+	local radius = clump and clump:GetAttribute("Radius") :: number?
+	local at = WeaponVfx.lastImpact(d.pos) or (d.pos + Vector3.new(0, 2.5, 0))
+	WeaponVfx.reveal(at, m.color, if radius then radius / 1.6 else 1, d.by == player.UserId and near(d.pos, 40))
 	Fx.floatText(d.pos + Vector3.new(0, 2, 0), m.id:upper() .. "!", m.color, 1.25)
 	Moments.reveal(d) -- the light pillar, the chime, and for a rare find of yours the slow-motion beat
+end
+
+-- (28 Oct, owner's brief: "other players see a lighter version of your effects") someone else's hit near you: a
+-- light copy where their blow landed (server/Field sends it to the players near them, a few a second at most)
+handlers.chipOther = function(d)
+	if d.by == player.UserId or not near(d.pos, 90) then
+		return
+	end
+	local who = Players:GetPlayerByUserId(d.by)
+	local char = who and who.Character
+	local tool = char and char:FindFirstChildOfClass("Tool")
+	local toolId = tool and tool:GetAttribute("ToolId") :: string?
+	if not toolId then
+		return
+	end
+	local event = if toolId == "Hands" then "punch" else WeaponFx.eventFor(toolId)
+	local mutColor = if d.mut and d.mut ~= "None" then Config.mutation(d.mut).color else nil
+	local radius = d.model and d.model:GetAttribute("Radius") :: number?
+	local scale = if radius then radius / 1.6 else 1
+	-- (their blow lands a moment after the server hears the swing: about when it shows on their body)
+	task.delay(0.08, function()
+		if not WeaponVfx.other(event, d.hitPos or d.pos, d.color, mutColor, scale) then
+			HitFx.play(event, d.pos, mutColor or d.color, false, d.model)
+		end
+	end)
 end
 
 handlers.gems = function(d)
@@ -624,6 +702,26 @@ handlers.bossHit = function(d)
 	-- impact, white flash, damage number, the top HP bar
 	BossFx.hit(d)
 	Sound.play("hit", 0.1)
+	-- (31 Oct, owner's vfx_sfx.zip) a weak-spot blow (x2.5) rings out: the owner's katana clash over the thud
+	if d.weak then
+		Sound.play("bladeClang", 0.06)
+	end
+end
+
+-- (29 Oct) a beaten boss's arena: its invisible wall sinks (server/BossArena.dropWall): a soft whoosh and dust
+-- puffing up all round the rim as the glow goes down
+handlers.arenaWallDown = function(d)
+	if not near(d.pos, d.r + 120) then
+		return
+	end
+	task.delay(0.3, function()
+		Sound.play("whoosh", 0.05, 0.8)
+		for i = 1, 16 do
+			local a = i / 16 * math.pi * 2
+			local at = d.pos + Vector3.new(math.cos(a) * d.r, 0.5, math.sin(a) * d.r)
+			task.delay(i * 0.03, Fx.arc, at, { count = 4, color = Color3.fromRGB(205, 180, 140), size = Vector3.new(0.8, 0.8, 0.8), height = 3, spread = 3, life = 0.7 })
+		end
+	end)
 end
 
 handlers.bossDown = function(d)
@@ -785,11 +883,19 @@ handlers.mowerReady = function(d)
 end
 
 -- blade tools draw a crescent swipe across the view; bare hands punch (ViewModel animates it)
-local SLASH_COLOR = {
-	Scissors = Color3.new(1, 1, 1),
-	Sickle = Color3.fromRGB(225, 235, 255),
-	MegaScythe = Color3.fromRGB(200, 150, 255),
-}
+-- (28 Oct) not the scissors any more (a snip is a thrust, not a slash) nor the sickle (its blade draws its own crescent
+-- in client/ViewModel); the scythe keeps the streak until its own rework
+-- (28 Oct) and not the scythe either now: its blade draws its own wide lavender sweep too. Kept for a tool that
+-- wants a plain streak across the view.
+local SLASH_COLOR: { [string]: Color3 } = {}
+-- (31 Oct, owner's vfx_sfx.zip) the Mega Scythe swings with the owner's katana slash (two takes), under a hit's level
+local function swingSound(id: string?)
+	if id == "MegaScythe" and Config.SOUNDS.bladeSlash then
+		Sound.play("bladeSlash", 0.08, 0.45)
+	else
+		Sound.play(if id == "Hands" then "swingHand" else "swingBlade", 0.15)
+	end
+end
 State.on("swing", function(look: Vector3?)
 	local id = heldToolId()
 	HitFx.swing(id, look)
@@ -797,7 +903,14 @@ State.on("swing", function(look: Vector3?)
 	if color then
 		task.delay(0.08, HitFx.slash, color)
 	end
-	Sound.play(if id == "Hands" then "swingHand" else "swingBlade", 0.15)
+	-- (28 Oct) the whoosh comes with the strike, not the wind-up (a finisher winds up first)
+	local plan = ViewAnims.plan(id)
+	local whoosh = if plan then math.max(0, plan.contact - 0.07) else 0
+	if whoosh > 0.02 then
+		task.delay(whoosh, swingSound, id)
+	else
+		swingSound(id)
+	end
 end)
 
 State.on("fx", function(kind, payload)

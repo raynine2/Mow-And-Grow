@@ -29,12 +29,15 @@ Config.SCHEMA = 1
 -- kind "auto":  cuts every patch within `radius` each tick while equipped.
 -------------------------------------------------------------------------------------------------------------
 Config.TICK = 0.25 -- seconds between auto-cut ticks
+-- (owner, 29 Oct: "balance the game") prices and the two auto tools' damage retuned for a 25-30 min first run (a
+-- run simulator: scratch balance/sim.py). Was: Scissors 25, Sickle 1500, Push Mower 7000 (damage 30), Weed Whacker
+-- 60000 (damage 140), Mega Scythe 400000, Laser Mower 1500000.
 Config.TOOLS = {
 	{ id = "Hands", name = "Bare Hands", cost = 0, kind = "swing", damage = 1, cooldown = 0.45, radius = 5, targets = 1, color = Color3.fromRGB(255, 205, 160) },
-	{ id = "Scissors", name = "Garden Scissors", cost = 25, kind = "swing", damage = 3, cooldown = 0.4, radius = 6, targets = 2, color = Color3.fromRGB(255, 80, 80) },
+	{ id = "Scissors", name = "Garden Scissors", cost = 50, kind = "swing", damage = 3, cooldown = 0.4, radius = 6, targets = 2, color = Color3.fromRGB(255, 80, 80) },
 	{ id = "Sickle", name = "Sickle", cost = 600, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
-	{ id = "PushMower", name = "Push Mower", cost = 2500, kind = "auto", damage = 30, radius = 6, color = Color3.fromRGB(255, 140, 30) },
-	{ id = "WeedWhacker", name = "Weed Whacker", cost = 14000, kind = "auto", damage = 140, radius = 9, color = Color3.fromRGB(60, 200, 80) },
+	{ id = "PushMower", name = "Push Mower", cost = 2500, kind = "auto", damage = 38, radius = 6, color = Color3.fromRGB(255, 140, 30) },
+	{ id = "WeedWhacker", name = "Weed Whacker", cost = 14000, kind = "auto", damage = 220, radius = 9, color = Color3.fromRGB(60, 200, 80) },
 	{ id = "MegaScythe", name = "Mega Scythe", cost = 300000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
 	{ id = "LaserMower", name = "Laser Mower", cost = 1600000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
 }
@@ -78,9 +81,9 @@ Config.GEM_DROP = { chance = 0.035, min = 1, max = 3 } -- per cut patch, before 
 -- Bags: bought in order at the Bag Stand in the hub (coins, reset every run). The Bottomless Sack game pass
 -- (Config.PASSES.BigBag) makes your bag endless.
 Config.BAGS = {
-	{ id = "Satchel", name = "Grass Satchel", model = "bag_satchel", cost = 175, carry = 5 },
-	{ id = "Backpack", name = "Clipping Backpack", model = "bag_backpack", cost = 600, carry = 15 },
-	{ id = "Expedition", name = "Expedition Pack", model = "bag_hiker", cost = 4000, carry = 40 },
+	{ id = "Satchel", name = "Grass Satchel", model = "bag_satchel", cost = 60, carry = 15 }, -- (29 Oct) was 175 coins, +5
+	{ id = "Backpack", name = "Clipping Backpack", model = "bag_backpack", cost = 900, carry = 40 }, -- (29 Oct) was 600, +15
+	{ id = "Expedition", name = "Expedition Pack", model = "bag_hiker", cost = 6000, carry = 90 }, -- (29 Oct) was 4000, +40
 }
 Config.ENDLESS_CARRY = 9999 -- what "endless" means in numbers (the HUD shows it as a big infinity sign)
 
@@ -181,6 +184,7 @@ Config.AREA_CHALLENGE = { par = { 240, 240, 240, 330, 270, 300, 270, 270 }, gems
 Config.PARTY_BONUS = { per = 0.1, max = 0.3 }
 -- #16 RUN MEDALS: finish a run under these times. Saved in the profile; `badge` is the Roblox badge to award once
 -- the owner has made it (0 = none). Peaceful runs and runs joined part-way through don't count (like BEST TIMES).
+-- (29 Oct) a run is now 25-30 min for a first-timer: was Gold 60 / Silver 75 / Bronze 90
 Config.RUN_MEDALS = {
 	{ id = "Gold", name = "Gold", minutes = 27, badge = 0, color = Color3.fromRGB(255, 205, 50) },
 	{ id = "Silver", name = "Silver", minutes = 34, badge = 0, color = Color3.fromRGB(205, 215, 230) },
@@ -224,7 +228,7 @@ end
 -- Clumps stand 7-14 studs tall like trees (`scale` x their model, `spacing` studs apart); later areas are tougher.
 -- model: the clump model (default "tuft_" .. style); tint: recolour it (flat colour instead of its texture).
 -------------------------------------------------------------------------------------------------------------
-Config.BASE_CARRY = 5
+Config.BASE_CARRY = 10 -- (29 Oct) was 5: fewer walks to the Shredder
 -- Pacing (22 Oct, after the Chop A Forest teardown): aim for a free-to-play clear of 60-90 minutes, with the first
 -- boss and a ride-on mower inside the first 15. A rough sim of one good player came out at ~56 min of mowing plus
 -- the boss fights (area 1 ~7 min with its new drop-off pad, server/RunWorld). Values were x1.5 from area 2, HP -20%
@@ -243,69 +247,69 @@ Config.BOSSES = true -- clearing an area wakes its boss, and beating the boss op
 
 Config.ZONES = {
 	{
-		name = "Backyard Lawn", grassName = "Lawn Grass", style = "lawn", hp = 2, value = 2, drops = 1, height = 2, -- (29 Oct, balance 2) hp 3 -> 2
+		name = "Backyard Lawn", grassName = "Lawn Grass", style = "lawn", hp = 2, value = 3, drops = 1, height = 2, -- (29 Oct) was hp 3, value 2
 		spacing = 11, fill = 1.25, scale = 4.0,
 		grass = { Color3.fromRGB(110, 210, 70), Color3.fromRGB(90, 195, 60) },
 		ground = Color3.fromRGB(150, 110, 70),
-		boss = { name = "Dandelion King", hp = 400, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
+		boss = { name = "Dandelion King", hp = 150, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
 	},
 	{
-		name = "Flower Meadow", grassName = "Meadow Grass", style = "meadow", model = "tuft_golf", hp = 9, value = 12, drops = 1, height = 2.2, -- (29 Oct, balance 2) hp 12 -> 9
+		name = "Flower Meadow", grassName = "Meadow Grass", style = "meadow", model = "tuft_golf", hp = 9, value = 12, drops = 1, height = 2.2, -- (29 Oct) was hp 12, value 12; (29 Oct, balance 2) hp 6 -> 9
 		spacing = 11.5, fill = 1.4, scale = 6.3, tint = Color3.fromRGB(150, 215, 95),
 		grass = { Color3.fromRGB(150, 215, 95), Color3.fromRGB(130, 200, 80) },
 		ground = Color3.fromRGB(120, 160, 70),
-		boss = { name = "Bramble Brute", hp = 2000, color = Color3.fromRGB(40, 140, 60), every = 4.2, radius = 9, gems = 15, coins = 500 },
+		boss = { name = "Harvest Maw", hp = 900, color = Color3.fromRGB(240, 200, 80), every = 4.2, radius = 11, gems = 15, coins = 500 }, -- (29 Oct) boss moved here to fit the biome; was Bramble Brute
 	},
 	{
-		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 40, value = 45, drops = 1, height = 2.5, -- (29 Oct, balance 2) hp 50 -> 40
+		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 40, value = 45, drops = 1, height = 2.5, -- (29 Oct) was hp 50, value 45; (29 Oct, balance 2) hp 25 -> 40
 		spacing = 12.5, fill = 1.4, scale = 7.2,
 		grass = { Color3.fromRGB(70, 200, 90), Color3.fromRGB(55, 180, 75) },
 		ground = Color3.fromRGB(235, 215, 150),
-		boss = { name = "Bunker Thornback", hp = 6000, color = Color3.fromRGB(235, 200, 110), every = 4, radius = 10, gems = 20, coins = 1500 },
+		boss = { name = "Sakura Snapjaw", hp = 5800, color = Color3.fromRGB(255, 150, 200), every = 4, radius = 11, gems = 20, coins = 1500 }, -- (29 Oct) boss moved here to fit the biome; was Bunker Thornback
 	},
 	{
-		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 180, value = 80, drops = 1, height = 5, -- (29 Oct, balance 2) hp 150 -> 180
+		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 180, value = 80, drops = 1, height = 5, -- (29 Oct) was hp 150, value 80; (29 Oct, balance 2) hp 130 -> 180
 		spacing = 11, fill = 1.4, scale = 4.0,
 		grass = { Color3.fromRGB(240, 200, 80), Color3.fromRGB(225, 180, 60) },
 		ground = Color3.fromRGB(140, 95, 55),
-		boss = { name = "Harvest Maw", hp = 90000, color = Color3.fromRGB(240, 200, 80), every = 3.6, radius = 11, gems = 35, coins = 12000 },
+		boss = { name = "Bramble Brute", hp = 44000, color = Color3.fromRGB(40, 140, 60), every = 3.6, radius = 9, gems = 35, coins = 12000 }, -- (29 Oct) boss moved here to fit the biome; was Harvest Maw
 	},
 	{
-		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 1000, value = 300, drops = 2, height = 2.5, -- (29 Oct, balance 2) hp 480 -> 1000
+		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 1000, value = 300, drops = 2, height = 2.5, -- (29 Oct) was hp 480, value 300; (29 Oct, balance 2) hp 750 -> 1000
 		spacing = 13.5, fill = 1.4, scale = 5.1, tint = Color3.fromRGB(255, 160, 205),
 		grass = { Color3.fromRGB(255, 160, 205), Color3.fromRGB(240, 130, 185) },
 		ground = Color3.fromRGB(120, 170, 80),
-		boss = { name = "Sakura Snapjaw", hp = 300000, color = Color3.fromRGB(255, 150, 200), every = 3.5, radius = 11, gems = 45, coins = 40000 },
+		boss = { name = "Bog Strangler", hp = 61000, color = Color3.fromRGB(125, 212, 90), every = 3.5, radius = 12, gems = 45, coins = 40000 }, -- (29 Oct) boss moved here to fit the biome; was Sakura Snapjaw
 	},
 	{
-		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 7000, value = 1100, drops = 2, height = 6.5, -- (29 Oct, balance 2) hp 2000 -> 7000
+		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 7000, value = 1100, drops = 2, height = 6.5, -- (29 Oct) was hp 2000, value 1100; (29 Oct, balance 2) hp 2300 -> 7000
 		spacing = 12, fill = 1.4, scale = 4.6,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
-		boss = { name = "Bog Strangler", hp = 1200000, color = Color3.fromRGB(125, 212, 90), every = 3.3, radius = 12, gems = 55, coins = 150000 },
+		boss = { name = "Frost Thornback", hp = 400000, color = Color3.fromRGB(160, 220, 255), every = 3.3, radius = 10, gems = 55, coins = 150000 }, -- (29 Oct) boss moved here to fit the biome; was Bog Strangler
 	},
 	{
-		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 30000, value = 2400, drops = 2, height = 6, -- (29 Oct, balance 2) hp 4800 -> 30000
+		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 30000, value = 2400, drops = 2, height = 6, -- (29 Oct) was hp 4800, value 2400; (29 Oct, balance 2) hp 12000 -> 30000
 		spacing = 11.5, fill = 1.4, scale = 5.1, tint = Color3.fromRGB(235, 120, 45),
 		grass = { Color3.fromRGB(235, 120, 45), Color3.fromRGB(215, 95, 40) },
 		ground = Color3.fromRGB(150, 110, 60),
-		boss = { name = "Hollow Harvest", hp = 4000000, color = Color3.fromRGB(255, 140, 40), every = 3.1, radius = 13, gems = 65, coins = 500000 },
+		boss = { name = "Hollow Harvest", hp = 1600000, color = Color3.fromRGB(255, 140, 40), every = 3.1, radius = 13, gems = 65, coins = 500000 },
 	},
 	{
-		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 100000, value = 12000, drops = 4, height = 8, -- (29 Oct, balance 2) hp 60000 -> 100000
+		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 100000, value = 12000, drops = 4, height = 8, -- (29 Oct) was hp 60000, value 12000; (29 Oct, balance 2) hp 50000 -> 100000
 		spacing = 21, fill = 1.5, scale = 6.0,
 		grass = { Color3.fromRGB(30, 160, 60), Color3.fromRGB(20, 130, 50) },
 		ground = Color3.fromRGB(90, 70, 45),
-		boss = { name = "Jungle Titan", hp = 15000000, color = Color3.fromRGB(63, 230, 200), every = 3, radius = 14, gems = 80, coins = 2000000 },
+		boss = { name = "Jungle Titan", hp = 2200000, color = Color3.fromRGB(63, 230, 200), every = 3, radius = 14, gems = 80, coins = 2000000 },
 	},
 }
 -- Boss weapon crate (Chop A Forest v2): a crate parachutes in when a boss appears; opening it gives you your best
 -- gun for the fight (taken away when the boss falls). Damage is a share of the boss's max HP per shot, so every
 -- zone's boss takes about the same time. `product` = bought with Robux, yours in every fight.
 Config.GUNS = {
-	{ id = "Pistol", name = "Glock-18", pct = 0.004, rate = 5, range = 110, color = Color3.fromRGB(60, 60, 70), stats = "SEMI-AUTO - 5 SHOTS/S - 110 STUDS" },
-	{ id = "Rifle", name = "AK-47", product = "GunRifle", pct = 0.005, rate = 9, range = 130, color = Color3.fromRGB(150, 95, 50), stats = "AUTO - 9 SHOTS/S - 130 STUDS" },
-	{ id = "Minigun", name = "Minigun", product = "GunMinigun", pct = 0.004, rate = 20, range = 120, spin = 0.8, color = Color3.fromRGB(90, 95, 110), stats = "SPINS UP, THEN SHREDS - 20 SHOTS/S" },
+	{ id = "Pistol", name = "Pocket Blaster", pct = 0.004, rate = 5, range = 110, color = Color3.fromRGB(60, 60, 70), stats = "SEMI-AUTO - 5 SHOTS/S - 110 STUDS" },
+	{ id = "Rifle", name = "Weed Ripper", product = "GunRifle", pct = 0.005, rate = 9, range = 130, color = Color3.fromRGB(150, 95, 50), stats = "AUTO - 9 SHOTS/S - 130 STUDS" },
+	{ id = "Minigun", name = "Lawn Shredder", product = "GunMinigun", pct = 0.004, rate = 20, range = 120, spin = 0.8, color = Color3.fromRGB(90, 95, 110), stats = "SPINS UP, THEN SHREDS - 20 SHOTS/S" },
 }
 function Config.gun(id: string)
 	for _, g in Config.GUNS do
@@ -338,7 +342,18 @@ Config.BOSS_PARTY_HP = { 1, 1.7, 2.4, 3.0 }
 -- Boss HP per area: about 2.5 minutes for one player with the area's expected tool (Scissors, Sickle, Push Mower,
 -- Weed Whacker x2, Mega Scythe x2, Laser Mower) and a few Power upgrades, hitting about half the time plus the
 -- x2.5 punish windows. Guesses from Config.TOOLS (26 Oct): retune after real playtests.
-Config.BOSS_HP = { 1400, 5000, 25000, 120000, 200000, 1200000, 1500000, 4800000 }
+-- (29 Oct balance) about a minute with the weapon you should have by then, 4-5 min with the one before; was
+-- { 1400, 5000, 25000, 120000, 200000, 1200000, 1500000, 4800000 }. x Config.DIFFICULTY[...].hp
+Config.BOSS_HP = { 150, 900, 5800, 44000, 61000, 400000, 1600000, 2200000 }
+-- (owner, 29 Oct) DIFFICULTY, picked in the Create Party window (id "Normal" is shown as MEDIUM; the ids stay so
+-- saved runs keep working): boss HP and damage multipliers, `speed` scales the boss's warnings and rests (lower =
+-- faster attacks), `reward` multiplies coins and gems from grass and bosses, `wins` = runs won to unlock.
+Config.DIFFICULTY = {
+	Normal = { label = "MEDIUM", hp = 1, dmg = 1, speed = 1, reward = 1, wins = 0 },
+	Hard = { label = "HARD", hp = 1.6, dmg = 1.3, speed = 0.85, reward = 1.5, wins = 1 },
+	Expert = { label = "EXPERT", hp = 2.5, dmg = 1.6, speed = 0.72, reward = 2, wins = 5 },
+}
+Config.DIFFICULTY_ORDER = { "Normal", "Hard", "Expert" }
 -- Players in a boss fight (server/BossFighters): 100 HP; at 0 you're downed for BOSS_DOWN_TIME s and a teammate
 -- standing next to you for BOSS_REVIVE_TIME s picks you up, else you get up at the arena entrance.
 Config.BOSS_PLAYER_HP = 100
@@ -1106,8 +1121,8 @@ Config.PRODUCTS = {
 	-- Class card deal: deal yourself new cards now (until the next restock). Random result, so the odds are
 	-- shown on every card (Config.CLASS_CHANCE / CLASS_CHANCE_LUCKY).
 	-- guns for the boss crate (yours in every fight)
-	GunRifle = { id = 3720129252, robux = 64, gun = "Rifle", name = "AK-47" },
-	GunMinigun = { id = 3720129260, robux = 320, gun = "Minigun", name = "Minigun" },
+	GunRifle = { id = 3720129252, robux = 64, gun = "Rifle", name = "Weed Ripper" }, -- (29 Oct) toy names: was Glock-18 / AK-47 / Minigun
+	GunMinigun = { id = 3720129260, robux = 320, gun = "Minigun", name = "Lawn Shredder" },
 	-- Golden Egg (random result: odds shown on the egg card)
 	GoldenEgg1 = { id = 3720129270, robux = 80, egg = "GoldenEgg", count = 1, paidRandom = true, name = "Golden Egg" },
 	GoldenEgg3 = { id = 3720129278, robux = 224, egg = "GoldenEgg", count = 3, paidRandom = true, name = "3 Golden Eggs" },
@@ -1120,13 +1135,15 @@ Config.PRODUCT_ORDER = { "Gems150", "Gems500", "Gems1500", "Gems5000", "TrialMow
 -- Tool products, like Chop A Forest's item popup: ONE TIME = this run only, PERMANENT = every run you play.
 -- { once, forever } in Robux. Each tool gets `once` / `forever` product keys (ToolOnce<Id> / ToolForever<Id>);
 -- set their ids after creating the products on the Creator Dashboard (0 = "Coming soon").
+-- (29 Oct) re-priced after the balance pass, and set on the Creator Dashboard the same day (the buttons show the live
+-- price; these are the fallback). Was 16/64, 24/99, 40/160, 60/240, 99/399, 149/599.
 Config.TOOL_ROBUX = {
-	Scissors = { 16, 64 },
-	Sickle = { 24, 99 },
-	PushMower = { 40, 160 },
-	WeedWhacker = { 60, 240 },
-	MegaScythe = { 99, 399 },
-	LaserMower = { 149, 599 },
+	Scissors = { 9, 49 },
+	Sickle = { 19, 99 },
+	PushMower = { 29, 149 },
+	WeedWhacker = { 49, 249 },
+	MegaScythe = { 79, 399 },
+	LaserMower = { 129, 599 },
 }
 -- Developer product ids (made on 19 Oct 2026, universe 10771817013): { once, forever }
 Config.TOOL_PRODUCT_IDS = {
@@ -1151,6 +1168,45 @@ end
 function Config.toolIndex(id: string): number?
 	for i, t in Config.TOOLS do
 		if t.id == id then
+			return i
+		end
+	end
+	return nil
+end
+
+-- (owner, 29 Oct: "if you buy the forever pack from a late game item you get every item before that too, fix it so
+-- you only get the weapon you buy") Which tools a player has this run: every tool up the coin ladder (run.tool, bought
+-- in order with coins), plus each tool bought with Robux on its own: run.extra (this run) and `forever` (the
+-- PERMANENT ones, profile.tools). Both may be a set ({ [id] = true }, the server) or a list ({ id }, the client's view).
+local function listed(t: any, id: string): boolean
+	if not t then
+		return false
+	end
+	return t[id] == true or table.find(t, id) ~= nil
+end
+function Config.ownsTool(run: any, forever: any, i: number): boolean
+	local def = Config.TOOLS[i]
+	if not def or not run then
+		return false
+	end
+	return i <= (run.tool or 1) or listed(run.extra, def.id) or listed(forever, def.id)
+end
+-- the best tool owned this run (its index)
+function Config.bestTool(run: any, forever: any): number
+	for i = #Config.TOOLS, 1, -1 do
+		if Config.ownsTool(run, forever, i) then
+			return i
+		end
+	end
+	return 1
+end
+-- the next tool to buy with coins: the first one past the ladder that isn't owned yet (nil = all owned)
+function Config.nextToolIndex(run: any, forever: any): number?
+	if not run then
+		return nil
+	end
+	for i = (run.tool or 1) + 1, #Config.TOOLS do
+		if not Config.ownsTool(run, forever, i) then
 			return i
 		end
 	end
@@ -1188,57 +1244,90 @@ end
 -------------------------------------------------------------------------------------------------------------
 Config.SOUNDS = {
 	-- All Roblox-owned (creator "Roblox", user 1), checked on the Creator Store API on 18 Oct 2026.
-	cut = { id = "rbxassetid://12222200", volume = 0.35, pitch = 1.1, gap = 0.06 }, -- swoosh.wav
-	chip = { id = "rbxassetid://12222140", volume = 0.2, pitch = 1.2, gap = 0.08 }, -- snap.wav
-	reveal = { id = "rbxassetid://17208327798", volume = 0.55 }, -- Roblox GUI - Aura
-	sell = { id = "rbxassetid://127645268874265", volume = 0.5, gap = 0.2 }, -- CoinTransfer_01
-	purchase = { id = "rbxassetid://17208380755", volume = 0.5 }, -- Roblox GUI - Purchase
-	upgrade = { id = "rbxassetid://10066947742", volume = 0.45 }, -- RBLX UI Purchase (SFX)
-	denied = { id = "rbxassetid://17208353912", volume = 0.4, gap = 0.6 }, -- Roblox GUI - Negative
-	click = { id = "rbxassetid://102855535543930", volume = 1, gap = 0.04 }, -- Creamy Keyboard Sound Effect (Yangz's pick for every UI click; community upload, not Roblox-owned)
-	whoosh = { id = "rbxassetid://15675024286", volume = 0.35, gap = 0.1 }, -- Roblox_UI_Whoosh_01
-	warn = { id = "rbxassetid://15675028888", volume = 0.35 }, -- Roblox_UI_Whoosh_02
-	slam = { id = "rbxassetid://12221984", volume = 0.6, pitch = 0.7 }, -- collide.wav
-	hit = { id = "rbxassetid://12222046", volume = 0.35, gap = 0.08 }, -- hit.wav
-	hurt = { id = "rbxasset://sounds/ouch.ogg", volume = 0.5 }, -- engine built-in
+	cut = { id = "rbxassetid://91464542260761", volume = 0.31, gap = 0.06 }, -- ForgeGUI 29 Oct. old: rbxassetid://12222200, volume 0.35, pitch 1.1 (swoosh.wav)
+	chip = { id = "rbxassetid://82710812255352", volume = 0.43, gap = 0.08 }, -- ForgeGUI 29 Oct. old: rbxassetid://12222140, volume 0.2, pitch 1.2 (snap.wav)
+	reveal = { id = "rbxassetid://85104851091777", volume = 0.86 }, -- ForgeGUI 29 Oct. old: rbxassetid://17208327798, volume 0.55 (Roblox GUI - Aura)
+	sell = { id = "rbxassetid://72697172284399", volume = 0.36, gap = 0.2 }, -- ForgeGUI 29 Oct. old: rbxassetid://127645268874265, volume 0.5 (CoinTransfer_01)
+	purchase = { id = "rbxassetid://103129747020700", volume = 0.69 }, -- ForgeGUI 29 Oct. old: rbxassetid://17208380755, volume 0.5 (Roblox GUI - Purchase)
+	upgrade = { id = "rbxassetid://82520748842226", volume = 0.57 }, -- ForgeGUI 29 Oct. old: rbxassetid://10066947742, volume 0.45 (RBLX UI Purchase (SFX))
+	denied = { id = "rbxassetid://96080532136978", volume = 1.09, gap = 0.6 }, -- ForgeGUI 29 Oct. old: rbxassetid://17208353912, volume 0.4 (Roblox GUI - Negative)
+	click = { id = "rbxassetid://80839900443795", volume = 0.33, gap = 0.04 }, -- ForgeGUI 29 Oct. old: rbxassetid://102855535543930, volume 1 (Creamy Keyboard Sound Effect (Yangz's pick for every UI click; community upload, not Roblox-owned))
+	whoosh = { id = "rbxassetid://139338006688759", volume = 0.29, gap = 0.1 }, -- ForgeGUI 29 Oct. old: rbxassetid://15675024286, volume 0.35 (Roblox_UI_Whoosh_01)
+	warn = { id = "rbxassetid://83223205201023", volume = 0.24 }, -- ForgeGUI 29 Oct. old: rbxassetid://15675028888, volume 0.35 (Roblox_UI_Whoosh_02)
+	slam = { id = "rbxassetid://72015768584169", volume = 0.41 }, -- ForgeGUI 29 Oct. old: rbxassetid://12221984, volume 0.6, pitch 0.7 (collide.wav)
+	hit = { id = "rbxassetid://121737293033994", volume = 0.67, gap = 0.08 }, -- ForgeGUI 29 Oct. old: rbxassetid://12222046, volume 0.35 (hit.wav)
+	hurt = { id = "rbxassetid://135736854715556", volume = 0.61 }, -- ForgeGUI 29 Oct. old: rbxasset://sounds/ouch.ogg, volume 0.5 (engine built-in)
 	-- Chopping feel (client/HitFx, Fx, LootFx). Pro Sound Effects library sounds (licensed to every Roblox
 	-- experience, creator "ProSoundEffects"), checked loading in Studio on 21 Oct 2026, plus engine built-ins.
-	punch = { id = "rbxassetid://9113535176", volume = 0.45, pitch = 1.35, gap = 0.05 }, -- Body Slam Low End Thump 1
-	rustle = { id = "rbxassetid://9114515257", volume = 0.32, pitch = 1.15, gap = 0.05 }, -- Foliage Crunchy Rustle 1
-	slice = { id = "rbxasset://sounds/swordslash.wav", volume = 0.22, pitch = 1.35, gap = 0.05 }, -- engine built-in
-	swingHand = { id = "rbxassetid://9126047581", volume = 0.3, pitch = 1.1, gap = 0.05 }, -- Synth Air Whoosh Karate Swish 13
-	swingBlade = { id = "rbxassetid://9126283592", volume = 0.3, pitch = 1.2, gap = 0.05 }, -- Wood Swish Ruler Whoosh 17
-	fellCrunch = { id = "rbxassetid://9114518077", volume = 0.45, gap = 0.08 }, -- Foliage Movement 1 (bursting through hedge)
-	fellLand = { id = "rbxassetid://9114515868", volume = 0.5, gap = 0.08 }, -- Foliage Drop 4 (branch drops to dirt)
-	burst = { id = "rbxassetid://9116406610", volume = 0.3, pitch = 1.3, gap = 0.06 }, -- Magic Poofs Thumpy 1
-	pickup = { id = "rbxassetid://9112751731", volume = 0.4, gap = 0.03 }, -- Bubble Bloop High Pitched Cute 6
+	punch = { id = "rbxassetid://103685548650230", volume = 1.91, gap = 0.05 }, -- ForgeGUI 29 Oct. old: rbxassetid://9113535176, volume 0.45, pitch 1.35 (Body Slam Low End Thump 1)
+	rustle = { id = "rbxassetid://70624387387143", volume = 0.41, gap = 0.05 }, -- ForgeGUI 29 Oct. old: rbxassetid://9114515257, volume 0.32, pitch 1.15 (Foliage Crunchy Rustle 1)
+	slice = { id = "rbxassetid://88603834176943", volume = 0.45, gap = 0.05 }, -- ForgeGUI 29 Oct. old: rbxasset://sounds/swordslash.wav, volume 0.22, pitch 1.35 (engine built-in)
+	swingHand = { id = "rbxassetid://77131594625854", volume = 0.11, gap = 0.05 }, -- ForgeGUI 29 Oct. old: rbxassetid://9126047581, volume 0.3, pitch 1.1 (Synth Air Whoosh Karate Swish 13)
+	swingBlade = { id = "rbxassetid://136743003908876", volume = 0.09, gap = 0.05 }, -- ForgeGUI 29 Oct. old: rbxassetid://9126283592, volume 0.3, pitch 1.2 (Wood Swish Ruler Whoosh 17)
+	fellCrunch = { id = "rbxassetid://78479444370115", volume = 0.24, gap = 0.08 }, -- ForgeGUI 29 Oct. old: rbxassetid://9114518077, volume 0.45 (Foliage Movement 1 (bursting through hedge))
+	fellLand = { id = "rbxassetid://107101805932663", volume = 0.36, gap = 0.08 }, -- ForgeGUI 29 Oct. old: rbxassetid://9114515868, volume 0.5 (Foliage Drop 4 (branch drops to dirt))
+	burst = { id = "rbxassetid://117009121616821", volume = 0.46, gap = 0.06 }, -- ForgeGUI 29 Oct. old: rbxassetid://9116406610, volume 0.3, pitch 1.3 (Magic Poofs Thumpy 1)
+	pickup = { id = "rbxassetid://116259102752617", volume = 0.21, gap = 0.03 }, -- ForgeGUI 29 Oct. old: rbxassetid://9112751731, volume 0.4 (Bubble Bloop High Pitched Cute 6)
 	-- a rare grass reveal (client/Moments): a magic chime, pitched up for the rarer mutations
-	rareChime = { id = "rbxassetid://9116394545", volume = 0.6, gap = 0.1 }, -- Magic Glows Soft Clusters Of Chiming Hits 1
+	rareChime = { id = "rbxassetid://106560674314316", volume = 0.79, gap = 0.1 }, -- ForgeGUI 29 Oct. old: rbxassetid://9116394545, volume 0.6 (Magic Glows Soft Clusters Of Chiming Hits 1)
 	-- footsteps (client/Soundscape): the store's grass/dirt footsteps are all unlicensed uploads, so a step is a
 	-- light foliage rustle (on grass) over a soft heel thud (the engine's landing sound, pitched up)
-	stepGrass = { id = "rbxassetid://9114517148", volume = 0.14, pitch = 1.3, gap = 0.12 }, -- Foliage Drop 5
-	stepThud = { id = "rbxasset://sounds/action_jump_land.mp3", volume = 0.12, pitch = 1.35, gap = 0.12 }, -- engine built-in
+	stepGrass = { id = "rbxassetid://97149942875918", ids = { "rbxassetid://97149942875918", "rbxassetid://87260878846542", "rbxassetid://108677446287288", "rbxassetid://99019635702588" }, volume = 0.1, gap = 0.12 }, -- ForgeGUI 29 Oct. old: rbxassetid://9114517148, volume 0.14, pitch 1.3 (Foliage Drop 5)
+	stepThud = { id = "rbxassetid://119730762234183", volume = 0.14, gap = 0.12 }, -- ForgeGUI 29 Oct. old: rbxasset://sounds/action_jump_land.mp3, volume 0.12, pitch 1.35 (engine built-in)
 	-- ambience loops (client/Soundscape), very quiet under the music
-	ambBirds = { id = "rbxassetid://9112832297", volume = 0.22 }, -- Mountain Birds 2 (light, distant)
-	ambWind = { id = "rbxassetid://9112777807", volume = 0.16 }, -- Farmland Presence 1 (wind through vines, insects)
-	ambJungle = { id = "rbxassetid://9112805601", volume = 0.22 }, -- Jungle Birds Ambience 2 (loop)
-	roar = { id = "rbxassetid://9120031442", volume = 0.45, pitch = 1.25 }, -- Thunder With Lion Roar (pitched up)
-	victory = { id = "rbxassetid://12222253", volume = 0.6 }, -- victory.wav
-	engine = { id = "", volume = 0.3 }, -- Roblox has no mower/engine loop; silent until a licensed one is found
-	musicLobby = { id = "rbxassetid://15930255433", volume = 0.35 }, -- Roblox_RetroFluteMusic_01
-	musicRun = { id = "rbxassetid://130053244401794", volume = 0.3 }, -- TutorialMusic_01
+	ambBirds = { id = "rbxassetid://125960968360036", volume = 0.2 }, -- ForgeGUI 29 Oct. old: rbxassetid://9112832297, volume 0.22 (Mountain Birds 2 (light, distant))
+	ambWind = { id = "rbxassetid://120764338533756", volume = 0.15 }, -- ForgeGUI 29 Oct. old: rbxassetid://9112777807, volume 0.16 (Farmland Presence 1 (wind through vines, insects))
+	ambJungle = { id = "rbxassetid://102147029206212", volume = 0.1 }, -- ForgeGUI 29 Oct. old: rbxassetid://9112805601, volume 0.22 (Jungle Birds Ambience 2 (loop))
+	roar = { id = "rbxassetid://125509748585498", volume = 0.28 }, -- ForgeGUI 29 Oct. old: rbxassetid://9120031442, volume 0.45, pitch 1.25 (Thunder With Lion Roar (pitched up))
+	victory = { id = "rbxassetid://130860789939038", volume = 0.43 }, -- ForgeGUI 29 Oct. old: rbxassetid://12222253, volume 0.6 (victory.wav)
+	engine = { id = "rbxassetid://110692258558738", volume = 0.39 }, -- ForgeGUI 29 Oct. old: , volume 0.3 (Roblox has no mower/engine loop; silent until a licensed one is found)
+	musicLobby = { id = "rbxassetid://137190883032357", volume = 0.23 }, -- ForgeGUI 29 Oct. old: rbxassetid://15930255433, volume 0.35 (Roblox_RetroFluteMusic_01)
+	musicRun = { id = "rbxassetid://124725084796716", volume = 0.22 }, -- ForgeGUI 29 Oct. old: rbxassetid://130053244401794, volume 0.3 (TutorialMusic_01)
 	-- the run's opening cutscene (client/Intro): Roblox's licensed music library (verified creator DistrokidOfficial)
 	introMusic = { id = "rbxassetid://75981022182996", volume = 0.55 }, -- Epic Trailer Music with Powerful Drums
 	-- boss fights (client/BossCine): Roblox's licensed music library (verified creator DistrokidOfficial); phase 2
 	-- plays it 12% faster
-	bossMusic = { id = "rbxassetid://132347366936691", volume = 0.45 }, -- Boss Fight!
+	bossMusic = { id = "rbxassetid://91195316450390", volume = 0.5 }, -- ForgeGUI 29 Oct. old: rbxassetid://132347366936691, volume 0.45 (Boss Fight!)
 	-- the CLASSES black hole (server/BlackHole, client/BlackHole): Pro Sound Effects library sounds (licensed to every
 	-- Roblox experience, creator "ProSoundEffects", checked on the Creator Store on 26 Oct 2026)
-	bhHum = { id = "rbxassetid://9125898973", volume = 0.45 }, -- Sci Fi Transformation Synth Tones Slow Swirling 1 (loop)
-	bhPull = { id = "rbxassetid://9119468100", volume = 0.6, pitch = 0.8 }, -- Spirit Pass Bys Fast Whooshes 5
-	bhWarp = { id = "rbxassetid://9125973433", volume = 0.45 }, -- Spaceship Blast High Pitch Energy Charge Up 2
-	bhOut = { id = "rbxassetid://9114159659", volume = 0.55, pitch = 0.9 }, -- Doppler Whooshes Crackly Airy Bursts 2
-	bhPop = { id = "rbxassetid://9116406610", volume = 0.45, pitch = 0.75 }, -- Magic Poofs Thumpy 1
+	bhHum = { id = "rbxassetid://97496655327485", volume = 0.05 }, -- ForgeGUI 29 Oct. old: rbxassetid://9125898973, volume 0.45 (Sci Fi Transformation Synth Tones Slow Swirling 1 (loop))
+	bhPull = { id = "rbxassetid://92445565061080", volume = 0.22 }, -- ForgeGUI 29 Oct. old: rbxassetid://9119468100, volume 0.6, pitch 0.8 (Spirit Pass Bys Fast Whooshes 5)
+	bhWarp = { id = "rbxassetid://79475767697543", volume = 0.11 }, -- ForgeGUI 29 Oct. old: rbxassetid://9125973433, volume 0.45 (Spaceship Blast High Pitch Energy Charge Up 2)
+	bhOut = { id = "rbxassetid://135515958802348", volume = 0.24 }, -- ForgeGUI 29 Oct. old: rbxassetid://9114159659, volume 0.55, pitch 0.9 (Doppler Whooshes Crackly Airy Bursts 2)
+	bhPop = { id = "rbxassetid://110534509285283", volume = 0.51 }, -- ForgeGUI 29 Oct. old: rbxassetid://9116406610, volume 0.45, pitch 0.75 (Magic Poofs Thumpy 1)
+	eggWobble = { id = "rbxassetid://116990933774060", volume = 0.29 }, -- ForgeGUI 29 Oct (new key)
+	eggCrack = { id = "rbxassetid://139398299152303", volume = 0.7 }, -- ForgeGUI 29 Oct (new key)
+	eggPop = { id = "rbxassetid://80174169754304", volume = 0.65 }, -- ForgeGUI 29 Oct (new key)
+	hatchLegend = { id = "rbxassetid://90448788190414", volume = 1.32 }, -- ForgeGUI 29 Oct (new key)
+	petChirp = { id = "rbxassetid://100394934747909", ids = { "rbxassetid://100394934747909", "rbxassetid://94429188865449", "rbxassetid://91987089429265" }, volume = 0.23 }, -- ForgeGUI 29 Oct (new key)
+	bossThud = { id = "rbxassetid://110757651322826", volume = 1.64 }, -- ForgeGUI 29 Oct (new key)
+	bossWhomp = { id = "rbxassetid://102968173111661", volume = 0.23 }, -- ForgeGUI 29 Oct (new key)
+	bossZap = { id = "rbxassetid://132232965570360", volume = 0.49 }, -- ForgeGUI 29 Oct (new key)
+	-- (31 Oct, owner: "look at this file, find where the sounds could fit in our game and use them there") the owner's
+	-- ForgeGUI katana and fire set (vfx_sfx.zip, made on the owner's ForgeGUI account). Blades: the Mega Scythe's swing
+	-- (client/Fx) and draw (client/ViewAnims.equip), the Harvest Reaper's Reaper Swing and Reaper's Mark (client/BossVfx
+	-- CUE), a weak-spot blow (client/Fx bossHit). Fire: the Reaper's Jack Bombs, its Jack-o'-Minions blowing up, its
+	-- Hellfire Dash and the trail of fire it leaves (client/BossVfx). Volumes are set from each file's level against
+	-- `hit` and `swingBlade` (same ForgeGUI pipeline). `fallback` plays while an upload can't load yet (client/Sound):
+	-- they only load once the game has been given access to them (owner: Creator Dashboard > the audio > Permissions).
+	bladeSlash = { id = "rbxassetid://110488625266795", ids = { "rbxassetid://110488625266795", "rbxassetid://85393701049869" }, volume = 0.33, gap = 0.08, fallback = "swingBlade" }, -- katana_slash_1 / _2
+	bladeDraw = { id = "rbxassetid://140493891166308", volume = 0.1, gap = 0.5 }, -- katana_unsheathe_1
+	bladeHit = { id = "rbxassetid://89192504493155", volume = 0.3, gap = 0.1, fallback = "bossThud" }, -- katana_hit_1
+	bladeClang = { id = "rbxassetid://98137308814441", volume = 0.37, gap = 0.2 }, -- katana_parry_2
+	fireBurst = { id = "rbxassetid://78028815639540", ids = { "rbxassetid://78028815639540", "rbxassetid://102461783131482" }, volume = 0.33, gap = 0.2, fallback = "bossThud" }, -- fire_burst_1 / _2
+	fireSpin = { id = "rbxassetid://100968629547756", volume = 0.27, gap = 1 }, -- fire_tornado_2
+	-- (31 Oct, owner: vfx_sfx_all.zip, "find where the sounds could fit in our game and use them there, if it doesnt
+	-- fit anywhere dont put it in") 6 of its 38 files fit: the Weed Whacker's pull-start (client/ViewAnims.equip), the
+	-- boss rage cutscene's riser into the roar (client/BossCine), the Jungle Titan's Rune Lasers and its Gaze charging and
+	-- firing, and the Sakura's Snap Lunge (client/BossVfx). Left out: the chainsaw gore slash, punch barrage, kick,
+	-- portals, uplifters and the other risers (the game has those moments covered), and chain, rock, fire fist and
+	-- electric punch (not found among the owner's ForgeGUI generations).
+	whackerRev = { id = "rbxassetid://107805801896904", volume = 0.075, gap = 1.5 }, -- chainsaw_rev_1
+	rageRise = { id = "rbxassetid://132391680412143", volume = 0.2, gap = 3 }, -- dark_riser_boom_v2_2 (its boom is 1.17 s in)
+	zapBeam = { id = "rbxassetid://114676161218897", volume = 0.31, gap = 0.1, fallback = "bossZap" }, -- energy_beam_2
+	zapCharge = { id = "rbxassetid://126033495591784", volume = 0.15, gap = 1 }, -- lightning_charge_v2_2
+	zapStrike = { id = "rbxassetid://72240785720202", volume = 0.51, gap = 0.3, fallback = "bossZap" }, -- lightning_strike_1
+	lunge = { id = "rbxassetid://128644106573001", volume = 0.19, gap = 0.1, fallback = "swingBlade" }, -- dash_2
 }
 
 -------------------------------------------------------------------------------------------------------------
@@ -1277,49 +1366,49 @@ Config.BOSS_PROWL = {
 
 Config.FILM_SOUNDS = {
 	-- music
-	storyMusic = { id = "rbxassetid://9046390239", volume = 0.5, len = 117.1 }, -- APM: Morning Skies
-	lonelyMusic = { id = "rbxassetid://9046596064", volume = 0.45, len = 61.4 }, -- APM: Alone (a 60)
-	darkMusic = { id = "rbxassetid://9044407196", volume = 0.5, len = 62.0 }, -- APM: Back to the Shadows 60A
-	heroMusic = { id = "rbxassetid://75981022182996", volume = 0.55, len = 163.7 }, -- DistroKid: Epic Trailer Music with Powerful Drums
-	calmMusic = { id = "rbxassetid://114683938950404", volume = 0.5, len = 95.4 }, -- DistroKid: Time Will Heal (Ambience)
-	flightMusic = { id = "rbxassetid://1842932462", volume = 0.5, len = 212.0 }, -- APM: Sunrise (No Choir)
-	partyMusic = { id = "rbxassetid://9043170481", volume = 0.5, len = 61.0 }, -- APM: Dancing for Joy 60 A
-	dreadMusic = { id = "rbxassetid://9046506025", volume = 0.55, len = 110.5 }, -- APM: Imminent Closure (Underscore C)
-	creditsMusic = { id = "rbxassetid://1835176977", volume = 0.5, len = 61.1 }, -- APM: Triumphant Return 60B
-	heartbeat = { id = "rbxassetid://9043365842", volume = 0.5, len = 60.1 }, -- APM: Heartbeat 02 96BPM
+	storyMusic = { id = "rbxassetid://137190883032357", volume = 0.28, len = 60 }, -- ForgeGUI 29 Oct. old: rbxassetid://9046390239, volume 0.5, len 117.1 (APM: Morning Skies)
+	lonelyMusic = { id = "rbxassetid://123524075973689", volume = 0.28, len = 45 }, -- ForgeGUI 29 Oct. old: rbxassetid://9046596064, volume 0.45, len 61.4 (APM: Alone (a 60))
+	darkMusic = { id = "rbxassetid://84227323139290", volume = 0.52, len = 45 }, -- ForgeGUI 29 Oct. old: rbxassetid://9044407196, volume 0.5, len 62.0 (APM: Back to the Shadows 60A)
+	heroMusic = { id = "rbxassetid://77797287481932", volume = 0.37, len = 60 }, -- ForgeGUI 29 Oct. old: rbxassetid://75981022182996, volume 0.55, len 163.7 (DistroKid: Epic Trailer Music with Powerful Drums)
+	calmMusic = { id = "rbxassetid://111694274715471", volume = 0.38, len = 60 }, -- ForgeGUI 29 Oct. old: rbxassetid://114683938950404, volume 0.5, len 95.4 (DistroKid: Time Will Heal (Ambience))
+	flightMusic = { id = "rbxassetid://95607239744985", volume = 0.27, len = 60 }, -- ForgeGUI 29 Oct. old: rbxassetid://1842932462, volume 0.5, len 212.0 (APM: Sunrise (No Choir))
+	partyMusic = { id = "rbxassetid://86760797457015", volume = 0.56, len = 60 }, -- ForgeGUI 29 Oct. old: rbxassetid://9043170481, volume 0.5, len 61.0 (APM: Dancing for Joy 60 A)
+	dreadMusic = { id = "rbxassetid://81694989793131", volume = 0.54, len = 60 }, -- ForgeGUI 29 Oct. old: rbxassetid://9046506025, volume 0.55, len 110.5 (APM: Imminent Closure (Underscore C))
+	creditsMusic = { id = "rbxassetid://137364105900883", volume = 0.6, len = 45 }, -- ForgeGUI 29 Oct. old: rbxassetid://1835176977, volume 0.5, len 61.1 (APM: Triumphant Return 60B)
+	heartbeat = { id = "rbxassetid://101400069000395", volume = 1.32, len = 8 }, -- ForgeGUI 29 Oct. old: rbxassetid://9043365842, volume 0.5, len 60.1 (APM: Heartbeat 02 96BPM)
 	-- risers, swells and hits (APM)
-	rise = { id = "rbxassetid://9045215347", volume = 0.5, len = 12.5 }, -- Rise Up Rise
-	riseDark = { id = "rbxassetid://9046338207", volume = 0.55, len = 9.1 }, -- Smoldering Fate Rise
-	suck = { id = "rbxassetid://1843028062", volume = 0.5, len = 13.3 }, -- Suck Out Rise
-	swell = { id = "rbxassetid://9040281024", volume = 0.5, len = 5.7 }, -- Amplified Expanse
-	demonSwell = { id = "rbxassetid://9039690720", volume = 0.6, len = 8.1 }, -- Tortured Underbelly Swell
-	revStop = { id = "rbxassetid://9043343295", volume = 0.5, len = 4.1 }, -- Reverse Noise Hard End 09
-	revBuild = { id = "rbxassetid://1837834264", volume = 0.5, len = 4.0 }, -- Reverse Hard Stop (build)
+	rise = { id = "rbxassetid://77752307381190", volume = 0.17, len = 4.7 }, -- ForgeGUI 29 Oct. old: rbxassetid://9045215347, volume 0.5, len 12.5 (Rise Up Rise)
+	riseDark = { id = "rbxassetid://75991950730160", volume = 0.35, len = 3.3 }, -- ForgeGUI 29 Oct. old: rbxassetid://9046338207, volume 0.55, len 9.1 (Smoldering Fate Rise)
+	suck = { id = "rbxassetid://81679797745621", volume = 0.14, len = 3 }, -- ForgeGUI 29 Oct. old: rbxassetid://1843028062, volume 0.5, len 13.3 (Suck Out Rise)
+	swell = { id = "rbxassetid://82367160729323", volume = 0.73, len = 4.6 }, -- ForgeGUI 29 Oct. old: rbxassetid://9040281024, volume 0.5, len 5.7 (Amplified Expanse)
+	demonSwell = { id = "rbxassetid://123773514544093", volume = 0.46, len = 5.9 }, -- ForgeGUI 29 Oct. old: rbxassetid://9039690720, volume 0.6, len 8.1 (Tortured Underbelly Swell)
+	revStop = { id = "rbxassetid://137592434427257", volume = 0.25, len = 2 }, -- ForgeGUI 29 Oct. old: rbxassetid://9043343295, volume 0.5, len 4.1 (Reverse Noise Hard End 09)
+	revBuild = { id = "rbxassetid://81679797745621", volume = 0.22, len = 3 }, -- ForgeGUI 29 Oct. old: rbxassetid://1837834264, volume 0.5, len 4.0 (Reverse Hard Stop (build))
 	drone = { id = "rbxassetid://1841164822", volume = 0.5, len = 10.0 }, -- Drama Drone Hits 15
-	sting = { id = "rbxassetid://1843079916", volume = 0.5, len = 6.9 }, -- Deep Thought - Sting 01
-	impact = { id = "rbxassetid://1843025542", volume = 0.7, len = 6.8 }, -- Deep Impact
-	slam = { id = "rbxassetid://1843023670", volume = 0.6, len = 7.3 }, -- Rumble Slam
-	boom = { id = "rbxassetid://1843024924", volume = 0.5, len = 6.8 }, -- Distant Explosion (fireworks, pitched up)
-	bigHit = { id = "rbxassetid://1843054069", volume = 0.6, len = 7.9 }, -- Bing Bang Boom
-	titleHit = { id = "rbxassetid://122370204111513", volume = 0.6, len = 4.4 }, -- Chasing Sunlight Hit4
-	swipe = { id = "rbxassetid://1837834185", volume = 0.35, len = 4.0 }, -- swipe (whip pans)
-	swipe2 = { id = "rbxassetid://1837834151", volume = 0.35, len = 4.1 },
+	sting = { id = "rbxassetid://119539517075988", volume = 0.61, len = 4 }, -- ForgeGUI 29 Oct. old: rbxassetid://1843079916, volume 0.5, len 6.9 (Deep Thought - Sting 01)
+	impact = { id = "rbxassetid://124546694663416", volume = 0.28, len = 3 }, -- ForgeGUI 29 Oct. old: rbxassetid://1843025542, volume 0.7, len 6.8 (Deep Impact)
+	slam = { id = "rbxassetid://110868585262683", volume = 0.43, len = 4 }, -- ForgeGUI 29 Oct. old: rbxassetid://1843023670, volume 0.6, len 7.3 (Rumble Slam)
+	boom = { id = "rbxassetid://103354992524579", volume = 2.67, len = 3 }, -- ForgeGUI 29 Oct. old: rbxassetid://1843024924, volume 0.5, len 6.8 (Distant Explosion (fireworks, pitched up))
+	bigHit = { id = "rbxassetid://96009304328499", volume = 0.8, len = 4 }, -- ForgeGUI 29 Oct. old: rbxassetid://1843054069, volume 0.6, len 7.9 (Bing Bang Boom)
+	titleHit = { id = "rbxassetid://139473224612909", volume = 0.43, len = 3 }, -- ForgeGUI 29 Oct. old: rbxassetid://122370204111513, volume 0.6, len 4.4 (Chasing Sunlight Hit4)
+	swipe = { id = "rbxassetid://97872339808193", volume = 0.31, len = 0.8 }, -- ForgeGUI 29 Oct. old: rbxassetid://1837834185, volume 0.35, len 4.0 (swipe (whip pans))
+	swipe2 = { id = "rbxassetid://97872339808193", volume = 0.39, len = 0.8 }, -- ForgeGUI 29 Oct. old: rbxassetid://1837834151, volume 0.35, len 4.1
 	-- Pro Sound Effects
-	crowd = { id = "rbxassetid://9119562636", volume = 0.35, len = 45.2 }, -- Stadium Crowd 2
-	applause = { id = "rbxassetid://9113138035", volume = 0.45, len = 16.4 }, -- Applause Tight 4
-	growl = { id = "rbxassetid://9125471073", volume = 0.7, len = 2.0 }, -- Creature Growls Lion Deep Guttural Rumbling
-	growl2 = { id = "rbxassetid://9113971531", volume = 0.6, len = 1.7 }, -- Creature Growls Lion 4
-	rumble = { id = "rbxassetid://9125876218", volume = 0.6, len = 6.5 }, -- Rock Scrape Deep Bouncy Drags Rumbling Clunks 4
-	crate = { id = "rbxassetid://9120915583", volume = 0.7, len = 1.5 }, -- Wood Impacts 10
-	crate2 = { id = "rbxassetid://9120915994", volume = 0.6, len = 1.1 }, -- Wood Impacts 16
-	thud = { id = "rbxassetid://9120876932", volume = 0.5, len = 0.9 }, -- Wood Fall Wood Pallets Impacts On Dirt 2
-	whomp = { id = "rbxassetid://9113042263", volume = 0.5, len = 0.8 }, -- Acoustic Whomps 9
-	synthWhomp = { id = "rbxassetid://9119874551", volume = 0.5, len = 0.9 }, -- Synth Whomps 33
-	mower = { id = "rbxassetid://9116245012", volume = 0.4, len = 91.6 }, -- Lawn Mower Motor 2
+	crowd = { id = "rbxassetid://74029046748997", volume = 0.23, len = 20 }, -- ForgeGUI 29 Oct. old: rbxassetid://9119562636, volume 0.35, len 45.2 (Stadium Crowd 2)
+	applause = { id = "rbxassetid://136862190588041", volume = 0.2, len = 8 }, -- ForgeGUI 29 Oct. old: rbxassetid://9113138035, volume 0.45, len 16.4 (Applause Tight 4)
+	growl = { id = "rbxassetid://116839210856090", volume = 0.14, len = 2.5 }, -- ForgeGUI 29 Oct. old: rbxassetid://9125471073, volume 0.7, len 2.0 (Creature Growls Lion Deep Guttural Rumbling)
+	growl2 = { id = "rbxassetid://136065240041038", volume = 0.1, len = 1.8 }, -- ForgeGUI 29 Oct. old: rbxassetid://9113971531, volume 0.6, len 1.7 (Creature Growls Lion 4)
+	rumble = { id = "rbxassetid://117908814254539", volume = 0.23, len = 6 }, -- ForgeGUI 29 Oct. old: rbxassetid://9125876218, volume 0.6, len 6.5 (Rock Scrape Deep Bouncy Drags Rumbling Clunks 4)
+	crate = { id = "rbxassetid://114350787282575", volume = 1.21, len = 1.5 }, -- ForgeGUI 29 Oct. old: rbxassetid://9120915583, volume 0.7, len 1.5 (Wood Impacts 10)
+	crate2 = { id = "rbxassetid://114350787282575", volume = 1.11, len = 1.5 }, -- ForgeGUI 29 Oct. old: rbxassetid://9120915994, volume 0.6, len 1.1 (Wood Impacts 16)
+	thud = { id = "rbxassetid://110757651322826", volume = 1.54, len = 0.6 }, -- ForgeGUI 29 Oct. old: rbxassetid://9120876932, volume 0.5, len 0.9 (Wood Fall Wood Pallets Impacts On Dirt 2)
+	whomp = { id = "rbxassetid://102968173111661", volume = 0.09, len = 0.8 }, -- ForgeGUI 29 Oct. old: rbxassetid://9113042263, volume 0.5, len 0.8 (Acoustic Whomps 9)
+	synthWhomp = { id = "rbxassetid://132232965570360", volume = 0.24, len = 0.9 }, -- ForgeGUI 29 Oct. old: rbxassetid://9119874551, volume 0.5, len 0.9 (Synth Whomps 33)
+	mower = { id = "rbxassetid://110692258558738", volume = 0.95, len = 4 }, -- ForgeGUI 29 Oct. old: rbxassetid://9116245012, volume 0.4, len 91.6 (Lawn Mower Motor 2)
 	leaves = { id = "rbxassetid://9116248055", volume = 0.5, len = 24.5 }, -- Leaf Movement 2
-	brush = { id = "rbxassetid://9116143977", volume = 0.5, len = 2.0 }, -- Kelp Impact Big 26 ("machete on thick brush")
-	eerie = { id = "rbxassetid://9112775414", volume = 0.45, len = 63.7 }, -- Eerie Ambience 2
-	servo = { id = "rbxassetid://9119008083", volume = 0.35, len = 12.9 }, -- Servo Short Bursts (sliced into glitches)
+	brush = { id = "rbxassetid://125359999408555", volume = 0.13, len = 2 }, -- ForgeGUI 29 Oct. old: rbxassetid://9116143977, volume 0.5, len 2.0 (Kelp Impact Big 26 ("machete on thick brush"))
+	eerie = { id = "rbxassetid://131360268717654", volume = 0.29, len = 30 }, -- ForgeGUI 29 Oct. old: rbxassetid://9112775414, volume 0.45, len 63.7 (Eerie Ambience 2)
+	servo = { id = "rbxassetid://89253553273170", volume = 0.1, len = 12 }, -- ForgeGUI 29 Oct. old: rbxassetid://9119008083, volume 0.35, len 12.9 (Servo Short Bursts (sliced into glitches))
 }
 
 -------------------------------------------------------------------------------------------------------------
@@ -1360,6 +1449,38 @@ for name, id in {
 	if (Config.ICONS[name] or "") == "" then
 		Config.ICONS[name] = id
 	end
+end
+-- (31 Oct, owner: "use forge ui to revamp the Goat Man icon to match that aesthetic", with Chop A Forest's class tier
+-- cards as the reference: thick ink outlines, glossy cel shading, saturated colours, action) ForgeGUI art that
+-- replaces a generated picture of the same name. IconIds is regenerated by tools/upload_models.py, so the swaps live
+-- here; the old ids are at the end of each line.
+for name, id in {
+	cc_GoatMan = "rbxassetid://86744245523228", -- the tall card picture (the stock row's cards); was 130376940252425
+	cw_GoatMan = "rbxassetid://78340927444605", -- the wide one (the big card, the toast); was 83416260800203
+	-- (31 Oct, owner: "recreate the pictures for every classes, into this style in the theme of our game", then "the
+	-- grass titan looks too much like the example, i want it to still look unique and not literally copied") the same
+	-- ForgeGUI pass for the other classes: each class gets its own lawn idea, only the style comes from the reference.
+	-- Groundskeeper, Mower Specialist, Hedge Reaper and Lawn Legend keep the 23 Oct pictures for now: their ForgeGUI
+	-- jobs ended "outcome unknown" and were not run again.
+	cc_WeedPuller = "rbxassetid://89520601146043", -- was 91849072052245
+	cw_WeedPuller = "rbxassetid://76621951222685", -- was 73831556962991
+	cc_Gardener = "rbxassetid://117277002688562", -- was 119563979767021
+	cw_Gardener = "rbxassetid://79361584925433", -- was 91884373684099
+	cc_LawnBaron = "rbxassetid://108128061182653", -- was 108094943359467
+	cw_LawnBaron = "rbxassetid://92753676184728", -- was 104662955892591
+	cc_GrassTitan = "rbxassetid://104245902238378", -- was 104133228855636
+	cw_GrassTitan = "rbxassetid://133818567899595", -- was 89755146369833
+	cc_UltimateGardener = "rbxassetid://81917075631554", -- was 101492414600502
+	cw_UltimateGardener = "rbxassetid://102449351726573", -- was 139930533915861
+} do
+	Config.ICONS[name] = id
+end
+-- the same art for each of those classes' other pictures, so a class looks the same everywhere: the shop's class
+-- banner (class_<Id>) shows the tall one and the lobby hologram (scene_<Id>) the wide one. The 21 Oct ids stay in
+-- the two tables above.
+for _, id in { "GoatMan", "WeedPuller", "Gardener", "LawnBaron", "GrassTitan", "UltimateGardener" } do
+	Config.ICONS["class_" .. id] = Config.ICONS["cc_" .. id]
+	Config.ICONS["scene_" .. id] = Config.ICONS["cw_" .. id]
 end
 
 -------------------------------------------------------------------------------------------------------------

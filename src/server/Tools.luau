@@ -106,7 +106,15 @@ local function buildModel(tool: Tool, def)
 		local blade = piece(tool, handle, Vector3.new(0.2, 0.6, 3.6), CFrame.new(1.6, 0, -5) * CFrame.Angles(0, math.rad(-80), 0), c, true)
 		-- held like the Grim Reaper: the shaft stands straight up out of the fist (a third of the way up it), the
 		-- blade hooked forward over your head
-		tool.Grip = CFrame.Angles(0, 0, math.rad(-90)) * CFrame.new(0, 0, 1.2) * CFrame.Angles(math.rad(-80), 0, 0)
+		-- (30 Oct, owner's screenshot: "still looks like a torch": the fist held the very end of the snath, the blade
+		-- out to the side) now the fist holds it halfway up, the butt resting just off the ground by your feet, the
+		-- snath leaning 8 degrees forward and the blade hooked out in front over your head (solved in play from the
+		-- R15 tool-hold pose)
+		-- (30 Oct, owner: "still looks like a torch", research + an LLM council) at rest client/RiderPose now carries it
+		-- at port arms with both hands (the right arm off Animate's straight-out tool pose); the fist holds it low, 1.3
+		-- studs up from the butt (was halfway up, at -1.3), so the butt sits by the right hip and the head clears the
+		-- left shoulder
+		tool.Grip = CFrame.new(0, 0, 0.7, -0.983, -0.0246, -0.1818, 0.1833, -0.1761, -0.9672, -0.0082, -0.9841, 0.1776)
 		-- a soft violet streak off the blade, only while it swings (Tools.slash turns it on)
 		local a0 = Instance.new("Attachment")
 		a0.Position = Vector3.new(0, 0, 1.7)
@@ -142,7 +150,9 @@ local function attachPushMower(char: Model, def)
 	end
 	-- ground is HipHeight + half the root part below the root's centre (R15)
 	local groundY = -(hum.HipHeight + root.Size.Y / 2)
-	local base = root.CFrame * CFrame.new(0, groundY, -3.4)
+	-- (28 Oct) 4.3 ahead: the bar's grip sits in front of your waist, where your hands hold it in third person
+	-- (client/BodyAnims R15_Mow_PushHold); at 3.4 it ran into your body
+	local base = root.CFrame * CFrame.new(0, groundY, -4.3)
 	local placed = Models.place(if def.id == "LaserMower" then "tool_lasermower" else "tool_pushmower", char, base)
 	if placed then
 		placed.Name = "PushMowerModel"
@@ -250,7 +260,7 @@ end
 -- (none, or they own it by now).
 local function loanIndex(data): number?
 	local i = data.run.loaner and toolIndex(data.run.loaner)
-	return if i and i > data.run.tool then i else nil
+	return if i and not Config.ownsTool(data.run, data.tools, i) then i else nil
 end
 
 -- Make sure the player has every tool they own this run, once each (the hotbar shows them all). A tool that is
@@ -266,15 +276,12 @@ function Tools.give(player: Player)
 	if not backpack then
 		return
 	end
-	-- a PERMANENT (Robux) tool lifts the run's best tool up to it, from the first second of every run
-	for id in data.tools or {} do
-		local i = toolIndex(id)
-		if i and i > data.run.tool then
-			data.run.tool = i
-			PlayerData.changed(player)
-		end
+	-- (29 Oct) the tools owned: the coin ladder plus each Robux tool on its own (a PERMANENT one from the first second
+	-- of every run); a Robux tool no longer brings the ones before it along
+	local function owns(i: number): boolean
+		return Config.ownsTool(data.run, data.tools, i)
 	end
-	local best = math.clamp(data.run.tool, 1, #Config.TOOLS)
+	local best = Config.bestTool(data.run, data.tools)
 	local loan = loanIndex(data)
 	local have: { [number]: Tool } = {}
 	local lent: Tool? = nil
@@ -294,7 +301,7 @@ function Tools.give(player: Player)
 							end
 							t:Destroy()
 						end
-					elseif not i or i > best or have[i] then
+					elseif not i or not owns(i) or have[i] then
 						t:Destroy()
 					else
 						have[i] = t
@@ -305,7 +312,7 @@ function Tools.give(player: Player)
 	end
 	local newBest: Tool? = nil
 	for i = 1, best do
-		if not have[i] then
+		if owns(i) and not have[i] then
 			local tool = Tools.build(Config.TOOLS[i])
 			tool.Parent = backpack
 			have[i] = tool
@@ -345,7 +352,7 @@ function Tools.equipped(player: Player)
 	if not i or not data or not data.run then
 		return nil
 	end
-	if i > data.run.tool and not (tool:GetAttribute("Loaner") and i == loanIndex(data)) then
+	if not Config.ownsTool(data.run, data.tools, i) and not (tool:GetAttribute("Loaner") and i == loanIndex(data)) then
 		return nil
 	end
 	return require(script.Parent.SkillTrees).boost(player, Config.TOOLS[i], tool), tool -- (30 Oct) with its skill tree

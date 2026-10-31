@@ -23,9 +23,20 @@ local CameraView = require(script.Parent.CameraView)
 -- (owner, 28 Oct: "make it with every weapon look different") each tool's hit look, sound, marker and number
 local WeaponFx = require(script.Parent.WeaponFx)
 WeaponFx.install(Presets)
+-- (28 Oct) keyframed swings (their contact frame times the impact) and each weapon's rebuilt hit look
+local ViewAnims = require(script.Parent.ViewAnims)
+local WeaponVfx = require(script.Parent.WeaponVfx)
 
 local HitFx = {}
 local player = Players.LocalPlayer
+
+-- (28 Oct) the mutation colour of clumps you've hit (the server's chip says): their bits glow on every hit
+local mutOf: { [Model]: Color3 } = setmetatable({}, { __mode = "k" }) :: any
+function HitFx.setMut(m: Model?, color: Color3?)
+	if m and color then
+		mutOf[m] = color
+	end
+end
 
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
 local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
@@ -524,6 +535,11 @@ local function clumpAt(pos: Vector3, radius: number): Model?
 	return best
 end
 
+-- (28 Oct) the clump standing at `pos` (client/Fx's mutation reveal bursts on it and marks it glowing)
+function HitFx.clumpAt(pos: Vector3, radius: number?): Model?
+	return clumpAt(pos, radius or 2.5)
+end
+
 -- How big an effect should be for this clump (1 = the small tufts the presets were made for).
 local function sizeOf(m: Model?): (number, number)
 	local r = m and m:GetAttribute("Radius") :: number?
@@ -677,6 +693,10 @@ local function wobble(m: Model, away: Vector3, strength: number)
 	if running then
 		return
 	end
+	-- (30 Oct, the clump flicker) is your camera right under this clump's tuft? (client/Canopy keeps your eye under it)
+	local cam = workspace.CurrentCamera
+	local camPos = if cam then cam.CFrame.Position else Vector3.new(1e6, 0, 0)
+	local under = Vector3.new(camPos.X - l.base.Position.X, 0, camPos.Z - l.base.Position.Z).Magnitude < 8
 	local conn: RBXScriptConnection
 	conn = RunService.RenderStepped:Connect(function()
 		local t = os.clock() - (wobbling[m] or start)
@@ -692,6 +712,16 @@ local function wobble(m: Model, away: Vector3, strength: number)
 		local angle = math.rad(6 * strength) * math.exp(-t * 8) * math.cos(t * 24) -- (28 Oct: was 14, the cut swung off the crosshair)
 		-- squash on the blow, spring up tall, settle (a quicker spring than the sway)
 		local sq = 0.1 * strength * math.exp(-t * 9) * math.cos(t * 32)
+		-- (30 Oct) under its tuft, the half of the wobble that brings the tuft down at your eye (squashing, swinging
+		-- back toward you) is a quarter as big, so the tuft never dips into your view; the rest is unchanged
+		if under then
+			if sq > 0 then
+				sq *= 0.25
+			end
+			if angle < 0 then
+				angle *= 0.25
+			end
+		end
 		pose(m, l, angle, axis, sq)
 	end)
 end
@@ -867,7 +897,26 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 		pop(preset.pop, pos, style, opts and opts.pop, g)
 	end
 	local out = outFrom(pos)
-	for _, layer in preset.layers do
+	-- (28 Oct) a weapon whose hit was rebuilt (client/WeaponVfx) draws its own look; the old preset layers are skipped
+	local drawn = false
+	if mine and WeaponVfx.owns(event) then
+		local o = (opts or {}) :: any
+		drawn = WeaponVfx.hit(event, {
+			pos = pos,
+			ground = g,
+			contact = anchorFor({ at = "contact" }, pos, out, ctx).Position,
+			grass = grass,
+			tones = { stopColor("grassLight", grass), grass, stopColor("grassDark", grass), stopColor("grassPale", grass) },
+			clump = m,
+			scale = sc,
+			finisher = o.finisher,
+			mut = o.mut or (m and mutOf[m]),
+			timber = o.timber, -- a felled top landing (client/Fx "fell")
+			dir = o.dir,
+			clip = o.clip, -- (28 Oct) the swing's clip: a snip's cut line lies along it
+		})
+	end
+	for _, layer in (if drawn then {} else preset.layers) do
 		if layer.mineOnly and not mine then
 			continue
 		end
@@ -905,6 +954,11 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 		end
 		cameraFeel(fam or event)
 		WeaponFx.feel(event)
+		if opts and (opts :: any).finisher then
+			-- (28 Oct) a combo finisher: a bigger jolt the way the blow went and a small push of the view
+			CameraView.jolt(KICK.hit.pitch * 2.2, KICK.hit.roll * 2.4 * joltSide)
+			CameraView.kick(0.6)
+		end
 		-- the hit registers: four little leaves flick out of the middle of the screen
 		-- (owner, 28 Oct: "drop both": the leaf hit-marker is off; WeaponFx.marker stays for later use)
 		if false and fam and fam ~= "auto" then
@@ -916,7 +970,10 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- prediction: your own swing plays its impact the moment it lands
 -------------------------------------------------------------------------------------------------------------
-local predicted: { { pos: Vector3, at: number } } = {}
+local predicted: { { pos: Vector3, at: number, hitAt: number? } } = {}
+-- (28 Oct) when each of your swings lands, kept a moment longer than `predicted` (the server's cut / fall wait for it)
+local contacts: { { pos: Vector3, hitAt: number } } = {}
+local lastHitAt = -10
 local STRIKE_DELAY = 0.11 -- seconds from the swing to contact (ViewModel's jab / chop reach the clump here)
 
 local Zones = require(Shared:WaitForChild("Zones")) :: any
@@ -995,19 +1052,51 @@ function HitFx.swing(toolId: string?, look: Vector3?)
 	end
 	local m = aimedClump(root.Position, look or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector) or root.CFrame.LookVector, def.radius)
 	if not m then
+		-- (31 Oct, owner: "make the scythe's m1 smoother") nothing in reach: the Mega Scythe's reap sweeps straight
+		-- through without its hit-stop (client/ViewAnims), except in a boss fight, where it's hitting the boss
+		if Players.LocalPlayer:GetAttribute("BossHP") == nil then
+			ViewAnims.airSwing()
+		end
 		return
 	end
 	local pos = (leans[m] and leans[m].base or m:GetPivot()).Position
-	table.insert(predicted, { pos = pos, at = os.clock() })
-	task.delay(STRIKE_DELAY, function()
+	-- (28 Oct) a keyframed swing lands on its clip's contact frame (a finisher winds up longer)
+	local plan = ViewAnims.plan(toolId)
+	local delay = if plan then plan.contact else STRIKE_DELAY
+	local now = os.clock()
+	table.insert(predicted, { pos = pos, at = now, hitAt = now + delay })
+	table.insert(contacts, { pos = pos, hitAt = now + delay })
+	lastHitAt = now + delay
+	task.delay(delay, function()
 		if m.Parent then
-			HitFx.play(WeaponFx.eventFor(toolId), pos, clumpColor(m), true, m)
+			HitFx.play(WeaponFx.eventFor(toolId), pos, clumpColor(m), true, m, nil, { finisher = plan and plan.finisher, mut = mutOf[m], clip = plan and plan.clip } :: any)
 		end
 	end)
 end
 
+-- (28 Oct) Seconds until your swing on its way to the clump at `pos` lands (0 if none): the server can answer before
+-- the blow does, and its cut / fall wait for it.
+function HitFx.contactWait(pos: Vector3): number
+	local now = os.clock()
+	local wait = 0
+	for i = #contacts, 1, -1 do
+		local c = contacts[i]
+		if now - c.hitAt > 1 then
+			table.remove(contacts, i)
+		elseif Vector3.new(c.pos.X - pos.X, 0, c.pos.Z - pos.Z).Magnitude < 2 then
+			wait = math.max(wait, c.hitAt - now)
+		end
+	end
+	return wait
+end
+
+-- (28 Oct) Seconds until your latest swing lands (the other clumps a wide swing hits wait for it too).
+function HitFx.swingWait(): number
+	return math.max(0, lastHitAt - os.clock())
+end
+
 -- Was this hit already drawn by a prediction? (Then the server's chip only updates the HP bar.)
-function HitFx.wasPredicted(pos: Vector3): boolean
+function HitFx.wasPredicted(pos: Vector3): (boolean, number?)
 	local now = os.clock()
 	for i = #predicted, 1, -1 do
 		local p = predicted[i]
@@ -1015,7 +1104,7 @@ function HitFx.wasPredicted(pos: Vector3): boolean
 			table.remove(predicted, i)
 		elseif Vector3.new(p.pos.X - pos.X, 0, p.pos.Z - pos.Z).Magnitude < 2 then
 			table.remove(predicted, i)
-			return true
+			return true, p.hitAt
 		end
 	end
 	return false

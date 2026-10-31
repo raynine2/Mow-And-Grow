@@ -182,6 +182,7 @@ local function sendParty(party: { Player }, host: Player?, settings: { [string]:
 	end
 	task.wait(1.2) -- time for the clients to put up the loading screen
 	if RunService:IsStudio() then
+		workspace:SetAttribute("Difficulty", settings.difficulty or "Normal") -- (29 Oct) server/Run reads it in Studio
 		if Lobby.onStudioStart then
 			task.spawn(Lobby.onStudioStart, party)
 		end
@@ -282,6 +283,9 @@ local function savedRun(data): { [string]: any }?
 		cut = data.stats and data.stats.cut or 0,
 		started = run.started or os.time(),
 		time = run.time or 0,
+		difficulty = run.difficulty or "Normal", -- (29 Oct) the journal's stamp
+		-- (30 Oct) how far its area was mowed (server/Run saves it every second)
+		pct = if type(run.areaCut) == "table" and run.areaCut.z == run.zone then tonumber(run.areaCut.pct) or 0 else 0,
 	}
 end
 
@@ -408,13 +412,28 @@ local function updatePad(pad: Pad)
 end
 
 -- The Create Party window's buttons: create (size, difficulty, peaceful), cancel, or load the saved run.
-local DIFFICULTY_WINS = { Normal = 0, Hard = 1, Expert = 5 }
+local DIFFICULTY_WINS = {} -- (29 Oct) from Config.DIFFICULTY (Normal = MEDIUM 0, Hard 1, Expert 5)
+for id, d in Config.DIFFICULTY do
+	DIFFICULTY_WINS[id] = d.wins
+end
 local function onPartyAction(player: Player, action: any, padIndex: any, size: any, difficulty: any, peaceful: any)
 	if action == "start" then
 		for _, pad in pads do
 			if pad.host == player and not pad.teleporting and #pad.members > 0 then
 				pad.startAt = os.clock()
 			end
+		end
+		return
+	end
+	if action == "wipe" then
+		-- (30 Oct, owner: "run saves") START A NEW RUN in the SAVED RUNS journal (its second tap): the saved run is gone,
+		-- and CREATE starts a fresh one
+		local data = PlayerData.get(player)
+		if data and data.run then
+			data.run = nil
+			PlayerData.changed(player)
+			task.spawn(PlayerData.save, player)
+			Net.notify(player, "Saved run deleted: CREATE starts a fresh one!", "green")
 		end
 		return
 	end
@@ -429,7 +448,7 @@ local function onPartyAction(player: Player, action: any, padIndex: any, size: a
 				pad.pending = nil
 			end
 		end
-		task.spawn(sendParty, { player }, player, {})
+		task.spawn(sendParty, { player }, player, { difficulty = data.run.difficulty }) -- (29 Oct) a saved run keeps its difficulty
 		return
 	end
 	local pad = type(padIndex) == "number" and pads[padIndex] or nil
@@ -550,6 +569,14 @@ function Lobby.start()
 		for _, pad in pads do
 			pad.declined[p] = nil
 		end
+	end)
+	-- (30 Oct, multiplayer check) one player's teleport can fail on its own (a bad connection, Roblox busy):
+	-- TeleportAsync doesn't throw for that, TeleportInitFailed fires instead. Take their loading screen down so they
+	-- aren't left stuck on it, and tell them.
+	TeleportService.TeleportInitFailed:Connect(function(p: Player, result: Enum.TeleportResult, message: string)
+		warn(("[Lobby] teleport failed for %s: %s %s"):format(p.Name, tostring(result), tostring(message)))
+		Net.send(p, "Fx", "loadingDone", {})
+		Net.notify(p, "Teleport failed: step on a pad to try again!", "red")
 	end)
 
 	task.spawn(function()

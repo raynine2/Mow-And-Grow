@@ -60,6 +60,11 @@ BossMoves.DAMAGE = {
 BossMoves.HAZARD_TICK = 0.6 -- a hazard / pool / fire / flood hurts this often while you stand in it
 BossMoves.JUMP_CLEAR = 4.2 -- studs your middle must be above the floor to jump over a wave
 
+-- (owner, 29 Oct: "swap the bosses around to which biome they fit") Index = area: 1 Sunny Meadow (Dandelion King),
+-- 2 Golden Wheat Hills (Harvest Maw), 3 Blossom Garden (Sakura Snapjaw), 4 Misty Pine Forest (Bramble Brute),
+-- 5 Bubble Swamp (Bog Strangler), 6 Frost Peaks (Frost Thornback, the golf shell frozen), 7 Ember Ash Fields
+-- (Hollow Harvest), 8 Starlight Isles (Jungle Titan). The difficulty (BossMoves.CURVE, Config.ZONES boss HP and
+-- rewards) stays with the area, so the curve is unchanged; the look, the moves and the name moved.
 BossMoves.list = {
 	{
 		rig = "dandelion",
@@ -79,46 +84,6 @@ BossMoves.list = {
 		moves2 = {
 			{ kind = "beam", name = "Crown Spin", width = 7, turn = 5.2, speed = 0.95, look = "pollen", pose = "spin" },
 			{ kind = "adds", name = "Seedling Squad", count = 3, minion = "seedling", hp = 2, ai = "chase" },
-		},
-	},
-	{
-		rig = "bramble",
-		height = 37,
-		title = "Hive Keeper of the Hedge",
-		lines = { intro = "You smell like cut grass. I HATE that smell.", rage = "Okay, NOW the bees are angry!", death = "Bzzz... bzz... bye." },
-		intro = "burst",
-		weak = "att_hive_center",
-		arena = "hedge",
-		dust = { "7A5A30", "9C7A48", "6F9A3E" },
-		ring = "FF4D6D",
-		moves = {
-			{ kind = "homing", name = "Bee Line", count = 3, minion = "bee", hp = 1, speed = 12, life = 6.5, pose = "volley" },
-			{ kind = "hedges", name = "Hedge Rows", rows = 3, width = 7, gap = 15, step = 0.6, pose = "stomp" },
-			{ kind = "combo", name = "Knuckle Combo", radius = 8, hits = 3, step = 0.45, punish = true, pose = "strike" },
-		},
-		moves2 = {
-			{ kind = "hazard", name = "Thorn Carpet", radius = 8, count = 4, every = 0.25, life = 7, look = "thorns", pose = "volley" },
-			{ kind = "safe", name = "Pollen Bomb", spots = 3, r = 8, extra = 1.6, look = "pollen", pose = "stomp" },
-		},
-	},
-	{
-		rig = "bunker",
-		height = 34,
-		title = "The Sand-Trap Shell",
-		lines = { intro = "Fore! ...Just kidding. FIVE!", rage = "You hit a nerve. And a spine. Several spines.", death = "Hole... in... one..." },
-		intro = "dig",
-		weak = "att_flag_wound",
-		arena = "bunker",
-		dust = { "EBD796", "D8C27C", "F4E4B0" },
-		ring = "FFE14D",
-		moves = {
-			{ kind = "roll", name = "Fore!", count = 3, r = 4.5, speed = 30, look = "golfball", pose = "strike" },
-			{ kind = "wave", name = "Sand Wave", waves = 2, band = 3, speed = 22, every = 1.2, pose = "stomp" },
-			{ kind = "cone", name = "Rake Swipe", r = 36, angle = 120, punish = true, pose = "strike" },
-		},
-		moves2 = {
-			{ kind = "sink", name = "Sand Traps", radius = 9, count = 3, every = 0.3, life = 9, look = "sand", pose = "volley" },
-			{ kind = "burrow", name = "Shell Ambush", radius = 13, chase = 2.4, punish = true, pose = "burrow" },
 		},
 	},
 	{
@@ -162,6 +127,26 @@ BossMoves.list = {
 		},
 	},
 	{
+		rig = "bramble",
+		height = 37,
+		title = "Hive Keeper of the Hedge",
+		lines = { intro = "You smell like cut grass. I HATE that smell.", rage = "Okay, NOW the bees are angry!", death = "Bzzz... bzz... bye." },
+		intro = "burst",
+		weak = "att_hive_center",
+		arena = "hedge",
+		dust = { "7A5A30", "9C7A48", "6F9A3E" },
+		ring = "FF4D6D",
+		moves = {
+			{ kind = "homing", name = "Bee Line", count = 3, minion = "bee", hp = 1, speed = 12, life = 6.5, pose = "volley" },
+			{ kind = "hedges", name = "Hedge Rows", rows = 3, width = 7, gap = 15, step = 0.6, pose = "stomp" },
+			{ kind = "combo", name = "Knuckle Combo", radius = 8, hits = 3, step = 0.45, punish = true, pose = "strike" },
+		},
+		moves2 = {
+			{ kind = "hazard", name = "Thorn Carpet", radius = 8, count = 4, every = 0.25, life = 7, look = "thorns", pose = "volley" },
+			{ kind = "safe", name = "Pollen Bomb", spots = 3, r = 8, extra = 1.6, look = "pollen", pose = "stomp" },
+		},
+	},
+	{
 		rig = "bog",
 		height = 43,
 		title = "Terror of the Deep Bog",
@@ -179,6 +164,53 @@ BossMoves.list = {
 		moves2 = {
 			{ kind = "turrets", name = "Swamp Sprouts", count = 3, minion = "sprout", hp = 3, ai = "turret", every = 2.4, life = 18, pose = "stomp" },
 			{ kind = "tide", name = "Rising Bog", keep = 16, tin = 3.2, hold = 2.2, tout = 1.4, pose = "stomp" },
+		},
+	},
+	{
+		rig = "bunker",
+		height = 34,
+		title = "The Frozen Fairway Shell",
+		lines = { intro = "Fore! ...Brrr. FOUR BELOW ZERO!", rage = "You cracked my shell. Now it's a BLIZZARD!", death = "Melting... into... a puddle..." },
+		intro = "dig",
+		weak = "att_flag_wound",
+		arena = "bunker",
+		-- (owner, 29 Oct: bosses moved to the areas they fit) the golf-course shell, frozen for Frost Peaks: the same rig and
+		-- moves, its colours swapped (client/BossView), its effects in ice (client/BossVfx "frost" style)
+		style = "frost",
+		skin = {
+			back_spine = { c = "BFE6FF", m = "Glass", t = 0.1 },
+			spine_bone = { c = "E8F8FF", m = "Ice", rc = "7FE0FF", rm = "Neon" },
+			bunker_sand = { c = "F4FAFF", m = "Snow" },
+			fairway_grass = { c = "A8D8F0", m = "SmoothPlastic" },
+			hide_moss = { c = "8FC4E6", m = "SmoothPlastic" },
+			hide_scales = { c = "5C9CCB", m = "SmoothPlastic" },
+			scale_plate = { c = "7FB8E0", m = "SmoothPlastic" },
+			head_plate = { c = "4F8FC0", m = "SmoothPlastic" },
+			thorn_hide = { c = "4A86B8", m = "SmoothPlastic", rc = "3E78A8" },
+			thorn_jaw = { c = "1C2E48", m = "SmoothPlastic" },
+			wound_cracks = { c = "1C2E48", m = "SmoothPlastic" },
+			cheek_vine = { c = "6A8FB0", m = "SmoothPlastic" },
+			bark_strap = { c = "5A6E86", m = "SmoothPlastic" },
+			brow_wood = { c = "2E4058", m = "SmoothPlastic" },
+			horn_band = { c = "DDF2FF", m = "Ice" },
+			flag_cloth = { c = "4FC3FF", m = "SmoothPlastic" },
+			rake_handle = { c = "9BB8CC", m = "SmoothPlastic" },
+			rake_head = { c = "CFF2FF", m = "Ice" },
+			rake_lines = { c = "EAF6FF", m = "SmoothPlastic" },
+			neon_eyes = { c = "7FF0FF", m = "Neon", rc = "FFFFFF", rm = "Neon" },
+			neon_rage_magma = { c = "7FE0FF", m = "Neon" },
+			neon_sap_wound = { c = "9FF4FF", m = "Neon" },
+		},
+		dust = { "EAF6FF", "BFE4FF", "FFFFFF" },
+		ring = "9FE8FF",
+		moves = {
+			{ kind = "roll", name = "Snowball Fore!", count = 3, r = 4.5, speed = 30, look = "golfball", pose = "strike" },
+			{ kind = "wave", name = "Snow Drift", waves = 2, band = 3, speed = 22, every = 1.2, pose = "stomp" },
+			{ kind = "cone", name = "Ice Rake", r = 36, angle = 120, punish = true, pose = "strike" },
+		},
+		moves2 = {
+			{ kind = "sink", name = "Frost Traps", radius = 9, count = 3, every = 0.3, life = 9, look = "ice", pose = "volley" },
+			{ kind = "burrow", name = "Ice Ambush", radius = 13, chase = 2.4, punish = true, pose = "burrow" },
 		},
 	},
 	{

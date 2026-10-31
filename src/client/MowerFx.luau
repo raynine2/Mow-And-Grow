@@ -6,9 +6,12 @@
 --  * the blade spins up while someone sits in the seat and winds down when they get off
 --  * exhaust: soft grey puffs, thicker while speeding up (orange heat on the Rocket's boosters)
 --  * aura: paid mowers (Robux, Trial) get rising sparkles and a soft glow in their colour; gem mowers a few glints
+--  * engine (29 Oct): a toy "putt-putt" loop (Config.SOUNDS.engine) while someone sits on it, pitched up with its speed
+--    and a little more while it speeds up; it stops when they get off (silent while the id is empty)
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
+local Sound = require(script.Parent.Sound)
 local okIds, FxIds = pcall(require, ReplicatedStorage.MowALawn:FindFirstChild("FxIds"))
 local IDS = if okIds and type(FxIds) == "table" then FxIds else {}
 
@@ -29,6 +32,8 @@ type Ride = {
 	puffs: { ParticleEmitter },
 	lastSpeed: number,
 	fx: { Instance },
+	engine: Sound?,
+	enginePitch: number,
 }
 
 local rides: { [Model]: Ride } = {}
@@ -118,6 +123,8 @@ local function track(model: Model)
 		puffs = {},
 		lastSpeed = 0,
 		fx = {},
+		engine = nil,
+		enginePitch = 0.9,
 	}
 	local rocket = model:GetAttribute("MowerId") == "RocketMower"
 	for _, d in model:GetDescendants() do
@@ -164,6 +171,31 @@ local function track(model: Model)
 	end)
 end
 
+-- The engine loop: on while someone rides and the mower is near the camera; idle pitch 0.9, up to about 1.35 at
+-- 40 studs/s, a little higher while speeding up (smoothed so it doesn't wobble).
+local function engine(ride: Ride, on: boolean, speed: number, accel: number, dt: number)
+	if not on then
+		if ride.engine then
+			ride.engine:Destroy()
+			ride.engine = nil
+		end
+		return
+	end
+	if not ride.engine then
+		ride.engine = Sound.loop("engine", ride.body)
+		ride.enginePitch = 0.9
+		if not ride.engine then
+			return
+		end
+	end
+	local s = ride.engine :: Sound
+	local k = math.clamp(speed / 40, 0, 1)
+	local want = 0.9 + 0.45 * k + math.min(accel, 30) * 0.004
+	ride.enginePitch += (want - ride.enginePitch) * math.min(1, dt * 4)
+	s.PlaybackSpeed = ride.enginePitch
+	s.Volume = ((Config.SOUNDS.engine or {}).volume or 0.3) * (0.75 + 0.25 * k)
+end
+
 local function step(dt: number)
 	local cam = workspace.CurrentCamera
 	local camPos = cam and cam.CFrame.Position or Vector3.zero
@@ -201,6 +233,7 @@ local function step(dt: number)
 		for _, e in ride.puffs do
 			e.Rate = rate
 		end
+		engine(ride, near and seated, speed, accel, dt)
 	end
 end
 

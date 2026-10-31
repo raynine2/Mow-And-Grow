@@ -240,7 +240,13 @@ local function updateChip()
 	for _, m in Config.RUN_MEDALS do
 		if now < m.minutes * 60 then
 			label.Visible = true
-			label.Text = ("%s under %d:00"):format(m.name:upper(), m.minutes)
+			-- (29 Oct) a Hard / Expert run says so in front of the medal
+			local diff = Config.DIFFICULTY[ReplicatedStorage:GetAttribute("Difficulty") or "Normal"]
+			if diff and diff.label ~= "MEDIUM" then
+				label.Text = ("%s %s %d:00"):format(diff.label, m.name:upper(), m.minutes) -- (fits the chip on one line)
+			else
+				label.Text = ("%s under %d:00"):format(m.name:upper(), m.minutes)
+			end
 			label.TextColor3 = m.color
 			return
 		end

@@ -7,6 +7,7 @@ local PlayerData = require(script.Parent.PlayerData)
 local Net = require(script.Parent.Net)
 local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
+local MowerSeats = require(ReplicatedStorage.MowALawn.MowerSeats)
 
 local MOWER_MODEL = {
 	RustyRider = "mower_rusty",
@@ -113,7 +114,7 @@ end
 local function rig(placed: Model, body: BasePart)
 	local hubs: { [string]: BasePart } = {}
 	for _, p in placed:GetDescendants() do
-		if p:IsA("BasePart") and (p.Name:match("^Wheel%u%u$") or p.Name == "Blade") then
+		if p:IsA("BasePart") and (p.Name:match("^Wheel%u%u$") or p.Name == "Blade" or p.Name == "SteerHub") then
 			hubs[p.Name] = p
 		end
 	end
@@ -125,7 +126,7 @@ local function rig(placed: Model, body: BasePart)
 			p.Massless = true
 			if hubs[p.Name] == p then
 				local motor = Instance.new("Motor6D")
-				motor.Name = "Spin"
+				motor.Name = if p.Name == "SteerHub" then "Steer" else "Spin" -- (29 Oct) client/RiderPose turns the wheel
 				motor.Part0 = body
 				motor.Part1 = p
 				motor.C0 = body.CFrame:ToObjectSpace(p.CFrame)
@@ -135,6 +136,61 @@ local function rig(placed: Model, body: BasePart)
 				w.Part0 = p
 				w.Part1 = hubs[p.Name:match("^(%w+)_") or ""] or body
 				w.Parent = p
+			end
+		end
+	end
+end
+
+-- (29 Oct) A part's extent along the model's up axis (its bottom and top, in model space).
+local function heightSpan(origin: CFrame, p: BasePart): (number, number)
+	local cf = origin:ToObjectSpace(p.CFrame)
+	local h = p.Size / 2
+	local e = math.abs(cf.XVector.Y) * h.X + math.abs(cf.YVector.Y) * h.Y + math.abs(cf.ZVector.Y) * h.Z
+	return cf.Y - e, cf.Y + e
+end
+
+-- (owner, 29 Oct: "...so the player actually fits in the mower aswell instead of bugging through the roof") Lift the
+-- roof (Mulcher) or canopy (Trial Mower) so a seated rider's head fits under it, stretching the posts to meet it, and
+-- hang the steering wheel on a hub of its own so client/RiderPose can turn it with the rider's hands. Runs before
+-- `rig` welds everything.
+local function fitRider(placed: Model, origin: CFrame, spec: MowerSeats.Spec)
+	local roof = spec.roof
+	if roof then
+		for _, p in placed:GetDescendants() do
+			if p:IsA("BasePart") then
+				local bottom, top = heightSpan(origin, p)
+				local z = origin:PointToObjectSpace(p.Position).Z
+				if bottom >= roof.from and z >= roof.zMin then
+					p.CFrame = p.CFrame + origin.UpVector * roof.raise
+				elseif bottom < 3.3 and top - bottom > 2 and math.abs(top - roof.post) < 0.15 then
+					-- a post: grow it along whichever of its axes stands up, keeping its foot where it is
+					local cf = origin:ToObjectSpace(p.CFrame)
+					local ax = { math.abs(cf.XVector.Y), math.abs(cf.YVector.Y), math.abs(cf.ZVector.Y) }
+					local grow = if ax[1] >= ax[2] and ax[1] >= ax[3] then Vector3.new(roof.raise, 0, 0)
+						elseif ax[2] >= ax[3] then Vector3.new(0, roof.raise, 0)
+						else Vector3.new(0, 0, roof.raise)
+					p.Size += grow
+					p.CFrame = p.CFrame + origin.UpVector * (roof.raise / 2)
+				end
+			end
+		end
+	end
+	local wheel = spec.wheel
+	if wheel then
+		local n = Vector3.xAxis:Cross(wheel.u)
+		local hubCf = origin * CFrame.fromMatrix(wheel.c, Vector3.xAxis, wheel.u, n)
+		local hub = Instance.new("Part")
+		hub.Name = "SteerHub"
+		hub.Size = Vector3.new(0.2, 0.2, 0.2)
+		hub.Transparency = 1
+		hub.CFrame = hubCf
+		hub.Parent = placed
+		for _, p in placed:GetDescendants() do
+			if p:IsA("BasePart") and p ~= hub and not p.Name:match("^Wheel") and p.Name ~= "Blade" and p.Size.Magnitude < 1.2 then
+				local off = hubCf:PointToObjectSpace(p.Position)
+				if math.abs(off.Z) < 0.22 and Vector2.new(off.X, off.Y).Magnitude <= wheel.r + 0.12 then
+					p.Name = "SteerHub_rim" -- `rig` welds "<hub>_..." parts to their hub
+				end
 			end
 		end
 	end
@@ -160,7 +216,12 @@ local function build(player: Player, def, fuel: number): Model
 		modelName = "mower_zeroturn"
 	end
 	local placed = modelName and Models.place(modelName, model, body.CFrame * CFrame.new(0, -1.2, 0))
+	local spec = placed and MowerSeats.get(modelName)
 	if placed then
+		if spec then
+			fitRider(placed, body.CFrame * CFrame.new(0, -1.2, 0), spec)
+			model:SetAttribute("Rider", modelName) -- client/RiderPose: how to sit on it
+		end
 		rig(placed, body)
 		body.Transparency = 1
 		if tint then
@@ -183,8 +244,11 @@ local function build(player: Player, def, fuel: number): Model
 	seat.HeadsUpDisplay = false
 	seat.CanQuery = false
 	seat.Massless = true
-	-- Blender mowers have their seat spot 3 studs up and 1 stud back from the middle
-	seat.CFrame = if placed then body.CFrame * CFrame.new(0, 2.3, 1) else body.CFrame * CFrame.new(0, 1.4, 2.2)
+	-- Blender mowers have their seat spot 3 studs up and 1 stud back from the middle. (29 Oct) The seat's top now
+	-- lies on the cushion (it stood a stud above it before, so riders floated); was body * (0, 2.3, 1)
+	seat.CFrame = if spec then body.CFrame * CFrame.new(0, spec.cushion - 1.2 - 0.5, spec.seatZ)
+		elseif placed then body.CFrame * CFrame.new(0, 2.3, 1)
+		else body.CFrame * CFrame.new(0, 1.4, 2.2)
 	if placed then
 		seat.Transparency = 1
 	end

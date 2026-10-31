@@ -59,7 +59,10 @@ end
 local root = Instance.new("CanvasGroup")
 root.Name = "HitMeter"
 root.AnchorPoint = Vector2.new(0.5, 0)
-root.Position = UDim2.new(0.5, 0, 0.5, 52) -- under the crosshair, clear of the cut it's carving (28 Oct: was +30)
+-- (31 Oct, owner: "some pieces of grass still don't show a hole on your first punch") on a PC screen the cut round
+-- the crosshair reached further down than the meter's 52 pixels, and the meter hid the hole's lower half: it now
+-- sits a sixth of the screen lower (about the same spot on a phone, where the cut is smaller)
+root.Position = UDim2.new(0.5, 0, 0.66, 0) -- under the crosshair, clear of the cut it's carving (28 Oct: was +30, then +52)
 root.Size = UDim2.fromOffset(W + 40, 78)
 root.BackgroundTransparency = 1
 root.GroupTransparency = 1
@@ -248,6 +251,19 @@ function HitMeter.hit(d)
 end
 
 -- The clump the meter shows was cut down: empty the bar, "Fresh cut!", fade away.
+-- (31 Oct, owner: "it still doesn't make a hole sometimes") Keep the meter off the hole a hit just opened:
+-- client/ClumpCarve says where the hole is on screen (0 top .. 1 bottom). Looking down at a clump (from higher
+-- ground) the hole is well under the crosshair, right where the meter sat: then the meter goes above the crosshair.
+function HitMeter.avoid(y: number)
+	if y < 0.56 then
+		root.AnchorPoint = Vector2.new(0.5, 0)
+		root.Position = UDim2.new(0.5, 0, math.clamp(y + 0.12, 0.66, 0.86), 0)
+	else
+		root.AnchorPoint = Vector2.new(0.5, 1)
+		root.Position = UDim2.new(0.5, 0, math.clamp(y - 0.12, 0.2, 0.4), 0)
+	end
+end
+
 function HitMeter.done()
 	if not current or not root.Visible then
 		return

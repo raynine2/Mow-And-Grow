@@ -14,6 +14,7 @@ require(modules:WaitForChild("PetsWindow")) -- EGGS / PETS window + hatching
 require(modules:WaitForChild("PetIndex")) -- the PETS window's INDEX tab
 require(modules:WaitForChild("NightGun")) -- boss guns, day/night, crawlers, Peaceful toggle
 require(modules:WaitForChild("ViewModel"))
+require(modules:WaitForChild("Inspect")) -- (29 Oct) Y / the eye button: inspect what you're holding
 require(modules:WaitForChild("Soundscape")) -- footsteps, birds and breeze
 require(modules:WaitForChild("Fx"))
 require(modules:WaitForChild("BossCine")) -- boss fights: the model, effects, cutscenes, your HP (after Fx)
@@ -24,6 +25,7 @@ require(modules:WaitForChild("BlackHole")) -- the CLASSES black hole: jump in fo
 require(modules:WaitForChild("MowFx")) -- lawn stripes behind mowers, the clippings chute, soft rings, reaper wisps
 require(modules:WaitForChild("MowerFx")) -- ride-on mowers: turning wheels and blade, exhaust puffs, auras
 require(modules:WaitForChild("MowerLock")) -- (30 Oct) mowers locked for the release: holographic locks on the garage and pumps
+require(modules:WaitForChild("RiderPose")) -- (29 Oct) riders sit in their mower: a stance per mower, hands on the wheel
 require(modules:WaitForChild("Input"))
 require(modules:WaitForChild("Guide"))
 require(modules:WaitForChild("SellPointer")) -- bag full: an arrow beside you pointing to the nearest sell spot
@@ -54,7 +56,7 @@ require(modules:WaitForChild("LobbyFX"))
 -- after Windows: the card deal takes over the "Classes" window
 require(modules:WaitForChild("ClassDeal"))
 require(modules:WaitForChild("GemUpgrades")) -- takes over the "Perks" window (GEMS stall)
-require(modules:WaitForChild("UpgradesWindow")) -- (30 Oct) takes over "Upgrades": grass-galaxy boxes, the weapons' skills a page each
 require(modules:WaitForChild("SkillTreeWindow")) -- (30 Oct) weapon skill trees: the SKILLS button, K, gold MASTERED trees
+require(modules:WaitForChild("UpgradesWindow")) -- (30 Oct) takes over "Upgrades": grass-galaxy boxes, the weapons' skills a page each
 
 State.fire("Ready")

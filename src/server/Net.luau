@@ -24,6 +24,8 @@ local INBOUND = {
 	"Graphics", -- (potato)                 Potato Mode on/off (saved; the client does the rest)
 	"Boss", -- (action)                     "skip": vote to skip the boss cutscene (server/Boss)
 	"ClassAct", -- (action)                 "stomp": a Grass Titan landed from a jump (server/ClassPerks)
+	"Inspect", -- (clip)                    you inspect your item; server/Main passes it on to the other players
+	--                                       (back out on the same remote: (player, clip), client/RiderPose)
 }
 -- server -> client
 local OUTBOUND = {

@@ -158,15 +158,16 @@ local lastGrass = GRASS_DEFAULT
 -- Where the mower's deck meets the ground (CFrame facing its front), and its width.
 local function deckOf(m: Model): (CFrame?, number)
 	if m.Name == "PushMowerModel" then
-		-- push mowers ride 3.4 studs in front of the character on the ground (server/Tools); the model's own
-		-- pivot doesn't follow its welded parts, so go by the character
+		-- push mowers ride 4.3 studs in front of the character on the ground (server/Tools; 3.4 until 28 Oct, when
+		-- the mower moved out to where your hands hold its bar); the model's own pivot doesn't follow its welded
+		-- parts, so go by the character
 		local char = m.Parent
 		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if not root or not hum then
 			return nil, 0
 		end
-		return root.CFrame * CFrame.new(0, -(hum.HipHeight + root.Size.Y / 2), -3.4), 2.6
+		return root.CFrame * CFrame.new(0, -(hum.HipHeight + root.Size.Y / 2), -4.3), 2.6
 	end
 	local body = m.PrimaryPart
 	if not body then

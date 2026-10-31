@@ -30,6 +30,11 @@ Spec.bosses = {
 				colors = { "FFE46A", "FFF3B0" }, rageColors = { "FF9A3A", "FFCF6A" }, speed = { 0.14, 0.7 }, dir = "up", spread = 40, drag = 0.3 },
 			{ at = "att_crown_tip", tex = "seed", rate = 1.4, rage = 3, life = { 4, 6.5 }, size = { 1, 1.4, 1 }, colors = { "FFFFFF" },
 				speed = { 0.6, 1.4 }, dir = "up", spread = 50, accel = V3(0.34, 0.06, 0.14), drag = 0.4, spin = 0.4 },
+			-- (30 Oct) seed puffs swirling slowly up round him, and golden pollen glinting
+			{ at = "orbit", radius = { 7, 9 }, high = { 1.5, 8 }, orbitSpeed = 4, tex = "seed", rate = 10, rage = 2, life = { 2.5, 3.5 }, size = { 0.9, 1.3, 1 },
+				colors = { "FFFFFF" }, speed = { 0.4, 1 }, dir = "up", spread = 40, accel = V3(0, 0.4, 0), drag = 0.5, spin = 0.6 },
+			{ at = "att_head_center", box = V3(16, 14, 12), tex = "Star4", add = true, twinkle = true, rate = 8, rage = 2, life = { 0.6, 1.2 }, size = { 0.9, 1.5 },
+				colors = { "FFF3B0", "FFE46A" }, rageColors = { "FFB040", "FF8A30" }, speed = { 0, 0.3 }, dir = "up", spread = 180, spin = 1.5 },
 		},
 		glows = {
 			{ at = "att_scepter_core", size = 6.3, color = "FFE14D", rageColor = "FFB020", alpha = 0.9, pulse = 0.12, rate = 3, rageSize = 1.4 },
@@ -50,6 +55,11 @@ Spec.bosses = {
 				speed = { 0.75, 1.9 }, dir = "down", spread = 20, accel = V3(0, -0.56, 0), spin = 2 },
 			{ at = "att_hive_center", box = V3(4, 4, 4), tex = "dot", add = true, rate = 3, life = { 2, 3 }, size = { 0.3, 0.5, 0.2 },
 				colors = { "FFE070" }, speed = { 0.2, 0.6 }, dir = "up", spread = 60 },
+			-- (30 Oct) pollen puffs off its shoulders and honey glinting round the hive
+			{ at = "att_head_center", box = V3(14, 8, 12), tex = "smoke", add = true, rate = 3, rage = 2, life = { 1.5, 2.5 }, size = { 1, 1.6 }, grow = { 0.5, 1.4 },
+				alpha = 0.5, colors = { "FFE070", "FFF0A0" }, speed = { 0.2, 0.6 }, dir = "up", spread = 90, drag = 1 },
+			{ at = "att_hive_center", box = V3(6, 6, 6), tex = "Star4", add = true, twinkle = true, rate = 6, rage = 2, life = { 0.5, 1 }, size = { 0.7, 1.1 },
+				colors = { "FFC43A", "FFF0A0" }, speed = { 0.2, 0.8 }, dir = "up", spread = 180, spin = 1.5 },
 		},
 		glows = {
 			{ at = "att_eye", size = 3, color = "FF4D6D", alpha = 0.6, pulse = 0.1, rate = 2, rageSize = 1.15 },
@@ -80,6 +90,34 @@ Spec.bosses = {
 			{ at = "att_eye", color = "FFE14D", rageColor = "FF3020", brightness = 0.9, rageBrightness = 1.4 },
 		},
 	},
+	-- (29 Oct) the Frost Thornback (the golf shell, frozen for Frost Peaks): snow sifting off it, an icy glow
+	frost = {
+		accent = "9FE8FF",
+		emitters = {
+			{ at = "att_flag_wound", tex = "dot", add = true, rate = 6, rage = 2, life = { 1.2, 2.2 }, size = { 0.4, 0.67, 0.3 },
+				colors = { "9FE8FF", "E8FBFF" }, speed = { 2, 4.7 }, dir = "up", spread = 35, accel = V3(0, 1.3, 0) },
+			{ at = "base", box = V3(16, 3, 16), y0 = 2, tex = "sand", rate = 22, life = { 0.8, 1.4 }, size = { 0.2, 0.33, 1 },
+				colors = { "FFFFFF", "DDF2FF", "BFE4FF" }, speed = { 0, 0.5 }, dir = "down", spread = 20, accel = V3(0, -20, 0) },
+			{ at = "att_spine_tip", tex = "spark", add = true, rate = 2.4, rage = "only", life = { 0.6, 1 }, size = { 0.5, 0.84, 0.2 },
+				colors = { "7FE0FF", "FFFFFF" }, speed = { 0.5, 1.5 }, dir = "up", spread = 30, accel = V3(0, 5, 0) },
+			-- (30 Oct) snowflakes swirling round it, an icy mist on the floor, frost glinting
+			{ at = "orbit", radius = { 8, 11 }, high = { 1, 9 }, orbitSpeed = 6, tex = "Star4", add = true, rate = 16, rage = 2, life = { 1.6, 2.6 }, size = { 0.4, 0.7, 0.6 },
+				colors = { "FFFFFF", "DDF6FF" }, speed = { 0, 0.5 }, dir = "down", spread = 180, spin = 2 },
+			{ at = "base", box = V3(30, 1, 30), y0 = 1.2, tex = "smoke", rate = 2.5, rage = 2, life = { 5, 7 }, size = { 6, 9, 1 }, alpha = 0.3,
+				colors = { "BFE8FF", "E8FBFF" }, speed = { 0.2, 0.4 }, dir = "side", spread = 180 },
+			{ at = "att_head_center", box = V3(16, 10, 16), tex = "Star4", add = true, twinkle = true, rate = 8, rage = 2, life = { 0.5, 1 }, size = { 0.7, 1.2 },
+				colors = { "E8FBFF", "7FE0FF" }, speed = { 0, 0.2 }, dir = "up", spread = 180, spin = 1.5 },
+		},
+		glows = {
+			{ at = "att_eye", size = 3, color = "7FF0FF", rageColor = "FFFFFF", alpha = 0.7, pulse = 0.08, rate = 2, rageSize = 1.3 },
+			{ at = "att_flag_wound", size = 5.3, color = "9FE8FF", alpha = 0.75, pulse = 0.15, rate = 3 },
+			{ at = "att_spine_tip", size = 2.7, color = "7FE0FF", alpha = 0.8, pulse = 0.2, rate = 4, rageOnly = true },
+		},
+		lights = {
+			{ at = "att_flag_wound", color = "9FE8FF", brightness = 1.4, flicker = 0.08 },
+			{ at = "att_eye", color = "7FF0FF", rageColor = "FFFFFF", brightness = 0.9, rageBrightness = 1.4 },
+		},
+	},
 	harvest = {
 		accent = "F0C850",
 		emitters = {
@@ -93,6 +131,11 @@ Spec.bosses = {
 				speed = { 0, 0.3 }, dir = "down", spread = 10, accel = V3(0, -25, 0) },
 			{ at = "att_coat_hem", tex = "flame", add = true, rate = 40, rage = "only", life = { 0.6, 1.1 }, size = { 0.7, 1.25, 0.1 },
 				colors = { "FF8A20", "FFB040", "FF5A10" }, speed = { 1.7, 3.9 }, dir = "up", spread = 25, accel = V3(0, 6.9, 0), box = V3(5, 0.5, 5) },
+			-- (30 Oct) straw whirling round him and warm glints in the dust
+			{ at = "orbit", radius = { 8, 10 }, high = { 1, 6 }, orbitSpeed = 6, tex = "strand", rate = 8, rage = 2, life = { 1.5, 2.5 }, size = { 0.6, 0.9, 1 },
+				colors = { "F0C850", "E0B040", "FFE08A" }, speed = { 0, 0.4 }, dir = "side", spread = 180, spin = 3 },
+			{ at = "base", box = V3(22, 10, 22), y0 = 6, tex = "Star4", add = true, twinkle = true, rate = 6, rage = 2, life = { 0.7, 1.3 }, size = { 0.7, 1.2 },
+				colors = { "FFE08A", "FFF6D0" }, speed = { 0, 0.2 }, dir = "up", spread = 180, spin = 1.5 },
 		},
 		glows = {
 			{ at = "att_eye", size = 2.1, color = "FFE14D", rageColor = "FF3020", alpha = 0.6, pulse = 0.1, rate = 2 },
@@ -114,6 +157,11 @@ Spec.bosses = {
 				colors = { "FFB070", "FF8A40" }, rageColors = { "DDF0FF", "B8E0FF" }, speed = { 0.3, 1 }, dir = "up", spread = 30, accel = V3(0, 1.7, 0) },
 			{ at = "orbit", radius = { 9.3, 11.3 }, high = { 1.2, 7 }, orbitSpeed = 9.3, tex = "petal", rate = 60, rage = "only", life = { 1.6, 2.4 },
 				size = { 0.58, 0.87, 1 }, colors = { "D0204A", "FF4070", "FFB6D8" }, speed = { 0, 0.5 }, dir = "side", spread = 180, spin = 4 },
+			-- (30 Oct) petals swirling round it and soft pink glints
+			{ at = "orbit", radius = { 8, 10 }, high = { 1, 8 }, orbitSpeed = 5, tex = "petal", rate = 14, rage = 1.5, life = { 1.6, 2.6 }, size = { 0.5, 0.75, 1 },
+				colors = { "FFB6D8", "FFFFFF", "FF9FCD" }, rageColors = { "D0204A", "FF4070" }, speed = { 0, 0.4 }, dir = "side", spread = 180, spin = 3 },
+			{ at = "att_head_center", box = V3(18, 16, 14), tex = "Star4", add = true, twinkle = true, rate = 8, rage = 2, life = { 0.6, 1.1 }, size = { 0.8, 1.3 },
+				colors = { "FFD0E8", "FFFFFF" }, rageColors = { "FF4070", "FFB6D8" }, speed = { 0, 0.3 }, dir = "up", spread = 180, spin = 1.5 },
 		},
 		glows = {
 			{ at = "att_lantern_core", size = 7.5, color = "FF8A4A", rageColor = "B8E0FF", alpha = 0.85, pulse = 0.1, rate = 2.5, rageSize = 1.3 },
@@ -137,6 +185,9 @@ Spec.bosses = {
 				colors = { "5A8A78", "6A9A88" }, rageColors = { "5AAA50", "7ACA60" }, speed = { 0.2, 0.4 }, dir = "side", spread = 180 },
 			{ at = "arena", box = V3(50, 13, 50), y0 = 7, tex = "dot", add = true, rate = 5, life = { 3, 5 }, size = { 0.37, 0.53, 0.3 },
 				colors = { "E8FF70", "B8FF5A" }, speed = { 0.3, 1 }, dir = "side", spread = 180, wobble = true },
+			-- (30 Oct) toxic glints popping off the pool
+			{ at = "ring", radius = { 5, 9 }, tex = "Star4", add = true, twinkle = true, rate = 6, rage = 3, life = { 0.4, 0.8 }, size = { 0.6, 1 },
+				colors = { "C8FF70", "9DFF5A" }, speed = { 0.5, 1.5 }, dir = "up", spread = 20 },
 		},
 		glows = {
 			{ at = "att_eye", size = 3.3, color = "9DFF5A", alpha = 0.75, pulse = 0.12, rate = 2.5, rageSize = 1.35 },
@@ -160,6 +211,11 @@ Spec.bosses = {
 				colors = { "D8401A", "F08A2A", "F0C040" }, speed = { 0.5, 1.2 }, dir = "down", spread = 30, spin = 1.6, wobble = true },
 			{ at = "att_head_top", tex = "flame", add = true, rate = 70, rage = "only", life = { 0.6, 1 }, size = { 2.1, 3.6, 0.15 },
 				colors = { "FF8A20", "FFB040", "FF5A10", "FFD23A" }, speed = { 4.5, 9 }, dir = "up", spread = 25, accel = V3(0, 9, 0), box = V3(4, 0.5, 4) },
+			-- (30 Oct) embers whirling up round it and smoke curling off the scorched ground
+			{ at = "orbit", radius = { 7, 9 }, high = { 0.5, 7 }, orbitSpeed = 5, tex = "spark", add = true, rate = 14, rage = 2.5, life = { 1.2, 2 }, size = { 0.35, 0.6, 0 },
+				colors = { "FFB040", "FF6A1A", "FFE08A" }, speed = { 0.5, 1.5 }, dir = "up", spread = 40, accel = V3(0, 2, 0) },
+			{ at = "base", box = V3(20, 2, 20), y0 = 1, tex = "smoke", rate = 2, life = { 3, 4.5 }, size = { 2.5, 4 }, grow = { 0.6, 1.6 }, alpha = 0.3,
+				colors = { "3A302A", "5A4A40" }, speed = { 0.5, 1.2 }, dir = "up", spread = 20 },
 		},
 		glows = {
 			{ at = "att_eye", size = 3.9, color = "FFD23A", alpha = 0.7, pulse = 0.15, rate = 5 },
@@ -178,6 +234,11 @@ Spec.bosses = {
 				colors = { "3FFFD0", "8AFFE4" }, rageColors = { "FFC43A", "FFE08A" }, speed = { 1, 2.6 }, dir = "side", spread = 90, drag = 1, spin = 1 },
 			{ at = "sky", box = V3(30, 4, 30), y1 = 28, tex = "leaf", rate = 2.2, life = { 5, 7 }, size = { 1, 1.5, 1 },
 				colors = { "1EA03C", "3FAE3A", "6AD878" }, speed = { 0.5, 1.2 }, dir = "down", spread = 30, spin = 1.5, wobble = true },
+			-- (30 Oct) fireflies drifting over the arena and runes circling it
+			{ at = "arena", box = V3(50, 12, 50), y0 = 5, tex = "dot", add = true, rate = 6, life = { 3, 5 }, size = { 0.3, 0.45, 0.4 },
+				colors = { "7FD8FF", "3FFFD0" }, speed = { 0.3, 1 }, dir = "side", spread = 180, wobble = true },
+			{ at = "orbit", radius = { 7, 9 }, high = { 2, 10 }, orbitSpeed = 3, tex = "glyph", add = true, rate = 4, rage = 2, life = { 1.5, 2.5 }, size = { 0.9, 1.3, 0 },
+				colors = { "3FFFD0", "8AFFE4" }, rageColors = { "FFC43A", "FFE08A" }, speed = { 0, 0.3 }, dir = "up", spread = 30, spin = 0.5 },
 		},
 		glows = {
 			{ at = "att_rune_core", size = 6.7, color = "3FFFD0", rageColor = "FFC43A", alpha = 0.8, pulse = 0.12, rate = 2.5, rageSize = 1.3 },

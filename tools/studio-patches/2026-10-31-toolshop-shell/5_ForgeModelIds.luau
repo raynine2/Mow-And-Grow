@@ -1,0 +1,139 @@
+-- Installs ForgeModelIds (git's exact text, 4307 297052190) into game.ReplicatedStorage.MowALawn. Run in Edit mode.
+local src = [======[
+-- ForgeGUI building models (textured meshes, approved by the owner on 23 Oct; records in
+-- assets/forgegui_models.json). server/Models loads each as the template "forge_<name>", keeps its painted texture,
+-- stands it on its feet (pivot at the bottom centre) and turns it so its front faces the pivot's LookVector.
+-- FORGE_SWAP in server/Models says which older models they replace.
+return {
+	bagstand = 89479177629481,
+	shredder = 122216742633383,
+	windmill = 98872799097988,
+	lodge = 83216758022373,
+	barn = 87691690990474,
+	rewards = 71692087163918,
+	startgate = 81723837273613,
+	leaderboard = 101353987186694,
+	lm_blossom = 76069617427255,
+	lm_wheat = 140161198185129,
+	lm_pine = 120907520324654,
+	lm_swamp = 122886070654489,
+	lm_frost = 85463365553189,
+	lm_ember = 87118546176920,
+	lm_starlight = 90425779548628,
+	house_red = 87898019152043,
+	house_blue = 122703325704658,
+	-- 26 Oct (the owner: "remake the fountain, every sign and the boss areas with forgegui"): the camp fountain
+	-- (server/CampFountain), the drop-off bins and area archways (server/ForgeDress), the lobby party booths
+	-- (server/LobbyPads), the boss arena gateways and summon altar (server/BossArena)
+	fountain = 82568929623199,
+	dropoff = 131787783453543,
+	partybooth = 97998160921780,
+	altar = 127212826627130,
+	gate_blossom = 118481985520587,
+	gate_swamp = 109418497237639,
+	gate_ember = 83338532938788,
+	gate_starlight = 120530589946580,
+	arena_meadow = 72812439262906,
+	arena_hedge = 119760703897452,
+	arena_bunker = 89188908030942,
+	arena_cornfield = 125419026188869,
+	arena_sakura = 130442464493828,
+	arena_swamp = 75474451775473,
+	arena_pumpkin = 74165472176746,
+	arena_ruins = 84244292155553,
+	-- the boss arenas dressed by area (server/ArenaDress; 26 Oct): walls, pillars, decorations, gateways. The meadow's
+	-- wall and gateway are the voxel ones; the rest of the voxel set waits for ForgeGUI credits.
+	vwall_meadow = 120929317600558,
+	varena_meadow = 100650001189224,
+	awall_meadow = 138275764503539,
+	awall_wheat = 75307163304029,
+	awall_blossom = 72138220547556,
+	awall_pine = 101391533530623,
+	awall_swamp = 134772718176657,
+	awall_frost = 129503170296897,
+	awall_ember = 116971461148524,
+	awall_starlight = 114173906922684,
+	apost_meadow = 134569598753538,
+	apost_pine = 114485046739176,
+	apost_swamp = 119021403375182,
+	apost_frost = 137790313414582,
+	apost_ember = 116909480888481,
+	apost_starlight = 92876542926243,
+	aprop_swamp1 = 102139540255221,
+	aprop_swamp2 = 137990980298029,
+	aprop_frost2 = 123203879289850,
+	aprop_ember2 = 91302819735695,
+	arena_ember = 81185849131619,
+	arena_starlight = 72320489982221,
+	-- the boss arenas' ForgeGUI set (server/ArenaForge; 30 Oct evening, owner: "revamp every arena remove unneccery
+	-- stuff also use forge gui"): per area a gateway, a wall section, a grandstand, a pillar with a light and the summon
+	-- altar. Their front is the mesh's -Z (ArenaForge turns them).
+	fa_gate_meadow = 129770097058610,
+	fa_wall_meadow = 120766023623867,
+	fa_stand_meadow = 110907999411348,
+	fa_pillar_meadow = 105133001761293,
+	fa_altar_meadow = 124710432202154,
+	fa_gate_wheat = 102466645634477,
+	fa_wall_wheat = 109474813435785,
+	fa_stand_wheat = 129898275646125,
+	fa_pillar_wheat = 94990899912378,
+	fa_altar_wheat = 133236930633086,
+	fa_gate_blossom = 114733481201359,
+	fa_wall_blossom = 130118787373342,
+	fa_stand_blossom = 113861896016274,
+	fa_pillar_blossom = 71071513136954,
+	fa_altar_blossom = 109395861850040,
+	fa_gate_pine = 124924673020400,
+	fa_wall_pine = 124773352909801,
+	fa_stand_pine = 81004340605079,
+	fa_pillar_pine = 84520134530881,
+	fa_altar_pine = 84380187243114,
+	fa_gate_swamp = 85086031107069,
+	fa_wall_swamp = 93480049943227,
+	fa_stand_swamp = 82784340099233,
+	fa_pillar_swamp = 91654852877902,
+	fa_altar_swamp = 86544913890067,
+	fa_gate_frost = 101187980964319,
+	fa_wall_frost = 111404872633727,
+	fa_stand_frost = 80090706994725,
+	fa_altar_frost = 136433189604632,
+	fa_gate_ember = 95076390161061,
+	fa_wall_ember = 123033122534620,
+	fa_pillar_ember = 130367320854928,
+	fa_altar_ember = 119812176658007,
+	fa_stand_isles = 103109458842759,
+	fa_pillar_isles = 95648603217909,
+	fa_altar_isles = 119007137788084,
+	-- the Tool Shop's cabin (server/ShopShell; 31 Oct, owner: "the house at spawn feels a bit idk"); front -Z
+	toolshop_shell = 140559480856788,
+}
+]======]
+local function hashOf(t)
+	local x = 0
+	for i = 1, #t do
+		x = (x * 31 + string.byte(t, i)) % 2147483647
+	end
+	return #t .. " " .. x
+end
+if hashOf(src) ~= "4307 297052190" then
+	return "NOT INSTALLED: the pasted text is " .. hashOf(src)
+end
+local folder = game.ReplicatedStorage.MowALawn
+local old = folder:FindFirstChild("ForgeModelIds")
+if old then
+	local now = hashOf(old.Source)
+	if now == "4307 297052190" then
+		return "ForgeModelIds is already this version: " .. now
+	end
+	local known = { ["4164 969735425"] = true }
+	if not known[now] then
+		return "NOT CHANGED: ForgeModelIds is there but is " .. now .. " (not a version this replaces)"
+	end
+	old.Source = src
+	return "ForgeModelIds updated: " .. hashOf(old.Source)
+end
+local m = Instance.new("ModuleScript")
+m.Name = "ForgeModelIds"
+m.Source = src
+m.Parent = folder
+return "ForgeModelIds installed: " .. hashOf(m.Source)

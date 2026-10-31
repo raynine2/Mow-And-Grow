@@ -102,4 +102,6 @@ return {
 	fa_stand_isles = 103109458842759,
 	fa_pillar_isles = 95648603217909,
 	fa_altar_isles = 119007137788084,
+	-- the Tool Shop's cabin (server/ShopShell; 31 Oct, owner: "the house at spawn feels a bit idk"); front -Z
+	toolshop_shell = 140559480856788,
 }

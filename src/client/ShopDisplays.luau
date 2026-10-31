@@ -313,4 +313,7 @@ task.spawn(function()
 	end
 end)
 
+-- (31 Oct) the Tool Shop's ForgeGUI cabin from outside, its room from inside (client/ShopShellView)
+require(script.Parent.ShopShellView)
+
 return ShopDisplays

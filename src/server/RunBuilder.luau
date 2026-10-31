@@ -355,6 +355,8 @@ local function garageShed(g: Instance, at: CFrame): boolean
 	-- the voxel log garage with its roll-up door (server/CampBuildings, owner 27 Oct)
 	if CampBuildings.ON and CampBuildings.garage(g, at) then
 		promptSpot(g, at, "0Anchor") -- lines the saved map's garage up with this one (MapStore)
+		-- (31 Oct, owner: "also use this house for the garage model alike") the ForgeGUI garage round it
+		ShopShell.dressGarage(g, at)
 		return true
 	end
 	if not Models.place("garage_shed", g, at, 1, true) then

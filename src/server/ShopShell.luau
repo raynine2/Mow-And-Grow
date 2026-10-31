@@ -11,6 +11,11 @@
 -- wheelbarrow, gnome, mailbox) stays.
 -- Coordinates are the lodge's (server/CampBuildings): y 0 the ground, -Z out of the door, the walls x -22.2..22.2,
 -- z -9.8..16.9, the main roof up to y 26.3 over z -11..18.6, the door x -6..6, y up to 13.
+-- (31 Oct, owner: "the house goes back to the old house when going in"; picked: the inside in the new house's style)
+-- Inside, the lodge is dressed like the cabin: round orange-tan logs (a cylinder over each square log, which stays,
+-- unseen, for its collisions), dark chinking, red beams, green window and door frames, a warm plank ceiling (restyle).
+-- (31 Oct, owner: "also use this house for the garage model alike") The Garage the same way: a ForgeGUI log garage
+-- in the cabin's style ("garage_shell") round the voxel garage (server/CampBuildings), its inside restyled.
 local Models = require(script.Parent.Models)
 
 local ShopShell = {}
@@ -62,30 +67,141 @@ local function strip(shop: Instance, at: CFrame)
 	end
 end
 
--- The cabin round the lodge at `at` (server/RunBuilder's tool shop). Returns false (and changes nothing) when the
--- model isn't loaded.
-function ShopShell.dress(shop: Instance, at: CFrame): boolean
-	if not ShopShell.ON or not Models.has("forge_" .. NAME) then
-		return false
+-- The inside in the cabins' style (both buildings share CampBuildings' part names). Only seen from inside:
+-- client/ShopShellView hides the building from outside.
+local LOG = Color3.fromRGB(214, 140, 72)
+local CHINK = Color3.fromRGB(110, 62, 32)
+local BEAM = Color3.fromRGB(168, 58, 40)
+local FRAME = Color3.fromRGB(78, 150, 60)
+local PLANK = Color3.fromRGB(184, 108, 56)
+local LOG_D = 1.62 -- a round log's thickness: a row (1.6) and a hair, so the rows touch
+local BEAMS = { Purlin = true, TieBeam = true, RidgeBeam = true, ChandelierBar = true, Barge = true }
+local FRAMES = {
+	WindowPost = true, Mullion = true, Sill = true, Lintel = true, DoorPost = true, DoorLintel = true, DoorHeader = true,
+	VentFrame = true,
+}
+local CEILING = { Roof = true, RoofEdge = true, RidgeCap = true }
+
+local function wood(p: BasePart, color: Color3, material: Enum.Material)
+	p.MaterialVariant = ""
+	p.Material = material
+	p.Color = color
+end
+
+local function roundLog(p: BasePart)
+	-- along the square log's longest side
+	local s = p.Size
+	local turn = if s.X >= s.Y and s.X >= s.Z then CFrame.new()
+		elseif s.Y >= s.Z then CFrame.Angles(0, 0, math.pi / 2)
+		else CFrame.Angles(0, math.pi / 2, 0)
+	local c = Instance.new("Part")
+	c.Name = "RoundLog"
+	c.Shape = Enum.PartType.Cylinder
+	c.Size = Vector3.new(math.max(s.X, s.Y, s.Z), LOG_D, LOG_D)
+	c.CFrame = p.CFrame * turn
+	wood(c, LOG, Enum.Material.Wood)
+	c.Anchored = true
+	c.CanCollide = false
+	c.CanQuery = false
+	c.CanTouch = false
+	c.TopSurface = Enum.SurfaceType.Smooth
+	c.BottomSurface = Enum.SurfaceType.Smooth
+	c.Parent = p.Parent
+	p.Transparency = 1
+end
+
+local function restyle(building: Instance?)
+	for _, p in (if building then building:GetDescendants() else {}) do
+		if not p:IsA("BasePart") then
+			continue
+		end
+		local n = p.Name
+		if n == "Log" and p:IsA("Part") and p.Shape == Enum.PartType.Block then
+			roundLog(p)
+		elseif n == "LogEnd" or n == "GableBoard" then
+			wood(p, LOG, Enum.Material.Wood)
+		elseif n == "Chink" then
+			p.Color = CHINK
+		elseif BEAMS[n] then
+			wood(p, BEAM, Enum.Material.Wood)
+		elseif FRAMES[n] then
+			wood(p, FRAME, Enum.Material.Wood)
+		elseif CEILING[n] then
+			wood(p, PLANK, Enum.Material.WoodPlanks)
+		end
+	end
+end
+
+-- A shell round `unit` (the shop's or the garage's folder) at `at`, `fit` in that frame. Returns the shell, or nil
+-- (and changes nothing) when the model isn't loaded.
+local function shell(unit: Instance, at: CFrame, forgeName: string, fit: { x: number, y: number, z: number, width: number }, roomMin: Vector3, roomMax: Vector3): Model?
+	if not ShopShell.ON or not Models.has("forge_" .. forgeName) then
+		return nil
 	end
 	-- (the 30 Oct ForgeGUI meshes face their -Z; server/Models turns templates for a -X front, so a quarter turn
 	-- back here, and the template's Z is the width: like server/ArenaForge)
-	local cf = at * CFrame.new(FIT.x, FIT.y, FIT.z) * CFrame.Angles(0, math.pi / 2, 0)
-	local m = Models.placeForge(NAME, shop, cf, { depth = FIT.width }, true)
+	local cf = at * CFrame.new(fit.x, fit.y, fit.z) * CFrame.Angles(0, math.pi / 2, 0)
+	local m = Models.placeForge(forgeName, unit, cf, { depth = fit.width }, true)
 	if not m then
-		return false
+		return nil
 	end
 	m.Name = "ShopShell"
-	-- (in the lodge's frame: the shop's "0Anchor", which moves with the shop when the saved map places it)
-	m:SetAttribute("RoomMin", ROOM_MIN)
-	m:SetAttribute("RoomMax", ROOM_MAX)
+	-- (in the building's frame: the unit's "0Anchor", which moves with it when the saved map places it)
+	m:SetAttribute("RoomMin", roomMin)
+	m:SetAttribute("RoomMax", roomMax)
 	for _, p in m:GetDescendants() do
 		if p:IsA("BasePart") then
 			p.CanQuery = false
 			p.CanTouch = false
 		end
 	end
+	return m
+end
+
+-- The cabin round the lodge at `at` (server/RunBuilder's tool shop). Returns false (and changes nothing) when the
+-- model isn't loaded.
+function ShopShell.dress(shop: Instance, at: CFrame): boolean
+	if not shell(shop, at, NAME, FIT, ROOM_MIN, ROOM_MAX) then
+		return false
+	end
 	strip(shop, at)
+	restyle(shop:FindFirstChild("ShopBuilding"))
+	return true
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- the Garage
+-------------------------------------------------------------------------------------------------------------
+-- Garage coordinates (server/CampBuildings GARAGE): y 0 the ground, -Z out of the roll-up door, the walls x -10..10,
+-- z -9..10, the roof up to y 22.5. The ForgeGUI garage (front fully open) stands 23.5 wide with its front 1.6 in
+-- front of the voxel garage's (its log walls just outside the voxel ones; the pump at x 13.6 stays clear; checked in
+-- Studio, 31 Oct).
+local GARAGE_NAME = "garage_shell"
+local GARAGE_FIT = { x = 0, y = -0.6, z = 2.92, width = 23.5 }
+local GARAGE_MIN, GARAGE_MAX = Vector3.new(-9.3, 0, -8.3), Vector3.new(9.3, 22, 9.3)
+-- the voxel garage's outside bits (the ForgeGUI garage has its own; hidden they'd be things to bump into): the GARAGE
+-- board, the door's corbels, the window boxes and shutters, the oil drum, the crate and the tyre leaning outside
+local GARAGE_GONE: { [string]: boolean } = {}
+for _, n in {
+	"SignBoard", "SignBracket", "SignFrame", "Corbel", "Planter", "Soil", "Flower", "Leaves", "Shutter", "ShutterBatten",
+	"ShutterBrace", "SillBracket", "OilDrum", "Crate", "CrateBand", "CrateBrace",
+} do
+	GARAGE_GONE[n] = true
+end
+
+-- The ForgeGUI garage round the voxel garage at `at` (server/RunBuilder's garageShed).
+function ShopShell.dressGarage(garage: Instance, at: CFrame): boolean
+	if not shell(garage, at, GARAGE_NAME, GARAGE_FIT, GARAGE_MIN, GARAGE_MAX) then
+		return false
+	end
+	local building = garage:FindFirstChild("GarageBuilding")
+	local inv = at:Inverse()
+	for _, p in (if building then building:GetDescendants() else {}) do
+		if p:IsA("BasePart") and (GARAGE_GONE[p.Name] or ((p.Name == "Tyre" or p.Name == "TyreHub") and math.abs((inv * p.Position).X) > 10)) then
+			p:Destroy()
+		end
+	end
+	restyle(building)
 	return true
 end
 

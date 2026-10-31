@@ -346,5 +346,15 @@
   "roblox": null,
   "forge_job": "7606ae2f-ef68-4b6b-bff3-b5bc9acf74c2",
   "note": "31 Oct: royal gold take; outcome_unknown, not re-run"
+ },
+ "garage_shell": {
+  "roblox": "98540195381872",
+  "forge_job": "90579995-3df1-4d0c-8bcb-3373101462a4",
+  "note": "31 Oct: the Garage in the Tool Shop cabin's style, in use (server/ShopShell); prompt only"
+ },
+ "garage_shell_ref": {
+  "roblox": "102735955377474",
+  "forge_job": "3a9adc3f-0a2e-4441-b7b1-fb644096b6ef",
+  "note": "31 Oct: made from a picture of the cabin; came out a copy of the house, not used"
  }
 }

@@ -1,4 +1,4 @@
--- Installs Models (git's exact text, 29867 1371068930) into game.ServerScriptService.MowALawn. Run in Edit mode.
+-- Installs Models (git's exact text, 29793 805048841) into game.ServerScriptService.MowALawn. Run in Edit mode.
 local src = [======[
 -- Blender models in the game. tools/upload_models.py uploads assets/models/*.glb and writes their ids into
 -- shared/ModelIds.luau; at server start this loads them (InsertService), gives every MeshPart the Roblox
@@ -376,19 +376,18 @@ end
 -- at the origin, the snath along -Z at y 0, the head at its far end with the blade rising +Y and sweeping back
 -- toward the hands), so the held tool (server/Tools), the first-person view (client/ViewModel) and the shop boards
 -- hold and place it as before. `turn` takes the mesh's own axes to the template's, `length` is its size along the
--- template's Z (the snath) in the template's studs, `center` where its middle goes. `glow`: the painted texture lit
--- as its own emissive mask in that tint (the bright blade shines, the dark snath stays dark). `light`: a violet
--- light in the blade's curve; `gem`: a faint one at the pommel; `sparkle`: a box (centre, size) the blade's
--- sparkles drift from.
+-- template's Z (the snath) in the template's studs, `center` where its middle goes. `light`: a violet light in the
+-- blade's curve; `gem`: a faint one at the pommel; `sparkle`: spots along the blade sparkles drift from. (All on
+-- attachments in the mesh, no helper parts: client/ViewModel shows every part of the tool you hold, an unseen one
+-- too. No emissive glow from the texture: a game script may not set a SurfaceAppearance's EmissiveMaskContent.)
 type ForgeTool = {
 	forge: string,
 	turn: CFrame,
 	length: number,
 	center: Vector3,
-	glow: Color3?,
 	light: Vector3?,
 	gem: Vector3?,
-	sparkle: { at: Vector3, size: Vector3 }?,
+	sparkle: { Vector3 }?,
 }
 local FORGE_TOOLS: { [string]: ForgeTool } = {
 	tool_scythe = {
@@ -399,31 +398,23 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 		-- the blade up to y 5.4 with its tip back at z -1.4, the side grip at -2.5)
 		length = 9.7,
 		center = Vector3.new(0, 1.95, -2.25),
-		glow = Color3.fromRGB(230, 120, 255),
 		light = Vector3.new(0, 3.4, -4.2),
 		gem = Vector3.new(0, 0, 2.35),
-		sparkle = { at = Vector3.new(0, 3.8, -4), size = Vector3.new(0.5, 3, 4.5) },
+		sparkle = { Vector3.new(0, 2.6, -6.2), Vector3.new(0, 4, -5.2), Vector3.new(0, 4.6, -4), Vector3.new(0, 5, -2.9), Vector3.new(0, 5.2, -1.9) },
 	},
 }
 
--- an unseen point in a tool template (a light's or an emitter's)
-local function marker(model: Model, name: string, at: Vector3, size: Vector3?): Part
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Size = size or Vector3.new(0.1, 0.1, 0.1)
-	p.Transparency = 1
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.CastShadow = false
-	p.CFrame = CFrame.new(at)
-	p.Parent = model
-	return p
+-- a spot on a tool's mesh (`at` in the template's studs) for a light or an emitter
+local function spot(mesh: MeshPart, name: string, at: Vector3): Attachment
+	local a = Instance.new("Attachment")
+	a.Name = name
+	a.CFrame = mesh.CFrame:ToObjectSpace(CFrame.new(at))
+	a.Parent = mesh
+	return a
 end
 
-local function lightAt(model: Model, name: string, at: Vector3, color: Color3, range: number, brightness: number)
-	local p = marker(model, name, at)
+local function lightAt(mesh: MeshPart, name: string, at: Vector3, color: Color3, range: number, brightness: number)
+	local p = spot(mesh, name, at)
 	local l = Instance.new("PointLight")
 	l.Color = color
 	l.Range = range
@@ -449,43 +440,29 @@ local function swapTools(): number
 		mesh.CanQuery = false
 		mesh.CanTouch = false
 		mesh.Parent = model
-		local sa = mesh:FindFirstChildWhichIsA("SurfaceAppearance")
-		if sa and t.glow then
-			local glow = t.glow
-			pcall(function()
-				local ok, map = pcall(function()
-					return sa.ColorMapContent
-				end)
-				sa.EmissiveMaskContent = if ok and map then map else Content.fromUri(sa.ColorMap)
-				sa.EmissiveTint = glow
-				sa.EmissiveStrength = 2
-			end)
-		end
 		if t.light then
-			lightAt(model, "BladeLight", t.light, Color3.fromRGB(190, 110, 255), 9, 1.3)
+			lightAt(mesh, "BladeLight", t.light, Color3.fromRGB(190, 110, 255), 9, 1.3)
 		end
 		if t.gem then
-			lightAt(model, "PommelGem", t.gem, Color3.fromRGB(230, 190, 255), 3.5, 1)
+			lightAt(mesh, "PommelGem", t.gem, Color3.fromRGB(230, 190, 255), 3.5, 1)
 		end
-		if t.sparkle then
-			local box = marker(model, "BladeSparkles", t.sparkle.at, t.sparkle.size)
+		for _, at in t.sparkle or {} do
 			local e = Instance.new("ParticleEmitter")
 			e.Name = "EdgeSparkle"
 			e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-			e.Shape = Enum.ParticleEmitterShape.Box
 			e.Color = ColorSequence.new(Color3.fromRGB(255, 235, 255), Color3.fromRGB(186, 84, 255))
 			e.LightEmission = 1
 			e.LightInfluence = 0
 			e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.22), NumberSequenceKeypoint.new(1, 0) })
 			e.Transparency = NumberSequence.new(0.1, 1)
 			e.Lifetime = NumberRange.new(0.5, 0.9)
-			e.Rate = 6
+			e.Rate = 1.5
 			e.Speed = NumberRange.new(0.2, 0.6)
 			e.SpreadAngle = Vector2.new(180, 180)
 			e.Rotation = NumberRange.new(0, 360)
 			e.RotSpeed = NumberRange.new(-90, 90)
 			e.Drag = 2
-			e.Parent = box
+			e.Parent = spot(mesh, "Sparkle", at)
 		end
 		model.WorldPivot = CFrame.new()
 		model:SetAttribute("ForgeTool", true)
@@ -561,6 +538,14 @@ end
 -- Loads every model at the same time (one at a time took ~30 s) and waits at most `timeout` seconds; a model
 -- that isn't loaded by then uses its native-part version if it has one, else its brick fallback.
 function Models.loadAll(timeout: number?)
+	-- (31 Oct) a fresh set each time: every load in edit mode (RunWorld.refreshForge, MapStore) left its copies in
+	-- the folder and the place was saved with 7 of each template, so a client looking one up by name
+	-- (client/ViewModel, HitFx, SellFx) could get a stale one (the old Mega Scythe in first person)
+	for _, c in folder:GetChildren() do
+		c:Destroy()
+	end
+	table.clear(templates)
+	table.clear(forgeRaw)
 	-- the ForgeGUI buildings load alongside the rest
 	local forgeLeft: number? = nil
 	task.spawn(function()
@@ -811,17 +796,17 @@ local function hashOf(t)
 	end
 	return #t .. " " .. x
 end
-if hashOf(src) ~= "29867 1371068930" then
+if hashOf(src) ~= "29793 805048841" then
 	return "NOT INSTALLED: the pasted text is " .. hashOf(src)
 end
 local folder = game.ServerScriptService.MowALawn
 local old = folder:FindFirstChild("Models")
 if old then
 	local now = hashOf(old.Source)
-	if now == "29867 1371068930" then
+	if now == "29793 805048841" then
 		return "Models is already this version: " .. now
 	end
-	local known = { ["24821 1150832697"] = true }
+	local known = { ["24821 1150832697"] = true, ["29867 1371068930"] = true, ["30280 1317326361"] = true }
 	if not known[now] then
 		return "NOT CHANGED: Models is there but is " .. now .. " (not a version this replaces)"
 	end

@@ -246,39 +246,136 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the body aura (every player) and the first-person hands (you)
 -------------------------------------------------------------------------------------------------------------
--- LoveAura's 16 emitters by what they look like, and from which rarity each joins (index in the pack: the
--- HumanoidRootPart's attachment, then "erm", "rot" and the big box). Each: { index, from rank, opts }.
-local BODY_LAYERS: { { number | Opts } } = {
-	{ 3, 1, { scale = 0.55, rate = 0.5, bright = 2.5, trans = 0.55 } }, -- a soft round glow at the core
-	{ 15, 1, { scale = 0.6, rate = 0.45, bright = 3, trans = 0.3 } }, -- small motes round the body
-	{ 8, 2, { scale = 0.7, rate = 0.25, bright = 4 } }, -- sparks flying off
-	{ 2, 3, { scale = 0.55, rate = 0.6, bright = 3, trans = 0.35 } }, -- aura flames (flipbook)
-	{ 16, 3, { scale = 0.6, rate = 0.4, bright = 3.5 } }, -- quick sparks
-	{ 7, 4, { scale = 0.55, rate = 0.35, bright = 3 } }, -- the swirl round the feet
-	{ 14, 4, { scale = 0.7, rate = 0.6, bright = 3.5 } }, -- flame wisps through the box
-	{ 4, 5, { scale = 0.5, rate = 0.45, bright = 3, trans = 0.25 } }, -- big rising aura flames (8x8 flipbook)
-	{ 13, 5, { scale = 0.55, rate = 0.45, bright = 4 } }, -- lightning flicks
-	{ 10, 6, { scale = 0.6, rate = 0.6, bright = 3.5 } }, -- energy bursts
-	{ 11, 6, { scale = 0.45, rate = 0.4, bright = 4 } }, -- bright flashes
-	{ 6, 6, { scale = 0.7, rate = 0.6, bright = 3 } }, -- crescent rings
-	{ 9, 7, { scale = 0.6, rate = 0.6, bright = 4 } }, -- streaks
-	{ 1, 7, { scale = 0.6, rate = 0.8, bright = 4 } }, -- energy flicker
-	{ 5, 7, { scale = 0.5, rate = 0.3, bright = 4 } }, -- fast streaks
-	{ 12, 7, { scale = 0.45, rate = 0.5, bright = 4 } }, -- flash
+-- The packs' textures that suit a garden (the LoveAura pack is mostly hearts: none of those), with their own
+-- flipbooks; how each moves is ours (the packs' own settings are for one big skill, not an aura worn all day).
+local TEX = {
+	mote = { "rbxassetid://12942158384" }, -- LoveAura: a soft glowing dot
+	star = { "rbxassetid://17062452122" }, -- LoveAura: a four-point sparkle
+	spike = { "rbxassetid://17538052796" }, -- LoveAura: a tall thin flare
+	bolt = { "rbxassetid://118305486979110", "Grid4x4" }, -- LoveAura: lightning flicks
+	bloom = { "rbxassetid://102776387242988", "Grid4x4" }, -- LoveAura: blossoms opening
+	petal = { "rbxassetid://13802408466", "Grid4x4" }, -- LoveAura: petals tumbling
+	runes = { "rbxassetid://11910560348", "Grid4x4", "Loop" }, -- EvilFloor: glowing runes
+	circle = { "rbxassetid://13399941667" }, -- EvilFloor: an ornate magic circle
+	swirl = { "rbxassetid://12403112662" }, -- EvilFloor: a wind ring
+	ring = { "rbxassetid://98115819941329" }, -- EvilFloor: a ring of sparkles
+	flame = { "rbxassetid://16694134286", "Grid4x4" }, -- Explosion: a flame
+}
+
+-- One layer: tex (TEX key), from (the rarity rank it joins at), only (these classes only, from any rank), at
+-- ("body": the HumanoidRootPart's 2 x 2 x 1, "feet": a point on the ground, locked to it), col ("main", "second",
+-- "glow", "grad": main into second, "hot": glow into main), then sizes (keys {time, size}), rate, life, speed,
+-- up (pull up, studs/s^2), spread, spin (deg/s), bright, light, flat (lies on the ground, turning), lock, fade
+-- (keys {time, transparency}), drag.
+type Layer = { [string]: any }
+local FADE = { { 0, 1 }, { 0.15, 0.1 }, { 0.75, 0.25 }, { 1, 1 } }
+local BODY_LAYERS: { Layer } = {
+	{ tex = "mote", from = 1, at = "body", col = "grad", sizes = { { 0, 0 }, { 0.3, 0.32 }, { 1, 0 } }, rate = 7, life = { 1.2, 2 }, speed = { 1, 2.4 }, up = 2.2, spread = 30, bright = 2, light = 1 },
+	{ tex = "star", from = 1, at = "body", col = "glow", sizes = { { 0, 0 }, { 0.5, 0.55 }, { 1, 0 } }, rate = 2.5, life = { 0.35, 0.6 }, speed = { 0, 0.2 }, spin = 60, bright = 3, light = 1 },
+	{ tex = "bloom", only = { Gardener = true, UltimateGardener = true }, at = "body", col = "second", sizes = { { 0, 0.2 }, { 0.5, 0.5 }, { 1, 0.35 } }, rate = 2.2, life = { 1.2, 1.8 }, speed = { 0.4, 1 }, up = 0.5, spread = 180, spin = 40, bright = 1.4, light = 0.4, fade = FADE },
+	{ tex = "petal", only = { LawnLegend = true, Gardener = true }, at = "body", col = "main", sizes = { { 0, 0.32 }, { 1, 0.24 } }, rate = 3, life = { 1.6, 2.6 }, speed = { 1, 2.5 }, up = -0.8, spread = 180, spin = 120, bright = 1.4, light = 0.3, drag = 1, fade = FADE },
+	{ tex = "runes", from = 3, at = "body", col = "main", sizes = { { 0, 0 }, { 0.2, 0.42 }, { 0.8, 0.36 }, { 1, 0 } }, rate = 2.6, life = { 1.4, 2.2 }, speed = { 0.6, 1.2 }, up = 0.6, spread = 35, bright = 2.4, light = 1 },
+	{ tex = "flame", from = 4, at = "body", col = "grad", sizes = { { 0, 0.5 }, { 0.35, 1.25 }, { 1, 0.3 } }, rate = 8, life = { 0.55, 0.85 }, speed = { 2.5, 4.5 }, up = 3, spread = 12, bright = 2.2, light = 0.85, orient = "VelocityParallel", fade = { { 0, 0.6 }, { 0.2, 0.15 }, { 1, 1 } } },
+	{ tex = "spike", from = 4, at = "body", col = "hot", sizes = { { 0, 0 }, { 0.4, 1.3 }, { 1, 0 } }, rate = 2, life = { 0.15, 0.25 }, speed = { 0, 0 }, bright = 3, light = 1 },
+	{ tex = "circle", from = 5, at = "feet", col = "main", sizes = { { 0, 6.2 }, { 1, 6.8 } }, rate = 0.55, life = { 3, 3 }, spin = 22, flat = true, bright = 2, light = 1, lock = true, fade = { { 0, 1 }, { 0.25, 0.35 }, { 0.75, 0.35 }, { 1, 1 } } },
+	{ tex = "bolt", from = 5, at = "body", col = "hot", sizes = { { 0, 0.9 }, { 1, 1.5 } }, rate = 3, life = { 0.2, 0.35 }, speed = { 0, 0 }, bright = 3, light = 1, rot = true },
+	{ tex = "swirl", from = 6, at = "feet", col = "second", sizes = { { 0, 4.5 }, { 1, 7.5 } }, rate = 1.1, life = { 1, 1.2 }, spin = 120, flat = true, bright = 2, light = 1, lock = true, fade = { { 0, 1 }, { 0.3, 0.3 }, { 1, 1 } } },
+	{ tex = "flame", from = 6, at = "body", col = "hot", sizes = { { 0, 0.35 }, { 0.4, 0.9 }, { 1, 0.2 } }, rate = 6, life = { 0.4, 0.7 }, speed = { 4, 6 }, up = 4, spread = 25, bright = 2.4, light = 1, orient = "VelocityParallel", fade = { { 0, 0.5 }, { 0.25, 0.1 }, { 1, 1 } } },
+	{ tex = "ring", from = 7, at = "feet", col = "glow", sizes = { { 0, 3 }, { 1, 8.5 } }, rate = 1.3, life = { 1.1, 1.3 }, spin = 40, flat = true, bright = 2.5, light = 1, lock = true, fade = { { 0, 0.4 }, { 1, 1 } } },
+	{ tex = "petal", from = 7, at = "body", col = "grad", sizes = { { 0, 0.3 }, { 1, 0.22 } }, rate = 4, life = { 1.5, 2.4 }, speed = { 1.5, 3 }, up = -0.5, spread = 180, spin = 140, bright = 1.6, light = 0.5, drag = 1, fade = FADE },
 }
 local LOW_LAYERS = 3 -- phones / Potato Mode: only this many layers (the cheapest first)
 
--- the hands: the same pack, small and stuck to the fists (indices into LoveAura), from which rarity
-local HAND_LAYERS: { { number | Opts } } = {
-	{ 3, 1, { scale = 0.07, rate = 0.5, bright = 2, trans = 0.4, lock = true } }, -- a glow on the fist
-	{ 15, 1, { scale = 0.1, rate = 0.35, bright = 2.5, lock = false } }, -- motes rising off it
-	{ 2, 2, { scale = 0.075, rate = 0.55, bright = 2.5, trans = 0.3, lock = true } }, -- little flames licking up
-	{ 8, 3, { scale = 0.12, rate = 0.18, bright = 3.5, lock = false } }, -- sparks
-	{ 14, 4, { scale = 0.08, rate = 0.5, bright = 3, lock = true } }, -- flame wisps
-	{ 13, 5, { scale = 0.07, rate = 0.35, bright = 3.5, lock = true } }, -- lightning flicks
-	{ 4, 6, { scale = 0.06, rate = 0.4, bright = 3, trans = 0.2, lock = true } }, -- big flames
-	{ 1, 7, { scale = 0.08, rate = 0.6, bright = 3.5, lock = true } }, -- energy flicker
+-- the first-person hands: small, on the fists, most of it stuck to them (so turning doesn't smear it)
+local HAND_LAYERS: { Layer } = {
+	{ tex = "mote", from = 1, col = "main", sizes = { { 0, 0.22 }, { 1, 0.3 } }, rate = 5, life = { 0.3, 0.5 }, speed = { 0, 0 }, bright = 1.6, light = 1, lock = true, fade = { { 0, 1 }, { 0.3, 0.55 }, { 1, 1 } } },
+	{ tex = "mote", from = 1, col = "grad", sizes = { { 0, 0 }, { 0.3, 0.07 }, { 1, 0 } }, rate = 9, life = { 0.5, 0.9 }, speed = { 0.2, 0.6 }, up = 0.9, spread = 60, bright = 2.2, light = 1 },
+	{ tex = "star", from = 2, col = "glow", sizes = { { 0, 0 }, { 0.5, 0.16 }, { 1, 0 } }, rate = 3, life = { 0.2, 0.4 }, speed = { 0, 0 }, spin = 90, bright = 2.6, light = 1, lock = true },
+	{ tex = "flame", from = 3, col = "grad", sizes = { { 0, 0.1 }, { 0.35, 0.2 }, { 1, 0.05 } }, rate = 12, life = { 0.25, 0.45 }, speed = { 0.3, 0.7 }, up = 1.2, spread = 15, bright = 2, light = 0.9, orient = "VelocityParallel", fade = { { 0, 0.6 }, { 0.2, 0.15 }, { 1, 1 } } },
+	{ tex = "runes", from = 3, col = "main", sizes = { { 0, 0 }, { 0.2, 0.1 }, { 1, 0 } }, rate = 2.5, life = { 0.8, 1.2 }, speed = { 0.15, 0.35 }, up = 0.3, spread = 60, bright = 2.2, light = 1 },
+	{ tex = "petal", only = { LawnLegend = true, Gardener = true }, col = "main", sizes = { { 0, 0.07 }, { 1, 0.05 } }, rate = 3, life = { 0.8, 1.3 }, speed = { 0.2, 0.5 }, up = -0.2, spread = 180, spin = 160, bright = 1.4, light = 0.3, fade = FADE },
+	{ tex = "bolt", from = 5, col = "hot", sizes = { { 0, 0.14 }, { 1, 0.24 } }, rate = 3.5, life = { 0.15, 0.3 }, speed = { 0, 0 }, bright = 2.8, light = 1, lock = true, rot = true },
+	{ tex = "spike", from = 6, col = "hot", sizes = { { 0, 0 }, { 0.4, 0.3 }, { 1, 0 } }, rate = 2.5, life = { 0.15, 0.25 }, speed = { 0, 0 }, bright = 3, light = 1, lock = true },
 }
+
+local function colorsFor(col: string, pal: Pal, hue: number?): ColorSequence
+	if hue then
+		local a, b = Color3.fromHSV(hue, 0.7, 1), Color3.fromHSV((hue + 0.18) % 1, 0.7, 1)
+		return ColorSequence.new(if col == "glow" then Color3.new(1, 1, 1):Lerp(a, 0.3) else a, b)
+	end
+	if col == "main" then
+		return ColorSequence.new(pal.main)
+	elseif col == "second" then
+		return ColorSequence.new(pal.second)
+	elseif col == "glow" then
+		return ColorSequence.new(pal.glow)
+	elseif col == "hot" then
+		return ColorSequence.new(pal.glow, pal.main)
+	end
+	return ColorSequence.new(pal.main, pal.second)
+end
+
+local function keys(list: { { number } }, k: number, unit: boolean?): NumberSequence
+	local t = {}
+	for _, kp in list do
+		table.insert(t, { kp[1], kp[2], 0 })
+	end
+	return seq(t, k, unit)
+end
+
+-- a layer -> a live emitter on `parent`, sizes and speeds times `k`
+local function layer(L: Layer, parent: Instance, pal: Pal, k: number, hue: number?): ParticleEmitter
+	local e = Instance.new("ParticleEmitter")
+	e.Name = "ClassVfx"
+	e.Enabled = false
+	local t = TEX[L.tex]
+	e.Texture = t[1]
+	if t[2] then
+		e.FlipbookLayout = (Enum.ParticleFlipbookLayout :: any)[t[2]]
+		e.FlipbookMode = (Enum.ParticleFlipbookMode :: any)[t[3] or "OneShot"]
+		e.FlipbookStartRandom = t[3] == "Loop"
+	end
+	e.Color = colorsFor(L.col, pal, hue)
+	e.Size = keys(L.sizes, k)
+	e.Transparency = keys(L.fade or { { 0, 0.15 }, { 1, 1 } }, 1, true)
+	e.Rate = L.rate
+	e.Lifetime = NumberRange.new(L.life[1], L.life[2])
+	local sp = L.speed or { 0, 0 }
+	e.Speed = NumberRange.new(sp[1] * k, sp[2] * k)
+	e.Acceleration = Vector3.new(0, (L.up or 0) * k, 0)
+	e.SpreadAngle = Vector2.new(L.spread or 0, L.spread or 0)
+	e.EmissionDirection = Enum.NormalId.Top
+	e.LightEmission = L.light or 1
+	e.LightInfluence = 0
+	e.Brightness = L.bright or 2
+	e.Drag = L.drag or 0
+	e.LockedToPart = L.lock == true
+	if L.spin then
+		e.RotSpeed = NumberRange.new(-L.spin, L.spin)
+	end
+	if L.spin or L.rot then
+		e.Rotation = NumberRange.new(0, 360)
+	end
+	if L.flat then
+		-- (lying on the ground: perpendicular to a tiny upward drift)
+		e.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
+		e.Speed = NumberRange.new(0.01, 0.01)
+		e.Acceleration = Vector3.zero
+		e.SpreadAngle = Vector2.zero
+		e.RotSpeed = NumberRange.new(L.spin or 0, L.spin or 0)
+	elseif L.orient then
+		e.Orientation = (Enum.ParticleOrientation :: any)[L.orient]
+	end
+	e.Parent = parent
+	return e
+end
+
+local function allowed(L: Layer, id: string, rank: number): boolean
+	if L.only then
+		return L.only[id] == true
+	end
+	return rank >= (L.from or 1)
+end
 
 type Worn = {
 	player: Player,
@@ -308,23 +405,23 @@ end
 local function buildBody(w: Worn)
 	clear(w)
 	local root = w.char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = w.char:FindFirstChildOfClass("Humanoid")
 	if not root then
 		return
 	end
 	local pal = palOf(w.id)
 	local rank = rankOf(w.id)
-	local aura = Packs.LoveAura
+	-- the ground point: under the HumanoidRootPart, where the feet are (it moves with you)
+	local feet = Instance.new("Attachment")
+	feet.Name = "ClassVfxFeet"
+	local hip = if hum and hum.RigType == Enum.HumanoidRigType.R15 then hum.HipHeight else 2
+	feet.Position = Vector3.new(0, -(root.Size.Y / 2 + hip) + 0.15, 0)
+	feet.Parent = root
+	w.holder = feet
 	local count = 0
-	for i, layer in BODY_LAYERS do
-		local idx, from, o = layer[1] :: number, layer[2] :: number, layer[3] :: Opts
-		local d = aura[idx]
-		if d and rank >= from and not (lowFx() and count >= LOW_LAYERS) then
-			local oo = table.clone(o)
-			oo.hue = hueFor(pal, i)
-			-- (the pack's box emitters filled a 10 x 7 x 7 box round a character: the HumanoidRootPart's own 2 x 2 x 1
-			-- is what's there, so those come off it; the point ones off its centre)
-			local e = emitter(d, root, pal, oo)
-			e.Name = "ClassVfx"
+	for i, L in BODY_LAYERS do
+		if allowed(L, w.id, rank) and not (lowFx() and count >= LOW_LAYERS) then
+			local e = layer(L, if L.at == "feet" then feet else root, pal, 1, hueFor(pal, i))
 			table.insert(w.emitters, e)
 			count += 1
 		end
@@ -361,7 +458,6 @@ local function buildHands(arms: Instance, id: string)
 	hands.id = id
 	local pal = palOf(id)
 	local rank = rankOf(id)
-	local aura = Packs.LoveAura
 	for _, side in { "Right", "Left" } do
 		local hand = arms:FindFirstChild(side .. "Hand") or arms:FindFirstChild(side .. " Arm")
 		if hand and hand:IsA("BasePart") then
@@ -370,15 +466,13 @@ local function buildHands(arms: Instance, id: string)
 			-- (an R6 arm is the whole arm: its fist is the bottom end)
 			at.Position = if hand.Name:find("Arm") then Vector3.new(0, -hand.Size.Y / 2, 0) else Vector3.zero
 			at.Parent = hand
-			for i, layer in HAND_LAYERS do
-				local idx, from, o = layer[1] :: number, layer[2] :: number, layer[3] :: Opts
-				if aura[idx] and rank >= from and not (lowFx() and i > 2) then
-					local oo = table.clone(o)
-					oo.hue = hueFor(pal, i)
-					local e = emitter(aura[idx], at, pal, oo)
-					e.Name = "ClassVfx"
+			local n = 0
+			for i, L in HAND_LAYERS do
+				if allowed(L, id, rank) and not (lowFx() and n >= 2) then
+					local e = layer(L, at, pal, 1, hueFor(pal, i))
 					e.Enabled = true
 					table.insert(hands.list, e)
+					n += 1
 				end
 			end
 		end
@@ -461,7 +555,7 @@ local live = Instance.new("Folder")
 live.Name = "ClassVfxLive"
 live.Parent = workspace
 
-local GROUND = { "Shock", "WaterRippleMain", "crescents", "leftover1", "Lines", "Dots" }
+local GROUND = { "Shock", "WaterRippleMain", "crescents", "leftover1", "Lines", "Dots", "GroundFlower" }
 local BURST = { "Crescents", "Ground", "Cres", "Spark", "SparkOnGround", "Shard", "ToonLightning5", "Crescent" }
 local BEAM = { "MainBeam1", "ShadeBeam1", "ShadeBeam2" }
 

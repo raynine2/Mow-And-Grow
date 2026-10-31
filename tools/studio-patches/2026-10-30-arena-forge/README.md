@@ -33,3 +33,11 @@ Backups first: `ServerStorage.MowALawnBackups.pre_arenaforge_30oct` (ArenaGrand,
 
 Checked in a Studio run: all eight arenas built with no warnings (1-7 ForgeGUI, 8 voxel), looked at from above, inside
 and outside the gate; a Dandelion King fight: the gate's glitch barrier closes inside the arch, kill clean.
+
+## Then: no green glow over the altars (31 Oct, owner, with a picture: "remove green part")
+
+The summon pad's neon disc lay over the ForgeGUI altar's own glowing circle (bright in the area's colour when the boss
+is ready). On a ForgeGUI altar the disc now stays hidden in every state (`OnAltar` attribute, `BossArena.setPad`); the
+words over it and the boss wake-up circle (client/BossOmen) stay; the pad is read by distance, so nothing else changes.
+`5_BossArena_padhide` (replaces 31292 655942996; applied, Studio = git 31687 1815890513). Checked in Play: all seven
+ForgeGUI altars show only their own circle.

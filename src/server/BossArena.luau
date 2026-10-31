@@ -444,6 +444,10 @@ local function build(world: Instance, folder: Instance, z: number): Arena?
 	if forge then
 		ArenaForge.altar(ctx, padPos)
 		padRing.Transparency = 1
+		-- (31 Oct, owner, with a picture of the green glow over the altar's circle: "remove green part") the pad's
+		-- disc stays hidden on a ForgeGUI altar (its own circle glows); the words over it stay (setPad)
+		pad:SetAttribute("OnAltar", true)
+		pad.Transparency = 1
 	elseif ctx then
 		ArenaDress.altar(ctx, padPos)
 		padRing.Transparency = 1
@@ -673,6 +677,9 @@ function BossArena.setPad(z: number, mode: string, text: string?)
 	else
 		a.pad.Color = C(120, 120, 120)
 		a.pad.Transparency = if mode == "busy" then 1 else 0.6
+	end
+	if a.pad:GetAttribute("OnAltar") then
+		a.pad.Transparency = 1 -- (31 Oct) on a ForgeGUI altar only its own circle shows
 	end
 	if label then
 		label.Text = text

@@ -249,7 +249,8 @@ end
 -- The packs' textures that suit a garden (the LoveAura pack is mostly hearts: none of those), with their own
 -- flipbooks; how each moves is ours (the packs' own settings are for one big skill, not an aura worn all day).
 local TEX = {
-	mote = { "rbxassetid://12942158384" }, -- LoveAura: a soft glowing dot
+	mote = { "rbxassetid://12942158384" }, -- LoveAura: a glowing dot (small in its square: sizes are ~3x what shows)
+	glow = { "rbxassetid://128340073434367" }, -- (the game's own soft round glow, shared/BossFxIds.glow)
 	star = { "rbxassetid://17062452122" }, -- LoveAura: a four-point sparkle
 	spike = { "rbxassetid://17538052796" }, -- LoveAura: a tall thin flare
 	bolt = { "rbxassetid://118305486979110", "Grid4x4" }, -- LoveAura: lightning flicks
@@ -270,7 +271,7 @@ local TEX = {
 type Layer = { [string]: any }
 local FADE = { { 0, 1 }, { 0.15, 0.1 }, { 0.75, 0.25 }, { 1, 1 } }
 local BODY_LAYERS: { Layer } = {
-	{ tex = "mote", from = 1, at = "body", col = "grad", sizes = { { 0, 0 }, { 0.3, 0.32 }, { 1, 0 } }, rate = 12, life = { 1.2, 2 }, speed = { 0.6, 1.6 }, up = 1.6, spread = 30, bright = 2.2, light = 0.6 },
+	{ tex = "mote", from = 1, at = "body", col = "grad", sizes = { { 0, 0 }, { 0.3, 0.8 }, { 1, 0 } }, rate = 12, life = { 1.2, 2 }, speed = { 0.6, 1.6 }, up = 1.6, spread = 30, bright = 2.2, light = 0.6 },
 	{ tex = "star", from = 1, at = "body", col = "glow", sizes = { { 0, 0 }, { 0.5, 0.6 }, { 1, 0 } }, rate = 3, life = { 0.35, 0.6 }, speed = { 0, 0.2 }, spin = 60, bright = 2.5, light = 0.8 },
 	{ tex = "bloom", only = { Gardener = true, UltimateGardener = true }, at = "body", col = "second", sizes = { { 0, 0.2 }, { 0.5, 0.5 }, { 1, 0.35 } }, rate = 2.2, life = { 1.2, 1.8 }, speed = { 0.4, 1 }, up = 0.5, spread = 180, spin = 40, bright = 1.4, light = 0.4, fade = FADE },
 	{ tex = "petal", only = { LawnLegend = true, Gardener = true }, at = "body", col = "main", sizes = { { 0, 0.32 }, { 1, 0.24 } }, rate = 3, life = { 1.6, 2.6 }, speed = { 1, 2.5 }, up = -0.8, spread = 180, spin = 120, bright = 1.4, light = 0.3, drag = 1, fade = FADE },
@@ -288,14 +289,14 @@ local LOW_LAYERS = 3 -- phones / Potato Mode: only this many layers (the cheapes
 
 -- the first-person hands: small, on the fists, most of it stuck to them (so turning doesn't smear it)
 local HAND_LAYERS: { Layer } = {
-	{ tex = "mote", from = 1, col = "main", sizes = { { 0, 0.32 }, { 1, 0.42 } }, rate = 5, life = { 0.3, 0.5 }, speed = { 0, 0 }, bright = 1.6, light = 1, lock = true, fade = { { 0, 1 }, { 0.3, 0.55 }, { 1, 1 } } },
-	{ tex = "mote", from = 1, col = "grad", sizes = { { 0, 0 }, { 0.3, 0.07 }, { 1, 0 } }, rate = 9, life = { 0.5, 0.9 }, speed = { 0.2, 0.6 }, up = 0.9, spread = 60, bright = 2.2, light = 1 },
-	{ tex = "star", from = 2, col = "glow", sizes = { { 0, 0 }, { 0.5, 0.16 }, { 1, 0 } }, rate = 3, life = { 0.2, 0.4 }, speed = { 0, 0 }, spin = 90, bright = 2.6, light = 1, lock = true },
-	{ tex = "flame", from = 3, col = "grad", sizes = { { 0, 0.1 }, { 0.35, 0.2 }, { 1, 0.05 } }, rate = 12, life = { 0.25, 0.45 }, speed = { 0.3, 0.7 }, up = 1.2, spread = 15, bright = 2, light = 0.9, orient = "VelocityParallel", fade = { { 0, 0.6 }, { 0.2, 0.15 }, { 1, 1 } } },
-	{ tex = "runes", from = 3, col = "main", sizes = { { 0, 0 }, { 0.2, 0.1 }, { 1, 0 } }, rate = 2.5, life = { 0.8, 1.2 }, speed = { 0.15, 0.35 }, up = 0.3, spread = 60, bright = 2.2, light = 1 },
-	{ tex = "petal", only = { LawnLegend = true, Gardener = true }, col = "main", sizes = { { 0, 0.07 }, { 1, 0.05 } }, rate = 3, life = { 0.8, 1.3 }, speed = { 0.2, 0.5 }, up = -0.2, spread = 180, spin = 160, bright = 1.4, light = 0.3, fade = FADE },
-	{ tex = "bolt", from = 5, col = "hot", sizes = { { 0, 0.14 }, { 1, 0.24 } }, rate = 3.5, life = { 0.15, 0.3 }, speed = { 0, 0 }, bright = 2.8, light = 1, lock = true, rot = true },
-	{ tex = "spike", from = 6, col = "hot", sizes = { { 0, 0 }, { 0.4, 0.3 }, { 1, 0 } }, rate = 2.5, life = { 0.15, 0.25 }, speed = { 0, 0 }, bright = 3, light = 1, lock = true },
+	{ tex = "glow", from = 1, col = "main", sizes = { { 0, 0.55 }, { 1, 0.75 } }, rate = 6, life = { 0.3, 0.5 }, speed = { 0, 0 }, bright = 1.4, light = 0.6, lock = true, fade = { { 0, 1 }, { 0.3, 0.45 }, { 1, 1 } } },
+	{ tex = "mote", from = 1, col = "grad", sizes = { { 0, 0 }, { 0.3, 0.22 }, { 1, 0 } }, rate = 9, life = { 0.5, 0.9 }, speed = { 0.2, 0.6 }, up = 0.9, spread = 60, bright = 2.2, light = 1 },
+	{ tex = "star", from = 2, col = "glow", sizes = { { 0, 0 }, { 0.5, 0.3 }, { 1, 0 } }, rate = 3, life = { 0.2, 0.4 }, speed = { 0, 0 }, spin = 90, bright = 2.6, light = 1, lock = true },
+	{ tex = "flame", from = 3, col = "grad", sizes = { { 0, 0.18 }, { 0.35, 0.34 }, { 1, 0.08 } }, rate = 14, life = { 0.25, 0.45 }, speed = { 0.3, 0.7 }, up = 1.2, spread = 15, bright = 2, light = 0.9, orient = "VelocityParallel", fade = { { 0, 0.6 }, { 0.2, 0.15 }, { 1, 1 } } },
+	{ tex = "runes", from = 3, col = "main", sizes = { { 0, 0 }, { 0.2, 0.18 }, { 1, 0 } }, rate = 2.5, life = { 0.8, 1.2 }, speed = { 0.15, 0.35 }, up = 0.3, spread = 60, bright = 2.2, light = 1 },
+	{ tex = "petal", only = { LawnLegend = true, Gardener = true }, col = "main", sizes = { { 0, 0.13 }, { 1, 0.09 } }, rate = 3, life = { 0.8, 1.3 }, speed = { 0.2, 0.5 }, up = -0.2, spread = 180, spin = 160, bright = 1.4, light = 0.3, fade = FADE },
+	{ tex = "bolt", from = 5, col = "hot", sizes = { { 0, 0.25 }, { 1, 0.4 } }, rate = 3.5, life = { 0.15, 0.3 }, speed = { 0, 0 }, bright = 2.8, light = 1, lock = true, rot = true },
+	{ tex = "spike", from = 6, col = "hot", sizes = { { 0, 0 }, { 0.4, 0.5 }, { 1, 0 } }, rate = 2.5, life = { 0.15, 0.25 }, speed = { 0, 0 }, bright = 3, light = 1, lock = true },
 }
 
 local function colorsFor(col: string, pal: Pal, hue: number?): ColorSequence
@@ -819,7 +820,7 @@ RunService.RenderStepped:Connect(function(dt)
 		f.BackgroundTransparency = tr
 	end
 	for _, c in corners do
-		c.ImageTransparency = if show and c.Image ~= "" then math.min(0.35 + 0.05 * math.sin(t * 1.6), 1 - screen.flare) else 1
+		c.ImageTransparency = if show and c.Image ~= "" then math.min(0.5 + 0.06 * math.sin(t * 1.6), 1 - screen.flare) else 1
 	end
 end)
 

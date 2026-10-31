@@ -287,16 +287,17 @@ local BODY_LAYERS: { Layer } = {
 }
 local LOW_LAYERS = 3 -- phones / Potato Mode: only this many layers (the cheapest first)
 
--- the first-person hands: small, on the fists, most of it stuck to them (so turning doesn't smear it)
+-- the first-person hands: on the fists, most of it stuck to them (so turning doesn't smear it). Mostly drawn
+-- unlit (low `light`): the ViewModel's fists are lit near-white, and glowing (additive) colour vanished on them.
 local HAND_LAYERS: { Layer } = {
-	{ tex = "glow", from = 1, col = "main", sizes = { { 0, 0.55 }, { 1, 0.75 } }, rate = 6, life = { 0.3, 0.5 }, speed = { 0, 0 }, bright = 1.4, light = 0.6, lock = true, fade = { { 0, 1 }, { 0.3, 0.45 }, { 1, 1 } } },
-	{ tex = "mote", from = 1, col = "grad", sizes = { { 0, 0 }, { 0.3, 0.22 }, { 1, 0 } }, rate = 9, life = { 0.5, 0.9 }, speed = { 0.2, 0.6 }, up = 0.9, spread = 60, bright = 2.2, light = 1 },
-	{ tex = "star", from = 2, col = "glow", sizes = { { 0, 0 }, { 0.5, 0.3 }, { 1, 0 } }, rate = 3, life = { 0.2, 0.4 }, speed = { 0, 0 }, spin = 90, bright = 2.6, light = 1, lock = true },
-	{ tex = "flame", from = 3, col = "grad", sizes = { { 0, 0.18 }, { 0.35, 0.34 }, { 1, 0.08 } }, rate = 14, life = { 0.25, 0.45 }, speed = { 0.3, 0.7 }, up = 1.2, spread = 15, bright = 2, light = 0.9, orient = "VelocityParallel", fade = { { 0, 0.6 }, { 0.2, 0.15 }, { 1, 1 } } },
-	{ tex = "runes", from = 3, col = "main", sizes = { { 0, 0 }, { 0.2, 0.18 }, { 1, 0 } }, rate = 2.5, life = { 0.8, 1.2 }, speed = { 0.15, 0.35 }, up = 0.3, spread = 60, bright = 2.2, light = 1 },
-	{ tex = "petal", only = { LawnLegend = true, Gardener = true }, col = "main", sizes = { { 0, 0.13 }, { 1, 0.09 } }, rate = 3, life = { 0.8, 1.3 }, speed = { 0.2, 0.5 }, up = -0.2, spread = 180, spin = 160, bright = 1.4, light = 0.3, fade = FADE },
-	{ tex = "bolt", from = 5, col = "hot", sizes = { { 0, 0.25 }, { 1, 0.4 } }, rate = 3.5, life = { 0.15, 0.3 }, speed = { 0, 0 }, bright = 2.8, light = 1, lock = true, rot = true },
-	{ tex = "spike", from = 6, col = "hot", sizes = { { 0, 0 }, { 0.4, 0.5 }, { 1, 0 } }, rate = 2.5, life = { 0.15, 0.25 }, speed = { 0, 0 }, bright = 3, light = 1, lock = true },
+	{ tex = "glow", from = 1, col = "main", sizes = { { 0, 0.6 }, { 1, 0.85 } }, rate = 6, life = { 0.3, 0.5 }, speed = { 0, 0 }, bright = 1.2, light = 0.1, lock = true, fade = { { 0, 1 }, { 0.3, 0.55 }, { 1, 1 } } },
+	{ tex = "mote", from = 1, col = "grad", sizes = { { 0, 0 }, { 0.3, 0.26 }, { 1, 0 } }, rate = 9, life = { 0.5, 0.9 }, speed = { 0.2, 0.6 }, up = 0.9, spread = 60, bright = 2, light = 0.45 },
+	{ tex = "star", from = 2, col = "glow", sizes = { { 0, 0 }, { 0.5, 0.32 }, { 1, 0 } }, rate = 3, life = { 0.2, 0.4 }, speed = { 0, 0 }, spin = 90, bright = 2.4, light = 0.6, lock = true },
+	{ tex = "flame", from = 3, col = "grad", sizes = { { 0, 0.22 }, { 0.35, 0.42 }, { 1, 0.1 } }, rate = 14, life = { 0.25, 0.45 }, speed = { 0.3, 0.7 }, up = 1.2, spread = 15, bright = 1.6, light = 0.25, orient = "VelocityParallel", fade = { { 0, 0.5 }, { 0.2, 0.1 }, { 1, 1 } } },
+	{ tex = "runes", from = 3, col = "main", sizes = { { 0, 0 }, { 0.2, 0.2 }, { 1, 0 } }, rate = 2.5, life = { 0.8, 1.2 }, speed = { 0.15, 0.35 }, up = 0.3, spread = 60, bright = 2, light = 0.4 },
+	{ tex = "petal", only = { LawnLegend = true, Gardener = true }, col = "main", sizes = { { 0, 0.14 }, { 1, 0.1 } }, rate = 3, life = { 0.8, 1.3 }, speed = { 0.2, 0.5 }, up = -0.2, spread = 180, spin = 160, bright = 1.3, light = 0.1, fade = FADE },
+	{ tex = "bolt", from = 5, col = "hot", sizes = { { 0, 0.28 }, { 1, 0.42 } }, rate = 3.5, life = { 0.15, 0.3 }, speed = { 0, 0 }, bright = 2.4, light = 0.5, lock = true, rot = true },
+	{ tex = "spike", from = 6, col = "hot", sizes = { { 0, 0 }, { 0.4, 0.5 }, { 1, 0 } }, rate = 2.5, life = { 0.15, 0.25 }, speed = { 0, 0 }, bright = 2.6, light = 0.6, lock = true },
 }
 
 -- first person: a few motes drifting past the edges of your view (in the world, so they hang in the air as you
@@ -489,7 +490,7 @@ local hands = {
 	views = {} :: { BasePart },
 	arms = nil :: Instance?,
 }
-local HAND_LIGHT = 2.2 -- (the class's colour on your fists, over the ViewModel's own white HandLight)
+local HAND_LIGHT = 3 -- (the class's colour on your fists, over the ViewModel's own white HandLight)
 local function clearHands()
 	for _, e in hands.list do
 		e:Destroy()
@@ -549,12 +550,18 @@ local function buildHands(arms: Instance, id: string)
 					n += 1
 				end
 			end
+			-- (its own attachment, kept between the fist and the camera every frame: from inside the fist the light
+			-- lit none of the faces you see)
+			local la = Instance.new("Attachment")
+			la.Name = "ClassVfxHandLight"
+			la.Parent = hand
+			table.insert(hands.atts, la)
 			local light = Instance.new("PointLight")
 			light.Color = pal.main
 			light.Brightness = HAND_LIGHT
-			light.Range = 3.2
+			light.Range = 2.6
 			light.Shadows = false
-			light.Parent = at
+			light.Parent = la
 			table.insert(hands.lights, light)
 		end
 	end
@@ -892,6 +899,11 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	for _, v in hands.views do
 		v.CFrame = cam.CFrame * CFrame.new((v:GetAttribute("Side") :: number) * 6.5, 0.5, -8)
+	end
+	for _, l in hands.lights do
+		local la = l.Parent :: Attachment
+		local hand = la.Parent :: BasePart
+		la.WorldPosition = hand.Position + (camPos - hand.Position).Unit * 0.9
 	end
 	-- the screen: a faint rest, a flare that fades (equip, gimmicks); only in first person
 	screen.flare = math.max(0, screen.flare - dt * 0.9)

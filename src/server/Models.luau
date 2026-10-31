@@ -159,6 +159,13 @@ local function buildFromParts(name: string, spec: { materials: { string }, parts
 		part.CanTouch = false
 		part.Parent = model
 	end
+	-- (30 Oct) effects plain part data can't carry (lights, particles, glows): the spec's own dress()
+	if type((spec :: any).dress) == "function" then
+		local ok, err = pcall((spec :: any).dress, model)
+		if not ok then
+			warn(("[Models] %s dress: %s"):format(name, tostring(err)))
+		end
+	end
 	model.WorldPivot = CFrame.new()
 	model.Parent = folder
 	return model
@@ -461,14 +468,23 @@ function Models.loadAll(timeout: number?)
 	end
 	-- models that aren't uploaded but have a native-part version (PartModels) are built from that
 	local built = 0
+	-- (30 Oct) a spec with `prefer` replaces even a loaded upload (the Mega Scythe: its part version was reworked
+	-- after the upload, so the old mesh would bring back the blade curling over the hands)
 	for _, module in partModels and partModels:GetChildren() or {} do
-		if module:IsA("ModuleScript") and not templates[module.Name] then
+		if module:IsA("ModuleScript") then
 			local ok, err = pcall(function()
-				templates[module.Name] = buildFromParts(module.Name, require(module) :: any)
-			end)
-			if ok then
+				local spec = require(module) :: any
+				local old = templates[module.Name]
+				if old and not spec.prefer then
+					return
+				end
+				templates[module.Name] = buildFromParts(module.Name, spec)
 				built += 1
-			else
+				if old then
+					old:Destroy()
+				end
+			end)
+			if not ok then
 				warn(("[Models] couldn't build %s from parts: %s"):format(module.Name, tostring(err)))
 			end
 		end

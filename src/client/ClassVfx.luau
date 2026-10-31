@@ -270,18 +270,18 @@ local TEX = {
 type Layer = { [string]: any }
 local FADE = { { 0, 1 }, { 0.15, 0.1 }, { 0.75, 0.25 }, { 1, 1 } }
 local BODY_LAYERS: { Layer } = {
-	{ tex = "mote", from = 1, at = "body", col = "grad", sizes = { { 0, 0 }, { 0.3, 0.32 }, { 1, 0 } }, rate = 7, life = { 1.2, 2 }, speed = { 1, 2.4 }, up = 2.2, spread = 30, bright = 2, light = 1 },
-	{ tex = "star", from = 1, at = "body", col = "glow", sizes = { { 0, 0 }, { 0.5, 0.55 }, { 1, 0 } }, rate = 2.5, life = { 0.35, 0.6 }, speed = { 0, 0.2 }, spin = 60, bright = 3, light = 1 },
+	{ tex = "mote", from = 1, at = "body", col = "grad", sizes = { { 0, 0 }, { 0.3, 0.32 }, { 1, 0 } }, rate = 12, life = { 1.2, 2 }, speed = { 0.6, 1.6 }, up = 1.6, spread = 30, bright = 2.2, light = 0.6 },
+	{ tex = "star", from = 1, at = "body", col = "glow", sizes = { { 0, 0 }, { 0.5, 0.6 }, { 1, 0 } }, rate = 3, life = { 0.35, 0.6 }, speed = { 0, 0.2 }, spin = 60, bright = 2.5, light = 0.8 },
 	{ tex = "bloom", only = { Gardener = true, UltimateGardener = true }, at = "body", col = "second", sizes = { { 0, 0.2 }, { 0.5, 0.5 }, { 1, 0.35 } }, rate = 2.2, life = { 1.2, 1.8 }, speed = { 0.4, 1 }, up = 0.5, spread = 180, spin = 40, bright = 1.4, light = 0.4, fade = FADE },
 	{ tex = "petal", only = { LawnLegend = true, Gardener = true }, at = "body", col = "main", sizes = { { 0, 0.32 }, { 1, 0.24 } }, rate = 3, life = { 1.6, 2.6 }, speed = { 1, 2.5 }, up = -0.8, spread = 180, spin = 120, bright = 1.4, light = 0.3, drag = 1, fade = FADE },
-	{ tex = "runes", from = 3, at = "body", col = "main", sizes = { { 0, 0 }, { 0.2, 0.42 }, { 0.8, 0.36 }, { 1, 0 } }, rate = 2.6, life = { 1.4, 2.2 }, speed = { 0.6, 1.2 }, up = 0.6, spread = 35, bright = 2.4, light = 1 },
-	{ tex = "flame", from = 4, at = "body", col = "grad", sizes = { { 0, 0.5 }, { 0.35, 1.25 }, { 1, 0.3 } }, rate = 8, life = { 0.55, 0.85 }, speed = { 2.5, 4.5 }, up = 3, spread = 12, bright = 2.2, light = 0.85, orient = "VelocityParallel", fade = { { 0, 0.6 }, { 0.2, 0.15 }, { 1, 1 } } },
-	{ tex = "spike", from = 4, at = "body", col = "hot", sizes = { { 0, 0 }, { 0.4, 1.3 }, { 1, 0 } }, rate = 2, life = { 0.15, 0.25 }, speed = { 0, 0 }, bright = 3, light = 1 },
-	{ tex = "circle", from = 5, at = "feet", col = "main", sizes = { { 0, 6.2 }, { 1, 6.8 } }, rate = 0.55, life = { 3, 3 }, spin = 22, flat = true, bright = 2, light = 1, lock = true, fade = { { 0, 1 }, { 0.25, 0.35 }, { 0.75, 0.35 }, { 1, 1 } } },
-	{ tex = "bolt", from = 5, at = "body", col = "hot", sizes = { { 0, 0.9 }, { 1, 1.5 } }, rate = 3, life = { 0.2, 0.35 }, speed = { 0, 0 }, bright = 3, light = 1, rot = true },
-	{ tex = "swirl", from = 6, at = "feet", col = "second", sizes = { { 0, 4.5 }, { 1, 7.5 } }, rate = 1.1, life = { 1, 1.2 }, spin = 120, flat = true, bright = 2, light = 1, lock = true, fade = { { 0, 1 }, { 0.3, 0.3 }, { 1, 1 } } },
-	{ tex = "flame", from = 6, at = "body", col = "hot", sizes = { { 0, 0.35 }, { 0.4, 0.9 }, { 1, 0.2 } }, rate = 6, life = { 0.4, 0.7 }, speed = { 4, 6 }, up = 4, spread = 25, bright = 2.4, light = 1, orient = "VelocityParallel", fade = { { 0, 0.5 }, { 0.25, 0.1 }, { 1, 1 } } },
-	{ tex = "ring", from = 7, at = "feet", col = "glow", sizes = { { 0, 3 }, { 1, 8.5 } }, rate = 1.3, life = { 1.1, 1.3 }, spin = 40, flat = true, bright = 2.5, light = 1, lock = true, fade = { { 0, 0.4 }, { 1, 1 } } },
+	{ tex = "runes", from = 3, at = "body", col = "main", sizes = { { 0, 0 }, { 0.2, 0.42 }, { 0.8, 0.36 }, { 1, 0 } }, rate = 4, life = { 1.4, 2.2 }, speed = { 0.4, 0.9 }, up = 0.5, spread = 35, bright = 2, light = 0.5 },
+	{ tex = "flame", from = 4, at = "body", col = "grad", sizes = { { 0, 0.6 }, { 0.4, 1.35 }, { 1, 0.3 } }, rate = 18, life = { 0.5, 0.8 }, speed = { 0.3, 0.9 }, up = 2, spread = 12, bright = 1.8, light = 0.4, fade = { { 0, 0.6 }, { 0.2, 0.1 }, { 1, 1 } } },
+	{ tex = "spike", from = 4, at = "body", col = "hot", sizes = { { 0, 0 }, { 0.4, 1.4 }, { 1, 0 } }, rate = 2.5, life = { 0.15, 0.25 }, speed = { 0, 0 }, bright = 2.5, light = 0.7 },
+	{ tex = "circle", from = 5, at = "feet", col = "main", sizes = { { 0, 6.2 }, { 1, 6.8 } }, rate = 0.55, life = { 3, 3 }, spin = 22, flat = true, bright = 2, light = 0.6, lock = true, fade = { { 0, 1 }, { 0.25, 0.35 }, { 0.75, 0.35 }, { 1, 1 } } },
+	{ tex = "bolt", from = 5, at = "body", col = "hot", sizes = { { 0, 0.9 }, { 1, 1.5 } }, rate = 3.5, life = { 0.2, 0.35 }, speed = { 0, 0 }, bright = 2.6, light = 0.6, rot = true },
+	{ tex = "swirl", from = 6, at = "feet", col = "second", sizes = { { 0, 4.5 }, { 1, 7.5 } }, rate = 1.1, life = { 1, 1.2 }, spin = 120, flat = true, bright = 2, light = 0.6, lock = true, fade = { { 0, 1 }, { 0.3, 0.3 }, { 1, 1 } } },
+	{ tex = "flame", from = 6, at = "body", col = "hot", sizes = { { 0, 0.4 }, { 0.4, 1 }, { 1, 0.2 } }, rate = 10, life = { 0.4, 0.7 }, speed = { 1, 2 }, up = 3, spread = 25, bright = 2, light = 0.55, fade = { { 0, 0.5 }, { 0.25, 0.1 }, { 1, 1 } } },
+	{ tex = "ring", from = 7, at = "feet", col = "glow", sizes = { { 0, 3 }, { 1, 8.5 } }, rate = 1.3, life = { 1.1, 1.3 }, spin = 40, flat = true, bright = 2.2, light = 0.7, lock = true, fade = { { 0, 0.4 }, { 1, 1 } } },
 	{ tex = "petal", from = 7, at = "body", col = "grad", sizes = { { 0, 0.3 }, { 1, 0.22 } }, rate = 4, life = { 1.5, 2.4 }, speed = { 1.5, 3 }, up = -0.5, spread = 180, spin = 140, bright = 1.6, light = 0.5, drag = 1, fade = FADE },
 }
 local LOW_LAYERS = 3 -- phones / Potato Mode: only this many layers (the cheapest first)
@@ -383,6 +383,7 @@ type Worn = {
 	id: string,
 	emitters: { ParticleEmitter },
 	holder: Attachment?,
+	shell: BasePart?,
 	on: boolean,
 }
 local worn: { [Player]: Worn } = {}
@@ -395,6 +396,10 @@ local function clear(w: Worn)
 	if w.holder then
 		w.holder:Destroy()
 		w.holder = nil
+	end
+	if w.shell then
+		w.shell:Destroy()
+		w.shell = nil
 	end
 end
 
@@ -418,10 +423,28 @@ local function buildBody(w: Worn)
 	feet.Position = Vector3.new(0, -(root.Size.Y / 2 + hip) + 0.15, 0)
 	feet.Parent = root
 	w.holder = feet
+	-- the body layers come off a box round the whole body (welded to it, this screen only): off the
+	-- HumanoidRootPart itself they started inside the torso and only showed once they rose over your head
+	local shell = Instance.new("Part")
+	shell.Name = "ClassVfxShell"
+	shell.Size = Vector3.new(3.2, 5.6, 2.4)
+	shell.Transparency = 1
+	shell.CanCollide = false
+	shell.CanQuery = false
+	shell.CanTouch = false
+	shell.CastShadow = false
+	shell.Massless = true
+	shell.CFrame = root.CFrame * CFrame.new(0, -0.4, 0)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = root
+	weld.Part1 = shell
+	weld.Parent = shell
+	shell.Parent = w.char
+	w.shell = shell
 	local count = 0
 	for i, L in BODY_LAYERS do
 		if allowed(L, w.id, rank) and not (lowFx() and count >= LOW_LAYERS) then
-			local e = layer(L, if L.at == "feet" then feet else root, pal, 1, hueFor(pal, i))
+			local e = layer(L, if L.at == "feet" then feet else shell, pal, 1, hueFor(pal, i))
 			table.insert(w.emitters, e)
 			count += 1
 		end
@@ -681,7 +704,7 @@ local function wear(p: Player, fresh: boolean)
 		return
 	end
 	if not old then
-		local w: Worn = { player = p, char = char, id = id, emitters = {}, holder = nil, on = false }
+		local w: Worn = { player = p, char = char, id = id, emitters = {}, holder = nil, shell = nil, on = false }
 		worn[p] = w
 		buildBody(w)
 	end

@@ -299,6 +299,15 @@ local HAND_LAYERS: { Layer } = {
 	{ tex = "spike", from = 6, col = "hot", sizes = { { 0, 0 }, { 0.4, 0.5 }, { 1, 0 } }, rate = 2.5, life = { 0.15, 0.25 }, speed = { 0, 0 }, bright = 3, light = 1, lock = true },
 }
 
+-- first person: a few motes drifting past the edges of your view (in the world, so they hang in the air as you
+-- turn; out at the sides, so they never cover what you're mowing)
+local VIEW_LAYERS: { Layer } = {
+	{ tex = "mote", from = 1, col = "grad", sizes = { { 0, 0 }, { 0.3, 0.55 }, { 1, 0 } }, rate = 3, life = { 1.8, 2.8 }, speed = { 0.2, 0.5 }, up = 0.35, spread = 180, bright = 2, light = 0.6 },
+	{ tex = "star", from = 3, col = "glow", sizes = { { 0, 0 }, { 0.5, 0.35 }, { 1, 0 } }, rate = 1.2, life = { 0.4, 0.7 }, speed = { 0, 0.1 }, spin = 60, bright = 2.5, light = 0.8 },
+	{ tex = "petal", only = { LawnLegend = true, Gardener = true }, col = "main", sizes = { { 0, 0.22 }, { 1, 0.16 } }, rate = 1.4, life = { 2, 3 }, speed = { 0.3, 0.8 }, up = -0.6, spread = 180, spin = 120, bright = 1.4, light = 0.3, drag = 0.6, fade = FADE },
+	{ tex = "flame", from = 6, col = "grad", sizes = { { 0, 0.1 }, { 0.4, 0.3 }, { 1, 0 } }, rate = 2, life = { 0.6, 0.9 }, speed = { 0.4, 0.9 }, up = 1.2, spread = 20, bright = 2, light = 0.5, fade = { { 0, 0.6 }, { 0.2, 0.2 }, { 1, 1 } } },
+}
+
 local function colorsFor(col: string, pal: Pal, hue: number?): ColorSequence
 	if hue then
 		local a, b = Color3.fromHSV(hue, 0.7, 1), Color3.fromHSV((hue + 0.18) % 1, 0.7, 1)
@@ -383,9 +392,10 @@ type Worn = {
 	char: Model,
 	id: string,
 	emitters: { ParticleEmitter },
+	ground: { [ParticleEmitter]: boolean }, -- (the flat layers round the feet: these stay on in first person)
 	holder: Attachment?,
 	shell: BasePart?,
-	on: boolean,
+	on: string, -- "off" / "all" / "ground"
 }
 local worn: { [Player]: Worn } = {}
 
@@ -394,6 +404,7 @@ local function clear(w: Worn)
 		e:Destroy()
 	end
 	table.clear(w.emitters)
+	table.clear(w.ground)
 	if w.holder then
 		w.holder:Destroy()
 		w.holder = nil
@@ -447,37 +458,69 @@ local function buildBody(w: Worn)
 		if allowed(L, w.id, rank) and not (lowFx() and count >= LOW_LAYERS) then
 			local e = layer(L, if L.at == "feet" then feet else shell, pal, 1, hueFor(pal, i))
 			table.insert(w.emitters, e)
+			if L.at == "feet" then
+				w.ground[e] = true
+			end
 			count += 1
 		end
 	end
-	w.on = false
+	w.on = "off"
 end
 
-local function setOn(w: Worn, on: boolean)
+-- "all", "off", or "ground" (your own in first person: only the circles on the ground, which you see looking down)
+local function setOn(w: Worn, on: string)
 	if w.on == on then
 		return
 	end
 	w.on = on
 	for _, e in w.emitters do
-		e.Enabled = on
+		e.Enabled = on == "all" or (on == "ground" and w.ground[e] == true)
 	end
 end
 
 -------------------------------------------------------------------------------------------------------------
 -- first person: the hands and the screen corners
 -------------------------------------------------------------------------------------------------------------
-local hands = { id = nil :: string?, list = {} :: { ParticleEmitter }, atts = {} :: { Attachment }, arms = nil :: Instance? }
+local hands = {
+	id = nil :: string?,
+	list = {} :: { ParticleEmitter },
+	atts = {} :: { Attachment },
+	lights = {} :: { PointLight },
+	views = {} :: { BasePart },
+	arms = nil :: Instance?,
+}
+local HAND_LIGHT = 2.2 -- (the class's colour on your fists, over the ViewModel's own white HandLight)
 local function clearHands()
 	for _, e in hands.list do
 		e:Destroy()
 	end
 	table.clear(hands.list)
 	for _, a in hands.atts do
-		a:Destroy()
+		a:Destroy() -- (and its light)
 	end
 	table.clear(hands.atts)
+	table.clear(hands.lights)
+	for _, v in hands.views do
+		v:Destroy()
+	end
+	table.clear(hands.views)
 	hands.arms = nil
 	hands.id = nil
+end
+
+-- the boxes at the sides of your view the drifting motes come off (moved with the camera every frame)
+local function viewBox(side: number): BasePart
+	local v = Instance.new("Part")
+	v.Name = "ClassVfxView"
+	v.Anchored = true
+	v.CanCollide = false
+	v.CanQuery = false
+	v.CanTouch = false
+	v.CastShadow = false
+	v.Transparency = 1
+	v.Size = Vector3.new(4, 8, 4)
+	v:SetAttribute("Side", side)
+	return v
 end
 
 local function buildHands(arms: Instance, id: string)
@@ -506,7 +549,30 @@ local function buildHands(arms: Instance, id: string)
 					n += 1
 				end
 			end
+			local light = Instance.new("PointLight")
+			light.Color = pal.main
+			light.Brightness = HAND_LIGHT
+			light.Range = 3.2
+			light.Shadows = false
+			light.Parent = at
+			table.insert(hands.lights, light)
 		end
+	end
+	if lowFx() then
+		return
+	end
+	local cam = workspace.CurrentCamera
+	for _, side in { -1, 1 } do
+		local v = viewBox(side)
+		for i, L in VIEW_LAYERS do
+			if allowed(L, id, rank) then
+				local e = layer(L, v, pal, 1, hueFor(pal, i))
+				e.Enabled = true
+			end
+		end
+		v.CFrame = cam.CFrame * CFrame.new(side * 6.5, 0.5, -8)
+		v.Parent = cam
+		table.insert(hands.views, v)
 	end
 end
 
@@ -628,11 +694,21 @@ local function burst(feet: Vector3, id: string, scale: number, inside: boolean?)
 		local e = emitter(d, g, pal, { scale = k * 0.32, bright = 4, hue = hueFor(pal, i) })
 		fire(e, d, budget)
 	end
-	-- the burst round the body
-	local b = holder(CFrame.new(feet + Vector3.new(0, 2.6, 0)), nil, 4)
+	-- the burst round the body (your own in first person: out in front of you, smaller, since round the camera it
+	-- covered the whole screen)
+	local at = feet + Vector3.new(0, 2.6, 0)
+	local bk = k * 0.16
+	local cam = workspace.CurrentCamera
+	if inside and cam then
+		local look = cam.CFrame.LookVector * Vector3.new(1, 0, 1)
+		look = if look.Magnitude > 0.05 then look.Unit else Vector3.zAxis
+		at = feet + look * 7 + Vector3.new(0, 1.6, 0)
+		bk *= 0.6
+	end
+	local b = holder(CFrame.new(at), nil, 4)
 	for i, d in pick("Explosion", BURST) do
 		if rank >= 3 or i <= 4 then
-			local e = emitter(d, b, pal, { scale = k * 0.16, bright = 4, life = 0.8, hue = hueFor(pal, i) })
+			local e = emitter(d, b, pal, { scale = bk, bright = 4, life = 0.8, hue = hueFor(pal, i) })
 			fire(e, d, budget)
 		end
 	end
@@ -691,6 +767,10 @@ local function equipScreen(id: string)
 	for _, e in hands.list do
 		e:Emit(6 + rank * 2)
 	end
+	for _, l in hands.lights do
+		l.Brightness = HAND_LIGHT * 4
+		TweenService:Create(l, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = HAND_LIGHT }):Play()
+	end
 	pcall(Sound.play, "reveal")
 	if rank >= RANK.Legendary then
 		pcall(Sound.play, "hatchLegend", nil, 0.6)
@@ -718,7 +798,7 @@ local function wear(p: Player, fresh: boolean)
 		return
 	end
 	if not old then
-		local w: Worn = { player = p, char = char, id = id, emitters = {}, holder = nil, shell = nil, on = false }
+		local w: Worn = { player = p, char = char, id = id, emitters = {}, ground = {}, holder = nil, shell = nil, on = "off" }
 		worn[p] = w
 		buildBody(w)
 	end
@@ -801,14 +881,17 @@ RunService.RenderStepped:Connect(function(dt)
 	for p, w in worn do
 		local root = w.char.PrimaryPart
 		local near = root ~= nil and (root.Position - camPos).Magnitude < FAR
-		setOn(w, near and not (p == player and fp))
+		setOn(w, if not near then "off" elseif p == player and fp then "ground" else "all")
 	end
 	-- the hands: built on client/ViewModel's arms while you're in first person with a class
 	local arms = if fp and mine then cam:FindFirstChild("ViewModel") and (cam :: any).ViewModel:FindFirstChild("Arms") else nil
 	if arms and mine and (hands.arms ~= arms or hands.id ~= mine.id or not arms:FindFirstChild("ClassVfxHand", true)) then
 		buildHands(arms, mine.id)
-	elseif not arms and #hands.list > 0 then
+	elseif not arms and #hands.atts > 0 then
 		clearHands()
+	end
+	for _, v in hands.views do
+		v.CFrame = cam.CFrame * CFrame.new((v:GetAttribute("Side") :: number) * 6.5, 0.5, -8)
 	end
 	-- the screen: a faint rest, a flare that fades (equip, gimmicks); only in first person
 	screen.flare = math.max(0, screen.flare - dt * 0.9)
@@ -830,7 +913,7 @@ function ClassVfx.preview(id: string?)
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local cls = id or player:GetAttribute("Class")
 	if root and type(cls) == "string" then
-		burst(root.Position - Vector3.new(0, 3, 0), cls, 1)
+		burst(root.Position - Vector3.new(0, 3, 0), cls, 1, firstPerson(char, workspace.CurrentCamera.CFrame.Position))
 		equipScreen(cls)
 	end
 end

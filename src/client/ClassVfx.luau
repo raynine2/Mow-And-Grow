@@ -288,7 +288,7 @@ local LOW_LAYERS = 3 -- phones / Potato Mode: only this many layers (the cheapes
 
 -- the first-person hands: small, on the fists, most of it stuck to them (so turning doesn't smear it)
 local HAND_LAYERS: { Layer } = {
-	{ tex = "mote", from = 1, col = "main", sizes = { { 0, 0.22 }, { 1, 0.3 } }, rate = 5, life = { 0.3, 0.5 }, speed = { 0, 0 }, bright = 1.6, light = 1, lock = true, fade = { { 0, 1 }, { 0.3, 0.55 }, { 1, 1 } } },
+	{ tex = "mote", from = 1, col = "main", sizes = { { 0, 0.32 }, { 1, 0.42 } }, rate = 5, life = { 0.3, 0.5 }, speed = { 0, 0 }, bright = 1.6, light = 1, lock = true, fade = { { 0, 1 }, { 0.3, 0.55 }, { 1, 1 } } },
 	{ tex = "mote", from = 1, col = "grad", sizes = { { 0, 0 }, { 0.3, 0.07 }, { 1, 0 } }, rate = 9, life = { 0.5, 0.9 }, speed = { 0.2, 0.6 }, up = 0.9, spread = 60, bright = 2.2, light = 1 },
 	{ tex = "star", from = 2, col = "glow", sizes = { { 0, 0 }, { 0.5, 0.16 }, { 1, 0 } }, rate = 3, life = { 0.2, 0.4 }, speed = { 0, 0 }, spin = 90, bright = 2.6, light = 1, lock = true },
 	{ tex = "flame", from = 3, col = "grad", sizes = { { 0, 0.1 }, { 0.35, 0.2 }, { 1, 0.05 } }, rate = 12, life = { 0.25, 0.45 }, speed = { 0.3, 0.7 }, up = 1.2, spread = 15, bright = 2, light = 0.9, orient = "VelocityParallel", fade = { { 0, 0.6 }, { 0.2, 0.15 }, { 1, 1 } } },
@@ -465,12 +465,16 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- first person: the hands and the screen corners
 -------------------------------------------------------------------------------------------------------------
-local hands = { id = nil :: string?, list = {} :: { ParticleEmitter }, arms = nil :: Instance? }
+local hands = { id = nil :: string?, list = {} :: { ParticleEmitter }, atts = {} :: { Attachment }, arms = nil :: Instance? }
 local function clearHands()
 	for _, e in hands.list do
 		e:Destroy()
 	end
 	table.clear(hands.list)
+	for _, a in hands.atts do
+		a:Destroy()
+	end
+	table.clear(hands.atts)
 	hands.arms = nil
 	hands.id = nil
 end
@@ -489,10 +493,13 @@ local function buildHands(arms: Instance, id: string)
 			-- (an R6 arm is the whole arm: its fist is the bottom end)
 			at.Position = if hand.Name:find("Arm") then Vector3.new(0, -hand.Size.Y / 2, 0) else Vector3.zero
 			at.Parent = hand
+			table.insert(hands.atts, at)
 			local n = 0
 			for i, L in HAND_LAYERS do
 				if allowed(L, id, rank) and not (lowFx() and n >= 2) then
 					local e = layer(L, at, pal, 1, hueFor(pal, i))
+					-- (drawn in front of the fist: from inside it, the fist hid them)
+					e.ZOffset = 0.6
 					e.Enabled = true
 					table.insert(hands.list, e)
 					n += 1
@@ -609,7 +616,7 @@ local function holder(cf: CFrame, box: Vector3?, life: number): BasePart
 	return p
 end
 
-local function burst(feet: Vector3, id: string, scale: number)
+local function burst(feet: Vector3, id: string, scale: number, inside: boolean?)
 	local pal = palOf(id)
 	local rank = rankOf(id)
 	local budget = if lowFx() then 0.4 else 1
@@ -629,7 +636,8 @@ local function burst(feet: Vector3, id: string, scale: number)
 		end
 	end
 	-- Legendary and up: a pillar of light up out of the ground
-	if rank >= RANK.Legendary then
+	-- (not round your own camera: from inside, the pillar filled the whole screen)
+	if rank >= RANK.Legendary and not inside then
 		local base = holder(CFrame.new(feet), nil, 2.2)
 		local a0 = Instance.new("Attachment")
 		a0.Parent = base
@@ -691,6 +699,11 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- who wears what
 -------------------------------------------------------------------------------------------------------------
+local function firstPerson(char: Model?, camPos: Vector3): boolean
+	local head = char and char:FindFirstChild("Head") :: BasePart?
+	return head ~= nil and (head.Position - camPos).Magnitude < 2.6
+end
+
 local function wear(p: Player, fresh: boolean)
 	local id = p:GetAttribute("Class")
 	local char = p.Character
@@ -719,7 +732,8 @@ local function wear(p: Player, fresh: boolean)
 		if root and cam and (root.Position - cam.CFrame.Position).Magnitude < BURST_FAR then
 			local hum = char:FindFirstChildOfClass("Humanoid")
 			local hip = if hum and hum.RigType == Enum.HumanoidRigType.R15 then hum.HipHeight else 2
-			burst(root.Position - Vector3.new(0, root.Size.Y / 2 + hip, 0), id, 1)
+			local mineFp = p == player and firstPerson(char, cam.CFrame.Position)
+			burst(root.Position - Vector3.new(0, root.Size.Y / 2 + hip, 0), id, 1, mineFp)
 			if p == player then
 				equipScreen(id)
 			end
@@ -774,10 +788,6 @@ end)
 -------------------------------------------------------------------------------------------------------------
 -- every frame: who's near, first person or not, the hands, the screen's breathing
 -------------------------------------------------------------------------------------------------------------
-local function firstPerson(char: Model?, camPos: Vector3): boolean
-	local head = char and char:FindFirstChild("Head") :: BasePart?
-	return head ~= nil and (head.Position - camPos).Magnitude < 2.6
-end
 
 RunService.RenderStepped:Connect(function(dt)
 	local cam = workspace.CurrentCamera

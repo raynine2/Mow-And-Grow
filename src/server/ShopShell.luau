@@ -40,6 +40,10 @@ local WALK_ON: { [string]: boolean } = { Deck = true, DeckFascia = true, Step = 
 local FIT = { x = -1, y = -0.6, z = 6.3, width = 54 }
 -- the lodge's room (lodge coordinates): a camera in here sees the lodge, outside it the cabin (client/ShopShellView)
 local ROOM_MIN, ROOM_MAX = Vector3.new(-21.4, 0, -9.3), Vector3.new(21.4, 25, 16.4)
+-- (31 Oct, owner: "its bugged still when i walk in i see like glitching both") and the doorway in front of the lodge's
+-- door, from the cabin's front on: the cabin's door is a tunnel only ~4 studs wide (x -2.2..1.9, roof 12.1, from
+-- z -12.4 to -6; measured in Studio) in the lodge's 12-wide door, its insides solid, so a camera in it saw both
+local DOOR_MIN, DOOR_MAX = Vector3.new(-6.5, 0, -12.6), Vector3.new(6.5, 14, -9.3)
 
 local function strip(shop: Instance, at: CFrame)
 	local building = shop:FindFirstChild("ShopBuilding")
@@ -132,9 +136,13 @@ local function restyle(building: Instance?)
 	end
 end
 
--- A shell round `unit` (the shop's or the garage's folder) at `at`, `fit` in that frame. Returns the shell, or nil
--- (and changes nothing) when the model isn't loaded.
-local function shell(unit: Instance, at: CFrame, forgeName: string, fit: { x: number, y: number, z: number, width: number }, roomMin: Vector3, roomMax: Vector3): Model?
+type Fit = { x: number, y: number, z: number, width: number }
+type Box = { Vector3 } -- min, max
+
+-- A shell round `unit` (the shop's or the garage's folder) at `at`, `fit` in that frame; `room` and `door` the boxes
+-- (that frame) where a camera sees the building, not the shell. Returns the shell, or nil (and changes nothing) when
+-- the model isn't loaded.
+local function shell(unit: Instance, at: CFrame, forgeName: string, fit: Fit, room: Box, door: Box): Model?
 	if not ShopShell.ON or not Models.has("forge_" .. forgeName) then
 		return nil
 	end
@@ -147,8 +155,10 @@ local function shell(unit: Instance, at: CFrame, forgeName: string, fit: { x: nu
 	end
 	m.Name = "ShopShell"
 	-- (in the building's frame: the unit's "0Anchor", which moves with it when the saved map places it)
-	m:SetAttribute("RoomMin", roomMin)
-	m:SetAttribute("RoomMax", roomMax)
+	m:SetAttribute("RoomMin", room[1])
+	m:SetAttribute("RoomMax", room[2])
+	m:SetAttribute("DoorMin", door[1])
+	m:SetAttribute("DoorMax", door[2])
 	for _, p in m:GetDescendants() do
 		if p:IsA("BasePart") then
 			p.CanQuery = false
@@ -161,7 +171,7 @@ end
 -- The cabin round the lodge at `at` (server/RunBuilder's tool shop). Returns false (and changes nothing) when the
 -- model isn't loaded.
 function ShopShell.dress(shop: Instance, at: CFrame): boolean
-	if not shell(shop, at, NAME, FIT, ROOM_MIN, ROOM_MAX) then
+	if not shell(shop, at, NAME, FIT, { ROOM_MIN, ROOM_MAX }, { DOOR_MIN, DOOR_MAX }) then
 		return false
 	end
 	strip(shop, at)
@@ -178,7 +188,9 @@ end
 -- Studio, 31 Oct).
 local GARAGE_NAME = "garage_shell"
 local GARAGE_FIT = { x = 0, y = -0.6, z = 2.92, width = 23.5 }
-local GARAGE_MIN, GARAGE_MAX = Vector3.new(-9.3, 0, -8.3), Vector3.new(9.3, 22, 9.3)
+local GARAGE_ROOM = { Vector3.new(-9.3, 0, -8.3), Vector3.new(9.3, 22, 9.3) }
+-- (the roll-up door's opening, x -7.4..7.4, through the ForgeGUI garage's front posts at x +-6 and z -9..-10.6)
+local GARAGE_DOOR = { Vector3.new(-7.4, 0, -10.8), Vector3.new(7.4, 11, -8.3) }
 -- the voxel garage's outside bits (the ForgeGUI garage has its own; hidden they'd be things to bump into): the GARAGE
 -- board, the door's corbels, the window boxes and shutters, the oil drum, the crate and the tyre leaning outside
 local GARAGE_GONE: { [string]: boolean } = {}
@@ -191,7 +203,7 @@ end
 
 -- The ForgeGUI garage round the voxel garage at `at` (server/RunBuilder's garageShed).
 function ShopShell.dressGarage(garage: Instance, at: CFrame): boolean
-	if not shell(garage, at, GARAGE_NAME, GARAGE_FIT, GARAGE_MIN, GARAGE_MAX) then
+	if not shell(garage, at, GARAGE_NAME, GARAGE_FIT, GARAGE_ROOM, GARAGE_DOOR) then
 		return false
 	end
 	local building = garage:FindFirstChild("GarageBuilding")

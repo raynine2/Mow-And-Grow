@@ -7,6 +7,10 @@
 -- outside, the voxel garage inside.
 -- Only this client's view changes (LocalTransparencyModifier): collisions, prompts and lights stay as they are.
 -- Checked each frame right after the camera moves, so walking in through the door never shows the wrong one.
+-- (31 Oct, owner: "its bugged still when i walk in i see like glitching both") Inside also counts the doorway (the
+-- shell's "DoorMin"/"DoorMax" box: the cabin's narrow door tunnel, whose solid insides you'd otherwise walk your camera
+-- through), and the switch has some give (MARGIN): in once the camera is a bit inside, out once it's a bit outside,
+-- so head bob or a camera popping against the door frame never flips the two back and forth.
 local RunService = game:GetService("RunService")
 
 local ShopShellView = {}
@@ -101,6 +105,17 @@ task.spawn(function()
 	end
 end)
 
+local MARGIN = 0.5
+
+-- is `p` in the box (mn, mx) grown by `grow` (shrunk when it's below 0)?
+local function within(p: Vector3, mn: any, mx: any, grow: number): boolean
+	if typeof(mn) ~= "Vector3" or typeof(mx) ~= "Vector3" then
+		return false
+	end
+	return p.X > mn.X - grow and p.X < mx.X + grow and p.Y > mn.Y - grow and p.Y < mx.Y + grow and p.Z > mn.Z - grow
+		and p.Z < mx.Z + grow
+end
+
 RunService:BindToRenderStep("ShopShellView", Enum.RenderPriority.Camera.Value + 1, function()
 	local cam = workspace.CurrentCamera.CFrame.Position
 	for _, v in views do
@@ -108,12 +123,13 @@ RunService:BindToRenderStep("ShopShellView", Enum.RenderPriority.Camera.Value + 
 		if not s or not s.Parent or not a or not a.Parent then
 			continue
 		end
-		local mn, mx = s:GetAttribute("RoomMin"), s:GetAttribute("RoomMax")
-		if typeof(mn) ~= "Vector3" or typeof(mx) ~= "Vector3" then
+		if typeof(s:GetAttribute("RoomMin")) ~= "Vector3" then
 			continue
 		end
 		local p = a.CFrame:PointToObjectSpace(cam)
-		local now = p.X > mn.X and p.X < mx.X and p.Y > mn.Y and p.Y < mx.Y and p.Z > mn.Z and p.Z < mx.Z
+		local grow = if v.inside then MARGIN else -MARGIN
+		local now = within(p, s:GetAttribute("RoomMin"), s:GetAttribute("RoomMax"), grow)
+			or within(p, s:GetAttribute("DoorMin"), s:GetAttribute("DoorMax"), grow)
 		if now ~= v.inside then
 			v.inside = now
 			apply(v)

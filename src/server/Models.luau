@@ -5,6 +5,7 @@
 -- model isn't uploaded yet (Models.place returns nil).
 local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local ModelIds = require(ReplicatedStorage.MowALawn.ModelIds)
@@ -33,6 +34,30 @@ local templates: { [string]: Model } = {}
 local folder = ReplicatedStorage:FindFirstChild("MowALawnModels") or Instance.new("Folder")
 folder.Name = "MowALawnModels"
 folder.Parent = ReplicatedStorage
+
+-- (31 Oct, owner: "some buildings like the grass collector is different in my friends game"; the friend plays this
+-- place in Studio) A copy of every uploaded model kept in the place, ServerStorage.ModelCache (made in edit mode with
+-- Models.cache(), by the account that owns the uploads). InsertService only loads an asset that whoever runs the game
+-- may use, and in a Studio test that's the person who pressed Play, so a teammate whose account doesn't own the
+-- uploads got the old fallbacks (the part-built shredder...). Live servers load as the game's owner either way; the
+-- copy makes their start quicker too. A copy is used while its AssetId matches; a new id is loaded fresh (and the old
+-- copy only if that fails).
+local CACHE_NAME = "ModelCache"
+local function fetch(kind: string, name: string, id: number): (boolean, any)
+	local cache = ServerStorage:FindFirstChild(CACHE_NAME)
+	local entry = cache and cache:FindFirstChild(kind .. ":" .. name)
+	if entry and entry:GetAttribute("AssetId") == id then
+		return true, entry:Clone()
+	end
+	local ok, result = pcall(function()
+		return InsertService:LoadAsset(id)
+	end)
+	if not ok and entry then
+		warn(("[Models] %s %s: the new upload %d didn't load (%s), using the place's older copy"):format(kind, name, id, tostring(result)))
+		return true, entry:Clone()
+	end
+	return ok, result
+end
 
 local function parseColor(hex: string): Color3?
 	if #hex ~= 6 then
@@ -283,9 +308,7 @@ local function loadForge(): number
 	for name, id in ForgeModelIds do
 		pending += 1
 		task.spawn(function()
-			local ok, result = pcall(function()
-				return InsertService:LoadAsset(id)
-			end)
+			local ok, result = fetch("forge", name, id)
 			local m = ok and result and prepareForge(name, result)
 			if m then
 				forgeRaw[name] = m
@@ -561,9 +584,7 @@ function Models.loadAll(timeout: number?)
 	for name, id in ModelIds do
 		pending += 1
 		task.spawn(function()
-			local ok, result = pcall(function()
-				return InsertService:LoadAsset(id)
-			end)
+			local ok, result = fetch("model", name, id)
 			if ok and result then
 				local m = prepare(name, result)
 				if m then
@@ -745,6 +766,50 @@ function Models.loadAll(timeout: number?)
 	if gens > 0 then
 		print(("[Models] %d generated props in use (ServerStorage.GenProps)"):format(gens))
 	end
+end
+
+-- Edit mode, by the account that owns the uploads: a fresh copy of every uploaded model (shared/ModelIds and
+-- shared/ForgeModelIds) in ServerStorage.ModelCache (see `fetch`), so the game shows the same models whoever presses
+-- Play. Run it after adding or changing an id, then save the place. Returns how many were stored and what failed.
+function Models.cache(): (number, { string })
+	assert(not RunService:IsRunning(), "Run in Studio with the game stopped (edit mode)")
+	local cache = ServerStorage:FindFirstChild(CACHE_NAME) or Instance.new("Folder")
+	cache.Name = CACHE_NAME
+	local jobs: { { any } } = {}
+	for name, id in ModelIds do
+		table.insert(jobs, { "model", name, id })
+	end
+	for name, id in ForgeModelIds do
+		table.insert(jobs, { "forge", name, id })
+	end
+	local stored, failed, pending = 0, {}, #jobs
+	for _, job in jobs do
+		task.spawn(function()
+			local ok, result = pcall(function()
+				return InsertService:LoadAsset(job[3])
+			end)
+			if ok and result then
+				local key = job[1] .. ":" .. job[2]
+				local old = cache:FindFirstChild(key)
+				if old then
+					old:Destroy()
+				end
+				result.Name = key
+				result:SetAttribute("AssetId", job[3])
+				result.Parent = cache
+				stored += 1
+			else
+				table.insert(failed, ("%s:%s (%s)"):format(job[1], job[2], tostring(result)))
+			end
+			pending -= 1
+		end)
+	end
+	local deadline = os.clock() + 120
+	while pending > 0 and os.clock() < deadline do
+		task.wait(0.2)
+	end
+	cache.Parent = ServerStorage
+	return stored, failed
 end
 
 function Models.has(name: string): boolean

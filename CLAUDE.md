@@ -63,4 +63,9 @@ The session start hook installs `rojo` and `lune` in cloud sessions.
 - One place has two modes: a public server is the **lobby**, a reserved server is a **run**. In Studio a party pad
   switches the lobby into a run in place (`Main.server` + `Lobby.onStudioStart`); the Workspace attribute
   `ForceMode = "Run"` or `Config.STUDIO_MODE` starts straight in a run.
+- **Uploaded models are kept in the place (`ServerStorage.ModelCache`).** `server/Models` uses that copy of each
+  `shared/ModelIds` / `shared/ForgeModelIds` upload while its id matches, because in a Studio test InsertService loads
+  as whoever pressed Play, and a teammate's account can't load the owner's uploads (he saw the old fallbacks). After
+  adding or changing an id, the owner runs `require(game.ServerScriptService.MowALawn.Models).cache()` in edit mode
+  and saves. Sounds and images uploaded from another account need that account to share access with the experience.
 - Keep functions small: Luau allows at most 200 locals in one function.

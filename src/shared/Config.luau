@@ -848,17 +848,17 @@ Config.DEFAULT_CLASS = "WeedPuller"
 -- your first-person hands and in the burst when you equip it. main / second: the two colours the flames and sparks
 -- run between; glow: the light, near-white parts; dark: the dark contrast layers. From what the class is and does
 -- (its tool, its gimmick, its aura), like client/ClassAuras. rainbow: the colours cycle (the Secret class).
--- corner: ForgeGUI art for the first-person screen corners (nil: none yet).
+-- corner: ForgeGUI art for the first-person screen corners (uploaded by the owner's account, 31 Oct; nil: none yet).
 Config.CLASS_VFX = {
-	WeedPuller = { main = Color3.fromRGB(150, 98, 52), second = Color3.fromRGB(255, 214, 60), glow = Color3.fromRGB(255, 240, 190), dark = Color3.fromRGB(60, 38, 20) },
-	Gardener = { main = Color3.fromRGB(90, 210, 80), second = Color3.fromRGB(255, 140, 200), glow = Color3.fromRGB(225, 255, 210), dark = Color3.fromRGB(25, 70, 30) },
-	Groundskeeper = { main = Color3.fromRGB(120, 230, 110), second = Color3.fromRGB(245, 250, 255), glow = Color3.fromRGB(255, 255, 255), dark = Color3.fromRGB(30, 80, 40) },
-	LawnBaron = { main = Color3.fromRGB(255, 196, 50), second = Color3.fromRGB(80, 220, 120), glow = Color3.fromRGB(255, 245, 190), dark = Color3.fromRGB(90, 60, 10) },
-	HedgeReaper = { main = Color3.fromRGB(150, 70, 230), second = Color3.fromRGB(80, 255, 190), glow = Color3.fromRGB(220, 255, 240), dark = Color3.fromRGB(30, 10, 45) },
-	MowerSpecialist = { main = Color3.fromRGB(255, 130, 30), second = Color3.fromRGB(200, 215, 230), glow = Color3.fromRGB(255, 230, 180), dark = Color3.fromRGB(50, 35, 25) },
-	GrassTitan = { main = Color3.fromRGB(110, 200, 90), second = Color3.fromRGB(255, 120, 40), glow = Color3.fromRGB(255, 225, 170), dark = Color3.fromRGB(40, 40, 45) },
-	UltimateGardener = { main = Color3.fromRGB(255, 205, 40), second = Color3.fromRGB(255, 255, 140), glow = Color3.fromRGB(255, 250, 220), dark = Color3.fromRGB(110, 70, 0) },
-	LawnLegend = { main = Color3.fromRGB(255, 50, 70), second = Color3.fromRGB(255, 190, 40), glow = Color3.fromRGB(255, 235, 200), dark = Color3.fromRGB(70, 0, 15) },
+	WeedPuller = { main = Color3.fromRGB(150, 98, 52), second = Color3.fromRGB(255, 214, 60), glow = Color3.fromRGB(255, 240, 190), dark = Color3.fromRGB(60, 38, 20), corner = "rbxassetid://120045138286252" },
+	Gardener = { main = Color3.fromRGB(90, 210, 80), second = Color3.fromRGB(255, 140, 200), glow = Color3.fromRGB(225, 255, 210), dark = Color3.fromRGB(25, 70, 30), corner = "rbxassetid://132774841313695" },
+	Groundskeeper = { main = Color3.fromRGB(120, 230, 110), second = Color3.fromRGB(245, 250, 255), glow = Color3.fromRGB(255, 255, 255), dark = Color3.fromRGB(30, 80, 40), corner = "rbxassetid://96644679238042" },
+	LawnBaron = { main = Color3.fromRGB(255, 196, 50), second = Color3.fromRGB(80, 220, 120), glow = Color3.fromRGB(255, 245, 190), dark = Color3.fromRGB(90, 60, 10), corner = "rbxassetid://116854659349607" },
+	HedgeReaper = { main = Color3.fromRGB(150, 70, 230), second = Color3.fromRGB(80, 255, 190), glow = Color3.fromRGB(220, 255, 240), dark = Color3.fromRGB(30, 10, 45), corner = "rbxassetid://131909661456468" },
+	MowerSpecialist = { main = Color3.fromRGB(255, 130, 30), second = Color3.fromRGB(200, 215, 230), glow = Color3.fromRGB(255, 230, 180), dark = Color3.fromRGB(50, 35, 25), corner = "rbxassetid://119444089879289" },
+	GrassTitan = { main = Color3.fromRGB(110, 200, 90), second = Color3.fromRGB(255, 120, 40), glow = Color3.fromRGB(255, 225, 170), dark = Color3.fromRGB(40, 40, 45), corner = "rbxassetid://125245514279855" },
+	UltimateGardener = { main = Color3.fromRGB(255, 205, 40), second = Color3.fromRGB(255, 255, 140), glow = Color3.fromRGB(255, 250, 220), dark = Color3.fromRGB(110, 70, 0), corner = "rbxassetid://114141663987179" },
+	LawnLegend = { main = Color3.fromRGB(255, 50, 70), second = Color3.fromRGB(255, 190, 40), glow = Color3.fromRGB(255, 235, 200), dark = Color3.fromRGB(70, 0, 15), corner = "rbxassetid://133087916800539" },
 	GoatMan = { main = Color3.fromRGB(255, 210, 60), second = Color3.fromRGB(150, 90, 255), glow = Color3.fromRGB(255, 255, 255), dark = Color3.fromRGB(20, 10, 40), rainbow = true },
 } :: { [string]: { main: Color3, second: Color3, glow: Color3, dark: Color3, rainbow: boolean?, corner: string? } }
 Config.STOCK_WINDOW = 300 -- seconds between booth restocks

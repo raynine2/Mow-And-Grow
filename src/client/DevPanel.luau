@@ -1,9 +1,11 @@
 -- DEV panel: cheats for testing (infinite cash, every tool, max everything, spawn / kill the area's boss, clear or
 -- open areas, skip to night). Only shows for players the server marked IsDev (everyone in Studio; live servers:
--- Config.ADMINS or the game's owner). Open with F2 or the red DEV button. The server checks every request again.
+-- Config.ADMINS or the game's owner). Open with F2, /dev in the chat or (Studio only) the red DEV button. The server
+-- checks every request again.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 
@@ -102,10 +104,22 @@ local function build()
 		btn.LayoutOrder = i
 	end
 
-	local open = UI.button(UI.gui, "DEV", RED, UDim2.fromOffset(96, 46), function()
-		UI.open("Dev")
-	end, { pos = UDim2.new(0, 16, 0.5, if Device.touch then 236 else 120), name = "DevButton" }) -- (under the gem counter and, on a phone, the backpack)
-	open.ZIndex = 5
+	-- (31 Oct, owner: hide the DEV button for players) The red button only in Studio tests; in a live game the owner
+	-- and Config.ADMINS open the panel with F2 or by typing /dev in the chat, so it's never on screen for anyone.
+	if RunService:IsStudio() then
+		local open = UI.button(UI.gui, "DEV", RED, UDim2.fromOffset(96, 46), function()
+			UI.open("Dev")
+		end, { pos = UDim2.new(0, 16, 0.5, if Device.touch then 236 else 120), name = "DevButton" }) -- (under the gem counter and, on a phone, the backpack)
+		open.ZIndex = 5
+	end
+	pcall(function()
+		local TextChatService = game:GetService("TextChatService")
+		TextChatService.SendingMessage:Connect(function(msg: TextChatMessage)
+			if string.lower(msg.Text) == "/dev" then
+				UI.open("Dev")
+			end
+		end)
+	end)
 
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if not processed and input.KeyCode == Enum.KeyCode.F2 then

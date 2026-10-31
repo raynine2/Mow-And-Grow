@@ -234,8 +234,11 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 	local colorB = def.grass[2]
 	local model = Instance.new("Model")
 	model.Name = "Patch"
-	local turf = brick(model, Vector3.new(3, 1, 3), CFrame.new(pos.X, pos.Y + 0.5, pos.Z), colorB, "Spot")
+	-- (31 Oct, FPS pass) a small invisible marker: at 3 x 1 x 3 the field's ~1,000 of them cost ~250 draw calls on each
+	-- screen (measured with Stats in area 3), at 0.4 next to none; only its place is used (and its mutation sparkles)
+	local turf = brick(model, Vector3.new(0.4, 0.4, 0.4), CFrame.new(pos.X, pos.Y + 0.5, pos.Z), colorB, "Spot")
 	turf.Transparency = 1
+	turf.CastShadow = false
 	local p: Patch = {
 		part = turf,
 		holder = model,
@@ -535,7 +538,7 @@ local function reveal(p: Patch, luck: number, by: Player?)
 	sparkle.Lifetime = NumberRange.new(0.6, 1)
 	sparkle.Rate = 8
 	sparkle.Speed = NumberRange.new(2, 4)
-	sparkle.SpreadAngle = Vector2.new(40, 40)
+	sparkle.SpreadAngle = Vector2.new(70, 70) -- (from a point now: the Spot is small, 31 Oct)
 	sparkle.EmissionDirection = Enum.NormalId.Top
 	sparkle.Parent = p.part
 	p.part:SetAttribute("Mutation", mut)

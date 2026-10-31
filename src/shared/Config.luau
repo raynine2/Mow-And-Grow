@@ -1556,8 +1556,9 @@ Config.NEWS = {
 	},
 }
 
--- The next event, on the lobby's notice board (server/LobbyKit.eventBoard); the countdown runs to startsAt (UTC).
-Config.EVENT = { title = "HALLOWEEN", name = "???", startsAt = 1792857600, dateText = "OCT 24" } -- 24 Oct 2026 16:00 UTC
+-- The next event, for a lobby notice board (server/LobbyKit.eventBoard, nothing builds one now); the countdown runs to
+-- startsAt (UTC). (31 Oct, owner: remove the Halloween board: it counted down to 24 Oct. No event is planned: nil.)
+Config.EVENT = nil :: { title: string, name: string, startsAt: number, dateText: string }?
 
 -- In the generated world the areas go by its names (shared/Zones: Sunny Meadow, Golden Wheat Hills...), so the
 -- HUD, the gates' signs and the quests all say the same thing.

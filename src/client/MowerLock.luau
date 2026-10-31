@@ -48,6 +48,7 @@ local BODY = Vector3.new(4, 3.2, 1)
 local ARC_R, ARC_T, LEG = 1.25, 0.42, 0.85
 local EDGE = 0.11
 local ACTIVE = 260 -- locks this close to the camera move
+local SHOW = 200 -- (31 Oct) locks further than this from the camera aren't drawn at all
 local NEAR = 9 -- walk this close (plus its size) and it refuses
 
 local folder = Instance.new("Folder")
@@ -532,8 +533,15 @@ RunService.RenderStepped:Connect(function()
 	local hrp = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local me = if hrp then hrp.Position else nil
 	for _, l in locks do
-		if (l.centre - eye).Magnitude < ACTIVE then
+		local d = (l.centre - eye).Magnitude
+		if d < ACTIVE then
 			animate(l, now, me)
+		end
+		-- (31 Oct, FPS pass) far locks leave the world on this screen: each is ~35 see-through pieces, drawn one by one
+		-- (all of them ~180 draw calls), and past SHOW it's a speck anyway
+		local show = d < SHOW
+		if show ~= (l.model.Parent ~= nil) then
+			l.model.Parent = if show then folder else nil
 		end
 	end
 end)

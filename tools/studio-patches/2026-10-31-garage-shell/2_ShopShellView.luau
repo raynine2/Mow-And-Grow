@@ -1,4 +1,4 @@
--- Installs ShopShellView (git's exact text, 4097 2024092036) into game.StarterPlayer.StarterPlayerScripts.MowALawnClient. Run in Edit mode.
+-- Installs ShopShellView (git's exact text, 4229 895134490) into game.StarterPlayer.StarterPlayerScripts.MowALawnClient. Run in Edit mode.
 local src = [======[
 -- SHOP SHELL VIEW (31 Oct; the owner kept the Tool Shop's room and wanted the house remade with ForgeGUI): the shop's
 -- ForgeGUI cabin (server/ShopShell, a Model "ShopShell" in the TOOL SHOP) and the log lodge it stands on take turns:
@@ -13,10 +13,15 @@ local RunService = game:GetService("RunService")
 
 local ShopShellView = {}
 
--- each building: its folder in the hub, its voxel building, and what of that shows from outside too (its floor)
+-- each building: its folder in the hub, its voxel building, and what of that shows from outside too (its floor; the
+-- garage's work deck at the back, which covers a bit of the ground poking up there)
 local UNITS = {
 	{ unit = "TOOL SHOP", building = "ShopBuilding", keep = { FloorBoard = true, FloorFill = true } },
-	{ unit = "Garage", building = "GarageBuilding", keep = { FloorSlab = true, FloorFill = true, BayLine = true, OilStain = true } },
+	{
+		unit = "Garage",
+		building = "GarageBuilding",
+		keep = { FloorSlab = true, FloorFill = true, BayLine = true, OilStain = true, WorkDeck = true, DeckBoard = true },
+	},
 }
 
 type View = {
@@ -127,17 +132,17 @@ local function hashOf(t)
 	end
 	return #t .. " " .. x
 end
-if hashOf(src) ~= "4097 2024092036" then
+if hashOf(src) ~= "4229 895134490" then
 	return "NOT INSTALLED: the pasted text is " .. hashOf(src)
 end
 local folder = game.StarterPlayer.StarterPlayerScripts.MowALawnClient
 local old = folder:FindFirstChild("ShopShellView")
 if old then
 	local now = hashOf(old.Source)
-	if now == "4097 2024092036" then
+	if now == "4229 895134490" then
 		return "ShopShellView is already this version: " .. now
 	end
-	local known = { ["3288 896470903"] = true }
+	local known = { ["3288 896470903"] = true, ["4097 2024092036"] = true }
 	if not known[now] then
 		return "NOT CHANGED: ShopShellView is there but is " .. now .. " (not a version this replaces)"
 	end

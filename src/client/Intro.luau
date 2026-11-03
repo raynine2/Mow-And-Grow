@@ -490,10 +490,21 @@ local function pinkEyes(H: number): () -> ()
 		g.Transparency = 0
 		table.insert(glints, g)
 	end
+	-- (1 Nov, owner: "purple eye bugged in trailer": the King's eye points were off his face, see shared/BossRigs/
+	-- dandelion) each glow slides toward the camera along its line of sight by its own size: it stays over the
+	-- painted eye from any angle, and doesn't sink half into the face (from below it showed on his brow)
+	local nudge = math.max(0.5, H * 0.03)
 	local stop = Film.every(function()
+		local cam = workspace.CurrentCamera
 		for i, name in names do
 			local at = BossView.attWorld(name)
 			if at and glints[i] then
+				if cam then
+					local to = cam.CFrame.Position - at
+					if to.Magnitude > nudge * 2 then
+						at += to.Unit * nudge
+					end
+				end
 				glints[i].CFrame = CFrame.new(at)
 			end
 		end

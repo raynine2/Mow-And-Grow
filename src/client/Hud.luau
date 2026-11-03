@@ -238,7 +238,7 @@ sideLayout.Parent = side
 -- A log-slice badge (ui_badge art, leaves and clover drawn in) with the icon bobbing on its face, a light streak
 -- sweeping across now and then, a dark key tag, the name below and a red dot for "something new".
 local sideDots: { [string]: Frame } = {}
-local function roundButton(label: string, icon: string, key: string, window: string, order: number)
+local function roundButton(label: string, icon: string, key: string, window: string, order: number, onClick: (() -> ())?)
 	local b = Instance.new("TextButton")
 	b.Name = label
 	b.Text = ""
@@ -261,13 +261,17 @@ local function roundButton(label: string, icon: string, key: string, window: str
 	;(tag:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(28, 16, 8)
 	UI.gradient(tag, Color3.fromRGB(70, 42, 20))
 	UI.text(tag, key, UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1.5 })
-	tag.Visible = not Device.touch -- (keys mean nothing on a touch screen)
+	tag.Visible = not Device.touch and key ~= "" -- (keys mean nothing on a touch screen)
 	UI.text(body, label, UDim2.fromOffset(124, 26), { pos = UDim2.new(0.5, 0, 0, 86), anchor = Vector2.new(0.5, 0), stroke = 3.5 })
 	sideDots[window] = Skin.dot(body, UDim2.fromOffset(16, 14))
 	Skin.press(b, body)
 	b.MouseButton1Click:Connect(function()
 		Sound.play("click")
-		UI.open(window)
+		if onClick then
+			onClick()
+		else
+			UI.open(window)
+		end
 	end)
 	return b
 end
@@ -305,6 +309,22 @@ if uiScale then
 	uiScale:GetPropertyChangedSignal("Scale"):Connect(placeSide)
 end
 
+-- (1 Nov, owner: "invite give you a reward") the INVITE button: Roblox's invite-friends prompt. A friend who's new to
+-- the game and joins from your invite pays you gems once (server/Invites, Config.INVITE).
+local SocialService = game:GetService("SocialService")
+local function inviteFriends()
+	task.spawn(function()
+		local ok, can = pcall(function()
+			return SocialService:CanSendGameInviteAsync(player)
+		end)
+		if ok and can then
+			pcall(function()
+				SocialService:PromptGameInvite(player)
+			end)
+		end
+	end)
+end
+
 local function sideButtons(mode: string)
 	UI.clear(side)
 	sideMode = mode
@@ -316,7 +336,8 @@ local function sideButtons(mode: string)
 	else
 		roundButton("STATS", "clipboard", "TAB", "Stats", 2)
 		roundButton("NEWS", "newspaper", "J", "News", 4)
-		side.Size = UDim2.fromOffset(124, 4 * 126)
+		roundButton("INVITE", "invite", "", "Invite", 5, inviteFriends)
+		side.Size = UDim2.fromOffset(124, 5 * 126)
 	end
 	placeSide()
 end

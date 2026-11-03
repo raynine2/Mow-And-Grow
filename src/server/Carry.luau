@@ -5,6 +5,7 @@ local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
 local Models = require(script.Parent.Models)
 local VoxelModels = require(script.Parent.VoxelModels)
+local BundleArt = require(ReplicatedStorage.MowALawn.BundleArt)
 
 local Carry = {}
 
@@ -12,6 +13,10 @@ local MAX_VISIBLE = 12
 -- the voxel bundles (tools/blender/voxel/bundle.py: Bundle_<mutation>, owner 27 Oct "make it voxel like the game"),
 -- drawn this much smaller than built (about 2.2 x 1.3 studs, so six stack a stud apart)
 Carry.VOXEL_SCALE = 0.8
+-- the ForgeGUI bundles (shared/BundleArt, 1 Nov: a different one per area and per mutation) are drawn at most this
+-- long and this thick (rows are a stud apart, so they overlap a little like the voxel ones did)
+Carry.BUNDLE_LENGTH = 2.3
+Carry.BUNDLE_THICK = 1.3
 
 -- The voxel bundle mesh for a mutation (the plain one if that mutation has none), or nil before they're imported.
 function Carry.voxelName(mut: string?): string?
@@ -62,6 +67,19 @@ function Carry.refresh(player: Player)
 		local row = (i - 1) % 6
 		local col = (i - 1) // 6
 		local spot = torso.CFrame * CFrame.new(col * 2.4 - (if n > 6 then 1.2 else 0), -0.6 + row * 1.0, 1.3) * CFrame.new(0, -0.5, 0)
+		-- the ForgeGUI bundle for its area and mutation, lying across the back along the shoulders
+		local art = BundleArt.make(b.z, mut.id, Carry.BUNDLE_LENGTH, Carry.BUNDLE_THICK)
+		if art then
+			art.Name = "Bundle"
+			art.CFrame = BundleArt.lying(art, spot)
+			art.Anchored = false
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = art
+			weld.Part1 = torso
+			weld.Parent = art
+			art.Parent = stack
+			continue
+		end
 		local vname = Carry.voxelName(mut.id)
 		local mesh = vname and VoxelModels.place(stack, vname, spot.Position, { scale = Carry.VOXEL_SCALE, shadow = false })
 		if mesh then

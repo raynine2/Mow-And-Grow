@@ -35,6 +35,7 @@ require(script.Parent.ClassPerks) -- tags each player's class (attribute "Class"
 require(script.Parent.BestTimes).start() -- the trophy tag with your best time over your head
 require(script.Parent.Offline).start() -- time away with a saved run pays coins + gems (client/WelcomeBack shows it)
 require(script.Parent.SkillTrees).start() -- (30 Oct) weapon skill trees: buying pips (runs), MASTERED for good
+require(script.Parent.Invites).start() -- (1 Nov) a friend new to the game who joins from your invite pays you gems once
 
 -- Spawn on the world's own SpawnLocation, not one from the place template (the Baseplate's). This only
 -- changes the running game; the place file keeps its parts. The Baseplate is hidden while playing because

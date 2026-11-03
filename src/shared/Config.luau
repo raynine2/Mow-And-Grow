@@ -817,7 +817,7 @@ Config.CLASSES = {
 	{ id = "GrassTitan", name = "Grass Titan", rarity = "Legendary", gems = 1000, power = 0.65, speed = 0.15, sell = 0.20, luck = 0.25, carry = 4, product = "ClassGrassTitan" },
 	{ id = "UltimateGardener", name = "Ultimate Gardener", rarity = "Legendary", gems = 1600, power = 0.75, speed = 0.20, sell = 0.30, luck = 0.30, carry = 5, product = "ClassUltimateGardener" },
 	{ id = "LawnLegend", name = "Lawn Legend", rarity = "Mythic", gems = 2700, power = 1.10, speed = 0.28, sell = 0.55, luck = 0.60, carry = 7, product = "ClassLawnLegend" },
-	{ id = "GoatMan", name = "Goat Man", rarity = "Secret", gems = 4000, power = 1.5, speed = 0.40, sell = 0.7, luck = 1.0, carry = 10, product = "ClassGoatMan" }, -- +150 power / +70 sell (owner 27 Oct: was +200 / +100, too big a jump over Lawn Legend's +110; still the strongest)
+	{ id = "GoatMan", name = "Goat Man", rarity = "Secret", gems = 4000, power = 1.3, speed = 0.40, sell = 0.7, luck = 1.0, carry = 10, product = "ClassGoatMan" }, -- +130 power / +70 sell (owner 27 Oct: was +200 / +100, too big a jump over Lawn Legend's +110; 1 Nov: "overtuned, everything gets onetapped": +150 -> +130, and the Graze bites lighter; still the strongest)
 }
 -- Each class's own gimmick (owner, 27 Oct: unique, not only stats). server/ClassPerks runs them; the class cards show
 -- these words.
@@ -831,7 +831,7 @@ Config.CLASS_GIMMICK = {
 	GrassTitan = { name = "Titan Stomp", text = "Land from a jump to stomp: clumps around you take 2 hits (4 s cooldown)." },
 	UltimateGardener = { name = "Midas Touch", text = "Every 20th clump you uncover is a mutation (Golden or better)." },
 	LawnLegend = { name = "Hot Streak", text = "Cut fast: each clump in a streak adds +5% power, up to +60%." },
-	GoatMan = { name = "Graze", text = "You eat grass as you walk: clumps around you take a hit every 0.75 s." },
+	GoatMan = { name = "Graze", text = "You eat grass as you walk: the 3 nearest clumps take a nibble every 0.75 s." },
 }
 -- each gimmick's own icon (ForgeGUI art, 27 Oct), shown on the big class card's gimmick row
 Config.GIMMICK_ICONS = {
@@ -1104,6 +1104,10 @@ Config.FREE_GEMS = { gems = 20, every = 6 * 3600 }
 -- run's area grass value) and a few gems, capped. Nothing under minAway seconds counts (teleports, quick rejoins).
 Config.OFFLINE = { minAway = 600, maxHours = 8, coinsPerMin = 3, gemsPerHour = 2 }
 Config.GROUP_GEMS = 100
+-- (1 Nov, owner: "invite give you a reward") server/Invites and the lobby's INVITE button: a friend new to the game
+-- who joins from your invite pays you `gems` once (they get `welcomeGems`); accounts younger than `minAccountAge` days
+-- don't count, and at most `perDay` friends pay out a day
+Config.INVITE = { gems = 150, welcomeGems = 50, perDay = 10, minAccountAge = 3 }
 
 -------------------------------------------------------------------------------------------------------------
 -- Lobby parties
@@ -1667,4 +1671,5 @@ if Config.MOWERS_LOCKED then
 	end
 end
 
+Config.ICONS.invite = "rbxassetid://131845589341017" -- (1 Nov) the INVITE button: two friends waving, a plus and a gift (ForgeGUI)
 return Config

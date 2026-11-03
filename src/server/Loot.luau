@@ -10,6 +10,7 @@ local Net = require(script.Parent.Net)
 local Models = require(script.Parent.Models)
 local Carry = require(script.Parent.Carry)
 local VoxelModels = require(script.Parent.VoxelModels)
+local BundleArt = require(ReplicatedStorage.MowALawn.BundleArt)
 
 local Loot = {}
 
@@ -46,9 +47,17 @@ local function noTouch(model: Instance)
 	end
 end
 
-local function bundleVisual(pos: Vector3, mut: string?): Instance
+local function bundleVisual(pos: Vector3, mut: string?, z: number?): Instance
 	local m = Config.mutation(mut or "None")
 	local yaw = rng:NextNumber(0, math.pi * 2)
+	-- the ForgeGUI bundle for its area and mutation (shared/BundleArt), lying on its side
+	local art = BundleArt.make(z, m.id, 2.6, 1.6)
+	if art then
+		art.Name = "Bundle"
+		art.CFrame = BundleArt.lying(art, CFrame.new(pos) * CFrame.Angles(0, yaw, 0))
+		art.Parent = folder
+		return art
+	end
 	-- the voxel bundle for this grass (server/Carry.voxelName), once its models are in Studio
 	local vname = Carry.voxelName(m.id)
 	local mesh = vname and VoxelModels.place(folder :: Folder, vname, pos, { scale = Carry.VOXEL_SCALE, yaw = yaw })
@@ -122,7 +131,7 @@ function Loot.drop(player: Player, kind: string, origin: Vector3, z: number, m: 
 		if d.dead or not folder then
 			return
 		end
-		local model = if kind == "gem" then gemVisual(pos) else bundleVisual(pos, m)
+		local model = if kind == "gem" then gemVisual(pos) else bundleVisual(pos, m, z)
 		noTouch(model)
 		model:SetAttribute("Owner", player.UserId)
 		d.model = model

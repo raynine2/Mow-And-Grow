@@ -10,7 +10,7 @@
 --   Grass Titan        Titan Stomp   land from a jump to stomp: every clump round you takes 2 hits (4 s cooldown)
 --   Ultimate Gardener  Midas Touch   every 20th clump you uncover is a mutation (Golden or better)
 --   Lawn Legend        Hot Streak    each clump you cut in a streak adds +5% power (up to +60%); fades 2.5 s after
---   Goat Man           Graze         you eat grass as you walk: clumps round you take a hit every 0.75 s
+--   Goat Man           Graze         you eat grass as you walk: the 3 nearest clumps take a nibble (40%) every 0.75 s
 -- Server-checked: the only thing a client can ask for is a stomp, and that has a cooldown and needs the class.
 -- server/Run calls in here; client/ClassFx draws the effects ("classFx") and sends the stomp.
 local Players = game:GetService("Players")
@@ -35,6 +35,9 @@ local STOMP_RADIUS, STOMP_HITS, STOMP_COOLDOWN = 12, 2, 4
 local MIDAS_EVERY = 20
 local STREAK_PER, STREAK_MAX, STREAK_WINDOW = 0.05, 0.6, 2.5
 local GRAZE_RADIUS, GRAZE_EVERY = 7, 0.75
+-- (1 Nov, owner: "goat man balancing because its overtuned, everything gets onetapped") a bite was a full hit on
+-- every clump in reach, so walking melted the field: now it's a nibble (40% of a hit) on the 3 nearest clumps
+local GRAZE_DAMAGE, GRAZE_MAX = 0.4, 3
 local MAGNET_BONUS = 14
 
 type P = { swings: number, reveals: number, streak: number, streakAt: number, lastStomp: number, lastCourier: number, lastGraze: number, splashing: boolean }
@@ -225,7 +228,7 @@ function ClassPerks.tick(player: Player, root: BasePart?, driving: boolean, bagI
 		local v = root.AssemblyLinearVelocity
 		if Vector3.new(v.X, 0, v.Z).Magnitude > 4 then
 			s.lastGraze = now
-			local n = ClassPerks.hitArea(player, root.Position, GRAZE_RADIUS, ClassPerks.baseDamage(player))
+			local n = ClassPerks.hitArea(player, root.Position, GRAZE_RADIUS, ClassPerks.baseDamage(player) * GRAZE_DAMAGE, GRAZE_MAX)
 			if n > 0 then
 				fx("graze", root.Position, GRAZE_RADIUS)
 			end

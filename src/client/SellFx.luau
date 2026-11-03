@@ -12,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("MowALawn")
 local Config = require(Shared:WaitForChild("Config"))
 local Format = require(Shared:WaitForChild("Format"))
 local FxIds = require(Shared:WaitForChild("FxIds")) :: { [string]: string }
+local BundleArt = require(Shared:WaitForChild("BundleArt"))
 local UI = require(script.Parent.UI)
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
@@ -152,7 +153,14 @@ local function bundleModel(): Model
 	local models = ReplicatedStorage:FindFirstChild("MowALawnModels")
 	local template = models and models:FindFirstChild("bundle")
 	local m: Model
-	if template and template:IsA("Model") then
+	-- the ForgeGUI bundle of the area you're in (shared/BundleArt)
+	local art = BundleArt.make((State.world and State.world.zone) or 1, nil, 2.4, 1.5)
+	if art then
+		m = Instance.new("Model")
+		art.CFrame = CFrame.Angles(0, 0, math.rad(90))
+		art.Parent = m
+		m.PrimaryPart = art
+	elseif template and template:IsA("Model") then
 		m = template:Clone()
 	else
 		m = Instance.new("Model")

@@ -602,10 +602,15 @@ function RunWorld.build()
 		w = require(script.Parent.WorldGen).build()
 	end
 	world = w
+	-- (3 Nov: the start of a run is long; with no pause in it Roblox stopped the server's start script ("Script
+	-- timeout: exhausted allowed execution time", in ForgeDress on a busy PC) and no run started: a frame's pause
+	-- between the big steps)
+	task.wait()
 	require(script.Parent.WorldGen).lighting()
 	-- the ForgeGUI landmarks in place of the ones the saved world was built with
 	print(("[RunWorld] %d ForgeGUI landmarks"):format(require(script.Parent.WorldArt).forgeLandmarks(w)))
 	local info = { world = w, gates = {}, pumps = {}, sellPads = {}, meshGround = true }
+	task.wait()
 	if w:GetAttribute("VillageBaked") then
 		-- the village was baked into the saved world in Studio (RunWorld.bakeVillage), maybe moved around by hand:
 		-- build the working pieces fresh (prompts, pads, spawn) and put each where its saved copy stands
@@ -638,11 +643,14 @@ function RunWorld.build()
 		end
 	end
 
+	task.wait()
 	meadowDropOff(w)
 	-- the ForgeGUI archways at the gates and bins on the drop-off pads (no-ops where the saved world has them)
 	require(script.Parent.ForgeDress).world(w)
+	task.wait()
 	-- a camp round every other area's drop-off pad (server/Outposts; owner 27 Oct: "this type of hub in every zone")
 	print(("[RunWorld] %d area camps built"):format(require(script.Parent.Outposts).build(w, info, RunBuilder.gasPump)))
+	task.wait()
 	print(("[RunWorld] %d squares of rim built up round the isles' void (holes in the map)"):format(sealRim(w)))
 	local pads = w:FindFirstChild("Pads")
 	for _, pad in (if pads then pads:GetChildren() else {}) do

@@ -359,6 +359,7 @@ function ForgeDress.world(w: Instance): number
 		if ForgeDress.gate(g) then
 			n += 1
 		end
+		task.wait() -- (each gate casts rays at the walls: a pause between them, so the run's start never times out)
 	end
 	local pads = w:FindFirstChild("Pads")
 	for _, p in (if pads then pads:GetChildren() else {}) do

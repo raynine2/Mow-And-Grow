@@ -131,21 +131,19 @@ local cont = UI.button(UI.gui, "▶ CONTINUE RUN", C.green, UDim2.fromOffset(260
 end, { pos = UDim2.new(0.5, 0, 1, -118), anchor = Vector2.new(0.5, 1), name = "ContinueRun" })
 cont.Visible = false
 local contArea = UI.text(cont, "", UDim2.new(1, -20, 0, 16), { pos = UDim2.new(0.5, 0, 1, 2), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(220, 255, 210), stroke = 1.5 })
-local windowOpen = false
 local function refresh()
 	local d = State.data
 	local run = d and d.run
-	local show = run ~= nil and not State.isRun() and not windowOpen
+	-- (3 Nov: asks UI itself. A flag kept from the window events missed the News board that opens by itself as you
+	-- join, when it opened before this module loaded: the button stood on top of the board)
+	local show = run ~= nil and not State.isRun() and not UI.anyOpen()
 	cont.Visible = show
 	if show then
 		contArea.Text = "Your saved run · Area " .. tostring(run.zone or 1)
 	end
 end
 State.on("data", refresh)
-UI.onWindowChanged.Event:Connect(function(name)
-	windowOpen = name ~= nil
-	refresh()
-end)
+UI.onWindowChanged.Event:Connect(refresh)
 refresh()
 
 return WelcomeBack

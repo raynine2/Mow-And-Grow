@@ -372,7 +372,24 @@ local function hero(world: Instance)
 	local cf = facing(HERO.pos, SPAWN)
 	if not Models.placeForge("windmill", m, cf, { height = HERO.height, width = HERO.width, depth = HERO.width }, false) then
 		VM.place(m, "Landmark_windmill", HERO.pos, { scale = 1.4, collide = true })
+		return
 	end
+	-- (owner: "the windmill is bugged its seethrough") the ForgeGUI mesh has no inside: between the lower tower's
+	-- timbers some plaster panels are missing or face inward, so you saw the trees behind through it. A dark core
+	-- fills the tower, just inside its walls (measured with rays on the mesh at this size, 4 Nov), so those gaps read
+	-- as a dim inside. Octagons: two squares, one turned 45 degrees.
+	local core = Instance.new("Model")
+	core.Name = "Core"
+	for _, layer in { { 1, 10, 21 }, { 10, 14, 18.5 }, { 14, 18, 16 }, { 18, 22, 15 }, { 22, 26, 14 }, { 26, 30.5, 13 } } do
+		local y0, y1, rr = layer[1], layer[2], layer[3]
+		for _, a in { 0, 45 } do
+			local p = block(core, "Core", Vector3.new(rr * 2, y1 - y0, rr * 2), CFrame.new(HERO.pos + Vector3.new(0, (y0 + y1) / 2, 0)) * CFrame.Angles(0, math.rad(a + 22.5), 0), C(58, 40, 28), Enum.Material.WoodPlanks)
+			p.CastShadow = false
+			p.CanQuery = false
+			p.CanTouch = false
+		end
+	end
+	core.Parent = m
 end
 
 local function promptAt(parent: Instance, cf: CFrame, name: string): BasePart

@@ -356,5 +356,15 @@
   "roblox": "102735955377474",
   "forge_job": "3a9adc3f-0a2e-4441-b7b1-fb644096b6ef",
   "note": "31 Oct: made from a picture of the cabin; came out a copy of the house, not used"
+ },
+ "scissorhalf": {
+  "roblox": "105475000736860",
+  "forge_job": "4abb1ba9-76d8-4f31-b339-f58f032bb6f8",
+  "note": "4 Nov: one half of the Garden Scissors, in use twice (ForgeModelIds.scissorhalf; server/Models FORGE_TOOLS tool_scissors, client/ViewModel's first-person shears that open and shut); prompt only"
+ },
+ "scissors_pair_unused": {
+  "roblox": "129355819108676",
+  "forge_job": "d8a9f6d0-4e82-485e-bfb0-05fa7d64b0b3",
+  "note": "4 Nov: the whole pair of scissors in one mesh (its first publish failed on Roblox's side, published again); not used: one piece can't open and shut"
  }
 }

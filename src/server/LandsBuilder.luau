@@ -47,7 +47,7 @@ local GATES = { -- (x, the land, the pad's kind) left to right as you face them
 }
 -- (measured on the gate meshes: the arch's opening as a share of the width, server/ArenaForge)
 local OPEN = { meadow = 0.36, wheat = 0.43, blossom = 0.37, pine = 0.29, swamp = 0.29 }
-local HERO = { pos = Vector3.new(0, 0, 34), height = 74 }
+local HERO = { pos = Vector3.new(0, 0, 42), height = 112 }
 local RING_CENTRE = Vector3.new(0, 0, -44)
 local LANDS = { -- (angle from north, + to the left; the starlight observatory behind the spawn)
 	{ id = "wheat", lm = "lm_wheat", a = 30, r = 120 },
@@ -67,7 +67,7 @@ local FLOOR = -24
 local CLASSES = Vector3.new(-48, 0, -58)
 local GARAGE = Vector3.new(49, 0, -60)
 Layout.SPAWN = SPAWN
-Layout.REWARDS = { pos = Vector3.new(17, 0, -66) }
+Layout.REWARDS = { pos = Vector3.new(19, 0, -81) }
 Layout.GRASS_CUT = { pos = Vector3.new(44, 0, -88) }
 Layout.BEST_TIMES = { pos = Vector3.new(-44, 0, -88) }
 
@@ -184,24 +184,47 @@ local function ground(world: Instance)
 	block(world, "SeaFloor", Vector3.new(1400, 2, 1400), CFrame.new(0, FLOOR - 1, 0), C(226, 200, 140))
 end
 
--- The courtyard and the walks: the camp's golden paving (server/HubPaths), the courtyard one big paved square.
-local function paving(world: Instance)
-	local HubPaths = require(script.Parent.HubPaths)
-	-- (the courtyard as one walk laid across it: HubPaths adds half a width at each end, so a segment (w - d) long and
-	-- d wide covers the w x d rectangle)
-	local w, d = COURT.x1 - COURT.x0, COURT.z1 - COURT.z0
-	local zc = (COURT.z0 + COURT.z1) / 2
-	local segs = { { a = Vector2.new(-(w - d) / 2, zc), b = Vector2.new((w - d) / 2, zc), width = d } }
-	-- walks out of the courtyard's sides to the lands' patches
+-- The walks, in the camp's golden paving (server/HubPaths): a round plaza at the spawn, a walk fanning out to each
+-- gate (leading lines: World Composition), an apron along the gate row, and walks to every station and out to the
+-- lands. Between them the courtyard is lawn, with flower beds and lamps (dressing()).
+local SPAWN_PLAZA = 13
+local APRON_Z = GATE_Z - 7
+local function walkSegments(): { any }
+	local s0 = Vector2.new(SPAWN.X, SPAWN.Z)
+	local segs = {}
+	local function walk(a: Vector2, b: Vector2, w: number)
+		table.insert(segs, { a = a, b = b, width = w })
+	end
+	for _, g in GATES do
+		walk(s0, Vector2.new(g.x, APRON_Z), 7)
+	end
+	walk(Vector2.new(-58, APRON_Z), Vector2.new(58, APRON_Z), 9)
+	walk(s0, Vector2.new(CLASSES.X + 14, CLASSES.Z), 7)
+	walk(s0, Vector2.new(GARAGE.X - 13, GARAGE.Z), 7)
+	walk(s0, Vector2.new(Layout.REWARDS.pos.X - 6, Layout.REWARDS.pos.Z), 6)
+	for _, b in { Layout.GRASS_CUT.pos, Layout.BEST_TIMES.pos } do
+		walk(s0, Vector2.new(b.X * 0.85, b.Z + 6), 6)
+	end
+	-- out to the lands, from the apron's ends or the spawn plaza, whichever is nearer
+	local starts = { Vector2.new(-58, APRON_Z), Vector2.new(58, APRON_Z), s0 }
 	for _, l in LANDS do
 		local p = landPos(l)
-		local from = Vector2.new(math.clamp(p.X, COURT.x0 + 6, COURT.x1 - 6), math.clamp(p.Z, COURT.z0 + 6, COURT.z1 - 6))
-		local to = Vector2.new(p.X, p.Z) - (Vector2.new(p.X, p.Z) - from).Unit * (PATCH_R - 6)
-		if (to - from).Magnitude > 8 then
-			table.insert(segs, { a = from, b = to, width = 6 })
+		local to = Vector2.new(p.X, p.Z)
+		local from = starts[1]
+		for _, st in starts do
+			if (st - to).Magnitude < (from - to).Magnitude then
+				from = st
+			end
 		end
+		local stop = to - (to - from).Unit * (PATCH_R - 6)
+		walk(from, stop, 6)
 	end
-	HubPaths.pave(HubPaths.lay(world, segs, 0, 11), Vector3.zero)
+	return segs
+end
+
+local function paving(world: Instance)
+	local HubPaths = require(script.Parent.HubPaths)
+	HubPaths.pave(HubPaths.lay(world, walkSegments(), 0, 11, { { centre = Vector2.new(SPAWN.X, SPAWN.Z), radius = SPAWN_PLAZA } }), Vector3.zero)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -456,19 +479,24 @@ end
 local function hedge(world: Instance)
 	local f = PropKit.folder("Hedge", world)
 	local rng = Random.new(12)
+	local walks = walkSegments()
+	local function onWalk(p: Vector3): boolean
+		local q = Vector2.new(p.X, p.Z)
+		for _, s in walks do
+			local ab = s.b - s.a
+			local t = math.clamp((q - s.a):Dot(ab) / math.max(ab:Dot(ab), 1e-3), 0, 1)
+			if (q - (s.a + ab * t)).Magnitude < s.width / 2 + 3 then
+				return true
+			end
+		end
+		return false
+	end
 	local function row(a: Vector3, b: Vector3)
 		local len = (b - a).Magnitude
 		local n = math.floor(len / 7)
 		for i = 0, n do
 			local p = a + (b - a) * (i / math.max(n, 1))
-			local gap = false
-			for _, l in LANDS do
-				local lp = landPos(l)
-				local from = Vector3.new(math.clamp(lp.X, COURT.x0 + 6, COURT.x1 - 6), 0, math.clamp(lp.Z, COURT.z0 + 6, COURT.z1 - 6))
-				if (p - from).Magnitude < 7 then
-					gap = true
-				end
-			end
+			local gap = onWalk(p)
 			if not gap then
 				VM.place(f, "Bush_meadow", p, { scale = rng:NextNumber(0.85, 1.05), yaw = rng:NextInteger(0, 3) * math.pi / 2, collide = true })
 			end
@@ -542,6 +570,31 @@ local function garage(world: Instance)
 	PropKit.prompt(floor, "Open", "Garage", "Garage", 14) -- (one prompt: client/MowerLock hangs its padlock over it)
 end
 
+-- The courtyard's lawn between the walks: flower beds, benches facing the gates, lamp posts along the fan.
+local function dressing(world: Instance)
+	local f = PropKit.folder("Dressing", world)
+	local function piece(name: string, pos: Vector3, toward: Vector3)
+		local d = toward - pos
+		VM.place(f, name, pos, { yaw = math.atan2(-d.X, -d.Z), collide = true })
+	end
+	-- (in the wedges between the fan's walks, halfway to the gates)
+	for _, x in { -37, -12.5, 12.5, 37 } do
+		piece("S_flower_bed", Vector3.new(x * 0.62, 0, -48), Vector3.new(0, 0, -48))
+	end
+	for _, sx in { -1, 1 } do
+		piece("S_bench", Vector3.new(sx * 30, 0, -50), Vector3.new(sx * 30, 0, -20))
+		piece("S_flower_bed", Vector3.new(sx * 54, 0, -42), Vector3.new(0, 0, -42))
+		piece("S_planter", Vector3.new(sx * 16, 0, -73), SPAWN)
+	end
+	-- lamp posts on the apron, between the gates
+	for _, x in { -37.5, -12.5, 12.5, 37.5 } do
+		local p = Vector3.new(x, 0, APRON_Z - 3)
+		if not Models.place("lantern_post", f, CFrame.lookAt(p, p - Vector3.zAxis), 0.9, true) then
+			VM.place(f, "S_lantern_post", p, { collide = true })
+		end
+	end
+end
+
 local function bounds(world: Instance)
 	local e = REACH - 30
 	for _, s in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
@@ -565,6 +618,7 @@ function LandsBuilder.build()
 	local leaderLabel = B.leaderboard(world)
 	local bestLabel = B.bestTimes(world)
 	hedge(world)
+	dressing(world)
 	lands(world)
 	bounds(world)
 	local sp = SPAWN + Vector3.new(0, 0.8, 0)

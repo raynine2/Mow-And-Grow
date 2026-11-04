@@ -450,7 +450,8 @@ local function tree(parent: Instance, land: string, foot: Vector3, scale: number
 	VM.blocker(parent, Vector3.new(4.8 * s, 20 * s, 4.8 * s), CFrame.new(foot + Vector3.new(0, 10 * s, 0)))
 end
 
--- A land on the ring: its landmark facing the square, its trees round the back half, two big rocks in front.
+-- A land on the ring: its landmark facing the square, its trees round the back half. (No rocks: from the square the
+-- big voxel rocks read as grey walls in front of the landmarks.)
 local function land(parent: Instance, l: any, rng: Random)
 	local f = Instance.new("Folder")
 	f.Name = zone(l.id).name
@@ -463,9 +464,6 @@ local function land(parent: Instance, l: any, rng: Random)
 		local a = (k - 3) / 2 * 1.2
 		local p = at + out * (PATCH_R - 6) * math.cos(a) + right * (PATCH_R - 4) * math.sin(a)
 		tree(f, l.id, p, rng:NextNumber(1.2, 1.5), rng)
-	end
-	for _, s in { -1, 1 } do
-		VM.place(f, "Rock_" .. l.id .. "_big", at - out * (PATCH_R - 9) + right * s * 17, { scale = rng:NextNumber(1.2, 1.5), yaw = rng:NextNumber(0, math.pi * 2), collide = true })
 	end
 end
 

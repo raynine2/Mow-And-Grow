@@ -207,6 +207,15 @@ function GlitchHole.new(centre: Vector3, facing: Vector3, radius: number, parent
 	local ghostC = part(folder, "GhostCyan", Vector3.one * 2 * R, CFrame.new(centre), GHOST_CYAN, Enum.Material.Neon, Enum.PartType.Ball)
 	ghostR.Transparency = 1
 	ghostC.Transparency = 1
+	-- (4 Nov, owner: "use the new FX not the old ones like the old blackhole") with the SoulShroud pack drawing the
+	-- hole (client/Ending plays its black hole and portal), the old black ball, its pink rim and the red / cyan glitch
+	-- copies are left out: the hole still pulls, lifts and glitches, it just looks like the pack's
+	if bare and PackFx.has("BlackHole") then
+		horizon.Transparency = 1
+		rim.Transparency = 1
+		ghostR.Parent = nil
+		ghostC.Parent = nil
+	end
 	local glowLight = Instance.new("PointLight")
 	glowLight.Color = PINK
 	glowLight.Range = 0

@@ -584,7 +584,6 @@ local function dressing(world: Instance)
 	for _, sx in { -1, 1 } do
 		piece("S_bench", Vector3.new(sx * 30, 0, -50), Vector3.new(sx * 30, 0, -20))
 		piece("S_flower_bed", Vector3.new(sx * 54, 0, -42), Vector3.new(0, 0, -42))
-		piece("S_planter", Vector3.new(sx * 16, 0, -73), SPAWN)
 	end
 	-- lamp posts on the apron, between the gates
 	for _, x in { -37.5, -12.5, 12.5, 37.5 } do

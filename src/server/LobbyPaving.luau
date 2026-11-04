@@ -21,8 +21,9 @@ local CampGround = require(script.Parent.CampGround)
 local LobbyPaving = {}
 
 local C = Color3.fromRGB
-local TONES = CampGround.TONES
-local CREAM = C(244, 222, 170)
+-- (warmer and deeper than the camp's tones: in the lobby's bright light those read nearly white)
+local TONES = { C(222, 156, 88), C(208, 144, 80), C(230, 168, 98), C(198, 136, 76) }
+local CREAM = C(236, 200, 140)
 local GOLD = C(250, 196, 70)
 local GOLD_DARK = C(214, 150, 50)
 local GROUT = C(86, 62, 46)
@@ -240,8 +241,11 @@ local function layDisc(f: Instance, areas: { Area }, idx: number, area: Area)
 	pl.Shape = Enum.PartType.Cylinder
 	pl.Transparency = 1
 	pl.CanCollide = true
-	local r0 = 0
-	if area.medallion then
+	local r0 = 1.9
+	if not area.medallion then
+		-- a plain square stone in the middle, turned 45 degrees
+		stone(f, centre * CFrame.Angles(0, math.rad(45), 0), 2.8, 2.8, TONES[3], lift)
+	else
 		-- a gold eight-pointed star: two squares, one turned 45 degrees, a darker one under, a round boss on top
 		r0 = 2.6
 		for i, a in { 0, 45 } do

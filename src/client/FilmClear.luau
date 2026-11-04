@@ -21,6 +21,9 @@ local function sizeOf(unit: Instance): Vector3
 	return Vector3.zero
 end
 
+-- the parts of the workspace that are the world (the client's padlock and its COMING SOON sign are in MowerLocks)
+local ROOTS = { World = true, MowerLocks = true, Maps = true }
+
 function FilmClear.keep(getModel: () -> Model?): () -> ()
 	local world = workspace:FindFirstChild("World")
 	local hidden: { [Instance]: boolean } = {}
@@ -41,11 +44,16 @@ function FilmClear.keep(getModel: () -> Model?): () -> ()
 			end
 		end
 	end
-	-- signs drawn over everything (the garage's COMING SOON) are off while a guardian is on the set
-	for _, d in (if world then world:GetDescendants() else {}) do
-		if d:IsA("BillboardGui") and d.AlwaysOnTop and d.Enabled then
-			d.Enabled = false
-			guis[d] = true
+	-- the world's floating signs (the garage's COMING SOON was drawn across the King) are off while a guardian is
+	-- on the set
+	for _, f in workspace:GetChildren() do
+		if ROOTS[f.Name] then
+			for _, d in f:GetDescendants() do
+				if d:IsA("BillboardGui") and d.Enabled then
+					d.Enabled = false
+					guis[d] = true
+				end
+			end
 		end
 	end
 	local params = RaycastParams.new()
@@ -71,7 +79,7 @@ function FilmClear.keep(getModel: () -> Model?): () -> ()
 		-- only the world's own pieces can be in the way: not the film's set, the effects, the guardian or the ground
 		local excl: { Instance } = {}
 		for _, f in workspace:GetChildren() do
-			if f ~= world and not f:IsA("Terrain") then
+			if not ROOTS[f.Name] and not f:IsA("Terrain") then
 				table.insert(excl, f)
 			end
 		end
@@ -96,7 +104,7 @@ function FilmClear.keep(getModel: () -> Model?): () -> ()
 					-- the whole building or tree in the way: the biggest model under the world that's still a prop
 					local unit: Instance = hit
 					local a = hit.Parent
-					while a and a ~= world and a ~= workspace do
+					while a and a ~= workspace and not (a.Parent == workspace and ROOTS[a.Name]) do
 						if a:IsA("Model") and sizeOf(a).Magnitude < BIG then
 							unit = a
 						end

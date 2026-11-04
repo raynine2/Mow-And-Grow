@@ -932,6 +932,9 @@ end
 
 local function attach(key: any, char: Model, classId: any, own: boolean)
 	drop(key)
+	if type(classId) == "string" and (Config :: any).SOLS_AURAS and (Config :: any).SOLS_AURAS[classId] then
+		return -- (5 Nov) the Sols aura scripts draw this class
+	end
 	local build = if type(classId) == "string" then BUILD[classId] else nil
 	if not build then
 		return

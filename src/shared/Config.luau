@@ -854,6 +854,9 @@ Config.DEFAULT_CLASS = "WeedPuller"
 -- (client/ClassFx). (4 Nov, owner, on the first class: "Remove the aura of the first class its very bad and just
 -- screen bullshit")
 Config.NO_AURA = {} :: { [string]: boolean } -- (4 Nov, later: the Weed Puller has its own small aura again, client/Auras)
+-- (5 Nov, owner: "i dont see it in the game yet") the Sols RNG-style auras (StarterPlayerScripts.SolsAura_<Class>, built
+-- from ServerStorage.MowALawnTools.SolsAuraSrc) take over these classes: client/Auras draws nothing for them.
+Config.SOLS_AURAS = { Groundskeeper = true, LawnBaron = true, HedgeReaper = true, GrassTitan = true, UltimateGardener = true, LawnLegend = true, GoatMan = true } :: { [string]: boolean }
 -- (4 Nov, owner: "remake elke aura met classes") the class auras remade from scratch in client/Auras; client/RarityFx's
 -- class auras and client/ClassVfx's body, fists, screen and burst switch off while this is on (false = the old ones)
 Config.AURAS_V2 = true

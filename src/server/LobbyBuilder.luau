@@ -289,8 +289,9 @@ local function forgeRewards(m: Instance, at: CFrame)
 	local group = ("GROUP\n+%d 💎"):format(Config.GROUP_GEMS)
 	PropKit.facePanel(m, at, Vector3.new(3.4, 1.7, -3.5), Vector2.new(3.6, 1.7), daily, Color3.new(1, 1, 1))
 	PropKit.facePanel(m, at, Vector3.new(-3.4, 1.7, -3.5), Vector2.new(3.6, 1.7), group, Color3.new(1, 1, 1))
-	outline(m, at, Vector3.new(3.9, 0, -6.6), 7, 6, CYAN, "Rewards", "daily") -- the daily bay: walk on to claim
-	outline(m, at, Vector3.new(-3.9, 0, -6.6), 7, 6, CYAN, "Rewards")
+	-- (6.2 wide, a gap between them: at 7 their frames overlapped in the middle, owner, 4 Nov: "matched niet echt")
+	outline(m, at, Vector3.new(3.9, 0, -6.6), 6.2, 6, CYAN, "Rewards", "daily") -- the daily bay: walk on to claim
+	outline(m, at, Vector3.new(-3.9, 0, -6.6), 6.2, 6, CYAN, "Rewards")
 	for _, x in { 3.6, -3.6 } do
 		LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(x, 5.6, -2.4), Vector3.new(3, 2, 2), "RewardsFX"), "LobbyFX", { Kind = "sparkle", Color = CYAN })
 	end

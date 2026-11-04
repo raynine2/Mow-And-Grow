@@ -1,6 +1,7 @@
 -- Pets: hatching eggs, equipping critters, and their boosts. Works in the lobby and in runs.
 -- Equipped pets are mirrored in the player attribute "Pets" (comma list of pet ids) so every client can draw the
 -- followers (client/PetFollow); the server never builds pet models.
+local MessagingService = game:GetService("MessagingService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -10,6 +11,11 @@ local PlayerData = require(script.Parent.PlayerData)
 
 local Pets = {}
 local rng = Random.new()
+-- (4 Nov, hatch v3, owner: rare pulls announced "Global (all servers)") Legendary+ hatches go out on this topic and
+-- every server puts them in its chat (client/PetsWindow "announceHatch", global = true)
+local TOPIC = "MowALawn_Hatch"
+local ANNOUNCE_AFTER = 7 -- (the v3 hatch of a Legendary+ takes longer: taps + the charge + the reveal)
+local lastGlobal = 0
 
 local function count(data): number
 	local n = 0
@@ -112,8 +118,13 @@ function Pets.hatch(player: Player, data, eggId: string, n: number, paid: boolea
 	for _, id in got do
 		local def = Config.pet(id)
 		if def and (def.rarity == "Legendary" or def.rarity == "Mythic" or def.rarity == "Secret") then
-			task.delay(3.5, function()
+			task.delay(ANNOUNCE_AFTER, function()
 				Net.all("Fx", "announceHatch", { name = player.DisplayName, pet = id })
+				-- and every other server (at most one a second from here: MessagingService has a budget)
+				if os.clock() - lastGlobal >= 1 then
+					lastGlobal = os.clock()
+					pcall(MessagingService.PublishAsync, MessagingService, TOPIC, { job = game.JobId, name = player.DisplayName, pet = id })
+				end
 			end)
 		end
 	end
@@ -161,6 +172,16 @@ function Pets.start()
 		return
 	end
 	started = true
+	-- (v3) rare hatches from the other servers
+	task.spawn(function()
+		pcall(MessagingService.SubscribeAsync, MessagingService, TOPIC, function(msg)
+			local d = type(msg) == "table" and msg.Data
+			if type(d) ~= "table" or d.job == game.JobId or type(d.pet) ~= "string" or not Config.pet(d.pet) then
+				return
+			end
+			Net.all("Fx", "announceHatch", { name = string.sub(tostring(d.name or "Someone"), 1, 40), pet = d.pet, global = true })
+		end)
+	end)
 	Net.on("Hatch", 3, function(player, eggId, n)
 		local data = PlayerData.get(player)
 		local egg = type(eggId) == "string" and Config.egg(eggId)

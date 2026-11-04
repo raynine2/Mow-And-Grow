@@ -819,6 +819,10 @@ State.on("fx", function(kind, d)
 				hex = "ff6ad5"
 			end
 			local text = ('<font color="#%s"><b>%s hatched a %s %s!</b></font>'):format(hex, tostring(d.name), string.upper(def.rarity), def.name)
+			if d.global then
+				-- (4 Nov, hatch v3) a rare hatch in another server
+				text = '<font color="#9fe3ff"><b>[GLOBAL]</b></font> ' .. text
+			end
 			pcall(function()
 				local TextChatService = game:GetService("TextChatService")
 				local channels = TextChatService:FindFirstChild("TextChannels")

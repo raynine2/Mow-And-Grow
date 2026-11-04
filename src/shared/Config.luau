@@ -857,6 +857,9 @@ Config.NO_AURA = {} :: { [string]: boolean } -- (4 Nov, later: the Weed Puller h
 -- (5 Nov, owner: "i dont see it in the game yet") the Sols RNG-style auras (StarterPlayerScripts.SolsAura_<Class>, built
 -- from ServerStorage.MowALawnTools.SolsAuraSrc) take over these classes: client/Auras draws nothing for them.
 Config.SOLS_AURAS = { Groundskeeper = true, LawnBaron = true, HedgeReaper = true, GrassTitan = true, UltimateGardener = true, LawnLegend = true, GoatMan = true } :: { [string]: boolean }
+-- Which class-aura set the 7 Sols classes wear: "soulshroud" = the SoulShroud VFX Pack auras (5 Nov,
+-- StarterPlayerScripts.SoulShroudAuras); "sols" = the 4-5 Nov Sols auras (SolsAura_* scripts). Flip to revert.
+Config.AURA_SET = "soulshroud" :: string
 -- (4 Nov, owner: "remake elke aura met classes") the class auras remade from scratch in client/Auras; client/RarityFx's
 -- class auras and client/ClassVfx's body, fists, screen and burst switch off while this is on (false = the old ones)
 Config.AURAS_V2 = true
@@ -1261,8 +1264,14 @@ Config.PASSES = {
 	VIP = { id = 2042072324, robux = 249, name = "VIP", desc = "+15% power, +15% sell, VIP tag", tag = "POPULAR", color = Color3.fromRGB(240, 90, 150) },
 	HatchLuck = { id = 2036909108, robux = 149, name = "Hatch Luck", desc = "Epic+ critters 1.5x more likely from every egg", color = Color3.fromRGB(80, 200, 120) },
 	SuperHatchLuck = { id = 2040568482, robux = 399, name = "Super Hatch Luck", desc = "Epic+ critters 2x more likely (stacks to 3x)", tag = "SUPER", color = Color3.fromRGB(255, 190, 40) },
+	-- (4 Nov, hatch v3, owner: "Gamepass + stop on rare") hatches gem eggs again by itself until a rare (client/HatchFx).
+	-- id = 0 until the pass is made on the Creator Dashboard: then paste its id here (it joins the shop by itself).
+	AutoHatch = { id = 0, robux = 199, name = "Auto Hatch", desc = "Eggs hatch by themselves, stops on a rare", tag = "NEW", color = Color3.fromRGB(170, 90, 245) },
 }
 Config.PASS_ORDER = { "BigBag", "DoubleCoins", "DoubleClippings", "DoubleGems", "VIP", "HatchLuck", "SuperHatchLuck" }
+if Config.PASSES.AutoHatch.id ~= 0 then
+	table.insert(Config.PASS_ORDER, "AutoHatch")
+end
 
 function Config.productByAssetId(assetId: number)
 	if assetId == 0 then
@@ -1284,7 +1293,11 @@ Config.SOUNDS = {
 	-- All Roblox-owned (creator "Roblox", user 1), checked on the Creator Store API on 18 Oct 2026.
 	cut = { id = "rbxassetid://91464542260761", volume = 0.31, gap = 0.06 }, -- ForgeGUI 29 Oct. old: rbxassetid://12222200, volume 0.35, pitch 1.1 (swoosh.wav)
 	chip = { id = "rbxassetid://82710812255352", volume = 0.43, gap = 0.08 }, -- ForgeGUI 29 Oct. old: rbxassetid://12222140, volume 0.2, pitch 1.2 (snap.wav)
-	reveal = { id = "rbxassetid://85104851091777", volume = 0.86 }, -- ForgeGUI 29 Oct. old: rbxassetid://17208327798, volume 0.55 (Roblox GUI - Aura)
+	reveal = { id = "rbxassetid://85104851091777", volume = 0.86 },
+	-- (4 Nov, hatch v3) the hatch garden's suspense loop and the Legendary+ charge riser (APM Music, licensed for
+	-- every Roblox experience: "Turn Of Night (Instrumental 15 Sec)" and "Savage Riser"). Swap the ids to retune.
+	hatchMusic = { id = "rbxassetid://73114345407187", volume = 0.35 },
+	hatchRiser = { id = "rbxassetid://1839756493", volume = 0.6 }, -- ForgeGUI 29 Oct. old: rbxassetid://17208327798, volume 0.55 (Roblox GUI - Aura)
 	sell = { id = "rbxassetid://72697172284399", volume = 0.36, gap = 0.2 }, -- ForgeGUI 29 Oct. old: rbxassetid://127645268874265, volume 0.5 (CoinTransfer_01)
 	purchase = { id = "rbxassetid://103129747020700", volume = 0.69 }, -- ForgeGUI 29 Oct. old: rbxassetid://17208380755, volume 0.5 (Roblox GUI - Purchase)
 	upgrade = { id = "rbxassetid://82520748842226", volume = 0.57 }, -- ForgeGUI 29 Oct. old: rbxassetid://10066947742, volume 0.45 (RBLX UI Purchase (SFX))

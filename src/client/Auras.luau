@@ -128,6 +128,34 @@ local function att(a: Aura, p: BasePart, name: string, pos: Vector3): Attachment
 	return at
 end
 
+-- An invisible box round your body (welded to you; nothing touches, hits or collides with it). What's emitted off it
+-- (see emitter) starts on its surface and moves outward, so it shows while you stand still too: from an attachment in
+-- your torso it spent its life hidden inside you (tested 4 Nov on the cabin's mannequin: no pollen, no coins).
+local function body(a: Aura): BasePart
+	local b = a.state.body
+	if b then
+		return b
+	end
+	local p = Instance.new("Part")
+	p.Name = "Aura_Body"
+	p.Size = Vector3.new(2.6, 3.2, 1.7)
+	p.Transparency = 1
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	p.CastShadow = false
+	p.CFrame = a.root.CFrame * CFrame.new(0, 0.9, 0)
+	local w = Instance.new("WeldConstraint")
+	w.Part0 = p
+	w.Part1 = a.root
+	w.Parent = p
+	p.Parent = a.char
+	table.insert(a.made, p)
+	a.state.body = p
+	return p
+end
+
 -- At your feet, `up` studs over the ground (0.35 if not given: lower, and what's kicked up falls straight into the
 -- floor and is never seen; tested 4 Nov).
 local function feet(a: Aura, name: string, x: number?, z: number?, up: number?): Attachment
@@ -204,6 +232,12 @@ local function emitter(a: Aura, parent: Instance, o: EmOpts): ParticleEmitter
 		e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
 	end
 	e.LockedToPart = false
+	if parent:IsA("BasePart") and parent.Name == "Aura_Body" then
+		-- off the body box's surface, outward (its speed is how fast it leaves you)
+		e.Shape = Enum.ParticleEmitterShape.Box
+		e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+		e.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+	end
 	e.Parent = parent
 	table.insert(a.made, e)
 	table.insert(a.ems, { e = e, rate = o.rate, walk = o.walk })
@@ -308,7 +342,7 @@ BUILD.Gardener = function(a)
 			spin = NumberRange.new(0, 0),
 		})
 	end
-	emitter(a, att(a, torso(a), "Glint", Vector3.new(0, 0.4, 0)), {
+	emitter(a, body(a), {
 		tex = SPARKLE,
 		color = cs(C(200, 245, 255)),
 		size = ns(0, 0, 0.3, 0.8, 1, 0),
@@ -369,7 +403,7 @@ end
 
 -- Rare: slow gold pollen rising off you, a gold sheen off your swinging hand, a coin glint now and then.
 BUILD.LawnBaron = function(a)
-	emitter(a, att(a, torso(a), "Pollen", Vector3.new(0, -0.2, 0)), {
+	emitter(a, body(a), {
 		tex = FxTex.glow,
 		color = cs(C(255, 244, 190), C(242, 193, 78), C(150, 96, 20)),
 		size = ns(0, 0, 0.2, 0.48, 1, 0.16),
@@ -395,7 +429,7 @@ BUILD.LawnBaron = function(a)
 			face = true,
 		})
 	end
-	emitter(a, att(a, torso(a), "Coin", Vector3.new(0, 0.2, 0)), {
+	emitter(a, body(a), {
 		tex = T.coin,
 		color = cs(WHITE),
 		size = ns(0, 0, 0.2, 0.75, 1, 0.45),
@@ -603,7 +637,7 @@ local SEASONS = {
 	{ tex = FxTex.star, c = { C(255, 255, 255), C(221, 243, 255), C(80, 130, 190) } },
 }
 BUILD.UltimateGardener = function(a)
-	local t = att(a, torso(a), "Season", Vector3.new(0, 1, 0))
+	local t = body(a)
 	local fall = emitter(a, t, {
 		tex = SEASONS[1].tex,
 		color = cs(table.unpack(SEASONS[1].c)),
@@ -724,7 +758,7 @@ BUILD.LawnLegend = function(a)
 			light = 1,
 		})
 	end
-	emitter(a, att(a, t, "Fireflies", Vector3.new(0, 0.6, 0.6)), {
+	emitter(a, body(a), {
 		tex = FxTex.glow,
 		color = cs(C(220, 255, 210), C(63, 224, 197)),
 		size = ns(0, 0, 0.2, 0.18, 0.8, 0.18, 1, 0),
@@ -829,7 +863,7 @@ BUILD.GoatMan = function(a)
 		})
 	end
 	-- gold motes rising off you
-	emitter(a, att(a, torso(a), "Gold", Vector3.new(0, -0.6, 0.3)), {
+	emitter(a, body(a), {
 		tex = FxTex.glow,
 		color = cs(C(255, 245, 200), C(255, 205, 70), C(160, 100, 20)),
 		size = ns(0, 0, 0.2, 0.35, 1, 0),
@@ -842,7 +876,7 @@ BUILD.GoatMan = function(a)
 		light = 0.8,
 		spin = NumberRange.new(0, 0),
 	})
-	emitter(a, att(a, torso(a), "Motes", Vector3.new(0, 0.3, 0.4)), {
+	emitter(a, body(a), {
 		tex = FxTex.glow,
 		color = cs(C(220, 255, 200), C(52, 224, 255)),
 		size = ns(0, 0, 0.2, 0.16, 1, 0),

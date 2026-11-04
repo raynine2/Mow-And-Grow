@@ -54,7 +54,8 @@ PackVfxBuild.SPEC = {
 	Spikes = { from = { S("Ground Impact ") }, Hold = 0.2, Grow = true, GrowTime = 1.2, GrowFrom = 0.1, Life = 1.8 },
 	Slash = { from = { S("Slash Example") }, Grow = true, GrowTime = 0.45, GrowFrom = 0.5, Life = 0.6 },
 	Wind = { from = { S("Wind Swirl", 2) }, Grow = true, GrowTime = 1, GrowFrom = 0.3, Life = 1.2 },
-	Orb = { from = { A(12) } }, -- (a boss shot's glow, streamed while it flies)
+	Orb = { from = { A(12) } },
+	Bolt = { from = { { path = { "Weather", "Weather I", "Stylized Thunder / Lightning " } } }, Hold = 0.5, Life = 1.6 }, -- (a boss shot's glow, streamed while it flies)
 	Beam = { from = { { path = { "KiBlasts", "Ki (気) Blast 1" } } }, base = "beam", Hold = 0.6, Life = 2 },
 	-- films (client/FilmVfx)
 	Portal = { from = { A(7) }, Hold = 1.5, Life = 3, Face = true },

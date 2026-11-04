@@ -26,6 +26,7 @@ local TweenService = game:GetService("TweenService")
 local Device = require(script.Parent.Device)
 local IntroCast = require(script.Parent.IntroCast)
 local Potato = require(script.Parent.Potato)
+local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack draws the eye when it's on
 
 local GlitchHole = {}
 
@@ -95,7 +96,47 @@ end
 -- slit pupil, opening like an eyelid. eye.place(at, toward, width, open 0..1) every frame; eye.destroy().
 export type Eye = { place: (at: Vector3, toward: Vector3, width: number, open: number) -> (), destroy: () -> () }
 
+-- (4 Nov, owner: "fix eye bug purple thing ... use new fx") with the SoulShroud pack on, the eye is the pack's: a
+-- pink-purple glowing core and a purple burst as it opens (the part almond is the old one)
+local function packEye(): Eye?
+	if not PackFx.has("Orb") then
+		return nil
+	end
+	local core: PackFx.Loop? = nil
+	local opened = false
+	return {
+		place = function(at: Vector3, toward: Vector3, width: number, open: number)
+			local cf = CFrame.lookAt(at, at + toward)
+			if open > 0.3 and not core then
+				core = PackFx.loop("Orb", cf, { color = PINK, scale = math.clamp(width / 14, 0.3, 4) })
+			elseif open < 0.05 and core then
+				core.stop(0.3)
+				core = nil
+			end
+			if core then
+				core.move(cf)
+			end
+			if open > 0.6 and not opened then
+				opened = true
+				PackFx.play("PurpleBurst", at, { scale = math.clamp(width / 8, 0.5, 5), force = true, soft = true })
+			elseif open < 0.1 then
+				opened = false
+			end
+		end,
+		destroy = function()
+			if core then
+				core.stop(0.3)
+				core = nil
+			end
+		end,
+	}
+end
+
 function GlitchHole.eyeProp(parent: Instance): Eye
+	local pe = packEye()
+	if pe then
+		return pe
+	end
 	local parts: { Part } = {}
 	-- (ellipsoids: a ball can't be stretched, a sphere mesh on a block can)
 	for _, e in { { "Eye", PINK }, { "Iris", HOT }, { "Pupil", BLACK } } do

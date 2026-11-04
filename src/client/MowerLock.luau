@@ -394,7 +394,98 @@ local function outward(holder: BasePart): Vector3
 	return if free(-flat) > free(flat) then -flat else flat
 end
 
+-- (owner, 4 Nov: "close garage") the lobby's garage is shut while the mowers are locked: a roll-up door of wooden
+-- slats across its bay (the mower stays inside, out of sight), and the lock stands out in front of it.
+-- Returns where the door's foot is and the way it faces (out), or nil when the garage can't be measured.
+local doors: { [Instance]: Model } = {}
+local function shutGarage(holder: BasePart): (Vector3?, Vector3?)
+	local gm = holder:FindFirstAncestor("Garage")
+	if not (gm and gm:IsA("Model")) then
+		return nil, nil
+	end
+	local look = gm:GetPivot().LookVector
+	local out = Vector3.new(look.X, 0, look.Z)
+	if out.Magnitude < 0.1 then
+		return nil, nil
+	end
+	out = out.Unit
+	local side = out:Cross(Vector3.yAxis)
+	-- the bay: between the side walls (the walls running along `out`), from the floor up to under the beam
+	local cfB, szB = gm:GetBoundingBox()
+	local depth = math.abs(szB.X * out.X) + math.abs(szB.Z * out.Z)
+	local wallsAt: { number } = {}
+	local backAt = -math.huge
+	for _, w in gm:GetChildren() do
+		if w:IsA("BasePart") and w.Name == "Wall" then
+			local rel = w.Position - cfB.Position
+			local along = rel:Dot(out)
+			local across = rel:Dot(side)
+			local alongSize = math.abs(w.Size.X * out.X) + math.abs(w.Size.Z * out.Z)
+			if alongSize > 6 then
+				table.insert(wallsAt, across) -- a side wall
+			else
+				backAt = math.max(backAt, -along)
+			end
+		end
+	end
+	local width = 18
+	if #wallsAt >= 2 then
+		table.sort(wallsAt)
+		width = (wallsAt[#wallsAt] - wallsAt[1]) - 1.4
+	end
+	local mid = 0
+	if #wallsAt >= 2 then
+		mid = (wallsAt[1] + wallsAt[#wallsAt]) / 2
+	end
+	local base = ground(cfB.Position + out * (depth / 2))
+	local front = Vector3.new(cfB.Position.X, base.Y, cfB.Position.Z) + side * mid + out * (depth / 2 - 2.2)
+	local height = math.min(szB.Y * 0.62, 16)
+	local door = Instance.new("Model")
+	door.Name = "GarageDoor"
+	local WOOD = { Color3.fromRGB(196, 132, 74), Color3.fromRGB(176, 114, 62) }
+	local n = math.max(6, math.floor(height / 1.6))
+	local slat = height / n
+	for i = 0, n - 1 do
+		local p = Instance.new("Part")
+		p.Name = "Slat"
+		p.Anchored = true
+		p.CanCollide = true
+		p.Material = Enum.Material.WoodPlanks
+		p.Color = WOOD[i % 2 + 1]
+		p.Size = Vector3.new(width, slat - 0.08, 0.5)
+		p.CFrame = CFrame.lookAt(front, front + out) * CFrame.new(0, slat * (i + 0.5), 0)
+		p.Parent = door
+	end
+	-- the housing the door rolls into, a bottom rail and a handle
+	local function piece(name: string, size: Vector3, at: CFrame, color: Color3, mat: Enum.Material)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.CanCollide = false
+		p.Material = mat
+		p.Color = color
+		p.Size = size
+		p.CFrame = at
+		p.Parent = door
+	end
+	local face = CFrame.lookAt(front, front + out)
+	piece("Housing", Vector3.new(width + 0.6, 1.4, 1.4), face * CFrame.new(0, height + 0.5, -0.2), Color3.fromRGB(110, 70, 40), Enum.Material.Wood)
+	piece("Rail", Vector3.new(width, 0.4, 0.7), face * CFrame.new(0, 0.2, -0.1), Color3.fromRGB(70, 60, 55), Enum.Material.Metal)
+	piece("Handle", Vector3.new(2.2, 0.35, 0.4), face * CFrame.new(0, 1.6, -0.45), Color3.fromRGB(230, 190, 90), Enum.Material.Metal)
+	door.Parent = folder
+	doors[holder] = door
+	return front, out
+end
+
 local function placeFor(kind: string, holder: BasePart): (Vector3, Vector3, number, number)
+	if kind == "lobbyGarage" then
+		local front, out = shutGarage(holder)
+		if front and out then
+			local floor = ground(front + out * 5)
+			local s = 1.25
+			return floor + Vector3.new(0, (BODY.Y / 2 + 1.9) * s, 0), floor, 3, s
+		end
+	end
 	if kind == "pump" then
 		-- over the pump: a small lock, its projector on the pump's top
 		local top = holder.Position + Vector3.new(0, holder.Size.Y / 2, 0)
@@ -423,6 +514,12 @@ local function remove(p: ProximityPrompt)
 	if l then
 		locks[p] = nil
 		l.model:Destroy()
+	end
+	local holder = p.Parent
+	local door = holder and doors[holder]
+	if door then
+		doors[holder] = nil
+		door:Destroy()
 	end
 end
 

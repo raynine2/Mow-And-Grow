@@ -588,15 +588,33 @@ local FILM: { [string]: { any } } = {
 	HoleDisk = { { "BlackHole", scale = 2.5, life = 12 } },
 	HoleHalo = { { "Portal", scale = 3, life = 12 } },
 	LumpTear = { { "Rocks", scale = 0.3 } },
+	-- (owner, 4 Nov: "remake the cutscenes ... use the new FX not the old ones like the old blackhole") every moment
+	-- the films had is drawn by the pack now
+	PinkEye = { { "Orb", scale = 0.12, color = Color3.fromRGB(255, 60, 200), stream = true, hold = 6, life = 6.5 } },
+	SparkFall = { { "Orb", scale = 0.3, color = Color3.fromRGB(255, 120, 230), stream = true, hold = 3, life = 3.5 } },
+	SeedInhale = { { "Wind", scale = 0.2, color = Color3.fromRGB(255, 250, 235) } },
+	SeedDrift = { { "Wind", scale = 0.35, color = Color3.fromRGB(255, 250, 235) } },
+	NightStutter = { { "PurpleBurst", scale = 0.8 } },
+	HoleSwell = { { "BlackHole", scale = 1.2 }, { "PurpleBurst", scale = 1 } },
+	BoltHit = { { "Bolt", scale = 0.6, color = Color3.fromRGB(220, 120, 255) }, { "Shock", scale = 1, color = Color3.fromRGB(200, 100, 255) } },
+	LiftAura = { { "Orb", scale = 0.4, color = Color3.fromRGB(200, 90, 255), stream = true, hold = 3, life = 3.5 } },
+	DemonRise = { { "BlackHole", scale = 1.6 }, { "Explosion", scale = 0.3, color = Color3.fromRGB(170, 60, 255) }, { "PurpleBurst", scale = 1.6 } },
+	DemonRoar = { { "PurpleBurst", scale = 1 }, { "Shock", scale = 1.2, color = Color3.fromRGB(255, 60, 200) } },
 }
 
-function PackFx.film(name: string, cf: CFrame, opts: any?)
+-- True when the films' moment `name` is drawn by the pack (client/FilmVfx then leaves its old template out).
+function PackFx.filmHas(name: string): boolean
+	return PackFx.on() and FILM[name] ~= nil
+end
+
+-- Plays a films' moment. -> its first effect's clone (nil when it isn't the pack's)
+function PackFx.film(name: string, cf: CFrame, opts: any?): Model?
 	if not PackFx.on() then
-		return
+		return nil
 	end
 	local list = FILM[name]
 	if not list then
-		return
+		return nil
 	end
 	local o = opts or {}
 	local k = o.scale or 1
@@ -606,17 +624,22 @@ function PackFx.film(name: string, cf: CFrame, opts: any?)
 		cf = cam.CFrame * CFrame.new(0, 0, -o.screen)
 		k *= o.screen / 20
 	end
+	local first: Model? = nil
 	for _, e in list do
 		-- (a beam template runs along -Z: `up` stands it up into a pillar)
-		PackFx.play(e[1], if e.up then CFrame.new(cf.Position) * CFrame.Angles(math.pi / 2, 0, 0) else cf, {
+		local m = PackFx.play(e[1], if e.up then CFrame.new(cf.Position) * CFrame.Angles(math.pi / 2, 0, 0) else cf, {
 			scale = e.scale * k,
 			color = if e.tint then o.color else e.color,
 			life = if e.life and o.life then o.life else e.life,
+			hold = e.hold,
+			stream = e.stream,
 			follow = o.follow,
 			force = true,
 			soft = true,
 		})
+		first = first or m
 	end
+	return first
 end
 
 -- Ends everything playing (a film's SKIP).

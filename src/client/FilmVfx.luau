@@ -127,6 +127,9 @@ end
 
 -- True when FilmVfx.play(name) would play.
 function FilmVfx.has(name: string): boolean
+	if RunService:IsClient() and PackFx.filmHas(name) then
+		return true -- (the pack draws it)
+	end
 	return RunService:IsClient() and FilmVfx.template(name) ~= nil and emitApi() ~= nil
 end
 
@@ -324,8 +327,11 @@ function FilmVfx.play(name: string, at: CFrame | Vector3, opts: Opts?): Model?
 	if not RunService:IsClient() then
 		return nil
 	end
-	if PackFx.on() then
-		pcall(PackFx.film, name, if typeof(at) == "Vector3" then CFrame.new(at) else at, opts)
+	-- (4 Nov, owner: "remake the cutscenes ... use the new FX not the old ones") a moment the SoulShroud pack draws
+	-- plays only the pack's effects: the old template is left out
+	if PackFx.filmHas(name) then
+		local ok, m = pcall(PackFx.film, name, if typeof(at) == "Vector3" then CFrame.new(at) else at, opts)
+		return if ok then m else nil
 	end
 	local t = FilmVfx.template(name)
 	local a = t and emitApi()

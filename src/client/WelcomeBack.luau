@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local Format = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Format"))
+local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config")) :: any
 local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
 local Skin = require(script.Parent.Skin)
@@ -138,11 +139,17 @@ end)
 -------------------------------------------------------------------------------------------------------------
 -- the lobby's CONTINUE RUN button
 -------------------------------------------------------------------------------------------------------------
-local cont = UI.button(UI.gui, "▶ CONTINUE RUN", C.green, UDim2.fromOffset(260, 56), function()
-	continueRun()
-end, { pos = UDim2.new(0.5, 0, 1, -118), anchor = Vector2.new(0.5, 1), name = "ContinueRun" })
+-- (owner, 4 Nov, of the plain green button: "fix ui use ui we have") a card in the grass-galaxy kit like the Saved
+-- Runs card: the title, the run's area, and the green button inside it
+local cont, contFace = Skin.frame(UI.gui, "ui_sign", Vector2.new(310, 150), { pos = UDim2.new(0.5, 0, 1, -104), anchor = Vector2.new(0.5, 1), name = "ContinueRun", maxScale = 0.5 })
 cont.Visible = false
-local contArea = UI.text(cont, "", UDim2.new(1, -20, 0, 16), { pos = UDim2.new(0.5, 0, 1, 2), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(220, 255, 210), stroke = 1.5 })
+local contTitle = UI.text(contFace, "YOUR SAVED RUN", UDim2.new(1, -8, 0, 26), { pos = UDim2.new(0.5, 0, 0, 2), anchor = Vector2.new(0.5, 0), color = GOLD, stroke = 2.5 })
+contTitle.Name = "Title"
+local contArea = UI.text(contFace, "", UDim2.new(1, -12, 0, 18), { pos = UDim2.new(0.5, 0, 0, 30), anchor = Vector2.new(0.5, 0), color = Color3.fromRGB(220, 255, 210), stroke = 1.5 })
+local contBtn = UI.button(contFace, "▶ CONTINUE RUN", C.green, UDim2.new(1, -6, 0, 54), function()
+	continueRun()
+end, { pos = UDim2.new(0.5, 0, 1, -2), anchor = Vector2.new(0.5, 1), name = "Go" })
+contBtn.ZIndex = 3
 local function refresh()
 	local d = State.data
 	local run = d and d.run
@@ -151,7 +158,9 @@ local function refresh()
 	local show = run ~= nil and not State.isRun() and not UI.anyOpen()
 	cont.Visible = show
 	if show then
-		contArea.Text = "Your saved run · Area " .. tostring(run.zone or 1)
+		local z = run.zone or 1
+		local def = Config.ZONES[z]
+		contArea.Text = "Area " .. tostring(z) .. (if def and def.name then " · " .. def.name else "")
 	end
 end
 State.on("data", refresh)

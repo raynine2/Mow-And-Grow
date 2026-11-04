@@ -893,6 +893,11 @@ end
 
 State.on("fx", function(kind, d)
 	if kind == "partySetup" then
+		-- (owner, 4 Nov: "ik zie nog party ui in een run") a run has no party to set up: in Studio the lobby's pads
+		-- stay round you after a pad starts the run in place, and stepping on one opened this
+		if State.isRun() then
+			return
+		end
 		PartyWindow.open(d)
 	elseif kind == "partySetupClose" and open and d.pad == choice.pad then
 		close()

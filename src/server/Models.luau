@@ -414,6 +414,9 @@ type ForgeTool = {
 	-- (4 Nov) a tool made of several copies of the mesh (the scissors: one half, twice), each at its own CFrame in the
 	-- template (`center` is then unused; `turn` still sets the scale)
 	copies: { CFrame }?,
+	-- (4 Nov) keep the part model's spinning line (the weed whacker's: a long thin white part that client/ViewModel
+	-- whirls round the head, with a blur disc)
+	keepLine: boolean?,
 	-- (4 Nov) the light's and the sparkles' colours (the scythe's violet when not given)
 	lightColor: Color3?,
 	gemColor: Color3?,
@@ -530,10 +533,21 @@ local function swapTools(): number
 			spot(mesh, "TrailA", t.trail[1])
 			spot(mesh, "TrailB", t.trail[2])
 		end
+		local old = templates[name]
+		if t.keepLine and old then
+			for _, p in old:GetDescendants() do
+				if p:IsA("BasePart") and p.Size.Y > p.Size.X * 10 and p.Color.R > 0.9 and p.Color.G > 0.9 and p.Color.B > 0.9 then
+					local line = p:Clone()
+					line.Name = "Line"
+					line.CFrame = old:GetPivot():ToObjectSpace(p.CFrame)
+					line.Parent = model
+					break
+				end
+			end
+		end
 		model.WorldPivot = CFrame.new()
 		model:SetAttribute("ForgeTool", true)
 		model.Parent = folder
-		local old = templates[name]
 		if old then
 			old:Destroy()
 		end

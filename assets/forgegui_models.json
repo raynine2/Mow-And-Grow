@@ -366,5 +366,10 @@
   "roblox": "129355819108676",
   "forge_job": "d8a9f6d0-4e82-485e-bfb0-05fa7d64b0b3",
   "note": "4 Nov: the whole pair of scissors in one mesh (its first publish failed on Roblox's side, published again); not used: one piece can't open and shut"
+ },
+ "whacker": {
+  "roblox": "87094596203789",
+  "forge_job": "85ab4b1d-57e3-4202-89f4-47e7ba4eab3f",
+  "note": "4 Nov: Weed Whacker (green motor, long shaft, trimmer head); uploaded, NOT fitted yet (Studio's viewport stopped drawing): raw 1.90 x 0.86 x 0.45, long along X; next: FORGE_TOOLS tool_whacker with keepLine"
  }
 }

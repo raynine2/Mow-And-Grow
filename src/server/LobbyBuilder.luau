@@ -478,6 +478,9 @@ local function startGate(world: Instance)
 	PropKit.collider(m, at, Vector3.new(-9.2 * k, 9.75 * k, 0), Vector3.new(3.6 * k, 19.5 * k, 5 * k))
 	PropKit.collider(m, at, Vector3.new(8.9 * k, 9.75 * k, 0), Vector3.new(4.2 * k, 19.5 * k, 5 * k))
 	gate:SetAttribute("LaunchGate", true)
+	-- START A RUN on its big plank (measured at 46 wide: the plank's face 2.3 studs in front of the middle, y 22.5-30.5)
+	local kp = g.width / 46
+	PropKit.facePanel(m, at, Vector3.new(0, 26.5, -2.4), Vector2.new(29, 6.2), "START A RUN", PropKit.TITLE, kp)
 end
 
 -- (4 Nov remake) The pads in an arc in front of the spawn, each facing it, and the gold CONTINUE pad closing the arc

@@ -20,10 +20,10 @@ local LobbyLayout = {}
 LobbyLayout.SPAWN = Vector3.new(0, 0, -66)
 
 -- the flat mown plaza (a rectangle; the fence runs 2 studs inside it)
-LobbyLayout.PLAZA = { x0 = -80, x1 = 80, z0 = -84, z1 = 40 }
+LobbyLayout.PLAZA = { x0 = -66, x1 = 64, z0 = -84, z1 = 34 }
 
 -- the landmark: the launch gate, its middle and the way its front looks (toward the spawn)
-LobbyLayout.GATE = { pos = Vector3.new(0, 0, 8), width = 46 }
+LobbyLayout.GATE = { pos = Vector3.new(0, 0, 11), width = 62 }
 
 -- the pads: on a circle round the spawn, at these angles (degrees from north, + to the left); 1 = SOLO
 LobbyLayout.PAD_RADIUS = 38
@@ -39,8 +39,8 @@ LobbyLayout.CONTINUE = { angle = 57 } -- the gold CONTINUE pad, with the SAVED R
 LobbyLayout.REWARDS = { pos = Vector3.new(15, 0, -61) } -- faces the walk (west)
 LobbyLayout.CLASSES = { pos = Vector3.new(-52, 0, -50) } -- faces the plaza (east)
 LobbyLayout.GARAGE = { pos = Vector3.new(-52, 0, -12) } -- faces the plaza (east)
-LobbyLayout.GRASS_CUT = { pos = Vector3.new(32, 0, 12) } -- faces the spawn
-LobbyLayout.BEST_TIMES = { pos = Vector3.new(-32, 0, 12) } -- faces the spawn
+LobbyLayout.GRASS_CUT = { pos = Vector3.new(41, 0, 14) } -- faces the spawn
+LobbyLayout.BEST_TIMES = { pos = Vector3.new(-41, 0, 14) } -- faces the spawn
 
 -- the sandstone walks (centre lines and widths, for server/HubPaths)
 LobbyLayout.WALKS = {
@@ -48,7 +48,7 @@ LobbyLayout.WALKS = {
 	{ a = Vector2.new(-31, -50), b = Vector2.new(0, -58), width = 8 }, -- the classes porch -> the spawn
 	{ a = Vector2.new(0, -58), b = Vector2.new(9, -61), width = 8 }, -- -> the rewards stall
 	{ a = Vector2.new(-36, -12), b = Vector2.new(-2, -12), width = 8 }, -- the garage's turntable -> the main walk
-	{ a = Vector2.new(-25, 0), b = Vector2.new(25, 0), width = 8 }, -- in front of the gate, out to both boards
+	{ a = Vector2.new(-36, 0), b = Vector2.new(36, 0), width = 8 }, -- in front of the gate, out to both boards
 }
 
 -- A point on the pads' circle: `angle` degrees (from north, + to the left), `r` studs from the spawn.

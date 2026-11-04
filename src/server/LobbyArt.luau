@@ -170,7 +170,7 @@ local function field(f: Instance, rng: Random)
 		for x = -half + 2, half - 2, 4.5 do
 			local px, pz = x + rng:NextNumber(-1.5, 1.5), z + rng:NextNumber(-1.5, 1.5)
 			local cf = CFrame.new(px, 0, pz) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
-			if not Models.place("tuft_lawn", f, cf, rng:NextNumber(1.6, 2.3), true) then
+			if not Models.place("tuft_lawn", f, cf, rng:NextNumber(2.6, 3.6), true) then
 				return
 			end
 			tick()

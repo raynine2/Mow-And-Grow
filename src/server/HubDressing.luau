@@ -193,7 +193,7 @@ function HubDressing.lobby(world: Instance)
 	local rng = Random.new(5)
 	local P = Layout.PLAZA
 	-- the two cottages on the east edge, facing the plaza
-	for i, z in { -20, 10 } do
+	for i, z in { -27, -3 } do
 		local house = Vector3.new(P.x1 - 14, 0, z)
 		local toward = Vector3.new(0, 0, z)
 		if not forgePiece(town, if i == 1 then "house_blue" else "house_red", house, toward, { width = 18, depth = 15.5, height = 21 }) then
@@ -202,15 +202,15 @@ function HubDressing.lobby(world: Instance)
 		piece(town, "S_planter", Vector3.new(P.x1 - 24.5, 0, z - 6), Vector3.new(0, 0, z - 6), true)
 		piece(town, "S_pot", Vector3.new(P.x1 - 24, 0, z + 4), Vector3.new(0, 0, z + 4), true)
 	end
-	piece(town, "S_mailbox", Vector3.new(P.x1 - 25, 0, -5), Vector3.new(0, 0, -5), true)
+	piece(town, "S_mailbox", Vector3.new(P.x1 - 25, 0, -15), Vector3.new(0, 0, -15), true)
 	-- either side of the spawn: a well and a cart of flowers (behind it, out of the view to the pads)
 	local sp = Layout.SPAWN
 	piece(town, "S_well", Vector3.new(sp.X - 14, 0, sp.Z - 8), sp + Vector3.new(0, 0, 10), true)
 	piece(town, "S_cart", Vector3.new(sp.X + 26, 0, sp.Z - 12), sp + Vector3.new(0, 0, 10), true)
 	-- flower beds and benches by the walk in front of the gate
 	for _, sx in { -1, 1 } do
-		piece(town, "S_flower_bed", Vector3.new(15 * sx, 0, -6), Vector3.new(0, 0, -6), true)
-		piece(town, "S_bench", Vector3.new(20 * sx, 0, 5), Vector3.new(0, 0, 5), true)
+		piece(town, "S_flower_bed", Vector3.new(13 * sx, 0, -8), Vector3.new(0, 0, -8), true)
+		piece(town, "S_bench", Vector3.new(22 * sx, 0, -8), Vector3.new(0, 0, -8), true)
 	end
 	-- hay by the garage, crates and a barrel by the rewards stall
 	local g = Layout.GARAGE.pos

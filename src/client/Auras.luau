@@ -296,20 +296,23 @@ BUILD.Gardener = function(a)
 		emitter(a, at, {
 			tex = FxTex.glow,
 			color = cs(C(235, 252, 255), C(120, 214, 240), C(30, 110, 140)),
-			size = ns(0, 0.3, 0.7, 0.24, 1, 0.08),
-			rate = 3,
-			life = NumberRange.new(0.6, 0.8),
-			speed = NumberRange.new(0, 0.4),
-			spread = Vector2.new(60, 60),
+			size = ns(0, 0.42, 0.7, 0.34, 1, 0.12),
+			rate = 5,
+			life = NumberRange.new(0.7, 0.95),
+			speed = NumberRange.new(0.3, 0.8),
+			spread = Vector2.new(50, 50),
 			accel = Vector3.new(0, -9, 0),
+			orient = Enum.ParticleOrientation.VelocityParallel,
+			squash = ns(0, 0.5, 1, 0.9), -- drops, stretching as they fall
+			light = 0.35,
 			spin = NumberRange.new(0, 0),
 		})
 	end
 	emitter(a, att(a, torso(a), "Glint", Vector3.new(0, 0.4, 0)), {
 		tex = SPARKLE,
 		color = cs(C(200, 245, 255)),
-		size = ns(0, 0, 0.3, 0.5, 1, 0),
-		rate = 1.2,
+		size = ns(0, 0, 0.3, 0.8, 1, 0),
+		rate = 2,
 		life = NumberRange.new(0.35, 0.5),
 		speed = NumberRange.new(0, 0),
 		spread = Vector2.new(180, 180),
@@ -325,14 +328,14 @@ BUILD.Groundskeeper = function(a)
 	trail(a, l, r, {
 		tex = FxTex.smear,
 		color = cs(C(170, 236, 120), C(96, 182, 70), C(46, 112, 44)),
-		life = 0.5,
-		trans = ns(0, 0.35, 0.6, 0.6, 1, 1),
+		life = 0.85,
+		trans = ns(0, 0.2, 0.6, 0.5, 1, 1),
 	})
 	emitter(a, feet(a, "Clip", 0, 0.6), {
 		tex = FxTex.blade,
 		color = cs(C(150, 222, 96), C(64, 140, 52)),
-		size = ns(0, 0.3, 1, 0.1),
-		rate = 4,
+		size = ns(0, 0.45, 1, 0.15),
+		rate = 6,
 		life = NumberRange.new(0.4, 0.6),
 		speed = NumberRange.new(2.5, 4),
 		spread = Vector2.new(40, 40),
@@ -343,7 +346,7 @@ BUILD.Groundskeeper = function(a)
 	emitter(a, feet(a, "Drift", 0, 0, 1.2), {
 		tex = FxTex.blade,
 		color = cs(C(190, 245, 140), C(110, 190, 80)),
-		size = ns(0, 0, 0.2, 0.3, 1, 0),
+		size = ns(0, 0, 0.2, 0.42, 1, 0),
 		rate = 2.5,
 		life = NumberRange.new(1, 1.4),
 		speed = NumberRange.new(0.4, 0.8),
@@ -369,14 +372,14 @@ BUILD.LawnBaron = function(a)
 	emitter(a, att(a, torso(a), "Pollen", Vector3.new(0, -0.2, 0)), {
 		tex = FxTex.glow,
 		color = cs(C(255, 244, 190), C(242, 193, 78), C(150, 96, 20)),
-		size = ns(0, 0, 0.2, 0.32, 1, 0.12),
-		rate = 6,
+		size = ns(0, 0, 0.2, 0.48, 1, 0.16),
+		rate = 8,
 		life = NumberRange.new(1.4, 2),
 		speed = NumberRange.new(0.5, 1),
 		spread = Vector2.new(70, 70),
 		accel = Vector3.new(0, 0.6, 0),
 		drag = 0.6,
-		light = 0.2,
+		light = 0.45,
 		spin = NumberRange.new(0, 0),
 	})
 	local hand = part(a, { "RightHand", "Right Arm" })
@@ -395,8 +398,8 @@ BUILD.LawnBaron = function(a)
 	emitter(a, att(a, torso(a), "Coin", Vector3.new(0, 0.2, 0)), {
 		tex = T.coin,
 		color = cs(WHITE),
-		size = ns(0, 0, 0.2, 0.5, 1, 0.3),
-		rate = 1.2,
+		size = ns(0, 0, 0.2, 0.75, 1, 0.45),
+		rate = 1.6,
 		life = NumberRange.new(0.8, 1.1),
 		speed = NumberRange.new(1, 1.6),
 		spread = Vector2.new(50, 50),
@@ -408,24 +411,27 @@ end
 -- Epic: two thorny vines curling over your back to your shoulders (beams that breathe), dark leaf shards.
 BUILD.HedgeReaper = function(a)
 	local b = back(a, 0.1)
-	local l, r = shoulders(a)
+	local t = torso(a)
+	local root = att(a, t, "VineRoot", Vector3.new(0, -0.7, t.Size.Z / 2 + 0.1))
 	local vines = {}
-	for i, s in { l, r } do
-		table.insert(vines, beam(a, b, s, {
+	for i, sx in { -1, 1 } do
+		-- (up over the shoulder and a little forward, so it shows from behind and from the front)
+		local tip = att(a, t, "VineTip" .. i, Vector3.new(sx * (t.Size.X / 2 + 0.25), t.Size.Y / 2 + 0.7, -0.2))
+		table.insert(vines, beam(a, root, tip, {
 			tex = T.vine,
 			color = cs(C(110, 190, 110), C(60, 120, 70)),
-			w0 = 0.7,
-			w1 = 0.45,
-			c0 = if i == 1 then 0.6 else -0.6,
-			c1 = 0.4,
-			trans = ns(0, 0.1, 1, 0.2),
+			w0 = 0.9,
+			w1 = 0.55,
+			c0 = sx * 1.2,
+			c1 = 0.8,
+			trans = ns(0, 0, 1, 0.15),
 		}))
 	end
 	a.state.vines = vines
 	emitter(a, b, {
 		tex = FxTex.leaf,
 		color = cs(C(46, 94, 58), C(26, 52, 34)),
-		size = ns(0, 0.3, 1, 0.12),
+		size = ns(0, 0.45, 1, 0.16),
 		rate = 6,
 		life = NumberRange.new(0.8, 1.2),
 		speed = NumberRange.new(1, 2),
@@ -449,8 +455,8 @@ BUILD.HedgeReaper = function(a)
 	emitter(a, b, {
 		tex = T.wisp,
 		color = cs(C(80, 40, 120), C(40, 16, 64)),
-		size = ns(0, 0.4, 1, 1.1),
-		rate = 3,
+		size = ns(0, 0.6, 1, 1.6),
+		rate = 4,
 		life = NumberRange.new(0.9, 1.3),
 		speed = NumberRange.new(0.6, 1.2),
 		spread = Vector2.new(25, 25),
@@ -462,7 +468,7 @@ BUILD.HedgeReaper = function(a)
 	a.tick = function(au, _, _)
 		local k = math.sin(au.clock * math.pi) -- one breath every 2 s
 		for i, v in au.state.vines do
-			v.CurveSize0 = (if i == 1 then 1 else -1) * (0.6 + 0.4 * k)
+			v.CurveSize0 = (if i == 1 then -1 else 1) * (1 + 0.4 * k)
 		end
 	end
 end
@@ -473,8 +479,8 @@ BUILD.MowerSpecialist = function(a)
 	emitter(a, b, {
 		tex = FxTex.puff,
 		color = cs(C(160, 226, 110), C(86, 160, 60)),
-		size = ns(0, 0.5, 1, 1.1),
-		rate = 4,
+		size = ns(0, 0.9, 1, 2),
+		rate = 5,
 		life = NumberRange.new(0.5, 0.7),
 		speed = NumberRange.new(2.5, 3.5),
 		spread = Vector2.new(15, 15),
@@ -483,13 +489,13 @@ BUILD.MowerSpecialist = function(a)
 		accel = Vector3.new(0, 1.5, 0),
 		flip = true,
 		light = 0.3,
-		trans = ns(0, 0.2, 1, 1),
+		trans = ns(0, 0.1, 1, 1),
 	})
 	emitter(a, b, {
 		tex = FxTex.blade,
 		color = cs(C(150, 222, 96), C(56, 120, 44)),
-		size = ns(0, 0.28, 1, 0.12),
-		rate = 4,
+		size = ns(0, 0.42, 1, 0.16),
+		rate = 6,
 		life = NumberRange.new(0.5, 0.8),
 		speed = NumberRange.new(3, 5),
 		spread = Vector2.new(25, 25),
@@ -500,8 +506,8 @@ BUILD.MowerSpecialist = function(a)
 	emitter(a, feet(a, "Sparks", 0, 0.5), {
 		tex = FxTex.spark,
 		color = cs(C(255, 236, 190), C(216, 67, 47)),
-		size = ns(0, 0.12, 1, 0),
-		rate = 6,
+		size = ns(0, 0.2, 1, 0),
+		rate = 10,
 		life = NumberRange.new(0.15, 0.3),
 		speed = NumberRange.new(6, 10),
 		spread = Vector2.new(30, 30),
@@ -522,30 +528,30 @@ BUILD.GrassTitan = function(a)
 		emitter(a, s, {
 			tex = FxTex.blade,
 			color = cs(C(150, 220, 90), C(76, 140, 43), C(36, 76, 26)),
-			size = ns(0, 0, 0.3, 0.8, 1, 0.6),
-			rate = 4,
+			size = ns(0, 0, 0.25, 1.1, 1, 0.8),
+			rate = 6,
 			life = NumberRange.new(1, 1.4),
 			speed = NumberRange.new(0.4, 0.8),
 			spread = Vector2.new(25, 25),
 			orient = Enum.ParticleOrientation.FacingCameraWorldUp,
-			squash = ns(0, 1.6, 1, 1.2),
-			rot = NumberRange.new(-10, 10),
+			squash = ns(0, 0.5, 1, 0.4),
+			rot = NumberRange.new(-35, 35),
 			spin = NumberRange.new(0, 0),
 			light = 0.2,
 		})
 	end
-	local stepAt = feet(a, "Step", 0, 0, 0.1)
+	local stepAt = feet(a, "Step", 0, 0, 0.55) -- (half a blade up: particles are drawn round their centre)
 	local tuft = emitter(a, stepAt, {
 		tex = FxTex.blade,
 		color = cs(C(110, 180, 64), C(76, 140, 43), C(107, 74, 43)),
-		size = ns(0, 0, 0.35, 0.5, 1, 0),
+		size = ns(0, 0, 0.35, 1, 1, 0),
 		rate = 0,
 		life = NumberRange.new(1.2, 1.5),
-		speed = NumberRange.new(0.3, 0.6),
+		speed = NumberRange.new(0.1, 0.3),
 		spread = Vector2.new(15, 15),
 		orient = Enum.ParticleOrientation.FacingCameraWorldUp,
-		squash = ns(0, 1.8, 1, 1.4),
-		rot = NumberRange.new(-12, 12),
+		squash = ns(0, 0.6, 1, 0.5),
+		rot = NumberRange.new(-30, 30),
 		spin = NumberRange.new(0, 0),
 	})
 	beam(a, l, r, {
@@ -561,7 +567,7 @@ BUILD.GrassTitan = function(a)
 	a.tick = function(au, _, level)
 		if level > 0 and au.walked >= 2.6 then
 			au.walked = 0
-			tuft:Emit(if level == 2 then 3 else 1)
+			tuft:Emit(if level == 2 then 5 else 2)
 		end
 	end
 end
@@ -578,8 +584,8 @@ BUILD.UltimateGardener = function(a)
 	local fall = emitter(a, t, {
 		tex = SEASONS[1].tex,
 		color = cs(table.unpack(SEASONS[1].c)),
-		size = ns(0, 0, 0.15, 0.32, 1, 0.22),
-		rate = 7,
+		size = ns(0, 0, 0.15, 0.45, 1, 0.3),
+		rate = 10,
 		life = NumberRange.new(1.4, 1.8),
 		speed = NumberRange.new(1, 1.8),
 		spread = Vector2.new(80, 80),
@@ -616,8 +622,8 @@ BUILD.UltimateGardener = function(a)
 	local ribbon = beam(a, b0, b1, {
 		tex = FxTex.trail,
 		color = cs(SEASONS[1].c[2], SEASONS[1].c[1]),
-		w0 = 0.9,
-		w1 = 0.2,
+		w0 = 1.3,
+		w1 = 0.3,
 		c0 = 1.2,
 		trans = ns(0, 0.3, 1, 1),
 		light = 0.5,
@@ -652,18 +658,18 @@ BUILD.LawnLegend = function(a)
 		-- (leaning out into a V over your head, wavy, so from any side it reads as a crown of light, not two posts)
 		local function pair(name: string, back: number): (Attachment, Attachment)
 			return att(a, t, name .. i, Vector3.new(sx * w * 0.8, t.Size.Y / 2 + 0.5, t.Size.Z / 2 + back)),
-				att(a, t, name .. "Top" .. i, Vector3.new(sx * w * 2.8, t.Size.Y / 2 + 6.4, t.Size.Z / 2 + back + 1.2))
+				att(a, t, name .. "Top" .. i, Vector3.new(sx * w * 2.5, t.Size.Y / 2 + 5.6, t.Size.Z / 2 + back + 1.2))
 		end
 		-- the night behind it: a deep violet band (the dark value layer, saturated, never grey)
 		local b0, b1 = pair("Night", 1.3)
 		beam(a, b0, b1, {
 			tex = FxTex.smear,
 			color = cs(C(56, 20, 112), C(80, 26, 150)),
-			w0 = 1.4,
-			w1 = 3.8,
+			w0 = 1.1,
+			w1 = 2.6,
 			c0 = sx * 1.4,
 			c1 = sx * -1.2,
-			trans = ns(0, 1, 0.25, 0.2, 0.7, 0.3, 1, 1),
+			trans = ns(0, 1, 0.25, 0.4, 0.7, 0.5, 1, 1),
 			light = 0,
 		})
 		-- the lights over it, scrolling up
@@ -671,8 +677,8 @@ BUILD.LawnLegend = function(a)
 		local glow = beam(a, a0, a1, {
 			tex = T.energy,
 			color = cs(C(170, 90, 255), C(80, 180, 255), C(60, 255, 210)),
-			w0 = 1.1,
-			w1 = 3.2,
+			w0 = 0.9,
+			w1 = 2.4,
 			c0 = sx * 1.4,
 			c1 = sx * -1.2,
 			trans = ns(0, 0.9, 0.2, 0, 0.75, 0.1, 1, 1),

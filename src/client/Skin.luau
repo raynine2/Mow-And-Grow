@@ -287,6 +287,22 @@ local function twinkle(parent: GuiObject, pos: UDim2, size: number, color: Color
 end
 Skin.twinkle = twinkle
 
+-- Is it really on screen: it and every frame above it visible, in an enabled ScreenGui? (4 Nov, "fix lag": a closed
+-- window only hides its frame, so the sparkles and the bobbing in it kept going after it was opened once.)
+local function onScreen(obj: Instance): boolean
+	local o: Instance? = obj
+	while o and o:IsA("GuiObject") do
+		if not (o :: GuiObject).Visible then
+			return false
+		end
+		o = o.Parent
+	end
+	if o and o:IsA("LayerCollector") then
+		return (o :: LayerCollector).Enabled
+	end
+	return o ~= nil
+end
+
 -- Keeps sparkles twinkling around `obj` while it's on screen (rare items, the selected tool, ready rewards).
 -- Returns a function that stops them.
 function Skin.sparkles(obj: GuiObject, rate: number?, color: Color3?): () -> ()
@@ -295,7 +311,7 @@ function Skin.sparkles(obj: GuiObject, rate: number?, color: Color3?): () -> ()
 		local rng = Random.new()
 		task.wait() -- (the caller may parent `obj` right after this call)
 		while alive and obj.Parent do
-			if obj.Visible and obj.AbsoluteSize.X > 0 then
+			if obj.AbsoluteSize.X > 0 and onScreen(obj) then
 				twinkle(obj, UDim2.fromScale(rng:NextNumber(0.05, 0.95), rng:NextNumber(0.05, 0.9)), rng:NextInteger(10, 18), color)
 			end
 			task.wait((rate or 0.5) * rng:NextNumber(0.6, 1.4))
@@ -315,18 +331,28 @@ function Skin.burst(obj: GuiObject, count: number?, color: Color3?)
 end
 
 -- Gentle idle float: objects listed here bob up and down around their own position (one RenderStepped for all).
-local bobbing: { { obj: GuiObject, base: UDim2, amp: number, speed: number, phase: number } } = {}
+local bobbing: { { obj: GuiObject, base: UDim2, amp: number, speed: number, phase: number, on: boolean } } = {}
 function Skin.bob(obj: GuiObject, amp: number?, speed: number?)
-	table.insert(bobbing, { obj = obj, base = obj.Position, amp = amp or 3, speed = speed or 2, phase = #bobbing * 0.9 })
+	table.insert(bobbing, { obj = obj, base = obj.Position, amp = amp or 3, speed = speed or 2, phase = #bobbing * 0.9, on = true })
 end
+local bobLook = 0
 RunService.RenderStepped:Connect(function()
 	local t = os.clock()
+	local look = t - bobLook > 0.25 -- (which are on screen, four times a second; the hidden ones aren't moved)
+	if look then
+		bobLook = t
+	end
 	for i = #bobbing, 1, -1 do
 		local b = bobbing[i]
 		if not b.obj.Parent then
 			table.remove(bobbing, i)
 		else
-			b.obj.Position = b.base + UDim2.fromOffset(0, math.sin(t * b.speed + b.phase) * b.amp)
+			if look then
+				b.on = onScreen(b.obj)
+			end
+			if b.on then
+				b.obj.Position = b.base + UDim2.fromOffset(0, math.sin(t * b.speed + b.phase) * b.amp)
+			end
 		end
 	end
 end)

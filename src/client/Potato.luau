@@ -349,6 +349,32 @@ function Potato.toggle()
 	Potato.set(not Potato.on, true)
 end
 
+-- (4 Nov, owner: "fix lag and optimize the game") Phones hide the far scenery too (trees, rocks and props past 220
+-- studs), even without Potato Mode; nothing else changes for them. While Potato Mode is on its own loop does it.
+local PhonePerf = require(script.Parent.PhonePerf)
+if PhonePerf.on then
+	task.spawn(function()
+		local listedWorld: Instance? = nil
+		local listedAt = -math.huge
+		while true do
+			if Potato.on then
+				listedWorld = nil -- (list again once it's off: turning it off shows everything and forgets the list)
+			else
+				local world = workspace:FindFirstChild("World")
+				if world ~= listedWorld or os.clock() - listedAt > 60 then
+					listedWorld = world
+					listedAt = os.clock()
+					collect(gen)
+				end
+				if not Potato.on then
+					cull()
+				end
+			end
+			task.wait(0.5)
+		end
+	end)
+end
+
 -- the saved choice, when the profile arrives (only the first time: after that the button decides)
 local loaded = false
 State.on("data", function(d)

@@ -54,8 +54,10 @@ local T = {
 	wisp = "rbxassetid://126327675942159",
 }
 
-local NEAR, FAR = 40, 100
-local MAX_FULL = 12
+-- (4 Nov, "fix lag": phones drew 12 auras in full; now 4, closer in)
+local PhonePerf = require(script.Parent:WaitForChild("PhonePerf")) :: any
+local NEAR, FAR = if PhonePerf.on then 25 else 40, if PhonePerf.on then 70 else 100
+local MAX_FULL = if PhonePerf.on then 4 else 12
 
 local potato = false
 pcall(function()

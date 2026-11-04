@@ -10,9 +10,11 @@ local Device = require(script.Parent.Device)
 
 local EdgeLines = {}
 
+-- (4 Nov, owner: "fix lag and optimize the game") every SelectionBox is drawn on its own: up to 3200 on a PC and
+-- 1400 on a tablet was a big part of the frame. Now at most 500, within 100 studs, and none on any touch device.
 local MOBILE = Device.touch
-local RADIUS = if MOBILE then 90 else 150
-local CAP = if MOBILE then 1400 else 3200
+local RADIUS = 100
+local CAP = 500
 local CELL = 32
 local THICK = 0.045
 
@@ -118,7 +120,7 @@ local function scan(world: Instance)
 end
 
 task.spawn(function()
-	if Device.phone then
+	if MOBILE then
 		return
 	end
 	local world = workspace:WaitForChild("World", 120)

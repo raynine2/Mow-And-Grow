@@ -630,12 +630,28 @@ local function pushCopyFor(char: Model): PushCopy?
 	return push
 end
 
+-- (4 Nov, "fix lag": this ran every frame of a run in first person, listing the model's parts afresh and setting each
+-- one's Transparency; now the parts are listed once and written only when it's shown or hidden. The laser's curtain
+-- keeps its own shimmer: client/AutoFeel.tend writes it every frame.)
 local function showPush(p: PushCopy?, visible: boolean)
 	if not p then
 		return
 	end
-	for _, d in p.model:GetDescendants() do
-		if d:IsA("BasePart") then
+	local c = p :: any
+	if c.shown == visible then
+		return
+	end
+	c.shown = visible
+	if not c.parts then
+		c.parts = {}
+		for _, d in p.model:GetDescendants() do
+			if d:IsA("BasePart") then
+				table.insert(c.parts, d)
+			end
+		end
+	end
+	for _, d in c.parts do
+		if d.Parent then
 			d.Transparency = if visible then (d:GetAttribute("VT") :: number? or 0) else 1
 		end
 	end

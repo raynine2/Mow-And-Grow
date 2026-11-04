@@ -568,9 +568,11 @@ end
 -- it moves; every part is placed from that pose, so the squash never drifts.
 type PartPose = { part: BasePart, rel: CFrame, size: Vector3 }
 type Lean = { base: CFrame, axis: Vector3, angle: number, parts: { PartPose }, squashed: boolean, simple: boolean }
-local leans: { [Model]: Lean } = {}
-local wobbling: { [Model]: number } = {} -- when its current wobble started
-local released: { [Model]: boolean } = {}
+-- (weak keys, 4 Nov "fix lag": every clump that fell near you, anyone's, stayed in `released` for the whole session,
+-- its destroyed model and parts with it; only your own hit clumps got the Destroying clean-up below)
+local leans: { [Model]: Lean } = setmetatable({}, { __mode = "k" }) :: any
+local wobbling: { [Model]: number } = setmetatable({}, { __mode = "k" }) :: any -- when its current wobble started
+local released: { [Model]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
 local function leanOf(m: Model): Lean
 	local l = leans[m]

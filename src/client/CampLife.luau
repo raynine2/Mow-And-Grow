@@ -16,7 +16,12 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
 
 local player = Players.LocalPlayer
-local NEAR = 150 -- animate within this many studs of the camera
+local PhonePerf = require(script.Parent.PhonePerf)
+-- animate within this many studs of the camera. (4 Nov, "fix lag": phones 80 and every other frame)
+local NEAR = if PhonePerf.on then 80 else 150
+-- rigs whose model stays put and only turns groups (the windmill's sails, banners, the telescope, the bellows):
+-- only their moving parts are written each frame (every part of every rig was, the tower with the sails)
+local STILL_ROOT = { CampSpin = true, CampSway = true, CampSweep = true, CampPump = true }
 local TAGS = { "CampSpin", "CampSway", "CampSweep", "CampPump", "CampBob", "CampCritter", "CampVillager" }
 
 type Rig = {
@@ -26,6 +31,7 @@ type Rig = {
 	parts: { BasePart },
 	offs: { CFrame },
 	group: { string? }, -- each part's group
+	moving: { number }, -- the parts in a group (STILL_ROOT rigs write only these)
 	pivots: { [string]: CFrame }, -- group -> its pivot in the model's space
 	gx: { [string]: CFrame }, -- this frame's turn of each group (about its pivot)
 	moves: { string }, -- the groups its Group_<name> attributes name
@@ -75,6 +81,12 @@ local function build(m: Model, kind: string): Rig?
 		end
 	end
 	local seed = attr(m, "Seed", math.random(1, 9999))
+	local moving = {}
+	for i = 1, #parts do
+		if group[i] then
+			table.insert(moving, i)
+		end
+	end
 	local moves = {}
 	for k, v in m:GetAttributes() do
 		if string.sub(k, 1, 6) == "Group_" and v == true then
@@ -88,6 +100,7 @@ local function build(m: Model, kind: string): Rig?
 		parts = parts,
 		offs = offs,
 		group = group,
+		moving = moving,
 		pivots = pivots,
 		gx = {},
 		moves = moves,
@@ -112,13 +125,23 @@ local cfs: { CFrame } = {}
 local function apply(r: Rig)
 	table.clear(pl)
 	table.clear(cfs)
-	for i, p in r.parts do
-		local g = r.group[i]
-		local x = g and r.gx[g]
-		pl[i] = p
-		cfs[i] = if x then r.root * x * r.offs[i] else r.root * r.offs[i]
+	if STILL_ROOT[r.kind] then
+		for n, i in r.moving do
+			local x = r.gx[r.group[i] :: string]
+			pl[n] = r.parts[i]
+			cfs[n] = if x then r.root * x * r.offs[i] else r.root * r.offs[i]
+		end
+	else
+		for i, p in r.parts do
+			local g = r.group[i]
+			local x = g and r.gx[g]
+			pl[i] = p
+			cfs[i] = if x then r.root * x * r.offs[i] else r.root * r.offs[i]
+		end
 	end
-	workspace:BulkMoveTo(pl, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+	if #pl > 0 then
+		workspace:BulkMoveTo(pl, cfs, Enum.BulkMoveMode.FireCFrameChanged)
+	end
 end
 
 local function playerRoot(): BasePart?
@@ -619,7 +642,18 @@ task.spawn(function()
 	end
 end)
 
-RunService.Heartbeat:Connect(function(dt)
+local skip = false
+local held = 0
+RunService.Heartbeat:Connect(function(frameDt)
+	held += frameDt
+	if PhonePerf.on then
+		skip = not skip
+		if skip then
+			return -- (phones: every other frame)
+		end
+	end
+	local dt = held
+	held = 0
 	local now = os.clock()
 	for _, r in active do
 		local f = UPDATE[r.kind]

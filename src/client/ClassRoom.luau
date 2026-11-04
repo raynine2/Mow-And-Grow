@@ -424,8 +424,43 @@ local function turfPatch(m: Instance, rng: Random)
 	})
 end
 
+-- (4 Nov, owner: "remake the model 3d and make it better its from classes its hella ugly rn") The saucer is a real
+-- modelled one now: ReplicatedStorage.MowALawnModels.ufo_saucer (made in Studio: a silver hull, a glass dome, a ring of
+-- coloured bulbs, a glowing belly), fitted to the old saucer's size and hung in the same spot. The blocky one below is
+-- only built when that model isn't in the place.
+local UFO_WIDTH = 11.5
+local function modelSaucer(m: Instance): boolean
+	local folder = ReplicatedStorage:FindFirstChild("MowALawnModels")
+	local tpl = folder and folder:FindFirstChild("ufo_saucer")
+	if not (tpl and tpl:IsA("Model")) then
+		return false
+	end
+	local box, size = tpl:GetBoundingBox()
+	local k = UFO_WIDTH / math.max(size.X, size.Z, 0.1)
+	local copy = tpl:Clone()
+	for _, d in copy:GetDescendants() do
+		if d:IsA("BasePart") then
+			local rel = box:ToObjectSpace(d.CFrame)
+			-- (its belly where the old one's was: the beam pours from there, over the avatar's head)
+			local off = CFrame.new(rel.Position * k + Vector3.new(0, size.Y * k / 2 - 1.2, 0)) * rel.Rotation
+			d.Anchored = true
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.CastShadow = false
+			d.Size = d.Size * k
+			d.CFrame = ORIGIN * CFrame.new(UFO_AT) * off
+			table.insert(ufoParts, { part = d, off = off })
+		end
+	end
+	copy.Name = "Ufo"
+	copy.Parent = m
+	return true
+end
+
 -- the saucer: a silver disc, a glass dome with a tiny alien, a glowing belly and rim bulbs chasing round
 local function saucer(m: Instance)
+	local modelled = modelSaucer(m)
 	local function add(size: Vector3, off: CFrame, color: Color3, material: Enum.Material?, shape: Enum.PartType?, tr: number?): Part
 		local p = part(m, size, CFrame.new(UFO_AT) * off, color, material, shape)
 		p.Transparency = tr or 0
@@ -433,28 +468,30 @@ local function saucer(m: Instance)
 		table.insert(ufoParts, { part = p, off = off })
 		return p
 	end
-	add(Vector3.new(0.9, 11.5, 11.5), UPRIGHT, rgb(176, 184, 204), Enum.Material.Metal, Enum.PartType.Cylinder) -- the rim
-	add(Vector3.new(0.8, 9, 9), CFrame.new(0, 0.55, 0) * UPRIGHT, rgb(200, 208, 226), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
-	add(Vector3.new(0.7, 7.5, 7.5), CFrame.new(0, -0.55, 0) * UPRIGHT, rgb(120, 128, 150), Enum.Material.Metal, Enum.PartType.Cylinder)
-	add(Vector3.new(0.3, 5, 5), CFrame.new(0, -0.95, 0) * UPRIGHT, BEAM, Enum.Material.Neon, Enum.PartType.Cylinder, 0.1) -- the belly the beam pours out of
-	add(Vector3.new(4.6, 4.6, 4.6), CFrame.new(0, 1.2, 0), rgb(150, 230, 255), Enum.Material.Glass, Enum.PartType.Ball, 0.55) -- the dome
-	-- the tiny alien inside, peering down at your avatar
-	add(Vector3.new(1.7, 1.9, 1.7), CFrame.new(0, 1.45, -0.4), rgb(120, 220, 110), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-	for _, x in { -0.38, 0.38 } do
-		add(Vector3.new(0.48, 0.62, 0.3), CFrame.new(x, 1.6, -1.15) * CFrame.Angles(math.rad(-18), 0, 0), rgb(16, 16, 24), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
-	end
-	for _, x in { -0.5, 0.5 } do -- antennae
-		add(Vector3.new(0.1, 0.8, 0.1), CFrame.new(x, 2.6, -0.3) * CFrame.Angles(0, 0, x * -0.6), rgb(100, 200, 90), Enum.Material.SmoothPlastic)
-		add(Vector3.new(0.28, 0.28, 0.28), CFrame.new(x * 1.45, 3, -0.3), rgb(255, 230, 90), Enum.Material.Neon, Enum.PartType.Ball)
-	end
-	local bulbColors = { rgb(255, 225, 80), rgb(255, 110, 200), BEAM }
-	for k = 0, 11 do
-		local a = math.rad(k * 30)
-		local b = add(Vector3.new(0.6, 0.6, 0.6), CFrame.new(math.cos(a) * 5.75, 0, math.sin(a) * 5.75), bulbColors[k % 3 + 1], Enum.Material.Neon, Enum.PartType.Ball)
-		table.insert(ufoLights, b)
+	if not modelled then
+		add(Vector3.new(0.9, 11.5, 11.5), UPRIGHT, rgb(176, 184, 204), Enum.Material.Metal, Enum.PartType.Cylinder) -- the rim
+		add(Vector3.new(0.8, 9, 9), CFrame.new(0, 0.55, 0) * UPRIGHT, rgb(200, 208, 226), Enum.Material.SmoothPlastic, Enum.PartType.Cylinder)
+		add(Vector3.new(0.7, 7.5, 7.5), CFrame.new(0, -0.55, 0) * UPRIGHT, rgb(120, 128, 150), Enum.Material.Metal, Enum.PartType.Cylinder)
+		add(Vector3.new(0.3, 5, 5), CFrame.new(0, -0.95, 0) * UPRIGHT, BEAM, Enum.Material.Neon, Enum.PartType.Cylinder, 0.1) -- the belly the beam pours out of
+		add(Vector3.new(4.6, 4.6, 4.6), CFrame.new(0, 1.2, 0), rgb(150, 230, 255), Enum.Material.Glass, Enum.PartType.Ball, 0.55) -- the dome
+		-- the tiny alien inside, peering down at your avatar
+		add(Vector3.new(1.7, 1.9, 1.7), CFrame.new(0, 1.45, -0.4), rgb(120, 220, 110), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+		for _, x in { -0.38, 0.38 } do
+			add(Vector3.new(0.48, 0.62, 0.3), CFrame.new(x, 1.6, -1.15) * CFrame.Angles(math.rad(-18), 0, 0), rgb(16, 16, 24), Enum.Material.SmoothPlastic, Enum.PartType.Ball)
+		end
+		for _, x in { -0.5, 0.5 } do -- antennae
+			add(Vector3.new(0.1, 0.8, 0.1), CFrame.new(x, 2.6, -0.3) * CFrame.Angles(0, 0, x * -0.6), rgb(100, 200, 90), Enum.Material.SmoothPlastic)
+			add(Vector3.new(0.28, 0.28, 0.28), CFrame.new(x * 1.45, 3, -0.3), rgb(255, 230, 90), Enum.Material.Neon, Enum.PartType.Ball)
+		end
+		local bulbColors = { rgb(255, 225, 80), rgb(255, 110, 200), BEAM }
+		for k = 0, 11 do
+			local a = math.rad(k * 30)
+			local b = add(Vector3.new(0.6, 0.6, 0.6), CFrame.new(math.cos(a) * 5.75, 0, math.sin(a) * 5.75), bulbColors[k % 3 + 1], Enum.Material.Neon, Enum.PartType.Ball)
+			table.insert(ufoLights, b)
+		end
 	end
 	-- light: the beam's spot pours down over the avatar and the patch
-	local belly = ufoParts[4].part
+	local belly = ufoParts[1] and ufoParts[1].part
 	local spot = Instance.new("SpotLight")
 	spot.Face = Enum.NormalId.Bottom
 	spot.Angle = 50

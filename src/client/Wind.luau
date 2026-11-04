@@ -14,7 +14,9 @@ local PhonePerf = require(script.Parent.PhonePerf)
 
 local RADIUS = 45 -- clumps further than this stand still
 local FADE = 10 -- the sway fades out over the last studs of RADIUS
-local BUDGET = 60 -- clumps moved per frame at most (Potato Mode: 25)
+-- clumps moved per frame at most (Potato Mode and phones: 12). (4 Nov, "fix lag": 60 and 25 before; every PivotTo moves
+-- the clump's parts and its collider, so physics updates too; a sway this slow doesn't need every frame)
+local BUDGET = 30
 local SCAN_EVERY = 0.3 -- seconds between near-list rebuilds
 local SETTLE = 0.35 -- seconds a clump must be still (after someone else moved it) before we sway it again
 local MAX_TILT = math.rad(4)
@@ -216,7 +218,7 @@ RunService.Heartbeat:Connect(function()
 	-- blow the way the clouds and pollen drift (workspace.GlobalWind), swinging slowly a little either side
 	local gw = Vector3.new(workspace.GlobalWind.X, 0, workspace.GlobalWind.Z)
 	local windDir = CFrame.Angles(0, math.sin(now * 0.07) * 0.4, 0) * (if gw.Magnitude > 0.1 then gw.Unit else Vector3.new(0.8, 0, 0.6))
-	local budget = if player:GetAttribute("Potato") or PhonePerf.on then 25 else BUDGET -- (29 Oct: phones too)
+	local budget = if player:GetAttribute("Potato") or PhonePerf.on then 12 else BUDGET -- (29 Oct: phones too)
 	for _ = 1, math.min(budget, count) do
 		if cursor > count then
 			cursor = 1

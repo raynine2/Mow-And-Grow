@@ -8,7 +8,8 @@
 --     blue in the frost, basalt with glowing joints in the ember fields, lilac in the isles;
 --   * on a round stone plinth with ring steps where the ground falls away (instead of pixel blocks);
 --   * framed by the area's own ForgeGUI arena kit, the models the owner rates highest: four pillars (two at the way
---     in, two at the back) lit in the area's glow, and a low wall in an arc behind the stalls;
+--     in, two at the back) lit in the area's glow (its wall pieces were tried behind the stalls: placed at camp size
+--     they came out as one 15-stud block hiding them);
 --   * the SHOP and UPGRADES stalls at the back, turned to face the pad; benches face it too (made things align).
 local Models = require(script.Parent.Models)
 local LobbyPaving = require(script.Parent.LobbyPaving)
@@ -21,7 +22,6 @@ export type Look = {
 	paving: LobbyPaving.Look,
 	side: Color3, -- the plinth and its steps
 	pillar: string, -- ForgeGUI model names (shared/ForgeModelIds)
-	wall: string,
 	glow: Color3,
 }
 
@@ -30,49 +30,42 @@ HubPlaza.LOOKS = {
 		paving = { tones = { C(232, 186, 104), C(218, 170, 92), C(240, 198, 118), C(206, 160, 86) }, cream = C(246, 222, 164), grout = C(118, 82, 50), kerb = { C(170, 120, 74), C(156, 108, 66) } },
 		side = C(196, 150, 94),
 		pillar = "fa_pillar_wheat",
-		wall = "fa_wall_wheat",
 		glow = C(255, 210, 140),
 	},
 	blossom = {
 		paving = { tones = { C(240, 220, 226), C(228, 204, 212), C(246, 232, 236), C(218, 192, 202) }, cream = C(255, 238, 244), grout = C(146, 100, 120), kerb = { C(196, 156, 172), C(182, 142, 158) } },
 		side = C(220, 196, 204),
 		pillar = "fa_pillar_blossom",
-		wall = "fa_wall_blossom",
 		glow = C(255, 190, 222),
 	},
 	pine = {
 		paving = { tones = { C(150, 160, 146), C(138, 148, 134), C(162, 170, 154), C(126, 136, 122) }, cream = C(178, 186, 168), grout = C(58, 78, 58), kerb = { C(96, 104, 92), C(86, 94, 82) } },
 		side = C(116, 124, 110),
 		pillar = "fa_pillar_pine",
-		wall = "fa_wall_pine",
 		glow = C(255, 206, 140),
 	},
 	swamp = {
 		paving = { tones = { C(140, 114, 84), C(126, 102, 74), C(150, 124, 92), C(116, 94, 68) }, cream = C(164, 142, 104), grout = C(60, 80, 46), kerb = { C(92, 96, 68), C(82, 86, 60) } },
 		side = C(104, 88, 64),
 		pillar = "fa_pillar_swamp",
-		wall = "fa_wall_swamp",
 		glow = C(170, 255, 140),
 	},
 	frost = {
 		paving = { tones = { C(212, 226, 244), C(198, 214, 236), C(224, 236, 250), C(188, 204, 228) }, cream = C(238, 246, 255), grout = C(92, 122, 168), kerb = { C(148, 170, 204), C(134, 156, 192) } },
 		side = C(172, 192, 220),
 		pillar = "apost_frost",
-		wall = "fa_wall_frost",
 		glow = C(170, 230, 255),
 	},
 	ember = {
 		paving = { tones = { C(88, 80, 82), C(78, 71, 73), C(98, 88, 90), C(70, 63, 66) }, cream = C(112, 100, 100), grout = C(255, 104, 36), groutNeon = true, kerb = { C(54, 48, 52), C(46, 41, 45) } },
 		side = C(62, 56, 60),
 		pillar = "fa_pillar_ember",
-		wall = "fa_wall_ember",
 		glow = C(255, 150, 70),
 	},
 	isles = {
 		paving = { tones = { C(178, 162, 224), C(164, 148, 212), C(190, 176, 234), C(152, 136, 200) }, cream = C(216, 206, 246), grout = C(76, 60, 128), kerb = { C(120, 104, 170), C(108, 94, 156) } },
 		side = C(140, 126, 190),
 		pillar = "fa_pillar_isles",
-		wall = "awall_starlight",
 		glow = C(150, 230, 255),
 	},
 } :: { [string]: Look }
@@ -117,8 +110,9 @@ local function groundAt(ground: { Instance }, x: number, z: number, from: number
 end
 
 -- The plaza at `c` (its centre on the paving's top), radius `R`, the middle `r0` left for the pad: paving, plinth and
--- ring steps. `steps` false where something stands close (the isles' boss arena). Returns the lowest ground found.
-function HubPlaza.ground(f: Instance, c: Vector3, R: number, r0: number, look: Look, ground: { Instance }, steps: boolean): number
+-- ring steps. `room`: how far past the plaza's edge the steps may reach (the isles' boss arena stands close). Returns
+-- the lowest ground found.
+function HubPlaza.ground(f: Instance, c: Vector3, R: number, r0: number, look: Look, ground: { Instance }, room: number): number
 	local top = c.Y
 	-- the lowest ground under the plaza and just round it
 	local low = top
@@ -145,9 +139,9 @@ function HubPlaza.ground(f: Instance, c: Vector3, R: number, r0: number, look: L
 	-- the plinth under the paving, down into the ground
 	drum(plinth, "Plinth", c, edge, bottom, paveLevel, look.side)
 	-- ring steps round it, as far down as the ground falls (buried where the ground is higher)
-	if steps then
+	do
 		local drop = paveLevel - math.min(low, lowOut)
-		local n = math.clamp(math.floor(drop / STEP_H + 0.5), 0, MAX_STEPS)
+		local n = math.clamp(math.floor(drop / STEP_H + 0.5), 0, math.min(MAX_STEPS, math.floor(room / STEP_W)))
 		for k = 1, n do
 			local col = look.side:Lerp(Color3.new(0, 0, 0), if k % 2 == 1 then 0.08 else 0.02)
 			drum(plinth, "Step", c, edge + k * STEP_W, bottom, paveLevel - k * STEP_H, col)
@@ -168,8 +162,7 @@ local function piece(f: Instance, name: string, cf: CFrame, want: { [string]: nu
 	return Models.placeForge(name, f, cf, want :: any, false)
 end
 
--- The frame: four pillars (two at the way in, two at the back) lit in the area's glow, and the low wall in an arc
--- behind the stalls. `at(x, z, face)` is the camp's own placer (x right, z toward the area's middle).
+-- The frame: four pillars (two at the way in, two at the back) lit in the area's glow. `at(x, z, face)` is the camp's own placer (x right, z toward the area's middle).
 function HubPlaza.frame(f: Instance, look: Look, R: number, at: (number, number, Vector3?) -> CFrame, centre: Vector3)
 	local frame = Instance.new("Model")
 	frame.Name = "Frame"
@@ -204,23 +197,6 @@ function HubPlaza.frame(f: Instance, look: Look, R: number, at: (number, number,
 			light.Brightness = 1.4
 			light.Shadows = false
 			light.Parent = lamp
-		end
-	end
-	-- the wall: short pieces along the back arc, each turned along it
-	local rw = R - 1.3
-	local a0, a1 = 180 - 44, 180 + 44
-	local nW = 6
-	local step = (a1 - a0) / nW
-	local segLen = 2 * rw * math.sin(math.rad(step / 2)) + 0.3
-	for k = 0, nW - 1 do
-		local a = math.rad(a0 + (k + 0.5) * step)
-		local x, z = math.sin(a) * rw, math.cos(a) * rw
-		local cf = at(x, z)
-		local face = Vector3.new(centre.X - cf.X, 0, centre.Z - cf.Z)
-		local p = cf.Position
-		local m = piece(frame, look.wall, CFrame.lookAt(p, p + face), { width = segLen })
-		if m then
-			m.Name = "Wall"
 		end
 	end
 	frame.Parent = f

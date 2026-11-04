@@ -480,7 +480,8 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 				r0 = math.max(r0, math.max(p.Size.Y, p.Size.Z) / 2)
 			end
 		end
-		require(script.Parent.HubPlaza).ground(f, base, R, r0 + 0.2, look, ground, avoid == nil)
+		local room = if avoid then (Vector2.new(base.X, base.Z) - avoid.at).Magnitude - avoid.r - R - 3 else 99
+		require(script.Parent.HubPlaza).ground(f, base, R, r0 + 0.2, look, ground, room)
 	else
 		plaza(f, base, top, th, ground, rng, avoid)
 	end
@@ -490,8 +491,8 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 	-- (the isles' camp has the arena right behind it).
 	local PIECES = { { -7.5, -16, 6.5 }, { 7.5, -16, 6.5 }, { 16, -4, 2.5 }, { -16, 2, 3 }, { 16, 5, 3 } }
 	if look then
-		-- (the second look: the stalls on the back arc, the pillars, the wall's middle and ends, the pump, the benches)
-		PIECES = { { -7.3, -12.6, 6.5 }, { 7.3, -12.6, 6.5 }, { 8.2, 20.4, 2.5 }, { -8.2, 20.4, 2.5 }, { 19.4, -10.3, 2.5 }, { -19.4, -10.3, 2.5 }, { 0, -22.7, 3 }, { 15.8, -16.3, 3 }, { -15.8, -16.3, 3 }, { 17, 0, 2.5 }, { -14.6, 8.4, 3 } }
+		-- (the second look: the stalls on the back arc, the pillars, the pump, the bench)
+		PIECES = { { -7.3, -12.6, 6.5 }, { 7.3, -12.6, 6.5 }, { 8.2, 20.4, 2.5 }, { -8.2, 20.4, 2.5 }, { 19.4, -10.3, 2.5 }, { -19.4, -10.3, 2.5 }, { 17, 0, 2.5 }, { -14.6, 8.4, 3 } }
 	end
 	local cosT, sinT = 1, 0
 	if avoid then

@@ -7,14 +7,16 @@
 -- the old one goes to ServerStorage.MowALawnBackups first anyway). Turning the effects off is Config.SOULSHROUD_VFX.
 --
 -- Each template: `from` = the pack pieces (folder path below SoulShroudPack, the last item's name, and which one
--- when several share the name), laid on the template's root (centred, or standing on it with base = "bottom").
+-- when several share the name), laid on the template's root (centred on its emitters; standing on it with base =
+-- "bottom"; a beam from the root along -Z with base = "beam").
+--   Face   a flat disc stood up to face the way it's played (a portal in the sky)
 --   Hold   seconds its emitters run (a burst)       Burst  x the particles of that burst
 --   Life   seconds before it's removed              Grow   its mesh shapes grow from GrowFrom x and fade (GrowTime s)
 --   Scale  a size it's always played at x           NoTint  layers that keep their colour (smoke, black)
 local PackVfxBuild = {}
 
 type Piece = { path: { string }, nth: number? }
-type Spec = { from: { Piece }, base: string?, Hold: number?, Burst: number?, Life: number?, Grow: boolean?, GrowTime: number?, GrowFrom: number?, Scale: number? }
+type Spec = { from: { Piece }, base: string?, Face: boolean?, Hold: number?, Burst: number?, Life: number?, Grow: boolean?, GrowTime: number?, GrowFrom: number?, Scale: number? }
 
 local function I(n: number): Piece
 	return { path = { "Impact", "BZ1 Impact VFX #" .. n } }
@@ -28,7 +30,7 @@ end
 
 PackVfxBuild.SPEC = {
 	-- hits (client/HitFx)
-	Hit = { from = { I(46) }, Hold = 0.06 },
+	Hit = { from = { I(46) }, Hold = 0.06, Burst = 2.5, Scale = 1.6 },
 	HitBig = { from = { I(34) }, Hold = 0.1 },
 	Cut = { from = { I(1) }, Hold = 0.1 },
 	Shock = { from = { I(21) }, Hold = 0.05 },
@@ -52,12 +54,11 @@ PackVfxBuild.SPEC = {
 	Spikes = { from = { S("Ground Impact ") }, Hold = 0.2, Grow = true, GrowTime = 1.2, GrowFrom = 0.1, Life = 1.8 },
 	Slash = { from = { S("Slash Example") }, Grow = true, GrowTime = 0.45, GrowFrom = 0.5, Life = 0.6 },
 	Wind = { from = { S("Wind Swirl", 2) }, Grow = true, GrowTime = 1, GrowFrom = 0.3, Life = 1.2 },
-	Beam = { from = { { path = { "KiBlasts", "Ki (気) Blast 1" } } }, base = "bottom", Hold = 0.6, Life = 2 },
+	Beam = { from = { { path = { "KiBlasts", "Ki (気) Blast 1" } } }, base = "beam", Hold = 0.6, Life = 2 },
 	-- films (client/FilmVfx)
-	Portal = { from = { A(7) }, Hold = 1.5, Life = 3 },
+	Portal = { from = { A(7) }, Hold = 1.5, Life = 3, Face = true },
 	BlackHole = { from = { A(16) }, Hold = 3, Life = 5 },
-	GoldBeam = { from = { { path = { "KiBlasts", "Ki (気) Blast 2" } } }, base = "bottom", Hold = 1.2, Life = 2.5 },
-	Sun = { from = { { path = { "Weather", "Weather I", "Stylized Sunshine" } } }, Hold = 2.5, Life = 5 },
+	GoldBeam = { from = { { path = { "KiBlasts", "Ki (気) Blast 2" } } }, base = "beam", Hold = 1.2, Life = 2.5 },
 	-- ambience (client/PackAmbience): loops
 	Dust = { from = { { path = { "Weather", "Weather I", "Glow Dust" } } } },
 	Leaves = { from = { { path = { "Weather", "Leaves", "Leaves" }, nth = 1 } } },
@@ -139,9 +140,45 @@ local function makeOne(pack: Instance, name: string, spec: Spec): (Model?, strin
 			return nil, table.concat(piece.path, "/") .. " missing"
 		end
 		local c = src:Clone()
+		if spec.base == "beam" then
+			-- (a Ki blast runs from its Start part to its End part, sideways and high up in the pack: laid so it starts
+			-- at the root and runs along -Z; its length goes in the Length attribute)
+			local a, b
+			for _, d in c:GetDescendants() do
+				if d:IsA("BasePart") then
+					local n = string.lower(d.Name)
+					if string.find(n, "start") and not a then
+						a = d
+					elseif string.find(n, "end") and not b then
+						b = d
+					end
+				end
+			end
+			if a and b and c:IsA("Model") then
+				local from, to = (a :: BasePart).Position, (b :: BasePart).Position
+				c:PivotTo(CFrame.lookAt(from, to):Inverse() * c:GetPivot())
+				m:SetAttribute("Length", (to - from).Magnitude)
+			end
+		end
 		local cf, size = boxOf(c)
 		local want = if spec.base == "bottom" then Vector3.new(0, size.Y / 2, 0) else Vector3.zero
-		move(c, want - cf.Position)
+		if spec.base ~= "beam" then
+			move(c, want - cf.Position)
+		end
+		-- (a pack effect's emitters often sit on attachments away from their host part: centre on them instead, so the
+		-- burst starts where it's played and not under the ground)
+		if spec.base == nil and c:IsA("BasePart") then
+			local sum, n = Vector3.zero, 0
+			for _, d in c:GetDescendants() do
+				if d:IsA("Attachment") and d:FindFirstChildWhichIsA("ParticleEmitter") then
+					sum += d.WorldPosition
+					n += 1
+				end
+			end
+			if n > 0 then
+				move(c, want - sum / n)
+			end
+		end
 		for _, d in c:GetDescendants() do
 			if d:IsA("LuaSourceContainer") then
 				d:Destroy()
@@ -171,7 +208,7 @@ local function makeOne(pack: Instance, name: string, spec: Spec): (Model?, strin
 		end
 		c.Parent = m
 	end
-	for _, k in { "Hold", "Burst", "Life", "Grow", "GrowTime", "GrowFrom", "Scale" } do
+	for _, k in { "Hold", "Burst", "Life", "Grow", "GrowTime", "GrowFrom", "Scale", "Face" } do
 		local v = (spec :: any)[k]
 		if v ~= nil then
 			m:SetAttribute(k, v)

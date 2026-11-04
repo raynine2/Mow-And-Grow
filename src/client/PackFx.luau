@@ -92,20 +92,17 @@ end
 local BRIGHT_MAX = 2.5
 local WHITE = Color3.new(1, 1, 1)
 
-local function lumOf(c: Color3): number
-	return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B
-end
-
--- A colour moved over to `color` at the same lightness: dark stays dark (see-through when additive), the white-hot
--- cores stay light.
+-- A colour moved over to `color` at the same brightness: dark stays dark (see-through when additive), a saturated
+-- layer takes the colour at full strength, the white-hot cores stay whitish.
 local function shade(c: Color3, color: Color3): Color3
-	local lum = lumOf(c)
-	if lum < 0.06 then
+	local v = math.max(c.R, c.G, c.B)
+	if v < 0.06 then
 		return c
 	end
-	local k = math.min(lum / math.max(lumOf(color), 0.08), 1.6)
-	local t = Color3.new(math.min(1, color.R * k), math.min(1, color.G * k), math.min(1, color.B * k))
-	return t:Lerp(WHITE, math.clamp((lum - 0.72) * 2, 0, 0.6))
+	local w = math.min(c.R, c.G, c.B) / v -- 0 = a pure colour, 1 = white / grey
+	local cm = math.max(color.R, color.G, color.B, 0.05)
+	local t = Color3.new(color.R / cm * v, color.G / cm * v, color.B / cm * v)
+	return t:Lerp(Color3.new(v, v, v), w * 0.7)
 end
 
 local function tintSeq(seq: ColorSequence, color: Color3): ColorSequence
@@ -258,6 +255,9 @@ function PackFx.play(name: string, at: CFrame | Vector3, opts: Opts?): Model?
 	end
 	local m = prepare(t, o)
 	local cf = if typeof(at) == "Vector3" then CFrame.new(at) else at
+	if t:GetAttribute("Face") then
+		cf *= CFrame.Angles(math.pi / 2, 0, 0) -- (a flat disc stood up, facing the way it's played)
+	end
 	m:PivotTo(cf)
 	m.Parent = folder()
 	live[m] = true
@@ -464,10 +464,11 @@ function PackFx.boss(kind: string, s: any, ring: Color3)
 				PackFx.play(name, CFrame.lookAt(p, p + flat), { color = color, scale = math.clamp(math.max(size, len / e.n) / e.size, 0.3, 2.5) })
 			end
 		elseif e.at == "beam" then
-			-- the template stands upright: lay it along the beam
-			local from = mid - flat * (len * 0.5)
-			local cf = CFrame.lookAt(from, from + flat) * CFrame.Angles(-math.pi / 2, 0, 0)
-			PackFx.play(name, cf, { color = color, scale = math.clamp(len / e.size, 0.2, 1.5) })
+			-- the template runs from its root along -Z (server/PackVfxBuild): from the beam's start, its length
+			local from = mid - flat * (len * 0.5) + Vector3.new(0, 3, 0)
+			local t = template(name)
+			local tl = (t and t:GetAttribute("Length") :: number?) or e.size
+			PackFx.play(name, CFrame.lookAt(from, from + flat), { color = color, scale = math.clamp(len / tl, 0.1, 1.5) })
 		end
 	end
 end
@@ -481,9 +482,9 @@ local FILM: { [string]: { any } } = {
 	KingBurst = { { "BigBurst", scale = 1.2, color = Color3.fromRGB(255, 225, 90) }, { "Shock", scale = 1 } },
 	SeedBlast = { { "Wind", scale = 0.25, color = Color3.fromRGB(255, 250, 235) } },
 	CrateLand = { { "Shock", scale = 0.7 } },
-	GoldPillar = { { "GoldBeam", scale = 1.2 } },
+	GoldPillar = { { "GoldBeam", scale = 1.2, color = Color3.fromRGB(255, 215, 90), up = true } },
 	GoldRise = { { "Reveal", scale = 1, color = Color3.fromRGB(255, 215, 90) } },
-	SunBreak = { { "Sun", scale = 2.5 } },
+	SunBreak = { { "Star", scale = 2.5 } },
 	Firework = { { "BigBurst", scale = 1.1, tint = true } },
 	ConfettiPop = { { "GoldBurst", scale = 0.7 } },
 	GlitchTearOut = { { "PurpleBurst", scale = 1.6 }, { "Portal", scale = 1.4 } },
@@ -501,7 +502,8 @@ function PackFx.film(name: string, cf: CFrame, opts: any?)
 	local o = opts or {}
 	local k = o.scale or 1
 	for _, e in list do
-		PackFx.play(e[1], cf, {
+		-- (a beam template runs along -Z: `up` stands it up into a pillar)
+		PackFx.play(e[1], if e.up then CFrame.new(cf.Position) * CFrame.Angles(math.pi / 2, 0, 0) else cf, {
 			scale = e.scale * k,
 			color = if e.tint then o.color else e.color,
 			life = if e.life and o.life then o.life else e.life,

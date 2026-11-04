@@ -340,6 +340,18 @@ BUILD.Groundskeeper = function(a)
 		spin = NumberRange.new(-240, 240),
 		walk = true,
 	})
+	emitter(a, feet(a, "Drift", 0, 0, 1.2), {
+		tex = FxTex.blade,
+		color = cs(C(190, 245, 140), C(110, 190, 80)),
+		size = ns(0, 0, 0.2, 0.3, 1, 0),
+		rate = 2.5,
+		life = NumberRange.new(1, 1.4),
+		speed = NumberRange.new(0.4, 0.8),
+		spread = Vector2.new(180, 30),
+		accel = Vector3.new(0, 0.3, 0),
+		drag = 0.6,
+		spin = NumberRange.new(-90, 90),
+	})
 	emitter(a, feet(a, "Chalk", 0, 0.9), {
 		tex = FxTex.glow,
 		color = cs(C(240, 255, 235)),
@@ -434,6 +446,19 @@ BUILD.HedgeReaper = function(a)
 		light = 0.3,
 		spin = NumberRange.new(0, 0),
 	})
+	emitter(a, b, {
+		tex = T.wisp,
+		color = cs(C(80, 40, 120), C(40, 16, 64)),
+		size = ns(0, 0.4, 1, 1.1),
+		rate = 3,
+		life = NumberRange.new(0.9, 1.3),
+		speed = NumberRange.new(0.6, 1.2),
+		spread = Vector2.new(25, 25),
+		accel = Vector3.new(0, 1.2, 0),
+		trans = ns(0, 1, 0.25, 0.35, 1, 1),
+		light = 0.2,
+		spin = NumberRange.new(-30, 30),
+	})
 	a.tick = function(au, _, _)
 		local k = math.sin(au.clock * math.pi) -- one breath every 2 s
 		for i, v in au.state.vines do
@@ -496,9 +521,9 @@ BUILD.GrassTitan = function(a)
 	for _, s in { l, r } do
 		emitter(a, s, {
 			tex = FxTex.blade,
-			color = cs(C(124, 196, 72), C(76, 140, 43), C(36, 76, 26)),
-			size = ns(0, 0, 0.3, 0.55, 1, 0.45),
-			rate = 3,
+			color = cs(C(150, 220, 90), C(76, 140, 43), C(36, 76, 26)),
+			size = ns(0, 0, 0.3, 0.8, 1, 0.6),
+			rate = 4,
 			life = NumberRange.new(1, 1.4),
 			speed = NumberRange.new(0.4, 0.8),
 			spread = Vector2.new(25, 25),
@@ -591,8 +616,8 @@ BUILD.UltimateGardener = function(a)
 	local ribbon = beam(a, b0, b1, {
 		tex = FxTex.trail,
 		color = cs(SEASONS[1].c[2], SEASONS[1].c[1]),
-		w0 = 0.6,
-		w1 = 0.15,
+		w0 = 0.9,
+		w1 = 0.2,
 		c0 = 1.2,
 		trans = ns(0, 0.3, 1, 1),
 		light = 0.5,
@@ -621,28 +646,19 @@ end
 BUILD.LawnLegend = function(a)
 	local t = torso(a)
 	local w = t.Size.X / 2
-	-- (the curtain stands a stud and more behind you, so it never washes over your head; the vault: rims, not washes)
+	-- (the curtain rises from just over your shoulders, a stud behind you, so from behind it stands over your head
+	-- instead of washing over you; the vault: rims, not washes)
 	for i, sx in { -1, 1 } do
-		local a0 = att(a, t, "Aurora" .. i, Vector3.new(sx * w * 0.7, 0.2, t.Size.Z / 2 + 1.1))
-		local a1 = att(a, t, "AuroraTop" .. i, Vector3.new(sx * w * 1.6, 4.6, t.Size.Z / 2 + 2.2))
-		beam(a, a0, a1, {
-			tex = FxTex.smear,
-			color = cs(C(70, 30, 120), C(120, 70, 210), C(63, 224, 197)),
-			w0 = 1.0,
-			w1 = 2.4,
-			c0 = sx * 0.6,
-			c1 = sx * -0.4,
-			trans = ns(0, 0.9, 0.25, 0.45, 0.75, 0.5, 1, 1),
-			light = 0.5,
-		})
+		local a0 = att(a, t, "Aurora" .. i, Vector3.new(sx * w * 0.8, t.Size.Y / 2 + 0.5, t.Size.Z / 2 + 0.9))
+		local a1 = att(a, t, "AuroraTop" .. i, Vector3.new(sx * w * 1.9, t.Size.Y / 2 + 5.2, t.Size.Z / 2 + 1.9))
 		beam(a, a0, a1, {
 			tex = T.energy,
-			color = cs(C(180, 140, 255), C(120, 255, 230)),
-			w0 = 0.6,
-			w1 = 1.6,
+			color = cs(C(150, 100, 255), C(110, 200, 255), C(90, 255, 220)),
+			w0 = 0.9,
+			w1 = 2.4,
 			c0 = sx * 0.6,
-			c1 = sx * -0.4,
-			trans = ns(0, 0.95, 0.3, 0.4, 0.8, 0.5, 1, 1),
+			c1 = sx * -0.5,
+			trans = ns(0, 0.9, 0.2, 0.15, 0.75, 0.3, 1, 1),
 			light = 0.9,
 			speed = 0.6,
 		})
@@ -704,9 +720,9 @@ BUILD.GoatMan = function(a)
 	table.insert(a.made, disc)
 	local graze = emitter(a, disc, {
 		tex = FxTex.blade,
-		color = cs(C(150, 222, 96), C(76, 140, 43), C(40, 80, 30)),
-		size = ns(0, 0.35, 1, 0.1),
-		rate = 12,
+		color = cs(C(170, 236, 110), C(90, 170, 60), C(40, 80, 30)),
+		size = ns(0, 0.6, 1, 0.15),
+		rate = 14,
 		life = NumberRange.new(0.85, 1),
 		speed = NumberRange.new(3.3, 3.6),
 		spread = Vector2.new(0, 0),
@@ -717,26 +733,33 @@ BUILD.GoatMan = function(a)
 	graze.Shape = Enum.ParticleEmitterShape.Sphere
 	graze.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
 	graze.ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward
-	-- the horns: two crescents of bone-white light curving up and back over the head, gem-cyan glints along them
+	-- the horns: two big crescents over the head, each three layers (the vault: a dark ink edge, the body, a thin
+	-- white-hot core), gem-cyan glints at the tips
 	local h = head(a)
 	for i, sx in { -1, 1 } do
-		local h0 = att(a, h, "Horn" .. i, Vector3.new(sx * 0.45, 0.8, -0.1))
-		local h1 = att(a, h, "HornTip" .. i, Vector3.new(sx * 1.5, 1.7, 0.9))
-		beam(a, h0, h1, {
-			tex = FxTex.trail,
-			color = cs(C(255, 250, 235), C(230, 220, 190)),
-			w0 = 0.45,
-			w1 = 0.08,
-			c0 = 1.1,
-			c1 = -0.6,
-			trans = ns(0, 0.05, 1, 0.25),
-			light = 0.6,
-		})
+		local h0 = att(a, h, "Horn" .. i, Vector3.new(sx * 0.5, 0.75, 0))
+		local h1 = att(a, h, "HornTip" .. i, Vector3.new(sx * 2.1, 2.4, 0.7))
+		for _, layer in {
+			{ C(70, 46, 18), 1.0, 0.25, 0 }, -- ink
+			{ C(255, 226, 140), 0.75, 0.16, 0.5 }, -- bone gold
+			{ C(255, 255, 255), 0.28, 0.06, 1 }, -- core
+		} do
+			beam(a, h0, h1, {
+				tex = FxTex.smear,
+				color = cs(layer[1]),
+				w0 = layer[2],
+				w1 = layer[3],
+				c0 = 1.6,
+				c1 = -0.9,
+				trans = ns(0, 0, 1, 0.05),
+				light = layer[4],
+			})
+		end
 		emitter(a, h1, {
 			tex = SPARKLE,
 			color = cs(C(52, 224, 255)),
-			size = ns(0, 0, 0.3, 0.35, 1, 0),
-			rate = 2,
+			size = ns(0, 0, 0.3, 0.7, 1, 0),
+			rate = 2.5,
 			life = NumberRange.new(0.4, 0.6),
 			speed = NumberRange.new(0, 0.3),
 			spread = Vector2.new(180, 180),
@@ -744,6 +767,20 @@ BUILD.GoatMan = function(a)
 			spin = NumberRange.new(0, 0),
 		})
 	end
+	-- gold motes rising off you
+	emitter(a, att(a, torso(a), "Gold", Vector3.new(0, -0.6, 0.3)), {
+		tex = FxTex.glow,
+		color = cs(C(255, 245, 200), C(255, 205, 70), C(160, 100, 20)),
+		size = ns(0, 0, 0.2, 0.35, 1, 0),
+		rate = 6,
+		life = NumberRange.new(1.2, 1.7),
+		speed = NumberRange.new(1, 2),
+		spread = Vector2.new(50, 50),
+		accel = Vector3.new(0, 1, 0),
+		drag = 0.5,
+		light = 0.8,
+		spin = NumberRange.new(0, 0),
+	})
 	emitter(a, att(a, torso(a), "Motes", Vector3.new(0, 0.3, 0.4)), {
 		tex = FxTex.glow,
 		color = cs(C(220, 255, 200), C(52, 224, 255)),

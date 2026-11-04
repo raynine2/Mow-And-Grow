@@ -222,6 +222,10 @@ local function mannequin(m: Instance, at: CFrame): Model?
 	for _, d in rig:GetDescendants() do
 		if d:IsA("Decal") or d:IsA("FaceControls") then
 			d:Destroy()
+		elseif d:IsA("MeshPart") then
+			pcall(function()
+				d.TextureID = "" -- (the default head's face is painted into its texture)
+			end)
 		end
 	end
 	game:GetService("CollectionService"):AddTag(rig, "AuraMannequin")

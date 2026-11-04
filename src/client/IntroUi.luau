@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
 
 local IntroUi = {}
 local player = Players.LocalPlayer
@@ -18,9 +19,12 @@ local GOLD = Color3.fromRGB(255, 236, 110)
 local ORANGE = Color3.fromRGB(255, 140, 30)
 local GREEN = Color3.fromRGB(110, 220, 70)
 local BAR = 0.11 -- letterbox bar height (share of the screen; set to the 2.35:1 shape of the screen in open)
-local SUB_FONT = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-local NAME_FONT = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy)
-local TALE_FONT = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
+-- (owner, 4 Nov: "i dont like the font ur using and text in general ... just use the ui we have in game") every
+-- film text in the game's own font (Config.UI.font, Fredoka One); client/TextStyle adds the outline and the gold
+local GAME_FONT = Font.fromEnum((require(game:GetService("ReplicatedStorage"):WaitForChild("MowALawn"):WaitForChild("Config")) :: any).UI.font)
+local SUB_FONT = GAME_FONT
+local NAME_FONT = GAME_FONT
+local TALE_FONT = GAME_FONT
 
 local function tween(obj: Instance, time: number, props: { [string]: any }, style: Enum.EasingStyle?, dir: Enum.EasingDirection?): Tween
 	local t = TweenService:Create(obj, TweenInfo.new(time, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
@@ -146,7 +150,7 @@ local function buildFilm(parent: Instance): Frame
 	label.AnchorPoint = Vector2.new(0, 0)
 	label.Position = UDim2.new(0.05, 0, BAR + 0.04, 0)
 	label.Size = UDim2.fromScale(0.5, 0.08)
-	label.Font = Enum.Font.Antique
+	label.FontFace = GAME_FONT
 	label.TextScaled = true
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextColor3 = Color3.fromRGB(255, 240, 210)
@@ -391,15 +395,17 @@ function IntroUi.lowerThird(title: string, sub: string, color: Color3?, life: nu
 	root.Position = UDim2.new(0, -520, BAR, 18)
 	root.Size = UDim2.fromOffset(520, 110)
 	root.Parent = l
-	local stripe = UI.frame({ size = UDim2.fromOffset(10, 92), pos = UDim2.fromOffset(40, 8), color = color or GREEN, parent = root, radius = 4, outline = 0, name = "Stripe" })
-	stripe.ZIndex = 6
-	local t = UI.text(root, title, UDim2.fromOffset(460, 58), { pos = UDim2.fromOffset(62, 4), stroke = 5, align = Enum.TextXAlignment.Left, name = "Title" })
+	-- (owner, 4 Nov: "the mowers ... looks veyr generic and ai just use the ui we have in game") the name card is the
+	-- HUD's own plate (the grass-galaxy kit), the name in the title card's gold, the line under it in white
+	local plate, face = Skin.frame(root, "ui_plate", Vector2.new(440, 100), { pos = UDim2.fromOffset(28, 4), name = "Plate", maxScale = 0.6 })
+	plate.ZIndex = 5
+	local t = UI.text(face, title, UDim2.new(1, -8, 0.58, 0), { pos = UDim2.fromScale(0, 0), stroke = 4, align = Enum.TextXAlignment.Left, name = "Title" })
 	t.ZIndex = 6
 	local g = Instance.new("UIGradient")
-	g.Color = ColorSequence.new(WHITE, color or GREEN)
+	g.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, GOLD), ColorSequenceKeypoint.new(0.52, GOLD), ColorSequenceKeypoint.new(0.56, ORANGE), ColorSequenceKeypoint.new(1, Color3.fromRGB(217, 119, 26)) })
 	g.Rotation = 90
 	g.Parent = t
-	local s = UI.text(root, sub, UDim2.fromOffset(460, 30), { pos = UDim2.fromOffset(64, 66), stroke = 3, align = Enum.TextXAlignment.Left, name = "Sub" })
+	local s = UI.text(face, sub, UDim2.new(1, -8, 0.38, 0), { pos = UDim2.fromScale(0, 0.6), stroke = 2.5, align = Enum.TextXAlignment.Left, name = "Sub", color = if color then color:Lerp(WHITE, 0.6) else WHITE })
 	s.ZIndex = 6
 	tween(root, 0.45, { Position = UDim2.new(0, 0, BAR, 18) }, Enum.EasingStyle.Back)
 	task.delay(life or 2.6, function()

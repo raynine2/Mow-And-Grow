@@ -1115,7 +1115,7 @@ local function lineupScene(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Acto
 		end
 	end)
 	Film.at(0.3, function()
-		IntroUi.lowerThird("THE MOWERS", if n == 1 then "One Mower. One valley." else n .. " Mowers. One valley.", GOLD, 2.3)
+		IntroUi.lowerThird("THE MOWERS", "READY TO MOW IT ALL!", GOLD, 2.3)
 	end)
 	m.look(centre + UP * 4)
 	m.act("cheer")

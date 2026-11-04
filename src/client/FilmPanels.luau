@@ -93,9 +93,10 @@ local function image(parent: Instance, name: string, tex: string, color: Color3,
 	return i
 end
 
-local HEAVY = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy)
-local BOLD = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-local BRUSH = Font.new("rbxasset://fonts/families/PermanentMarker.json")
+-- (owner, 4 Nov: "i dont like the font ur using ... just use the ui we have in game") the credits in the game's font
+local HEAVY = Font.fromEnum(Config.UI.font)
+local BOLD = HEAVY
+local BRUSH = HEAVY
 
 local function label(parent: Instance, text: string, font: Font, size: UDim2, pos: UDim2, z: number, stroke: number?): TextLabel
 	local t = Instance.new("TextLabel")

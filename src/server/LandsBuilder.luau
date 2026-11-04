@@ -577,6 +577,22 @@ local function classes(world: Instance): (TextLabel, Model?)
 	local house = Models.placeForge("house_blue", m, at, { width = 22, depth = 19, height = 24 }, true)
 	if house then
 		PropKit.solidForge(house)
+		-- (owner, 4 Nov: "the house is seetrhough") the ForgeGUI house mesh has gaps in its gables and roof: an opaque
+		-- core inside it (walls' yellow below, the roof's blue above) so the sky doesn't show through them
+		local hcf, hsz = house:GetBoundingBox()
+		local base = hcf * CFrame.new(0, -hsz.Y / 2, 0)
+		local small = math.min(hsz.X, hsz.Z)
+		-- (sizes checked on screen: bigger and the yellow block showed through the porch and the front wall)
+		local cores = {
+			{ Vector3.new(small * 0.5, hsz.Y * 0.5, small * 0.5), hsz.Y * 0.3, C(232, 196, 96) },
+			{ Vector3.new(hsz.X * 0.7, hsz.Y * 0.16, hsz.Z * 0.3), hsz.Y * 0.6, C(36, 52, 128) },
+		}
+		for _, k in cores do
+			local core = PropKit.part({ size = k[1], cf = base * CFrame.new(0, k[2], 0), color = k[3], parent = m, collide = false, name = "HouseCore" })
+			core.CanQuery = false
+			core.CanTouch = false
+			core.CastShadow = false
+		end
 	end
 	title(m, (at * CFrame.new(0, 27, -6)).Position, "CLASSES", C(200, 160, 255))
 	PropKit.prompt(promptAt(m, at * CFrame.new(0, 3, -13), "ClassPorch"), "Browse", "Classes", "Classes", 12)

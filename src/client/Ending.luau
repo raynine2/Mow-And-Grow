@@ -778,7 +778,7 @@ local function lastBladeScenes(P: Plan, A: ArenaPlan, mowers: { IntroCast.Actor 
 		end
 		-- 1C: from the side, wide: it stands up tall over the Mowers... and bows its head to them; they cheer
 		Film.at(0.3, function()
-			IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.2)
+			IntroUi.lowerThird(string.upper(P.areas[1].name), "GUARDIAN SAVED!", GREEN, 3.2)
 		end)
 		Film.at(1.5, function()
 			for i, a in mowers do
@@ -802,7 +802,7 @@ local function lastBladeScenes(P: Plan, A: ArenaPlan, mowers: { IntroCast.Actor 
 	Film.at(0.2, function()
 		speak("E1", true)
 		if alone then
-			IntroUi.lowerThird(string.upper(P.areas[1].name), "The last guardian is free.", GREEN, 3.2)
+			IntroUi.lowerThird(string.upper(P.areas[1].name), "GUARDIAN SAVED!", GREEN, 3.2)
 		end
 	end)
 	local camAt = pc + d * 10.8 - side * gap + UP * 1.4
@@ -935,7 +935,7 @@ local function valleyScenes(P: Plan, cameos: { Cameo }): boolean
 		Film.at(0.1, function()
 			local name = if def and def.name then def.name else ("Area " .. c.z)
 			local who = if def and def.boss then def.boss.name else mv.rig
-			IntroUi.lowerThird(string.upper(name), who .. " ~ free", GREEN, if last then 1.6 else 1.0)
+			IntroUi.lowerThird(string.upper(name), string.upper(who) .. " SAVED!", GREEN, if last then 1.6 else 1.0)
 			FilmAudio.sfx("rareChime", { volume = 0.4, pitch = 0.8 + i * 0.08 })
 		end)
 		local H = c.H
@@ -1078,10 +1078,10 @@ local function snapshot()
 	cap.Size = UDim2.new(1, 28, 0, 52)
 	cap.BackgroundColor3 = Color3.fromRGB(252, 248, 238)
 	cap.BorderSizePixel = 0
-	cap.FontFace = Font.new("rbxasset://fonts/families/PatrickHand.json")
+	cap.FontFace = Font.fromEnum(Config.UI.font)
 	cap.TextScaled = true
 	cap.TextColor3 = Color3.fromRGB(70, 56, 40)
-	cap.Text = "The Mowers ~ heroes of the valley!"
+	cap.Text = "THE MOWERS!"
 	cap.Parent = frame
 	local sc = Instance.new("UIScale")
 	sc.Scale = 1.15
@@ -1283,7 +1283,7 @@ local function creditPages(m: IntroCast.Mayor?, cr: FilmPanels.Credits): { () ->
 	-- (the Mayor is thousands of blocks: copied once, now, while the title page is up)
 	local mayorStill = if m then FilmPanels.copy(m.model, m.face(), 6) else nil
 	table.insert(pages, function()
-		cr.title(string.upper(Config.GAME_NAME or "Mow And Grow"), "the valley is mowed... for now")
+		cr.title(string.upper(Config.GAME_NAME or "Mow And Grow"), "YOU MOWED THE WHOLE VALLEY!")
 	end)
 	-- STARRING: the party, four to a page
 	local list = Players:GetPlayers()
@@ -1516,7 +1516,7 @@ local function worldTwoTitle(): boolean
 	tbc.AnchorPoint = Vector2.new(1, 1)
 	tbc.Position = UDim2.fromScale(0.94, 0.86)
 	tbc.Size = UDim2.fromScale(0.5, 0.09)
-	tbc.FontFace = Font.new("rbxasset://fonts/families/PermanentMarker.json")
+	tbc.FontFace = Font.fromEnum(Config.UI.font)
 	tbc.TextScaled = true
 	tbc.TextXAlignment = Enum.TextXAlignment.Right
 	tbc.TextColor3 = Color3.new(1, 1, 1)
@@ -1555,7 +1555,7 @@ local function worldTwoTitle(): boolean
 		safe.AnchorPoint = Vector2.new(0.5, 0.5)
 		safe.Position = UDim2.fromScale(0.5, 0.78)
 		safe.Size = UDim2.fromScale(0.7, 0.04)
-		safe.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+		safe.FontFace = Font.fromEnum(Config.UI.font)
 		safe.TextScaled = true
 		safe.TextColor3 = Color3.fromRGB(220, 230, 255)
 		safe.Text = "Don't worry: your valley and everything you earned are safe!"

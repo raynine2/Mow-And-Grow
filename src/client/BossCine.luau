@@ -27,6 +27,7 @@ local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local BossFx = require(script.Parent.BossFx)
 local BossView = require(script.Parent.BossView)
+local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack: wind-ups, entrance, rage, fall
 local BossVfx = require(script.Parent.BossVfx)
 local BossAdds = require(script.Parent.BossAdds) -- the minions
 local Omen = require(script.Parent.BossOmen) -- (30 Oct) the scary wake-up, the roar's impact frames
@@ -516,6 +517,7 @@ H.bossIntro = function(d)
 	-- dust as it climbs out, the name card, the line, the roar
 	task.delay(0.2, function()
 		BossVfx.impact(d.z, { type = "circle", pos = d.cf.Position, r = 16 }, "intro", fight.floor)
+		pcall(PackFx.bossMoment, d.z, "intro", d.cf.Position, BossView.height())
 	end)
 	local cardAt = if d.first then 3.2 else 0.3
 	task.delay(math.max(0, cardAt - (len - left)), function()
@@ -572,6 +574,14 @@ H.bossMove = function(d)
 	end
 	BossVfx.warn(d)
 	BossVfx.playImpacts(z, d, fight.floor)
+	if pose ~= "none" and PackFx.on() then
+		-- (owner, 4 Nov: "make their attcks more cooler") it flashes as it winds up
+		local bcf = BossView.cframe()
+		if bcf then
+			local hgt = BossView.height()
+			pcall(PackFx.bossCast, z, bcf.Position + Vector3.new(0, hgt * 0.55, 0) + bcf.LookVector * hgt * 0.15, hgt)
+		end
+	end
 	if d.ammo then
 		BossVfx.projectiles(d)
 	end
@@ -641,6 +651,10 @@ H.bossRage = function(d)
 	task.delay(math.max(0, 2.2 - (d.len - left)), function()
 		BossVfx.setRage(true)
 		BossVfx.rageBurst()
+		local rv = BossView.get()
+		if rv and rv.base then
+			pcall(PackFx.bossMoment, fight.z, "rage", rv.base.Position, BossView.height())
+		end
 		Sound.play("burst", 0.05, 0.8)
 	end)
 	-- (31 Oct, owner's vfx_sfx_all.zip) a dark riser whose boom (1.17 s in) lands with the roar
@@ -679,6 +693,7 @@ H.bossDeath = function(d)
 		local v = BossView.get()
 		if v and v.base then
 			BossVfx.impact(fight.z, { type = "ring", pos = v.base.Position, inner = 4, outer = 30 }, "ring", fight.floor)
+			pcall(PackFx.bossMoment, fight.z, "death", v.base.Position, BossView.height())
 		end
 		BossVfx.stop()
 		BossView.hide()

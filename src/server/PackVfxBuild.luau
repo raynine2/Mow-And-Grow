@@ -54,6 +54,7 @@ PackVfxBuild.SPEC = {
 	Spikes = { from = { S("Ground Impact ") }, Hold = 0.2, Grow = true, GrowTime = 1.2, GrowFrom = 0.1, Life = 1.8 },
 	Slash = { from = { S("Slash Example") }, Grow = true, GrowTime = 0.45, GrowFrom = 0.5, Life = 0.6 },
 	Wind = { from = { S("Wind Swirl", 2) }, Grow = true, GrowTime = 1, GrowFrom = 0.3, Life = 1.2 },
+	Orb = { from = { A(12) } }, -- (a boss shot's glow, streamed while it flies)
 	Beam = { from = { { path = { "KiBlasts", "Ki (気) Blast 1" } } }, base = "beam", Hold = 0.6, Life = 2 },
 	-- films (client/FilmVfx)
 	Portal = { from = { A(7) }, Hold = 1.5, Life = 3, Face = true },
@@ -188,6 +189,10 @@ local function makeOne(pack: Instance, name: string, spec: Spec): (Model?, strin
 			if d:IsA("BasePart") then
 				d.Anchored = true
 				d.CanCollide = false
+				-- (the weather's emitting volumes are see-through grey boxes: hidden; owner: "a grrey box around me")
+				if not d:IsA("MeshPart") and d.Transparency >= 0.5 then
+					d.Transparency = 1
+				end
 				if d.Transparency >= 0.99 then
 					d:SetAttribute("Host", true)
 				end
@@ -202,6 +207,9 @@ local function makeOne(pack: Instance, name: string, spec: Spec): (Model?, strin
 		if c:IsA("BasePart") then
 			c.Anchored = true
 			c.CanCollide = false
+			if not c:IsA("MeshPart") and c.Transparency >= 0.5 then
+				c.Transparency = 1
+			end
 			if c.Transparency >= 0.99 then
 				c:SetAttribute("Host", true)
 			end

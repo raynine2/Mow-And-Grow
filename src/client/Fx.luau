@@ -779,6 +779,12 @@ local function sinkOneGate(gate: Model)
 		return
 	end
 	local pivot = gate:GetPivot()
+	-- (4 Nov: the SoulShroud pack) the gate going down: a gold ring and a burst along its foot
+	if PackFx.on() then
+		PackFx.play("Shock", pivot.Position, { scale = 1.2, color = Color3.fromRGB(255, 220, 110), force = true })
+		PackFx.play("GoldBurst", pivot.Position + Vector3.new(0, 4, 0), { scale = 1.3, force = true })
+		PackFx.play("Rocks", pivot.Position, { scale = 0.3, force = true })
+	end
 	local function dust(x: number)
 		local a = Instance.new("Attachment")
 		a.Parent = workspace.Terrain

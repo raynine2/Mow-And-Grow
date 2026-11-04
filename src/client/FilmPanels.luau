@@ -31,6 +31,7 @@ local Device = require(script.Parent.Device)
 local Film = require(script.Parent.Film)
 local IntroUi = require(script.Parent.IntroUi)
 local Potato = require(script.Parent.Potato)
+local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack: an impact frame also bursts in the world
 
 local FilmPanels = {}
 local player = Players.LocalPlayer
@@ -279,6 +280,9 @@ export type ImpactOpts = { color: Color3?, hold: number?, at: Vector3?, invert: 
 -- when only a soft flash stood in (too soon after the last, the film's budget spent, or "Reduce camera shake").
 function FilmPanels.impact(subjects: { Instance? }, opts: ImpactOpts?): boolean
 	local o = opts or {}
+	if o.at and PackFx.on() then
+		pcall(PackFx.film, "ImpactFrame", CFrame.new(o.at), nil)
+	end
 	local gui = IntroUi.gui()
 	local cam = workspace.CurrentCamera
 	local now = os.clock()

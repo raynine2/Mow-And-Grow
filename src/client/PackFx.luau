@@ -25,6 +25,7 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config")) :: any
 local Potato = require(script.Parent.Potato) :: any
 local PhonePerf = require(script.Parent.PhonePerf) :: any
+local BossMoves = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("BossMoves")) :: any
 
 local PackFx = {}
 
@@ -139,6 +140,11 @@ local function prepare(t: Model, o: any): Model
 				d.Color = o.color
 			end
 		elseif d:IsA("BasePart") then
+			-- (owner, 4 Nov: "when i zoom uit a grrey box around me", "when i walk it turns grey") the pack's weather
+			-- sits in see-through grey boxes (its emitting volumes): a plain part half see-through or more is hidden
+			if not d:IsA("MeshPart") and d.Transparency >= 0.5 then
+				d.Transparency = 1
+			end
 			d.Anchored = true
 			d.CanCollide = false
 			d.CanQuery = false
@@ -238,6 +244,7 @@ export type Opts = {
 	follow: BasePart?,
 	force: boolean?, -- plays even past the cap (a film's big moment)
 	rate: number?, -- x its particle rate (the ambience runs the pack's weather thinner)
+	stream: boolean?, -- its emitters stay on for `hold` s (a trail) instead of one burst
 }
 
 -- Plays template `name` once at `at`. Returns the clone, or nil.
@@ -267,7 +274,18 @@ function PackFx.play(name: string, at: CFrame | Vector3, opts: Opts?): Model?
 	if t:GetAttribute("Grow") then
 		grow(m, (t:GetAttribute("GrowTime") :: number?) or math.min(life, 1.2))
 	end
-	run(m, hold)
+	if o.stream then
+		run(m, nil)
+		task.delay(hold, function()
+			for _, d in m:GetDescendants() do
+				if d:IsA("ParticleEmitter") or d:IsA("Beam") or d:IsA("Light") then
+					(d :: any).Enabled = false
+				end
+			end
+		end)
+	else
+		run(m, hold)
+	end
 	local follow = o.follow
 	local conn: RBXScriptConnection? = nil
 	if follow then
@@ -300,6 +318,11 @@ function PackFx.loop(name: string, at: CFrame | Vector3, opts: Opts?): Loop
 		return none
 	end
 	local m = prepare(t, opts or {})
+	for _, d in m:GetDescendants() do
+		if d:IsA("ParticleEmitter") then
+			d.LockedToPart = false -- (it follows the camera: what it already let go of stays where it is)
+		end
+	end
 	m:PivotTo(if typeof(at) == "Vector3" then CFrame.new(at) else at)
 	m.Parent = folder()
 	run(m, nil)
@@ -330,9 +353,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- what plays where
 -------------------------------------------------------------------------------------------------------------
--- Your own hits: a small burst in the grass's colour (at most ~8 a second); a combo finisher a big one; a cut a
--- swirl of clippings; boss hits a spiky burst in the boss's colour.
-local lastHit = 0
+-- A cut: a small swirl of clippings; boss hits a spiky burst in the boss's colour. (Plain hits: nothing extra.)
 function PackFx.hit(event: string, pos: Vector3, grass: Color3, mine: boolean, scale: number, opts: any?)
 	if not PackFx.on() then
 		return
@@ -342,13 +363,10 @@ function PackFx.hit(event: string, pos: Vector3, grass: Color3, mine: boolean, s
 	local up = Vector3.new(0, 1.6 * s, 0)
 	local light = grass:Lerp(WHITE, 0.25)
 	if event == "cut" then
-		PackFx.play("Cut", pos + up, { color = light, scale = 0.55 * s })
+		PackFx.play("Cut", pos + up, { color = light, scale = 0.35 * s })
 		return
 	elseif event == "bossHit" then
 		PackFx.play("BossHit", pos, { color = grass:Lerp(WHITE, 0.2), scale = 0.8 })
-		return
-	elseif event == "bossDeath" then
-		PackFx.play("BossDeath", pos, { color = grass, scale = 1.4, force = true })
 		return
 	elseif event == "bossSlam" then
 		PackFx.play("Shock", pos + Vector3.new(0, 0.4, 0), { scale = 1.2 })
@@ -356,21 +374,8 @@ function PackFx.hit(event: string, pos: Vector3, grass: Color3, mine: boolean, s
 	elseif string.sub(event, 1, 4) == "boss" or event == "reveal" then
 		return
 	end
-	if not mine then
-		return
-	end
-	local now = os.clock()
-	if o.finisher then
-		lastHit = now
-		PackFx.play("HitBig", pos + up, { color = light, scale = 0.6 * s })
-		PackFx.play("Shock", pos + Vector3.new(0, 0.3, 0), { scale = 0.45 * s })
-		return
-	end
-	if now - lastHit < 0.12 then
-		return
-	end
-	lastHit = now
-	PackFx.play("Hit", pos + up, { color = if o.mut then o.mut else light, scale = 0.45 * s })
+	-- (owner, 4 Nov: "the hit fx is too much why do i have to see it going supersaiyen every hit like remove that")
+	-- your hits and combo finishers keep only the game's own effects
 end
 
 -- A mutation found: a star flash and a magic circle in its colour.
@@ -382,39 +387,63 @@ function PackFx.reveal(at: Vector3, color: Color3, scale: number)
 	PackFx.play("Shock", at - Vector3.new(0, 1.5, 0), { color = color, scale = 0.5 * math.clamp(scale, 1, 2), force = true })
 end
 
--- (owner: "all 8, 1-2 attacks each") the signature attacks of each boss, by move kind (no two bosses share one;
--- shared/BossMoves). Each entry: the templates and how each sits on the attack's shape:
---   at = "centre" (the shape's middle) | "line" (along a line / sector, `n` copies) | "edge" (round the ring)
---   size = studs the template covers at scale 1 (it's scaled to the shape), tint = the boss's colour or a fixed one
-local BOSS: { [string]: { any } } = {
-	-- 1 Dandelion King
-	slam = { { "Shock", at = "centre", size = 14 }, { "GoldBurst", at = "centre", size = 18, tint = "ring" }, { "Dome", at = "centre", size = 80, tint = "ring" } },
-	cross = { { "GoldBurst", at = "line", n = 4, size = 14, tint = "ring" } },
-	-- 2 Harvest Maw
-	fan = { { "Slash", at = "line", n = 3, size = 30, tint = "ring" } },
-	spread = { { "FireBurst", at = "centre", size = 22 } },
-	-- 3 Sakura Snapjaw
-	leap = { { "Shock", at = "centre", size = 14 }, { "PinkBurst", at = "centre", size = 16 }, { "Dome", at = "centre", size = 80, tint = Color3.fromRGB(255, 160, 205) } },
-	ring = { { "PinkBurst", at = "edge", n = 6, size = 14 } },
-	-- 4 Bramble Brute
-	combo = { { "BigBurst", at = "centre", size = 16, tint = "ring" }, { "Rocks", at = "centre", size = 40 } },
-	safe = { { "Explosion", at = "centre", size = 120, tint = "ring" } },
-	-- 5 Bog Strangler
-	grid = { { "Splash", at = "centre", size = 45, tint = Color3.fromRGB(120, 200, 110) } },
-	stalk = { { "Spikes", at = "centre", size = 40, tint = Color3.fromRGB(90, 170, 80) } },
-	-- 6 Frost Thornback
-	cone = { { "IceSpikes", at = "centre", size = 190 } },
-	burrow = { { "IceSplash", at = "centre", size = 50 }, { "Shock", at = "centre", size = 14 } },
-	-- 7 Hollow Harvest
-	swing = { { "Slash", at = "line", n = 2, size = 30, tint = Color3.fromRGB(255, 90, 40) } },
-	dash = { { "FireBurst", at = "line", n = 3, size = 22 } },
-	-- 8 Jungle Titan
-	star = { { "Shock", at = "centre", size = 14 }, { "Rocks", at = "centre", size = 40 } },
-	laser = { { "Beam", at = "beam", size = 200, tint = "ring" } },
-	gaze = { { "Beam", at = "beam", size = 200, tint = Color3.fromRGB(150, 255, 210) } },
+-- (owner: "all 8, 1-2 attacks each"; then, 4 Nov: "make their attcks more cooler with the new effects u have now")
+-- Every boss has a look from the pack (THEME, by rig): every move it makes lands with its burst, sized to the
+-- shape, in its colour; it flashes as it winds up (bossCast); its shots fly as glowing orbs (bossShot); its entrance,
+-- rage and death get their own. Its signature moves (SIG, rig:kind) get more on top.
+local THEME: { [string]: { burst: string, tint: Color3?, ground: string?, groundTint: Color3?, cast: string } } = {
+	dandelion = { burst = "GoldBurst", tint = Color3.fromRGB(255, 225, 90), cast = "Star" },
+	harvest = { burst = "BossHit", tint = Color3.fromRGB(255, 150, 50), ground = "Rocks", cast = "Star" },
+	sakura = { burst = "PinkBurst", cast = "Reveal" },
+	bramble = { burst = "BigBurst", tint = Color3.fromRGB(190, 240, 120), ground = "Rocks", cast = "Star" },
+	bog = { burst = "BossHit", tint = Color3.fromRGB(140, 230, 110), ground = "Splash", groundTint = Color3.fromRGB(110, 200, 100), cast = "Reveal" },
+	bunker = { burst = "Star", tint = Color3.fromRGB(170, 230, 255), ground = "IceSplash", cast = "Reveal" },
+	hollow = { burst = "PurpleBurst", ground = "FireBurst", cast = "Star" },
+	jungle = { burst = "Star", tint = Color3.fromRGB(120, 255, 210), ground = "Rocks", cast = "Reveal" },
 }
 
--- A shape's middle, a direction and a size in studs.
+-- signature moves: more on top of the theme's burst
+--   at = "centre" | "line" (n copies along it) | "edge" (n round the ring) | "beam" (laid along it)
+--   size = studs the template covers at scale 1; tint = "ring" (the boss's colour) or a colour
+local SIG: { [string]: { any } } = {
+	["dandelion:slam"] = { { "Shock", at = "centre", size = 14 }, { "Dome", at = "centre", size = 80, tint = "ring" } },
+	["dandelion:beam"] = { { "Beam", at = "beam", size = 200, tint = "ring" } },
+	["harvest:fan"] = { { "Slash", at = "line", n = 3, size = 30, tint = Color3.fromRGB(255, 170, 60) } },
+	["harvest:spread"] = { { "FireBurst", at = "centre", size = 22 } },
+	["harvest:rings"] = { { "Shock", at = "centre", size = 14 } },
+	["sakura:leap"] = { { "Shock", at = "centre", size = 14 }, { "Dome", at = "centre", size = 80, tint = Color3.fromRGB(255, 160, 205) } },
+	["sakura:sweep"] = { { "Slash", at = "line", n = 2, size = 30, tint = Color3.fromRGB(255, 150, 200) } },
+	["bramble:combo"] = { { "Shock", at = "centre", size = 14 } },
+	["bramble:safe"] = { { "Explosion", at = "centre", size = 120, tint = Color3.fromRGB(255, 220, 90) } },
+	["bog:grid"] = { { "Spikes", at = "centre", size = 50, tint = Color3.fromRGB(90, 190, 90) } },
+	["bog:stalk"] = { { "Spikes", at = "centre", size = 40, tint = Color3.fromRGB(90, 170, 80) } },
+	["bog:tide"] = { { "Splash", at = "centre", size = 40, tint = Color3.fromRGB(110, 200, 100) } },
+	["bunker:cone"] = { { "IceSpikes", at = "centre", size = 190 } },
+	["bunker:burrow"] = { { "IceSpikes", at = "centre", size = 190 }, { "Shock", at = "centre", size = 14 } },
+	["bunker:sink"] = { { "IceSplash", at = "centre", size = 50 } },
+	["hollow:swing"] = { { "Slash", at = "line", n = 2, size = 30, tint = Color3.fromRGB(255, 90, 40) } },
+	["hollow:dash"] = { { "FireBurst", at = "line", n = 3, size = 22 } },
+	["hollow:mines"] = { { "FireBurst", at = "centre", size = 22 } },
+	["jungle:star"] = { { "Shock", at = "centre", size = 14 } },
+	["jungle:laser"] = { { "Beam", at = "beam", size = 200, tint = "ring" } },
+	["jungle:gaze"] = { { "Beam", at = "beam", size = 200, tint = Color3.fromRGB(150, 255, 210) } },
+	["jungle:meteors"] = { { "Explosion", at = "centre", size = 120, tint = Color3.fromRGB(120, 255, 210) } },
+}
+
+local function rigOf(z: number): string
+	local ok, def = pcall(BossMoves.get, z)
+	return if ok and def and def.rig then def.rig else "dandelion"
+end
+
+-- its shockwave colour (shared/BossMoves `ring`)
+local function ringOf(z: number): Color3
+	local ok, def = pcall(BossMoves.get, z)
+	local hex = ok and def and def.ring
+	local okc, c = pcall(Color3.fromHex, hex or "FFE46A")
+	return if okc then c else Color3.fromRGB(255, 228, 106)
+end
+
+-- A shape's middle, a direction and a size in studs (and a length for lines).
 local function shapeInfo(s: any): (Vector3, Vector3, number, number)
 	local dir = s.dir or Vector3.new(0, 0, -1)
 	if s.type == "circle" or s.type == "safe" then
@@ -430,64 +459,129 @@ local function shapeInfo(s: any): (Vector3, Vector3, number, number)
 	return s.pos + dir * len * 0.5, dir, s.width or 8, len
 end
 
-function PackFx.boss(kind: string, s: any, ring: Color3)
+local function place(e: any, s: any, mid: Vector3, flat: Vector3, size: number, len: number, color: Color3?)
+	local name = e[1]
+	if e.at == "centre" then
+		PackFx.play(name, CFrame.lookAt(mid, mid + flat), { color = color, scale = math.clamp(size / e.size, 0.15, 3) })
+	elseif e.at == "edge" then
+		local r = size * 0.4
+		for i = 1, e.n do
+			local a = i / e.n * math.pi * 2
+			local p = s.pos + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
+			PackFx.play(name, p, { color = color, scale = math.clamp(size / 6 / e.size, 0.3, 1.5) })
+		end
+	elseif e.at == "line" then
+		local start = mid - flat * (len * 0.5)
+		for i = 1, e.n do
+			local p = start + flat * (len * (i - 0.5) / e.n)
+			PackFx.play(name, CFrame.lookAt(p, p + flat), { color = color, scale = math.clamp(math.max(size, len / e.n) / e.size, 0.3, 2.5) })
+		end
+	elseif e.at == "beam" then
+		-- the template runs from its root along -Z (server/PackVfxBuild): from the beam's start, its length
+		local from = mid - flat * (len * 0.5) + Vector3.new(0, 3, 0)
+		local t = template(name)
+		local tl = (t and t:GetAttribute("Length") :: number?) or e.size
+		PackFx.play(name, CFrame.lookAt(from, from + flat), { color = color, scale = math.clamp(len / tl, 0.1, 1.5) })
+	end
+end
+
+-- A boss attack's shape landing (client/BossVfx.impact, for every move).
+function PackFx.boss(z: number, kind: string, s: any, ring: Color3?)
+	if not PackFx.on() or kind == "intro" then
+		return -- (the entrance has its own: bossMoment)
+	end
+	ring = ring or ringOf(z)
+	local rig = rigOf(z)
+	local th = THEME[rig] or THEME.dandelion
+	local mid, dir, size, len = shapeInfo(s)
+	local flat = Vector3.new(dir.X, 0, dir.Z)
+	flat = if flat.Magnitude > 0.01 then flat.Unit else Vector3.new(0, 0, -1)
+	local tint = th.tint or ring :: Color3
+	-- the theme's burst on every shape: in the middle, along a line, or round a ring
+	if s.type == "ring" then
+		place({ th.burst, at = "edge", n = 6, size = 10 }, s, mid, flat, size, len, tint)
+	elseif len > 0 then
+		place({ th.burst, at = "line", n = math.clamp(math.floor(len / 14), 1, 4), size = 10 }, s, mid, flat, size, len, tint)
+	else
+		place({ th.burst, at = "centre", size = 10 }, s, mid, flat, size, len, tint)
+		if th.ground and size >= 10 then
+			place({ th.ground, at = "centre", size = 40 }, s, mid, flat, size, len, th.groundTint)
+		end
+	end
+	for _, e in SIG[rig .. ":" .. kind] or {} do
+		place(e, s, mid, flat, size, len, if e.tint == "ring" then ring elseif typeof(e.tint) == "Color3" then e.tint else nil)
+	end
+end
+
+-- The boss winding up a move: a flash at its chest in its colour.
+function PackFx.bossCast(z: number, at: Vector3, size: number, ring: Color3?)
 	if not PackFx.on() then
 		return
 	end
-	local list = BOSS[kind]
-	if not list then
+	local th = THEME[rigOf(z)] or THEME.dandelion
+	PackFx.play(th.cast, at, { color = th.tint or ring or ringOf(z), scale = math.clamp(size / 20, 0.6, 2) })
+end
+
+-- A boss shot in flight: a glowing orb riding on it.
+function PackFx.bossShot(z: number, part: BasePart, flight: number, ring: Color3?)
+	if not PackFx.on() then
 		return
 	end
-	local mid, dir, size, len = shapeInfo(s)
-	local flat = Vector3.new(dir.X, 0, dir.Z)
-	if flat.Magnitude < 0.01 then
-		flat = Vector3.new(0, 0, -1)
+	local th = THEME[rigOf(z)] or THEME.dandelion
+	PackFx.play("Orb", part.CFrame, { color = th.tint or ring or ringOf(z), scale = 0.35, follow = part, hold = flight, stream = true, life = flight + 0.6 })
+end
+
+-- Its entrance (it climbs out), its rage (phase 2) and its fall.
+function PackFx.bossMoment(z: number, what: string, at: Vector3, size: number, ring: Color3?)
+	if not PackFx.on() then
+		return
 	end
-	flat = flat.Unit
-	for _, e in list do
-		local name = e[1]
-		local color: Color3? = if e.tint == "ring" then ring elseif typeof(e.tint) == "Color3" then e.tint else nil
-		local sc = size / e.size
-		if e.at == "centre" then
-			PackFx.play(name, CFrame.lookAt(mid, mid + flat), { color = color, scale = math.clamp(sc, 0.15, 3) })
-		elseif e.at == "edge" then
-			local r = size * 0.4
-			for i = 1, e.n do
-				local a = i / e.n * math.pi * 2
-				local p = s.pos + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r)
-				PackFx.play(name, p, { color = color, scale = math.clamp(size / 3 / e.size * 2, 0.3, 1.5) })
-			end
-		elseif e.at == "line" then
-			local start = mid - flat * (len * 0.5)
-			for i = 1, e.n do
-				local p = start + flat * (len * (i - 0.5) / e.n)
-				PackFx.play(name, CFrame.lookAt(p, p + flat), { color = color, scale = math.clamp(math.max(size, len / e.n) / e.size, 0.3, 2.5) })
-			end
-		elseif e.at == "beam" then
-			-- the template runs from its root along -Z (server/PackVfxBuild): from the beam's start, its length
-			local from = mid - flat * (len * 0.5) + Vector3.new(0, 3, 0)
-			local t = template(name)
-			local tl = (t and t:GetAttribute("Length") :: number?) or e.size
-			PackFx.play(name, CFrame.lookAt(from, from + flat), { color = color, scale = math.clamp(len / tl, 0.1, 1.5) })
+	local th = THEME[rigOf(z)] or THEME.dandelion
+	local tint = th.tint or ring or ringOf(z)
+	local k = math.clamp(size / 30, 0.6, 2.5)
+	if what == "intro" then
+		PackFx.play("Shock", at, { scale = 1.4 * k, force = true })
+		PackFx.play(th.burst, at + Vector3.new(0, 4 * k, 0), { color = tint, scale = 1.6 * k, force = true })
+		PackFx.play("Dome", at, { color = tint, scale = 0.3 * k, force = true })
+		if th.ground then
+			PackFx.play(th.ground, at, { color = th.groundTint, scale = 0.6 * k, force = true })
 		end
+	elseif what == "rage" then
+		PackFx.play("Explosion", at + Vector3.new(0, 6 * k, 0), { color = Color3.fromRGB(255, 80, 60), scale = 0.3 * k, force = true })
+		PackFx.play("Shock", at, { color = Color3.fromRGB(255, 90, 70), scale = 2 * k, force = true })
+		PackFx.play(th.burst, at + Vector3.new(0, 8 * k, 0), { color = Color3.fromRGB(255, 90, 70), scale = 2 * k, force = true })
+	elseif what == "death" then
+		PackFx.play("BossDeath", at + Vector3.new(0, 4 * k, 0), { color = tint, scale = 1.2 * k, force = true })
+		PackFx.play("Star", at + Vector3.new(0, 10 * k, 0), { scale = 2 * k, force = true })
 	end
 end
 
 -- (owner: "intro én ending") the films' moments: each named FilmVfx moment also plays its pack effects
 local FILM: { [string]: { any } } = {
+	-- the opening
 	SkyTear = { { "Portal", scale = 2.2 } },
-	HoleOpen = { { "BlackHole", scale = 2.5 }, { "Explosion", scale = 0.35, color = Color3.fromRGB(160, 70, 255) } },
-	HoleDisk = { { "BlackHole", scale = 2.5, life = 12 } },
-	SparkHit = { { "Star", scale = 1.2 } },
+	SparkHit = { { "Star", scale = 1.2 }, { "Shock", scale = 0.8 } },
 	KingBurst = { { "BigBurst", scale = 1.2, color = Color3.fromRGB(255, 225, 90) }, { "Shock", scale = 1 } },
 	SeedBlast = { { "Wind", scale = 0.25, color = Color3.fromRGB(255, 250, 235) } },
-	CrateLand = { { "Shock", scale = 0.7 } },
-	GoldPillar = { { "GoldBeam", scale = 1.2, color = Color3.fromRGB(255, 215, 90), up = true } },
+	BlowFlash = { { "BigBurst", scale = 1.3, color = Color3.fromRGB(255, 250, 230) }, { "Wind", scale = 0.3, color = Color3.fromRGB(255, 250, 235) } },
+	GrassRise = { { "Spikes", scale = 0.3, color = Color3.fromRGB(110, 210, 90) }, { "Cut", scale = 0.9, color = Color3.fromRGB(150, 230, 120) } },
+	HeroCall = { { "GoldBurst", scale = 1.2 }, { "Shock", scale = 1, color = Color3.fromRGB(255, 220, 110) } },
+	MowerLand = { { "Shock", scale = 0.7 }, { "Rocks", scale = 0.15 }, { "GoldBurst", scale = 0.6 } },
+	CrateLand = { { "Shock", scale = 0.9 }, { "Rocks", scale = 0.2 }, { "Star", scale = 1 } },
+	TitleHit = { { "GoldBurst", scale = 0.45 } },
+	EyeOpen = { { "PurpleBurst", scale = 1.2 } },
+	-- an anime impact frame (client/FilmPanels) in either film
+	ImpactFrame = { { "Star", scale = 1.4 }, { "Shock", scale = 1.1 } },
+	-- the ending
+	GoldPillar = { { "GoldBeam", scale = 1.2, color = Color3.fromRGB(255, 215, 90), up = true }, { "Shock", scale = 1.2, color = Color3.fromRGB(255, 220, 110) } },
 	GoldRise = { { "Reveal", scale = 1, color = Color3.fromRGB(255, 215, 90) } },
 	SunBreak = { { "Star", scale = 2.5 } },
 	Firework = { { "BigBurst", scale = 1.1, tint = true } },
 	ConfettiPop = { { "GoldBurst", scale = 0.7 } },
 	GlitchTearOut = { { "PurpleBurst", scale = 1.6 }, { "Portal", scale = 1.4 } },
+	HoleOpen = { { "BlackHole", scale = 2.5 }, { "Explosion", scale = 0.35, color = Color3.fromRGB(160, 70, 255) } },
+	HoleDisk = { { "BlackHole", scale = 2.5, life = 12 } },
+	HoleHalo = { { "Portal", scale = 3, life = 12 } },
 	LumpTear = { { "Rocks", scale = 0.3 } },
 }
 
@@ -501,6 +595,12 @@ function PackFx.film(name: string, cf: CFrame, opts: any?)
 	end
 	local o = opts or {}
 	local k = o.scale or 1
+	local cam = workspace.CurrentCamera
+	if o.screen and cam then
+		-- (a moment laid over the picture: in front of the camera)
+		cf = cam.CFrame * CFrame.new(0, 0, -o.screen)
+		k *= o.screen / 20
+	end
 	for _, e in list do
 		-- (a beam template runs along -Z: `up` stands it up into a pillar)
 		PackFx.play(e[1], if e.up then CFrame.new(cf.Position) * CFrame.Angles(math.pi / 2, 0, 0) else cf, {

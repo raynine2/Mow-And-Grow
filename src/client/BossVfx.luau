@@ -1226,7 +1226,7 @@ function BossVfx.impact(z: number, s: any, kind: string, floorColor: Color3?)
 	local ring = accentColor()
 	cue(kind, s.pos)
 	if PackFx.on() then
-		pcall(PackFx.boss, kind, s, ring)
+		pcall(PackFx.boss, z, kind, s, ring)
 	end
 	if s.type == "circle" then
 		burst(s.pos, s.r)
@@ -1530,6 +1530,12 @@ local function shot(msg: any, s: any)
 	end
 	local from = launchFrom(msg, s)
 	local flight = msg.flight or 1
+	if PackFx.on() and L then
+		-- (4 Nov) the SoulShroud pack: the shot flies as a glowing orb in the boss's colour
+		task.defer(function()
+			pcall(PackFx.bossShot, L.z or 1, p, flight, accentColor())
+		end)
+	end
 	local land = s.land - (msg.fuse or 0)
 	table.insert(shots, { part = p, from = from, to = s.pos + Vector3.new(0, 0.6, 0), start = msg.at + land - flight, len = flight, height = if msg.sky then 0 else 10 + (from - s.pos).Magnitude * 0.25 })
 	if msg.fuse then

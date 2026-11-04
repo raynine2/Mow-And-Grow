@@ -1010,6 +1010,7 @@ local function homeScenes(P: Plan, m: IntroCast.Mayor, actors: { IntroCast.Actor
 				Film.shake(0.35, 2.4)
 				-- (one small puff each: more hid the Mowers on the opening's contact sheet)
 				HitFx.play("bossSlamDust", at, Color3.fromRGB(196, 168, 120), false)
+				FilmVfx.play("MowerLand", CFrame.new(at)) -- (4 Nov: the SoulShroud pack)
 				actor.play("emote")
 			end)
 		end)

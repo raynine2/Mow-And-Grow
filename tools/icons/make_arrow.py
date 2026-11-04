@@ -2,6 +2,11 @@
 (assets/icons: a dark brown outline, a darker extruded side, a light inner rim, a gloss streak, a sparkle or two).
 
     python3 tools/icons/make_arrow.py            -> assets/icons/arrow_point.png (512 x 320, pointing right)
+                                                    and tools/icons/arrow_point_256.b64 (for the Studio upload)
+
+The .b64 is the arrow at 256 x 160 as raw RGBA, zstd-compressed, base64: Studio's command bar fetches it (HttpService,
+raw.githubusercontent.com), writes it into an EditableImage and uploads that with AssetService:CreateAssetAsync (the
+Studio MCP's own image upload refuses GitHub URLs). The id went into shared/IconIds as arrow_point.
 
 Drawn at 4x and scaled down so every edge is smooth. (Owner, 4 Nov, on the old one, a yellow bar and a turned
 square: "make this a good arrow".)
@@ -97,6 +102,11 @@ def main():
     path = os.path.join(root, "assets", "icons", "arrow_point.png")
     out.save(path)
     print(path, out.size)
+    import base64
+    import zstandard
+    raw = out.convert("RGBA").resize((256, 160), Image.LANCZOS).tobytes()
+    b64 = base64.b64encode(zstandard.ZstdCompressor(level=19).compress(raw)).decode()
+    open(os.path.join(root, "tools", "icons", "arrow_point_256.b64"), "w").write(b64)
 
 
 if __name__ == "__main__":

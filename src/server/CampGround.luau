@@ -242,6 +242,46 @@ end
 
 type Move = { at: Vector3, r: number, delta: CFrame }
 
+-- (4 Nov, owner, on the Garage: "LIKE WHY ARE BUILDINGS IN THE GROUND") The ForgeGUI houses stood with their feet at
+-- the camp's ground (4.3, the paving's beds) while the paving stones' tops are 0.3 higher and more, so the stones ran
+-- up over the bottom of their walls, the roll door and the posts. Each squared-up building now stands ON the paving:
+-- everything of it goes up by the gap between its house's foot and the highest stone round it (the house, the room
+-- inside, the shelves, the counter, its anchor and walls), but not what stands on the ground in front of it (the
+-- shop's little yard, the gas pump).
+local STAY_DOWN = { ShopYard = true, gas_pump = true, GasPump = true }
+local function liftOnto(unit: Instance, tiles: Instance?, at: CFrame, foot: Rect): number
+	local shell = unit:FindFirstChild("ShopShell")
+	local body = shell and shell:FindFirstChildWhichIsA("BasePart", true)
+	if not body or not tiles then
+		return 0
+	end
+	local bottom = body.Position.Y - body.Size.Y / 2
+	local top = -math.huge
+	for _, p in tiles:GetDescendants() do
+		if p:IsA("BasePart") and p.Name == "Stone" and inRect(at, foot, p.Position, 4) then
+			top = math.max(top, p.Position.Y + p.Size.Y / 2)
+		end
+	end
+	local lift = top - bottom + 0.02
+	if lift < 0.05 or lift > 3 then
+		return 0
+	end
+	local d = CFrame.new(0, lift, 0)
+	for _, c in unit:GetChildren() do
+		if STAY_DOWN[c.Name] then
+			continue
+		end
+		if c:IsA("Model") then
+			c:PivotTo(d * c:GetPivot())
+		elseif c:IsA("BasePart") then
+			c.CFrame = d * c.CFrame
+		elseif c:IsA("Folder") then
+			moveTree(c, d)
+		end
+	end
+	return lift
+end
+
 -- The positions the run keeps in `info` (pumps, the mower spawn, the shredder's mouth...) follow the piece they belong
 -- to: each Vector3 or CFrame within reach of a moved piece's old middle takes the nearest one's move.
 local function shiftInfo(info: any, moves: { Move })
@@ -356,6 +396,10 @@ function CampGround.squareUp(w: Instance, info: any?): (number, number)
 			end
 		end
 		cells += notch(w, at, f.foot, unit)
+		local lift = liftOnto(unit, tiles, at, f.foot)
+		if lift > 0 then
+			moves[#moves].delta = CFrame.new(0, lift, 0) * delta
+		end
 		n += 1
 		task.wait()
 	end

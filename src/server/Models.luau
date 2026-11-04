@@ -443,6 +443,35 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 		sparkleRate = 0.7,
 		trail = { Vector3.new(0, 0, -1.6), Vector3.new(0, 0, -3.4) },
 	},
+	-- (4 Nov) the sickle from Roblox's generator (ForgeModelIds.gen_sickle): its handle (+Y, head at the top) along
+	-- the template's -Z, its blade (-X) rising +Y; the handle's axis sits at +0.14 of its X, so it's lifted to y 0.
+	-- Like the part model: the end cap at z 0.98, the head at -2.62
+	tool_sickle = {
+		forge = "gen_sickle",
+		turn = CFrame.fromMatrix(Vector3.zero, Vector3.new(0, -1, 0), Vector3.new(0, 0, -1), Vector3.new(1, 0, 0)),
+		length = 3.6,
+		center = Vector3.new(0, 0.5, -0.82),
+		sparkle = { Vector3.new(0, 1.5, -2.2) },
+		sparkleColors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 225, 255) },
+		sparkleRate = 0.6,
+		trail = { Vector3.new(0, 0.6, -2.5), Vector3.new(0, 1.7, -2) },
+	},
+	-- (4 Nov) the mowers from Roblox's generator: as the part models stand (wheels on y 0, the handle up to the back,
+	-- +Z), scaled to the part model's height, their handle's top at its handle's top
+	tool_pushmower = {
+		forge = "gen_pushmower",
+		turn = CFrame.new(),
+		length = 4.13,
+		center = Vector3.new(0.1, 1.71, 1.655),
+	},
+	tool_lasermower = {
+		forge = "gen_lasermower",
+		turn = CFrame.new(),
+		length = 4.55,
+		center = Vector3.new(0, 1.825, 1.455),
+		light = Vector3.new(0, 0.6, 0),
+		lightColor = Color3.fromRGB(80, 230, 255),
+	},
 	tool_scythe = {
 		forge = "megascythe",
 		-- (the mesh stands up its +Y, the head at the top, the blade out to its +X: the head goes to -Z, the blade to +Y)

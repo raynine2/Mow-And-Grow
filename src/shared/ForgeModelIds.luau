@@ -113,6 +113,14 @@ return {
 	-- (the blade's tip at +X, the loop at -X), the loop out to +Y, flat in Z; the bolt at (-0.065, -0.096) x its length
 	-- from the middle
 	scissorhalf = 105475000736860,
+	-- (4 Nov, owner: "niet letterlijk forgegui": made the way ForgeGUI makes them, a prompt to a textured 3D model, but
+	-- with Roblox's own free generator in Studio, ForgeGUI's credits being used up; loaded and used like the rest,
+	-- server/Models FORGE_TOOLS) the sickle: its handle along +Y (the head at the top), the blade out to -X, flat in Z
+	gen_sickle = 86066258701291,
+	-- the push mower and the laser mower: standing on their wheels (+Y up), the push handle rising to the back (+Z),
+	-- the front at -Z
+	gen_pushmower = 83543571821864,
+	gen_lasermower = 132839132656856,
 	-- the Garage in the Tool Shop cabin's style (server/ShopShell; 31 Oct, owner: "also use this house for the garage
 	-- model alike"); front -Z, fully open
 	garage_shell = 98540195381872,

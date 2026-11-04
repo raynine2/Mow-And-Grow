@@ -162,10 +162,21 @@ function HubSquare.dress(w: Instance): number
 		local p = centre + Vector3.new(math.cos(a) * (basinR - 0.6), 1.7, math.sin(a) * (basinR - 0.6))
 		local jet = Instance.new("Attachment")
 		jet.Name = "Jet"
-		-- the attachment's front (-Z) points up and in toward the statue: the Pour layer emits along it
-		jet.WorldCFrame = CFrame.lookAt(p, centre + Vector3.new(0, 6, 0))
+		-- (parented first: a world CFrame set on a loose attachment is taken as its local one)
 		jet.Parent = rim
-		layer(jet, "Loop_UltimateGardener", "Pour", WATER, 14)
+		-- the attachment's front (-Z) points up and in toward the statue: the Pour layer emits along it
+		jet.WorldCFrame = CFrame.lookAt(p, centre + Vector3.new(0, 10, 0))
+		local e = layer(jet, "Loop_UltimateGardener", "Pour", WATER, 22)
+		if e then
+			-- (the aura's pour only dribbles: a fountain jet arcs up, about 2.5 studs over the rim, and lands on the
+			-- statue's feet; checked in Play 4 Nov)
+			e.Speed = NumberRange.new(12, 13)
+			e.Lifetime = NumberRange.new(1, 1.1)
+			e.Acceleration = Vector3.new(0, -24, 0)
+			e.SpreadAngle = Vector2.new(3, 3)
+			e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 0.2) })
+			e.LightEmission = 0.35
+		end
 	end
 
 	-- four flower beds on the diagonals, facing the fountain, petals drifting off them
@@ -182,9 +193,9 @@ function HubSquare.dress(w: Instance): number
 			if box then
 				local att = Instance.new("Attachment")
 				att.Name = "Petals"
-				att.WorldPosition = Vector3.new(x, y + 1.6, z)
 				att.Parent = box
-				layer(att, "Loop_Gardener", "Petals", nil, 2)
+				att.WorldPosition = Vector3.new(x, y + 1.6, z)
+				layer(att, "Loop_Gardener", "Petals", nil, 3)
 			end
 		end
 	end
@@ -247,6 +258,37 @@ function HubSquare.dress(w: Instance): number
 	local arch = Models.place("welcome_arch", f, CFrame.lookAt(Vector3.new(A.X, ay, A.Z), Vector3.new(A.X + 1, ay, A.Z)), 0.75)
 	if arch then
 		n += 1
+		-- its board says where you are: the square's name on the side facing it, a welcome on the path side
+		-- (FredokaOne with a dark outline, like the game's other signs)
+		local board = arch:FindFirstChild("Board", true)
+		if board and board:IsA("BasePart") then
+			local function sign(face: Enum.NormalId, text: string)
+				local sg = Instance.new("SurfaceGui")
+				sg.Name = "Sign"
+				sg.Face = face
+				sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+				sg.PixelsPerStud = 40
+				sg.LightInfluence = 0.4
+				sg.Parent = board
+				local t = Instance.new("TextLabel")
+				t.BackgroundTransparency = 1
+				t.Size = UDim2.fromScale(0.92, 0.78)
+				t.Position = UDim2.fromScale(0.04, 0.11)
+				t.Text = text
+				t.TextScaled = true
+				t.FontFace = Font.new("rbxasset://fonts/families/FredokaOne.json")
+				t.TextColor3 = Color3.fromRGB(255, 236, 170)
+				t.Parent = sg
+				local st = Instance.new("UIStroke")
+				st.Color = Color3.fromRGB(30, 25, 45)
+				st.Thickness = 3
+				st.Parent = t
+			end
+			-- (the board is thin along its own Z; its front face (-Z) is the one facing the square if it points east)
+			local frontIn = board.CFrame.LookVector.X > 0
+			sign(if frontIn then Enum.NormalId.Front else Enum.NormalId.Back, "VILLAGE SQUARE")
+			sign(if frontIn then Enum.NormalId.Back else Enum.NormalId.Front, "WELCOME!")
+		end
 	end
 
 	f.Parent = hub

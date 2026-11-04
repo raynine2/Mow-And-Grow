@@ -525,6 +525,8 @@ local function pillFor(kind: string, state: string, n: number, cap: number, left
 	return "GO!"
 end
 
+LobbyPads.pillFor = pillFor
+
 local function arcBay(m: Instance, i: number, p: ArcPad, size: number): PadDef
 	local DECK_H = 0.5
 	local at = CFrame.lookAt(p.pos, Vector3.new(p.toward.X, p.pos.Y, p.toward.Z)) -- looks at the spawn

@@ -366,6 +366,53 @@ tool("Scissors", function(add)
 	local bolt = add(Vector3.new(0.38, 0.3, 0.3), SCISSOR_PIVOT * CFrame.Angles(0, 0, math.rad(90)), shank, Enum.Material.Metal)
 	bolt.Shape = Enum.PartType.Cylinder
 end)
+-- (4 Nov, owner: "the sytche is supergoed met forgegui gemaakt dus doe eerst maar schaar enzo in forge style") once
+-- the ForgeGUI half is loaded (ReplicatedStorage.MowALawnModels.forge_scissorhalf, shared/ForgeModelIds.scissorhalf)
+-- the part shears give way to two copies of it on the bolt, the second turned half a turn about the blades' line;
+-- they keep the "Half" attribute, so they open and shut the same way. The half is long along its +X (the tip), its
+-- loop out to +Y, flat in Z; its bolt at (-0.065, -0.096) x its length from its middle (as in server/Models).
+local SCISSOR_FORGE_L = 4.2 -- (tool units, tip to loops, like the part shears)
+local SCISSOR_FORGE_TURN = CFrame.fromMatrix(Vector3.zero, Vector3.new(0, 0, -1), Vector3.new(1, 0, 0), Vector3.new(0, -1, 0))
+local scissorForge = false
+local function forgeScissors()
+	if scissorForge then
+		return
+	end
+	local folder = ReplicatedStorage:FindFirstChild("MowALawnModels")
+	local template = folder and folder:FindFirstChild("forge_scissorhalf")
+	local body = template and template:FindFirstChild("Body")
+	if not (body and body:IsA("MeshPart")) then
+		return
+	end
+	scissorForge = true
+	for _, pc in tools.Scissors or {} do
+		pc.part:Destroy()
+	end
+	local L = SCISSOR_FORGE_L
+	local pv = SCISSOR_PIVOT.Position * TOOL
+	local half = CFrame.new(Vector3.new(0.096 * L, 0.1, -0.065 * L) * TOOL) * SCISSOR_FORGE_TURN
+	local pieces: { Piece } = {}
+	for _, h in { 1, -1 } do
+		local m = body:Clone()
+		for _, c in m:GetChildren() do
+			if not c:IsA("SurfaceAppearance") then
+				c:Destroy()
+			end
+		end
+		m.Size = body.Size * (L * TOOL / body.Size.X)
+		m.Anchored = true
+		m.CanCollide = false
+		m.CanQuery = false
+		m.CanTouch = false
+		m.CastShadow = false
+		m.Transparency = 1
+		m:SetAttribute("Half", h)
+		m.Parent = root
+		local flip = if h == 1 then CFrame.new() else CFrame.Angles(0, 0, math.pi)
+		table.insert(pieces, { part = m, offset = CFrame.new(pv) * flip * half })
+	end
+	tools.Scissors = pieces
+end
 tool("Sickle", function(add)
 	add(Vector3.new(0.35, 0.35, 1.8), CFrame.new(0, 0, -0.6), WOOD, Enum.Material.Wood)
 	add(Vector3.new(0.15, 0.35, 1.5), CFrame.new(0, 0.1, -2.1), STEEL, Enum.Material.Metal)
@@ -1460,6 +1507,9 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 	whackHead(if id == "WeedWhacker" then held else nil, t)
+	if id == "Scissors" then
+		forgeScissors()
+	end
 	for toolId, pieces in tools do
 		if toolId == id and not held and not pushing and id == "Scissors" then
 			-- (28 Oct) the shears open and shut (T channel: r.X = opening, r.Y = a twirl about the finger)

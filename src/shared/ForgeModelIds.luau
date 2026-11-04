@@ -107,6 +107,12 @@ return {
 	-- the Mega Scythe (server/Models FORGE_TOOLS; 31 Oct, owner: "revamp the mega sytche model witth forgegui"); it
 	-- stands up its +Y (the head at the top), the blade out to its +X
 	megascythe = 77652345413074,
+	-- (4 Nov, owner: "the sytche is supergoed met forgegui gemaakt dus doe eerst maar schaar enzo in forge style") one
+	-- half of the garden scissors (a red loop, a gold bolt, a steel blade): server/Models FORGE_TOOLS and
+	-- client/ViewModel use it twice, the second turned half a turn about the blade, both on the bolt. Long along its +X
+	-- (the blade's tip at +X, the loop at -X), the loop out to +Y, flat in Z; the bolt at (-0.065, -0.096) x its length
+	-- from the middle
+	scissorhalf = 105475000736860,
 	-- the Garage in the Tool Shop cabin's style (server/ShopShell; 31 Oct, owner: "also use this house for the garage
 	-- model alike"); front -Z, fully open
 	garage_shell = 98540195381872,

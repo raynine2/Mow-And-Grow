@@ -411,8 +411,35 @@ type ForgeTool = {
 	gem: Vector3?,
 	sparkle: { Vector3 }?,
 	trail: { Vector3 }?,
+	-- (4 Nov) a tool made of several copies of the mesh (the scissors: one half, twice), each at its own CFrame in the
+	-- template (`center` is then unused; `turn` still sets the scale)
+	copies: { CFrame }?,
+	-- (4 Nov) the light's and the sparkles' colours (the scythe's violet when not given)
+	lightColor: Color3?,
+	gemColor: Color3?,
+	sparkleColors: { Color3 }?,
+	sparkleRate: number?,
 }
+-- the scissors from the ForgeGUI half (ForgeModelIds.scissorhalf): its long side (+X, the tip) along the template's
+-- -Z, its loop (+Y) out to +X, flat in Y; the bolt at (-0.065, -0.096) x its length from its middle. Two copies on
+-- the bolt, the second turned half a turn about the blade's line, closed, like the part model (tip at z -3.56, loops
+-- to z 0.92; client/ViewModel opens and shuts its own pair)
+local SCISSOR_L = 4.4
+local SCISSOR_TURN = CFrame.fromMatrix(Vector3.zero, Vector3.new(0, 0, -1), Vector3.new(1, 0, 0), Vector3.new(0, -1, 0))
+local SCISSOR_BOLT = CFrame.new(0, 0, -3.56 + 0.565 * SCISSOR_L)
+local SCISSOR_HALF = CFrame.new(0.096 * SCISSOR_L, 0.1, -0.065 * SCISSOR_L) * SCISSOR_TURN
 local FORGE_TOOLS: { [string]: ForgeTool } = {
+	tool_scissors = {
+		forge = "scissorhalf",
+		turn = SCISSOR_TURN,
+		length = SCISSOR_L,
+		center = Vector3.zero,
+		copies = { SCISSOR_BOLT * SCISSOR_HALF, SCISSOR_BOLT * CFrame.Angles(0, 0, math.pi) * SCISSOR_HALF },
+		sparkle = { Vector3.new(0, 0.12, -2.9) },
+		sparkleColors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 220, 255) },
+		sparkleRate = 0.7,
+		trail = { Vector3.new(0, 0, -1.6), Vector3.new(0, 0, -3.4) },
+	},
 	tool_scythe = {
 		forge = "megascythe",
 		-- (the mesh stands up its +Y, the head at the top, the blade out to its +X: the head goes to -Z, the blade to +Y)
@@ -464,23 +491,34 @@ local function swapTools(): number
 		mesh.CanQuery = false
 		mesh.CanTouch = false
 		mesh.Parent = model
+		if t.copies then
+			-- (the first copy is this mesh, the rest clones; lights and spots below go on the first)
+			mesh.CFrame = t.copies[1]
+			for i = 2, #t.copies do
+				local c = mesh:Clone()
+				c.Name = mesh.Name .. i
+				c.CFrame = t.copies[i]
+				c.Parent = model
+			end
+		end
 		if t.light then
-			lightAt(mesh, "BladeLight", t.light, Color3.fromRGB(190, 110, 255), 9, 1.3)
+			lightAt(mesh, "BladeLight", t.light, t.lightColor or Color3.fromRGB(190, 110, 255), 9, 1.3)
 		end
 		if t.gem then
-			lightAt(mesh, "PommelGem", t.gem, Color3.fromRGB(230, 190, 255), 3.5, 1)
+			lightAt(mesh, "PommelGem", t.gem, t.gemColor or Color3.fromRGB(230, 190, 255), 3.5, 1)
 		end
 		for _, at in t.sparkle or {} do
 			local e = Instance.new("ParticleEmitter")
 			e.Name = "EdgeSparkle"
 			e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-			e.Color = ColorSequence.new(Color3.fromRGB(255, 235, 255), Color3.fromRGB(186, 84, 255))
+			local sc = t.sparkleColors or { Color3.fromRGB(255, 235, 255), Color3.fromRGB(186, 84, 255) }
+			e.Color = ColorSequence.new(sc[1], sc[2] or sc[1])
 			e.LightEmission = 1
 			e.LightInfluence = 0
 			e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 0.22), NumberSequenceKeypoint.new(1, 0) })
 			e.Transparency = NumberSequence.new(0.1, 1)
 			e.Lifetime = NumberRange.new(0.5, 0.9)
-			e.Rate = 1.5
+			e.Rate = t.sparkleRate or 1.5
 			e.Speed = NumberRange.new(0.2, 0.6)
 			e.SpreadAngle = Vector2.new(180, 180)
 			e.Rotation = NumberRange.new(0, 360)

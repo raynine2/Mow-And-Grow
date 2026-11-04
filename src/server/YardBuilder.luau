@@ -420,8 +420,7 @@ local function garage(world: Instance)
 	floor.CanCollide = false
 	floor.Name = "Turntable"
 	Models.place("mower_tractor", m, spot * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, math.rad(200), 0), 1, true)
-	PropKit.prompt(floor, "Open", "Garage", "Garage", 14)
-	PropKit.prompt(promptAt(m, front * CFrame.new(0, 3, -1), "GarageDoor"), "Open", "Garage", "Garage", 12)
+	PropKit.prompt(floor, "Open", "Garage", "Garage", 14) -- (one prompt: client/MowerLock hangs its padlock over it)
 end
 
 -- The free rewards: a giant seed packet stuck in the soil, its two bays fallen leaves (the left one, DAILY, gives

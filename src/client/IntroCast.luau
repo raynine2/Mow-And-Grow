@@ -116,6 +116,12 @@ local function cloneOf(char: Model): Model?
 	if not ok or not clone then
 		return nil
 	end
+	-- (5 Nov, the ending in a run: the player's bundle stack, a tower on their back, filled the shot past a Mower
+	-- at the guardian) the films' Mowers carry no bundles
+	local stack = clone:FindFirstChild("BundleStack", true)
+	if stack then
+		stack:Destroy()
+	end
 	for _, d in clone:GetDescendants() do
 		if d:IsA("BaseScript") or d:IsA("Sound") or d:IsA("Tool") or d:IsA("ForceField") or d:IsA("BillboardGui") or d:IsA("Highlight") then
 			d:Destroy()

@@ -496,7 +496,7 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 		-- (the second look: the stalls on the back arc, the pillars, the pump, the bench)
 		local rs, rp, ro = math.min(14.5, Rp - 3.5), Rp - 2.2, Rp - 7.4
 		local s30, c30, s22, c22, s118, c118 = 0.5, 0.866, 0.375, 0.927, 0.883, -0.469
-		PIECES = { { -rs * s30, -rs * c30, 6.5 }, { rs * s30, -rs * c30, 6.5 }, { rp * s22, rp * c22, 2.5 }, { -rp * s22, rp * c22, 2.5 }, { rp * s118, rp * c118, 2.5 }, { -rp * s118, rp * c118, 2.5 }, { ro + 0.4, 0, 2.5 }, { -ro * 0.866, ro * 0.5, 3 } }
+		PIECES = { { -rs * s30, -rs * c30, 6.5 }, { rs * s30, -rs * c30, 6.5 }, { rp * s22, rp * c22, 2.5 }, { -rp * s22, rp * c22, 2.5 }, { rp * s118, rp * c118, 2.5 }, { -rp * s118, rp * c118, 2.5 }, { math.min(17, Rp - 4), 0, 2.5 }, { -ro * 0.866, ro * 0.5, 3 } }
 	end
 	local cosT, sinT = 1, 0
 	if avoid then
@@ -536,7 +536,9 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 			local p = at(PIECES[7][1], PIECES[7][2]).Position
 			gasPump(f, p, info, flat(base - p).Unit)
 		end
-		bench(f, facing(PIECES[8][1], PIECES[8][2])) -- (a bench's sitter looks along its LookVector, its back away from the pad)
+		if Rp >= 20 then -- (on the isles' smaller plaza it would stand on the pad's edge)
+			bench(f, facing(PIECES[8][1], PIECES[8][2])) -- (its sitter looks along its LookVector, its back away from the pad)
+		end
 		require(script.Parent.HubPlaza).frame(f, look, Rp, at, base)
 	else
 		stall(f, at(-7.5, -16), "SHOP", "Shop", th, rng, def.id)

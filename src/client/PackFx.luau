@@ -124,6 +124,9 @@ local function prepare(t: Model, o: any): Model
 			if d.Brightness > BRIGHT_MAX then
 				d.Brightness = BRIGHT_MAX
 			end
+			if o.soft then
+				d.Brightness *= 0.55 -- (films: "the cutscenes are blinding")
+			end
 			d.Rate *= b * (o.rate or 1)
 			if o.color and not d:GetAttribute("NoTint") then
 				d.Color = tintSeq(d.Color, o.color)
@@ -244,6 +247,7 @@ export type Opts = {
 	follow: BasePart?,
 	force: boolean?, -- plays even past the cap (a film's big moment)
 	rate: number?, -- x its particle rate (the ambience runs the pack's weather thinner)
+	soft: boolean?, -- dimmer (the films)
 	stream: boolean?, -- its emitters stay on for `hold` s (a trail) instead of one burst
 }
 
@@ -561,10 +565,10 @@ end
 local FILM: { [string]: { any } } = {
 	-- the opening
 	SkyTear = { { "Portal", scale = 2.2 } },
-	SparkHit = { { "Star", scale = 1.2 }, { "Shock", scale = 0.8 } },
-	KingBurst = { { "BigBurst", scale = 1.2, color = Color3.fromRGB(255, 225, 90) }, { "Shock", scale = 1 } },
+	SparkHit = { { "Star", scale = 0.6 }, { "Shock", scale = 0.8 } },
+	KingBurst = { { "BigBurst", scale = 0.8, color = Color3.fromRGB(255, 225, 90) }, { "Shock", scale = 1 } },
 	SeedBlast = { { "Wind", scale = 0.25, color = Color3.fromRGB(255, 250, 235) } },
-	BlowFlash = { { "BigBurst", scale = 1.3, color = Color3.fromRGB(255, 250, 230) }, { "Wind", scale = 0.3, color = Color3.fromRGB(255, 250, 235) } },
+	BlowFlash = { { "BigBurst", scale = 0.8, color = Color3.fromRGB(255, 240, 200) }, { "Wind", scale = 0.3, color = Color3.fromRGB(255, 250, 235) } },
 	GrassRise = { { "Spikes", scale = 0.3, color = Color3.fromRGB(110, 210, 90) }, { "Cut", scale = 0.9, color = Color3.fromRGB(150, 230, 120) } },
 	HeroCall = { { "GoldBurst", scale = 1.2 }, { "Shock", scale = 1, color = Color3.fromRGB(255, 220, 110) } },
 	MowerLand = { { "Shock", scale = 0.7 }, { "Rocks", scale = 0.15 }, { "GoldBurst", scale = 0.6 } },
@@ -572,11 +576,11 @@ local FILM: { [string]: { any } } = {
 	TitleHit = { { "GoldBurst", scale = 0.45 } },
 	EyeOpen = { { "PurpleBurst", scale = 1.2 } },
 	-- an anime impact frame (client/FilmPanels) in either film
-	ImpactFrame = { { "Star", scale = 1.4 }, { "Shock", scale = 1.1 } },
+	ImpactFrame = { { "Star", scale = 0.8 }, { "Shock", scale = 1.1 } },
 	-- the ending
 	GoldPillar = { { "GoldBeam", scale = 1.2, color = Color3.fromRGB(255, 215, 90), up = true }, { "Shock", scale = 1.2, color = Color3.fromRGB(255, 220, 110) } },
 	GoldRise = { { "Reveal", scale = 1, color = Color3.fromRGB(255, 215, 90) } },
-	SunBreak = { { "Star", scale = 2.5 } },
+	SunBreak = { { "Star", scale = 1.2 } },
 	Firework = { { "BigBurst", scale = 1.1, tint = true } },
 	ConfettiPop = { { "GoldBurst", scale = 0.7 } },
 	GlitchTearOut = { { "PurpleBurst", scale = 1.6 }, { "Portal", scale = 1.4 } },
@@ -610,6 +614,7 @@ function PackFx.film(name: string, cf: CFrame, opts: any?)
 			life = if e.life and o.life then o.life else e.life,
 			follow = o.follow,
 			force = true,
+			soft = true,
 		})
 	end
 end

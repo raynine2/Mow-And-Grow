@@ -76,6 +76,16 @@ local function pickTarget(): Vector3?
 	end
 	if d.mode == "Lobby" then
 		if d.stats and d.stats.runs == 0 and not d.run then
+			-- (4 Nov lobby remake) a free win first: the daily reward's bay at the rewards stall, a few steps from the
+			-- spawn; once it's claimed, the SOLO pad
+			if d.daily and d.daily.ready then
+				for _, z in game:GetService("CollectionService"):GetTagged("LobbyPadZone") do
+					if z:GetAttribute("Claim") == "daily" and z:IsA("Model") then
+						local p = z:GetPivot().Position
+						return Vector3.new(p.X, 0, p.Z)
+					end
+				end
+			end
 			local pad = findPart({ "PadInfo1" })
 			return if pad then Vector3.new(pad.Position.X, 0, pad.Position.Z) else nil
 		end

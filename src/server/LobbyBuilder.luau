@@ -188,9 +188,12 @@ local function mannequin(m: Instance, at: CFrame): Model?
 		return nil
 	end
 	local stand = at * CFrame.new(0, 0, 0)
-	-- the pedestal: a dark plinth with a gold rim
+	-- the pedestal: a dark wooden plinth, a lighter top and a thin gold trim round its top edge
 	PropKit.brick(m, Vector3.new(5, 1.6, 5), stand * CFrame.new(0, 0.8, 0), Color3.fromRGB(70, 52, 40), "Plinth", Enum.Material.WoodPlanks)
-	PropKit.brick(m, Vector3.new(5.4, 0.3, 5.4), stand * CFrame.new(0, 1.75, 0), GOLD, "PlinthRim", Enum.Material.SmoothPlastic)
+	PropKit.brick(m, Vector3.new(4.6, 0.3, 4.6), stand * CFrame.new(0, 1.75, 0), Color3.fromRGB(150, 98, 58), "PlinthTop", Enum.Material.WoodPlanks)
+	for _, e in { { 0, 2.4, 5.2, 0.25 }, { 0, -2.4, 5.2, 0.25 }, { 2.4, 0, 0.25, 5.2 }, { -2.4, 0, 0.25, 5.2 } } do
+		PropKit.brick(m, Vector3.new(e[3], 0.25, e[4]), stand * CFrame.new(e[1], 1.6, e[2]), Color3.fromRGB(214, 160, 52), "PlinthTrim", Enum.Material.SmoothPlastic)
+	end
 	rig.Name = "AuraMannequin"
 	local hum = rig:FindFirstChildOfClass("Humanoid")
 	if hum then
@@ -215,6 +218,12 @@ local function mannequin(m: Instance, at: CFrame): Model?
 	local lift = if hum and root then hum.HipHeight + root.Size.Y / 2 else 3
 	rig:PivotTo(stand * CFrame.new(0, 1.9 + lift, 0))
 	rig.Parent = m
+	-- a tailor's dummy has no face (the head's face decal can arrive with the description, so look again now)
+	for _, d in rig:GetDescendants() do
+		if d:IsA("Decal") or d:IsA("FaceControls") then
+			d:Destroy()
+		end
+	end
 	game:GetService("CollectionService"):AddTag(rig, "AuraMannequin")
 	-- its sign: the class's name on the plinth's front
 	local name = PropKit.facePanel(m, stand, Vector3.new(0, 0.85, -2.55), Vector2.new(4.6, 1.1), "", Color3.new(1, 1, 1))

@@ -338,4 +338,29 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 end)
 
+-- (4 Nov lobby remake) You spawn looking at the launch gate and the pads (server/LobbyLayout), so the camera starts
+-- behind you, facing the way you face (it started in front of you, looking back at the trees behind the spawn).
+local function faceForward(char: Model)
+	if ReplicatedStorage:GetAttribute("MowALawnMode") ~= "Lobby" then
+		return
+	end
+	local root = char:WaitForChild("HumanoidRootPart", 10) :: BasePart?
+	if not root then
+		return
+	end
+	task.wait(0.3)
+	local cam = workspace.CurrentCamera
+	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
+	if cam.CameraType ~= Enum.CameraType.Custom or look.Magnitude < 0.1 then
+		return
+	end
+	look = look.Unit
+	local p = root.Position
+	cam.CFrame = CFrame.lookAt(p - look * 12 + Vector3.new(0, 4, 0), p + look * 8 + Vector3.new(0, 2, 0))
+end
+player.CharacterAdded:Connect(faceForward)
+if player.Character then
+	task.spawn(faceForward, player.Character)
+end
+
 return LobbyFX

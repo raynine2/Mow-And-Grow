@@ -1,6 +1,7 @@
 """Export the second-look grass clumps (grass_v2) for building in Studio, no Blender needed:
     python3 grass_v2_export.py <out_dir>
-writes <out_dir>/grass_v2.json (every clump's faces, in the column-run style of kit.build_columns) and
+writes <out_dir>/grass_v2.json (every clump's faces, in the column-run style of kit.build_columns, and the atlas's
+tile colours, so Studio can paint the atlas itself) and
 <out_dir>/grass_v2_atlas.png (the colour tiles, each with kit.Atlas's lit rim and soft centre).
 
 The json: { "atlas": { "grid": 16 }, "clumps": { "Clump_<area>_<n>": { "voxel": 0.4, "min": [x, y, z],
@@ -107,5 +108,6 @@ for area in grass_v2.AREAS:
         size = [(max(xs) + 1 - min(xs)) * vs, (max(ys) + 1 - min(ys)) * vs, (max(zs) + 1 - min(zs)) * vs]
         print(f"{name:20s} voxels {len(vox):5d} faces {len(faces):5d} tris {len(faces) * 2:5d} size {size[0]:.2f} x {size[1]:.2f} x {size[2]:.2f}")
 atlas.png(os.path.join(OUT, "grass_v2_atlas.png"))
+data["atlas"]["tiles"] = [list(rgb) for rgb, _ in sorted(atlas.index.items(), key=lambda kv: kv[1])]
 json.dump(data, open(os.path.join(OUT, "grass_v2.json"), "w"), separators=(",", ":"))
 print("tiles", len(atlas.index), "json bytes", os.path.getsize(os.path.join(OUT, "grass_v2.json")))

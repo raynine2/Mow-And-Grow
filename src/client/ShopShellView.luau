@@ -188,7 +188,37 @@ local function setShell(p: Instance, show: boolean)
 	end
 end
 
+-- (4 Nov, owner: "WHEN I WALK INTO THE BULDING THE FUCKING GROUND CHANGES") The lodge's porch you walk on (Deck,
+-- Step, DeckFascia) is invisible, under the cabin's own wooden steps. With your camera inside, the cabin goes and the
+-- porch stayed invisible, so the ground in front of the door turned into bare dirt and the lodge's grey footing
+-- stones. Now that porch shows while you're inside, in the cabin steps' reddish wood, so the way out looks the same
+-- from both sides. (Only this screen; it's invisible again before the outside view sorts the lodge, so it never
+-- leaves the world: you walk on it.)
+local WALK = { Deck = Color3.fromRGB(156, 80, 48), Step = Color3.fromRGB(128, 62, 38), DeckFascia = Color3.fromRGB(100, 48, 30) }
+local walkParts: { [BasePart]: boolean } = {}
+local function showPorch(v: View, show: boolean)
+	if not v.lodge then
+		return
+	end
+	for _, p in v.lodge:GetDescendants() do
+		if p:IsA("BasePart") and WALK[p.Name] and (walkParts[p] or p.Transparency >= 1) then
+			walkParts[p] = true
+			if show then
+				p.Transparency = 0
+				p.Material = Enum.Material.WoodPlanks
+				p.Color = if p.Name == "Deck" and math.floor(p.Position.X + p.Position.Z) % 2 == 0 then WALK.Deck:Lerp(Color3.new(0, 0, 0), 0.1) else WALK[p.Name]
+				p.CastShadow = false
+			else
+				p.Transparency = 1
+			end
+		end
+	end
+end
+
 local function apply(v: View)
+	if v.inside ~= true then
+		showPorch(v, false) -- (first: a visible porch part would be taken out of the world below)
+	end
 	if v.lodge then
 		local room = v.near == true or v.inside == true
 		if room then
@@ -210,6 +240,9 @@ local function apply(v: View)
 		for _, p in v.shell:GetDescendants() do
 			setShell(p, v.inside ~= true)
 		end
+	end
+	if v.inside == true then
+		showPorch(v, true)
 	end
 end
 

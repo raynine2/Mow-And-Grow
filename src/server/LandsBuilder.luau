@@ -44,7 +44,8 @@ local PADS = { -- (degrees from the axis, + to the left as you face the windmill
 	{ a = -50, kind = "party" },
 	{ a = 50, kind = "continue" },
 }
-local WALK_R = PAD_R + 9 -- the curved walk in front of the pads
+local WALK_R = PAD_R + 11 -- the curved walk in front of the pads (clear of the daises)
+local WALK_ARC = 64 -- it runs from -64 to 64 degrees, out to the two boards
 local SQUARE_R = 78 -- the mown square round the axis
 local SQUARE_C = Vector3.new(0, 0, -22)
 local RING_CENTRE = Vector3.new(0, 0, -30)
@@ -193,21 +194,27 @@ local function ground(world: Instance)
 	block(world, "SeaFloor", Vector3.new(1400, 2, 1400), CFrame.new(0, FLOOR - 1, 0), C(226, 200, 140))
 end
 
--- The walks in the camp's golden paving (server/HubPaths): a small round plaza at the spawn, the axis to the pads, the
--- curved walk in front of them (short straight pieces), and the cross walk to the two stations.
+-- The walks (server/LobbyPaving: bricks in running bond, curved rows on the curve, rings round a gold medallion at the
+-- spawn, kerbs, a grout bed): the spawn's round plaza, the axis up to the pads, the curved walk in front of them out to
+-- the two boards, the cross walk between the two stations' round forecourts, a short walk to the rewards stall. Listed
+-- in the order they keep their stones where they meet.
+local function walkAreas(): { any }
+	local function v2(p: Vector3): Vector2
+		return Vector2.new(p.X, p.Z)
+	end
+	return {
+		{ kind = "disc", c = v2(SPAWN), r = 10, medallion = true },
+		{ kind = "disc", c = Vector2.new(CLASSES.X + 16.5, CROSS_Z), r = 6.5 },
+		{ kind = "disc", c = Vector2.new(GARAGE.X - 18, CROSS_Z), r = 6.5 },
+		{ kind = "seg", a = v2(SPAWN), b = v2(arc(0, WALK_R)), w = 9 },
+		{ kind = "arc", c = v2(HERO.pos), r = WALK_R, w = 7, a0 = -WALK_ARC, a1 = WALK_ARC },
+		{ kind = "seg", a = Vector2.new(CLASSES.X + 16.5, CROSS_Z), b = Vector2.new(GARAGE.X - 18, CROSS_Z), w = 7 },
+		{ kind = "seg", a = Vector2.new(SPAWN.X + 6, SPAWN.Z - 2), b = Vector2.new(Layout.REWARDS.pos.X - 8, Layout.REWARDS.pos.Z), w = 6 },
+	}
+end
+
 local function walks(world: Instance)
-	local HubPaths = require(script.Parent.HubPaths)
-	local segs = {}
-	local function walk(a: Vector3, b: Vector3, w: number)
-		table.insert(segs, { a = Vector2.new(a.X, a.Z), b = Vector2.new(b.X, b.Z), width = w })
-	end
-	walk(SPAWN, arc(0, WALK_R), 9)
-	local step = 11
-	for a = -52, 52 - step, step do
-		walk(arc(a, WALK_R), arc(a + step, WALK_R), 7)
-	end
-	walk(Vector3.new(CLASSES.X + 14, 0, CROSS_Z), Vector3.new(GARAGE.X - 13, 0, CROSS_Z), 7)
-	HubPaths.pave(HubPaths.lay(world, segs, 0, 11, { { centre = Vector2.new(SPAWN.X, SPAWN.Z), radius = 10 } }), Vector3.zero)
+	require(script.Parent.LobbyPaving).lay(world, walkAreas())
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -438,6 +445,48 @@ local function dressing(world: Instance)
 		local p = Vector3.new(sx * 14, 0, -52)
 		VM.place(f, "S_flower_bed", p, { yaw = math.pi / 2, collide = true })
 	end
+	-- lamps along the curved walk's outer edge, between the pads, turned to the walk
+	for _, a in { -37.5, -12.5, 12.5, 37.5 } do
+		local p = arc(a, WALK_R + 5.6)
+		if not Models.place("lantern_post", f, CFrame.lookAt(p, arc(a, WALK_R)), 0.9, true) then
+			VM.place(f, "S_lantern_post", p, { collide = true })
+		end
+	end
+end
+
+-- A clipped hedge round the square's south half and sides (the windmill's side stays open), framing it: blocks with a
+-- studded top, two greens, a gap toward each land beyond and none on a walk. (World Composition: made things align,
+-- a clear edge so the open lawn inside reads as a place.)
+local HEDGE_R = 72
+local function hedge(world: Instance)
+	local f = PropKit.folder("Hedge", world)
+	local areas = walkAreas()
+	local Paving = require(script.Parent.LobbyPaving)
+	local gaps = { 0 } -- (the starlight observatory behind the spawn)
+	for _, l in LANDS do
+		table.insert(gaps, 180 - l.a)
+	end
+	local piece = 4.4
+	local n = math.floor(2 * math.pi * HEDGE_R * (220 / 360) / piece)
+	for i = 0, n - 1 do
+		local t = -110 + (i + 0.5) * 220 / n
+		local open = false
+		for _, g in gaps do
+			local d = ((t - g + 180) % 360) - 180
+			if math.abs(d) < 5 then
+				open = true
+			end
+		end
+		local rad = math.rad(t)
+		local p = RING_CENTRE + Vector3.new(math.sin(rad) * HEDGE_R, 0, -math.cos(rad) * HEDGE_R)
+		if not open and not Paving.covers(areas, Vector2.new(p.X, p.Z), 3) then
+			local cf = CFrame.lookAt(p, p + Vector3.new(math.cos(rad), 0, math.sin(rad)))
+			local body = block(f, "Hedge", Vector3.new(2.6, 2.6, piece + 0.05), cf * CFrame.new(0, 1.3, 0), C(52, 120, 46), Enum.Material.Plastic)
+			body.TopSurface = Enum.SurfaceType.Smooth
+			local top = block(f, "HedgeTop", Vector3.new(2.6, 0.7, piece + 0.05), cf * CFrame.new(0, 2.95, 0), if i % 2 == 0 then C(86, 160, 62) else C(78, 150, 56), Enum.Material.Plastic)
+			top.TopSurface = Enum.SurfaceType.Studs
+		end
+	end
 end
 
 local function tree(parent: Instance, land: string, foot: Vector3, scale: number, rng: Random)
@@ -520,6 +569,7 @@ function LandsBuilder.build()
 	local leaderLabel = B.leaderboard(world)
 	local bestLabel = B.bestTimes(world)
 	dressing(world)
+	hedge(world)
 	lands(world)
 	bounds(world)
 	local sp = SPAWN + Vector3.new(0, 0.8, 0)

@@ -49,16 +49,16 @@ local SQUARE_R = 78 -- the mown square round the axis
 local SQUARE_C = Vector3.new(0, 0, -22)
 local RING_CENTRE = Vector3.new(0, 0, -30)
 local LANDS = { -- (angle from north, + to the left; the starlight observatory behind the spawn)
-	{ id = "wheat", lm = "lm_wheat", a = 34, r = 124 },
-	{ id = "blossom", lm = "lm_blossom", a = -34, r = 124 },
-	{ id = "pine", lm = "lm_pine", a = 68, r = 128 },
-	{ id = "swamp", lm = "lm_swamp", a = -68, r = 128 },
-	{ id = "frost", lm = "lm_frost", a = 104, r = 122 },
-	{ id = "ember", lm = "lm_ember", a = -104, r = 122 },
-	{ id = "isles", lm = "lm_starlight", a = 180, r = 118 },
+	{ id = "wheat", lm = "lm_wheat", a = 34, r = 98 },
+	{ id = "blossom", lm = "lm_blossom", a = -34, r = 98 },
+	{ id = "pine", lm = "lm_pine", a = 68, r = 102 },
+	{ id = "swamp", lm = "lm_swamp", a = -68, r = 102 },
+	{ id = "frost", lm = "lm_frost", a = 104, r = 100 },
+	{ id = "ember", lm = "lm_ember", a = -104, r = 100 },
+	{ id = "isles", lm = "lm_starlight", a = 180, r = 96 },
 }
 local PATCH_R = 30
-local REACH = 232 -- the island's half size
+local REACH = 200 -- the island's half size
 local CELL = 8
 local SEA = -6
 local FLOOR = -24
@@ -68,8 +68,8 @@ local GARAGE = Vector3.new(50, 0, -40)
 local CROSS_Z = -40
 Layout.SPAWN = SPAWN
 Layout.REWARDS = { pos = Vector3.new(24, 0, -70) }
-Layout.GRASS_CUT = { pos = Vector3.new(44, 0, 10) }
-Layout.BEST_TIMES = { pos = Vector3.new(-44, 0, 10) }
+Layout.GRASS_CUT = { pos = Vector3.new(55, 0, -9) } -- (out to the sides: from the spawn they show between the pads and
+Layout.BEST_TIMES = { pos = Vector3.new(-55, 0, -9) } -- the stations, not behind the pads' signs)
 
 local OPEN_C = C(80, 255, 95)
 local BUSY_C = C(40, 210, 255)
@@ -476,7 +476,7 @@ local function lands(world: Instance)
 		land(f, l, rng)
 		task.wait()
 	end
-	-- the forest belt round everything; a few meadow trees between the lands (none on the square or a land's patch)
+	-- the forest belt round everything (nothing loose on the lawn between: negative space)
 	local forest = PropKit.folder("Forest", world)
 	for x = -REACH, REACH, 20 do
 		for z = -REACH, REACH, 20 do
@@ -490,10 +490,8 @@ local function lands(world: Instance)
 				end
 			end
 			if not clear and edge < REACH - 22 then
-				if d > 160 then
+				if d > 132 then
 					tree(forest, if rng:NextNumber() < 0.45 then "pine" else "meadow", p, rng:NextNumber(1.3, 1.8), rng)
-				elseif rng:NextNumber() < 0.3 then
-					tree(forest, "meadow", p, rng:NextNumber(1.0, 1.3), rng)
 				end
 			end
 		end

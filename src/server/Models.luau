@@ -443,18 +443,20 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 		sparkleRate = 0.7,
 		trail = { Vector3.new(0, 0, -1.6), Vector3.new(0, 0, -3.4) },
 	},
-	-- (4 Nov) the sickle from Roblox's generator (ForgeModelIds.gen_sickle): its handle (+Y, head at the top) along
-	-- the template's -Z, its blade (-X) rising +Y; the handle's axis sits at +0.14 of its X, so it's lifted to y 0.
-	-- Like the part model: the end cap at z 0.98, the head at -2.62
+	-- (4 Nov) the sickle from Roblox's generator (ForgeModelIds.gen_sickle), held like a real sickle (owner: "hoe hou ik
+	-- het vast ... slecht": the blade stood straight up like a hook and the handle ran past the fist): the handle
+	-- straight ahead along -Z (in the mesh it leans 9.45 deg off its +Y: turned upright first), the fist on its
+	-- leather wrap (the template's origin), the end cap 0.54 behind it, the collar at z -2.52, and the blade lying flat,
+	-- sweeping out to the left (-X) and curling back to its tip at (-2.1, 0, -1.55). Measured in Studio on 4 Nov.
 	tool_sickle = {
 		forge = "gen_sickle",
-		turn = CFrame.fromMatrix(Vector3.zero, Vector3.new(0, -1, 0), Vector3.new(0, 0, -1), Vector3.new(1, 0, 0)),
-		length = 3.6,
-		center = Vector3.new(0, 0.5, -0.82),
-		sparkle = { Vector3.new(0, 1.5, -2.2) },
+		turn = CFrame.fromMatrix(Vector3.zero, Vector3.new(1, 0, 0), Vector3.new(0, 0, -1)) * CFrame.Angles(0, 0, math.rad(9.45)),
+		length = 4.0,
+		center = Vector3.new(-0.628, 0, -0.989),
+		sparkle = { Vector3.new(-1.4, 0.15, -2.45) },
 		sparkleColors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 225, 255) },
 		sparkleRate = 0.6,
-		trail = { Vector3.new(0, 0.6, -2.5), Vector3.new(0, 1.7, -2) },
+		trail = { Vector3.new(-0.2, 0, -2.4), Vector3.new(-2.0, 0, -1.6) },
 	},
 	-- (4 Nov) the mowers from Roblox's generator: as the part models stand (wheels on y 0, the handle up to the back,
 	-- +Z), scaled to the part model's height, their handle's top at its handle's top

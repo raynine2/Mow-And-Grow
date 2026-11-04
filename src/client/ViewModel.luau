@@ -164,7 +164,9 @@ end
 -- the handle, the brick fallback's lies flat)
 type TrailDef = { at: Vector3, atModel: Vector3, width: number, life: number, color: Color3 }
 local TRAIL: { [string]: TrailDef } = {
-	Sickle = { at = Vector3.new(-1.0, 0.1, -3.35), atModel = Vector3.new(0, 0.85, -1.5), width = 0.32, life = 0.13, color = Color3.fromRGB(228, 238, 255) },
+	-- (4 Nov: the generated sickle lies flat, its blade out to the left: the middle of its blade, template (-1.3, 0,
+	-- -2.35) at TOOL scale)
+	Sickle = { at = Vector3.new(-1.0, 0.1, -3.35), atModel = Vector3.new(-0.8, 0.05, -1.45), width = 0.32, life = 0.13, color = Color3.fromRGB(228, 238, 255) },
 	-- the scythe's blade high over the shaft: a wide lavender sweep that lingers a little longer
 	-- (30 Oct: the blade sweeps back from the end of the shaft, server/PartModels/tool_scythe; its inner edge's middle)
 	-- (31 Oct: the ForgeGUI scythe, server/Models FORGE_TOOLS: the middle of its crystal blade, template (0, 4.3, -3.8)

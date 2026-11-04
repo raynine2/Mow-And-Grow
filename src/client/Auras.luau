@@ -408,24 +408,47 @@ BUILD.LawnBaron = function(a)
 	})
 end
 
--- Epic: two thorny vines curling over your back to your shoulders (beams that breathe), dark leaf shards.
+-- Epic: two thorny vines rising out from behind your shoulders and hooking over (beams that breathe, a dark ink band
+-- under each so they read on any background), violet glints at their tips, dark leaf shards.
 BUILD.HedgeReaper = function(a)
 	local b = back(a, 0.1)
 	local t = torso(a)
-	local root = att(a, t, "VineRoot", Vector3.new(0, -0.7, t.Size.Z / 2 + 0.1))
+	local w = t.Size.X / 2
 	local vines = {}
 	for i, sx in { -1, 1 } do
-		-- (up over the shoulder and a little forward, so it shows from behind and from the front)
-		local tip = att(a, t, "VineTip" .. i, Vector3.new(sx * (t.Size.X / 2 + 0.25), t.Size.Y / 2 + 0.7, -0.2))
-		table.insert(vines, beam(a, root, tip, {
+		-- (from behind the shoulder blade, clear of long hair, out and up past the shoulder: the vines are in your
+		-- silhouette, so they show from behind, the side and the front)
+		local root = att(a, t, "VineRoot" .. i, Vector3.new(sx * w * 0.6, t.Size.Y / 2 - 0.3, t.Size.Z / 2 + 0.5))
+		local tip = att(a, t, "VineTip" .. i, Vector3.new(sx * (w + 1.3), t.Size.Y / 2 + 1.9, t.Size.Z / 2 + 0.9))
+		table.insert(vines, { sx = sx, b = beam(a, root, tip, {
+			tex = FxTex.smear,
+			color = cs(C(22, 48, 28), C(30, 24, 52)),
+			w0 = 0.8,
+			w1 = 0.3,
+			c0 = sx * 0.8,
+			c1 = sx * -0.6,
+			trans = ns(0, 0.25, 1, 0.6),
+		}) })
+		table.insert(vines, { sx = sx, b = beam(a, root, tip, {
 			tex = T.vine,
-			color = cs(C(110, 190, 110), C(60, 120, 70)),
-			w0 = 0.9,
-			w1 = 0.55,
-			c0 = sx * 1.2,
-			c1 = 0.8,
-			trans = ns(0, 0, 1, 0.15),
-		}))
+			color = cs(C(130, 210, 116), C(70, 140, 72)),
+			w0 = 1,
+			w1 = 0.5,
+			c0 = sx * 0.8,
+			c1 = sx * -0.6,
+			trans = ns(0, 0, 1, 0.1),
+			light = 0.15,
+		}) })
+		emitter(a, tip, {
+			tex = SPARKLE,
+			color = cs(C(210, 180, 255), C(120, 70, 190)),
+			size = ns(0, 0, 0.3, 0.6, 1, 0),
+			rate = 2.5,
+			life = NumberRange.new(0.35, 0.5),
+			speed = NumberRange.new(0, 0.2),
+			light = 0.5,
+			spin = NumberRange.new(0, 0),
+		})
 	end
 	a.state.vines = vines
 	emitter(a, b, {
@@ -467,8 +490,8 @@ BUILD.HedgeReaper = function(a)
 	})
 	a.tick = function(au, _, _)
 		local k = math.sin(au.clock * math.pi) -- one breath every 2 s
-		for i, v in au.state.vines do
-			v.CurveSize0 = (if i == 1 then -1 else 1) * (1 + 0.4 * k)
+		for _, v in au.state.vines do
+			v.b.CurveSize0 = v.sx * (0.8 + 0.35 * k)
 		end
 	end
 end

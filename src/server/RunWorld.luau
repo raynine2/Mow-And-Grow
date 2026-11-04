@@ -658,13 +658,14 @@ function RunWorld.build()
 	if not okSquare then
 		warn("[RunWorld] village square: " .. tostring(errSquare))
 	end
-	-- (4 Nov, owner: the camp's "bricks and the random lanterns and plants ... remove it") the camp on the meadow's
-	-- grass (server/CampGround; before Run's WalkPlates, so no plates are laid over stones that are gone)
+	-- (4 Nov, owner: the camp's "bricks and the random lanterns and plants ... remove it", then "i liked the bricks but
+	-- they had bad quality") the camp's paving redone in the voxel kit's tile look, its loose lanterns gone
+	-- (server/CampGround; before Run's WalkPlates)
 	local okGround, nGround = pcall(function()
 		return require(script.Parent.CampGround).apply(w)
 	end)
 	if okGround then
-		print(("[RunWorld] the camp's paving: %d squares of grass"):format(nGround))
+		print(("[RunWorld] the camp's paving: %d stones redone"):format(nGround))
 	else
 		warn("[RunWorld] camp ground: " .. tostring(nGround))
 	end

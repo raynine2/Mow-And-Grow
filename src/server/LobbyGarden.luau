@@ -13,7 +13,7 @@
 --   * between them and the walk: three little CHERRY TREES on the left, a PICNIC with two gnomes on the right;
 --   * THE LILY POND on the right, behind the rewards stall: a pond with a stony edge, lily pads and flowers, koi,
 --     reeds and cattails, a little wooden jetty you can walk out on with a gnome fishing off its end, a bench; past
---     it, by the garage, the golden MOWER STATUE on a stone plinth;
+--     it, by the garage, the golden MOWER STATUE;
 --   * FLOWERS AND TALL GRASS in clusters over the lawn;
 --   * past the hedge, ALL ROUND THE ISLAND between the hedge and the forest: little groves, bushes, rocks, tufts
 --     and flowers in the nearest land's colours, so the ring of grass between the lands isn't bare either.
@@ -368,7 +368,7 @@ local function vegetablePatch(world: Instance, ctx: Ctx)
 	local n = 7
 	for i = 0, n - 1 do
 		local p = from:Lerp(to, (i + 0.5) / n) + Vector3.new(0, 0.08, rng:NextNumber(-0.5, 0.5))
-		part(f, "SteppingStone", CFrame.new(p) * CFrame.Angles(0, rng:NextNumber(-0.4, 0.4), 0), Vector3.new(1.6, 0.16, 1.3), jitter(rng, C(196, 190, 180), 0.06), "stone")
+		part(f, "SteppingStone", CFrame.new(p) * CFrame.Angles(0, rng:NextNumber(-0.4, 0.4), 0), Vector3.new(1.6, 0.16, 1.3), jitter(rng, C(214, 206, 192), 0.06))
 		take(p.X, p.Z, 1.2)
 	end
 	fxSpot(f, A + Vector3.new(0, 3.5, 0), Vector3.new(14, 4, 9), "butterflies", C(255, 236, 120))
@@ -423,9 +423,10 @@ local function pond(world: Instance, ctx: Ctx)
 		for x = x0 - 1, x1 + 1, 1.3 do
 			local underJetty = math.abs(z - jz) < 1.9 and x > jx0 - 0.5 and x < jx1 + 0.5
 			if not wet(x, z, 0) and wet(x, z, 1.3) and not underJetty and rng:NextNumber() < 0.85 then
-				local h = rng:NextNumber(0.4, 0.85)
-				local s = rng:NextNumber(1.1, 1.6)
-				local st = part(f, "PondStone", CFrame.new(x, h / 2, z) * CFrame.Angles(0, rng:NextNumber(0, 1.57), 0), Vector3.new(s, h, s * rng:NextNumber(0.8, 1.1)), jitter(rng, C(176, 172, 166), 0.1), "stone")
+				-- (plain light stones: the pixel stone texture came out nearly black on the grass)
+				local h = rng:NextNumber(0.3, 0.6)
+				local s = rng:NextNumber(1.1, 1.5)
+				local st = part(f, "PondStone", CFrame.new(x, h / 2, z) * CFrame.Angles(0, rng:NextNumber(0, 1.57), 0), Vector3.new(s, h, s * rng:NextNumber(0.8, 1.1)), jitter(rng, C(204, 198, 186), 0.08))
 				st.CastShadow = false
 			end
 		end
@@ -621,19 +622,14 @@ local function orchard(world: Instance, ctx: Ctx)
 	fxSpot(f, Vector3.new(-16, 4, ctx.spawn.Z - 33), Vector3.new(14, 5, 12), "butterflies", C(255, 170, 210))
 end
 
--- the golden mower on a stone plinth, between the pond and the garage, turned to the spawn
+-- the golden mower statue (it has its own mossy stone base) between the pond and the garage, turned to the spawn
 local function statue(world: Instance, ctx: Ctx)
 	local f = folder(world, "MowerStatue")
 	local at = Vector3.new(52, 0, ctx.spawn.Z - 3)
 	local cf = CFrame.lookAt(at, Vector3.new(ctx.spawn.X, 0, ctx.spawn.Z))
 	take(at.X, at.Z, 5.5)
-	part(f, "Plinth", cf * CFrame.new(0, 0.35, 0), Vector3.new(7.4, 0.7, 7.4), C(206, 200, 190), "stone", true)
-	part(f, "Plinth", cf * CFrame.new(0, 1.15, 0), Vector3.new(6.0, 0.9, 6.0), C(220, 214, 204), "stone", true)
-	part(f, "PlinthTop", cf * CFrame.new(0, 1.7, 0), Vector3.new(6.3, 0.2, 6.3), C(196, 160, 90))
-	local plaque = part(f, "Plaque", cf * CFrame.new(0, 1.15, -3.02), Vector3.new(3.2, 0.6, 0.08), C(250, 200, 80), Enum.Material.Metal)
-	plaque.CastShadow = false
-	if VM.place(f, "Prop_mower_statue", (cf * CFrame.new(0, 1.8, 0)).Position, { scale = 0.62, yaw = math.atan2(-cf.LookVector.X, -cf.LookVector.Z), collide = true }) == nil then
-		Models.place("mower_tractor", f, cf * CFrame.new(0, 1.8, 0), 0.8, true)
+	if VM.place(f, "Prop_mower_statue", at, { scale = 0.8, yaw = math.atan2(-cf.LookVector.X, -cf.LookVector.Z), collide = true }) == nil then
+		Models.place("mower_tractor", f, cf, 0.8, true)
 	end
 	for _, c in { Vector3.new(-4.6, 0, -4.6), Vector3.new(4.6, 0, -4.6), Vector3.new(-4.6, 0, 4.6), Vector3.new(4.6, 0, 4.6) } do
 		local p = (cf * CFrame.new(c)).Position

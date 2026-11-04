@@ -399,47 +399,53 @@ end
 -- Returns where the door's foot is and the way it faces (out), or nil when the garage can't be measured.
 local doors: { [Instance]: Model } = {}
 local function shutGarage(holder: BasePart): (Vector3?, Vector3?)
-	local gm = holder:FindFirstAncestor("Garage")
-	if not (gm and gm:IsA("Model")) then
+	-- (the garage is a Model in the place and a Folder once the saved map is laid out: read its pieces either way)
+	local box = holder.Parent
+	local shell = box and box:FindFirstChild("forge_garage_shell")
+	if not (box and shell and shell:IsA("Model")) then
 		return nil, nil
 	end
-	local look = gm:GetPivot().LookVector
-	local out = Vector3.new(look.X, 0, look.Z)
+	-- how long a part / box is along a direction
+	local function span(cf: CFrame, size: Vector3, d: Vector3): number
+		return math.abs(cf.RightVector:Dot(d)) * size.X + math.abs(cf.UpVector:Dot(d)) * size.Y + math.abs(cf.LookVector:Dot(d)) * size.Z
+	end
+	local walls: { BasePart } = {}
+	local sum = Vector3.zero
+	for _, w in box:GetChildren() do
+		if w:IsA("BasePart") and w.Name == "Wall" then
+			table.insert(walls, w)
+			sum += w.Position
+		end
+	end
+	if #walls == 0 then
+		return nil, nil
+	end
+	-- out: from the walls (the back and the sides) toward the turntable, the open front
+	local d = holder.Position - sum / #walls
+	local out = Vector3.new(d.X, 0, d.Z)
 	if out.Magnitude < 0.1 then
 		return nil, nil
 	end
 	out = out.Unit
 	local side = out:Cross(Vector3.yAxis)
-	-- the bay: between the side walls (the walls running along `out`), from the floor up to under the beam
-	local cfB, szB = gm:GetBoundingBox()
-	local depth = math.abs(szB.X * out.X) + math.abs(szB.Z * out.Z)
+	local cfB, szB = shell:GetBoundingBox()
+	local depth = span(cfB, szB, out)
 	local wallsAt: { number } = {}
-	local backAt = -math.huge
-	for _, w in gm:GetChildren() do
-		if w:IsA("BasePart") and w.Name == "Wall" then
-			local rel = w.Position - cfB.Position
-			local along = rel:Dot(out)
-			local across = rel:Dot(side)
-			local alongSize = math.abs(w.Size.X * out.X) + math.abs(w.Size.Z * out.Z)
-			if alongSize > 6 then
-				table.insert(wallsAt, across) -- a side wall
-			else
-				backAt = math.max(backAt, -along)
-			end
+	for _, w in walls do
+		if span(w.CFrame, w.Size, out) > 6 then
+			table.insert(wallsAt, (w.Position - cfB.Position):Dot(side)) -- a side wall
 		end
 	end
-	local width = 18
+	local width, mid = 18, 0
 	if #wallsAt >= 2 then
 		table.sort(wallsAt)
 		width = (wallsAt[#wallsAt] - wallsAt[1]) - 1.4
-	end
-	local mid = 0
-	if #wallsAt >= 2 then
 		mid = (wallsAt[1] + wallsAt[#wallsAt]) / 2
 	end
 	local base = ground(cfB.Position + out * (depth / 2))
 	local front = Vector3.new(cfB.Position.X, base.Y, cfB.Position.Z) + side * mid + out * (depth / 2 - 2.2)
-	local height = math.min(szB.Y * 0.62, 16)
+	local szH = span(cfB, szB, Vector3.yAxis)
+	local height = math.min(szH * 0.62, 16)
 	local door = Instance.new("Model")
 	door.Name = "GarageDoor"
 	local WOOD = { Color3.fromRGB(196, 132, 74), Color3.fromRGB(176, 114, 62) }

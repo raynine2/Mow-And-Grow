@@ -565,9 +565,13 @@ function LoadingScreen.build(player: Player?): ScreenGui
 		shown += (target - shown) * math.min(1, dt * 4)
 		local x = B.gw * shown
 		B.fill.Size = UDim2.fromOffset(math.max(x, if shown > 0.01 then B.gh else 0), B.gh)
-		B.uncut.Position = UDim2.fromOffset(B.gx + x, B.uncut.Position.Y.Offset)
-		B.uncut.Size = UDim2.fromOffset(math.max(0, B.gw - x), B.uncut.Size.Y.Offset)
-		B.grass.Position = UDim2.fromOffset(-x, 0)
+		-- (owner, 4 Nov, of the bar: "corners are stickiing out the circle thing") the tall grass keeps off the groove's
+		-- round ends: it stands only over its straight middle
+		local r = B.gh / 2
+		local from = math.max(x, r)
+		B.uncut.Position = UDim2.fromOffset(B.gx + from, B.uncut.Position.Y.Offset)
+		B.uncut.Size = UDim2.fromOffset(math.max(0, B.gw - r - from), B.uncut.Size.Y.Offset)
+		B.grass.Position = UDim2.fromOffset(-from, 0)
 		local bump = math.abs(math.sin(t * 16)) * 3
 		B.mower.Position = UDim2.fromOffset(B.gx + x, B.gy + B.gh + 4 - bump)
 		B.mower.Rotation = math.sin(t * 8) * 2

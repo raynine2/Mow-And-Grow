@@ -669,6 +669,15 @@ function RunWorld.build()
 	else
 		warn("[RunWorld] camp ground: " .. tostring(nGround))
 	end
+	-- (4 Nov, owner: "i dont like how the buildings are mixed with the ground") each building on its own band of stones
+	local okFoot, nFoot = pcall(function()
+		return require(script.Parent.CampGround).footings(w)
+	end)
+	if okFoot then
+		print(("[RunWorld] %d buildings on their own footings"):format(nFoot))
+	else
+		warn("[RunWorld] footings: " .. tostring(nFoot))
+	end
 	task.wait()
 	-- (4 Nov, owner: "everyhting looks messy different parts different styles ... fix it") the ground's pattern tiles
 	-- in the floor's own textured grass, the areas' paths laid like the camp's paving (server/WorldLook)

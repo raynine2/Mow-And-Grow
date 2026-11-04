@@ -69,6 +69,111 @@ CampGround.TONES = TONES
 CampGround.BORDER = BORDER
 CampGround.BORDER_K = BORDER_K
 
+-- THE BUILDINGS' FOOTINGS (owner, 4 Nov: "i dont like how the buildings are mixed with the ground"). The camp's paving
+-- is laid square to the world, but the Tool Shop and the Garage stand turned (73 and -17 degrees, where the saved map
+-- has them), so the stones ran in under their walls at a slant, half stones poking out along every wall, and the
+-- Garage's side stood straight on the grass. Now each stands on its own border of stones, square to the building:
+-- a band of kerb stones (the paving's look, CampGround.pave, in the darker edge tones) on a grout bed, from under its
+-- walls to a couple of studs out, a hair above the paving so it lies over the stones it crosses; the Tool Shop's band
+-- in front runs out past its porch steps as a little terrace. The paving stones it covers whole go.
+-- Rectangles in the unit's "0Anchor" frame (-Z is the front): `inner` the band's inside edge (under the walls, outside
+-- the room, measured in Studio), `outer` its outside edge.
+type Rect = { x0: number, x1: number, z0: number, z1: number }
+local FOOTINGS: { [string]: { inner: Rect, outer: Rect } } = {
+	["TOOL SHOP"] = { inner = { x0 = -24, x1 = 23.2, z0 = -10.6, z1 = 22 }, outer = { x0 = -30.2, x1 = 27.2, z0 = -17.7, z1 = 28.5 } },
+	Garage = { inner = { x0 = -9.8, x1 = 9.8, z0 = -9.2, z1 = 12.6 }, outer = { x0 = -13.2, x1 = 13.5, z0 = -11.2, z1 = 16.2 } },
+}
+local KERB_H = 0.33 -- the kerb stones' height over the ground (the paving's are 0.3, their top plates 0.305)
+local BED_H = 0.312 -- the grout under them
+local STONE = 3.4 -- about the paving's size
+local GAP = 0.2
+
+local function footingPart(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.CanCollide = true
+	p.CanTouch = false
+	p.CastShadow = false
+	p.Material = Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Parent = parent
+	return p
+end
+
+-- One strip of the band: grout under the whole strip, kerb stones on it in rows and columns about a paving stone big.
+local function strip(parent: Instance, at: CFrame, x0: number, x1: number, z0: number, z1: number)
+	local sx, sz = x1 - x0, z1 - z0
+	if sx < 0.3 or sz < 0.3 then
+		return
+	end
+	footingPart(parent, "FootingBed", Vector3.new(sx, BED_H, sz), at * CFrame.new((x0 + x1) / 2, BED_H / 2, (z0 + z1) / 2), GROUT)
+	local nx, nz = math.max(1, math.floor(sx / STONE + 0.5)), math.max(1, math.floor(sz / STONE + 0.5))
+	local lx, lz = sx / nx, sz / nz
+	for i = 0, nx - 1 do
+		for j = 0, nz - 1 do
+			local cx, cz = x0 + (i + 0.5) * lx, z0 + (j + 0.5) * lz
+			local wp = at:PointToWorldSpace(Vector3.new(cx, 0, cz))
+			local face = TONES[1 + math.floor(hash(math.floor(wp.X / 3), math.floor(wp.Z / 3), 5) * #TONES)]:Lerp(BORDER, BORDER_K)
+			local s = footingPart(parent, "FootingStone", Vector3.new(lx - GAP, KERB_H, lz - GAP), at * CFrame.new(cx, KERB_H / 2, cz), face)
+			CampGround.pave(s, face)
+		end
+	end
+end
+
+-- Lays every building's footing (after CampGround.apply). Returns how many footings were laid.
+function CampGround.footings(w: Instance): number
+	if not CampGround.ON then
+		return 0
+	end
+	local hub = w:FindFirstChild("Hub")
+	local tiles = hub and hub:FindFirstChild("CampTiles")
+	if not hub then
+		return 0
+	end
+	local n = 0
+	for unitName, f in FOOTINGS do
+		local unit = hub:FindFirstChild(unitName)
+		local anchor = unit and unit:FindFirstChild("0Anchor")
+		if not unit or not anchor or not anchor:IsA("BasePart") then
+			continue
+		end
+		local at = CFrame.new(anchor.Position.X, anchor.Position.Y, anchor.Position.Z) * anchor.CFrame.Rotation
+		local o, i = f.outer, f.inner
+		local folder = Instance.new("Folder")
+		folder.Name = "Footing"
+		-- the paving stones it covers whole go (their plates too); the ones it crosses stay, under its edge
+		for _, p in (if tiles then tiles:GetDescendants() else {}) do
+			if p:IsA("BasePart") and (p.Name == "Stone" or p.Name == "StoneTop") then
+				local inside = true
+				for _, k in { Vector3.new(-1, 0, -1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, 1) } do
+					local l = at:PointToObjectSpace(p.CFrame:PointToWorldSpace(p.Size / 2 * k))
+					if l.X < o.x0 or l.X > o.x1 or l.Z < o.z0 or l.Z > o.z1 then
+						inside = false
+						break
+					end
+				end
+				if inside then
+					p:Destroy()
+				end
+			end
+		end
+		-- the band: front and back strips the full width, the sides between them
+		strip(folder, at, o.x0, o.x1, o.z0, i.z0)
+		strip(folder, at, o.x0, o.x1, i.z1, o.z1)
+		strip(folder, at, o.x0, i.x0, i.z0, i.z1)
+		strip(folder, at, i.x1, o.x1, i.z0, i.z1)
+		folder.Parent = unit
+		n += 1
+		task.wait()
+	end
+	return n
+end
+
 -- Returns how many stones were restyled.
 function CampGround.apply(w: Instance): number
 	if not CampGround.ON then

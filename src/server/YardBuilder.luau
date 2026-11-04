@@ -212,11 +212,18 @@ local function mower(world: Instance)
 	end
 	Kit.bar(m, L(-17, 31, 36).Position, L(17, 31, 36).Position, 1.8, K.steel, { smooth = true })
 	Kit.bar(m, L(-17.5, top, 50).Position, L(17.5, top, 50).Position, 3, K.black)
-	-- START A RUN along the deck's side that faces the spawn, like a brand name
-	local side = L(-22.3, 10.2, 1)
-	local panel = block(m, Vector3.new(40, 6, 0.1), CFrame.lookAt(side.Position, side.Position - at.RightVector), Color3.new(1, 1, 1), { smooth = true, collide = false, name = "MowerTitle" })
-	panel.Transparency = 1
-	PropKit.surfaceText(panel, "START A RUN", C(255, 236, 170))
+	-- START A RUN on a giant paper tag tied to the top of the handle with a string, turned to the spawn (up there it
+	-- shows over the pads' signs from the spawn)
+	local toSpawn = -at.RightVector
+	local tagPos = L(-19, top - 10, 47).Position
+	local tagAt = CFrame.lookAt(tagPos, tagPos + toSpawn)
+	local tag = block(m, Vector3.new(28, 11, 0.4), tagAt, K.paper, { smooth = true, collide = false, name = "StartTag" })
+	block(m, Vector3.new(28.6, 0.8, 0.5), tagAt * CFrame.new(0, -5.2, 0), K.red, { smooth = true, collide = false })
+	Kit.ring(m, tagAt * CFrame.new(-12, 3.5, -0.05) * CFrame.Angles(math.rad(90), 0, 0), 1, 0.5, 0.5, 0.5, K.steelDark, { smooth = true, collide = false })
+	Kit.bar(m, (tagAt * CFrame.new(-12, 3.5, 0)).Position, L(-17.5, top, 50).Position, 0.35, K.paper, { smooth = true, collide = false })
+	local title = PropKit.surfaceText(tag, "START A RUN", PropKit.TITLE)
+	title.Size = UDim2.fromScale(0.86, 0.7)
+	title.Position = UDim2.fromScale(0.1, 0.12)
 	-- (a solid box round it so nobody walks into the mower's insides)
 	local box = block(m, Vector3.new(58, 30, 70), L(0, 15, 8), C(255, 255, 255), { name = "MowerCollider" })
 	box.Transparency = 1

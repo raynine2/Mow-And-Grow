@@ -115,12 +115,23 @@ return {
 	scissorhalf = 105475000736860,
 	-- (4 Nov, owner: "niet letterlijk forgegui": made the way ForgeGUI makes them, a prompt to a textured 3D model, but
 	-- with Roblox's own free generator in Studio, ForgeGUI's credits being used up; loaded and used like the rest,
-	-- server/Models FORGE_TOOLS) the sickle: its handle along +Y (the head at the top), the blade out to -X, flat in Z
-	gen_sickle = 86066258701291,
+	-- server/Models FORGE_TOOLS)
+	-- (4 Nov, later, owner: "remake the models it needs to be way better quality like forgegui") made again: more
+	-- triangles, several tries each, the best kept, then Roblox's texture generator in "Quality" mode painted them over
+	-- with a full SurfaceAppearance (colour, roughness, metal), the way ForgeGUI's come. A repainted model exists only in
+	-- the place: ServerStorage.ModelCache keeps it under the id below (the untextured upload it was painted from) with the
+	-- attribute Retextured, and Models.cache() leaves it alone. The first try, gen_sickle 86066258701291, gen_pushmower
+	-- 83543571821864, gen_lasermower 132839132656856, is still in the cache.
+	-- the sickle: its handle straight along +Y (the knob at the bottom), the blade a big question mark over it, its tip
+	-- out at -X, flat in Z
+	gen2_sickle = 115538146090288,
 	-- the push mower and the laser mower: standing on their wheels (+Y up), the push handle rising to the back (+Z),
-	-- the front at -Z
-	gen_pushmower = 83543571821864,
-	gen_lasermower = 132839132656856,
+	-- the front at -Z (the laser mower not repainted: its own paint had more detail than either repaint)
+	gen2_pushmower = 108477500989997,
+	gen2_lasermower = 112423342447821,
+	-- the weed whacker: standing up, the motor at the top, its shaft leaning 13.8 deg (down toward +Z), the D-handle on
+	-- the shaft's -Z side under the motor, the guard and spool at the bottom
+	gen2_whacker = 76035906213208,
 	-- the Garage in the Tool Shop cabin's style (server/ShopShell; 31 Oct, owner: "also use this house for the garage
 	-- model alike"); front -Z, fully open
 	garage_shell = 98540195381872,

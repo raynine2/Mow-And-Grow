@@ -166,7 +166,9 @@ type TrailDef = { at: Vector3, atModel: Vector3, width: number, life: number, co
 local TRAIL: { [string]: TrailDef } = {
 	-- (4 Nov: the generated sickle lies flat, its blade out to the left: the middle of its blade, template (-1.3, 0,
 	-- -2.35) at TOOL scale)
-	Sickle = { at = Vector3.new(-1.0, 0.1, -3.35), atModel = Vector3.new(-0.8, 0.05, -1.45), width = 0.32, life = 0.13, color = Color3.fromRGB(228, 238, 255) },
+	-- (4 Nov, later: the better sickle's blade arcs from its crown at z -3.18 round to its tip out at the left: the
+	-- middle of that arc, template (-0.85, 0, -2.95) at TOOL scale)
+	Sickle = { at = Vector3.new(-1.0, 0.1, -3.35), atModel = Vector3.new(-0.53, 0.05, -1.83), width = 0.32, life = 0.13, color = Color3.fromRGB(228, 238, 255) },
 	-- the scythe's blade high over the shaft: a wide lavender sweep that lingers a little longer
 	-- (30 Oct: the blade sweeps back from the end of the shaft, server/PartModels/tool_scythe; its inner edge's middle)
 	-- (31 Oct: the ForgeGUI scythe, server/Models FORGE_TOOLS: the middle of its crystal blade, template (0, 4.3, -3.8)
@@ -1428,7 +1430,10 @@ RunService.RenderStepped:Connect(function()
 			* CFrame.Angles(math.rad(root:GetAttribute("WhackPitch") :: number? or -6), math.rad(root:GetAttribute("WhackYaw") :: number? or 25.9), 0)
 		rightCf = base * rest * AutoFeel.whacker(t, walk)
 		-- the left fist on the loop handle's top bar, its forearm reaching back across to your left shoulder
-		local loop = (rightCf * CFrame.new(0, 0.54, -1.04)).Position
+		-- (4 Nov: a model may say where, the generated one's attribute LoopGrip: down its shaft, server/Models)
+		local grip = if heldModel and heldId == id then heldModel:GetAttribute("LoopGrip") :: Vector3? else nil
+		local loop = if grip then (rightCf * CFrame.new(0, 0.1 * HAND, -0.2 * HAND) * CFrame.new(grip * TOOL)).Position
+			else (rightCf * CFrame.new(0, 0.54, -1.04)).Position
 		leftCf = CFrame.lookAt(loop, loop + (loop - cam.CFrame:PointToWorldSpace(SHOULDER_L)), cam.CFrame.UpVector)
 	elseif gunTool then
 		-- the gun: aimed down the middle, the other hand under the grip (a long gun: under the barrel); each shot kicks

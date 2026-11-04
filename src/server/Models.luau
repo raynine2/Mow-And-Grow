@@ -422,6 +422,12 @@ type ForgeTool = {
 	gemColor: Color3?,
 	sparkleColors: { Color3 }?,
 	sparkleRate: number?,
+	-- (4 Nov) a new spinning line for the weed whacker: a thin white part `len` long through `at` (the spool), lying
+	-- across the template's X so it spins flat about client/ViewModel's WHACK_AXIS
+	line: { at: Vector3, len: number }?,
+	-- (4 Nov) where the other fist holds the tool (template studs): the template's attribute "LoopGrip", read by
+	-- client/ViewModel (the weed whacker's left fist)
+	loopGrip: Vector3?,
 }
 -- the scissors from the ForgeGUI half (ForgeModelIds.scissorhalf): its long side (+X, the tip) along the template's
 -- -Z, its loop (+Y) out to +X, flat in Y; the bolt at (-0.065, -0.096) x its length from its middle. Two copies on
@@ -443,36 +449,52 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 		sparkleRate = 0.7,
 		trail = { Vector3.new(0, 0, -1.6), Vector3.new(0, 0, -3.4) },
 	},
-	-- (4 Nov) the sickle from Roblox's generator (ForgeModelIds.gen_sickle), held like a real sickle (owner: "hoe hou ik
-	-- het vast ... slecht": the blade stood straight up like a hook and the handle ran past the fist): the handle
-	-- straight ahead along -Z (in the mesh it leans 9.45 deg off its +Y: turned upright first), the fist on its
-	-- leather wrap (the template's origin), the end cap 0.54 behind it, the collar at z -2.52, and the blade lying flat,
-	-- sweeping out to the left (-X) and curling back to its tip at (-2.1, 0, -1.55). Measured in Studio on 4 Nov.
+	-- (4 Nov) the sickle from Roblox's generator, held like a real sickle (owner: "hoe hou ik het vast ... slecht": the
+	-- blade stood straight up like a hook and the handle ran past the fist): the handle straight ahead along -Z, the
+	-- fist on its leather wrap (the template's origin), and the blade lying flat.
+	-- (4 Nov, later: the better one, ForgeModelIds.gen2_sickle) its handle is straight up the mesh (x 0.27 right of the
+	-- middle when 4 long): the knob 0.82 behind the fist, the brass collar at z -0.46, the blade's crown at (0, 0, -3.18),
+	-- its back out to the right (1.16, 0, -2.11) and its tip out to the left at (-1.7, 0, -2.38), edge inward. Measured
+	-- from the mesh's vertices in Studio.
 	tool_sickle = {
-		forge = "gen_sickle",
-		turn = CFrame.fromMatrix(Vector3.zero, Vector3.new(1, 0, 0), Vector3.new(0, 0, -1)) * CFrame.Angles(0, 0, math.rad(9.45)),
+		forge = "gen2_sickle",
+		turn = CFrame.fromMatrix(Vector3.zero, Vector3.new(1, 0, 0), Vector3.new(0, 0, -1)),
 		length = 4.0,
-		center = Vector3.new(-0.628, 0, -0.989),
-		sparkle = { Vector3.new(-1.4, 0.15, -2.45) },
+		center = Vector3.new(-0.27, 0, -1.18),
+		sparkle = { Vector3.new(-0.85, 0.1, -2.95) },
 		sparkleColors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 225, 255) },
 		sparkleRate = 0.6,
-		trail = { Vector3.new(-0.2, 0, -2.4), Vector3.new(-2.0, 0, -1.6) },
+		trail = { Vector3.new(0, 0, -3.05), Vector3.new(-1.6, 0, -2.4) },
 	},
 	-- (4 Nov) the mowers from Roblox's generator: as the part models stand (wheels on y 0, the handle up to the back,
-	-- +Z), scaled to the part model's height, their handle's top at its handle's top
+	-- +Z), scaled to the part model's height, their handle's top at its handle's top (the first try's, measured from the
+	-- vertices: push (0.09, 3.42, 3.58), laser (0.02, 3.65, 3.62))
 	tool_pushmower = {
-		forge = "gen_pushmower",
+		forge = "gen2_pushmower",
 		turn = CFrame.new(),
-		length = 4.13,
-		center = Vector3.new(0.1, 1.71, 1.655),
+		length = 4.419,
+		center = Vector3.new(0.133, 1.71, 1.488),
 	},
 	tool_lasermower = {
-		forge = "gen_lasermower",
+		forge = "gen2_lasermower",
 		turn = CFrame.new(),
-		length = 4.55,
-		center = Vector3.new(0, 1.825, 1.455),
+		length = 5.113,
+		center = Vector3.new(0.082, 1.825, 1.193),
 		light = Vector3.new(0, 0.6, 0),
 		lightColor = Color3.fromRGB(80, 230, 255),
+	},
+	-- (4 Nov) the weed whacker from Roblox's generator (ForgeModelIds.gen2_whacker), like the part model: the right fist
+	-- on the shaft just under the motor (the origin), the motor and its D-handle behind and above it, the shaft
+	-- straight ahead along -Z (turned 103.8 deg about X: in the mesh it runs down and leans toward +Z), the guard below
+	-- its far end and the spool's middle at (0, 0.05, -5.17), where the part model's line spun. A new line there (the
+	-- generated mesh has none), the left fist further down the shaft. Measured from the mesh's vertices in Studio.
+	tool_whacker = {
+		forge = "gen2_whacker",
+		turn = CFrame.Angles(math.rad(103.8), 0, 0),
+		length = 6.705,
+		center = Vector3.new(0, 0.151, -1.932),
+		line = { at = Vector3.new(0, 0.051, -5.172), len = 2.9 },
+		loopGrip = Vector3.new(0, 0, -1.7),
 	},
 	tool_scythe = {
 		forge = "megascythe",
@@ -575,6 +597,23 @@ local function swapTools(): number
 					break
 				end
 			end
+		end
+		if t.line then
+			local line = Instance.new("Part")
+			line.Name = "Line"
+			line.Size = Vector3.new(0.1, t.line.len, 0.1)
+			line.Color = Color3.fromRGB(245, 245, 240)
+			line.Material = Enum.Material.SmoothPlastic
+			line.CFrame = CFrame.new(t.line.at) * CFrame.Angles(0, 0, math.pi / 2)
+			line.Anchored = true
+			line.CanCollide = false
+			line.CanQuery = false
+			line.CanTouch = false
+			line.CastShadow = false
+			line.Parent = model
+		end
+		if t.loopGrip then
+			model:SetAttribute("LoopGrip", t.loopGrip)
 		end
 		model.WorldPivot = CFrame.new()
 		model:SetAttribute("ForgeTool", true)
@@ -863,7 +902,11 @@ function Models.cache(): (number, { string })
 		table.insert(jobs, { "model", name, id })
 	end
 	for name, id in ForgeModelIds do
-		table.insert(jobs, { "forge", name, id })
+		-- (4 Nov) a model repainted in Studio (attribute Retextured) exists only here: its upload is the unpainted one
+		local kept = cache:FindFirstChild("forge:" .. name)
+		if not (kept and kept:GetAttribute("Retextured") and kept:GetAttribute("AssetId") == id) then
+			table.insert(jobs, { "forge", name, id })
+		end
 	end
 	local stored, failed, pending = 0, {}, #jobs
 	for _, job in jobs do

@@ -649,32 +649,50 @@ BUILD.LawnLegend = function(a)
 	-- (the curtain rises from just over your shoulders, a stud behind you, so from behind it stands over your head
 	-- instead of washing over you; the vault: rims, not washes)
 	for i, sx in { -1, 1 } do
-		local a0 = att(a, t, "Aurora" .. i, Vector3.new(sx * w * 0.8, t.Size.Y / 2 + 0.5, t.Size.Z / 2 + 0.9))
-		local a1 = att(a, t, "AuroraTop" .. i, Vector3.new(sx * w * 1.9, t.Size.Y / 2 + 5.2, t.Size.Z / 2 + 1.9))
+		-- (leaning out into a V over your head, wavy, so from any side it reads as a crown of light, not two posts)
+		local function pair(name: string, back: number): (Attachment, Attachment)
+			return att(a, t, name .. i, Vector3.new(sx * w * 0.8, t.Size.Y / 2 + 0.5, t.Size.Z / 2 + back)),
+				att(a, t, name .. "Top" .. i, Vector3.new(sx * w * 2.8, t.Size.Y / 2 + 6.4, t.Size.Z / 2 + back + 1.2))
+		end
 		-- the night behind it: a deep violet band (the dark value layer, saturated, never grey)
-		local b0 = att(a, t, "Night" .. i, Vector3.new(sx * w * 0.8, t.Size.Y / 2 + 0.5, t.Size.Z / 2 + 1.2))
-		local b1 = att(a, t, "NightTop" .. i, Vector3.new(sx * w * 1.9, t.Size.Y / 2 + 5.2, t.Size.Z / 2 + 2.3))
+		local b0, b1 = pair("Night", 1.3)
 		beam(a, b0, b1, {
 			tex = FxTex.smear,
-			color = cs(C(48, 18, 96), C(70, 24, 130)),
-			w0 = 1.2,
-			w1 = 3,
-			c0 = sx * 0.6,
-			c1 = sx * -0.5,
-			trans = ns(0, 1, 0.25, 0.35, 0.7, 0.45, 1, 1),
+			color = cs(C(56, 20, 112), C(80, 26, 150)),
+			w0 = 1.4,
+			w1 = 3.8,
+			c0 = sx * 1.4,
+			c1 = sx * -1.2,
+			trans = ns(0, 1, 0.25, 0.2, 0.7, 0.3, 1, 1),
 			light = 0,
 		})
 		-- the lights over it, scrolling up
-		beam(a, a0, a1, {
+		local a0, a1 = pair("Aurora", 0.9)
+		local glow = beam(a, a0, a1, {
 			tex = T.energy,
 			color = cs(C(170, 90, 255), C(80, 180, 255), C(60, 255, 210)),
-			w0 = 0.9,
-			w1 = 2.4,
-			c0 = sx * 0.6,
-			c1 = sx * -0.5,
-			trans = ns(0, 0.9, 0.2, 0, 0.75, 0.15, 1, 1),
-			light = 0.6,
+			w0 = 1.1,
+			w1 = 3.2,
+			c0 = sx * 1.4,
+			c1 = sx * -1.2,
+			trans = ns(0, 0.9, 0.2, 0, 0.75, 0.1, 1, 1),
+			light = 1,
 			speed = 0.6,
+		})
+		pcall(function()
+			(glow :: any).Brightness = 2.2
+		end)
+		-- and its bright edge: a thin white-teal core down the middle
+		local c0, c1 = pair("AuroraCore", 0.8)
+		beam(a, c0, c1, {
+			tex = FxTex.trail,
+			color = cs(C(230, 255, 250), C(150, 255, 230)),
+			w0 = 0.15,
+			w1 = 0.7,
+			c0 = sx * 1.4,
+			c1 = sx * -1.2,
+			trans = ns(0, 1, 0.25, 0.2, 0.7, 0.35, 1, 1),
+			light = 1,
 		})
 	end
 	emitter(a, att(a, t, "Fireflies", Vector3.new(0, 0.6, 0.6)), {

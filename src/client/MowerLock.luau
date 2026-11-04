@@ -398,12 +398,12 @@ end
 -- slats across its bay (the mower stays inside, out of sight), and the lock stands out in front of it.
 -- Returns where the door's foot is and the way it faces (out), or nil when the garage can't be measured.
 local doors: { [Instance]: Model } = {}
-local function shutGarage(holder: BasePart): (Vector3?, Vector3?)
+local function shutGarage(holder: BasePart): (Vector3?, Vector3?, number)
 	-- (the garage is a Model in the place and a Folder once the saved map is laid out: read its pieces either way)
 	local box = holder.Parent
 	local shell = box and box:FindFirstChild("forge_garage_shell")
 	if not (box and shell and shell:IsA("Model")) then
-		return nil, nil
+		return nil, nil, 0
 	end
 	-- how long a part / box is along a direction
 	local function span(cf: CFrame, size: Vector3, d: Vector3): number
@@ -418,13 +418,13 @@ local function shutGarage(holder: BasePart): (Vector3?, Vector3?)
 		end
 	end
 	if #walls == 0 then
-		return nil, nil
+		return nil, nil, 0
 	end
 	-- out: from the walls (the back and the sides) toward the turntable, the open front
 	local d = holder.Position - sum / #walls
 	local out = Vector3.new(d.X, 0, d.Z)
 	if out.Magnitude < 0.1 then
-		return nil, nil
+		return nil, nil, 0
 	end
 	out = out.Unit
 	local side = out:Cross(Vector3.yAxis)
@@ -480,16 +480,19 @@ local function shutGarage(holder: BasePart): (Vector3?, Vector3?)
 	piece("Handle", Vector3.new(2.2, 0.35, 0.4), face * CFrame.new(0, 1.6, -0.45), Color3.fromRGB(230, 190, 90), Enum.Material.Metal)
 	door.Parent = folder
 	doors[holder] = door
-	return front, out
+	return front, out, height
 end
 
 local function placeFor(kind: string, holder: BasePart): (Vector3, Vector3, number, number)
 	if kind == "lobbyGarage" then
-		local front, out = shutGarage(holder)
+		-- (owner, 4 Nov, of the lock out in front: "its bugged the things are in the ground") the padlock hangs on the
+		-- shut door, halfway up, its projector ring on the ground right under it
+		local front, out, height = shutGarage(holder)
 		if front and out then
-			local floor = ground(front + out * 5)
 			local s = 1.25
-			return floor + Vector3.new(0, (BODY.Y / 2 + 1.9) * s, 0), floor, 3, s
+			local at = front + out * 1.8
+			local floor = ground(at)
+			return Vector3.new(at.X, floor.Y + math.max(height * 0.5, (BODY.Y / 2 + 1.9) * s + 1), at.Z), floor, 2.2, s
 		end
 	end
 	if kind == "pump" then

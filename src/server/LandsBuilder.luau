@@ -209,7 +209,10 @@ local function walkAreas(): { any }
 		{ kind = "seg", a = v2(SPAWN), b = v2(arc(0, WALK_R)), w = 9 },
 		{ kind = "arc", c = v2(HERO.pos), r = WALK_R, w = 7, a0 = -WALK_ARC, a1 = WALK_ARC },
 		{ kind = "seg", a = Vector2.new(CLASSES.X + 16.5, CROSS_Z), b = Vector2.new(GARAGE.X - 18, CROSS_Z), w = 7 },
-		{ kind = "seg", a = Vector2.new(SPAWN.X + 6, SPAWN.Z - 2), b = Vector2.new(Layout.REWARDS.pos.X - 8, Layout.REWARDS.pos.Z), w = 6 },
+		-- the rewards stall's forecourt, its two bays on it (owner, on the bays' cyan frames on the grass with the walk
+		-- running into them: "its not good and overlapping maybe change the blue stff"), and the walk to it
+		{ kind = "seg", a = Vector2.new(Layout.REWARDS.pos.X - 13, Layout.REWARDS.pos.Z), b = Vector2.new(Layout.REWARDS.pos.X - 3.2, Layout.REWARDS.pos.Z), w = 18 },
+		{ kind = "seg", a = Vector2.new(SPAWN.X + 5, SPAWN.Z - 3), b = Vector2.new(Layout.REWARDS.pos.X - 13, Layout.REWARDS.pos.Z + 2), w = 6 },
 	}
 end
 
@@ -566,6 +569,24 @@ function LandsBuilder.build()
 	garage(world)
 	local B = require(script.Parent.LobbyBuilder).stations
 	B.rewards(world)
+	-- the two walk-on bays in gold, inlaid in the forecourt's paving (they were raised cyan frames on the grass)
+	local gold = C(255, 196, 46)
+	for _, d in (world:FindFirstChild("FreeRewards") :: Instance):GetDescendants() do
+		if d:IsA("Model") and d.Name == "PadFrame" then
+			for _, s in d:GetChildren() do
+				if s:IsA("BasePart") then
+					s.Color = gold
+					s.Material = Enum.Material.Plastic
+					s.TopSurface = Enum.SurfaceType.Smooth
+				end
+			end
+			if d:GetAttribute("Color") ~= nil then
+				d:SetAttribute("Color", gold)
+			end
+		elseif d:IsA("BasePart") and d.Name == "RewardsFX" then
+			d:SetAttribute("Color", gold)
+		end
+	end
 	local leaderLabel = B.leaderboard(world)
 	local bestLabel = B.bestTimes(world)
 	dressing(world)

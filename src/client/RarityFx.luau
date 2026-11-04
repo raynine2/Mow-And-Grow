@@ -963,8 +963,9 @@ end
 -- put class `classId`'s aura on `char` (keyed by `key`: the player, or the model itself for a preview)
 local function attach(key: any, char: Model, classId: any, p: Player?)
 	drop(key)
-	-- (4 Nov: a class that wears nothing, Config.NO_AURA: the Weed Puller)
-	if type(classId) == "string" and (Config :: any).NO_AURA and (Config :: any).NO_AURA[classId] then
+	-- (4 Nov: a class that wears nothing, Config.NO_AURA; and the remade auras, client/Auras, take over the classes
+	-- while Config.AURAS_V2 is on: the owner, later on 4 Nov, "remake elke aura met classes")
+	if (Config :: any).AURAS_V2 or (type(classId) == "string" and (Config :: any).NO_AURA and (Config :: any).NO_AURA[classId]) then
 		return
 	end
 	local build = if type(classId) == "string" then BUILD[classId] else nil
@@ -1004,6 +1005,10 @@ end
 
 -- Class `classId`'s aura on any rig (a shop preview, a showcase, a test dummy): returns a function that takes it off.
 function RarityFx.preview(char: Model, classId: string): () -> ()
+	if (Config :: any).AURAS_V2 then
+		local Auras = require(script.Parent:WaitForChild("Auras")) :: any
+		return Auras.preview(char, classId)
+	end
 	attach(char, char, classId, nil)
 	return function()
 		drop(char)

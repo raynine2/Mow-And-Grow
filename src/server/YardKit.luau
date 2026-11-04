@@ -13,8 +13,8 @@ YardKit.C = {
 	soil = C(96, 64, 40),
 	soilDark = C(70, 46, 30),
 	lawn = C(98, 170, 64),
-	slab = { C(228, 198, 142), C(216, 186, 130), C(234, 208, 156) },
-	slabTop = C(240, 216, 166),
+	slab = { C(222, 176, 112), C(210, 164, 102), C(230, 186, 124) },
+	slabTop = C(236, 198, 140),
 	moss = C(84, 128, 52),
 	blade = { C(46, 120, 44), C(70, 152, 54), C(104, 184, 70), C(146, 208, 92) },
 	red = C(214, 52, 44),
@@ -250,16 +250,16 @@ function YardKit.stickSign(parent: Instance, at: CFrame, height: number, title: 
 	local m = Instance.new("Model")
 	m.Name = "StickSign"
 	local W = YardKit.C.wood
-	block(m, Vector3.new(3.2, height, 0.8), at * CFrame.new(0, height / 2 - 1, 0), W, { name = "Stick" })
-	block(m, Vector3.new(2.2, 0.8, 0.8), at * CFrame.new(0, height - 0.6, 0), W, { name = "StickTip" })
+	block(m, Vector3.new(2.6, height, 0.7), at * CFrame.new(0, height / 2 - 1, 0), W, { name = "Stick" })
+	block(m, Vector3.new(1.8, 0.7, 0.7), at * CFrame.new(0, height - 0.65, 0), W, { name = "StickTip" })
 	YardKit.ring(m, at * CFrame.new(0, 0.4, 0), 2.6, 0, 0.8, 1, YardKit.C.soil)
 	-- the card
-	local card = block(m, Vector3.new(11, 7.4, 0.3), at * CFrame.new(0, height - 5, -0.6), YardKit.C.paper, { smooth = true, name = "Card", collide = false })
-	block(m, Vector3.new(0.7, 0.7, 0.3), at * CFrame.new(0, height - 1.7, -0.85), YardKit.C.red, { smooth = true, collide = false })
+	local card = block(m, Vector3.new(8.4, 5.6, 0.3), at * CFrame.new(0, height - 3.8, -0.55), YardKit.C.paper, { smooth = true, name = "Card", collide = false })
+	block(m, Vector3.new(0.6, 0.6, 0.3), at * CFrame.new(0, height - 1.4, -0.8), YardKit.C.red, { smooth = true, collide = false })
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 24
+	gui.PixelsPerStud = 30
 	gui.LightInfluence = 0.6
 	gui.Parent = card
 	local function label(text: string, size: UDim2, pos: UDim2, color: Color3, stroke: number, par: Instance): TextLabel

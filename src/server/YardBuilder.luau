@@ -35,12 +35,13 @@ local PATIO = { x0 = -60, x1 = 60, z0 = -100, z1 = 20, slab = 18, step = 20, top
 local PAD_R = 5.2
 local PAD_RADIUS = 34
 local PADS = { { a = 35, kind = "solo" }, { a = 13, kind = "party" }, { a = -13, kind = "party" }, { a = -35, kind = "party" }, { a = 57, kind = "continue" } }
-local MOWER = Vector3.new(0, 0, 64) -- its middle; it faces north, its handle toward you
+local MOWER = Vector3.new(8, 0, 62) -- its middle; it faces east, its left side toward you
+local MOWER_SCALE = 1.6
 local POT = { mouth = Vector3.new(-40, 12, -58), len = 30 } -- lying along X, mouth to the east
 local CAN = Vector3.new(-46, 0, -12)
 local PACKET = Vector3.new(20, 0, -92)
-local GRASS_CUT = Vector3.new(32, 0, 6) -- (either side of the mower's handle, clear of its bag and the can's spout)
-local BEST_TIMES = Vector3.new(-32, 0, 6)
+local GRASS_CUT = Vector3.new(50, 0, -24) -- (on the patio's east side, out of the view from the spawn to the mower)
+local BEST_TIMES = Vector3.new(50, 0, 2)
 
 local OPEN = C(80, 255, 95)
 local BUSY = C(40, 210, 255)
@@ -81,7 +82,7 @@ local function ground(world: Instance)
 			local tone = K.slab[(i * 7) % #K.slab + 1]
 			local h = PATIO.top - 0.1
 			local slab = block(f, Vector3.new(PATIO.slab, h, PATIO.slab), CFrame.new(x, h / 2 + 0.1, z), tone, { name = "Slab", smooth = true })
-			slab.Material = Enum.Material.Sandstone
+			slab.Material = Enum.Material.SmoothPlastic
 			block(f, Vector3.new(PATIO.slab - 1.6, 0.06, PATIO.slab - 1.6), CFrame.new(x, PATIO.top + 0.02, z), tone:Lerp(K.slabTop, 0.45), { name = "SlabTop", smooth = true, collide = false, shadow = false })
 		end
 	end
@@ -93,7 +94,7 @@ local function lawn(world: Instance)
 	local f = folder("Lawn", world)
 	local rng = Random.new(42)
 	local keepOut = {
-		{ MOWER, 40 },
+		{ MOWER, 58 },
 		{ POT.mouth - Vector3.new(15, 0, 0), 22 },
 		{ CAN, 20 },
 	}
@@ -142,8 +143,7 @@ local function blades(world: Instance)
 	edge(Vector3.new(x0, 0, z0), Vector3.new(x1, 0, z0), Vector3.zAxis) -- south, behind the spawn
 	edge(Vector3.new(x1, 0, z0), Vector3.new(x1, 0, z1), -Vector3.xAxis) -- east
 	edge(Vector3.new(x0, 0, -30), Vector3.new(x0, 0, z0), Vector3.xAxis) -- west, south of the pot only (the pot and can stand there)
-	edge(Vector3.new(x1, 0, z1), Vector3.new(30, 0, z1), -Vector3.zAxis) -- north, either side of the mower
-	edge(Vector3.new(-30, 0, z1), Vector3.new(x0, 0, z1), -Vector3.zAxis)
+	-- (none on the north: the mower stands there)
 end
 
 -- The garden's wooden fence far off on all four sides, taller than everything.
@@ -170,9 +170,13 @@ end
 -- the landmark: a giant push mower
 -------------------------------------------------------------------------------------------------------------
 local function mower(world: Instance)
-	local m = folder("Landmark", world)
-	-- (its front, -Z in its own frame, looks north at the uncut lawn; the handle comes back toward the spawn)
-	local at = CFrame.lookAt(MOWER, MOWER + Vector3.zAxis)
+	local f = folder("Landmark", world)
+	local m = Instance.new("Model")
+	m.Name = "GiantMower"
+	m.Parent = f
+	-- Built at its own size, then scaled up as a whole (MOWER_SCALE). Seen from the side from the spawn, the way you
+	-- know a push mower: its front looks east, its left side at you, the handle rising to the west.
+	local at = CFrame.lookAt(MOWER, MOWER + Vector3.xAxis)
 	local function L(x: number, y: number, z: number): CFrame
 		return at * CFrame.new(x, y, z)
 	end
@@ -197,31 +201,29 @@ local function mower(world: Instance)
 	block(m, Vector3.new(14, 2, 14), L(0, 28.7, -2), K.red)
 	block(m, Vector3.new(2.6, 1.4, 2.6), L(4, 30.4, -5), C(250, 200, 40))
 	block(m, Vector3.new(6, 5, 4), L(-8.5, 23, -10), K.steelDark)
-	-- the grass bag behind it
+	-- the grass bag behind it, with a white stripe
 	block(m, Vector3.new(32, 18, 20), L(0, 16, 34), C(64, 128, 52), { material = Enum.Material.Fabric })
+	block(m, Vector3.new(32.4, 3, 20.4), L(0, 18, 34), C(240, 240, 232), { material = Enum.Material.Fabric })
 	block(m, Vector3.new(33, 1.4, 21), L(0, 25.6, 34), K.steel, { smooth = true })
-	block(m, Vector3.new(26, 12, 0.6), L(0, 15, 44.2), C(52, 108, 44), { material = Enum.Material.Fabric })
-	-- the handle: two bars rising back toward the spawn, a middle bar, the black grip
+	-- the handle: two bars rising back, a middle bar, the black grip
 	local top = 50
 	for _, sx in { -1, 1 } do
 		Kit.bar(m, L(sx * 18, 13, 22).Position, L(sx * 16, top, 50).Position, 2.4, K.steel, { smooth = true })
 	end
 	Kit.bar(m, L(-17, 31, 36).Position, L(17, 31, 36).Position, 1.8, K.steel, { smooth = true })
 	Kit.bar(m, L(-17.5, top, 50).Position, L(17.5, top, 50).Position, 3, K.black)
-	-- START A RUN on a banner hanging from the grip, facing the spawn
-	local banner = block(m, Vector3.new(26, 9, 0.5), L(0, top - 5.8, 50.6) * CFrame.Angles(0, math.pi, 0), K.paper, { smooth = true, collide = false, name = "Banner" })
-	for _, x in { -12, 12 } do
-		Kit.bar(m, L(x, top - 1.4, 50.4).Position, L(x, top - 0.2, 50.2).Position, 0.5, K.black, { collide = false })
-	end
-	block(m, Vector3.new(27, 1, 0.6), L(0, top - 10.6, 50.6), K.red, { smooth = true, collide = false })
-	local face = PropKit.surfaceText(banner, "START A RUN", PropKit.TITLE)
-	face.Size = UDim2.fromScale(0.94, 0.8)
-	face.Position = UDim2.fromScale(0.03, 0.1)
+	-- START A RUN along the deck's side that faces the spawn, like a brand name
+	local side = L(-22.3, 10.2, 1)
+	local panel = block(m, Vector3.new(40, 6, 0.1), CFrame.lookAt(side.Position, side.Position - at.RightVector), Color3.new(1, 1, 1), { smooth = true, collide = false, name = "MowerTitle" })
+	panel.Transparency = 1
+	PropKit.surfaceText(panel, "START A RUN", C(255, 236, 170))
 	-- (a solid box round it so nobody walks into the mower's insides)
 	local box = block(m, Vector3.new(58, 30, 70), L(0, 15, 8), C(255, 255, 255), { name = "MowerCollider" })
 	box.Transparency = 1
 	box.CastShadow = false
 	box.CanQuery = false
+	m.WorldPivot = at
+	m:ScaleTo(MOWER_SCALE)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -259,8 +261,8 @@ local function padDef(m: Instance, i: number, kind: string): any
 	local marker = PropKit.part({ size = Vector3.one, cf = CFrame.new(cap.top + Vector3.new(0, 1, 0)), color = base, parent = m, transparency = 1, collide = false, name = "PadInfo" .. i })
 	marker.CanQuery = false
 	local title = if kind == "solo" then "SOLO" elseif kind == "continue" then "CONTINUE" else "PARTY"
-	local sign = Kit.stickSign(m, at * CFrame.new(0, 0, PAD_R + 3), 15, title, base)
-	local top = statusTag(m, (at * CFrame.new(0, 18.5, PAD_R + 3)).Position)
+	local sign = Kit.stickSign(m, at * CFrame.new(0, 0, PAD_R + 2.5), 11, title, base)
+	local top = statusTag(m, (at * CFrame.new(0, 14, PAD_R + 2.5)).Position)
 	local maxN = if kind == "party" then Config.PARTY_MAX else 1
 	local state = ""
 	local def = {
@@ -565,7 +567,7 @@ local function dressing(world: Instance)
 		table.insert(pts, Vector3.new(-26 + math.cos(a) * 5, PATIO.top, -30 + math.sin(a) * 5))
 	end
 	Kit.hose(f, pts, 1.6)
-	sprinkler(f, Vector3.new(58, 0, -6))
+	sprinkler(f, Vector3.new(55, PATIO.top, -50))
 	-- pollen drifting over the patio
 	LobbyKit.tag(LobbyKit.spot(f, CFrame.new(0, 10, -40), Vector3.new(110, 12, 110), "Motes"), "LobbyFX", { Kind = "motes" })
 end

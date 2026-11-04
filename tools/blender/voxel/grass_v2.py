@@ -22,13 +22,14 @@ import random
 STALK_H = 6
 STALK_VOXEL = 0.4
 
-# per area: the blade's base colour (its mid tone), how far the hue shifts toward the tip, the accent colours
+# per area: the blade's base colour (its mid tone), how far the hue shifts toward the tip (greens go toward yellow:
+# a lower hue; the warm and cold areas their own way), the accent colours
 AREA = {
-    "meadow": dict(base=(70, 176, 62), shift=0.035, accent=[(255, 214, 40), (255, 240, 120), (250, 250, 244)]),
+    "meadow": dict(base=(70, 176, 62), shift=-0.04, accent=[(255, 214, 40), (255, 240, 120), (250, 250, 244)]),
     "wheat": dict(base=(222, 164, 52), shift=0.02, accent=[(255, 226, 132), (238, 186, 72), (196, 136, 40)]),
-    "blossom": dict(base=(78, 172, 92), shift=0.03, accent=[(255, 150, 200), (255, 228, 240), (255, 214, 90)]),
-    "pine": dict(base=(44, 150, 112), shift=0.02, accent=[(90, 196, 140), (150, 226, 170)]),
-    "swamp": dict(base=(112, 150, 60), shift=0.03, accent=[(118, 74, 46), (92, 56, 36), (230, 214, 160)]),
+    "blossom": dict(base=(78, 172, 92), shift=-0.035, accent=[(255, 150, 200), (255, 228, 240), (255, 214, 90)]),
+    "pine": dict(base=(44, 150, 112), shift=-0.03, accent=[(90, 196, 140), (150, 226, 170)]),
+    "swamp": dict(base=(112, 150, 60), shift=-0.03, accent=[(118, 74, 46), (92, 56, 36), (230, 214, 160)]),
     "frost": dict(base=(150, 196, 236), shift=-0.02, accent=[(250, 253, 255), (120, 232, 255)]),
     "ember": dict(base=(78, 62, 68), shift=0.0, accent=[(255, 120, 36), (255, 196, 80)]),
     "isles": dict(base=(150, 112, 236), shift=-0.03, accent=[(120, 240, 255), (240, 250, 255)]),

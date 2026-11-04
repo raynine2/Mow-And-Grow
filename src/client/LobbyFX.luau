@@ -348,10 +348,19 @@ local function faceForward(char: Model)
 	if not root then
 		return
 	end
+	-- (the loading screen holds the camera first: turn it once it's handed back to the player, within 30 s)
+	local deadline = os.clock() + 30
 	task.wait(0.3)
 	local cam = workspace.CurrentCamera
+	while cam.CameraType ~= Enum.CameraType.Custom do
+		if os.clock() > deadline or not root.Parent then
+			return
+		end
+		task.wait(0.2)
+	end
+	task.wait(0.1)
 	local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
-	if cam.CameraType ~= Enum.CameraType.Custom or look.Magnitude < 0.1 then
+	if look.Magnitude < 0.1 then
 		return
 	end
 	look = look.Unit

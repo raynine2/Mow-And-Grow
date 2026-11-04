@@ -61,21 +61,22 @@ def sub(a, b):
 # of the brass collar forward, round to the left and back, its tip pointing back at you on the left, edge inward
 # ---------------------------------------------------------------------------------------------------------------
 def sickle():
-    S = Sculpt(PAL, "sickle", (-2.6, -0.4, -3.4), (0.6, 0.4, 1.0), V, seed=3, shade=SHADE)
+    S = Sculpt(PAL, "sickle", (-2.9, -0.4, -3.8), (0.6, 0.4, 1.0), V, seed=3, shade=SHADE)
     P = S.P
     S.add(cyl(P, (0, 0, 0.62), (0, 0, -1.5), 0.17), WOOD)
     S.add(cyl(P, (0, 0, 0.4), (0, 0, -0.5), 0.2), LEATHER)
     S.add(sphere(P, (0, 0, 0.7), 0.22), GOLD)
     S.add(cyl(P, (0, 0, -1.38), (0, 0, -1.66), 0.22), GOLD)
-    # the blade: an arc round (-1, -2) in XZ, radius 1, from the collar (-25 deg) forward (90) and round to its tip
-    # out at the left (200), tapering from 0.6 wide to a point; 2 cells thick
-    c, rc = A((-1.0, -2.0)), 1.0
+    # the blade: an arc round (-1.2, -2.1) in XZ, radius 1.2, from the collar (-25 deg) forward (90) and round to its
+    # tip out at the left (200), tapering from 0.72 wide to a point; 2 cells thick (the head 1.3x a real one's, as the
+    # vault says for weapon heads)
+    c, rc = A((-1.2, -2.1)), 1.2
     dx, dz = P[:, 0] - c[0], P[:, 2] - c[1]
     r = np.hypot(dx, dz)
     th = np.degrees(np.arctan2(-dz, dx))
     th = np.where(th < -90, th + 360, th)
     t = np.clip((th + 25) / 225, 0, 1)
-    half = 0.3 - 0.25 * t
+    half = 0.36 - 0.3 * t
     off = 0.08 * t  # the edge side thins faster: the tip curls inward
     across = np.abs(r - rc + off) - half
     arc = np.maximum(-(th + 25), th - 200)

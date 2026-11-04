@@ -461,14 +461,14 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 	-- (4 Nov, later: the AI-made ones "don't fit our voxel look": the sickle, both mowers and the weed whacker are voxel
 	-- sculptures now, shared/VoxelToolShapes from tools/blender/voxel/tools_voxel.py, sculpted in these same frames on
 	-- the vault's held-item grain, 0.125 studs. The repainted AI meshes, ForgeModelIds.gen2_*, aren't used.)
-	-- the sickle: the brass collar at z -1.6, the blade an arc round (-1, 0, -2) of radius 1 from the collar forward
-	-- to its crown at (-1, 0, -3) and round to its tip out at the left (-1.94, 0, -1.66), edge inward
+	-- the sickle: the brass collar at z -1.6, the blade an arc round (-1.2, 0, -2.1) of radius 1.2 from the collar
+	-- forward to its crown at (-1.2, 0, -3.3) and round to its tip out at the left (-2.33, 0, -1.69), edge inward
 	tool_sickle = {
 		voxel = "sickle",
-		sparkle = { Vector3.new(-1.4, 0.12, -2.75) },
+		sparkle = { Vector3.new(-1.7, 0.12, -2.97) },
 		sparkleColors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 225, 255) },
 		sparkleRate = 0.6,
-		trail = { Vector3.new(-0.06, 0, -2.34), Vector3.new(-1.85, 0, -1.62) },
+		trail = { Vector3.new(-0.07, 0, -2.51), Vector3.new(-2.2, 0, -1.68) },
 	},
 	-- the mowers: on their wheels (y 0), the handle up to the back (+Z), its grip bar at (0, 3.42, 3.58) (where the
 	-- first generated ones had theirs, matched to the part models')

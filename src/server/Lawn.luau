@@ -88,12 +88,15 @@ end
 -- The two mowed shades for zone z, like a real striped lawn: the light stripe is grass bent away from you (paler,
 -- a bit washed out), the dark one grass bent towards you (deeper and richer than the uncut ground). (27 Oct: the
 -- owner asked for stripes you can really see; the old pair was only 18% apart.)
+-- (4 Nov, owner, on flat bright squares: "i also dont like the no detailed grass brightness". The light stripe was
+-- 1.32x the ground in flat plastic, near white and glowing. Now the tiles are Roblox's grass like the floor under
+-- them, and the stripes stay inside the ground's own value band: still a third apart, so they read.)
 local function shades(z: number): (Color3, Color3)
 	local def = Zones.list[z]
 	local base = if def then def.palette.ground else Color3.fromRGB(76, 178, 50)
 	local h, s, v = base:ToHSV()
-	local light = Color3.fromHSV(h, s * 0.8, math.min(1, v * 1.32 + 0.04))
-	local dark = Color3.fromHSV(h, math.min(1, s * 1.12), v * 0.86)
+	local light = Color3.fromHSV(h, s * 0.85, math.min(1, v * 1.12))
+	local dark = Color3.fromHSV(h, math.min(1, s * 1.06), v * 0.84)
 	return light, dark
 end
 
@@ -134,7 +137,8 @@ local function mowColumn(ix: number, iz: number, z: number, rp: RaycastParams, p
 	t.CanQuery = false
 	t.CanTouch = false
 	t.CastShadow = false
-	t.Material = Enum.Material.SmoothPlastic
+	-- the floor's own textured material (grass; snow, basalt...: server/RunWorld texturedGround), not flat plastic
+	t.Material = if hit.Material == Enum.Material.Plastic or hit.Material == Enum.Material.SmoothPlastic then Enum.Material.Grass else hit.Material
 	t.TopSurface = Enum.SurfaceType.Smooth
 	t.BottomSurface = Enum.SurfaceType.Smooth
 	t.Color = if ix % 2 == 0 then light else dark

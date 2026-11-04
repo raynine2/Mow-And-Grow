@@ -41,6 +41,34 @@ local function onBed(beds: { BasePart }, x: number, z: number): boolean
 	return false
 end
 
+-- One paving stone in the kit's look: smooth, its rim `face` lightened, a thin top plate inset in `face` itself.
+-- (Also the areas' paths: server/WorldLook.)
+function CampGround.pave(s: BasePart, face: Color3)
+	s.Material = Enum.Material.SmoothPlastic
+	s.MaterialVariant = ""
+	s.TopSurface = Enum.SurfaceType.Smooth
+	s.Color = face:Lerp(Color3.new(1, 1, 1), RIM)
+	local top = Instance.new("Part")
+	top.Name = "StoneTop"
+	top.Anchored = true
+	top.CanCollide = false
+	top.CanQuery = false
+	top.CanTouch = false
+	top.CastShadow = false
+	top.Material = Enum.Material.SmoothPlastic
+	top.TopSurface = Enum.SurfaceType.Smooth
+	top.BottomSurface = Enum.SurfaceType.Smooth
+	top.Size = Vector3.new(math.max(0.2, s.Size.X - INSET * 2), 0.04, math.max(0.2, s.Size.Z - INSET * 2))
+	-- (its top 0.005 over the stone's: no flicker, and no step for the feet over server/WalkPlates' plate)
+	top.CFrame = s.CFrame * CFrame.new(0, s.Size.Y / 2 - 0.015, 0)
+	top.Color = face
+	top.Parent = s.Parent
+end
+
+CampGround.TONES = TONES
+CampGround.BORDER = BORDER
+CampGround.BORDER_K = BORDER_K
+
 -- Returns how many stones were restyled.
 function CampGround.apply(w: Instance): number
 	if not CampGround.ON then
@@ -73,24 +101,7 @@ function CampGround.apply(w: Instance): number
 		if not (onBed(beds, x + 4, z) and onBed(beds, x - 4, z) and onBed(beds, x, z + 4) and onBed(beds, x, z - 4)) then
 			face = face:Lerp(BORDER, BORDER_K)
 		end
-		s.Material = Enum.Material.SmoothPlastic
-		s.MaterialVariant = ""
-		s.Color = face:Lerp(Color3.new(1, 1, 1), RIM)
-		local top = Instance.new("Part")
-		top.Name = "StoneTop"
-		top.Anchored = true
-		top.CanCollide = false
-		top.CanQuery = false
-		top.CanTouch = false
-		top.CastShadow = false
-		top.Material = Enum.Material.SmoothPlastic
-		top.TopSurface = Enum.SurfaceType.Smooth
-		top.BottomSurface = Enum.SurfaceType.Smooth
-		top.Size = Vector3.new(math.max(0.2, s.Size.X - INSET * 2), 0.04, math.max(0.2, s.Size.Z - INSET * 2))
-		-- (its top 0.005 over the stone's: no flicker, and no step for the feet over server/WalkPlates' plate)
-		top.CFrame = s.CFrame * CFrame.new(0, s.Size.Y / 2 - 0.015, 0)
-		top.Color = face
-		top.Parent = s.Parent
+		CampGround.pave(s, face)
 		if i % 100 == 0 then
 			task.wait()
 		end

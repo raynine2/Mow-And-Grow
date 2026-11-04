@@ -13,6 +13,7 @@ local Models = require(script.Parent.Models)
 local VoxelModels = require(script.Parent.VoxelModels)
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
 local Lawn = require(script.Parent.Lawn)
+local Stubble = require(script.Parent.Stubble)
 
 local Field = {}
 
@@ -185,12 +186,13 @@ local function stubble(p: Patch)
 	end
 	local turf = p.part
 	Lawn.mow(turf.Position, p.z) -- its ground is freshly mowed: striped lawn (server/Lawn)
-	-- what's left, like a tree stump: the Blender stubble, or a low cut disc
+	-- what's left, like a tree stump: the block stubble (server/Stubble), or a low cut disc
 	local def = Config.ZONES[p.z]
 	local vid = voxelId(p.z)
 	if vid then
 		local _, yaw = p.spot:ToOrientation()
-		local vstub = VoxelModels.place(turf.Parent :: Instance, "Stubble_" .. vid, p.stalkAt or p.spot.Position, { scale = p.modelScale, yaw = yaw, shadow = false })
+		-- (4 Nov: built from blocks in the clump's colours, server/Stubble; it was the Blender stubble with a mint top)
+		local vstub = Stubble.build(turf.Parent :: Instance, vid, p.stalkAt or p.spot.Position, p.modelScale, yaw)
 		if vstub then
 			p.stub = vstub
 			for _, n in { "MutationGlow", "MutationSparkle" } do

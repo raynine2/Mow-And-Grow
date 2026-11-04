@@ -670,6 +670,17 @@ function RunWorld.build()
 		warn("[RunWorld] camp ground: " .. tostring(nGround))
 	end
 	task.wait()
+	-- (4 Nov, owner: "everyhting looks messy different parts different styles ... fix it") the ground's pattern tiles
+	-- in the floor's own textured grass, the areas' paths laid like the camp's paving (server/WorldLook)
+	local okLook, nPattern, nPaths = pcall(function()
+		return require(script.Parent.WorldLook).apply(w)
+	end)
+	if okLook then
+		print(("[RunWorld] one look for the ground: %d pattern tiles, %d path tiles"):format(nPattern, nPaths))
+	else
+		warn("[RunWorld] world look: " .. tostring(nPattern))
+	end
+	task.wait()
 	print(("[RunWorld] %d squares of rim built up round the isles' void (holes in the map)"):format(sealRim(w)))
 	local pads = w:FindFirstChild("Pads")
 	for _, pad in (if pads then pads:GetChildren() else {}) do

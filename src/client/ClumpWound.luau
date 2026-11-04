@@ -374,8 +374,11 @@ end
 -- (28 Oct, council: "give the stump something to look at") the stump you leave: a ring of darker fibre bundles
 -- round a hollow core on its pale cut face (grass stems are tubes; Chop's stumps show rings). Only for clumps you
 -- cut; the dots are parented to the stump, so they go when it regrows.
+-- (4 Nov: the stubble is blocks now, server/Stubble: a Model with its "CutFace" plate 2.6 voxels wide; the old Blender
+-- one was a MeshPart two voxels tall)
 local function ringStump(stub: BasePart, tn: Tones)
-	local v = stub.Size.Y / 2 -- the stubble is two voxels tall
+	local face = stub.Name == "CutFace"
+	local v = if face then stub.Size.X / 2.6 else stub.Size.Y / 2
 	local rot = stub.CFrame.Rotation
 	local top = stub.Position + Vector3.new(0, stub.Size.Y / 2 + 0.02, 0)
 	local function dot(off: Vector3, s: number, color: Color3, delay: number)
@@ -417,6 +420,11 @@ State.on("fx", function(kind, d)
 			for _, ch in patch:GetChildren() do
 				if ch:IsA("BasePart") and ch.Name:sub(1, 8) == "Stubble_" then
 					ringStump(ch, tn)
+					return
+				end
+				local cut = ch:IsA("Model") and ch.Name:sub(1, 8) == "Stubble_" and ch:FindFirstChild("CutFace")
+				if cut and cut:IsA("BasePart") then
+					ringStump(cut, tn)
 					return
 				end
 			end

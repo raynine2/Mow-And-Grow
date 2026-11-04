@@ -763,10 +763,12 @@ local function clearShot(froms: { Vector3 }, tos: { Vector3 }, r: number, big: n
 					end
 				end
 				table.insert(excl, unit)
-				local size = (unit :: BasePart).Size
+				local size: Vector3
 				if unit:IsA("Model") then
 					local _, ms = unit:GetBoundingBox()
 					size = ms
+				else
+					size = (unit :: BasePart).Size
 				end
 				if size.Magnitude < big then
 					local list = if unit:IsA("BasePart") then { unit } else unit:GetDescendants()

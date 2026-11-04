@@ -178,67 +178,54 @@ local function forgePiece(parent: Instance, name: string, foot: Vector3, toward:
 	return true
 end
 
--- The lobby (y = 0) as a little town square, like Catch a Brainrot's: spawn at (0, -46) looking north up the main
--- walk (x = 0) to the party pads (z 40). Two shops and two market stalls by the spawn, the cabins (classes,
--- garage) on the cross street (z -22), a round plaza with a fountain (0, 4) between two town houses, the rewards
--- stall and a third stall at the ends of the street at z 26, trees and flowers filling the corners.
+-- The lobby (y = 0), remade 4 Nov (server/LobbyLayout): the plaza's middle stays clear (the view from the spawn to
+-- the pads and the launch gate is open, nothing over 4 studs on it); the dressing is dense at the edges and in the
+-- corners: two cottages on the east edge, trees in the corners inside the fence, flower beds and benches by the
+-- walks, a well and a flower cart either side of the spawn, hay by the garage, crates by the rewards stall.
 function HubDressing.lobby(world: Instance)
 	if not Config.WORLD_GEN then
 		return
 	end
+	local Layout = require(script.Parent.LobbyLayout)
 	local f = PropKit.folder("Dressing", world)
 	local town = PropKit.folder("Town", f)
-	arch(f, face(Vector3.new(0, 0, -38), Vector3.new(0, 0, -60)), string.upper(Config.GAME_NAME))
-	local c = Vector3.new(0, 0, 4) -- the fountain plaza
-	piece(town, "S_fountain", c, c + Vector3.new(0, 0, -1), true)
-	for _, sx in { -1, 1 } do
-		-- the town houses either side of the plaza
-		-- (the ForgeGUI cottages when they're loaded, in the old houses' 18 x 15 footprint)
-		local house = Vector3.new(29 * sx, 0, 5)
-		if not forgePiece(town, if sx < 0 then "house_red" else "house_blue", house, Vector3.new(0, 0, 5), { width = 18, depth = 15.5, height = 21 }) then
-			piece(town, if sx < 0 then "S_house_red" else "S_house_blue", house, Vector3.new(0, 0, 5), true)
+	local HubKit = require(script.Parent.HubKit)
+	local rng = Random.new(5)
+	local P = Layout.PLAZA
+	-- the two cottages on the east edge, facing the plaza
+	for i, z in { -20, 10 } do
+		local house = Vector3.new(P.x1 - 14, 0, z)
+		local toward = Vector3.new(0, 0, z)
+		if not forgePiece(town, if i == 1 then "house_blue" else "house_red", house, toward, { width = 18, depth = 15.5, height = 21 }) then
+			piece(town, if i == 1 then "S_house_blue" else "S_house_red", house, toward, true)
 		end
-		-- (the two shops and two market stalls by the spawn were taken out: the owner wanted them gone)
-		-- benches facing the fountain, flower beds round the plaza
-		piece(town, "S_bench", Vector3.new(10 * sx, 0, 4), c, true)
-		-- (clear of the walks: at x 9 / z 17.5 their corners were on the paving)
-		piece(town, "S_flower_bed", Vector3.new(10.5 * sx, 0, -9.5), c, true)
-		piece(town, "S_flower_bed", Vector3.new(10.5 * sx, 0, 16.5), c, true)
-		-- in front of the houses: planters, pots by the door, a mailbox
-		for _, z in { -2.5, 12.5 } do
-			piece(town, "S_planter", Vector3.new(19.6 * sx, 0, z), Vector3.new(0, 0, z), true)
-		end
-		piece(town, "S_pot", Vector3.new(20.2 * sx, 0, 2.2), Vector3.new(0, 0, 2.2), true)
-		piece(town, "S_pot", Vector3.new(20.2 * sx, 0, 7.8), Vector3.new(0, 0, 7.8), true)
-		piece(town, "S_mailbox", Vector3.new(19.4 * sx, 0, 17), Vector3.new(0, 0, 17), true)
-		-- crates and barrels at the shops' sides
-		piece(town, "S_crate_stack", Vector3.new(29 * sx, 0, -57.5), Vector3.new(0, 0, -57.5), true)
-		piece(town, "S_barrel", Vector3.new(26 * sx, 0, -58), Vector3.new(0, 0, -58), true)
-		if not (sx < 0 and Models.has("forge_lodge")) then -- (the ForgeGUI lodge on the west is wider than the old cabin)
-			piece(town, "S_barrel", Vector3.new(37.5 * sx, 0, -36), Vector3.new(0, 0, -36), true)
-		end
-		-- trees and bushes behind the houses and in the corners
-		local rng = Random.new(if sx < 0 then 3 else 4)
-		local HubKit = require(script.Parent.HubKit)
-		-- (none right behind the houses, the lodge or the barn: their canopies grew through the roofs; the ones behind
-		-- the party signs stand back past the fence; none over the rewards stall on the west)
-		for _, p in { Vector3.new(56, 0, 12), Vector3.new(56, 0, -56), Vector3.new(46, 0, -58), Vector3.new(57, 0, 56), Vector3.new(30, 0, 70), Vector3.new(16, 0, 70) } do
-			if not (sx < 0 and p.X == 56 and p.Z == 12) then
-				HubKit.tree(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(0.75, 0.9), "meadow", rng)
-			end
-		end
-		for _, p in { Vector3.new(41, 0, -1), Vector3.new(41, 0, 12), Vector3.new(22, 0, 56), Vector3.new(50, 0, -50), Vector3.new(36, 0, 58) } do
-			HubKit.bush(town, Vector3.new(p.X * sx, 0, p.Z), rng:NextNumber(1.0, 1.3), rng, rng:NextNumber() < 0.5)
-		end
+		piece(town, "S_planter", Vector3.new(P.x1 - 24.5, 0, z - 6), Vector3.new(0, 0, z - 6), true)
+		piece(town, "S_pot", Vector3.new(P.x1 - 24, 0, z + 4), Vector3.new(0, 0, z + 4), true)
 	end
-	-- the third stall at the east end of the street at z 26 (the rewards stall is at the west end)
-	piece(town, "S_stall_green", Vector3.new(52, 0, 26), Vector3.new(0, 0, 26), true)
-	piece(town, "S_cart", Vector3.new(44, 0, 33), Vector3.new(44, 0, 26), true)
-	-- by the spawn: a well and a cart of flowers; hay by the garage
-	piece(town, "S_well", Vector3.new(-13, 0, -57), Vector3.new(0, 0, -50), true)
-	piece(town, "S_cart", Vector3.new(13, 0, -57), Vector3.new(0, 0, -50), true)
-	piece(town, "S_hay_bale", Vector3.new(52, 0, -42), Vector3.new(0, 0, -42), true)
-	piece(town, "S_hay_bale", Vector3.new(55.5, 0, -44), Vector3.new(0, 0, -44), true)
+	piece(town, "S_mailbox", Vector3.new(P.x1 - 25, 0, -5), Vector3.new(0, 0, -5), true)
+	-- either side of the spawn: a well and a cart of flowers (behind it, out of the view to the pads)
+	local sp = Layout.SPAWN
+	piece(town, "S_well", Vector3.new(sp.X - 14, 0, sp.Z - 8), sp + Vector3.new(0, 0, 10), true)
+	piece(town, "S_cart", Vector3.new(sp.X + 26, 0, sp.Z - 12), sp + Vector3.new(0, 0, 10), true)
+	-- flower beds and benches by the walk in front of the gate
+	for _, sx in { -1, 1 } do
+		piece(town, "S_flower_bed", Vector3.new(15 * sx, 0, -6), Vector3.new(0, 0, -6), true)
+		piece(town, "S_bench", Vector3.new(20 * sx, 0, 5), Vector3.new(0, 0, 5), true)
+	end
+	-- hay by the garage, crates and a barrel by the rewards stall
+	local g = Layout.GARAGE.pos
+	piece(town, "S_hay_bale", g + Vector3.new(12, 0, 13), g + Vector3.new(20, 0, 13), true)
+	piece(town, "S_hay_bale", g + Vector3.new(15.5, 0, 15.5), g + Vector3.new(20, 0, 15.5), true)
+	local r = Layout.REWARDS.pos
+	piece(town, "S_crate_stack", r + Vector3.new(4, 0, -12), r + Vector3.new(-10, 0, -12), true)
+	piece(town, "S_barrel", r + Vector3.new(1, 0, -14.5), r + Vector3.new(-10, 0, -14.5), true)
+	-- trees in the corners inside the fence, bushes along the edges (never on a walk, never in the middle)
+	for _, t in { { P.x1 - 9, P.z1 - 9 }, { P.x0 + 9, P.z1 - 9 }, { P.x1 - 9, P.z0 + 9 }, { P.x0 + 9, P.z0 + 9 }, { P.x1 - 9, -48 }, { P.x0 + 10, 22 } } do
+		HubKit.tree(town, Vector3.new(t[1], 0, t[2]), rng:NextNumber(0.75, 0.9), "meadow", rng)
+	end
+	for _, b in { { P.x1 - 6, -70 }, { P.x1 - 6, 28 }, { P.x0 + 6, -30 }, { P.x0 + 6, 8 }, { -40, P.z1 - 6 }, { 40, P.z1 - 6 }, { -28, P.z0 + 6 }, { 30, P.z0 + 6 } } do
+		HubKit.bush(town, Vector3.new(b[1], 0, b[2]), rng:NextNumber(1.0, 1.3), rng, rng:NextNumber() < 0.5)
+	end
 	lifeFor(world)
 	hideSpawn(world)
 end

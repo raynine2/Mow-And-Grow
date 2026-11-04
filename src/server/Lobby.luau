@@ -44,6 +44,26 @@ local function updateBoard()
 	local left = Config.STOCK_WINDOW - (workspace:GetServerTimeNow() % Config.STOCK_WINDOW)
 	table.insert(lines, "Restock in " .. Format.clock(left))
 	built.stockLabel.Text = table.concat(lines, "\n")
+	-- (4 Nov remake) the mannequin by the classes cabin wears the best class in stock (client/AuraMannequin)
+	local dummy = built.mannequin :: Model?
+	if dummy and dummy.Parent then
+		local best, bestI = nil, 0
+		for i, c in Config.CLASSES do
+			if i > bestI and table.find(stock, c.id) then
+				best, bestI = c, i
+			end
+		end
+		if best and dummy:GetAttribute("AuraClass") ~= best.id then
+			dummy:SetAttribute("AuraClass", best.id)
+			local ref = dummy:FindFirstChild("NameLabel") :: ObjectValue?
+			local lab = ref and ref.Value
+			if lab and lab:IsA("TextLabel") then
+				lab.Text = string.upper(best.name)
+				local col = Config.RARITY_COLORS[best.rarity] or Color3.new(1, 1, 1)
+				lab.TextColor3 = if col.R + col.G + col.B < 0.6 then Color3.fromRGB(230, 220, 255) else col -- (Secret's near-black)
+			end
+		end
+	end
 end
 
 -- The leaderboard by the party booths: this server's players, most grass cut first.
@@ -325,6 +345,20 @@ local function arrive(pad: Pad, p: Player)
 		end
 		return
 	end
+	if pad.kind == "continue" then
+		-- (4 Nov lobby remake) the gold CONTINUE pad: your saved run, solo, after the solo countdown
+		if not data.run then
+			warnOnce(p, "No saved run yet: start one on a pad, your run saves as you play!")
+		elseif #pad.members > 0 then
+			warnOnce(p, pad.members[1].DisplayName .. " is continuing their run here, one moment!")
+		else
+			table.insert(pad.members, p)
+			pad.host = p
+			pad.difficulty = data.run.difficulty or "Normal" -- a saved run keeps its difficulty
+			pad.startAt = os.clock() + Config.SOLO_COUNTDOWN
+		end
+		return
+	end
 	local limit = if pad.kind == "solo" then 1 else (pad.limit or Config.PARTY_MAX)
 	if #pad.members >= limit then
 		warnOnce(p, "This pad is full!")
@@ -335,6 +369,9 @@ local function arrive(pad: Pad, p: Player)
 		pad.host = pad.host or p
 		if not pad.startAt then
 			pad.startAt = os.clock() + (if pad.kind == "solo" then Config.SOLO_COUNTDOWN else Config.PARTY_COUNTDOWN)
+		end
+		if #pad.members >= limit then
+			pad.startAt = math.min(pad.startAt, os.clock() + 5) -- a full party doesn't wait out the whole countdown
 		end
 	end
 end

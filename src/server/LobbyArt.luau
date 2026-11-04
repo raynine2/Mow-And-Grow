@@ -5,12 +5,13 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Zones = require(ReplicatedStorage.MowALawn.Zones)
+local Layout = require(script.Parent.LobbyLayout)
 
 local LobbyArt = {}
 
 local CELL = 8
 local REACH = 216 -- the island's half-size (studs)
-local CLEARING = 66 -- the flat plaza's half-size (the fence runs just inside it)
+local PLAZA = Layout.PLAZA -- the flat mown plaza (4 Nov remake: a rectangle, server/LobbyLayout)
 local FLOOR = -24
 local SEA = -6
 
@@ -54,21 +55,16 @@ local function hash(i: number, j: number, k: number): number
 	return n - math.floor(n)
 end
 
--- the walks across the plaza: spawn -> party pads, and out to the cabins, the rewards stall and the boards
-local PATHS = {
-	{ Vector2.new(0, -52), Vector2.new(0, 34) },
-	{ Vector2.new(-46, -22), Vector2.new(46, -22) },
-	{ Vector2.new(-42, 26), Vector2.new(42, 26) }, -- to the rewards stall, and the market on the east side
-	{ Vector2.new(-28, 42), Vector2.new(28, 42) }, -- (not under the GRASS CUT / BEST TIMES boards at x +-44)
-}
-local function pathDist(p: Vector2): number
-	local best = math.huge
-	for _, s in PATHS do
-		local ab = s[2] - s[1]
-		local t = math.clamp((p - s[1]):Dot(ab) / ab:Dot(ab), 0, 1)
-		best = math.min(best, (p - (s[1] + ab * t)).Magnitude)
-	end
-	return best
+-- Inside the plaza (grown by `pad` studs)?
+local function inPlaza(x: number, z: number, pad: number?): boolean
+	local e = pad or 0
+	return x >= PLAZA.x0 - e and x <= PLAZA.x1 + e and z >= PLAZA.z0 - e and z <= PLAZA.z1 + e
+end
+
+-- The vista behind the launch gate: a wedge north of the plaza, widening as it goes, kept clear of trees so the
+-- unmown field shows through the gate from the spawn.
+local function inVista(x: number, z: number): boolean
+	return z > PLAZA.z1 - 4 and math.abs(x) < 22 + (z - PLAZA.z1) * 0.55
 end
 
 -- Height of the ground at a cell centre (nil = sea). The plaza is flat at 0; outside it the ground rises in
@@ -76,7 +72,7 @@ end
 local function heightAt(x: number, z: number): number?
 	local d = math.max(math.abs(x), math.abs(z))
 	local wob = math.sin(x * 0.031 + 1.3) * 10 + math.cos(z * 0.027 + 0.4) * 10
-	if d <= CLEARING then
+	if inPlaza(x, z) then
 		return 0
 	end
 	if d + wob > REACH - 8 then
@@ -87,8 +83,12 @@ local function heightAt(x: number, z: number): number?
 end
 
 -- The zone's grass (Sunny Meadow, Workspace.World.Ground): its two greens in 8-stud squares. x, z are the
--- square's centre measured from the lobby's centre.
+-- square's centre measured from the lobby's centre. On the plaza it's a freshly mown lawn instead: stripes 16
+-- studs wide running north, toward the launch gate (leading lines, like a mowed sports field).
 local function zoneGrass(x: number, z: number): Color3
+	if inPlaza(x, z) then
+		return if math.floor((x + 1000) / 16) % 2 == 0 then MEADOW.ground else MEADOW.ground2
+	end
 	return if hash(x, z, 9) < 0.5 then MEADOW.ground else MEADOW.ground2
 end
 
@@ -161,31 +161,58 @@ end
 
 -- A tidy wooden fence round the plaza and a thick, even wood of green trees behind it (server/HubKit), pines in
 -- the back rows: one palette, like the woods round Chop A Forest's yard.
+-- The unmown field seen through the launch gate: the run's own tall grass tufts (one mesh, so it's cheap), thick
+-- and big, filling the vista. Nothing to cut here: it's the promise of the run.
+local function field(f: Instance, rng: Random)
+	local Models = require(script.Parent.Models)
+	for z = PLAZA.z1 + 3, PLAZA.z1 + 70, 4.5 do
+		local half = 22 + (z - PLAZA.z1) * 0.55
+		for x = -half + 2, half - 2, 4.5 do
+			local px, pz = x + rng:NextNumber(-1.5, 1.5), z + rng:NextNumber(-1.5, 1.5)
+			local cf = CFrame.new(px, 0, pz) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
+			if not Models.place("tuft_lawn", f, cf, rng:NextNumber(1.6, 2.3), true) then
+				return
+			end
+			tick()
+		end
+	end
+end
+
 local function nature(world: Instance)
 	local f = Instance.new("Folder")
 	f.Name = "Visuals"
 	f.Parent = world
 	local rng = Random.new(31)
 	local HubKit = require(script.Parent.HubKit)
-	local e = CLEARING - 2
-	for _, side in { { Vector3.new(-e, 0, -e), Vector3.new(e, 0, -e) }, { Vector3.new(e, 0, -e), Vector3.new(e, 0, e) }, { Vector3.new(e, 0, e), Vector3.new(-e, 0, e) }, { Vector3.new(-e, 0, e), Vector3.new(-e, 0, -e) } } do
+	-- the fence round the plaza, open behind the gate (x -18..18 on the north side) onto the field
+	local x0, x1, z0, z1 = PLAZA.x0 + 2, PLAZA.x1 - 2, PLAZA.z0 + 2, PLAZA.z1 - 2
+	for _, side in {
+		{ Vector3.new(x0, 0, z0), Vector3.new(x1, 0, z0) },
+		{ Vector3.new(x1, 0, z0), Vector3.new(x1, 0, z1) },
+		{ Vector3.new(x1, 0, z1), Vector3.new(18, 0, z1) },
+		{ Vector3.new(-18, 0, z1), Vector3.new(x0, 0, z1) },
+		{ Vector3.new(x0, 0, z1), Vector3.new(x0, 0, z0) },
+	} do
 		HubKit.fence(f, side[1], side[2])
 	end
+	-- a thick wood all round, darkest at the back (pines), none in the vista
 	local step = 20 -- (voxel trees are wide)
 	for x = -REACH, REACH, step do
 		for z = -REACH, REACH, step do
 			local px, pz = x + rng:NextNumber(-3, 3), z + rng:NextNumber(-3, 3)
 			local d = math.max(math.abs(px), math.abs(pz))
-			if d > CLEARING + 7 and d < REACH - 20 then
+			if not inPlaza(px, pz, 7) and not inVista(px, pz) and d < REACH - 20 then
 				local y = groundY(world, px, pz)
 				if y then
-					local kind = if d > CLEARING + 40 and rng:NextNumber() < 0.45 then "pine" else "meadow"
+					local deep = not inPlaza(px, pz, 40)
+					local kind = if deep and rng:NextNumber() < 0.45 then "pine" else "meadow"
 					HubKit.tree(f, Vector3.new(px, y, pz), rng:NextNumber(1.3, 1.8), kind, rng)
 					tick()
 				end
 			end
 		end
 	end
+	field(f, rng)
 end
 
 -- Keep players on the island: invisible walls just inside the cliff.
@@ -203,12 +230,12 @@ function LobbyArt.build(world: Instance)
 	workspace.Terrain:Clear()
 	ground(world)
 	local segments = {}
-	for _, s in PATHS do
-		table.insert(segments, { a = s[1], b = s[2], width = 12 })
+	for _, s in Layout.WALKS do
+		table.insert(segments, { a = s.a, b = s.b, width = s.width })
 	end
-	-- the round plaza with the fountain in the middle of the main walk (server/HubDressing puts the fountain there)
+	-- sandstone walks only where people go (4 Nov remake: no round fountain plaza any more)
 	local HubPaths = require(script.Parent.HubPaths)
-	HubPaths.pave(HubPaths.lay(world, segments, 0, 11, { { centre = Vector2.new(0, 4), radius = 13 } }), Vector3.zero)
+	HubPaths.pave(HubPaths.lay(world, segments, 0, 11), Vector3.zero)
 	nature(world)
 	bounds(world)
 	require(script.Parent.WorldGen).lighting()

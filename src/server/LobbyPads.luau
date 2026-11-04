@@ -12,6 +12,7 @@ local LobbyPads = {}
 
 local OPEN = Color3.fromRGB(80, 255, 95)
 local BUSY = Color3.fromRGB(40, 210, 255)
+local SAVE = Color3.fromRGB(255, 196, 46) -- the CONTINUE pad: gold, so a returning player's path stands out
 local CREAM = Color3.fromRGB(255, 240, 205)
 local DARK_WOOD = Color3.fromRGB(92, 58, 34)
 local WOOD = Color3.fromRGB(150, 98, 58)
@@ -498,6 +499,103 @@ function LobbyPads.build(parent: Instance, centre: Vector3, facing: Vector3): { 
 		}
 		def.show("open", 0, nil)
 		table.insert(defs, def)
+	end
+	return defs
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- the arc (4 Nov lobby remake, server/LobbyLayout): each pad on its own little deck, facing the spawn
+-------------------------------------------------------------------------------------------------------------
+export type ArcPad = { pos: Vector3, toward: Vector3, kind: string }
+
+-- What a pad's pill says (research brief: OPEN / x of 4 / FRIENDS ONLY / LAUNCHING).
+local function pillFor(kind: string, state: string, n: number, cap: number, left: number?): string
+	if state == "open" then
+		return if kind == "continue" then "YOUR SAVE" else "OPEN"
+	elseif state == "creating" then
+		return "SETTING UP"
+	elseif state == "starting" then
+		if (left or 99) <= 5 then
+			return "LAUNCHING"
+		elseif kind == "party" then
+			return if n >= cap then "FULL" else "FRIENDS ONLY"
+		end
+		return "STARTING"
+	end
+	return "GO!"
+end
+
+local function arcBay(m: Instance, i: number, p: ArcPad, size: number): PadDef
+	local DECK_H = 0.5
+	local at = CFrame.lookAt(p.pos, Vector3.new(p.toward.X, p.pos.Y, p.toward.Z)) -- looks at the spawn
+	local kind = p.kind
+	local base = if kind == "continue" then SAVE else OPEN
+	-- the bay's own deck: planks, a darker skirt, a log along the front
+	local D = size + 2.4
+	block(m, Vector3.new(D, DECK_H, D), at * CFrame.new(0, DECK_H / 2, 0), WOOD, "Deck", Enum.Material.WoodPlanks)
+	block(m, Vector3.new(D + 0.4, 0.35, D + 0.4), at * CFrame.new(0, 0.12, 0), DARK_WOOD, "Skirt", Enum.Material.Wood)
+	local log = PropKit.cylinder(m, 0.5, D + 0.6, at * CFrame.new(0, 0.42, -D / 2 - 0.25) * CFrame.Angles(0, 0, math.rad(90)), LIGHT_WOOD)
+	log.Material = Enum.Material.Wood
+	log.Name = "FrontLog"
+	local bay = at * CFrame.new(0, DECK_H, 0)
+	local glow = LobbyPads.glow(m, bay, size, size, base)
+	-- the guide arrow points new players at the first bay ("PadInfo1")
+	local marker = PropKit.part({ size = Vector3.one, cf = CFrame.new(bay.Position + Vector3.new(0, 1, 0)), color = base, parent = m, transparency = 1, collide = false, name = "PadInfo" .. i })
+	marker.CanQuery = false
+	local title = if kind == "solo" then "SOLO" elseif kind == "continue" then "CONTINUE" else "PARTY"
+	local handles = sign(m, at * CFrame.new(0, DECK_H, D / 2 + 1.3), title, "", "")
+	handles.pillBox.BackgroundColor3 = base
+	local top = statusTag(m, (at * CFrame.new(0, DECK_H + 17.5, D / 2 + 1.3)).Position)
+	local maxN = if kind == "party" then Config.PARTY_MAX else 1
+	local state = ""
+	local def: PadDef = {
+		kind = kind,
+		pos = bay.Position,
+		radius = size / 2 - 0.4,
+		label = top,
+		title = title,
+		show = function(newState: string, n: number, left: number?, who: string?, limit: number?)
+			local cap = limit or maxN
+			if newState == "open" then
+				top.Text = if kind == "continue" then "Your saved run" elseif kind == "solo" then "Play alone" else ("%d/%d"):format(n, cap)
+			elseif newState == "creating" then
+				top.Text = (who or "Someone") .. " is setting up"
+			elseif newState == "starting" then
+				top.Text = if kind == "party" then ("%d/%d  -  %d"):format(n, cap, left or 0) else ("Starting in %d"):format(left or 0)
+			else
+				top.Text = "Teleporting..."
+			end
+			local pill = pillFor(kind, newState, n, cap, left)
+			if pill ~= handles.pill.Text or newState ~= state then
+				state = newState
+				local c = if newState == "open" then base else BUSY
+				glow.setColor(c)
+				handles.pillBox.BackgroundColor3 = c
+				handles.pill.Text = pill
+			end
+		end,
+	}
+	def.show("open", 0, nil)
+	return def
+end
+
+-- The pads of the remade lobby: `list` in order (1 = the SOLO pad the guide arrow shows), each on its own deck
+-- facing `toward`, `size` studs square, with a lantern between neighbours.
+function LobbyPads.arc(parent: Instance, list: { ArcPad }, size: number): { PadDef }
+	local m = PropKit.folder("PartyPads", parent)
+	local defs: { PadDef } = {}
+	for i, p in list do
+		table.insert(defs, arcBay(m, i, p, size))
+		local nextPad = list[i + 1]
+		if nextPad then
+			-- a lantern between the two, a little in front of them
+			local mid = (p.pos + nextPad.pos) / 2
+			local lp = mid + (p.toward - mid).Unit * 3
+			lp = Vector3.new(lp.X, 0, lp.Z)
+			if not Models.place("lantern_post", m, CFrame.lookAt(lp, Vector3.new(p.toward.X, 0, p.toward.Z)), 0.75, true) then
+				block(m, Vector3.new(0.6, 4, 0.6), CFrame.new(lp + Vector3.new(0, 2, 0)), DARK_WOOD, "LanternPost", Enum.Material.Wood)
+			end
+		end
 	end
 	return defs
 end

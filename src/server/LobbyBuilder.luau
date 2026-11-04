@@ -11,6 +11,7 @@ local Ground = require(script.Parent.Ground)
 local GroundMesh = require(script.Parent.GroundMesh)
 local LobbyPads = require(script.Parent.LobbyPads)
 local LobbyKit = require(script.Parent.LobbyKit)
+local Layout = require(script.Parent.LobbyLayout) -- (4 Nov remake) where everything stands
 
 local LobbyBuilder = {}
 
@@ -175,17 +176,70 @@ local function classLodge(m: Instance, at: CFrame, _purple: Color3): TextLabel?
 	return hidden
 end
 
-local function classCabin(world: Instance): TextLabel
+-- The aura mannequin on a pedestal by the classes cabin (research brief: "let other players' auras be the
+-- advertisement" and "a mannequin in the classes cabin wearing the current stock's top aura"): a plain wooden R15
+-- figure, tagged for client/AuraMannequin, which puts the class in its "AuraClass" attribute on it (server/Lobby sets
+-- that to the best class in stock). A little sign under it names the class.
+local function mannequin(m: Instance, at: CFrame): Model?
+	local ok, rig = pcall(function()
+		return game:GetService("Players"):CreateHumanoidModelFromDescription(Instance.new("HumanoidDescription"), Enum.HumanoidRigType.R15)
+	end)
+	if not ok or not rig then
+		return nil
+	end
+	local stand = at * CFrame.new(0, 0, 0)
+	-- the pedestal: a dark plinth with a gold rim
+	PropKit.brick(m, Vector3.new(5, 1.6, 5), stand * CFrame.new(0, 0.8, 0), Color3.fromRGB(70, 52, 40), "Plinth", Enum.Material.WoodPlanks)
+	PropKit.brick(m, Vector3.new(5.4, 0.3, 5.4), stand * CFrame.new(0, 1.75, 0), GOLD, "PlinthRim", Enum.Material.SmoothPlastic)
+	rig.Name = "AuraMannequin"
+	local hum = rig:FindFirstChildOfClass("Humanoid")
+	if hum then
+		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		hum.PlatformStand = true
+	end
+	for _, d in rig:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+			d.CanQuery = false
+			d.CanTouch = false
+			d.Color = Color3.fromRGB(214, 172, 120) -- a tailor's dummy in light wood
+			d.Material = Enum.Material.Wood
+		elseif d:IsA("Decal") and d.Name == "face" then
+			d:Destroy()
+		elseif d:IsA("BaseScript") then
+			d:Destroy()
+		end
+	end
+	local root = rig:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local lift = if hum and root then hum.HipHeight + root.Size.Y / 2 else 3
+	rig:PivotTo(stand * CFrame.new(0, 1.9 + lift, 0))
+	rig.Parent = m
+	game:GetService("CollectionService"):AddTag(rig, "AuraMannequin")
+	-- its sign: the class's name on the plinth's front
+	local name = PropKit.facePanel(m, stand, Vector3.new(0, 0.85, -2.55), Vector2.new(4.6, 1.1), "", Color3.new(1, 1, 1))
+	name.Name = "MannequinName"
+	local ref = Instance.new("ObjectValue")
+	ref.Name = "NameLabel"
+	ref.Value = name
+	ref.Parent = rig
+	return rig
+end
+
+local function classCabin(world: Instance): (TextLabel, Model?)
 	local m = PropKit.folder("Classes", world)
-	local pos = Vector3.new(-46, FLOOR_Y, -22)
+	local pos = Layout.CLASSES.pos
 	local at = CFrame.lookAt(pos, pos + Vector3.xAxis)
+	-- (south of the porch, turned to face the walk from the spawn)
+	local dummyAt = Layout.facing((at * CFrame.new(-11, 0, -17)).Position, Layout.SPAWN)
+	local dummy = mannequin(m, dummyAt)
 	local purple = Color3.fromRGB(180, 100, 255)
 	local lodgeLabel = classLodge(m, at, purple)
 	if lodgeLabel then
-		return lodgeLabel
+		return lodgeLabel, dummy
 	end
 	if not cabin(m, at, 1) then
-		return oldClassBooth(world)
+		return oldClassBooth(world), dummy
 	end
 	if Config.HUB_SIGNS then
 		cabinSign(m, at, 1, "CLASSES", purple)
@@ -198,7 +252,7 @@ local function classCabin(world: Instance): TextLabel
 	label.TextYAlignment = Enum.TextYAlignment.Top
 	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, 5), "ClassCounter"), "Browse", "Classes", "Classes", 12)
 	PropKit.prompt(promptSpot(m, at * CFrame.new(0, 3, -9), "ClassPorch"), "Browse", "Classes", "Classes", 10)
-	return label
+	return label, dummy
 end
 
 local function oldGarage(world: Instance)
@@ -220,8 +274,8 @@ end
 -- The garage: a smaller cabin with a mower on a turntable in front of the porch.
 local function garageCabin(world: Instance)
 	local m = PropKit.folder("Garage", world)
-	local pos = Vector3.new(46, FLOOR_Y, -22)
-	local at = CFrame.lookAt(pos, pos - Vector3.xAxis)
+	local pos = Layout.GARAGE.pos
+	local at = CFrame.lookAt(pos, pos + Vector3.xAxis) -- (4 Nov remake: on the west edge, facing the plaza)
 	local s = 0.85
 	local barn = Models.placeForge("barn", m, at * CFrame.new(0, 0, 2), { width = 22 }, true)
 	if barn then
@@ -291,8 +345,8 @@ end
 
 local function rewardsStall(world: Instance)
 	local m = PropKit.folder("FreeRewards", world)
-	local pos = Vector3.new(-50, FLOOR_Y, 26)
-	local at = CFrame.lookAt(pos, Vector3.new(0, FLOOR_Y, 26)) -- square to the path that leads to it
+	local pos = Layout.REWARDS.pos
+	local at = CFrame.lookAt(pos, Vector3.new(Layout.SPAWN.X, FLOOR_Y, pos.Z)) -- square to the walk from the spawn
 	if not Models.place("rewards_stall", m, at, 1, true) then
 		oldRewardsChest(world)
 		return
@@ -350,8 +404,8 @@ end
 -- of the party pads, turned toward the plaza (Chop A Forest's CASH EARNED board).
 local function leaderboard(world: Instance): TextLabel
 	local m = PropKit.folder("Leaderboard", world)
-	local pos = Vector3.new(44, FLOOR_Y, 44)
-	local at = CFrame.lookAt(pos, pos - Vector3.zAxis) -- square to the plaza, in line with the pads
+	local pos = Layout.GRASS_CUT.pos
+	local at = Layout.facing(pos, Layout.SPAWN) -- framing the launch gate, turned to the spawn
 	local s = 1.25
 	local body: TextLabel
 	if Models.isForge("leaderboard") and Models.place("leaderboard", m, at, s, true) then
@@ -375,8 +429,8 @@ end
 local function bestTimesBoard(world: Instance): TextLabel?
 	local m = PropKit.folder("BestTimes", world)
 	-- to the left of the party pads, turned toward the plaza (like Chop A Forest's BEST TIMES board)
-	local pos = Vector3.new(-44, FLOOR_Y, 44)
-	local at = CFrame.lookAt(pos, pos - Vector3.zAxis) -- square to the plaza, in line with the pads
+	local pos = Layout.BEST_TIMES.pos
+	local at = Layout.facing(pos, Layout.SPAWN) -- framing the launch gate, turned to the spawn
 	local s = 1.3
 	if not Models.place("trophy_board", m, at, s, true) then
 		return nil
@@ -409,24 +463,33 @@ local function startBoard(m: Instance)
 	LobbyPads.startBoard(m, at, "START A RUN", sub)
 end
 
--- The ForgeGUI start gate over the walk from the spawn to the plaza, where the welcome arch stood (HUB_SIGNS off).
--- Its opening (x -7..6.6, up to y 9 at 22 wide) stays open: only the two posts are solid.
+-- THE LANDMARK (4 Nov remake): the ForgeGUI start gate, twice its old size, behind the pads and facing the spawn,
+-- the tallest thing in the lobby, with START A RUN on its board and the unmown field seen through it (LobbyArt).
+-- Its opening stays open: only the two posts are solid (measured at 22 wide: posts at x -9.2 and 8.9).
 local function startGate(world: Instance)
 	local m = PropKit.folder("StartGate", world)
-	local pos = Vector3.new(0, FLOOR_Y, -36)
-	local at = CFrame.lookAt(pos, pos - Vector3.zAxis)
-	if not Models.placeForge("startgate", m, at, { width = 22 }, true) then
+	local g = Layout.GATE
+	local at = Layout.facing(g.pos, Layout.SPAWN)
+	local gate = Models.placeForge("startgate", m, at, { width = g.width }, true)
+	if not gate then
 		return
 	end
-	PropKit.collider(m, at, Vector3.new(-9.2, 9.75, 0), Vector3.new(3.6, 19.5, 5))
-	PropKit.collider(m, at, Vector3.new(8.9, 9.75, 0), Vector3.new(4.2, 19.5, 5))
+	local k = g.width / 22
+	PropKit.collider(m, at, Vector3.new(-9.2 * k, 9.75 * k, 0), Vector3.new(3.6 * k, 19.5 * k, 5 * k))
+	PropKit.collider(m, at, Vector3.new(8.9 * k, 9.75 * k, 0), Vector3.new(4.2 * k, 19.5 * k, 5 * k))
+	gate:SetAttribute("LaunchGate", true)
 end
 
--- The START A RUN board over a deck of four glowing party bays (server/LobbyPads), facing the spawn.
+-- (4 Nov remake) The pads in an arc in front of the spawn, each facing it, and the gold CONTINUE pad closing the arc
+-- (server/LobbyLayout). The START A RUN title is on the launch gate behind them now.
 local function partyArea(world: Instance)
 	local m = PropKit.folder("PartyBooths", world)
-	startBoard(m)
-	return LobbyPads.build(m, Vector3.new(0, FLOOR_Y, 40), -Vector3.zAxis)
+	local list = {}
+	for _, p in Layout.PADS do
+		table.insert(list, { pos = Layout.onArc(p.angle), toward = Layout.SPAWN, kind = p.kind })
+	end
+	table.insert(list, { pos = Layout.onArc(Layout.CONTINUE.angle), toward = Layout.SPAWN, kind = "continue" })
+	return LobbyPads.arc(m, list, Layout.PAD_SIZE)
 end
 
 function LobbyBuilder.build()
@@ -439,8 +502,9 @@ function LobbyBuilder.build()
 		ground(world)
 		decor(world)
 	end
-	Environment.spawn(world, CFrame.lookAt(Vector3.new(0, 0.8, -46), Vector3.new(0, 0.8, 0)))
-	local stockLabel = classCabin(world)
+	local sp = Layout.SPAWN + Vector3.new(0, 0.8, 0)
+	Environment.spawn(world, CFrame.lookAt(sp, sp + Vector3.zAxis)) -- looking north, at the launch gate
+	local stockLabel, dummy = classCabin(world)
 	garageCabin(world)
 	rewardsStall(world)
 	local leaderLabel = leaderboard(world)
@@ -448,7 +512,7 @@ function LobbyBuilder.build()
 	local pads = partyArea(world)
 	startGate(world)
 	require(script.Parent.HubDressing).lobby(world) -- the generated world's style: arch, statue, benches, bunting...
-	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = pads }
+	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = pads, mannequin = dummy }
 end
 
 return LobbyBuilder

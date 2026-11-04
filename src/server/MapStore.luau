@@ -373,6 +373,11 @@ end
 function MapStore.load(mode: string, build: () -> any): any
 	local maps = findMaps()
 	local found = maps and maps:FindFirstChild(mode)
+	if mode == "Lobby" and RunService:IsStudio() and workspace:GetAttribute("CodeLobby") == true then
+		-- (Studio, 4 Nov) Workspace attribute CodeLobby = true: play the lobby the code builds, leaving the one saved in
+		-- the place (Maps.Lobby) untouched, to try a remake before it's baked
+		found = nil
+	end
 	if not found or not found:IsA("Folder") then
 		return build()
 	end

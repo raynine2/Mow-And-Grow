@@ -1103,6 +1103,30 @@ if Config.AURAS_V2 then
 	for _, p in Players:GetPlayers() do
 		watchPlayer(p)
 	end
+
+	-- (4 Nov lobby remake) the mannequin by the classes cabin (server/LobbyBuilder) wears the class in its
+	-- "AuraClass" attribute, which server/Lobby sets to the best class in stock
+	local CollectionService = game:GetService("CollectionService")
+	local function dress(m: Instance)
+		if not m:IsA("Model") then
+			return
+		end
+		local function put()
+			local id = m:GetAttribute("AuraClass")
+			if type(id) == "string" and m.Parent then
+				Auras.preview(m, id)
+			else
+				drop(m)
+			end
+		end
+		m:GetAttributeChangedSignal("AuraClass"):Connect(put)
+		put()
+	end
+	CollectionService:GetInstanceAddedSignal("AuraMannequin"):Connect(dress)
+	CollectionService:GetInstanceRemovedSignal("AuraMannequin"):Connect(drop)
+	for _, m in CollectionService:GetTagged("AuraMannequin") do
+		task.spawn(dress, m)
+	end
 end
 
 return Auras

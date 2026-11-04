@@ -15,6 +15,14 @@
 -- shell's "DoorMin"/"DoorMax" box: the cabin's narrow door tunnel, whose solid insides you'd otherwise walk your camera
 -- through), and the switch has some give (MARGIN): in once the camera is a bit inside, out once it's a bit outside,
 -- so head bob or a camera popping against the door frame never flips the two back and forth.
+-- (4 Nov, owner: "its still goes into the old house when u walk in the buildings and not the new ones"; seen in a play
+-- test: from outside, the cabin's doorway showed its own dark red inside, and one step in the whole house turned into
+-- the lodge's bright room, a different house) One house now: the lodge's room is there all along, seen through the
+-- cabin's doorway from outside, and only the cabin's shell goes when your camera is in (its door tunnel and floor
+-- poke into the room). What of the lodge stands outside its room's walls (roof, plinth, barge boards, ridge: the
+-- "old house" outside) never shows on this screen. The room is only in the world while your camera is near the
+-- door side (FPS: from behind or far off you can't see into it anyway); then the invisible walls stand in for its
+-- walls as before.
 local RunService = game:GetService("RunService")
 
 local ShopShellView = {}
@@ -22,7 +30,9 @@ local ShopShellView = {}
 -- each building: its folder in the hub, its voxel building, and what of that shows from outside too (its floor; the
 -- garage's work deck at the back, which covers a bit of the ground poking up there)
 local UNITS = {
-	{ unit = "TOOL SHOP", building = "ShopBuilding", keep = { FloorBoard = true, FloorFill = true } },
+	-- (jamb: the cabin's door tunnel is only x -2.2..1.9 wide in the lodge's 12-wide door, server/ShopShell; the cabin
+	-- has no collisions, so without these you walked in through its wall beside the door)
+	{ unit = "TOOL SHOP", building = "ShopBuilding", keep = { FloorBoard = true, FloorFill = true }, jamb = { -2.2, 1.9 } },
 	{
 		unit = "Garage",
 		building = "GarageBuilding",
@@ -36,12 +46,16 @@ type View = {
 	lodge: Instance?,
 	anchor: BasePart?, -- (the unit's "0Anchor": the building's own frame, wherever the saved map put it)
 	inside: boolean?,
+	near: boolean?, -- (camera close to the door side: the room is in the world)
+	out: { [BasePart]: boolean }, -- (lodge parts outside the room's walls: never shown)
 	conns: { RBXScriptConnection },
 	walls: Folder?, -- (this screen's invisible walls while the lodge is out)
+	jamb: { number }?,
+	jambs: Folder?, -- (invisible blocks either side of the cabin's narrow door)
 }
 local views: { View } = {}
 for i, u in UNITS do
-	views[i] = { keep = u.keep, shell = nil, lodge = nil, anchor = nil, inside = nil, conns = {} }
+	views[i] = { keep = u.keep, shell = nil, lodge = nil, anchor = nil, inside = nil, near = nil, out = {}, conns = {}, jamb = (u :: any).jamb }
 end
 
 -- Invisible walls round the room box (the lodge's walls stand just outside it), the doorway left open.
@@ -84,14 +98,70 @@ local function wallsFor(v: View): Folder?
 	return f
 end
 
+-- Invisible blocks filling the doorway box either side of the cabin's door tunnel.
+local function jambsFor(v: View): Folder?
+	local s, a, j = v.shell, v.anchor, v.jamb
+	if not s or not a or not j then
+		return nil
+	end
+	local dmn, dmx = s:GetAttribute("DoorMin"), s:GetAttribute("DoorMax")
+	if typeof(dmn) ~= "Vector3" or typeof(dmx) ~= "Vector3" then
+		return nil
+	end
+	local f = Instance.new("Folder")
+	f.Name = "ShopShellJambs"
+	for _, xs in { { dmn.X - WALL, j[1] }, { j[2], dmx.X + WALL } } do
+		local p = Instance.new("Part")
+		p.Name = "Jamb"
+		p.Anchored = true
+		p.CanCollide = true
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Transparency = 1
+		p.Size = Vector3.new(xs[2] - xs[1], dmx.Y - dmn.Y, dmx.Z - dmn.Z)
+		p.CFrame = a.CFrame * CFrame.new((xs[1] + xs[2]) / 2, (dmn.Y + dmx.Y) / 2, (dmn.Z + dmx.Z) / 2)
+		p.Parent = f
+	end
+	return f
+end
+
 -- where hidden lodge pieces wait (outside the world: not drawn), and where each came from
 local hold = Instance.new("Folder")
 hold.Name = "ShopShellHidden"
 local home: { [BasePart]: Instance } = {}
 
+-- Is lodge part `p` outside its room's walls (any corner beyond the room box grown by a wall, above the room or
+-- below the ground)? Asked once per part.
+local OUT_GROW = 1.6
+local function isOut(v: View, p: BasePart): boolean
+	local c = v.out[p]
+	if c ~= nil then
+		return c
+	end
+	c = false
+	local s, a = v.shell, v.anchor
+	local mn, mx = s and s:GetAttribute("RoomMin"), s and s:GetAttribute("RoomMax")
+	if a and typeof(mn) == "Vector3" and typeof(mx) == "Vector3" then
+		local h = p.Size / 2
+		for _, k in { Vector3.new(-1, -1, -1), Vector3.new(1, -1, -1), Vector3.new(-1, 1, -1), Vector3.new(1, 1, -1), Vector3.new(-1, -1, 1), Vector3.new(1, -1, 1), Vector3.new(-1, 1, 1), Vector3.new(1, 1, 1) } do
+			local l = a.CFrame:PointToObjectSpace(p.CFrame:PointToWorldSpace(h * k))
+			if l.X < mn.X - OUT_GROW or l.X > mx.X + OUT_GROW or l.Z < mn.Z - OUT_GROW or l.Z > mx.Z + OUT_GROW or l.Y > mx.Y + 0.5 or l.Y < -2 then
+				c = true
+				break
+			end
+		end
+	end
+	v.out[p] = c
+	return c
+end
+
 local function setLodge(v: View, p: Instance, show: boolean)
 	if not p:IsA("BasePart") or v.keep[p.Name] then
 		return
+	end
+	if show and isOut(v, p) then
+		show = false
 	end
 	if show then
 		local back = home[p]
@@ -115,14 +185,17 @@ end
 
 local function apply(v: View)
 	if v.lodge then
-		if v.inside then
+		local room = v.near == true or v.inside == true
+		if room then
 			for p, back in home do
 				if back:IsDescendantOf(v.lodge) or back == v.lodge then
 					setLodge(v, p, true)
 				end
 			end
-		else
-			for _, p in v.lodge:GetDescendants() do
+		end
+		-- (outside pieces still in the world, every piece when the room goes)
+		for _, p in v.lodge:GetDescendants() do
+			if p:IsA("BasePart") and (not room or isOut(v, p)) then
 				setLodge(v, p, false)
 			end
 		end
@@ -152,6 +225,10 @@ local function find(v: View, u: { unit: string, building: string })
 		v.walls:Destroy()
 		v.walls = nil
 	end
+	if v.jambs then
+		v.jambs:Destroy()
+		v.jambs = nil
+	end
 	-- (the old run's lodge pieces: its world is gone)
 	for p, back in home do
 		if v.lodge and (back == v.lodge or back:IsDescendantOf(v.lodge)) then
@@ -161,12 +238,15 @@ local function find(v: View, u: { unit: string, building: string })
 	v.shell = s
 	v.lodge = if s and unit then unit:FindFirstChild(u.building) else nil
 	v.inside = nil
+	v.near = nil
+	v.out = {}
 	if s and v.lodge then
 		v.walls = wallsFor(v)
+		v.jambs = jambsFor(v)
 		-- parts streaming in later get the current view
 		table.insert(v.conns, v.lodge.DescendantAdded:Connect(function(d)
 			if v.inside ~= nil then
-				setLodge(v, d, v.inside)
+				setLodge(v, d, v.near == true or v.inside == true)
 			end
 		end))
 		table.insert(v.conns, s.DescendantAdded:Connect(function(d)
@@ -187,6 +267,8 @@ task.spawn(function()
 end)
 
 local MARGIN = 0.5
+local NEAR = 70 -- studs from the building's middle: closer, on the door side, the room is in the world
+local NEAR_GIVE = 6
 
 -- is `p` in the box (mn, mx) grown by `grow` (shrunk when it's below 0)?
 local function within(p: Vector3, mn: any, mx: any, grow: number): boolean
@@ -211,13 +293,18 @@ RunService:BindToRenderStep("ShopShellView", Enum.RenderPriority.Camera.Value + 
 		local grow = if v.inside then MARGIN else -MARGIN
 		local now = within(p, s:GetAttribute("RoomMin"), s:GetAttribute("RoomMax"), grow)
 			or within(p, s:GetAttribute("DoorMin"), s:GetAttribute("DoorMax"), grow)
-		if now ~= v.inside then
+		-- near the door side (in front of the room's back wall, within NEAR of its middle; a bit of give both ways)
+		local mx = s:GetAttribute("RoomMax")
+		local reach = NEAR + (if v.near then NEAR_GIVE else 0)
+		local close = typeof(mx) == "Vector3" and p.Z < mx.Z + (if v.near then NEAR_GIVE else 0) and p.Magnitude < reach
+		if now ~= v.inside or close ~= v.near then
 			v.inside = now
+			v.near = close
 			apply(v)
 		end
-		-- the invisible walls: in the world while the lodge is out (checked every frame: a film may clear the world's
+		-- the invisible walls: in the world while the room is out (checked every frame: a film may clear the world's
 		-- loose bits; made again if they were destroyed)
-		local want = if v.inside then nil else workspace
+		local want = if v.inside or v.near then nil else workspace
 		if not v.walls and v.lodge then
 			v.walls = wallsFor(v)
 		end
@@ -226,6 +313,15 @@ RunService:BindToRenderStep("ShopShellView", Enum.RenderPriority.Camera.Value + 
 			w.Parent = want
 		end) then
 			v.walls = nil
+		end
+		if not v.jambs and v.lodge then
+			v.jambs = jambsFor(v)
+		end
+		local jb = v.jambs
+		if jb and jb.Parent ~= workspace and not pcall(function()
+			jb.Parent = workspace
+		end) then
+			v.jambs = nil
 		end
 	end
 end)

@@ -853,7 +853,10 @@ Config.DEFAULT_CLASS = "WeedPuller"
 -- you, no body glow, no fists or screen flare in first person, no equip burst). Their gimmick's hit effect stays
 -- (client/ClassFx). (4 Nov, owner, on the first class: "Remove the aura of the first class its very bad and just
 -- screen bullshit")
-Config.NO_AURA = { WeedPuller = true }
+Config.NO_AURA = {} :: { [string]: boolean } -- (4 Nov, later: the Weed Puller has its own small aura again, client/Auras)
+-- (4 Nov, owner: "remake elke aura met classes") the class auras remade from scratch in client/Auras; client/RarityFx's
+-- class auras and client/ClassVfx's body, fists, screen and burst switch off while this is on (false = the old ones)
+Config.AURAS_V2 = true
 
 Config.CLASS_VFX = {
 	WeedPuller = { main = Color3.fromRGB(150, 98, 52), second = Color3.fromRGB(255, 214, 60), glow = Color3.fromRGB(255, 240, 190), dark = Color3.fromRGB(60, 38, 20), corner = "rbxassetid://120045138286252" },

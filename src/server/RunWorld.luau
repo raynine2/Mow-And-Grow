@@ -669,14 +669,15 @@ function RunWorld.build()
 	else
 		warn("[RunWorld] camp ground: " .. tostring(nGround))
 	end
-	-- (4 Nov, owner: "i dont like how the buildings are mixed with the ground") each building on its own band of stones
-	local okFoot, nFoot = pcall(function()
-		return require(script.Parent.CampGround).footings(w, info)
+	-- (4 Nov, owner: "i dont like how the buildings are mixed with the ground") the buildings turned square with the
+	-- paving and the terraces (server/CampGround.squareUp)
+	local okSq, nSq, nCells = pcall(function()
+		return require(script.Parent.CampGround).squareUp(w, info)
 	end)
-	if okFoot then
-		print(("[RunWorld] %d buildings on their own footings"):format(nFoot))
+	if okSq then
+		print(("[RunWorld] %d buildings squared up with the ground (%d raised ground cells dropped)"):format(nSq, nCells))
 	else
-		warn("[RunWorld] footings: " .. tostring(nFoot))
+		warn("[RunWorld] square up: " .. tostring(nSq))
 	end
 	task.wait()
 	-- (4 Nov, owner: "everyhting looks messy different parts different styles ... fix it") the ground's pattern tiles

@@ -69,64 +69,32 @@ CampGround.TONES = TONES
 CampGround.BORDER = BORDER
 CampGround.BORDER_K = BORDER_K
 
--- THE BUILDINGS' FOOTINGS (owner, 4 Nov: "i dont like how the buildings are mixed with the ground"). The camp's paving
--- is laid square to the world, but the Tool Shop and the Garage stand turned (73 and -17 degrees, where the saved map
--- has them), so the stones ran in under their walls at a slant, half stones poking out along every wall, and the
--- Garage's side stood straight on the grass. Now each stands on its own border of stones, square to the building:
--- a band of kerb stones (the paving's look, CampGround.pave, in the darker edge tones) on a grout bed, from under its
--- walls to a couple of studs out, a hair above the paving so it lies over the stones it crosses; the Tool Shop's band
--- in front runs out past its porch steps as a little terrace. The paving stones it covers whole go.
--- Rectangles in the unit's "0Anchor" frame (-Z is the front): `inner` the band's inside edge (under the walls, outside
--- the room, measured in Studio), `outer` its outside edge. `forward`: the building first moves that many studs out of
--- its front, because its back stood in the raised ground of the meadow boss arena behind it (the Garage: its workbench
--- and deck inside that ground; 12 studs clears it, measured, and nothing stands there). Its prompt, pump and mower
--- spawn move with it.
+-- THE BUILDINGS SQUARE WITH THE GROUND (owner, 4 Nov: "i dont like how the buildings are mixed with the ground", and
+-- on a band of kerb stones round them, tried first: "het ziet er niet echt uit man die tegels om het gebouw"). The
+-- camp's paving and the world's terraces are square to the world, but the Tool Shop and the Garage stood turned (73
+-- and -17 degrees, where the saved map has them), so stones ran in under their walls at a slant and the terraces cut
+-- across their corners. Now each is turned about its middle to the nearest square angle (90 and 0), and the paving
+-- simply runs up to its walls in straight lines like a real square. Then:
+--   * paving stones well inside its walls go (they poked up through the floors);
+--   * where a corner still stands in a raised terrace (the shop's chimney corner; the world's ground is 8-stud
+--     cells), those cells drop to the camp's level, a clean notch square with the walls; the cells' small decorations
+--     come down with them, and a cell with anything else on it stays;
+--   * the Garage also moves 10 studs out of its front: its back, workbench and deck stood inside the raised ground of
+--     the meadow boss arena behind it (10 clears it, measured, and nothing stands there).
+-- Its prompts, pump and mower spawn move with it. The rest of the camp's pieces stood at the same slant (the bag stand
+-- at 163, the shredder at 73, its sell pad at -17): each turns about its own middle to the nearest square angle too.
+-- The saved map is untouched: CampGround.SQUARE = false undoes it all.
+-- `foot`: the building's footprint in its "0Anchor" frame (-Z is the front), measured in Studio.
 type Rect = { x0: number, x1: number, z0: number, z1: number }
-local FOOTINGS: { [string]: { inner: Rect, outer: Rect, forward: number? } } = {
-	["TOOL SHOP"] = { inner = { x0 = -24, x1 = 23.2, z0 = -10.6, z1 = 22 }, outer = { x0 = -30.2, x1 = 27.2, z0 = -17.7, z1 = 28.5 } },
-	Garage = { inner = { x0 = -9.8, x1 = 9.8, z0 = -9.2, z1 = 12.6 }, outer = { x0 = -13.2, x1 = 13.5, z0 = -11.2, z1 = 16.2 }, forward = 12 },
+CampGround.SQUARE = true
+local SQUARE_UP: { [string]: { yaw: number, forward: number?, foot: Rect } } = {
+	["TOOL SHOP"] = { yaw = 90, foot = { x0 = -28.5, x1 = 25.5, z0 = -16, z1 = 26.8 } },
+	Garage = { yaw = 0, forward = 10, foot = { x0 = -11.5, x1 = 11.8, z0 = -9.5, z1 = 14.5 } },
 }
-local KERB_H = 0.33 -- the kerb stones' height over the ground (the paving's are 0.3, their top plates 0.305)
-local BED_H = 0.312 -- the grout under them
-local STONE = 3.4 -- about the paving's size
-local GAP = 0.2
-
-local function footingPart(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3): Part
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Anchored = true
-	p.CanCollide = true
-	p.CanTouch = false
-	p.CastShadow = false
-	p.Material = Enum.Material.SmoothPlastic
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Size = size
-	p.CFrame = cf
-	p.Color = color
-	p.Parent = parent
-	return p
-end
-
--- One strip of the band: grout under the whole strip, kerb stones on it in rows and columns about a paving stone big.
-local function strip(parent: Instance, at: CFrame, x0: number, x1: number, z0: number, z1: number)
-	local sx, sz = x1 - x0, z1 - z0
-	if sx < 0.3 or sz < 0.3 then
-		return
-	end
-	footingPart(parent, "FootingBed", Vector3.new(sx, BED_H, sz), at * CFrame.new((x0 + x1) / 2, BED_H / 2, (z0 + z1) / 2), GROUT)
-	local nx, nz = math.max(1, math.floor(sx / STONE + 0.5)), math.max(1, math.floor(sz / STONE + 0.5))
-	local lx, lz = sx / nx, sz / nz
-	for i = 0, nx - 1 do
-		for j = 0, nz - 1 do
-			local cx, cz = x0 + (i + 0.5) * lx, z0 + (j + 0.5) * lz
-			local wp = at:PointToWorldSpace(Vector3.new(cx, 0, cz))
-			local face = TONES[1 + math.floor(hash(math.floor(wp.X / 3), math.floor(wp.Z / 3), 5) * #TONES)]:Lerp(BORDER, BORDER_K)
-			local s = footingPart(parent, "FootingStone", Vector3.new(lx - GAP, KERB_H, lz - GAP), at * CFrame.new(cx, KERB_H / 2, cz), face)
-			CampGround.pave(s, face)
-		end
-	end
-end
+-- units whose every model (with the loose parts nearest it) turns about its own pivot
+local SQUARE_PIECES = { "BAG STAND", "Shredder" }
+local CAMP_Y = 4.3 -- the camp's ground (the paving's beds)
+local CELL = 8
 
 -- Moves everything in `inst` by the world transform `delta` (models by their pivot, loose parts by their CFrame).
 local function moveTree(inst: Instance, delta: CFrame)
@@ -141,70 +109,263 @@ local function moveTree(inst: Instance, delta: CFrame)
 	end
 end
 
--- Lays every building's footing (after CampGround.apply). `info`: the run's (RunWorld.build), whose pump and mower
--- spawn positions move with a building moved forward. Returns how many footings were laid.
-function CampGround.footings(w: Instance, info: any?): number
-	if not CampGround.ON then
+local function inRect(at: CFrame, r: Rect, p: Vector3, grow: number): boolean
+	local l = at:PointToObjectSpace(p)
+	return l.X > r.x0 - grow and l.X < r.x1 + grow and l.Z > r.z0 - grow and l.Z < r.z1 + grow
+end
+
+-- Drops the raised ground cells under footprint `r` (frame `at`) to the camp's level. The world's ground is merged
+-- boxes ("Floor", grass on top, over "FloorSide", earth to the bottom) made of 8-stud cells: each box crossing the
+-- footprint is cut into runs of cells, the ones under it lowered. Returns how many cells dropped.
+local function notch(w: Instance, at: CFrame, r: Rect, keep: Instance): number
+	local ground = w:FindFirstChild("Ground")
+	if not ground then
 		return 0
+	end
+	local visuals = w:FindFirstChild("Visuals")
+	local sides: { BasePart } = {}
+	for _, p in ground:GetDescendants() do
+		if p:IsA("BasePart") and p.Name == "FloorSide" then
+			table.insert(sides, p)
+		end
+	end
+	local dropped = 0
+	for _, f in ground:GetDescendants() do
+		if not f:IsA("BasePart") or f.Name ~= "Floor" or f.Position.Y + f.Size.Y / 2 < CAMP_Y + 0.5 then
+			continue
+		end
+		local top = f.Position.Y + f.Size.Y / 2
+		local dh = top - CAMP_Y
+		local alongX = f.Size.X >= f.Size.Z
+		local len = if alongX then f.Size.X else f.Size.Z
+		local n = math.floor(len / CELL + 0.5)
+		if n < 1 then
+			continue
+		end
+		-- which cells drop (any of their corners or middle under the footprint, nothing but decorations on them)
+		local low = {}
+		local any = false
+		for k = 0, n - 1 do
+			local off = -len / 2 + (k + 0.5) * CELL
+			local c = f.Position + (if alongX then Vector3.new(off, 0, 0) else Vector3.new(0, 0, off))
+			local under = false
+			for _, d in { Vector3.zero, Vector3.new(-3.9, 0, -3.9), Vector3.new(3.9, 0, -3.9), Vector3.new(-3.9, 0, 3.9), Vector3.new(3.9, 0, 3.9) } do
+				if inRect(at, r, c + d, 0.5) then
+					under = true
+					break
+				end
+			end
+			if under then
+				local clear = true
+				for _, q in workspace:GetPartBoundsInBox(CFrame.new(c.X, top + 2, c.Z), Vector3.new(7.6, 3.4, 7.6)) do
+					if not q:IsDescendantOf(ground) and not q:IsDescendantOf(keep) and not (visuals and q:IsDescendantOf(visuals)) and q.Transparency < 1 then
+						local m = q:FindFirstAncestorOfClass("Model")
+						if not (m and m:FindFirstChildOfClass("Humanoid")) then
+							clear = false
+							break
+						end
+					end
+				end
+				low[k] = clear
+				any = any or clear
+			end
+		end
+		if not any then
+			continue
+		end
+		-- its earth below: the FloorSide with the same footprint
+		local side: BasePart? = nil
+		for _, q in sides do
+			if math.abs(q.Position.X - f.Position.X) < 0.05 and math.abs(q.Position.Z - f.Position.Z) < 0.05 and math.abs(q.Size.X - f.Size.X) < 0.05 and math.abs(q.Size.Z - f.Size.Z) < 0.05 then
+				side = q
+				break
+			end
+		end
+		-- cut into runs of cells, each run one box (and its earth), the dropped runs lower
+		local k = 0
+		while k < n do
+			local dropRun = low[k] == true
+			local k2 = k
+			while k2 + 1 < n and (low[k2 + 1] == true) == dropRun do
+				k2 += 1
+			end
+			local a0 = -len / 2 + k * CELL
+			local a1 = -len / 2 + (k2 + 1) * CELL
+			local mid = (a0 + a1) / 2
+			local runLen = a1 - a0
+			local shift = if alongX then Vector3.new(mid, 0, 0) else Vector3.new(0, 0, mid)
+			local down = if dropRun then dh else 0
+			for _, src in { f, side } do
+				if src then
+					local c = src:Clone()
+					local h = if src == f then src.Size.Y else src.Size.Y - down
+					local sy = if src == f then src.Position.Y - down else src.Position.Y - down / 2
+					c.Size = if alongX then Vector3.new(runLen, h, src.Size.Z) else Vector3.new(src.Size.X, h, runLen)
+					c.CFrame = CFrame.new(Vector3.new(src.Position.X, sy, src.Position.Z) + shift)
+					c.Parent = src.Parent
+				end
+			end
+			if dropRun then
+				dropped += k2 - k + 1
+				-- the small decorations on those cells come down too
+				if visuals then
+					local box = CFrame.new(f.Position.X + shift.X, top + 2, f.Position.Z + shift.Z)
+					local size = if alongX then Vector3.new(runLen - 0.1, 3.4, f.Size.Z - 0.1) else Vector3.new(f.Size.X - 0.1, 3.4, runLen - 0.1)
+					local moved = {}
+					for _, q in workspace:GetPartBoundsInBox(box, size) do
+						local m = q:FindFirstAncestorOfClass("Model")
+						local thing: Instance = if m and m:IsDescendantOf(visuals) then m else q
+						if q:IsDescendantOf(visuals) and not moved[thing] then
+							moved[thing] = true
+							if thing:IsA("Model") then
+								thing:PivotTo(thing:GetPivot() - Vector3.new(0, dh, 0))
+							elseif thing:IsA("BasePart") then
+								thing.CFrame -= Vector3.new(0, dh, 0)
+							end
+						end
+					end
+				end
+			end
+			k = k2 + 1
+		end
+		f:Destroy()
+		if side then
+			side:Destroy()
+		end
+	end
+	return dropped
+end
+
+type Move = { at: Vector3, r: number, delta: CFrame }
+
+-- The positions the run keeps in `info` (pumps, the mower spawn, the shredder's mouth...) follow the piece they belong
+-- to: each Vector3 or CFrame within reach of a moved piece's old middle takes the nearest one's move.
+local function shiftInfo(info: any, moves: { Move })
+	local seen = {}
+	local function nearest(p: Vector3): CFrame?
+		local best, bestD = nil, math.huge
+		for _, m in moves do
+			local d = (p - m.at).Magnitude
+			if d < m.r and d < bestD then
+				best, bestD = m.delta, d
+			end
+		end
+		return best
+	end
+	local function walk(t: any)
+		if seen[t] then
+			return
+		end
+		seen[t] = true
+		for k, v in t do
+			if k == "world" then
+				continue
+			end
+			if typeof(v) == "Vector3" then
+				local d = nearest(v)
+				if d then
+					t[k] = d * v
+				end
+			elseif typeof(v) == "CFrame" then
+				local d = nearest(v.Position)
+				if d then
+					t[k] = d * v
+				end
+			elseif type(v) == "table" then
+				walk(v)
+			end
+		end
+	end
+	walk(info)
+end
+
+-- Turns each model of a unit (with the loose parts nearest it) about its pivot to the nearest square angle.
+local function squarePieces(unit: Instance, moves: { Move })
+	local groups: { { pivot: CFrame, members: { Instance } } } = {}
+	for _, c in unit:GetChildren() do
+		if c:IsA("Model") then
+			table.insert(groups, { pivot = c:GetPivot(), members = { c } })
+		end
+	end
+	for _, c in unit:GetChildren() do
+		if c:IsA("BasePart") then
+			local best, bestD = nil, 12
+			for _, g in groups do
+				local d = (Vector3.new(c.Position.X, 0, c.Position.Z) - Vector3.new(g.pivot.X, 0, g.pivot.Z)).Magnitude
+				if d < bestD then
+					best, bestD = g, d
+				end
+			end
+			if best then
+				table.insert(best.members, c)
+			end
+		end
+	end
+	for _, g in groups do
+		local _, yaw = g.pivot:ToOrientation()
+		local turn = math.rad(math.round(math.deg(yaw) / 90) * 90) - yaw
+		if math.abs(turn) < 0.001 then
+			continue
+		end
+		local at = g.pivot.Position
+		local delta = CFrame.new(at) * CFrame.Angles(0, turn, 0) * CFrame.new(-at)
+		for _, m in g.members do
+			if m:IsA("Model") then
+				m:PivotTo(delta * m:GetPivot())
+			elseif m:IsA("BasePart") then
+				m.CFrame = delta * m.CFrame
+			end
+		end
+		table.insert(moves, { at = at, r = 14, delta = delta })
+	end
+end
+
+-- Squares every building up with the ground (after CampGround.apply). `info`: the run's (RunWorld.build), whose
+-- pump and mower spawn positions move with a building. Returns how many buildings and how many ground cells dropped.
+function CampGround.squareUp(w: Instance, info: any?): (number, number)
+	if not CampGround.ON or not CampGround.SQUARE then
+		return 0, 0
 	end
 	local hub = w:FindFirstChild("Hub")
-	local tiles = hub and hub:FindFirstChild("CampTiles")
 	if not hub then
-		return 0
+		return 0, 0
 	end
-	local n = 0
-	for unitName, f in FOOTINGS do
+	local tiles = hub:FindFirstChild("CampTiles")
+	local n, cells = 0, 0
+	local moves: { Move } = {}
+	for unitName, f in SQUARE_UP do
 		local unit = hub:FindFirstChild(unitName)
 		local anchor = unit and unit:FindFirstChild("0Anchor")
 		if not unit or not anchor or not anchor:IsA("BasePart") then
 			continue
 		end
-		if f.forward then
-			local was = anchor.Position
-			local delta = anchor.CFrame * CFrame.new(0, 0, -f.forward) * anchor.CFrame:Inverse()
-			moveTree(unit, delta)
-			if info then
-				local spawn = info.garageSpawn
-				if typeof(spawn) == "CFrame" and (spawn.Position - was).Magnitude < 40 then
-					info.garageSpawn = delta * spawn
-				end
-				for _, pump in info.pumps or {} do
-					if typeof(pump.pos) == "Vector3" and (pump.pos - was).Magnitude < 30 then
-						pump.pos = delta * pump.pos
-					end
-				end
-			end
-		end
-		local at = CFrame.new(anchor.Position.X, anchor.Position.Y, anchor.Position.Z) * anchor.CFrame.Rotation
-		local o, i = f.outer, f.inner
-		local folder = Instance.new("Folder")
-		folder.Name = "Footing"
-		-- the paving stones it covers whole go (their plates too); the ones it crosses stay, under its edge
+		local old = anchor.CFrame
+		local new = CFrame.new(old.Position) * CFrame.Angles(0, math.rad(f.yaw), 0) * CFrame.new(0, 0, -(f.forward or 0))
+		local delta = new * old:Inverse()
+		moveTree(unit, delta)
+		table.insert(moves, { at = old.Position, r = 40, delta = delta })
+		local at = CFrame.new(anchor.Position) * anchor.CFrame.Rotation
+		-- the paving stones well inside its walls go (and their plates)
 		for _, p in (if tiles then tiles:GetDescendants() else {}) do
-			if p:IsA("BasePart") and (p.Name == "Stone" or p.Name == "StoneTop") then
-				local inside = true
-				for _, k in { Vector3.new(-1, 0, -1), Vector3.new(1, 0, -1), Vector3.new(-1, 0, 1), Vector3.new(1, 0, 1) } do
-					local l = at:PointToObjectSpace(p.CFrame:PointToWorldSpace(p.Size / 2 * k))
-					if l.X < o.x0 or l.X > o.x1 or l.Z < o.z0 or l.Z > o.z1 then
-						inside = false
-						break
-					end
-				end
-				if inside then
-					p:Destroy()
-				end
+			if p:IsA("BasePart") and (p.Name == "Stone" or p.Name == "StoneTop") and inRect(at, f.foot, p.Position, -2) then
+				p:Destroy()
 			end
 		end
-		-- the band: front and back strips the full width, the sides between them
-		strip(folder, at, o.x0, o.x1, o.z0, i.z0)
-		strip(folder, at, o.x0, o.x1, i.z1, o.z1)
-		strip(folder, at, o.x0, i.x0, i.z0, i.z1)
-		strip(folder, at, i.x1, o.x1, i.z0, i.z1)
-		folder.Parent = unit
+		cells += notch(w, at, f.foot, unit)
 		n += 1
 		task.wait()
 	end
-	return n
+	for _, name in SQUARE_PIECES do
+		local unit = hub:FindFirstChild(name)
+		if unit then
+			squarePieces(unit, moves)
+			n += 1
+		end
+	end
+	if info then
+		shiftInfo(info, moves)
+	end
+	return n, cells
 end
 
 -- Returns how many stones were restyled.

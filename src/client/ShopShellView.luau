@@ -56,6 +56,7 @@ type View = {
 	jamb: { number }?,
 	ceiling: number?, -- (lodge parts reaching above this, in the anchor's frame, count as outside)
 	jambs: Folder?, -- (invisible blocks either side of the cabin's narrow door)
+	builtAt: CFrame?, -- (where the anchor was when the walls and jambs were made)
 }
 local views: { View } = {}
 for i, u in UNITS do
@@ -293,6 +294,24 @@ RunService:BindToRenderStep("ShopShellView", Enum.RenderPriority.Camera.Value + 
 		end
 		if typeof(s:GetAttribute("RoomMin")) ~= "Vector3" then
 			continue
+		end
+		-- (4 Nov: the run squares the buildings up after they're built, server/CampGround.squareUp) moved: the walls
+		-- and jambs are made again where it stands, and its pieces sorted again
+		if v.builtAt ~= a.CFrame then
+			if v.builtAt then
+				if v.walls then
+					v.walls:Destroy()
+				end
+				if v.jambs then
+					v.jambs:Destroy()
+				end
+				v.walls = wallsFor(v)
+				v.jambs = jambsFor(v)
+				v.out = {}
+				v.inside = nil
+				v.near = nil
+			end
+			v.builtAt = a.CFrame
 		end
 		local p = a.CFrame:PointToObjectSpace(cam)
 		local grow = if v.inside then MARGIN else -MARGIN

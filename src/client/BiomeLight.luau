@@ -103,7 +103,7 @@ local STYLE = {
 	ambientScale = 0.64, -- darker shade = more form
 	outdoorScale = 0.8,
 	brightnessScale = 0.95,
-	exposure = -0.25, -- the main fix for the burned-out bright surfaces
+	exposure = -0.3, -- the main fix for the burned-out bright surfaces (4 Nov: -0.25 -> -0.3)
 	sunTint = Color3.fromRGB(255, 214, 165), -- ColorShift_Top: warm golden light on the lit faces
 	sunTintKeep = 0.25, -- how much of the area's own tint goes into it
 	bounce = Color3.fromRGB(60, 70, 95), -- ColorShift_Bottom: a cool bounce under things
@@ -112,11 +112,14 @@ local STYLE = {
 	hazeOwnSky = 0.2, -- of the preset's haze when the place has its own sky (more washed the sky out)
 	densityOwnSky = 1.05,
 	skyDecay = Color3.fromRGB(110, 150, 220), -- the far fog's shade, pulled toward the sky's blue
-	glare = 0.4, -- a warm glow round the sun
+	glare = 0.25, -- a warm glow round the sun (4 Nov: 0.4 -> 0.25)
 	offset = 0.1,
-	bloom = 0.55,
-	bloomThreshold = 0.92,
-	bloomSize = 30,
+	-- (owner, 4 Nov: "turn down the glow overall to make the game look better": bloom 0.55 -> 0.3 of the area's, only
+	-- the brightest neon catches it (threshold 0.92 -> 0.96), a tighter halo (size 30 -> 22); sun rays at 60%)
+	bloom = 0.3,
+	bloomThreshold = 0.96,
+	bloomSize = 22,
+	sunRays = 0.6,
 	shadowSoftness = 0.16,
 	specular = 0.55,
 }
@@ -146,7 +149,7 @@ local function apply(l: Look)
 	atmosphere.Density = if ownSky then l.density * STYLE.densityOwnSky else l.density
 	atmosphere.Offset = STYLE.offset
 	atmosphere.Glare = STYLE.glare
-	rays.Intensity = l.sunRays
+	rays.Intensity = l.sunRays * STYLE.sunRays
 	bloom.Intensity = l.bloom * STYLE.bloom
 	bloom.Threshold = STYLE.bloomThreshold
 	bloom.Size = STYLE.bloomSize

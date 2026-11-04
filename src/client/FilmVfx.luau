@@ -53,6 +53,27 @@ local function fluffy(m: Instance)
 	end
 end
 
+-- (owner, 4 Nov: "turn down the glow overall ... the cutscenes are blinding") every film / aura effect played here
+-- glows at most this much: its layers at LightEmission 0.55 and Brightness 2 at most, its lights at Brightness 2.
+local GLOW_MAX, BRIGHT_MAX = 0.55, 2
+local function soften(m: Instance)
+	for _, d in m:GetDescendants() do
+		if d:IsA("ParticleEmitter") or d:IsA("Beam") or d:IsA("Trail") then
+			local e = d :: any
+			if e.LightEmission > GLOW_MAX then
+				e.LightEmission = GLOW_MAX
+			end
+			if e.Brightness > BRIGHT_MAX then
+				e.Brightness = BRIGHT_MAX
+			end
+		elseif d:IsA("Light") then
+			if d.Brightness > BRIGHT_MAX then
+				d.Brightness = BRIGHT_MAX
+			end
+		end
+	end
+end
+
 -- The plugin's Emit Module, initialised once (nil if it's missing or broken).
 local function emitApi(): any
 	if api or failed then
@@ -315,6 +336,7 @@ function FilmVfx.play(name: string, at: CFrame | Vector3, opts: Opts?): Model?
 	end
 	local m = t:Clone()
 	fluffy(m)
+	soften(m)
 	trim(m, FilmVfx.budget())
 	resize(m, o.scale or 1)
 	if o.color then

@@ -3,33 +3,36 @@
 -- fades 2.5 s after you stop, so the class burns hotter the longer the streak. Aura, built from ForgeGUI props and the
 -- VFX Forge layers in Loop_LawnLegend:
 --   - the card's crown on your head: the ForgeGUI leaf-and-rose wreath (ll_wreath, gold clover at the front) lying on
---     your head; it drops on with a spin when the aura forms and its roses burn with the streak
---   - the same wreath, big and hollow, as a halo 2 studs behind you and 1.5 up, semi-transparent (you show through it,
---     and through its hollow middle); fire climbs it as the streak heats (bottom, then sides, then the top), a thin gold
---     ring round it, a warm glow in it seen from the front. Your own aura: fainter still while the camera is behind you.
---   - wings of fire: six flame feathers a side, curved ribbons of flowing fire running crimson at your shoulder to gold
---     at the tip, a gold core in each, fire burning along them; they unfold when the aura forms, beat slowly, and grow
---     longer, wider and brighter with the streak (~7 studs tip to tip cold, ~9 at +60%)
---   - a fire spiral: a double helix of flames climbing round you to twice your height, each strand trailing fire
---   - the ForgeGUI rose-wreath emblem under you; three crisp line rings over it (a gold rim, a rose-red dashed ring and
---     a gold dashed ring round the fire heart, turning opposite ways)
---   - the Hot Streak meter: twelve 3D roses set round the emblem's wreath, dark buds that ignite one per +5% (a lit
---     rose glows crimson and burns)
---   - embers and rose petals, a ring of fire round your feet, burning footsteps when you run, a heartbeat (lub-dub)
+--     your head; it drops on with a spin when the aura forms and burns with the streak
+--   - the same wreath as a big halo (7 studs), high over and behind your head (above the follow camera's line to
+--     you, so it never covers you), tipped back a little; real fire climbs it as the streak heats (bottom, sides, top)
+--   - wings of fire: two layered rows of the feathered wing art on each shoulder, crimson #C8102E to orange at the
+--     back, orange to gold #FFB300 in front, their colours flickering, with real flames burning along every feather of
+--     the back row; they unfold when the aura forms, beat slowly and spread wider with the streak
+--   - a fire spiral: a double helix of beams round you to twice your height (crimson at the bottom, gold at the top,
+--     turning), with flames running up each strand
+--   - the ForgeGUI rose-wreath emblem under you, three crisp line rings over it (a gold rim, a rose-red dashed ring and
+--     a gold dashed ring round the fire heart, turning opposite ways); the heartbeat sends a crimson ring then a gold
+--     one racing out from its rim
+--   - the Hot Streak meter: twelve embers set round the emblem's wreath, dull sparks until the streak lights them, one
+--     per +5%: a lit one burns with a small flame
+--   - embers and rose petals, a ring of fire round your feet, burning footsteps when you run
 -- Rose red, leaf green, gold and flame: the card's own colours (its pink backdrop is the Mythic rarity's colour, so it
--- isn't used). Fire stays crimson-to-gold, not white: low light emission, darker cores, no starburst rays.
+-- isn't used). All the fire is recoloured gold-to-crimson with low light emission so it stays crimson and gold on a
+-- sunny lawn instead of blooming to white.
 return function(H)
 	local K, T, rgb, ns, ease, WHITE = H.K, H.T, H.rgb, H.ns, H.ease, H.WHITE
 	local FX = H.FX
 	local E = H.E
 	local LOOP = "Loop_LawnLegend"
-	local CRIM = rgb(176, 16, 42)
+	local CRIM = rgb(200, 16, 46) -- #C8102E
 	local ROSE = rgb(222, 34, 50)
-	local FLAME = rgb(255, 120, 30)
-	local GOLD = rgb(255, 196, 60)
-	local GOLD_L = rgb(255, 236, 160)
-	local LEAF = rgb(70, 160, 60)
-	local BUD = rgb(120, 20, 34) -- an unlit rose
+	local FLAME = rgb(255, 110, 20)
+	local GOLD = rgb(255, 179, 0) -- #FFB300
+	local GOLD_L = rgb(255, 214, 110)
+	local EMBER = rgb(150, 34, 20)
+	-- every flame: gold where it's born, cooling to flame orange and crimson (no white core)
+	local FIRE = K.seq(GOLD, FLAME, CRIM)
 
 	-- the streak, 0..60 (+% power)
 	local function streakOf(f): number
@@ -70,6 +73,23 @@ return function(H)
 			table.insert(into, e)
 		end
 	end
+	-- a Forge fire layer recoloured so it keeps its colour in daylight (low light emission, capped brightness)
+	local function fire(list: { ParticleEmitter }, glow: number?): { ParticleEmitter }
+		for _, e in list do
+			e.Color = FIRE
+			e.LightEmission = glow or 0.4
+			e.Brightness = 1.3
+		end
+		return list
+	end
+	local function sparks(list: { ParticleEmitter }, colors: ColorSequence): { ParticleEmitter }
+		for _, e in list do
+			e.Color = colors
+			e.LightEmission = 0.5
+			e.Brightness = 1.4
+		end
+		return list
+	end
 
 	return function()
 		local a = H.aura(H.RANK.Mythic, ROSE)
@@ -78,8 +98,6 @@ return function(H)
 			streak = streakOf(f)
 			heat += (streak / 60 - heat) * 0.08
 		end)
-		-- your own aura with the camera behind you: the big pieces behind you go fainter (0..1, set by a job below)
-		local behind = false
 
 		-- the ground: the ForgeGUI rose-wreath emblem (leaves, red roses, the clover, a heart of fire) turning slowly, and
 		-- three crisp line rings over it (Sol's RNG look): a gold rim, a rose-red dashed ring outside it turning one way,
@@ -87,27 +105,59 @@ return function(H)
 		local EMB = 15
 		local EMB_SPIN = -0.05
 		H.sigil(a, EMB, T.embLawnLegend, WHITE, 0.2, EMB_SPIN, 0.12, 0.9, 1.05)
-		H.glowRing(a, EMB * 0.5, GOLD, 0.42, 0, 0.15, 1.15)
-		K.groundRing(a, EMB * 0.5 + 0.85, 0.13, ROSE, 1.6, 0.4, 0.35, true, 0.16)
-		K.groundRing(a, EMB * 0.27, 0.11, GOLD, 1.6, 0.45, -0.55, true, 0.17)
+		H.glowRing(a, EMB * 0.5, GOLD, 0.42, 0, 0.15, 1.1)
+		K.groundRing(a, EMB * 0.5 + 0.85, 0.13, ROSE, 1.5, 0.4, 0.35, true, 0.16)
+		K.groundRing(a, EMB * 0.27, 0.11, GOLD, 1.5, 0.45, -0.55, true, 0.17)
 
-		-- the Hot Streak meter: twelve roses set round the emblem's wreath (turning with it), dark buds on a pair of leaves
-		-- until the streak lights them, one per +5%: a lit rose glows crimson and burns
-		local ROSE_R = EMB * 0.37
-		local roses, roseFire = {}, {}
+		-- the heartbeat's rings: a crimson ring (lub) then a gold one (dub) racing out from the emblem's rim and fading
+		local beats = {}
+		for i, c in { CRIM, GOLD } do
+			local p, imgs = H.plate(a.model, 1, T.ringCrisp, c, 1, false, 1.2)
+			local lift = 0.19 + 0.01 * i
+			K.move(a, p, function(f)
+				return CFrame.new(f.feet + Vector3.new(0, lift, 0))
+			end)
+			beats[i] = { p = p, imgs = imgs, t0 = -99, done = true }
+		end
+		local function beat(i: number, t: number)
+			beats[i].t0 = t
+			beats[i].done = false
+		end
+		H.job(a, function(self, f)
+			for _, b in beats do
+				if not b.done then
+					local k = (f.t - b.t0) / 0.85
+					if k >= 1 then
+						b.done = true
+						for _, img in b.imgs do
+							img.ImageTransparency = 1
+						end
+					else
+						local r = EMB * 0.5 + 6.5 * (1 - (1 - k) ^ 3)
+						local s = r * 2 / 0.92
+						b.p.Size = Vector3.new(s, 0.05, s)
+						for _, img in b.imgs do
+							img.ImageTransparency = 0.15 + 0.85 * k
+						end
+					end
+				end
+			end
+		end)
+
+		-- the Hot Streak meter: twelve embers set round the emblem's wreath (turning with it): dull dark-red sparks until
+		-- the streak lights them, one per +5%; a lit one burns with a small flame and throws sparks
+		local SLOT_R = EMB * 0.37
+		local slotFire, slotSparks = {}, {}
 		for i = 1, 12 do
 			local th = (i - 1) / 12 * math.pi * 2
-			local head = H.ellipsoid(a.model, Vector3.new(0.85, 0.62, 0.85), BUD, Enum.Material.SmoothPlastic)
-			local leaves = H.ellipsoid(a.model, Vector3.new(1.35, 0.12, 0.5), LEAF, Enum.Material.SmoothPlastic)
-			H.rig(a, function(f): CFrame
-				return CFrame.new(f.feet) * CFrame.Angles(0, f.t * EMB_SPIN + th, 0) * CFrame.new(ROSE_R, 0, 0)
-			end, {
-				{ head, CFrame.new(0, 0.45, 0) },
-				{ leaves, CFrame.new(0, 0.2, 0) * CFrame.Angles(0, math.rad(90), 0) },
-			})
-			roses[i] = head
-			roseFire[i] = H.layer(a, LOOP, "Fire", head, false, 0.45)
-			setRate(a, roseFire[i], 0)
+			local p = K.piece(a.model, Vector3.new(0.5, 0.3, 0.5))
+			K.move(a, p, function(f)
+				return CFrame.new(f.feet) * CFrame.Angles(0, f.t * EMB_SPIN + th, 0) * CFrame.new(SLOT_R, 0.35, 0)
+			end)
+			slotFire[i] = fire(H.layer(a, LOOP, "Fire", p, false, 0.42))
+			setRate(a, slotFire[i], 0)
+			slotSparks[i] = sparks(H.layer(a, LOOP, "Embers", p, false, 0.6), K.seq(rgb(190, 60, 30), EMBER))
+			setRate(a, slotSparks[i], 0.7)
 		end
 
 		-- the crown (the card's): the ForgeGUI leaf-and-rose wreath lying on your head, its front face up and its gold
@@ -127,39 +177,27 @@ return function(H)
 			return CFrame.new(f.head + Vector3.new(0, y, 0)) * f.yaw * CFrame.Angles(0, (1 - k) * 5 + math.rad(5) * math.sin(f.t * 0.7), 0) * LIE
 		end)
 		K.move(a, crown, crownCF)
-		local crownGlint = E(crown, { tex = T.glint, flip = 4, colors = K.seq(WHITE, GOLD_L), rate = 1, life = { 0.4, 0.6 }, speed = { 0.2, 0.4 }, size = 0.45, spread = 180, light = 1, bright = 1.3 })
+		local crownGlint = E(crown, { tex = T.glint, flip = 4, colors = K.seq(WHITE, GOLD_L), rate = 1, life = { 0.4, 0.6 }, speed = { 0.2, 0.4 }, size = 0.4, spread = 180, light = 0.6, bright = 1.2 })
 		K.addEmitter(a, crownGlint)
 		H.detail(a, crownGlint)
-		local crownFire = H.layer(a, LOOP, "Fire", crown, false, 0.4)
-		local crownFlare = H.layer(a, LOOP, "Flare", crown, false, 0.25)
+		local crownFire = fire(H.layer(a, LOOP, "Fire", crown, false, 0.35))
+		local crownFlare = fire(H.layer(a, LOOP, "Flare", crown, false, 0.25))
 
-		-- the halo: the same wreath, big and hollow, 2 studs behind you and 1.5 up, semi-transparent (you show through it
-		-- and through its middle), a thin gold ring round it and a warm glow in it (seen from the front only). Fire climbs
-		-- it as the streak heats: its bottom burns first, then its sides, then its top. Rose petals drift off it. It rises
-		-- out of the ground when the aura forms.
-		local HALO = 5.8
+		-- the halo: the same wreath, big (7 studs), high over and behind your head (its lowest leaves level with the top
+		-- of your head, above the follow camera's line to you, so it never covers you), tipped back a little. Real fire
+		-- climbs it as the streak heats: its bottom burns first, then its sides, then its top. Rose petals drift off it.
+		-- It rises out of the ground when the aura forms. Your own aura: a touch fainter (0.3) while the camera is behind
+		-- you.
+		local HALO = 7
 		local halo = H.prop(a.body, "ll_wreath", HALO)
 		local hs = H.propSize("ll_wreath", HALO)
-		if halo:IsA("MeshPart") then
-			halo.Transparency = 0.35
-		end
 		local haloCF = perFrame(function(f): CFrame
 			local k = ease((f.t - a.born - 0.25) / 0.95)
 			local rise = f.head.Y - f.root.Position.Y -- (the top of your head over your root)
-			local y = rise + 1.5 + 0.12 * math.sin(f.t * 1.1) - 8 * (1 - k)
-			return f.root * CFrame.new(0, y, 2) * CFrame.Angles(math.rad(-8), 0, math.rad(2) * math.sin(f.t * 0.6))
+			local y = rise + hs.Y * 0.5 + 0.1 + 0.1 * math.sin(f.t * 1.1) - 8 * (1 - k)
+			return f.root * CFrame.new(0, y, 2.2) * CFrame.Angles(math.rad(15), 0, math.rad(2) * math.sin(f.t * 0.6))
 		end)
 		K.move(a, halo, haloCF)
-		local RING_R = hs.X * 0.56
-		local ring, ringImgs = H.plate(a.body, RING_R * 2 / 0.92, T.ringCrisp, GOLD, 0.45, true, 1.2)
-		K.move(a, ring, function(f)
-			return haloCF(f) * CFrame.new(0, 0, hs.Z * 0.5 + 0.2) * H.UPRIGHT
-		end)
-		local warm, _, warmGuis = H.plate(a.body, RING_R * 2.1, FX.glow, FLAME, 0.74, false, 1)
-		K.move(a, warm, function(f)
-			return haloCF(f) * CFrame.new(0, 0, hs.Z * 0.5 + 0.45) * CFrame.Angles(math.rad(-90), 0, 0)
-		end)
-		H.detail(a, warmGuis[1])
 		-- (the fire's holders on the wreath: its bottom, its two sides, its top)
 		local BAND = hs.X * 0.39 -- (the middle of the wreath's band, from its centre)
 		local function onHalo(size: Vector3, off: CFrame): BasePart
@@ -169,188 +207,203 @@ return function(H)
 			end)
 			return p
 		end
-		local haloLow = onHalo(Vector3.new(BAND * 1.3, 0.5, 0.4), CFrame.new(0, -BAND * 0.92, 0))
+		local haloLow = onHalo(Vector3.new(BAND * 1.3, 0.5, 0.5), CFrame.new(0, -BAND * 0.92, 0))
 		local haloSides = {
-			onHalo(Vector3.new(0.5, BAND * 1.1, 0.4), CFrame.new(-BAND * 0.95, -0.1, 0)),
-			onHalo(Vector3.new(0.5, BAND * 1.1, 0.4), CFrame.new(BAND * 0.95, -0.1, 0)),
+			onHalo(Vector3.new(0.5, BAND * 1.1, 0.5), CFrame.new(-BAND * 0.95, -0.1, 0)),
+			onHalo(Vector3.new(0.5, BAND * 1.1, 0.5), CFrame.new(BAND * 0.95, -0.1, 0)),
 		}
-		local haloTop = onHalo(Vector3.new(BAND * 1.2, 0.5, 0.4), CFrame.new(0, BAND * 0.92, 0))
-		local fireLow = H.layer(a, LOOP, "Fire", haloLow, false, 0.9)
+		local haloTop = onHalo(Vector3.new(BAND * 1.2, 0.5, 0.5), CFrame.new(0, BAND * 0.92, 0))
+		local fireLow = fire(H.layer(a, LOOP, "Fire", haloLow, false, 1.9))
 		local fireSides = {}
 		for _, p in haloSides do
-			join(fireSides, H.layer(a, LOOP, "Fire", p, false, 0.85))
+			join(fireSides, fire(H.layer(a, LOOP, "Fire", p, false, 1.7)))
 		end
-		local fireTop = H.layer(a, LOOP, "Fire", haloTop, false, 0.8)
-		local haloFlare = H.layer(a, LOOP, "Flare", haloLow, false, 0.55)
-		local haloPetals = H.layer(a, LOOP, "Petals", halo, false, 1.1)
-		setRate(a, haloPetals, 2)
+		local fireTop = fire(H.layer(a, LOOP, "Fire", haloTop, false, 1.5))
+		local haloFlare = fire(H.layer(a, LOOP, "Flare", haloLow, false, 0.5))
+		local haloPetals = H.layer(a, LOOP, "Petals", halo, false, 1)
+		setRate(a, haloPetals, 1.5)
 		for _, e in haloPetals do
 			H.detail(a, e)
 		end
 
-		-- wings of fire: six flame feathers a side fanned out from your shoulder blades (lifted, pushed back, starting
-		-- clear of your back), each a curved ribbon of flowing fire (crimson at the root to gold at the tip, fading out at
-		-- the tip like a flame's tongue) with a thin gold core and fire burning along it. They unfold when the aura forms,
-		-- beat slowly, and grow longer, wider and brighter with the streak.
-		local FEATHERS = { { 76, 2.7 }, { 56, 3.4 }, { 36, 3.8 }, { 16, 3.6 }, { -4, 3.0 }, { -24, 2.4 } } -- (degrees up, length)
-		local INNER = 0.55 -- (each feather starts this far out from its wing's root)
-		local BEND = 0.35 -- (each feather leaves the root sideways and sweeps up: its curve, as a share of its length)
-		local RIB_T = ns(0, 0.4, 0.12, 0.12, 0.65, 0.18, 1, 0.92)
-		local RIB_T_BACK = ns(0, 0.75, 0.12, 0.5, 0.65, 0.55, 1, 0.95)
-		local CORE_T = ns(0, 0.5, 0.2, 0.25, 0.8, 0.6, 1, 1)
-		local CORE_T_BACK = ns(0, 0.8, 0.2, 0.6, 0.8, 0.8, 1, 1)
-		local function wingCF(f, side: number): CFrame
+		-- wings of fire: two layered rows of the feathered wing art on each shoulder (a big back row shaded crimson to
+		-- orange, a smaller front row shaded orange to gold, fanned a little lower), their colours flickering, and on every
+		-- feather of the back row a line of real flames (the Forge fire, locked to the feather so the wing keeps its shape
+		-- while it burns). Lifted to the shoulders, set back and spread sideways (clear of you from behind); they unfold
+		-- when the aura forms, beat slowly, and spread wider with the streak.
+		local WING = 6.2 -- (the back row's art square: the wing fills about 0.85 of its width)
+		local FRONT_ROW = 0.78 -- (the front row's size, as a share of the back row's)
+		local wingS = WING -- (the back row's size now: grows with the streak)
+		local function wingCF(f, side: number, row: number): CFrame
 			local k = ease((f.t - a.born - 0.3) / 0.9)
-			-- (folded back along you at first; open, they sweep back only a little)
-			local flap = math.rad(12 + 76 * (1 - k)) + math.rad(6) * math.sin(f.t * 2.1)
-			local lift = math.rad(4) * math.sin(f.t * 2.1 + 0.7)
-			return f.root * CFrame.new(side * 0.5, 1.3, 0.85) * CFrame.Angles(0, -side * flap, 0) * CFrame.Angles(0, 0, side * lift)
+			local flap = math.rad(8) + math.rad(7) * math.sin(f.t * 2.1 + row * 0.5) + math.rad(75) * (1 - k)
+			local s = if row == 1 then wingS else wingS * FRONT_ROW
+			local tilt = math.rad(if row == 1 then 12 else -4) * k
+			-- (the art's shoulder joint sits 0.43 of its width from its centre: it's put at your shoulder blade)
+			return f.root * CFrame.new(side * 0.45, 1.3, if row == 1 then 1.05 else 0.85) * CFrame.Angles(0, -side * flap, side * tilt) * CFrame.new(side * s * 0.43, 0.15 * s / WING, 0)
 		end
-		local feathers, wingFire, rootFire, wingEmbers = {}, {}, {}, {}
-		for _, side in { -1, 1 } do
-			local wcf = perFrame(function(f): CFrame
-				return wingCF(f, side)
+		local rows = {}
+		local wingPlates, grads = {}, {}
+		for row = 1, 2 do
+			local L = perFrame(function(f): CFrame
+				return wingCF(f, -1, row)
 			end)
-			local hub = K.piece(a.body, Vector3.new(0.2, 0.2, 0.2))
-			K.move(a, hub, wcf)
-			for _, fd in FEATHERS do
-				local ang, len = math.rad(fd[1]), fd[2]
-				local dir = Vector3.new(side * math.cos(ang), math.sin(ang), 0)
-				local a0 = H.att(hub, dir * INNER)
-				local a1 = H.att(hub, dir * len)
-				local fe = { side = side, dir = dir, len = len, L = len, a1 = a1 }
-				-- (the flame ribbon: flowing fire along it, and its gold core on top)
-				fe.ribbon = H.beam(a0, a1, { colors = K.seq(CRIM, ROSE, FLAME, GOLD), w0 = 0.8, w1 = 0.14, trans = RIB_T, light = 0.35, bright = 1.05, tex = T.energy, texLen = 2.4, texSpeed = 1.4, segments = 10, curve0 = side * BEND * len, curve1 = 0 })
-				fe.core = H.beam(a0, a1, { colors = K.seq(FLAME, GOLD, GOLD_L), w0 = 0.22, w1 = 0.04, trans = CORE_T, light = 0.7, bright = 1.1, segments = 10, curve0 = side * BEND * len, curve1 = 0, zoff = 0.05 })
-				-- (the fire along the feather: a box lying along its bow, its local Y kept pointing up on both wings)
-				local holder = K.piece(a.body, Vector3.new(len * 0.7, 0.45, 0.35))
-				local turn = if side > 0 then CFrame.Angles(0, 0, ang) else CFrame.Angles(0, math.pi, 0) * CFrame.Angles(0, 0, ang)
-				K.move(a, holder, function(f)
-					local mid = dir * (INNER + fe.L) * 0.5 + Vector3.new(side * 0.375 * BEND * fe.L, 0, 0)
-					return wcf(f) * CFrame.new(mid) * turn
-				end)
-				join(wingFire, H.layer(a, LOOP, "WingFire", holder, false, 0.75 + 0.15 * len / 3.8))
-				table.insert(feathers, fe)
+			local R = perFrame(function(f): CFrame
+				return wingCF(f, 1, row)
+			end)
+			local function at(f, side: number): CFrame
+				return if side < 0 then L(f) else R(f)
 			end
-			local rootBox = K.piece(a.body, Vector3.new(1.4, 1.8, 0.4))
-			K.move(a, rootBox, function(f)
-				return wcf(f) * CFrame.new(side * 1.1, 0.5, 0)
-			end)
-			join(rootFire, H.layer(a, LOOP, "Fire", rootBox, false, 0.85))
-			local span = K.piece(a.body, Vector3.new(3.2, 3.4, 0.4))
+			rows[row] = at
+			local plates = H.wings(a, T.wingBladeL, T.wingBladeR, WHITE, if row == 1 then WING else WING * FRONT_ROW, 1.05, at)
+			for _, p in plates do
+				table.insert(wingPlates, { p = p, k = if row == 1 then 1 else FRONT_ROW })
+				local gui = p:FindFirstChildOfClass("SurfaceGui")
+				local img = gui and gui:FindFirstChildOfClass("ImageLabel")
+				if img then
+					local g = Instance.new("UIGradient")
+					g.Color = if row == 1 then K.seq(CRIM, ROSE, FLAME) else K.seq(FLAME, GOLD, GOLD)
+					g.Rotation = if img.Image == T.wingBladeL then 135 else 45
+					g.Transparency = if row == 1 then ns(0, 0, 0.7, 0.05, 1, 0.3) else ns(0, 0.15, 1, 0.4)
+					g.Parent = img
+					table.insert(grads, g)
+				end
+			end
+		end
+		-- (the colours flicker: each gradient's band shifts a little, all out of step)
+		H.job(a, function(self, f)
+			for i, g in grads do
+				g.Offset = Vector2.new(0.05 * math.sin(f.t * 9 + i * 1.7), 0.06 * math.sin(f.t * 6.5 + i * 2.3))
+			end
+		end)
+		-- (the flames along each back-row feather: from its root on the wing's arm to its tip, in shares of the art's
+		-- size, for the left wing; the right wing mirrors them)
+		local FEATHERS = { { 0.4, 0.02, 0.36, -0.2 }, { 0.25, 0.17, 0.2, -0.19 }, { 0.08, 0.3, 0.03, -0.17 }, { -0.1, 0.37, -0.14, -0.14 }, { -0.28, 0.37, -0.3, -0.1 }, { -0.42, 0.33, -0.46, -0.06 } }
+		local wingFire, wingEmbers = {}, {}
+		for _, side in { -1, 1 } do
+			for _, fd in FEATHERS do
+				local x0, y0, x1, y1 = fd[1], fd[2], fd[3], fd[4]
+				local mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+				local len = math.sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2)
+				local turn = CFrame.Angles(0, 0, -side * math.atan2(y1 - y0, x1 - x0))
+				local p = K.piece(a.body, Vector3.new(len * WING * 0.9, 0.3, 0.3))
+				K.move(a, p, function(f)
+					return rows[1](f, side) * CFrame.new(-side * mx * wingS, my * wingS, 0) * turn
+				end)
+				for _, e in fire(H.layer(a, LOOP, "WingFire", p, false, 1.5)) do
+					e.LockedToPart = true
+					e.Speed = NumberRange.new(0.3, 0.8)
+					table.insert(wingFire, e)
+				end
+			end
+			local span = K.piece(a.body, Vector3.new(WING * 0.7, WING * 0.35, 0.3))
 			K.move(a, span, function(f)
-				return wcf(f) * CFrame.new(side * 2.4, 0.9, 0)
+				return rows[1](f, side) * CFrame.new(0, 0.08 * wingS, 0)
 			end)
-			local we = H.layer(a, LOOP, "Embers", span, false, 0.9)
+			local we = sparks(H.layer(a, LOOP, "Embers", span, false, 0.8), K.seq(GOLD_L, FLAME))
 			for _, e in we do
 				H.detail(a, e)
 			end
 			join(wingEmbers, we)
 		end
 
-		-- the fire spiral: a double helix of fire climbing round you from your feet to twice your height (wide at the
-		-- bottom, narrowing up). Each strand is two flames half a climb apart, each trailing a ribbon of fire (gold at its
-		-- head, crimson at its tail) and shedding flames, so the strands read nearly whole. A ribbon thins to nothing at
-		-- the top before its flame starts again at the bottom. It rises out of the ground when the aura forms and burns
-		-- wider with the streak.
-		local SPIRAL_H, TURNS, PERIOD = 10, 2, 2.1
-		local riders, riderFire = {}, {}
-		for i = 1, 4 do
-			local p = K.piece(a.body, Vector3.new(0.35, 0.35, 0.35))
-			local tr = K.trail(p, Vector3.new(0, 0.4, 0), Vector3.new(0, -0.4, 0), K.seq(GOLD_L, GOLD, FLAME, ROSE, CRIM), 0.85, 0.6)
-			K.bright(tr, 1.25)
-			tr.Enabled = false -- (switched on once the aura is in place, so no streak runs in from where it was built)
-			local strand = (i - 1) % 2
-			local phase = math.floor((i - 1) / 2) * 0.5
-			local function uOf(f): number
-				return ((f.t - a.born) / PERIOD + phase) % 1
-			end
-			K.move(a, p, function(f)
-				local u = uOf(f)
-				local k = ease((f.t - a.born - 0.15) / 1.1)
-				local r = (2.9 - 0.9 * u) * (0.35 + 0.65 * k)
-				local th = u * TURNS * math.pi * 2 + strand * math.pi
-				return CFrame.new(f.feet + Vector3.new(math.cos(th) * r, (0.25 + u * SPIRAL_H) * k, math.sin(th) * r))
-			end)
-			join(riderFire, H.layer(a, LOOP, "Fire", p, false, 0.7))
-			riders[i] = { trail = tr, a0 = tr.Attachment0, a1 = tr.Attachment1, uOf = uOf }
+		-- the fire spiral: a double helix of fire round you from your feet to twice your height (wide at the bottom,
+		-- narrowing up), each strand a ribbon of beams running crimson at the bottom through flame orange to gold at the
+		-- top and fading out there, the whole helix turning round you; a flame runs up each strand twice over, shedding
+		-- fire. It rises out of the ground when the aura forms and burns wider with the streak.
+		local SPIRAL_H, TURNS, SEGS, PERIOD = 10, 2, 28, 2.1
+		local helix = H.feetPiece(a, Vector3.new(0.2, 0.2, 0.2), 0.25, 1.3)
+		local function hpos(u: number, strand: number): Vector3
+			local th = u * TURNS * math.pi * 2 + strand * math.pi
+			local r = 2.8 - 1.1 * u
+			return Vector3.new(math.cos(th) * r, u * SPIRAL_H, math.sin(th) * r)
 		end
-		local trailsOn, lastPos, lastLife = false, Vector3.zero, -1
+		local function hue(u: number): Color3
+			return if u < 0.5 then CRIM:Lerp(FLAME, u * 2) else FLAME:Lerp(GOLD, u * 2 - 1)
+		end
+		local helixAtts, helixBeams = {}, {}
+		for strand = 0, 1 do
+			local prev = H.att(helix, hpos(0, strand))
+			table.insert(helixAtts, { at = prev, u = 0, strand = strand })
+			for i = 1, SEGS do
+				local u0, u1 = (i - 1) / SEGS, i / SEGS
+				local at1 = H.att(helix, hpos(u1, strand))
+				table.insert(helixAtts, { at = at1, u = u1, strand = strand })
+				local b = H.beam(prev, at1, { colors = ColorSequence.new(hue(u0), hue(u1)), w0 = 0.38 * (1 - 0.5 * u0), w1 = 0.38 * (1 - 0.5 * u1), trans = NumberSequence.new(0.3 + 0.65 * u0 ^ 3, 0.3 + 0.65 * u1 ^ 3), light = 0.5, bright = 1.2, segments = 2 })
+				table.insert(helixBeams, { b = b, u0 = u0, u1 = u1 })
+				prev = at1
+			end
+		end
+		local helixK = -1
 		H.job(a, function(self, f)
-			local here = f.root.Position
-			local jumped = (here - lastPos).Magnitude > 30 -- (a teleport: wipe the ribbons rather than draw one across)
-			lastPos = here
-			if not trailsOn and f.t - self.born > 0.2 then
-				trailsOn = true
-				for _, r in riders do
-					r.trail.Enabled = true
+			local k = ease((f.t - self.born - 0.15) / 1.1)
+			if k ~= helixK then
+				helixK = k
+				for _, h in helixAtts do
+					local p = hpos(h.u, h.strand)
+					h.at.Position = Vector3.new(p.X * (0.35 + 0.65 * k), p.Y * math.max(0.02, k), p.Z * (0.35 + 0.65 * k))
 				end
-			end
-			local life = 0.85 - 0.45 * (1 - f.calm) -- (shorter while you run)
-			local setLife = math.abs(life - lastLife) > 0.03
-			if setLife then
-				lastLife = life
-			end
-			local wk = 0.85 + 0.45 * heat
-			for _, r in riders do
-				if jumped then
-					r.trail:Clear()
-				end
-				if setLife then
-					r.trail.Lifetime = life
-				end
-				local u = r.uOf(f)
-				local w = (0.55 - 0.2 * u) * math.clamp(math.min(u / 0.08, (1 - u) / 0.1), 0, 1) * wk
-				r.a0.Position = Vector3.new(0, w, 0)
-				r.a1.Position = Vector3.new(0, -w, 0)
 			end
 		end)
+		local riderFire = {}
+		for i = 1, 4 do
+			local p = K.piece(a.body, Vector3.new(0.4, 0.4, 0.4))
+			local strand = (i - 1) % 2
+			local phase = math.floor((i - 1) / 2) * 0.5
+			K.move(a, p, function(f)
+				local u = ((f.t - a.born) / PERIOD + phase) % 1
+				local k = ease((f.t - a.born - 0.15) / 1.1)
+				local hp = hpos(u, strand)
+				return CFrame.new(f.feet + Vector3.new(0, 0.25, 0)) * CFrame.Angles(0, f.t * 1.3, 0) * CFrame.new(hp.X * (0.35 + 0.65 * k), hp.Y * k, hp.Z * (0.35 + 0.65 * k))
+			end)
+			join(riderFire, fire(H.layer(a, LOOP, "Fire", p, false, 0.75)))
+		end
 
 		-- embers and rose petals round you, a ring of fire round your feet (it roars with the streak), and burning
 		-- footsteps while you run
 		local around = K.bodyBox(a, Vector3.new(4.2, 4.6, 4.2), 0.2)
-		local embers = H.layer(a, LOOP, "Embers", around, false, 1)
-		local petals = H.layer(a, LOOP, "Petals", around, false, 1.1)
+		local embers = sparks(H.layer(a, LOOP, "Embers", around, false, 0.9), K.seq(GOLD_L, FLAME))
+		local petals = H.layer(a, LOOP, "Petals", around, false, 1)
+		setRate(a, petals, 2)
 		for _, e in petals do
 			H.detail(a, e)
 		end
 		local feetRing = H.feetPiece(a, Vector3.new(3.4, 0.5, 3.4), 0.4)
-		local feetFire = H.layer(a, LOOP, "Fire", feetRing, false, 0.8)
+		local feetFire = fire(H.layer(a, LOOP, "Fire", feetRing, false, 0.7))
 		for _, e in feetFire do
 			e.Shape = Enum.ParticleEmitterShape.Cylinder
 			e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
 		end
 		local steps = H.feetPiece(a, Vector3.new(1.4, 0.3, 1.4), 0.3)
-		H.layer(a, LOOP, "Fire", steps, true, 0.6)
+		fire(H.layer(a, LOOP, "Fire", steps, true, 0.55))
 
-		-- the streak's heat drives the wings (longer, wider, brighter), the fire climbing the halo, the crown's fire, the
-		-- spiral and the fire at your feet
+		-- the streak's heat drives the wings (wider), the fire climbing the halo, the crown's fire, the spiral and the
+		-- fire at your feet (rates kept low: colour over bloom)
 		local function climb(h: number, from: number, to: number): number
 			return math.clamp((h - from) / (to - from), 0, 1)
 		end
+		local shownWing = -1
 		local function applyHeat(h: number)
-			local g = 0.85 + 0.4 * h
-			for _, fe in feathers do
-				local L = fe.len * g
-				fe.L = L
-				fe.a1.Position = fe.dir * L
-				fe.ribbon.CurveSize0 = fe.side * BEND * L
-				fe.core.CurveSize0 = fe.side * BEND * L
-				fe.ribbon.Width0 = 0.8 * (1 + 0.35 * h)
-				fe.ribbon.Width1 = 0.14 * (1 + 0.8 * h)
-				fe.core.Width0 = 0.22 * (1 + 0.3 * h)
-				K.bright(fe.ribbon, 1.05 + 0.45 * h)
+			wingS = WING * (0.85 + 0.3 * h)
+			if math.abs(wingS - shownWing) > 0.05 then
+				shownWing = wingS
+				for _, w in wingPlates do
+					w.p.Size = Vector3.new(wingS * w.k, 0.05, wingS * w.k)
+				end
 			end
-			setRate(a, wingFire, 3.5 + 4.5 * h)
-			setRate(a, rootFire, 3 + 7 * h)
-			setRate(a, wingEmbers, 4 + 6 * h)
-			setRate(a, fireLow, 2 + 9 * h)
-			setRate(a, fireSides, 10 * climb(h, 0.25, 0.75))
-			setRate(a, fireTop, 10 * climb(h, 0.6, 1))
-			setRate(a, crownFire, 5 * h)
-			setRate(a, riderFire, 3 + 6 * h)
-			setRate(a, feetFire, 2 + 14 * h)
-			setRate(a, embers, 6 + 8 * h)
+			for _, hb in helixBeams do
+				hb.b.Width0 = 0.38 * (1 - 0.5 * hb.u0) * (0.85 + 0.45 * h)
+				hb.b.Width1 = 0.38 * (1 - 0.5 * hb.u1) * (0.85 + 0.45 * h)
+			end
+			setRate(a, wingFire, 3 + 4 * h)
+			setRate(a, wingEmbers, 2 + 3 * h)
+			setRate(a, fireLow, 3 + 14 * h)
+			setRate(a, fireSides, 14 * climb(h, 0.2, 0.7))
+			setRate(a, fireTop, 12 * climb(h, 0.5, 0.9))
+			setRate(a, crownFire, 3 * h)
+			setRate(a, riderFire, 3 + 5 * h)
+			setRate(a, feetFire, 1.5 + 7 * h)
+			setRate(a, embers, 3 + 4 * h)
 		end
 		applyHeat(0)
 		local lastHeat = 0
@@ -360,22 +413,21 @@ return function(H)
 				applyHeat(heat)
 			end
 		end)
-		-- the meter: one rose lights per +5% (a flare off the crown as it does), they go dark as the streak fades
+		-- the meter: one ember lights per +5% (a flare off the crown as it does), they go dull as the streak fades
 		local lit = 0
 		H.job(a, function(self, f)
 			local n = math.floor(streak / 5 + 0.001)
 			if n == lit then
 				return
 			end
-			for i, head in roses do
+			for i = 1, 12 do
 				local on, was = i <= n, i <= lit
 				if on ~= was then
-					head.Color = if on then ROSE else BUD
-					head.Material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
-					head.Size = if on then Vector3.new(0.95, 0.7, 0.95) else Vector3.new(0.85, 0.62, 0.85)
-					setRate(a, roseFire[i], if on then 2 else 0)
+					setRate(a, slotFire[i], if on then 2.5 else 0)
+					setRate(a, slotSparks[i], if on then 2.5 else 0.7)
 					if on then
-						emit(roseFire[i], 4)
+						emit(slotFire[i], 3)
+						emit(slotSparks[i], 5)
 					end
 				end
 			end
@@ -385,8 +437,8 @@ return function(H)
 			lit = n
 		end)
 
-		-- your own aura with the camera behind you: the halo and its ring go fainter and the wings thin out, so you're
-		-- never hidden from the follow camera
+		-- your own aura with the camera behind you: the halo and the wings go fainter, so they never hide you
+		local behind = false
 		H.job(a, function(self, f)
 			local b = false
 			if f.player ~= nil and f.player == H.player then
@@ -395,57 +447,52 @@ return function(H)
 			end
 			if b ~= behind then
 				behind = b
-				halo.LocalTransparencyModifier = if b then 0.5 else 0
-				for _, fe in feathers do
-					fe.ribbon.Transparency = if b then RIB_T_BACK else RIB_T
-					fe.core.Transparency = if b then CORE_T_BACK else CORE_T
+				-- (4 Nov, checked in the lab's run view: at 0.3 the halo and the wings still hid you; now the halo goes
+				-- 0.6 see-through and the wings half)
+				halo.LocalTransparencyModifier = if b then 0.6 else 0
+				for _, wp in wingPlates do
+					local gui = wp.p:FindFirstChildOfClass("SurfaceGui")
+					local img = gui and gui:FindFirstChildOfClass("ImageLabel")
+					if img then
+						img.ImageTransparency = if b then 0.5 else 0
+					end
 				end
 			end
 		end)
 
-		K.outline(a, FLAME, 0.2)
-		K.light(a, FLAME, 0.9, 15)
+		K.outline(a, FLAME, 0.25)
+		K.light(a, FLAME, 0.7, 14)
 		H.lightJob(a, 0.15)
-		K.feetTrail(a, K.seq(GOLD, FLAME, CRIM))
 
-		-- the heartbeat (lub-dub): a rose-red ring then a gold one race out over the ground, the halo's ring and the light
-		-- throb, the outline flashes; a hot streak spits a few flares off the halo on every beat
+		-- the heartbeat (lub-dub) every 1.5 s: a crimson ring then a gold one race out from the emblem's rim, the light
+		-- throbs, the outline flashes; a hot streak spits a few flares off the halo on every beat
 		local throb, dub = 0, math.huge
 		H.every(a, 1.5, function(self, f)
 			if f.ground > 0.3 then
-				K.pulse(f.feet, 2, 16 + heat * 8, ROSE, 0.8, 0.1)
+				beat(1, f.t)
 			end
 			dub = f.t + 0.24
 			throb = 1
-			self.lightKick = 1.4 + 0.6 * heat
+			self.lightKick = 1.3 + 0.5 * heat
 			if self.outline then
 				self.outline.OutlineTransparency = 0
 			end
 			if heat > 0.35 then
-				emit(haloFlare, math.floor(1 + 2.5 * heat))
+				emit(haloFlare, math.floor(1 + 2 * heat))
 			end
 		end)
-		local lastRingT = -1
 		H.job(a, function(self, f)
 			if f.t >= dub then
 				dub = math.huge
 				throb = math.max(throb, 0.7)
 				if f.ground > 0.3 then
-					K.pulse(f.feet, 2, 10 + heat * 5, GOLD, 0.6, 0.3)
+					beat(2, f.t)
 				end
 			end
 			throb *= 0.9
-			local beat = math.min(throb, 1)
-			local rt = math.clamp(0.45 - 0.2 * beat + (if behind then 0.3 else 0), 0, 1)
-			if math.abs(rt - lastRingT) > 0.01 then
-				lastRingT = rt
-				for _, img in ringImgs do
-					img.ImageTransparency = rt
-				end
-			end
 			local o = self.outline
-			if o and o.OutlineTransparency < 0.2 then
-				o.OutlineTransparency = math.min(0.2, o.OutlineTransparency + 0.01)
+			if o and o.OutlineTransparency < 0.25 then
+				o.OutlineTransparency = math.min(0.25, o.OutlineTransparency + 0.01)
 			end
 		end)
 
@@ -455,24 +502,24 @@ return function(H)
 		H.job(a, function(self, f)
 			if f.t >= settleAt then
 				settleAt = math.huge
-				emit(haloFlare, 6)
-				emit(haloPetals, 10)
-				emit(fireLow, 8)
+				emit(haloFlare, 4)
+				emit(haloPetals, 8)
+				emit(fireLow, 6)
 				emit(crownFlare, 2)
+				beat(1, f.t)
 				throb = 1.2
-				self.lightKick = 1.8
+				self.lightKick = 1.6
 			end
 		end)
 		a.onForm = function(self, feet)
 			K.pulse(feet, 1, 26, ROSE, 1, 0)
 			K.pulse(feet, 1, 17, GOLD, 0.75, 0.12)
-			K.pulse(feet, 1, 9, WHITE, 0.5, 0.25)
-			emit(feetFire, 16)
-			emit(petals, 20)
-			emit(embers, 18)
-			emit(rootFire, 6)
+			emit(feetFire, 12)
+			emit(petals, 16)
+			emit(embers, 14)
+			emit(wingFire, 3)
 			settleAt = os.clock() + 0.85
-			self.lightKick = 2
+			self.lightKick = 1.8
 		end
 		return a
 	end

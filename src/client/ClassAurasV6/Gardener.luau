@@ -1,16 +1,17 @@
 -- GARDENER (Uncommon). The card: red pruning shears snipping a stem, leaves flying, a green-gloved hand. Gimmick: Green
 -- Thumb, bundles fly to you from much further away. The aura, built round the card:
 --   - the ForgeGUI vine-wreath emblem under you (soil with three sprouts in a wreath of pink and yellow flowers) on a
---     soft green glow, one crisp light-green line ring round it, a breeze of light leaves and pink petals off its rim
---   - the ForgeGUI red pruning shears (1.33x) held in the card's green glove, circling you at chest height 3.4 studs
---     out, turned to the camera; they slip quickly past your front and back and linger at your sides, so they never
---     sit over you. Every 1.4 s they snap shut on a green sprig: a white flash off the blades, a burst of cut leaves,
---     and the sprig's leafy tip flies off tumbling (the stem grows back)
---   - the green thumb on both hands: a bright lime glow, ~3 leaves a second each, a sparkle trail
---   - light leaves and pink petals riding a breeze round you, knees to head; a green glow round you
---   - your Green Thumb reach (own aura only): a ring of leafy vine far out round you, glowing leaves twinkling on it
---     and leaves streaming in from it to you
--- Leaves and petals kicked up when you walk. It has more going on than the Weed Puller's: it's the rarer class.
+--     soft green glow, one crisp light-green line ring round it, a few small green leaves and pink petals off its rim
+--   - the ForgeGUI red pruning shears (5.2 studs, as tall as you) held in the card's green glove, at chest height 3.8
+--     studs out on the camera's side of you: they rest at your right, hop over the back of your head to your left,
+--     rest, hop back, so they're seen from every side and never cover you. Every 1.4 s they snap shut on a green
+--     sprig: a white slash line across the jaws, a burst of cut leaves and stem bits, and the sprig's leafy tip flies
+--     off tumbling (the stem grows back)
+--   - the green thumb on both hands: a green glow and a green light on each, leaves and a sparkle trail off them
+--   - small leaves (three greens) and pink petals riding a breeze close round you, knees to head
+--   - your Green Thumb reach (own aura only): a crisp ring of leafy vine far out round you, flowing slowly round, with a
+--     dashed green line inside it
+-- Leaves and petals kicked up when you walk. It has more going on than the Weed Puller's, less than the Rares'.
 return function(H)
 	local K, T, rgb, ns, ease, smooth, WHITE = H.K, H.T, H.rgb, H.ns, H.ease, H.smooth, H.WHITE
 	local BFX, FX = H.BFX, H.FX
@@ -23,18 +24,22 @@ return function(H)
 	local STEM = rgb(70, 150, 50)
 	local STEEL = rgb(235, 245, 255)
 	local GLOVE = rgb(85, 195, 70) -- the card's green glove
-	local LEAVES = K.seq(rgb(225, 255, 165), rgb(150, 232, 95))
-	local PETALS = K.seq(rgb(255, 180, 215), rgb(255, 125, 180))
+	-- three leaf greens (council: pale leaves read as popcorn on the lawn) and the wreath's pink petals
+	local GREEN1 = K.seq(rgb(110, 200, 60), rgb(70, 160, 45))
+	local GREEN2 = K.seq(rgb(150, 220, 75), rgb(100, 185, 55))
+	local GREEN3 = K.seq(rgb(85, 175, 55), rgb(55, 135, 40))
+	local PETALS = K.seq(rgb(255, 170, 210), rgb(240, 110, 165))
 
 	local EMBLEM = 8.2 -- the vine-wreath emblem's width (studs)
-	local SHEARS = 4 -- the shears' height (the prop's longest side; 1.33x the first cut)
-	local ORBIT = 3.4 -- how far out they circle (clear of your body)
+	local SHEARS = 5.2 -- the shears' height (the prop's longest side): as tall as you
+	local ORBIT = 3.8 -- how far out they rest at your sides (clear of your body)
+	local HOP = 4.2 -- seconds for a hop right-to-left and back
 	local LIFT = 0.7 -- their centre over your root: chest height
 	local SNIP = 1.4 -- seconds between snips
 	local JAW = 0.28 -- where the blades bite: this share of the shears' height above their centre (a guess from the
 	-- prop's picture: the gold bolt sits at about 0.13, the blade tips at 0.5)
-	local SPRIG = 1.5 -- the length of the sprig's stem held in the jaws
-	local TIP = 0.55 -- its leafy tip (it flies off on each snip)
+	local SPRIG = 1.8 -- the length of the sprig's stem held in the jaws
+	local TIP = 0.6 -- its leafy tip (it flies off on each snip)
 	local FLY = 0.55 -- how long the cut tip flies
 	local REACH = 14 -- server/ClassPerks MAGNET_BONUS (studs further than everyone else)
 	local REACH_R = REACH + 4 -- the Green Thumb ring's radius (as the old aura drew it)
@@ -71,12 +76,14 @@ return function(H)
 	local function lock(e: ParticleEmitter)
 		e.LockedToPart = true -- (rides its holder as it turns: the particles swirl round you)
 	end
-	-- lighter leaves (or pink petals) on a Forge layer, glowing a touch so they stand out on the lawn
-	local function tint(list: { ParticleEmitter }, colors: ColorSequence, glow: number)
+	-- leaf greens (or pink petals) on a Forge layer, barely glowing (so they keep their colour and don't bloom)
+	local function tint(list: { ParticleEmitter }, colors: ColorSequence): { ParticleEmitter }
 		for _, e in list do
 			e.Color = colors
-			e.LightEmission = glow
+			e.LightEmission = 0.15
+			e.Brightness = 1
 		end
+		return list
 	end
 	-- set a layer's rate. client/RarityFx keeps each emitter's own rate and puts it back when you start or stop running,
 	-- so that is changed too.
@@ -103,21 +110,22 @@ return function(H)
 		local rimR = EMBLEM / 2 + 0.3
 		local rimRing = H.glowRing(a, rimR, rgb(215, 255, 170), 0.42, 0, 0.14, 1.25)
 		growIn(a, rimRing, rimR * 2 / 0.92, 0.9, 0.1)
-		-- a breeze of light leaves and the wreath's pink and yellow petals circling its rim (blowing off it as it turns)
-		local rim = K.piece(a.model, Vector3.new(EMBLEM - 0.2, 0.8, EMBLEM - 0.2))
+		-- a few small leaves and the wreath's pink petals circling its rim (blowing off it as it turns)
+		local rim = K.piece(a.model, Vector3.new(EMBLEM - 0.6, 0.8, EMBLEM - 0.6))
 		K.move(a, rim, function(f)
-			return CFrame.new(f.feet + Vector3.new(0, 0.55, 0)) * CFrame.Angles(0, -f.t * 0.7, 0)
+			return CFrame.new(f.feet + Vector3.new(0, 0.7, 0)) * CFrame.Angles(0, -f.t * 0.7, 0)
 		end)
-		local rimLeaves = H.layer(a, LOOP, "Swirl", rim)
-		local petals = H.layer(a, LOOP, "Petals", rim)
-		tint(rimLeaves, LEAVES, 0.2)
+		local rimLeaves = tint(H.layer(a, LOOP, "Swirl", rim, false, 0.6), GREEN3)
+		setRate(a, rimLeaves, 2.5)
+		local petals = tint(H.layer(a, LOOP, "Petals", rim, false, 0.7), PETALS)
+		setRate(a, petals, 1)
 		each(rimLeaves, lock)
 		each(petals, lock)
 
-		-- the pruning shears: circling you at chest height, always turned to the camera (blades up, leaning away from
-		-- you, with a little sway) so the snip reads from every side. The circle is laid out from the camera's side of
-		-- you: they slip quickly past your front and back and linger at your sides, so they don't sit over you. They
-		-- swoop in from high up, spinning, when the aura forms.
+		-- the pruning shears: at chest height on the camera's side of you, always turned to the camera (blades up,
+		-- leaning away from you, with a little sway) so the snip reads from every side. They rest at your right, hop in
+		-- an arc over the back of your head to your left, rest, and hop back: always beside or above you as seen, never
+		-- hidden behind you or covering you. They swoop in from high up, spinning, when the aura forms.
 		local shears = H.prop(a.body, "gd_shears", SHEARS)
 		local full = shears.Size
 		local at = perFrame(function(f)
@@ -128,11 +136,13 @@ return function(H)
 			local fwd = Vector3.new(rp.X - camCF.Position.X, 0, rp.Z - camCF.Position.Z)
 			fwd = if fwd.Magnitude > 0.3 then fwd.Unit else f.yaw.LookVector
 			local right = Vector3.new(-fwd.Z, 0, fwd.X)
-			local u = f.t * 0.75
-			local phi = u - 0.32 * math.sin(2 * u) -- (slow at your sides, quick past your front and back)
+			-- (p: -1 resting at your right .. 1 resting at your left; the hop between goes round the far side of you)
+			local p = math.clamp(2 * math.sin(f.t * 2 * math.pi / HOP), -1, 1)
+			local phi = math.pi / 2 + (math.pi / 2 + 0.15) * p
 			local c, s = math.cos(phi), math.sin(phi)
-			local r = ORBIT + 5 * (1 - k)
-			local pos = rp + (right * c + fwd * s) * r + Vector3.new(0, LIFT + 0.14 * math.sin(f.t * 1.5) + 4 * (1 - k), 0)
+			local over = math.max(0, s) -- (1 at the top of the hop: behind and above your head)
+			local r = ORBIT * (1 - 0.35 * over) + 5 * (1 - k)
+			local pos = rp + (right * c + fwd * s) * r + Vector3.new(0, LIFT + 2.9 * over + 0.14 * math.sin(f.t * 1.5) + 4 * (1 - k), 0)
 			local eye = camCF.Position
 			if Vector3.new(eye.X - pos.X, 0, eye.Z - pos.Z).Magnitude < 0.3 then
 				eye = pos - fwd * 10
@@ -142,9 +152,9 @@ return function(H)
 		end)
 		K.move(a, shears, at)
 		-- a short steel-to-leaf streak behind the blades as they circle
-		local streak = K.trail(shears, Vector3.new(0, 0.14 * SHEARS, 0), Vector3.new(0, 0.44 * SHEARS, 0), K.seq(STEEL, LEAF_L), 0.35, 0.4)
-		streak.Transparency = ns(0, 0.55, 1, 1)
-		K.bright(streak, 1.2)
+		local streak = K.trail(shears, Vector3.new(0, 0.2 * SHEARS, 0), Vector3.new(0, 0.42 * SHEARS, 0), K.seq(STEEL, LEAF), 0.3, 0.3)
+		streak.Transparency = ns(0, 0.6, 1, 1)
+		K.bright(streak, 1.1)
 		H.detail(a, streak)
 		-- the card's green-gloved hand gripping the handles (the white glove prop tinted green; fingers across the
 		-- handles, in front of them)
@@ -193,38 +203,37 @@ return function(H)
 		K.move(a, leafB, function(f)
 			return tipAt(f) * CFrame.new(TIP * 0.72, -0.12, 0) * CFrame.Angles(0, 0, math.rad(-40))
 		end)
-		-- the snip's effects at the jaws: a white flash off the blades, a burst of cut leaves (its Forge layer), a glint
+		-- the snip's effects at the jaws: a white slash line, a burst of cut leaves (its Forge layer), bits of stem, a glint
 		local jaw = K.piece(a.body, Vector3.new(0.6, 0.6, 0.6))
 		K.move(a, jaw, function(f)
 			return at(f) * bite
 		end)
-		local snipFx = H.layer(a, LOOP, "Snip", jaw)
-		tint(snipFx, LEAVES, 0.15)
-		local flash = H.E(jaw, { tex = T.flash, colors = K.seq(WHITE, rgb(230, 255, 210)), rate = 0, life = { 0.14, 0.18 }, speed = { 0, 0 }, size = 2.6, spread = 0, light = 1, bright = 1.3, lock = true, sizeSeq = ns(0, 1.2, 0.4, 2.8, 1, 3.2), trans = ns(0, 0.05, 0.5, 0.35, 1, 1) })
-		local glint = H.E(jaw, { tex = T.glint, flip = 4, colors = K.seq(WHITE, LEAF_L), rate = 0, life = { 0.25, 0.35 }, speed = { 0, 0 }, size = 1.5, spread = 0, light = 1, bright = 1.6, sizeSeq = ns(0, 1.5, 1, 1.5) })
+		local snipFx = tint(H.layer(a, LOOP, "Snip", jaw, false, 0.75), GREEN1)
+		-- (the slash: a white crescent swept across the jaws, a thin line, not a blob)
+		local slash = H.E(jaw, { tex = T.crescent, flip = 4, colors = K.seq(WHITE, rgb(225, 255, 205)), rate = 0, life = { 0.2, 0.24 }, speed = { 0, 0 }, size = 3.4, spread = 0, light = 0.5, bright = 1.3, lock = true, rot = { -40, -20 }, sizeSeq = ns(0, 3.2, 1, 3.6) })
+		-- (bits of cut stem flung off)
+		local bits = H.E(jaw, { tex = BFX.strand, colors = K.seq(rgb(120, 200, 70), STEM), rate = 0, life = { 0.4, 0.7 }, speed = { 5, 8 }, size = 0.45, spin = 400, spread = 180, accel = Vector3.new(0, -20, 0), light = 0.1, bright = 1 })
+		local glint = H.E(jaw, { tex = T.glint, flip = 4, colors = K.seq(WHITE, LEAF_L), rate = 0, life = { 0.25, 0.35 }, speed = { 0, 0 }, size = 1.1, spread = 0, light = 0.7, bright = 1.3, sizeSeq = ns(0, 1.1, 1, 1.1) })
 		H.detail(a, glint)
 
-		-- light leaves and pink petals riding a breeze round you, knees to head (they ride a turning cylinder, so they
-		-- swirl round you); every snip also shakes a puff of cut leaves out of it
-		local swirl = K.piece(a.body, Vector3.new(3.4, 4, 3.4))
+		-- small leaves (three greens) and pink petals riding a breeze close round you, knees to head (they ride a
+		-- turning cylinder, so they swirl round you and stay airborne); every snip also shakes a puff of cut leaves out
+		local swirl = K.piece(a.body, Vector3.new(3.2, 4, 3.2))
 		K.move(a, swirl, function(f)
-			return CFrame.new(f.root.Position + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, f.t * 1.6, 0)
+			return CFrame.new(f.root.Position + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, f.t * 1.6, 0)
 		end)
-		local breeze = H.layer(a, LOOP, "Swirl", swirl)
-		tint(breeze, LEAVES, 0.2)
+		local breeze = tint(H.layer(a, LOOP, "Swirl", swirl, false, 0.6), GREEN1)
+		setRate(a, breeze, 3.5)
 		each(breeze, lock)
-		for _ = 1, 2 do
-			-- (two more layers: three times as thick, off on phones)
-			local more = H.layer(a, LOOP, "Swirl", swirl)
-			tint(more, LEAVES, 0.2)
-			each(more, lock)
-			H.detail(a, table.unpack(more))
-		end
-		local bodyPetals = H.layer(a, LOOP, "Petals", swirl)
-		tint(bodyPetals, PETALS, 0.2)
+		-- (a second green, off on phones)
+		local more = tint(H.layer(a, LOOP, "Swirl", swirl, false, 0.6), GREEN2)
+		setRate(a, more, 3)
+		each(more, lock)
+		H.detail(a, table.unpack(more))
+		local bodyPetals = tint(H.layer(a, LOOP, "Petals", swirl, false, 0.7), PETALS)
+		setRate(a, bodyPetals, 1.2)
 		each(bodyPetals, lock)
-		local puff = H.layer(a, LOOP, "Snip", swirl)
-		tint(puff, LEAVES, 0.15)
+		local puff = tint(H.layer(a, LOOP, "Snip", swirl, false, 0.6), GREEN2)
 
 		-- snip every 1.4 s (the first one as they arrive): the shears squeeze shut (blades and handles close together,
 		-- they're one model so it narrows across), hold, ease open, wait. On the snap the sprig's tip flies off and the
@@ -252,12 +261,13 @@ return function(H)
 					cutVel = out * 5 + Vector3.new(0, 7.5, 0)
 					cutAt = f.t
 					each(snipFx, function(e)
-						e:Emit(9)
+						e:Emit(10)
 					end)
 					each(puff, function(e)
-						e:Emit(5)
+						e:Emit(4)
 					end)
-					flash:Emit(1)
+					slash:Emit(1)
+					bits:Emit(5)
 					glint:Emit(1)
 					self.lightKick = 1.5
 				end
@@ -287,7 +297,7 @@ return function(H)
 			end
 		end)
 
-		-- the green thumb: both hands glow bright lime (a steady glow sprite), shed ~3 light leaves a second each and
+		-- the green thumb: both hands glow green (a steady glow sprite and a green light on each), shed leaves and
 		-- leave a sparkle trail (the card's green glove)
 		for _, hand in { "RightHand", "LeftHand" } do
 			local h = K.piece(a.body, Vector3.new(0.4, 0.4, 0.4))
@@ -299,34 +309,42 @@ return function(H)
 				-- (an R6 arm is a long block: its hand is at the bottom)
 				return l.CFrame * CFrame.new(0, if l.Size.Y > 1.2 then -0.85 else -0.1, 0)
 			end)
-			local glow = H.E(h, { tex = FX.glow, colors = K.seq(rgb(225, 255, 170), LIME), rate = 6, life = { 0.4, 0.5 }, speed = { 0, 0 }, size = 1.2, spread = 0, light = 1, bright = 1.15, lock = true, sizeSeq = ns(0, 1.05, 1, 1.25), trans = ns(0, 1, 0.2, 0.5, 0.75, 0.55, 1, 1) })
+			local glow = H.E(h, { tex = FX.glow, colors = K.seq(rgb(175, 255, 120), rgb(90, 215, 60)), rate = 6, life = { 0.4, 0.5 }, speed = { 0, 0 }, size = 1.2, spread = 0, light = 0.8, bright = 1.1, lock = true, sizeSeq = ns(0, 1.05, 1, 1.25), trans = ns(0, 1, 0.2, 0.4, 0.75, 0.45, 1, 1) })
 			K.addEmitter(a, glow)
-			H.layer(a, LOOP, "Thumb", h, false, 0.9)
-			local leaves = H.layer(a, LOOP, "ThumbLeaves", h)
-			tint(leaves, LEAVES, 0.3)
-			setRate(a, leaves, 3)
-			local trail = K.trail(h, Vector3.new(0, 0.16, 0), Vector3.new(0, -0.16, 0), K.seq(rgb(235, 255, 190), LIME), 0.4, 0.8)
+			for _, e in H.layer(a, LOOP, "Thumb", h, false, 0.9) do
+				e.Color = K.seq(rgb(170, 255, 120), rgb(80, 200, 60))
+				e.LightEmission = 0.6
+			end
+			local lamp = Instance.new("PointLight")
+			lamp.Color = rgb(120, 255, 80)
+			lamp.Brightness = 1.6
+			lamp.Range = 5
+			lamp.Shadows = false
+			lamp.Parent = h
+			H.detail(a, lamp)
+			local leaves = tint(H.layer(a, LOOP, "ThumbLeaves", h, false, 0.75), GREEN1)
+			setRate(a, leaves, 2.5)
+			local trail = K.trail(h, Vector3.new(0, 0.16, 0), Vector3.new(0, -0.16, 0), K.seq(rgb(200, 255, 150), rgb(90, 215, 60)), 0.4, 0.6)
 			trail.Transparency = ns(0, 0.2, 1, 1)
 			K.bright(trail, 1.2)
-			local sparkle = H.E(h, { tex = T.glint, flip = 4, colors = K.seq(WHITE, LIME), rate = 3, life = { 0.4, 0.6 }, speed = { 0.2, 0.6 }, size = 0.5, spread = 180, light = 1, bright = 1.4 })
+			local sparkle = H.E(h, { tex = T.glint, flip = 4, colors = K.seq(rgb(235, 255, 200), LIME), rate = 3, life = { 0.4, 0.6 }, speed = { 0.2, 0.6 }, size = 0.45, spread = 180, light = 0.7, bright = 1.3 })
 			K.addEmitter(a, sparkle)
 			H.detail(a, sparkle)
 		end
 		-- leaves and petals kicked up when you walk
 		local kickAt = H.feetPiece(a, Vector3.new(1.4, 0.2, 1.4), 0.1)
-		tint(H.layer(a, LOOP, "Kick", kickAt, true), LEAVES, 0.1)
-		local kickPetals = H.layer(a, LOOP, "Petals", kickAt, true)
-		tint(kickPetals, PETALS, 0.1)
+		tint(H.layer(a, LOOP, "Kick", kickAt, true, 0.7), GREEN3)
+		local kickPetals = tint(H.layer(a, LOOP, "Petals", kickAt, true, 0.7), PETALS)
 		H.detail(a, table.unpack(kickPetals))
 		-- a green glow round you, a green light that flares on each snip, a leafy trail when you run
-		H.shell(a, K.seq(LEAF_L, LEAF), 6, 1)
+		H.shell(a, K.seq(rgb(150, 230, 100), LEAF), 5, 1)
 		K.light(a, LEAF, 0.9, 11)
 		H.lightJob(a, 0.08)
 		K.feetTrail(a, K.seq(LEAF_L, LEAF))
 
-		-- Green Thumb: your reach, drawn far out round you as a ring of leafy vine (flowing slowly round, dimmer while you
-		-- run) with glowing leaves twinkling along it and leaves streaming in from it to you. It spreads out to the reach
-		-- when the aura forms. Your own aura only (the leaves are off on phones and in Potato Mode).
+		-- Green Thumb: your reach, drawn far out round you as a crisp ring of leafy vine (green, flowing slowly round,
+		-- dimmer while you run) with a dashed green line just inside it, so it reads from above. The vine spreads out to
+		-- the reach when the aura forms. Your own aura only. (No leaves fly out there: particles stay near you.)
 		local ringHold = H.feetPiece(a, Vector3.new(0.2, 0.2, 0.2), 0.2, 0.03)
 		local vineAtts, vines = {}, {}
 		for i = 1, VINES do
@@ -335,10 +353,10 @@ return function(H)
 		end
 		local chord = 2 * REACH_R * math.sin(math.pi / VINES)
 		for i = 1, VINES do
-			local b = H.beam(vineAtts[i], vineAtts[i % VINES + 1], { tex = T.vineStrip, texLen = chord, texSpeed = 0.25, colors = K.seq(LIME), w0 = 1.1, trans = NumberSequence.new(0.3), light = 0.55, bright = 1.3 })
+			local b = H.beam(vineAtts[i], vineAtts[i % VINES + 1], { tex = T.vineStrip, texLen = chord, texSpeed = 0.25, colors = K.seq(rgb(120, 225, 70)), w0 = 1.3, trans = NumberSequence.new(0.15), light = 0.3, bright = 1.2 })
 			b.Enabled = false
 			vines[i] = b
-			table.insert(a.fades, { beam = b, base = 0.3 })
+			table.insert(a.fades, { beam = b, base = 0.15 })
 		end
 		local ringR = -1
 		H.job(a, function(self, f)
@@ -351,19 +369,12 @@ return function(H)
 				end
 			end
 		end)
-		-- (glowing leaves sitting on the ring: a disc emitter's outer rim)
-		local onRing = H.feetPiece(a, Vector3.new(REACH_R * 2, 0.2, REACH_R * 2), 0.5)
-		local ringLeaves = H.E(onRing, { tex = BFX.leaf, colors = K.seq(rgb(230, 255, 170), LIME), rate = 9, life = { 1.6, 2.2 }, speed = { 0, 0.3 }, size = 0.9, spin = 40, spread = 180, light = 0.7, bright = 1.3, shape = Enum.ParticleEmitterShape.Disc, sizeSeq = ns(0, 0, 0.25, 0.9, 0.8, 0.9, 1, 0) })
-		ringLeaves.ShapePartial = 1
-		ringLeaves.Enabled = false
-		K.addEmitter(a, ringLeaves)
-		-- (leaves streaming in from the ring to you)
-		local inbound = H.feetPiece(a, Vector3.new(REACH_R * 2, 0.6, REACH_R * 2), 0.75)
-		local pull = H.E(inbound, { tex = BFX.leaf, colors = K.seq(rgb(225, 255, 165), LEAF_L), rate = 12, life = { 1.5, 1.7 }, speed = { 9.5, 11 }, size = 0.7, spin = 220, spread = 0, light = 0.4, bright = 1.2, shape = Enum.ParticleEmitterShape.Cylinder, inward = true, surface = true, trans = ns(0, 1, 0.12, 0.15, 0.8, 0.25, 1, 1) })
-		pull.Enabled = false
-		K.addEmitter(a, pull)
+		local _, dashes = K.groundRing(a, REACH_R - 0.95, 0.14, rgb(150, 240, 90), 2, 0.3, -0.06, true, 0.22)
+		for _, b in dashes do
+			b.Enabled = false
+			table.insert(vines, b)
+		end
 		local ringOn: boolean? = nil
-		local leavesOn: boolean? = nil
 		H.job(a, function(self, f)
 			local own = f.player ~= nil and f.player == H.player
 			if own ~= ringOn then
@@ -371,12 +382,6 @@ return function(H)
 				for _, b in vines do
 					b.Enabled = own
 				end
-			end
-			local leaves = own and not self.lowNow
-			if leaves ~= leavesOn then
-				leavesOn = leaves
-				pull.Enabled = leaves
-				ringLeaves.Enabled = leaves
 			end
 		end)
 

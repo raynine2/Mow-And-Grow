@@ -1,18 +1,21 @@
 -- GROUNDSKEEPER (Rare): the keeper of a sports pitch. Card: a steel sickle with a wooden handle, a blue cap and a tied
 -- bundle of cut grass. Gimmick: Tidy Up, when a clump falls the 2 nearest clumps take a free hit.
--- The aura (v6b, built round ForgeGUI props and VFX Forge layers):
---   ground    the ForgeGUI pitch emblem (mown stripes, a chalk centre circle) turning slowly, framed by two crisp line
---             rings (chalk white and the cap's blue); chalk dust puffs off the line and (detail) chalk light rises off it
---   carousel  the 3D sickle (1.5x, the card's blue cap hung on its blade, its blue grip glowing) and the two ForgeGUI
---             grass bundles (the 2 Tidy Up free hits) stand round you: the sickle at your front right, one bundle at
---             your left at shoulder height, one at your back left at hip height. Every 4.5 s the sickle whips right
---             round you and the bundles ride round with it, so nothing ever cuts through anything; its thin chalk-white
---             trail sheds chalk dust and clippings
---   Tidy Up   chalk lines snap from the bundles to the two struck clumps, a white flash, a chalk ring and clippings
---             there; the bundles swell, twirl and jump at them
---   body      a soft grass-and-chalk glow and a fresh breeze of sparkles; running kicks up clippings and leaves a mown
---             stripe behind you
--- With your own follow camera behind you, the pieces in your back half go half see-through so they never hide you.
+-- The aura (v6c, built round ForgeGUI props and VFX Forge layers):
+--   ground    the ForgeGUI pitch emblem (mown stripes, a chalk centre circle) turning slowly, dressed in 3D like a
+--             real pitch: a chalk halfway line and centre circle, four orange corner flags waving on its rim, a dashed
+--             chalk ring turning the other way over it; two crisp chalk-white line rings round it; chalk dust puffs
+--             off the rim and (detail) chalk light rises off it
+--   carousel  the 3D sickle (1.5x) and the two ForgeGUI grass bundles (the 2 Tidy Up free hits) stand round you: the
+--             sickle at your front right, one bundle at your left at shoulder height, one at your back left at hip
+--             height. Every 4 s the sickle whips right round you and the bundles ride round with it, so nothing ever
+--             cuts through anything; its crisp chalk-white trail sheds chalk dust and flying clippings
+--   cap       the card's blue cap worn on your head
+--   Tidy Up   white chalk lines zap from the bundles to the two struck clumps, a white flash, a chalk ring and
+--             clippings there; the bundles flash, swell, twirl and hop hard at them
+--   body      a chalk-dust swirl (two chalk ribbons spiralling round you), grass clippings flicking up round your
+--             feet, a fresh breeze of sparkles, a soft grass-and-chalk glow; running kicks up clippings and leaves a
+--             mown stripe behind you
+-- With your own follow camera behind you, the sickle and the bundles go a little see-through in your back half.
 return function(H)
 	local K, T, rgb, ns, ease, smooth, WHITE = H.K, H.T, H.rgb, H.ns, H.ease, H.smooth, H.WHITE
 	local E = H.E
@@ -26,6 +29,7 @@ return function(H)
 	local TWINE = rgb(200, 120, 50) -- their orange-brown tie
 	local CAP = rgb(40, 120, 235) -- the card's blue cap: the one colour that isn't grass or chalk
 	local CAP_L = rgb(140, 195, 255)
+	local FLAG = rgb(245, 150, 45) -- the corner flags, in the bundles' orange tie colour
 	local UPR = CFrame.Angles(0, 0, math.rad(90)) -- (stands a cylinder up)
 
 	-- the carousel: where each piece rests round you (0 = in front of you, 90 deg = your right), how far out, how high
@@ -35,10 +39,12 @@ return function(H)
 		{ rest = math.rad(-60), r = 3, y = 0.95 }, -- your left, shoulder high
 		{ rest = math.rad(-160), r = 3, y = -0.45 }, -- your back left, hip high
 	}
-	local SWEEP, HOLD = 4.5, 0.6 -- a round every 4.5 s: resting for 60% of it, then the whip right round you
+	local SWEEP, HOLD = 4, 0.5 -- a round every 4 s: resting for half of it, then the whip right round you
 	local SZ = 5 -- the sickle's height (1.5x)
 	local BSZ = 2.5 -- the bundles' height (1.3x)
-	local CAPSZ = 1.6 -- the cap's longest side
+	local CAPSZ = 1.45 -- the cap's longest side
+	local EMB_SPIN = 0.04 -- how fast the emblem turns (its 3D chalk lines and flags turn with it)
+	local FADE = 0.35 -- how see-through the big pieces go for your own camera behind you (mild)
 	local FLASH = 0.65 -- a bundle's Tidy Up jump
 	local LINE = 0.6 -- a Tidy Up chalk line's life
 
@@ -93,7 +99,7 @@ return function(H)
 				local fade = behind and (p.CFrame.Position - at):Dot(look) < 0.6
 				if fade ~= (faded[i] == true) then
 					faded[i] = fade
-					p.LocalTransparencyModifier = if fade then 0.5 else 0
+					p.LocalTransparencyModifier = if fade then FADE else 0
 				end
 			end
 		end)
@@ -102,12 +108,47 @@ return function(H)
 	return function()
 		local a = H.aura(H.RANK.Rare, CHALK)
 
-		-- THE GROUND: the pitch emblem (ForgeGUI art in its own colours) turning slowly; two crisp line rings round it,
-		-- chalk white and the cap's blue, turning opposite ways; chalk dust puffing off the line, chalk light rising
-		-- off it (detail)
-		H.sigil(a, 9.6, T.embGroundskeeper, WHITE, 0.2, 0.04, 0.12, 0.7, 1.05)
-		H.glowRing(a, 5.1, CHALK, 0.38, 0.12, 0.16, 1.05)
-		H.glowRing(a, 5.65, CAP, 0.45, -0.09, 0.15, 1.15)
+		-- THE GROUND: the pitch emblem (ForgeGUI art in its own colours) turning slowly; two crisp chalk-white line
+		-- rings round it (its glowing chalk rim); chalk dust puffing off the line, chalk light rising off it (detail)
+		H.sigil(a, 9.6, T.embGroundskeeper, WHITE, 0.2, EMB_SPIN, 0.12, 0.7, 1.05)
+		H.glowRing(a, 5.1, CHALK, 0.35, 0.12, 0.16, 1.05)
+		H.glowRing(a, 5.65, CHALK, 0.5, -0.09, 0.15, 1)
+		-- the pitch's chalk markings in 3D, turning with the emblem: the halfway line across it, the centre circle (thin
+		-- chalk lines over the painted one), four corner flags on its rim waving; over it a dashed chalk ring turning the
+		-- other way
+		local pitchCF = perFrame(function(f)
+			return CFrame.new(f.feet + Vector3.new(0, 0.2, 0)) * CFrame.Angles(0, f.t * EMB_SPIN, 0)
+		end)
+		local pitch: { { any } } = { { H.solid(a.model, Vector3.new(8.6, 0.04, 0.14), CHALK), CFrame.identity } }
+		for k = 0, 3 do
+			local th = (k + 0.5) * math.pi / 2
+			table.insert(pitch, { H.cyl(a.model, 1.5, 0.09, CHALK), CFrame.Angles(0, th, 0) * CFrame.new(4.5, 0.75, 0) * UPR })
+			local flag = H.solid(a.model, Vector3.new(0.04, 0.42, 0.62), FLAG)
+			K.move(a, flag, function(f)
+				return pitchCF(f) * CFrame.Angles(0, th, 0) * CFrame.new(4.5, 1.25, 0) * CFrame.Angles(0, 0.35 * math.sin(f.t * 3 + k * 1.7), 0) * CFrame.new(0, 0, 0.33)
+			end)
+		end
+		H.rig(a, pitchCF, pitch)
+		local circle = K.piece(a.model, Vector3.new(0.2, 0.2, 0.2))
+		K.move(a, circle, function(f)
+			return pitchCF(f) * CFrame.new(0, 0.03, 0)
+		end)
+		local ringAtts = {}
+		for k = 1, 16 do
+			local th = k / 16 * math.pi * 2
+			ringAtts[k] = H.att(circle, Vector3.new(math.cos(th) * 1.42, 0, math.sin(th) * 1.42))
+		end
+		for k = 1, 16 do
+			H.beam(ringAtts[k], ringAtts[k % 16 + 1], { colors = K.seq(CHALK), w0 = 0.13, light = 0.1, bright = 1 })
+		end
+		local dashCF = perFrame(function(f)
+			return CFrame.new(f.feet + Vector3.new(0, 0.42, 0)) * CFrame.Angles(0, -f.t * 0.5, 0)
+		end)
+		local dashes: { { any } } = {}
+		for k = 1, 14 do
+			table.insert(dashes, { H.solid(a.model, Vector3.new(0.16, 0.06, 1), CHALK), CFrame.Angles(0, k / 14 * math.pi * 2, 0) * CFrame.new(4.15, 0, 0) })
+		end
+		H.rig(a, dashCF, dashes)
 		local line = H.feetPiece(a, Vector3.new(10.2, 0.3, 10.2), 0.25)
 		local chalk = H.layer(a, LOOP, "Chalk", line, false, 0.7)
 		H.detail(a, H.updraft(a, 5.1, K.seq(CHALK, MOWN_L), 3, T.streak, 0.45))
@@ -147,12 +188,13 @@ return function(H)
 			return orbit(f, SICKLE_REST, SICKLE_R * (0.5 + 0.5 * k), y) * CFrame.Angles(-0.15 * sweepK, 0, -0.1 + 0.04 * math.sin(f.t * 2.6)) * HOOK
 		end)
 		K.move(a, sickle, sickleCF)
-		-- its trail: a thin, sharp chalk-white line off the top of the blade, tapering to nothing in 0.4 s
-		local EDGE_A, EDGE_B = Vector3.new(ss.X * 0.05, ss.Y * 0.36, 0), Vector3.new(ss.X * 0.05, ss.Y * 0.42, 0)
-		local trail = K.trail(sickle, EDGE_A, EDGE_B, K.seq(WHITE, CHALK), 0.4, 0.7)
-		trail.Transparency = ns(0, 0.05, 0.45, 0.4, 1, 1)
-		trail.WidthScale = ns(0, 1, 1, 0.05)
-		K.bright(trail, 1.2)
+		-- its trail: a crisp chalk-white band (0.8 studs) off the top of the blade, tapering away in 0.4 s; hardly any
+		-- light emission, so it stays chalk white over the grass instead of glowing green
+		local EDGE_A, EDGE_B = Vector3.new(ss.X * 0.05, ss.Y * 0.3, 0), Vector3.new(ss.X * 0.05, ss.Y * 0.46, 0)
+		local trail = K.trail(sickle, EDGE_A, EDGE_B, K.seq(WHITE, CHALK), 0.4, 0.1)
+		trail.Transparency = ns(0, 0, 0.5, 0.3, 1, 1)
+		trail.WidthScale = ns(0, 1, 1, 0.2)
+		K.bright(trail, 1)
 		-- chalk dust and clippings shed off the blade through the whip (emitted by hand below)
 		local tip = K.piece(a.body, Vector3.new(0.3, 0.3, 0.3))
 		local TIP = (EDGE_A + EDGE_B) / 2
@@ -182,14 +224,14 @@ return function(H)
 				if not self.lowNow then
 					dust:Emit(1)
 				end
-				chips:Emit(1)
+				chips:Emit(2)
 			end
 		end)
-		-- the card's blue cap (ForgeGUI "gk_cap", brim to the front), hung on the top of the blade at a jaunty tilt
-		-- (GUESS: the blade's back peaks over the prop's middle; CAP_AT moves it if it floats or sinks in the shots)
+		-- the card's blue cap (ForgeGUI "gk_cap", brim to the front) worn on your head, tipped back a touch (never on
+		-- the blade: there it read as a lollipop)
 		local cap = H.prop(a.body, "gk_cap", CAPSZ)
 		local cs = H.propSize("gk_cap", CAPSZ)
-		local CAP_AT = CFrame.new(ss.X * 0.04, ss.Y * 0.47 + cs.Y * 0.2, 0) * CFrame.Angles(0.12, 0.55, -0.42)
+		local CAP_ON = CFrame.new(0, 0.38 + cs.Y * 0.5, 0.04) * CFrame.Angles(0.1, 0, 0)
 		local capPieces: { { any } } = { { cap, CFrame.identity } }
 		if not cap:IsA("MeshPart") then
 			for _, pc in capParts(a.body) do
@@ -197,20 +239,15 @@ return function(H)
 			end
 		end
 		H.rig(a, function(f)
-			return sickleCF(f) * CAP_AT
+			return f.headCF * CAP_ON
 		end, capPieces)
-		-- a blue glow round the sickle's blue grip (detail)
-		local grip = H.att(sickle, Vector3.new(-ss.X * 0.25, -ss.Y * 0.3, 0))
-		local gripGlow = E(grip, { tex = K.FX.glow, colors = K.seq(CAP_L, CAP), rate = 2.5, life = { 0.5, 0.8 }, speed = { 0, 0 }, size = 1.1, spread = 0, light = 0.8, bright = 1, lock = true, trans = ns(0, 1, 0.3, 0.5, 1, 1) })
-		K.addEmitter(a, gripGlow)
-		H.detail(a, gripGlow)
 
 		-- THE BUNDLES: the two Tidy Up free hits, the ForgeGUI tied grass bundles riding the carousel at shoulder and
 		-- hip height, bobbing and turning on the spot (built from parts only if the prop is missing). When Tidy Up lands
 		-- a chalk line snaps from each to its clump, and each flashes, swells to 1.3x, twirls and jumps at it, the
 		-- second a beat after the first.
 		local bundles = {}
-		local faders: { BasePart } = { sickle, cap }
+		local faders: { BasePart } = { sickle }
 		for i, spot in SPOTS do
 			local b = { at = -10, fired = true, dir = Vector3.zero, scale = 1, pulsing = false, parts = {}, glints = {}, halo = (nil :: any), lineAt = -10, lineOn = false, flashed = true, target = Vector3.zero, line = (nil :: any), hit = (nil :: any), chips = (nil :: any), cf = (nil :: any) }
 			bundles[i] = b
@@ -222,7 +259,7 @@ return function(H)
 				b.scale = 1
 				if p >= 0 and p < 1 then
 					local s = math.sin(math.pi * p)
-					jump = b.dir * (1.8 * s) + Vector3.new(0, 1.1 * s, 0)
+					jump = b.dir * (2.4 * s) + Vector3.new(0, 1.8 * s, 0)
 					twirl = 2 * math.pi * smooth(p)
 					b.scale = 1 + 0.3 * math.sin(math.pi * p ^ 0.6)
 				end
@@ -265,7 +302,7 @@ return function(H)
 				end
 				return CFrame.new(b.target)
 			end)
-			b.line = H.beam(H.att(core, Vector3.zero), H.att(spotPart, Vector3.zero), { colors = K.seq(WHITE, CHALK), w0 = 0.34, w1 = 0.24, trans = NumberSequence.new(1), light = 0.6, bright = 1.3 })
+			b.line = H.beam(H.att(core, Vector3.zero), H.att(spotPart, Vector3.zero), { colors = K.seq(WHITE, CHALK), w0 = 0.42, w1 = 0.3, trans = NumberSequence.new(1), light = 0.3, bright = 1.2 })
 			b.hit = E(spotPart, { tex = T.glint, flip = 4, colors = K.seq(WHITE, CHALK), rate = 0, life = { 0.3, 0.45 }, speed = { 0, 0.4 }, size = 2.6, spread = 180, light = 0.8, bright = 1.4 })
 			b.chips = E(spotPart, { tex = K.BFX.strand, colors = K.seq(MOWN_L, MOWN_D), rate = 0, life = { 0.5, 0.8 }, speed = { 4, 7 }, size = 0.45, accel = Vector3.new(0, -25, 0), spin = 400, spread = 55, light = 0, bright = 1 })
 		end
@@ -327,7 +364,23 @@ return function(H)
 		end)
 		backFader(a, faders)
 
-		-- THE BODY: a fresh breeze of sparkles drifting up round you (VFX Forge, detail), a soft grass-and-chalk glow
+		-- THE BODY: a chalk-dust swirl, two thin chalk ribbons spiralling round you (2.5 studs out), rising and falling,
+		-- chalk dust puffing off them (detail)
+		local swirl = K.piece(a.body, Vector3.new(0.2, 0.2, 0.2))
+		K.move(a, swirl, function(f)
+			return CFrame.new(f.root.Position + Vector3.new(0, -0.4 + 1.5 * math.sin(f.t * 0.9), 0)) * CFrame.Angles(0, -f.t * 2.4, 0)
+		end)
+		for _, side in { 1, -1 } do
+			local at = Vector3.new(2.5 * side, 0.6 * side, 0)
+			local ribbon = K.trail(swirl, at - Vector3.new(0, 0.07, 0), at + Vector3.new(0, 0.07, 0), K.seq(WHITE, CHALK), 0.7, 0.1)
+			ribbon.Transparency = ns(0, 0.15, 0.6, 0.6, 1, 1)
+			local puff = E(H.att(swirl, at), { tex = K.FX.smoke, colors = K.seq(CHALK), rate = 8, life = { 0.6, 0.9 }, speed = { 0, 0.2 }, size = 0.45, grow = true, spread = 180, light = 0.15, bright = 1, trans = ns(0, 1, 0.25, 0.55, 1, 1) })
+			K.addEmitter(a, puff)
+			H.detail(a, puff)
+		end
+		-- grass clippings flicking up round your feet
+		K.addEmitter(a, E(H.feetPiece(a, Vector3.new(3.4, 0.2, 3.4), 0.2), { tex = K.BFX.strand, colors = K.seq(MOWN_L, MOWN_D), rate = 4, life = { 0.5, 0.8 }, speed = { 3, 5 }, size = 0.4, accel = Vector3.new(0, -25, 0), spin = 400, spread = 30, light = 0, bright = 1 }))
+		-- a fresh breeze of sparkles drifting up round you (VFX Forge, detail), a soft grass-and-chalk glow
 		H.layer(a, LOOP, "Fresh", K.bodyBox(a, Vector3.new(4.6, 5, 4.6), 0.3))
 		H.shell(a, K.seq(CHALK, MOWN_L, SHEAF), 3.5, 0.75)
 		K.light(a, rgb(225, 255, 225), 0.8, 10)

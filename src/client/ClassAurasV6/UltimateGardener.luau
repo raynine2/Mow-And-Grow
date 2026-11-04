@@ -2,17 +2,19 @@
 -- clump you uncover is a Golden mutation. Built from ForgeGUI props (the ornate golden watering can ug_can, the golden
 -- vine wings ug_wings), the ForgeGUI sunburst emblem and the VFX Forge layers of Loop_UltimateGardener (Pour, Petals,
 -- Pollen, Rays, Midas):
---   - the golden watering can (1.45x) circling you at shoulder height, glinting, tipped to pour a thick glossy stream
---     of liquid gold (an amber-gold beam round a bright flowing core) down to the ground, where it splashes, a gold
---     puddle ripples and 3D golden sprouts pop up and sink again (the can leaves a ring of them as it goes). When Midas
---     Touch lands it tips right over and gushes, a ring of sprouts bursts up and a gold wave washes up over your body
---   - the golden vine wings (one ForgeGUI pair, about twice your height) rising from your back, breathing, liquid gold
---     dripping off them, sparkles
---   - a sunflower halo high up behind your head, turning in a ring of sun rays
---   - the ground: the sunburst emblem over an amber shade, three crisp line rings (gold, sun, amber), liquid-gold
---     ripples spreading out over it
---   - light falling on you from above (sun shafts and falling rays), gold petals and pollen
--- With your own follow camera behind you, the wings, the halo and the can (in your back half) go half see-through.
+--   - the golden watering can circling you wide at shoulder height, glinting, tipped to pour a thick glossy stream of
+--     liquid gold (an amber-gold beam round a white-hot flowing core) back in onto the emblem, where it splashes, a
+--     gold puddle ripples and 3D golden shoots with green leaves pop up and sink again (the can leaves a ring of them
+--     as it goes). When Midas Touch lands it tips right over and gushes, a ring of shoots bursts up and a gold wave
+--     washes up over your body
+--   - the golden vine wings (one ForgeGUI pair, about 2.5x your height across) rising from your back, flapping
+--     slowly, liquid gold dripping off them, sparkles
+--   - a sunflower halo high up behind your head, green leaves fanning out behind its petals, turning in sun rays
+--   - the ground: the sunburst emblem over an amber shade, a pool of liquid gold over its seed heart under your feet,
+--     three crisp line rings (amber outlines round the pool and the rim, gold outside), liquid-gold ripples spreading
+--     out over it
+--   - light from above: a warm god-ray column standing on you with gold motes falling through it; gold petals, pollen
+-- With your own follow camera behind you, the wings, the halo and the can (in your back half) go a little see-through.
 return function(H)
 	local K, T, rgb, ns, ease, smooth, WHITE = H.K, H.T, H.rgb, H.ns, H.ease, H.smooth, H.WHITE
 	local BFX = H.BFX
@@ -23,23 +25,28 @@ return function(H)
 	local GOLD = rgb(255, 184, 40)
 	local AMBER = rgb(225, 125, 20) -- the shading, so the gold isn't one yellow blob
 	local BRONZE = rgb(150, 80, 15) -- the darkest amber (the sprouts' stems)
+	local LEAF = rgb(80, 165, 55) -- the green leaves (sprouts, the halo), so the gold isn't all one yellow
+	local LEAF_L = rgb(140, 210, 80)
 	local UPR = CFrame.Angles(0, 0, math.rad(90)) -- (stands a cylinder up)
 	-- the watering can. Its frame: -Z is where the spout points, +Y is up; CAN_TURN turns the prop into that frame.
 	-- (the v6a shots showed the spout at the prop's -Z end, the gold leaving the rose: kept)
-	local CAN = 3.6 -- its longest side (studs; 1.45x)
+	local CAN = 2.6 -- its longest side (studs; 28% smaller than v6b's, which hid you up close)
 	local CAN_TURN = CFrame.identity
 	local SPOUT = Vector3.new(0, 0.1, -0.46) * CAN -- the spout's rose (where the gold leaves), in the can's frame
 	local RISE = math.rad(30) -- the spout rises this steeply out of the can: the stream leaves the rose along it
 	local TILT = math.rad(40) -- the can leans forward this far to pour
-	local LEAD = math.rad(50) -- the spout points out from you and this far ahead, the way the can travels
-	local ORBIT = 3.9 -- the can's distance from you (round a point a little in front of you)
+	-- the spout points ahead (the way the can travels) and back in towards you, so from the wide orbit the gold still
+	-- lands on the emblem, about 4.3 studs out (90 deg = straight ahead, 180 = straight at you)
+	local LEAD = math.rad(135)
+	local ORBIT = 5.8 -- the can's distance from you (round a point a little in front of you; +2 on v6b, clear of you)
 	local CAN_Y = 1.6 -- its height over your middle: shoulder height
 	local HURRY = math.rad(135) -- where on its round the can moves fastest (behind you on your left; 0 = your right)
 	-- the wings: one prop, both wings spread along X, their roots meeting at the bottom middle, facing -Z
-	local WSPAN = 9.2 -- their span (about twice your height)
+	local WSPAN = 12.9 -- their span (1.4x v6b's)
 	local WING_TURN = CFrame.Angles(0, math.pi, 0) -- (turned round so their face looks back, at the follow camera)
 	-- the golden sprouts where the gold lands
 	local NSPROUT, SPROUT_LIFE, SPROUT_EVERY = 6, 2.6, 0.45
+	local FADE = 0.3 -- how see-through the big pieces go for your own camera behind you (mild: they're also kept off its line)
 
 	-- a base worked out once per frame (several pieces ask for it)
 	local function once(base: (any) -> CFrame): (any) -> CFrame
@@ -80,13 +87,16 @@ return function(H)
 			return 1 - smooth((k - 0.5) / 0.5)
 		end
 
-		-- THE GROUND: an amber shade, the sunburst emblem (grows in, turning slowly), three crisp line rings turning
-		-- opposite ways, and liquid-gold ripples spreading out over the emblem from your feet
+		-- THE GROUND: an amber shade, the sunburst emblem (grows in, turning slowly), a pool of liquid gold over its
+		-- red-brown seed heart under your feet (it read as a red disc), three crisp line rings turning opposite ways
+		-- (amber round the pool and the emblem's rim: its outlines; gold outside), and liquid-gold ripples spreading out
+		-- over the emblem from your feet
 		H.glowDisc(a, 12.5, BFX.glow, AMBER, 0.6, 0, 0.07, 1)
 		H.sigil(a, 10.5, T.embUltimateGardener, WHITE, 0.2, 0.05, 0.12, 0.9, 1.05)
-		H.glowRing(a, 4.2, GOLD, 0.5, 0.15, 0.15, 1.05)
-		H.glowRing(a, 5.65, SUN_L, 0.4, -0.1, 0.16, 1.1)
-		H.glowRing(a, 6.35, AMBER, 0.45, 0.07, 0.15, 1.15)
+		H.glowDisc(a, 4.2, BFX.glow, GOLD, 0, 0, 0.135, 1)
+		H.glowRing(a, 1.6, AMBER, 0.3, 0.2, 0.15, 1)
+		H.glowRing(a, 5.3, AMBER, 0.35, -0.1, 0.16, 1.05)
+		H.glowRing(a, 6.2, GOLD, 0.45, 0.07, 0.15, 1.1)
 		local ripples = {}
 		for i = 1, 3 do
 			local p, imgs = H.plate(a.model, 2.2, T.ringCrisp, GOLD, 1, false, 1.15)
@@ -157,7 +167,7 @@ return function(H)
 		end)
 		local land = K.piece(a.model, Vector3.new(1.4, 0.2, 1.4))
 		K.move(a, land, landCF)
-		-- the stream of liquid gold: a thick amber-gold beam arcing from the rose down into the ground, a narrower bright
+		-- the stream of liquid gold: a thick amber-gold beam arcing from the rose down onto the emblem, a narrow white-hot
 		-- core flowing down its middle (detail), so it reads as glossy liquid rather than a light streak
 		local from = H.att(spout, Vector3.zero)
 		from.CFrame = CFrame.Angles(0, math.pi / 2, 0) -- (its axis, local X, runs along the outflow)
@@ -165,10 +175,10 @@ return function(H)
 		to.CFrame = CFrame.Angles(0, 0, -math.pi / 2) -- (its axis points down: the stream falls into the ground)
 		local W_OUT0, W_OUT1, W_CORE0, W_CORE1 = 0.62, 0.42, 0.24, 0.15
 		local stream = H.beam(from, to, { colors = K.seq(GOLD, AMBER, GOLD), w0 = W_OUT0, w1 = W_OUT1, light = 0.25, bright = 1.25, segments = 16, curve0 = 0.9, curve1 = 1.6 })
-		local core = H.beam(from, to, { colors = K.seq(WHITE, SUN_L, SUN), w0 = W_CORE0, w1 = W_CORE1, trans = ns(0, 0.1, 1, 0.3), light = 0.6, bright = 1.3, segments = 16, curve0 = 0.9, curve1 = 1.6, tex = T.energy, texLen = 1.4, texSpeed = 2.5, zoff = 0.03 })
+		local core = H.beam(from, to, { colors = K.seq(WHITE, rgb(255, 248, 210), SUN_L), w0 = W_CORE0, w1 = W_CORE1, trans = ns(0, 0.05, 1, 0.25), light = 0.4, bright = 1.3, segments = 16, curve0 = 0.9, curve1 = 1.6, tex = T.energy, texLen = 1.4, texSpeed = 2.5, zoff = 0.03 })
 		H.detail(a, core)
 		-- where it lands: gold droplets splashing up, glints (detail), a gold puddle
-		local drops = E(land, { tex = BFX.dot, colors = K.seq(SUN_L, GOLD), rate = 7, life = { 0.3, 0.5 }, speed = { 2, 3.5 }, size = 0.2, accel = Vector3.new(0, -25, 0), spread = 45, light = 0.5, bright = 1.3 })
+		local drops = E(land, { tex = BFX.dot, colors = K.seq(SUN_L, GOLD), rate = 7, life = { 0.3, 0.5 }, speed = { 2, 3.5 }, size = 0.2, accel = Vector3.new(0, -25, 0), spread = 45, light = 0.35, bright = 1.3 })
 		K.addEmitter(a, drops)
 		local splash = E(land, { tex = T.glint, flip = 4, colors = K.seq(WHITE, SUN_L), rate = 3, life = { 0.3, 0.5 }, speed = { 1, 2.5 }, size = 0.5, spread = 60, light = 0.8, bright = 1.4 })
 		K.addEmitter(a, splash)
@@ -184,9 +194,9 @@ return function(H)
 			end
 		end)
 
-		-- THE GOLDEN SPROUTS: six 3D sprouts (a stem, two leaves, a bud) that pop up out of the ground where the stream
-		-- lands and sink back 2.6 s later, so the can leaves a ring of them as it goes. Out of use they wait hidden
-		-- under your feet. (Not for far players or phones.)
+		-- THE GOLDEN SPROUTS: six 3D shoots (a gold stem, two green leaves, a pointed gold bud; 1.9 studs tall) that
+		-- pop up out of the emblem where the stream lands, with a glint, and sink back 2.6 s later, so the can leaves a
+		-- ring of them as it goes. Out of use they wait hidden under your feet. (Not for far players or phones.)
 		local sprouts = {}
 		for i = 1, NSPROUT do
 			local s = { at = -100, pos = Vector3.zero, yaw = 0, shown = true, parts = {} }
@@ -194,16 +204,16 @@ return function(H)
 			local base = once(function(f): CFrame
 				local age = f.t - s.at
 				if age < 0 or age >= SPROUT_LIFE then
-					return CFrame.new(f.feet - Vector3.new(0, 2, 0))
+					return CFrame.new(f.feet - Vector3.new(0, 3, 0))
 				end
 				local up = if age < 0.3 then ease(age / 0.3) else 1 - smooth((age - (SPROUT_LIFE - 0.5)) / 0.5)
-				return CFrame.new(s.pos + Vector3.new(0, 1.25 * (up - 1), 0)) * CFrame.Angles(0, s.yaw + 0.5 * age, 0)
+				return CFrame.new(s.pos + Vector3.new(0, 1.9 * (up - 1), 0)) * CFrame.Angles(0, s.yaw + 0.5 * age, 0)
 			end)
 			local pieces = {
-				{ H.cyl(a.model, 1.05, 0.13, BRONZE:Lerp(GOLD, 0.55), Enum.Material.SmoothPlastic, 0.15), CFrame.new(0, 0.52, 0) * UPR },
-				{ H.ellipsoid(a.model, Vector3.new(0.7, 0.1, 0.32), GOLD), CFrame.new(0.32, 0.62, 0) * CFrame.Angles(0, 0, math.rad(28)) },
-				{ H.ellipsoid(a.model, Vector3.new(0.7, 0.1, 0.32), SUN), CFrame.new(-0.32, 0.8, 0) * CFrame.Angles(0, 0, math.rad(-28)) },
-				{ H.ellipsoid(a.model, Vector3.new(0.3, 0.36, 0.3), SUN_L), CFrame.new(0, 1.1, 0) },
+				{ H.cyl(a.model, 1.6, 0.18, BRONZE:Lerp(GOLD, 0.6), Enum.Material.SmoothPlastic, 0.15), CFrame.new(0, 0.78, 0) * UPR },
+				{ H.ellipsoid(a.model, Vector3.new(1.05, 0.12, 0.46), LEAF), CFrame.new(0.48, 0.92, 0) * CFrame.Angles(0, 0, math.rad(28)) },
+				{ H.ellipsoid(a.model, Vector3.new(1.05, 0.12, 0.46), LEAF_L), CFrame.new(-0.48, 1.2, 0) * CFrame.Angles(0, 0, math.rad(-28)) },
+				{ H.ellipsoid(a.model, Vector3.new(0.3, 0.62, 0.3), SUN), CFrame.new(0, 1.75, 0) },
 			}
 			H.rig(a, base, pieces)
 			for _, pc in pieces do
@@ -222,6 +232,7 @@ return function(H)
 			if not self.lowNow and f.t - self.born > 1 then
 				local p = landCF(f).Position
 				sproutAt(Vector3.new(p.X + (math.random() - 0.5) * 0.7, f.feet.Y, p.Z + (math.random() - 0.5) * 0.7), f.t)
+				splash:Emit(1)
 			end
 		end)
 		H.job(a, function(self, f)
@@ -250,20 +261,33 @@ return function(H)
 		K.move(a, rays, function(f)
 			return H.facing(haloAt(f, 2.95), f, -f.t * 0.2)
 		end)
-		K.move(a, flower, function(f)
+		local flowerCF = once(function(f): CFrame
 			return H.facing(haloAt(f, 3.05), f, f.t * 0.3)
 		end)
+		K.move(a, flower, flowerCF)
+		-- six green leaves fanning out from behind the flower's petals, turning with it (green in the gold)
+		local haloLeaves = {}
+		for k = 1, 6 do
+			local leaf = H.ellipsoid(a.body, Vector3.new(1.05, 0.08, 0.44), if k % 2 == 0 then LEAF else LEAF_L)
+			table.insert(haloLeaves, { leaf, CFrame.Angles(0, (k - 0.5) / 6 * math.pi * 2, 0) * CFrame.new(1.85, -0.04, 0) })
+		end
+		H.rig(a, flowerCF, haloLeaves)
 
-		-- THE WINGS: the ForgeGUI golden vine wings, their roots behind your shoulders, pushed 1.45 studs back off you
-		-- and leaning back a little, breathing slowly; they grow out of your back when the aura forms. Liquid gold
-		-- drips off them.
+		-- THE WINGS: the ForgeGUI golden vine wings, their roots on your back between your shoulder blades (owner, 4 Nov:
+		-- "fix the model with the wing so its attached to the back of my body": they hung 1.6 studs off you), leaning back
+		-- a little, flapping slowly (they tip back and forth, rise and fall, and spread and close a
+		-- little); they grow out of your back when the aura forms. Liquid gold drips off them.
 		local wings = H.prop(a.body, "ug_wings", WSPAN)
+		-- (4 Nov: the wing mesh is one-sided, so from behind (your own follow camera) it vanished: drawn from both sides)
+		pcall(function()
+			(wings :: any).DoubleSided = true
+		end)
 		local ws = H.propSize("ug_wings", WSPAN)
-		local wingK = 0
+		local wingK, flap = 0, 0
 		local wingCF = once(function(f): CFrame
 			wingK = math.max(0.05, ease((f.t - a.born - 0.2) / 0.8))
-			local breathe = math.rad(4) * math.sin(f.t * 1.4)
-			return f.root * CFrame.new(0, 1.15 + 0.08 * math.sin(f.t * 1.4 + 0.6), 1.45) * CFrame.Angles(math.rad(10) + breathe, 0, 0) * CFrame.new(0, (ws.Y * 0.5 - 0.25) * wingK, 0) * WING_TURN
+			flap = math.sin(f.t * 1.5)
+			return f.root * CFrame.new(0, 0.95 + 0.12 * flap, 0.7) * CFrame.Angles(math.rad(6) + math.rad(5) * flap, 0, 0) * CFrame.new(0, (ws.Y * 0.5 - 0.55) * wingK, 0) * WING_TURN
 		end)
 		K.move(a, wings, wingCF)
 		-- (GUESS: the wing tips at the top outer corners, the lowest feathers lower in; check the drips leave the wings)
@@ -281,8 +305,9 @@ return function(H)
 		K.addEmitter(a, sparkle)
 		H.detail(a, sparkle)
 
-		-- the halo and the wings grow in as the aura forms
-		local settled = false
+		-- the halo and the wings grow in as the aura forms; then the wings' spread breathes with the flap (not for far
+		-- players or phones: there they hold still)
+		local settled, still = false, false
 		H.job(a, function(self, f)
 			local life = f.t - self.born
 			if life > 1.4 then
@@ -290,7 +315,15 @@ return function(H)
 					settled = true
 					rays.Size = Vector3.new(5, 0.05, 5)
 					flower.Size = Vector3.new(3.1, 0.05, 3.1)
-					wings.Size = ws
+				end
+				if self.lowNow then
+					if not still then
+						still = true
+						wings.Size = ws
+					end
+				else
+					still = false
+					wings.Size = Vector3.new(ws.X * (0.95 + 0.05 * flap), ws.Y, ws.Z)
 				end
 				return
 			end
@@ -300,43 +333,45 @@ return function(H)
 			flower.Size = Vector3.new(3.1 * k, 0.05, 3.1 * k)
 			wings.Size = ws * wingK
 		end)
-		-- your own follow camera behind you: the wings and the halo go half see-through, and the can while it's in
-		-- your back half, so they never hide you
+		-- your own follow camera behind you: the wings and the halo go a little see-through, and the can while it's in
+		-- your back half (mild: they're also kept off the camera's line)
 		local fadeOn, canFaded = false, false
 		H.job(a, function(self, f)
 			local behind = camBehind(f)
 			if behind ~= fadeOn then
 				fadeOn = behind
-				wings.LocalTransparencyModifier = if behind then 0.5 else 0
+				wings.LocalTransparencyModifier = if behind then FADE else 0
 				for _, img in rayImgs do
-					img.ImageTransparency = if behind then 0.72 else 0.45
+					img.ImageTransparency = if behind then 0.45 + 0.55 * FADE else 0.45
 				end
 				for _, img in flowerImgs do
-					img.ImageTransparency = if behind then 0.5 else 0
+					img.ImageTransparency = if behind then FADE else 0
 				end
 			end
 			local cf = behind and (can.CFrame.Position - f.root.Position):Dot(f.root.LookVector) < 0.6
 			if cf ~= canFaded then
 				canFaded = cf
-				can.LocalTransparencyModifier = if cf then 0.5 else 0
+				can.LocalTransparencyModifier = if cf then FADE else 0
 			end
 		end)
 
-		-- LIGHT FROM ABOVE: four soft sun shafts and rays of light falling through them
-		local sky = K.piece(a.body, Vector3.new(4.6, 0.2, 4.6))
-		K.move(a, sky, function(f)
-			return CFrame.new(f.feet + Vector3.new(0, 10, 0)) * CFrame.Angles(0, f.t * 0.15, 0)
+		-- LIGHT FROM ABOVE: a warm god-ray column standing on you, a soft glow texture stretched up its length (it runs
+		-- from 6 studs underground to 22 up, so it's brightest from your shoulders to 14 studs up and fades out at the
+		-- top), a narrower shaft in it over your head, gold motes falling slowly down through it and rays of light
+		local column = K.piece(a.body, Vector3.new(0.2, 0.2, 0.2))
+		K.move(a, column, function(f)
+			return CFrame.new(f.feet)
 		end)
+		local colLow, colTop = H.att(column, Vector3.new(0, -6, 0)), H.att(column, Vector3.new(0, 22, 0))
+		H.beam(colLow, colTop, { colors = K.seq(GOLD, SUN, SUN_L), w0 = 6, w1 = 4, trans = NumberSequence.new(0.5), tex = K.FX.glow, texMode = Enum.TextureMode.Stretch, texLen = 1, light = 0.5, bright = 1.1 })
+		local shaft = H.beam(H.att(column, Vector3.new(0, 3, 0)), colTop, { colors = K.seq(SUN_L, SUN), w0 = 1.8, w1 = 1.3, trans = NumberSequence.new(0.45), tex = K.FX.glow, texMode = Enum.TextureMode.Stretch, texLen = 1, light = 0.5, bright = 1.2 })
+		H.detail(a, shaft)
+		local sky = K.piece(a.body, Vector3.new(3, 0.4, 3))
+		K.move(a, sky, function(f)
+			return CFrame.new(f.feet + Vector3.new(0, 15, 0)) * CFrame.Angles(0, f.t * 0.15, 0)
+		end)
+		K.addEmitter(a, E(sky, { tex = BFX.dot, colors = K.seq(SUN_L, GOLD), rate = 6, life = { 5, 6.5 }, speed = { 1.6, 2.4 }, size = 0.16, accel = Vector3.new(0, -0.15, 0), dir = Enum.NormalId.Bottom, spread = 8, light = 0.3, bright = 1.2 }))
 		H.layer(a, LOOP, "Rays", sky)
-		for i = 1, 4 do
-			local th = i / 4 * math.pi * 2 + 0.4
-			local top = H.att(sky, Vector3.new(math.cos(th) * 1.2, 7, math.sin(th) * 1.2))
-			local bot = H.att(sky, Vector3.new(math.cos(th) * 2.4, -9.8, math.sin(th) * 2.4))
-			local b = H.beam(top, bot, { colors = K.seq(SUN_L, SUN), w0 = 2.2, w1 = 5, trans = ns(0, 1, 0.3, 0.72, 0.9, 0.78, 1, 1), tex = T.stripBody, texMode = Enum.TextureMode.Stretch, texSpeed = -0.3, light = 0.5, bright = 1.1 })
-			if i % 2 == 0 then
-				H.detail(a, b)
-			end
-		end
 		-- gold petals and pollen round you; the Midas Touch's glints; petals kicked up when you run
 		local around = K.bodyBox(a, Vector3.new(5, 5.5, 5), 0)
 		local petals = H.layer(a, LOOP, "Petals", around)
@@ -346,8 +381,8 @@ return function(H)
 		K.addEmitter(a, E(kick, { tex = BFX.petal, colors = K.seq(SUN_L, SUN, AMBER), rate = 9, life = { 0.6, 1 }, speed = { 2, 4 }, size = 0.5, accel = Vector3.new(0, -6, 0), spin = 200, spread = 50, light = 0.3 }), true)
 
 		-- THE BODY: a gold-to-amber glow, a mown trail, an amber outline (a darker edge round the gold), a warm light
-		H.shell(a, K.seq(SUN_L, GOLD, AMBER), 5, 0.9)
-		K.feetTrail(a, K.seq(SUN_L, SUN, AMBER))
+		H.shell(a, K.seq(SUN_L, GOLD, AMBER), 5, 0.8)
+		K.feetTrail(a, K.seq(GOLD, AMBER, BRONZE))
 		local hl = K.outline(a, AMBER, 0.45)
 		K.light(a, SUN, 1.1, 14)
 		H.lightJob(a, 0.08)

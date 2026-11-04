@@ -258,6 +258,7 @@ local bloom: BloomEffect? = nil
 local savedLight: { [string]: any }? = nil
 local savedAtmo: { [string]: any }? = nil
 local savedEffects: { [Instance]: boolean } = {}
+local savedBloom: { [BloomEffect]: { number } } = {}
 local lightFrom: { [string]: any } = {}
 local lightTo: { [string]: any } = {}
 local lightStart, lightLen = 0, 0
@@ -315,7 +316,9 @@ function Film.flash(color: Color3?, strength: number, time: number)
 	f.BorderSizePixel = 0
 	f.Size = UDim2.fromScale(1, 1)
 	f.BackgroundColor3 = color or Color3.new(1, 1, 1)
-	f.BackgroundTransparency = 1 - math.clamp(strength * (if calm() then 0.5 else 1), 0, 1)
+	-- (owner, 4 Nov: "the cutscenes are blinding": a flash covers at most 45% of the picture, a full-white one
+	-- included; Reduce camera shake halves it again)
+	f.BackgroundTransparency = 1 - math.clamp(math.min(strength * 0.55, 0.45) * (if calm() then 0.5 else 1), 0, 1)
 	f.ZIndex = 5
 	f.Parent = g
 	TweenService:Create(f, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
@@ -338,6 +341,12 @@ local GRADES: { [string]: { [string]: any } } = {
 -- `name`: one of GRADES, or a table of ColorCorrection properties of its own (e.g. a boss's colour)
 function Film.grade(name: any, time: number?)
 	local goal = if type(name) == "table" then name else (GRADES[name] or GRADES.none)
+	-- (4 Nov, "blinding": no grade brightens the picture)
+	if type(goal.Brightness) == "number" and goal.Brightness > 0 then
+		local g = table.clone(goal)
+		g.Brightness = 0
+		goal = g
+	end
 	local cc = grade
 	if not cc or not cc.Parent then
 		local made = Instance.new("ColorCorrectionEffect")
@@ -362,7 +371,7 @@ function Film.glow(intensity: number, size: number?, time: number?)
 	if not b or not b.Parent then
 		local made = Instance.new("BloomEffect")
 		made.Name = "FilmBloom"
-		made.Threshold = 0.9
+		made.Threshold = 0.95 -- (4 Nov: 0.9; only the brightest things glow)
 		made.Intensity = 0
 		made.Size = 24
 		made.Parent = Lighting
@@ -370,7 +379,8 @@ function Film.glow(intensity: number, size: number?, time: number?)
 		b = made
 	end
 	assert(b)
-	TweenService:Create(b, TweenInfo.new(time or 0.8, Enum.EasingStyle.Sine), { Intensity = intensity, Size = size or 24 }):Play()
+	-- (4 Nov, "blinding": half the glow a film asks for, and a tighter halo)
+	TweenService:Create(b, TweenInfo.new(time or 0.8, Enum.EasingStyle.Sine), { Intensity = intensity * 0.5, Size = math.min(size or 24, 26) }):Play()
 end
 
 -- The light: { ClockTime, Brightness, ExposureCompensation, Ambient, OutdoorAmbient, ColorShift_Top,
@@ -391,8 +401,19 @@ function Film.light(goal: { [string]: any }, time: number?)
 			lightTo[k] = goal[k]
 		end
 	end
+	-- (owner, 4 Nov: "the cutscenes are blinding": a film's exposure is pulled down: a third of any brightening, then
+	-- 0.1 under what it asks for)
+	local ex = lightTo.ExposureCompensation
+	if goal.ExposureCompensation ~= nil and type(ex) == "number" then
+		lightTo.ExposureCompensation = (if ex > 0 then ex * 0.3 else ex) - 0.1
+	end
 	lightStart, lightLen = os.clock(), math.max(time or 0, 0)
 	local atmo = goal.atmosphere
+	if type(atmo) == "table" and type(atmo.Glare) == "number" then
+		-- (the sun's glare at half: it washed the sky out white)
+		atmo = table.clone(atmo)
+		atmo.Glare *= 0.5
+	end
 	local a = Lighting:FindFirstChildOfClass("Atmosphere")
 	if atmo and a then
 		if atmoTween then
@@ -457,6 +478,45 @@ local function setFocus(cam: Camera, cf: CFrame, focus: Vector3?, dt: number)
 	local auto = math.clamp((40 - fov) / 30, 0, 1)
 	d.FarIntensity = o.far or (0.12 + auto * 0.35)
 	d.NearIntensity = o.near or (auto * 0.25)
+end
+
+-- The village square's lanterns, ropes and bunting (server/HubSquare, 4 Nov) weren't there when the films' hub
+-- shots were framed: any of those pieces right in front of the lens is hidden (this client only) while a film plays.
+local hubParts: { BasePart } = {}
+local hubHidden: { [BasePart]: boolean } = {}
+local hubCheck = 0
+local function hubFade()
+	table.clear(hubParts)
+	local w = workspace:FindFirstChild("World")
+	local hub = w and w:FindFirstChild("Hub")
+	local sq = hub and hub:FindFirstChild("HubSquare")
+	if not sq then
+		return
+	end
+	for _, d in sq:GetDescendants() do
+		if d:IsA("BasePart") and (d.Name == "Rope" or d.Name == "Flag" or d:FindFirstAncestor("lantern_post") ~= nil) then
+			table.insert(hubParts, d)
+		end
+	end
+end
+local function unfadeHub()
+	for p in hubHidden do
+		p.LocalTransparencyModifier = 0
+	end
+	table.clear(hubHidden)
+	table.clear(hubParts)
+end
+local function hubNear(pos: Vector3)
+	for _, p in hubParts do
+		local near = p.Parent ~= nil and (p.Position - pos).Magnitude < p.Size.Magnitude / 2 + 4
+		if near and not hubHidden[p] then
+			hubHidden[p] = true
+			p.LocalTransparencyModifier = 1
+		elseif not near and hubHidden[p] then
+			hubHidden[p] = nil
+			p.LocalTransparencyModifier = 0
+		end
+	end
 end
 
 local function render(dt: number)
@@ -546,6 +606,11 @@ local function render(dt: number)
 	cam.FieldOfView = math.clamp(fov - fovPunch, 6, 100)
 	lastCf = cf
 	setFocus(cam, cf, focus, dt)
+	hubCheck += dt
+	if hubCheck > 0.1 and #hubParts > 0 then
+		hubCheck = 0
+		hubNear(cf.Position)
+	end
 	-- motion blur fades
 	if blur and blur.Parent then
 		blurAmount *= math.exp(-dt * 9)
@@ -626,6 +691,17 @@ function Film.start(name: string)
 			e.Enabled = false
 		end
 	end
+	-- (owner, 4 Nov: "the cutscenes are blinding": the world's own bloom (client/BiomeLight's "Glow", paused now) at
+	-- 60% and only on the brightest neon while a film plays; put back after)
+	table.clear(savedBloom)
+	for _, e in Lighting:GetChildren() do
+		if e:IsA("BloomEffect") and e.Name ~= "FilmBloom" then
+			savedBloom[e] = { e.Intensity, e.Threshold }
+			e.Intensity *= 0.6
+			e.Threshold = math.max(e.Threshold, 0.96)
+		end
+	end
+	hubFade()
 	local d = Instance.new("DepthOfFieldEffect")
 	d.Name = "FilmFocus"
 	d.FarIntensity = 0.15
@@ -666,6 +742,13 @@ function Film.stop(name: string)
 		end
 	end
 	table.clear(savedEffects)
+	for e, v in savedBloom do
+		if e.Parent then
+			e.Intensity, e.Threshold = v[1], v[2]
+		end
+	end
+	table.clear(savedBloom)
+	unfadeHub()
 	table.clear(lightTo)
 	if atmoTween then
 		atmoTween:Cancel()

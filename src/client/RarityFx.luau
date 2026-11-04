@@ -904,8 +904,10 @@ local BUILD: { [string]: () -> Aura } = {
 -- module fails to load, or one of its auras fails to build).
 local OLD_BUILD = table.clone(BUILD)
 do
+	-- (4 Nov, owner: "yes" to the ForgeGUI remake going live: client/ClassAurasV6 (ForgeGUI props and emblems, VFX Forge
+	-- layers). The 31 Oct auras stay in client/ClassAuras; this name back to "ClassAuras" brings them back.)
 	local ok, res = pcall(function()
-		return require(script.Parent:WaitForChild("ClassAuras", 10) :: ModuleScript)({
+		return require(script.Parent:WaitForChild("ClassAurasV6", 10) :: ModuleScript)({
 			piece = piece, flat = flat, seq = seq, bright = bright, emitter = emitter, trail = trail, beamRing = beamRing,
 			pulse = pulse, newAura = newAura, move = move, fades = fades, addEmitter = addEmitter, groundDisc = groundDisc,
 			groundRing = groundRing, outline = outline, bodyBox = bodyBox, feetTrail = feetTrail, light = light, ringOf = ringOf,
@@ -961,8 +963,8 @@ end
 -- put class `classId`'s aura on `char` (keyed by `key`: the player, or the model itself for a preview)
 local function attach(key: any, char: Model, classId: any, p: Player?)
 	drop(key)
-	-- (4 Nov: a class that wears nothing, Config.NO_AURA; and the remade auras, client/Auras, take over the classes)
-	if (Config :: any).AURAS_V2 or (type(classId) == "string" and (Config :: any).NO_AURA and (Config :: any).NO_AURA[classId]) then
+	-- (4 Nov: a class that wears nothing, Config.NO_AURA: the Weed Puller)
+	if type(classId) == "string" and (Config :: any).NO_AURA and (Config :: any).NO_AURA[classId] then
 		return
 	end
 	local build = if type(classId) == "string" then BUILD[classId] else nil
@@ -1002,10 +1004,6 @@ end
 
 -- Class `classId`'s aura on any rig (a shop preview, a showcase, a test dummy): returns a function that takes it off.
 function RarityFx.preview(char: Model, classId: string): () -> ()
-	if (Config :: any).AURAS_V2 then
-		local Auras = require(script.Parent:WaitForChild("Auras")) :: any
-		return Auras.preview(char, classId)
-	end
 	attach(char, char, classId, nil)
 	return function()
 		drop(char)

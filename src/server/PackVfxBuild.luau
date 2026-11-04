@@ -44,7 +44,7 @@ PackVfxBuild.SPEC = {
 	Star = { from = { I(64) }, Hold = 0.15 },
 	PinkBurst = { from = { I(22) }, Hold = 0.12 },
 	PurpleBurst = { from = { I(33) }, Hold = 0.15 },
-	FireBurst = { from = { A(13) }, Hold = 0.25 },
+	FireBurst = { from = { A(13) }, Hold = 0.25, Grow = true, GrowTime = 0.9, GrowFrom = 0.3, Life = 1.6 },
 	Dome = { from = { S("Dome") }, Grow = true, GrowTime = 0.7, GrowFrom = 0.2, Life = 0.9 },
 	Explosion = { from = { S("Explosion") }, Hold = 0.3, Grow = true, GrowTime = 1.1, GrowFrom = 0.15, Life = 2 },
 	Rocks = { from = { S("Rocks") }, Hold = 0.15, Grow = true, GrowTime = 1.4, GrowFrom = 0.4, Life = 2 },

@@ -214,7 +214,7 @@ end
 local function grow(m: Model, time: number)
 	local from = (m:GetAttribute("GrowFrom") :: number?) or 0.35
 	for _, d in m:GetDescendants() do
-		if d:IsA("MeshPart") or (d:IsA("BasePart") and d:FindFirstChildOfClass("Decal")) then
+		if d:IsA("BasePart") and d.Transparency < 1 then
 			local p = d :: BasePart
 			if p:GetAttribute("Host") then
 				continue
@@ -513,13 +513,14 @@ function PackFx.boss(z: number, kind: string, s: any, ring: Color3?)
 	end
 end
 
--- The boss winding up a move: a flash at its chest in its colour.
+-- The boss winding up a move: a ring of its colour rolling out on the ground at its feet (a flash at its chest hid
+-- its face: the Dandelion King's head glowed white the whole fight).
 function PackFx.bossCast(z: number, at: Vector3, size: number, ring: Color3?)
 	if not PackFx.on() then
 		return
 	end
 	local th = THEME[rigOf(z)] or THEME.dandelion
-	PackFx.play(th.cast, at, { color = th.tint or ring or ringOf(z), scale = math.clamp(size / 20, 0.6, 2) })
+	PackFx.play("Shock", at, { color = th.tint or ring or ringOf(z), scale = math.clamp(size / 28, 0.5, 1.6) })
 end
 
 -- A boss shot in flight: a glowing orb riding on it.
@@ -541,7 +542,7 @@ function PackFx.bossMoment(z: number, what: string, at: Vector3, size: number, r
 	local k = math.clamp(size / 30, 0.6, 2.5)
 	if what == "intro" then
 		PackFx.play("Shock", at, { scale = 1.4 * k, force = true })
-		PackFx.play(th.burst, at + Vector3.new(0, 4 * k, 0), { color = tint, scale = 1.6 * k, force = true })
+		PackFx.play(th.burst, at + Vector3.new(0, 4 * k, 0), { color = tint, scale = 1.1 * k, force = true })
 		PackFx.play("Dome", at, { color = tint, scale = 0.3 * k, force = true })
 		if th.ground then
 			PackFx.play(th.ground, at, { color = th.groundTint, scale = 0.6 * k, force = true })

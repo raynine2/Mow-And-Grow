@@ -579,7 +579,7 @@ H.bossMove = function(d)
 		local bcf = BossView.cframe()
 		if bcf then
 			local hgt = BossView.height()
-			pcall(PackFx.bossCast, z, bcf.Position + Vector3.new(0, hgt * 0.55, 0) + bcf.LookVector * hgt * 0.15, hgt)
+			pcall(PackFx.bossCast, z, bcf.Position + Vector3.new(0, 0.4, 0), hgt)
 		end
 	end
 	if d.ammo then

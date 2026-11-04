@@ -34,7 +34,7 @@ local FIT: { [string]: { open: number, top: number } } = {
 	swamp = { open = 0.29, top = 0.4 },
 	frost = { open = 0.36, top = 0.94 },
 	ember = { open = 0.33, top = 0.6 },
-	isles = { open = 0.35, top = 0.96 },
+	isles = { open = 0.36, top = 0.96 }, -- (open: measured on arena_starlight, its gateway, 4 Nov)
 }
 
 local WALL_H = 9 -- the height the wall sections aim for (the count round the ring follows from their shape)
@@ -47,8 +47,18 @@ local GATE_MAX_W = 60
 local GATE_MAX_H = 44
 local GATE_MAX_D = 24 -- (the gateways are deep: it stands half in the arena, half out)
 
+-- (owner, 4 Nov: "why is every arena remade except the last one ? fix it") ForgeGUI never delivered the isles' gateway
+-- and wall (both jobs ended outcome_unknown on 30 Oct, and those can't be asked for again), so arena 8 kept the old
+-- block dressing. It uses the owner's earlier ForgeGUI Starlight pieces instead, in the same indigo, gold and star
+-- crystals as its pillar, stands and altar: the star archway (arena_starlight) and the starry wall
+-- (awall_starlight). Those already face -Z as templates (server/Models FRONT_PLUS_Z), so they aren't turned.
+local ALIAS: { [string]: { [string]: string } } = {
+	isles = { gate = "arena_starlight", wall = "awall_starlight" },
+}
+
 local function key(piece: string, area: string): string
-	return "fa_" .. piece .. "_" .. area
+	local a = ALIAS[area]
+	return (a and a[piece]) or ("fa_" .. piece .. "_" .. area)
 end
 
 -- The 30 Oct meshes face their -Z (checked in Studio: the stands' seats, the walls' decorated side). server/Models
@@ -59,7 +69,10 @@ local TURN = CFrame.Angles(0, math.pi / 2, 0)
 -- A copy of an area's piece at `cf` (feet there, front toward cf.LookVector), fitted into width / height / depth
 -- (any may be nil). Returns the model and its mesh's size (X width, Y height, Z depth).
 local function place(piece: string, area: string, parent: Instance, cf: CFrame, w: number?, h: number?, d: number?): (Model?, Vector3)
-	local m = Models.placeForge(key(piece, area), parent, cf * TURN, { depth = w, height = h, width = d }, true)
+	local straight = ALIAS[area] ~= nil and ALIAS[area][piece] ~= nil
+	local m = if straight
+		then Models.placeForge(key(piece, area), parent, cf, { width = w, height = h, depth = d }, true)
+		else Models.placeForge(key(piece, area), parent, cf * TURN, { depth = w, height = h, width = d }, true)
 	if not m then
 		return nil, Vector3.zero
 	end

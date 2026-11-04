@@ -323,6 +323,34 @@ local function shiftInfo(info: any, moves: { Move })
 	walk(info)
 end
 
+-- The smaller pieces standing on the paving (the shredder) sat 0.3 into it the same way: each model of the unit
+-- whose lowest part is up to 0.6 under the stones round it goes up onto them.
+local function liftPieces(unit: Instance, tiles: Instance?)
+	if not tiles then
+		return
+	end
+	for _, m in unit:GetChildren() do
+		if not m:IsA("Model") then
+			continue
+		end
+		local cf, size = m:GetBoundingBox()
+		local bottom = cf.Position.Y - size.Y / 2
+		local top = -math.huge
+		for _, p in tiles:GetDescendants() do
+			if p:IsA("BasePart") and p.Name == "Stone" then
+				local d = Vector3.new(p.Position.X - cf.Position.X, 0, p.Position.Z - cf.Position.Z).Magnitude
+				if d < math.max(size.X, size.Z) / 2 + 4 then
+					top = math.max(top, p.Position.Y + p.Size.Y / 2)
+				end
+			end
+		end
+		local lift = top - bottom + 0.02
+		if lift > 0.05 and lift < 0.6 then
+			m:PivotTo(m:GetPivot() + Vector3.new(0, lift, 0))
+		end
+	end
+end
+
 -- Turns each model of a unit (with the loose parts nearest it) about its pivot to the nearest square angle.
 local function squarePieces(unit: Instance, moves: { Move })
 	local groups: { { pivot: CFrame, members: { Instance } } } = {}
@@ -407,6 +435,7 @@ function CampGround.squareUp(w: Instance, info: any?): (number, number)
 		local unit = hub:FindFirstChild(name)
 		if unit then
 			squarePieces(unit, moves)
+			liftPieces(unit, tiles)
 			n += 1
 		end
 	end

@@ -875,12 +875,23 @@ local function tearScene(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolea
 			end
 		end)
 	end)
-	-- (wide: the King's feet to the tear over him; a slow push in)
+	-- (wide: the King's feet to the tear over him; a slow push in. A test, 4 Nov: trees between the Mayor and the King
+	-- hid him and the tear: they're hidden for this shot)
 	local look = kingFeet + UP * (H * 0.95)
-	return Film.run(HIT_AT + 0.45, function(k)
+	local side = toCamp:Cross(UP)
+	local tos = { sky, sky + side * (H * 0.5), sky - side * (H * 0.5) }
+	for _, y in { 0.1, 0.5, 0.95 } do
+		for _, x in { -0.4, 0, 0.4 } do
+			table.insert(tos, kingFeet + UP * (H * y) + side * (H * x))
+		end
+	end
+	local unclear = clearShot({ camAt, camAt - toCamp * 1.2 }, tos, math.max(1.5, H * 0.05), 120)
+	local ok = Film.run(HIT_AT + 0.45, function(k)
 		local pos = camAt - toCamp * (k * 1.2)
 		return Film.look(pos, look), Film.mm(28), look
 	end, { hand = 0.25, far = 0.05 })
+	unclear()
+	return ok
 end
 
 -- 3: close on the King: the pink burning in his eyes as he heaves (no ground in the picture: up at his face

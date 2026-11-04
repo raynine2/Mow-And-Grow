@@ -110,19 +110,34 @@ local function face(i: number, j: number, k: number): Color3
 	return TONES[1 + math.floor(hash(i, j, k) * #TONES)]
 end
 
+-- (4 Nov, owner: "it stil feels low qaulity", picked the tiles) The lobby's stones (a lay with no Look) are real
+-- stone now: Sandstone's texture under their colour, the face raised a little over its lighter rim (a bevel you can
+-- see), each stone a hair higher or lower than its neighbours. The camps' looks keep their flat matte stones.
+local TEXTURED = false
+local STONE_MAT = Enum.Material.Sandstone
+local BEVEL = 0.05
+
 -- One stone, its top-centre at `cf` (level), `sx` across x `sz` along.
 local function stone(f: Instance, cf: CFrame, sx: number, sz: number, color: Color3, lift: number)
 	if sx < 0.6 or sz < 0.6 then
 		return
 	end
+	if TEXTURED then
+		local p = cf.Position
+		lift += (hash(p.X, p.Z, 11) - 0.5) * 0.05
+	end
 	local s = part(f, "Stone", Vector3.new(sx, STONE_H, sz), cf * CFrame.new(0, BED_TOP + STONE_H / 2 + lift, 0), color)
 	CampGround.pave(s, color)
 	-- (matte: SmoothPlastic's shine washed the stones out to beige in the lobby's sun)
-	s.Material = Enum.Material.Plastic
+	s.Material = if TEXTURED then STONE_MAT else Enum.Material.Plastic
 	local kids = f:GetChildren()
 	local top = kids[#kids] -- (CampGround.pave's inset top, just added)
 	if top and top.Name == "StoneTop" and top:IsA("BasePart") then
-		top.Material = Enum.Material.Plastic
+		top.Material = if TEXTURED then STONE_MAT else Enum.Material.Plastic
+		if TEXTURED then
+			top.Size = Vector3.new(top.Size.X, BEVEL + 0.04, top.Size.Z)
+			top.CFrame = top.CFrame + Vector3.new(0, BEVEL / 2, 0)
+		end
 	end
 end
 
@@ -130,7 +145,10 @@ local function kerbPiece(f: Instance, cf: CFrame, len: number, k: number)
 	if len < 0.4 then
 		return
 	end
-	part(f, "Kerb", Vector3.new(0.8, KERB_H, len), cf * CFrame.new(0, KERB_H / 2, 0), KERB[k % 2 + 1])
+	local kp = part(f, "Kerb", Vector3.new(0.8, KERB_H, len), cf * CFrame.new(0, KERB_H / 2, 0), KERB[k % 2 + 1])
+	if TEXTURED then
+		kp.Material = Enum.Material.Slate
+	end
 end
 
 local function plate(f: Instance, size: Vector3, cf: CFrame)
@@ -266,8 +284,12 @@ end
 local function layRings(f: Instance, idx: number, area: Area)
 	local c, R = area.c :: Vector2, area.r :: number
 	local centre = CFrame.new(c.X, 0, c.Y)
-	cyl(f, centre, R + 0.8, KERB_RING_TOP, KERB[1])
+	local kerb = cyl(f, centre, R + 0.8, KERB_RING_TOP, KERB[1])
+	if TEXTURED then
+		kerb.Material = Enum.Material.Slate
+	end
 	local top = BED_TOP + STONE_H + DISC_LIFT
+	local outerTop: number? = nil
 	local r0 = if area.medallion then 2.6 else 1.9
 	local ringW = 3.1
 	local rings = math.max(1, math.floor((R - r0) / ringW + 0.5))
@@ -280,19 +302,27 @@ local function layRings(f: Instance, idx: number, area: Area)
 			col = col:Lerp(CampGround.BORDER, 0.18)
 		end
 		cyl(f, centre, rOut, top, GROUT)
-		cyl(f, centre, rOut - GAP / 2, top + 0.002, col:Lerp(Color3.new(1, 1, 1), 0.18))
-		cyl(f, centre, rOut - GAP / 2 - 0.28, top + 0.004, col)
+		local rim = cyl(f, centre, rOut - GAP / 2, top + 0.002, col:Lerp(Color3.new(1, 1, 1), 0.18))
+		local faceTop = top + 0.004 + (if TEXTURED then BEVEL * 0.7 else 0)
+		outerTop = outerTop or faceTop
+		local face = cyl(f, centre, rOut - GAP / 2 - 0.28, faceTop, col)
+		if TEXTURED then
+			rim.Material = STONE_MAT
+			face.Material = STONE_MAT
+		end
 		local nStones = math.max(6, math.floor(2 * math.pi * rMid / STONE + 0.5))
 		for j = 0, nStones - 1 do
 			local t = math.rad((j + (if k % 2 == 0 then 0.5 else 0)) * 360 / nStones)
 			local p = Vector3.new(c.X + math.sin(t) * rMid, 0, c.Y - math.cos(t) * rMid)
 			local out = Vector3.new(math.sin(t), 0, -math.cos(t))
-			part(f, "Joint", Vector3.new(GAP, 0.02, ringW), CFrame.lookAt(p, p + out) * CFrame.new(0, top + 0.006 + 0.01, 0), GROUT)
+			part(f, "Joint", Vector3.new(GAP, 0.02, ringW), CFrame.lookAt(p, p + out) * CFrame.new(0, faceTop + 0.012, 0), GROUT)
 		end
-		top += 0.01
+		top = faceTop + 0.02
 	end
-	-- the walk plate, level with the stones
-	local pl = part(f, "WalkPlate", Vector3.new(0.2, R * 2, R * 2), centre * CFrame.new(0, top - 0.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.new(1, 1, 1))
+	-- the walk plate, level with the stones (half way between the outer ring's and the middle's: each ring stands a
+	-- hair over the one outside it)
+	local plateTop = ((outerTop or top) + top) / 2
+	local pl = part(f, "WalkPlate", Vector3.new(0.2, R * 2, R * 2), centre * CFrame.new(0, plateTop - 0.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.new(1, 1, 1))
 	pl.Shape = Enum.PartType.Cylinder
 	pl.Transparency = 1
 	pl.CanCollide = true
@@ -378,6 +408,7 @@ function LobbyPaving.lay(parent: Instance, areas: { Area }, look: Look?): Folder
 	local f = Instance.new("Folder")
 	f.Name = "Paving"
 	local saved = { TONES, CREAM, GROUT, KERB }
+	TEXTURED = look == nil
 	if look then
 		TONES = look.tones or TONES
 		CREAM = look.cream or CREAM
@@ -394,6 +425,7 @@ function LobbyPaving.lay(parent: Instance, areas: { Area }, look: Look?): Folder
 		end
 	end
 	TONES, CREAM, GROUT, KERB = saved[1] :: any, saved[2] :: any, saved[3] :: any, saved[4] :: any
+	TEXTURED = false
 	if look and look.groutNeon then
 		-- (the ember camp: its joints glow like lava between dark stones)
 		for _, b in f:GetChildren() do

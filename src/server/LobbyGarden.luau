@@ -36,9 +36,13 @@ export type Ctx = {
 	squareC: Vector3,
 	squareR: number,
 	covers: (x: number, z: number, grow: number) -> boolean, -- on (or within `grow` of) a walk
+	groundY: ((x: number, z: number) -> number)?, -- the ground's height (the hills past the hedge)
 }
 
 local rng = Random.new(5150)
+local heightAt: (number, number) -> number = function()
+	return 0
+end
 
 local function tag(inst: Instance, name: string, attrs: { [string]: any })
 	for k, v in attrs do
@@ -83,6 +87,7 @@ end
 
 -- a voxel tree (with the trunk's blocker, as LandsBuilder's trees)
 local function tree(parent: Instance, name: string, p: Vector3, s: number)
+	p = Vector3.new(p.X, heightAt(p.X, p.Z) - 0.3, p.Z)
 	if VM.place(parent, name, p, { scale = s, yaw = quarter() }) then
 		VM.blocker(parent, Vector3.new(4.8 * s, 20 * s, 4.8 * s), CFrame.new(p + Vector3.new(0, 10 * s, 0)))
 	end
@@ -90,11 +95,13 @@ local function tree(parent: Instance, name: string, p: Vector3, s: number)
 end
 
 local function bush(parent: Instance, name: string, p: Vector3, s: number)
+	p = Vector3.new(p.X, heightAt(p.X, p.Z) - 0.2, p.Z)
 	VM.place(parent, name, p, { scale = s, yaw = quarter(), collide = true })
 	take(p.X, p.Z, 5 * s)
 end
 
 local function rock(parent: Instance, name: string, p: Vector3, s: number)
+	p = Vector3.new(p.X, heightAt(p.X, p.Z), p.Z)
 	VM.place(parent, name, p + Vector3.new(0, -0.3, 0), { scale = s, yaw = rng:NextNumber(0, 6.28), collide = true })
 	take(p.X, p.Z, 6 * s)
 end
@@ -225,6 +232,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 function LobbyGarden.dress(world: Instance, ctx: Ctx)
 	table.clear(taken)
+	heightAt = ctx.groundY or heightAt
 	-- (the fountain garden and the rewards stall, already standing behind the spawn's sides)
 	take(-26, ctx.spawn.Z, 10)
 	take(26, ctx.spawn.Z, 10)

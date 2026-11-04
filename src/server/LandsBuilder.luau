@@ -28,6 +28,7 @@ local Environment = require(script.Parent.Environment)
 local LobbyKit = require(script.Parent.LobbyKit)
 local LobbyPads = require(script.Parent.LobbyPads)
 local Layout = require(script.Parent.LobbyLayout)
+local Ground = require(script.Parent.Ground)
 
 local LandsBuilder = {}
 LandsBuilder.ON = true
@@ -59,6 +60,7 @@ local LANDS = { -- (angle from north, + to the left; the starlight observatory b
 	{ id = "isles", lm = "lm_starlight", a = 180, r = 96 },
 }
 local PATCH_R = 30
+local HEDGE_R = 72 -- the hedge round the square (hedge())
 local REACH = 200 -- the island's half size
 local CELL = 8
 local SEA = -6
@@ -144,78 +146,163 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- ground and walks
 -------------------------------------------------------------------------------------------------------------
--- The ground colour of the 8-stud square at (x, z): the square a mown lawn (two greens in stripes two squares wide,
--- running toward the windmill), a land's own colours on its patch, the meadow's checker elsewhere.
-local function groundAt(x: number, z: number): Color3
-	local p = Vector3.new(x, 0, z)
-	local meadow = zone("meadow").palette
-	if (p - SQUARE_C).Magnitude < SQUARE_R then
-		return if math.floor((x + 1000) / 16) % 2 == 0 then meadow.ground else meadow.ground2
-	end
-	for _, l in LANDS do
-		if (p - landPos(l)).Magnitude < PATCH_R then
-			local pal = zone(l.id).palette
-			return if hash(x, z, 3) < 0.5 then pal.ground else pal.ground2
-		end
-	end
-	return if hash(x, z, 9) < 0.5 then meadow.ground else meadow.ground2
+-- (4 Nov, owner: "it stil feels low qaulity", picked the ground and the tiles) THE GROUND IS ROBLOX TERRAIN now, as in
+-- the runs (server/Ground): grass with animated blades, each land's patch in its own material with a ragged edge,
+-- lighter meadow patches, soft hills between the lands and under the forest, a sandy beach sloping into the sea, dirt
+-- under the walks (walkDirt: no blades poking through the stones). Flat at y = 0 wherever things stand (the square,
+-- the hedge, the lands' patches: Ground.flatten). It used to be flat 8-stud blocks in two greens. On a saved map
+-- (Ground.locked) the saved terrain is the ground and none of this fills.
+local SINK = 2 -- (server/Ground: smooth terrain shows its surface 2 studs above a fill's top)
+local LAND_MAT = {
+	wheat = Enum.Material.Sandstone,
+	blossom = Enum.Material.Limestone,
+	pine = Enum.Material.Slate,
+	swamp = Enum.Material.Mud,
+	frost = Enum.Material.Snow,
+	ember = Enum.Material.Basalt,
+	isles = Enum.Material.Pavement,
+}
+
+local function wobble(x: number, z: number): number
+	return math.sin(x * 0.031 + 1.3) * 10 + math.cos(z * 0.027 + 0.4) * 10
 end
 
-local function ground(world: Instance)
-	local f = Instance.new("Folder")
-	f.Name = "Ground"
-	f.Parent = world
-	local side = C(92, 64, 40)
+local function fillTop(cx: number, cz: number, w: number, d: number, top: number, mat: Enum.Material)
+	workspace.Terrain:FillBlock(CFrame.new(cx, top - 4 - SINK, cz), Vector3.new(w, 8, d), mat)
+end
+
+-- the terrain's colours and grass for the lobby (the runs set their own: server/Ground.reset)
+local function terrainLook()
+	local t = workspace.Terrain
+	for prop, v in { Decoration = true, GrassLength = 0.3 } do
+		pcall(function()
+			(t :: any)[prop] = v
+		end)
+	end
+	t:SetMaterialColor(Enum.Material.Grass, C(86, 176, 52))
+	t:SetMaterialColor(Enum.Material.LeafyGrass, C(116, 184, 60))
+	t:SetMaterialColor(Enum.Material.Ground, C(118, 88, 60))
+	t:SetMaterialColor(Enum.Material.Sand, C(232, 210, 156))
+	for _, l in LANDS do
+		t:SetMaterialColor(LAND_MAT[l.id], zone(l.id).palette.ground)
+	end
+end
+
+-- The ground's height at (x, z) (things standing on the hills); 0 where there's no terrain under it.
+local groundParams = RaycastParams.new()
+groundParams.FilterType = Enum.RaycastFilterType.Include
+local function groundY(x: number, z: number): number
+	groundParams.FilterDescendantsInstances = { workspace.Terrain }
+	local hit = workspace:Raycast(Vector3.new(x, 60, z), Vector3.new(0, -120, 0), groundParams)
+	return if hit and hit.Material ~= Enum.Material.Water then hit.Position.Y else 0
+end
+
+local function island()
 	local n = math.ceil(REACH / CELL)
 	for j = -n, n - 1 do
 		local z = (j + 0.5) * CELL
-		local runStart: number?, runC: Color3? = nil, nil
-		local function flush(iEnd: number)
-			if runStart == nil then
-				return
-			end
-			local x0, x1 = runStart * CELL, iEnd * CELL
-			local top = block(f, "Floor", Vector3.new(x1 - x0, 1.2, CELL), CFrame.new((x0 + x1) / 2, -0.6, z), runC :: Color3, Enum.Material.Grass)
-			top.CastShadow = false
-			block(f, "FloorSide", Vector3.new(x1 - x0, -1.2 - FLOOR, CELL), CFrame.new((x0 + x1) / 2, (-1.2 + FLOOR) / 2, z), side, Enum.Material.Ground)
-			runStart = nil
-		end
+		local run: number? = nil
 		for i = -n, n do
 			local x = (i + 0.5) * CELL
-			local wob = math.sin(x * 0.031 + 1.3) * 10 + math.cos(z * 0.027 + 0.4) * 10
-			local land = i < n and math.max(math.abs(x), math.abs(z)) + wob < REACH - 8
-			local c = if land then groundAt(x, z) else nil
-			if runStart ~= nil and c ~= runC then
-				flush(i)
-			end
-			if c and runStart == nil then
-				runStart, runC = i, c
+			local land = i < n and math.max(math.abs(x), math.abs(z)) + wobble(x, z) < REACH - 8
+			if land and run == nil then
+				run = i
+			elseif not land and run ~= nil then
+				local x0, x1 = (run :: number) * CELL, i * CELL
+				fillTop((x0 + x1) / 2, z, x1 - x0, CELL, 0, Enum.Material.Grass)
+				run = nil
 			end
 		end
 	end
-	-- (4 Nov, owner picked "the edges": the grass ran out in a dirt cliff into the sea) a sandy beach in two steps all
-	-- round, on the same wobbly edge
-	local nb = math.ceil((REACH + 30) / CELL)
+	task.wait()
+	-- the beach: sand in steps down into the sea (smooth terrain rounds them into a slope)
+	local nb = math.ceil((REACH + 40) / CELL)
 	for j = -nb, nb - 1 do
 		local z = (j + 0.5) * CELL
 		for i = -nb, nb - 1 do
 			local x = (i + 0.5) * CELL
-			local wob = math.sin(x * 0.031 + 1.3) * 10 + math.cos(z * 0.027 + 0.4) * 10
-			local reach = math.max(math.abs(x), math.abs(z)) + wob
-			local land = i < n and j < n and i >= -n and j >= -n and reach < REACH - 8
-			if not land and reach < REACH + 16 then
-				local btop = if reach < REACH + 4 then -1.4 else -3.6
-				local sand = if reach < REACH + 4 then C(236, 214, 160) else C(222, 198, 146)
-				local b = block(f, "Beach", Vector3.new(CELL, btop - FLOOR, CELL), CFrame.new(x, (btop + FLOOR) / 2, z), sand, Enum.Material.Sand)
-				b.CastShadow = false
+			local reach = math.max(math.abs(x), math.abs(z)) + wobble(x, z)
+			local inLand = i >= -n and i < n and j >= -n and j < n and reach < REACH - 8
+			if not inLand and reach < REACH + 30 then
+				local top = if reach < REACH then -0.6 elseif reach < REACH + 9 then -2.4 elseif reach < REACH + 19 then -5 else -8
+				fillTop(x, z, CELL, CELL, top, Enum.Material.Sand)
 			end
 		end
+		if j % 8 == 0 then
+			task.wait()
+		end
 	end
+end
+
+local function patches()
+	local rng = Random.new(303)
+	-- each land's patch in its own material, its edge ragged
+	for _, l in LANDS do
+		local p = landPos(l)
+		local mat = LAND_MAT[l.id]
+		Ground.disc(p.X, p.Z, PATCH_R - 5, mat)
+		for k = 1, 18 do
+			local a = k / 18 * math.pi * 2 + rng:NextNumber(-0.15, 0.15)
+			local r = PATCH_R - 4 + rng:NextNumber(-2, 2)
+			Ground.disc(p.X + math.sin(a) * r, p.Z + math.cos(a) * r, rng:NextNumber(3.5, 6.5), mat)
+		end
+	end
+	local function clearOf(x: number, z: number, room: number): boolean
+		local q = Vector3.new(x, 0, z)
+		if (q - SQUARE_C).Magnitude < SQUARE_R + room then
+			return false
+		end
+		for _, l in LANDS do
+			if (q - landPos(l)).Magnitude < PATCH_R + room then
+				return false
+			end
+		end
+		return math.max(math.abs(x), math.abs(z)) + wobble(x, z) < REACH - 8 - room
+	end
+	-- lighter meadow patches here and there past the hedge
+	local made = 0
+	for _ = 1, 300 do
+		if made >= 14 then
+			break
+		end
+		local a, d = rng:NextNumber(0, math.pi * 2), rng:NextNumber(HEDGE_R + 10, 150)
+		local x, z = RING_CENTRE.X + math.sin(a) * d, RING_CENTRE.Z + math.cos(a) * d
+		if clearOf(x, z, 6) then
+			for _ = 1, 5 do
+				Ground.disc(x + rng:NextNumber(-6, 6), z + rng:NextNumber(-6, 6), rng:NextNumber(4, 8), Enum.Material.LeafyGrass)
+			end
+			made += 1
+		end
+	end
+	task.wait()
+	-- soft hills between the lands, higher under the forest
+	local hills = 0
+	for _ = 1, 500 do
+		if hills >= 28 then
+			break
+		end
+		local a, d = rng:NextNumber(0, math.pi * 2), rng:NextNumber(HEDGE_R + 26, REACH)
+		local x, z = RING_CENTRE.X + math.sin(a) * d, RING_CENTRE.Z + math.cos(a) * d
+		local radius = rng:NextNumber(14, 26)
+		if clearOf(x, z, radius * 0.75) then
+			Ground.hill(x, z, radius, rng:NextNumber(2.5, if d > 132 then 9 else 5), Enum.Material.Grass)
+			hills += 1
+		end
+	end
+end
+
+local function ground(world: Instance)
+	terrainLook()
 	local sea = block(world, "Sea", Vector3.new(1400, 1, 1400), CFrame.new(0, SEA - 0.5, 0), C(40, 150, 220), Enum.Material.Glass)
 	sea.Transparency = 0.25
 	sea.CanCollide = false
 	sea.CastShadow = false
 	block(world, "SeaFloor", Vector3.new(1400, 2, 1400), CFrame.new(0, FLOOR - 1, 0), C(226, 200, 140))
+	if Ground.locked then
+		return
+	end
+	island()
+	patches()
 end
 
 -- The walks (server/LobbyPaving: bricks in running bond, curved rows on the curve, rings round a gold medallion at the
@@ -248,6 +335,31 @@ end
 
 local function walks(world: Instance)
 	require(script.Parent.LobbyPaving).lay(world, walkAreas())
+end
+
+-- Dirt under every walk and plaza (the terrain's grass blades would poke up through the stones), then the ground
+-- levelled to y = 0 wherever it's flat (server/Ground.flatten).
+local function walkDirt()
+	if Ground.locked then
+		return
+	end
+	for _, a in walkAreas() do
+		if a.kind == "disc" then
+			Ground.disc(a.c.X, a.c.Y, a.r + 0.9, Enum.Material.Ground)
+		elseif a.kind == "seg" then
+			local A, B = a.a :: Vector2, a.b :: Vector2
+			local mid = (A + B) / 2
+			local y = -4 - SINK
+			workspace.Terrain:FillBlock(CFrame.lookAt(Vector3.new(mid.X, y, mid.Y), Vector3.new(B.X, y, B.Y)), Vector3.new(a.w + 1.6, 8, (B - A).Magnitude + 1.2), Enum.Material.Ground)
+		else
+			for t = a.a0, a.a1, 1 do
+				local p = arc(t, a.r)
+				Ground.disc(p.X, p.Z, a.w / 2 + 0.8, Enum.Material.Ground)
+			end
+		end
+	end
+	task.wait()
+	Ground.flatten(0, 0, REACH + 48)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -519,7 +631,11 @@ local function dressing(world: Instance)
 	end
 	for _, sx in { -1, 1 } do
 		local p = Vector3.new(sx * 14, 0, -52)
-		VM.place(f, "S_flower_bed", p, { yaw = math.pi / 2, collide = true })
+		-- (4 Nov, owner on the round smooth flower beds with cube flowers: "en dit", low quality) flowering voxel bushes,
+		-- the hedge's look
+		if not VM.place(f, "Bush_blossom", p, { scale = 0.5, yaw = math.pi / 2, collide = true }) then
+			VM.place(f, "S_flower_bed", p, { yaw = math.pi / 2, collide = true })
+		end
 	end
 	-- lamps along the curved walk's outer edge, between the pads, turned to the walk
 	for _, a in { -37.5, -12.5, 12.5, 37.5 } do
@@ -535,7 +651,6 @@ end
 -- as a place.) (4 Nov, owner on the hedge of studded green blocks: "REMAKE THIS ... WITH THE STYLE WE HAVE") It's the
 -- game's own voxel bushes now, the trees' look, in a row close enough to grow into one leafy hedge, every so often a
 -- flowering one; solid, as the blocks were.
-local HEDGE_R = 72
 local function hedge(world: Instance)
 	local f = PropKit.folder("Hedge", world)
 	local areas = walkAreas()
@@ -578,6 +693,7 @@ local function tree(parent: Instance, land: string, foot: Vector3, scale: number
 		name = "Tree_meadow_" .. rng:NextInteger(1, 3)
 	end
 	local s = scale * 0.75
+	foot = Vector3.new(foot.X, groundY(foot.X, foot.Z) - 0.3, foot.Z) -- (on the hills too)
 	VM.place(parent, name, foot, { scale = s, yaw = rng:NextInteger(0, 3) * math.pi / 2 })
 	VM.blocker(parent, Vector3.new(4.8 * s, 20 * s, 4.8 * s), CFrame.new(foot + Vector3.new(0, 10 * s, 0)))
 end
@@ -639,10 +755,13 @@ end
 
 function LandsBuilder.build()
 	local world = Environment.apply()
-	workspace.Terrain:Clear()
+	if not Ground.locked and not Ground.keepTerrain then
+		workspace.Terrain:Clear() -- (a saved map's terrain is already in place; a bake clears just the lobby's box)
+	end
 	require(script.Parent.WorldGen).lighting()
 	ground(world)
 	walks(world)
+	walkDirt()
 	local padDefs = pads(world)
 	hero(world)
 	local stockLabel, dummy = classes(world)
@@ -727,6 +846,7 @@ function LandsBuilder.build()
 		covers = function(x: number, z: number, grow: number): boolean
 			return Paving.covers(areas, Vector2.new(x, z), grow)
 		end,
+		groundY = groundY,
 	})
 	bounds(world)
 	local sp = SPAWN + Vector3.new(0, 0.8, 0)

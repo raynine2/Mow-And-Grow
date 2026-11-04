@@ -24,7 +24,7 @@ local LobbyPads = require(script.Parent.LobbyPads)
 local Kit = require(script.Parent.YardKit)
 
 local YardBuilder = {}
-YardBuilder.ON = true -- false: server/LobbyBuilder builds the old lobby again
+YardBuilder.ON = false -- (owner, 13:41: "U CALL THIS A MAIN LOBBY THIS IS TERRIBLE"; server/LandsBuilder now) -- false: server/LobbyBuilder builds the old lobby again
 
 local C = Color3.fromRGB
 local K = Kit.C

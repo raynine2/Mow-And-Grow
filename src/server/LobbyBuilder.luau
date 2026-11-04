@@ -452,6 +452,10 @@ end
 
 function LobbyBuilder.build()
 	-- (4 Nov remake) the lobby is the giant back garden now (server/YardBuilder); YardBuilder.ON = false gives this one
+	local Lands = require(script.Parent.LandsBuilder)
+	if Lands.ON then
+		return Lands.build()
+	end
 	local Yard = require(script.Parent.YardBuilder)
 	if Yard.ON then
 		return Yard.build()
@@ -477,5 +481,8 @@ function LobbyBuilder.build()
 	require(script.Parent.HubDressing).lobby(world) -- the generated world's style: arch, statue, benches, bunting...
 	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = pads, mannequin = dummy }
 end
+
+-- (4 Nov) the stations, for server/LandsBuilder: each stands where server/LobbyLayout says
+LobbyBuilder.stations = { rewards = rewardsStall, leaderboard = leaderboard, bestTimes = bestTimesBoard }
 
 return LobbyBuilder

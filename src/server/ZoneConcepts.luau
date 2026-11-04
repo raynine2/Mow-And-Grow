@@ -1163,8 +1163,10 @@ local E = {
 }
 
 local EMBER_KINDS: { [string]: Kind } = {
-	ash = { top = { C(74, 66, 68), C(66, 59, 62), C(82, 73, 74) }, side = { C(46, 40, 44), C(58, 48, 50), C(96, 56, 42) }, studs = true },
-	path = { top = { C(118, 104, 96), C(108, 96, 90) }, side = { C(46, 40, 44), C(58, 48, 50) }, mat = Enum.Material.SmoothPlastic },
+	-- (in Studio's dusk light the first, near-black ground read as one murky sheet: the floor is lifted to an ash
+	-- grey so the walkable ground, the path and the glow stay apart; vault: "walkable versus decorative")
+	ash = { top = { C(108, 96, 96), C(98, 88, 88), C(116, 104, 102) }, side = { C(66, 58, 62), C(78, 66, 68), C(124, 72, 54) }, studs = true },
+	path = { top = { C(160, 142, 128), C(148, 132, 120) }, side = { C(66, 58, 62), C(78, 66, 68) }, mat = Enum.Material.SmoothPlastic },
 	lava = { top = { C(40, 30, 30) }, side = { C(40, 30, 30), C(70, 34, 26) }, mat = Enum.Material.SmoothPlastic },
 }
 
@@ -1247,7 +1249,7 @@ local function columns(parent: Instance, g: Ground, x: number, z: number, r: num
 		local px, pz = x + math.cos(a) * d, z + math.sin(a) * d
 		if kindAt(g, px, pz) == "ash" then
 			local hgt = tall * (if k <= 2 then rng:NextNumber(0.85, 1) else rng:NextNumber(0.3, 0.7))
-			column(f, on(g, px, pz, rng:NextNumber(0, 1), -0.5) * lean, rng:NextNumber(2.2, 3.4), hgt, jitter(C(44, 40, 46), rng, 0.12))
+			column(f, on(g, px, pz, rng:NextNumber(0, 1), -0.5) * lean, rng:NextNumber(2.2, 3.4), hgt, jitter(C(62, 56, 66), rng, 0.12))
 		end
 	end
 end
@@ -1339,8 +1341,8 @@ function ZoneConcepts.ember(root: Instance, origin: Vector3, seed: number?)
 	local g = buildGround(m, origin, emberAt, EMBER_KINDS)
 	lavaSurface(m, g)
 	volcanoTop(m, g, rng)
-	stones(m, g, E.path, { C(140, 124, 116), C(126, 112, 106), C(150, 134, 126) }, rng)
-	stones(m, g, E.branch, { C(140, 124, 116), C(126, 112, 106) }, rng, 4)
+	stones(m, g, E.path, { C(184, 164, 150), C(170, 152, 140), C(196, 176, 160) }, rng)
+	stones(m, g, E.branch, { C(184, 164, 150), C(170, 152, 140) }, rng, 4)
 	obsidianBridge(m, g)
 	cracks(m, g)
 	columns(m, g, 48, -40, 9, 9, 18, rng)

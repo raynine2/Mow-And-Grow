@@ -944,6 +944,15 @@ end
 
 -- Class `classId`'s aura on any rig (the classes cabin's mannequin, a test dummy): returns a function that takes it off.
 function Auras.preview(char: Model, classId: string): () -> ()
+	if not Players:GetPlayerFromCharacter(char) then
+		-- (the cabin's mannequin is a clone of you, so it carries a copy of your own aura: take that off first, or it
+		-- would wear two)
+		for _, d in char:GetDescendants() do
+			if d.Parent and (d.Name:sub(1, 5) == "Aura_" or (d.Name == "Aura" and (d:IsA("Beam") or d:IsA("Trail") or d:IsA("ParticleEmitter")))) then
+				d:Destroy()
+			end
+		end
+	end
 	attach(char, char, classId, false)
 	return function()
 		drop(char)

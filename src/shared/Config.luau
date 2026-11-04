@@ -849,6 +849,12 @@ Config.DEFAULT_CLASS = "WeedPuller"
 -- run between; glow: the light, near-white parts; dark: the dark contrast layers. From what the class is and does
 -- (its tool, its gimmick, its aura), like client/ClassAuras. rainbow: the colours cycle (the Secret class).
 -- corner: ForgeGUI art for the first-person screen corners (uploaded by the owner's account, 31 Oct; nil: none yet).
+-- Classes that wear no aura at all (client/RarityFx and client/ClassVfx skip them: no ground sigil, nothing circling
+-- you, no body glow, no fists or screen flare in first person, no equip burst). Their gimmick's hit effect stays
+-- (client/ClassFx). (4 Nov, owner, on the first class: "Remove the aura of the first class its very bad and just
+-- screen bullshit")
+Config.NO_AURA = { WeedPuller = true }
+
 Config.CLASS_VFX = {
 	WeedPuller = { main = Color3.fromRGB(150, 98, 52), second = Color3.fromRGB(255, 214, 60), glow = Color3.fromRGB(255, 240, 190), dark = Color3.fromRGB(60, 38, 20), corner = "rbxassetid://120045138286252" },
 	Gardener = { main = Color3.fromRGB(90, 210, 80), second = Color3.fromRGB(255, 140, 200), glow = Color3.fromRGB(225, 255, 210), dark = Color3.fromRGB(25, 70, 30), corner = "rbxassetid://132774841313695" },

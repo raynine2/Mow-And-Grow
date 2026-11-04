@@ -961,6 +961,10 @@ end
 -- put class `classId`'s aura on `char` (keyed by `key`: the player, or the model itself for a preview)
 local function attach(key: any, char: Model, classId: any, p: Player?)
 	drop(key)
+	-- (4 Nov: a class that wears nothing, Config.NO_AURA: the Weed Puller)
+	if type(classId) == "string" and (Config :: any).NO_AURA and (Config :: any).NO_AURA[classId] then
+		return
+	end
 	local build = if type(classId) == "string" then BUILD[classId] else nil
 	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local hum = char and char:FindFirstChildOfClass("Humanoid")

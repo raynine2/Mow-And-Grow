@@ -802,7 +802,8 @@ local function wear(p: Player, fresh: boolean)
 		worn[p] = nil
 		old = nil
 	end
-	if type(id) ~= "string" or not char then
+	-- (4 Nov: a class that wears nothing, Config.NO_AURA: the Weed Puller; no body glow, hands, screen or burst)
+	if type(id) ~= "string" or not char or ((Config :: any).NO_AURA and (Config :: any).NO_AURA[id]) then
 		return
 	end
 	if not old then

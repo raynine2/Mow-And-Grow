@@ -472,6 +472,8 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 	local arena = Config.BOSS_ARENAS and Config.BOSS_ARENAS[z]
 	local avoid = if arena then { at = Vector2.new(arena.x, arena.z), r = (Config.BOSS_ARENA_RADIUS or 70) + 3 } else nil
 	local look = NEW_LOOK and require(script.Parent.HubPlaza).LOOKS[def.id] or nil
+	-- the plaza's radius: smaller where the boss arena stands close (the isles' camp: its rim 2 studs into a full one)
+	local Rp = if avoid then math.clamp((Vector2.new(base.X, base.Z) - avoid.at).Magnitude - avoid.r - 2, 16, R) else R
 	if look then
 		-- the open middle round the pad (its top and the steps under it)
 		local r0 = math.max(pad.Size.Y, pad.Size.Z) / 2
@@ -480,8 +482,8 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 				r0 = math.max(r0, math.max(p.Size.Y, p.Size.Z) / 2)
 			end
 		end
-		local room = if avoid then (Vector2.new(base.X, base.Z) - avoid.at).Magnitude - avoid.r - R - 3 else 99
-		require(script.Parent.HubPlaza).ground(f, base, R, r0 + 0.2, look, ground, room)
+		local room = if avoid then (Vector2.new(base.X, base.Z) - avoid.at).Magnitude - avoid.r - Rp - 3 else 99
+		require(script.Parent.HubPlaza).ground(f, base, Rp, r0 + 0.2, look, ground, room)
 	else
 		plaza(f, base, top, th, ground, rng, avoid)
 	end
@@ -492,7 +494,9 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 	local PIECES = { { -7.5, -16, 6.5 }, { 7.5, -16, 6.5 }, { 16, -4, 2.5 }, { -16, 2, 3 }, { 16, 5, 3 } }
 	if look then
 		-- (the second look: the stalls on the back arc, the pillars, the pump, the bench)
-		PIECES = { { -7.3, -12.6, 6.5 }, { 7.3, -12.6, 6.5 }, { 8.2, 20.4, 2.5 }, { -8.2, 20.4, 2.5 }, { 19.4, -10.3, 2.5 }, { -19.4, -10.3, 2.5 }, { 17, 0, 2.5 }, { -14.6, 8.4, 3 } }
+		local rs, rp, ro = math.min(14.5, Rp - 3.5), Rp - 2.2, Rp - 7.4
+		local s30, c30, s22, c22, s118, c118 = 0.5, 0.866, 0.375, 0.927, 0.883, -0.469
+		PIECES = { { -rs * s30, -rs * c30, 6.5 }, { rs * s30, -rs * c30, 6.5 }, { rp * s22, rp * c22, 2.5 }, { -rp * s22, rp * c22, 2.5 }, { rp * s118, rp * c118, 2.5 }, { -rp * s118, rp * c118, 2.5 }, { ro + 0.4, 0, 2.5 }, { -ro * 0.866, ro * 0.5, 3 } }
 	end
 	local cosT, sinT = 1, 0
 	if avoid then
@@ -526,14 +530,14 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 			local p = at(x, zz).Position
 			return CFrame.lookAt(p, Vector3.new(base.X, p.Y, base.Z))
 		end
-		stall(f, facing(-7.3, -12.6), "SHOP", "Shop", th, rng, def.id)
-		stall(f, facing(7.3, -12.6), "UPGRADES", "Upgrades", th, rng, def.id)
+		stall(f, facing(PIECES[1][1], PIECES[1][2]), "SHOP", "Shop", th, rng, def.id)
+		stall(f, facing(PIECES[2][1], PIECES[2][2]), "UPGRADES", "Upgrades", th, rng, def.id)
 		if gasPump then
-			local p = at(17, 0).Position
+			local p = at(PIECES[7][1], PIECES[7][2]).Position
 			gasPump(f, p, info, flat(base - p).Unit)
 		end
-		bench(f, facing(-14.6, 8.4)) -- (a bench's sitter looks along its LookVector, its back away from the pad)
-		require(script.Parent.HubPlaza).frame(f, look, R, at, base)
+		bench(f, facing(PIECES[8][1], PIECES[8][2])) -- (a bench's sitter looks along its LookVector, its back away from the pad)
+		require(script.Parent.HubPlaza).frame(f, look, Rp, at, base)
 	else
 		stall(f, at(-7.5, -16), "SHOP", "Shop", th, rng, def.id)
 		stall(f, at(7.5, -16), "UPGRADES", "Upgrades", th, rng, def.id)

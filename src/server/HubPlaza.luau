@@ -45,14 +45,15 @@ HubPlaza.LOOKS = {
 		glow = C(255, 206, 140),
 	},
 	swamp = {
-		paving = { tones = { C(140, 114, 84), C(126, 102, 74), C(150, 124, 92), C(116, 94, 68) }, cream = C(164, 142, 104), grout = C(60, 80, 46), kerb = { C(92, 96, 68), C(82, 86, 60) } },
+		paving = { tones = { C(120, 94, 66), C(108, 84, 58), C(130, 102, 72), C(98, 76, 52) }, cream = C(146, 124, 88), grout = C(52, 72, 40), kerb = { C(84, 88, 60), C(74, 78, 52) } },
 		side = C(104, 88, 64),
 		pillar = "fa_pillar_swamp",
 		glow = C(170, 255, 140),
 	},
 	frost = {
-		paving = { tones = { C(212, 226, 244), C(198, 214, 236), C(224, 236, 250), C(188, 204, 228) }, cream = C(238, 246, 255), grout = C(92, 122, 168), kerb = { C(148, 170, 204), C(134, 156, 192) } },
-		side = C(172, 192, 220),
+		-- (deeper than the snow: the first, near-white stones vanished in the frost's glare)
+		paving = { tones = { C(146, 184, 226), C(132, 172, 218), C(160, 196, 234), C(122, 162, 210) }, cream = C(204, 226, 248), grout = C(50, 76, 126), kerb = { C(96, 126, 176), C(84, 114, 164) } },
+		side = C(120, 152, 196),
 		pillar = "apost_frost",
 		glow = C(170, 230, 255),
 	},
@@ -141,7 +142,7 @@ function HubPlaza.ground(f: Instance, c: Vector3, R: number, r0: number, look: L
 	-- ring steps round it, as far down as the ground falls (buried where the ground is higher)
 	do
 		local drop = paveLevel - math.min(low, lowOut)
-		local n = math.clamp(math.floor(drop / STEP_H + 0.5), 0, math.min(MAX_STEPS, math.floor(room / STEP_W)))
+		local n = math.clamp(math.floor(drop / STEP_H + 0.5), 0, math.clamp(math.floor(room / STEP_W), 0, MAX_STEPS))
 		for k = 1, n do
 			local col = look.side:Lerp(Color3.new(0, 0, 0), if k % 2 == 1 then 0.08 else 0.02)
 			drum(plinth, "Step", c, edge + k * STEP_W, bottom, paveLevel - k * STEP_H, col)

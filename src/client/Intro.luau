@@ -725,6 +725,68 @@ local function headOf(feet: Vector3, H: number): Vector3
 	return BossView.attWorld("att_head_center") or (feet + UP * (H * 0.8))
 end
 
+-- (4 Nov, seen in a test: a big guardian's shot from 2x its height away had the camera among the trees, trunks
+-- filling the picture) hides, on this client only, the trees and props between the lens and a guardian for one
+-- shot. Ground and anything bigger than `big` studs is never hidden. Returns a function that shows them again.
+local function clearShot(froms: { Vector3 }, tos: { Vector3 }, r: number, big: number): () -> ()
+	local hidden: { BasePart } = {}
+	local excl: { Instance } = {}
+	for _, n in { "BossView", "PackFxLive", "IntroSet", "FilmSet" } do
+		local f = workspace:FindFirstChild(n)
+		if f then
+			table.insert(excl, f)
+		end
+	end
+	local me = Players.LocalPlayer.Character
+	if me then
+		table.insert(excl, me)
+	end
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.IgnoreWater = true
+	for _, from in froms do
+		for _, to in tos do
+			for _ = 1, 30 do
+				params.FilterDescendantsInstances = excl
+				local res = workspace:Spherecast(from, r, to - from, params)
+				local hit = res and res.Instance
+				if not (hit and hit:IsA("BasePart")) or hit == workspace.Terrain then
+					break
+				end
+				-- (a whole tree goes, not just the one block in the way)
+				local m = hit:FindFirstAncestorWhichIsA("Model")
+				local unit: Instance = hit
+				if m and m ~= workspace and m.Parent ~= workspace then
+					local _, size = m:GetBoundingBox()
+					if size.Magnitude < big then
+						unit = m
+					end
+				end
+				table.insert(excl, unit)
+				local size = (unit :: BasePart).Size
+				if unit:IsA("Model") then
+					local _, ms = unit:GetBoundingBox()
+					size = ms
+				end
+				if size.Magnitude < big then
+					local list = if unit:IsA("BasePart") then { unit } else unit:GetDescendants()
+					for _, d in list do
+						if d:IsA("BasePart") and d.LocalTransparencyModifier < 1 then
+							d.LocalTransparencyModifier = 1
+							table.insert(hidden, d)
+						end
+					end
+				end
+			end
+		end
+	end
+	return function()
+		for _, p in hidden do
+			p.LocalTransparencyModifier = 0
+		end
+	end
+end
+
 -- 2: over the Mayor's shoulder, far out across the bare meadow, the gentle Dandelion King stands in the sun. Above
 -- him the sky tears open in pink and a spark drops out of it, straight onto his head [an impact frame, black and
 -- white]: he staggers and changes (client/BossView's rage). The Mayor, the King and the tear in one picture.
@@ -888,11 +950,19 @@ local function othersScene(P: Plan, kingFeet: Vector3): boolean
 			BossView.flinch(true)
 			kingEyesOff = pinkEyes(H2)
 		end)
+		local tos = {}
+		for _, y in { 0.15, 0.5, 0.9 } do
+			for _, x in { -0.35, 0, 0.35 } do
+				table.insert(tos, kingFeet + UP * (H2 * y) + side * (H2 * x))
+			end
+		end
+		local unclear = clearShot({ eye, eye - toCamp * (H2 * 0.25) }, tos, math.max(1, H2 * 0.06), 120)
 		local ok = Film.run(1.9, function(k)
 			local look = kingFeet + UP * (H2 * (0.55 + 0.05 * k))
 			local pos = eye - toCamp * (H2 * 0.25 * k)
 			return Film.look(pos, look, (if i == 1 then 4 else -4)), Film.mm(30), look
 		end, { cut = "smash", hand = 0.3 })
+		unclear()
 		if not ok then
 			return false
 		end

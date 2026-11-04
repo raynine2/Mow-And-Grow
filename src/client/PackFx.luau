@@ -616,7 +616,8 @@ local FILM: { [string]: { any } } = {
 	-- (4 Nov) the rift a guardian is corrupted through: the twin portal opens behind it (owner: "yes portals is a good
 	-- idea"), glitch streaks, and it strikes out of it into its head
 	RiftOpen = { { "Rift", scale = 1.6, life = 3.2 }, { "Glitch", scale = 1.6 } },
-	RiftStrike = { { "Beam", fit = true, color = Color3.fromRGB(255, 70, 200) }, { "CorruptHit", scale = 0.6 }, { "Scribble", scale = 0.5 } },
+	-- (a lightning scribble at the rift: a beam from it to the head crossed the guardian's body in the picture)
+	RiftStrike = { { "Scribble", scale = 0.7 }, { "Glitch", scale = 1 } },
 	BoltHit = { { "Bolt", scale = 0.6, color = Color3.fromRGB(220, 120, 255) }, { "CorruptHit", scale = 0.8 } },
 	LiftAura = { { "Orb", scale = 0.4, color = Color3.fromRGB(200, 90, 255), stream = true, hold = 3, life = 3.5 } },
 	-- (owner, 4 Nov: "u have to also see the boss fully and not being blovked by a hole") the demon climbs out in front

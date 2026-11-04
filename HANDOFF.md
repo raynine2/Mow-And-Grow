@@ -146,6 +146,13 @@ and was playtested there with no script errors.
 
 ## Not done yet / open items
 
+**4 Nov, ~02:00, in Studio but not in the game or git:** `ServerStorage.ClaudeGenTools` holds three models made with
+Roblox's own (free) text-to-3D generator in Studio, the same prompts as the ForgeGUI ones, as a no-credits way to make
+the tools (owner: "niet letterlijk forgegui": make them the way ForgeGUI does, not ForgeGUI itself): sickle
+86066258701291, laser mower 132839132656856, push mower 83543571821864 (one MeshPart each, TextureID, not
+SurfaceAppearance). Not looked at yet: Studio's viewport was black (window not on screen). Next: compare them on
+screen with the ForgeGUI scissors and scythe; fit the good ones like FORGE_TOOLS does; delete the folder otherwise.
+
 **4 Nov, open (slop the vault flags that needs a decision, not a quick fix):** (a) the spawn's first view is the
 holographic mower padlocks with "COMING SOON / next update" (the owner asked for those locks on 30 Oct) and a big empty
 orange plaza; the vault says the spawn should face the first target and frame one hero. (b) The first-person fists

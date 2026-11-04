@@ -519,6 +519,35 @@ local function hubNear(pos: Vector3)
 	end
 end
 
+-- (5 Nov, the ending in a run: the garage's padlock and its COMING SOON sign stood in the middle of the
+-- celebration's shots) client/MowerLock's padlocks and signs are hidden while a film plays.
+local locksHidden: { Instance } = {}
+local function locksOff()
+	local f = workspace:FindFirstChild("MowerLocks")
+	for _, d in (if f then f:GetDescendants() else {}) do
+		if d:IsA("BasePart") and d.LocalTransparencyModifier < 1 then
+			d.LocalTransparencyModifier = 1
+			table.insert(locksHidden, d)
+		elseif d:IsA("LayerCollector") and d.Enabled then
+			d.Enabled = false
+			table.insert(locksHidden, d)
+		elseif (d:IsA("ParticleEmitter") or d:IsA("Beam") or d:IsA("Light")) and (d :: any).Enabled then
+			(d :: any).Enabled = false
+			table.insert(locksHidden, d)
+		end
+	end
+end
+local function locksOn()
+	for _, d in locksHidden do
+		if d:IsA("BasePart") then
+			d.LocalTransparencyModifier = 0
+		elseif d.Parent then
+			(d :: any).Enabled = true
+		end
+	end
+	table.clear(locksHidden)
+end
+
 local function render(dt: number)
 	local cam = workspace.CurrentCamera
 	if not cam or not Film.playing then
@@ -702,6 +731,7 @@ function Film.start(name: string)
 		end
 	end
 	hubFade()
+	locksOff()
 	local d = Instance.new("DepthOfFieldEffect")
 	d.Name = "FilmFocus"
 	d.FarIntensity = 0.15
@@ -749,6 +779,7 @@ function Film.stop(name: string)
 	end
 	table.clear(savedBloom)
 	unfadeHub()
+	locksOn()
 	table.clear(lightTo)
 	if atmoTween then
 		atmoTween:Cancel()

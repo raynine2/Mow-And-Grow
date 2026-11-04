@@ -370,6 +370,64 @@
  "whacker": {
   "roblox": "87094596203789",
   "forge_job": "85ab4b1d-57e3-4202-89f4-47e7ba4eab3f",
-  "note": "4 Nov: Weed Whacker (green motor, long shaft, trimmer head); uploaded, NOT fitted yet (Studio's viewport stopped drawing): raw 1.90 x 0.86 x 0.45, long along X; next: FORGE_TOOLS tool_whacker with keepLine"
+  "note": "4 Nov: Weed Whacker (green motor, long shaft, trimmer head); uploaded, NOT fitted yet (Studio's viewport stopped drawing): raw 1.90 x 0.86 x 0.45, long along X; next: FORGE_TOOLS tool_whacker with keepLine (4 Nov later: not used; the generated gen2_whacker is fitted instead)"
+ },
+ "gen2_sickle": {
+  "colorMap": "rbxassetid://86773437428771",
+  "roughnessMap": "rbxassetid://120102690290870",
+  "meshId": "rbxassetid://106566726133045",
+  "metalnessMap": "rbxassetid://83835706893037",
+  "assetId": 115538146090288,
+  "retextured": true,
+  "size": [
+   2.852341651916504,
+   4.000062942504883,
+   0.39578235149383545
+  ],
+  "source": "roblox_generator",
+  "note": "4 Nov: Roblox generate_mesh (20k tris) 'harvest sickle shaped like a big question mark' + generate_texture Quality; in the place only (ModelCache forge:gen2_sickle, Retextured). To rebuild: a MeshPart with meshId, this size, a SurfaceAppearance with these maps"
+ },
+ "gen2_pushmower": {
+  "colorMap": "rbxassetid://99077473443054",
+  "roughnessMap": "rbxassetid://128721101989407",
+  "meshId": "rbxassetid://87711704337455",
+  "metalnessMap": "rbxassetid://102328419740444",
+  "assetId": 108477500989997,
+  "retextured": true,
+  "size": [
+   2.725917100906372,
+   3.870999813079834,
+   5.000000476837158
+  ],
+  "source": "roblox_generator",
+  "note": "4 Nov: generate_mesh 'bright red walk-behind push lawn mower' + generate_texture Quality (fabric bag, red deck); in the place only (Retextured)"
+ },
+ "gen2_whacker": {
+  "colorMap": "rbxassetid://105756544748063",
+  "roughnessMap": "rbxassetid://85827320767401",
+  "meshId": "rbxassetid://131687428500249",
+  "metalnessMap": "rbxassetid://72055582771060",
+  "assetId": 76035906213208,
+  "retextured": true,
+  "size": [
+   2.3051750659942627,
+   6,
+   2.395465612411499
+  ],
+  "source": "roblox_generator",
+  "note": "4 Nov: generate_mesh 'tall weed whacker string trimmer standing upright' + generate_texture Quality; in the place only (Retextured)"
+ },
+ "gen2_lasermower": {
+  "meshId": "rbxassetid://105622781568941",
+  "textureId": "rbxassetid://89142258839529",
+  "assetId": 112423342447821,
+  "retextured": false,
+  "size": [
+   2.590719699859619,
+   3.2842934131622314,
+   4.600000381469727
+  ],
+  "source": "roblox_generator",
+  "note": "4 Nov: generate_mesh 'futuristic laser lawn mower' (its own paint; both Quality repaints had less detail); the upload loads as is"
  }
 }

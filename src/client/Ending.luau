@@ -60,6 +60,7 @@ local Glitch = require(script.Parent.Glitch) -- (27 Oct) world 2's corruption: s
 local Demon = require(script.Parent.Demon) -- the glitch demon
 local Corruption = require(script.Parent.Corruption) -- the sky tearing, lightning
 local GlitchHole = require(script.Parent.GlitchHole) -- (28 Oct) the black hole it comes out of
+local FilmClear = require(script.Parent.FilmClear) -- (5 Nov) nothing of the world in front of a guardian
 local FilmPanels = require(script.Parent.FilmPanels) -- (28 Oct) the impact frames, the credits' pages
 local BossMoves = require(MowALawn:WaitForChild("BossMoves"))
 local BossRig = require(MowALawn:WaitForChild("BossRig"))
@@ -557,11 +558,27 @@ local function eyesOut()
 	table.clear(guardianEyes)
 end
 
+local guardianClear: (() -> ())? = nil
+-- (owner, 5 Nov: "de bosses zitten random ergens verstopt") a shown guardian keeps the world out from in front of it
+local function guardianKeepClear()
+	if not guardianClear then
+		guardianClear = FilmClear.keep(function(): Model?
+			local f = workspace:FindFirstChild("BossView")
+			local m = f and f:FindFirstChildWhichIsA("Model")
+			return if m and m:IsA("Model") then m else nil
+		end)
+	end
+end
+
 local function guardianOff()
 	eyesOut()
 	if guardianShown then
 		guardianShown = false
 		BossView.hide()
+	end
+	if guardianClear then
+		guardianClear()
+		guardianClear = nil
 	end
 end
 
@@ -730,6 +747,7 @@ local function lastBladeScenes(P: Plan, A: ArenaPlan, mowers: { IntroCast.Actor 
 	if not alone then
 		guardianShown = true
 		BossView.show(moves.rig, CFrame.lookAt(feet, feet + d), guardianScale(n), moves)
+		guardianKeepClear()
 		BossView.rageNow()
 		-- (its own clock: kneeling till 3.3 s, the bow at 5.6 s, gone into the light from 7.9 s)
 		BossView.act("freed", { free = 3.3, nod = 5.6, fade = 7.9 })
@@ -931,6 +949,7 @@ local function valleyScenes(P: Plan, cameos: { Cameo }): boolean
 		local def = Config.ZONES[c.z]
 		local last = i == #cameos
 		BossView.show(mv.rig, CFrame.lookAt(c.feet, c.feet + c.toCam), guardianScale(c.z), mv)
+		guardianKeepClear()
 		-- (it stands tall, then bows: client/BossView's "freed" without the kneeling)
 		BossView.act("freed", { free = -1, nod = 0.3, fade = 99 })
 		Film.at(0.1, function()

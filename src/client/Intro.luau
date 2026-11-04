@@ -44,6 +44,7 @@ local Glitch = require(script.Parent.Glitch)
 local Corruption = require(script.Parent.Corruption)
 local FilmPanels = require(script.Parent.FilmPanels)
 local GlitchHole = require(script.Parent.GlitchHole)
+local FilmClear = require(script.Parent.FilmClear)
 local FilmVfx = require(script.Parent.FilmVfx) -- (29 Oct) the effects as VFX Forge templates (old ones: the fallback)
 local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
@@ -372,6 +373,7 @@ local clash: FilmPanels.Clash? = nil
 local kingEyesOff: (() -> ())? = nil -- puts out the King's pink eyes
 local kingBurst: ParticleEmitter? = nil -- the seeds out of his mouth
 local kingFx: { Model } = {} -- (VFX Forge) the seed blast's stream and his aura: they go when he does
+local clearStop: (() -> ())? = nil -- (keepBossClear) shows what it hid again
 
 local function clearFx()
 	FilmVfx.clear()
@@ -414,6 +416,9 @@ local function kingGone()
 		bossShown = false
 		BossView.hide()
 	end
+	if clearStop then
+		clearStop()
+	end
 end
 
 -- the boss model client/BossView is showing (for an impact frame's silhouette)
@@ -434,6 +439,19 @@ end
 local function showBoss(z: number, feet: Vector3, facing: Vector3)
 	bossShown = true
 	BossView.show(BossMoves.get(z).rig, CFrame.lookAt(feet, feet + flat(facing)), bossScale(z))
+	-- (owner, 5 Nov: "de bosses zitten random ergens verstopt") nothing of the world between the lens and it
+	if not clearStop then
+		local stop = FilmClear.keep(bossModel)
+		clearStop = function()
+			clearStop = nil
+			stop()
+		end
+		table.insert(fxStops, function()
+			if clearStop then
+				clearStop()
+			end
+		end)
+	end
 end
 
 local function setPart(name: string, size: Vector3, cf: CFrame): Part

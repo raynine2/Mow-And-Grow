@@ -367,6 +367,47 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the hero, the stations, the lands
 -------------------------------------------------------------------------------------------------------------
+-- (owner: "the windmill is bugged its seethrough") the ForgeGUI windmill's lower tower is an open timber frame: most
+-- of its plaster panels are missing, so you saw the trees behind it. A plaster core fills the tower just inside its
+-- timbers, up to the balcony, so it reads as the whitewashed tower the top half is. Thin drums, a little narrower each
+-- stud up, follow the tower's taper. The sizes are measured on the mesh's own vertices (4 Nov, at HERO's size): the
+-- tower's outer wall is 20-21 studs out at the bottom and 18-19 under the balcony, and the core stays about a stud
+-- inside that everywhere. (Rays don't work for this: the mesh's collision shape is much fatter than what you see.)
+local CORE_TAPER = { { 7, 19.4 }, { 15, 18.4 }, { 21, 17.6 }, { 29.5, 17.0 } } -- { height, radius }
+local CORE_BASE = { 1, 7, 21 } -- inside the stone foundation
+
+local function coreRadius(y: number): number
+	for i = 1, #CORE_TAPER - 1 do
+		local a, b = CORE_TAPER[i], CORE_TAPER[i + 1]
+		if y <= b[1] then
+			return a[2] + (b[2] - a[2]) * (y - a[1]) / (b[1] - a[1])
+		end
+	end
+	return CORE_TAPER[#CORE_TAPER][2]
+end
+
+local function windmillCore(m: Instance)
+	local core = Instance.new("Model")
+	core.Name = "Core"
+	local function drum(y0: number, y1: number, r: number)
+		local cf = CFrame.new(HERO.pos + Vector3.new(0, (y0 + y1) / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		local p = block(core, "Core", Vector3.new(y1 - y0, r * 2, r * 2), cf, C(236, 228, 212), Enum.Material.Plaster)
+		p.Shape = Enum.PartType.Cylinder
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+	end
+	drum(CORE_BASE[1], CORE_BASE[2], CORE_BASE[3])
+	local top = CORE_TAPER[#CORE_TAPER][1]
+	local y0 = CORE_TAPER[1][1]
+	while y0 < top do
+		local y1 = math.min(y0 + 1, top)
+		drum(y0, y1, coreRadius(y1)) -- the narrower end, so no drum's rim pokes through
+		y0 = y1
+	end
+	core.Parent = m
+end
+
 local function hero(world: Instance)
 	local m = PropKit.folder("Landmark", world)
 	local cf = facing(HERO.pos, SPAWN)
@@ -374,22 +415,7 @@ local function hero(world: Instance)
 		VM.place(m, "Landmark_windmill", HERO.pos, { scale = 1.4, collide = true })
 		return
 	end
-	-- (owner: "the windmill is bugged its seethrough") the ForgeGUI mesh has no inside: between the lower tower's
-	-- timbers some plaster panels are missing or face inward, so you saw the trees behind through it. A dark core
-	-- fills the tower, just inside its walls (measured with rays on the mesh at this size, 4 Nov), so those gaps read
-	-- as a dim inside. Round drums, each a few studs inside the narrowest the wall gets at that height.
-	local core = Instance.new("Model")
-	core.Name = "Core"
-	for _, layer in { { 1, 10, 21 }, { 10, 14, 18.5 }, { 14, 18, 16 }, { 18, 22, 15 }, { 22, 26, 14 }, { 26, 30.5, 13 } } do
-		local y0, y1, rr = layer[1], layer[2], layer[3]
-		local p = block(core, "Core", Vector3.new(y1 - y0, rr * 2, rr * 2), CFrame.new(HERO.pos + Vector3.new(0, (y0 + y1) / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)), C(58, 40, 28), Enum.Material.WoodPlanks)
-		p.Shape = Enum.PartType.Cylinder
-		p.CastShadow = false
-		p.CanCollide = false
-		p.CanQuery = false
-		p.CanTouch = false
-	end
-	core.Parent = m
+	windmillCore(m)
 end
 
 local function promptAt(parent: Instance, cf: CFrame, name: string): BasePart

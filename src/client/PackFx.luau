@@ -607,7 +607,9 @@ local FILM: { [string]: { any } } = {
 	HoleDisk = { { "BlackHole", scale = 2.5, life = 12 } },
 	HoleHalo = { { "Portal", scale = 3, life = 12 } },
 	LumpTear = { { "Rocks", scale = 0.3 }, { "Scribble", scale = 0.6 } },
-	PinkEye = { { "Orb", scale = 0.12, color = Color3.fromRGB(255, 60, 200), stream = true, hold = 6, life = 6.5 } },
+	-- (owner, 4 Nov, of the fuzzy pink glows on a corrupted boss's eyes: "this shit thing") nothing: the eye keeps only
+	-- its small neon dot
+	PinkEye = {},
 	SparkFall = { { "Orb", scale = 0.3, color = Color3.fromRGB(255, 120, 230), stream = true, hold = 3, life = 3.5 } },
 	SeedInhale = { { "Absorb", scale = 1 } },
 	SeedDrift = { { "LeafSwirl", scale = 1.6 } },

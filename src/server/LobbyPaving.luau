@@ -38,7 +38,7 @@ local KERB_H = 0.46
 -- keeps the lobby's.
 export type Look = { tones: { Color3 }?, cream: Color3?, grout: Color3?, groutNeon: boolean?, kerb: { Color3 }? }
 
-export type Area = { kind: string, c: Vector2?, r: number?, a: Vector2?, b: Vector2?, w: number?, a0: number?, a1: number?, medallion: boolean? }
+export type Area = { kind: string, c: Vector2?, r: number?, a: Vector2?, b: Vector2?, w: number?, a0: number?, a1: number?, medallion: boolean?, r0: number? }
 
 local function hash(i: number, j: number, k: number): number
 	local n = math.sin(i * 127.1 + j * 311.7 + k * 74.7) * 43758.5453
@@ -94,10 +94,12 @@ local function inside(area: Area, p: Vector2, grow: number): boolean
 	end
 end
 
--- Is p in any of the areas but `own`, only counting those listed before it (`before`) or all of them?
+-- Is p in any of the areas but `own`, only counting those listed before it (`before`) or all of them? (A walk's
+-- stones run on under a whole-ring plaza, layRings below, which covers them in one clean circle: those don't count.)
 local function taken(areas: { Area }, own: number, p: Vector2, grow: number, before: boolean): boolean
 	for i, other in areas do
-		if i ~= own and (not before or i < own) and inside(other, p, grow) then
+		local rings = before and other.kind == "disc" and other.r0 == nil
+		if i ~= own and (not before or i < own) and not rings and inside(other, p, grow) then
 			return true
 		end
 	end

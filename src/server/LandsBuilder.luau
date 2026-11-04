@@ -71,7 +71,10 @@ local CLASSES = Vector3.new(-50, 0, -40)
 local GARAGE = Vector3.new(50, 0, -40)
 local CROSS_Z = -40
 Layout.SPAWN = SPAWN
-Layout.REWARDS = { pos = Vector3.new(24, 0, -70) }
+-- (4 Nov, owner on its square forecourt of bricks with the bays on it: "matched niet echt") the rewards stall mirrors
+-- the fountain garden across the spawn: its two walk-on bays (6.6 in front of it) on a round apron like the
+-- fountain's, a short walk to it like the fountain's
+Layout.REWARDS = { pos = Vector3.new(-FOUNTAIN.X + 6.6, 0, FOUNTAIN.Z) }
 Layout.GRASS_CUT = { pos = Vector3.new(55, 0, -9) } -- (out to the sides: from the spawn they show between the pads and
 Layout.BEST_TIMES = { pos = Vector3.new(-55, 0, -9) } -- the stations, not behind the pads' signs)
 
@@ -230,10 +233,9 @@ local function walkAreas(): { any }
 		{ kind = "seg", a = v2(SPAWN), b = v2(arc(0, WALK_R)), w = 9 },
 		{ kind = "arc", c = v2(HERO.pos), r = WALK_R, w = 7, a0 = -WALK_ARC, a1 = WALK_ARC },
 		{ kind = "seg", a = Vector2.new(CLASSES.X + 16.5, CROSS_Z), b = Vector2.new(GARAGE.X - 18, CROSS_Z), w = 7 },
-		-- the rewards stall's forecourt, its two bays on it (owner, on the bays' cyan frames on the grass with the walk
-		-- running into them: "its not good and overlapping maybe change the blue stff"), and the walk to it
-		{ kind = "seg", a = Vector2.new(Layout.REWARDS.pos.X - 13, Layout.REWARDS.pos.Z), b = Vector2.new(Layout.REWARDS.pos.X - 3.2, Layout.REWARDS.pos.Z), w = 18 },
-		{ kind = "seg", a = Vector2.new(SPAWN.X + 5, SPAWN.Z - 3), b = Vector2.new(Layout.REWARDS.pos.X - 13, Layout.REWARDS.pos.Z + 2), w = 6 },
+		-- the rewards stall's round apron with its two bays on it, and the short walk to it (mirroring the fountain's)
+		{ kind = "disc", c = Vector2.new(-FOUNTAIN.X, FOUNTAIN.Z), r = 9 },
+		{ kind = "seg", a = Vector2.new(SPAWN.X + 9, SPAWN.Z), b = Vector2.new(-FOUNTAIN.X - 8.5, FOUNTAIN.Z), w = 5 },
 		-- (4 Nov) the fountain garden's round apron and the short walk to it, mirroring the rewards stall's
 		{ kind = "disc", c = v2(FOUNTAIN), r = 9 },
 		{ kind = "seg", a = Vector2.new(SPAWN.X - 9, SPAWN.Z), b = Vector2.new(FOUNTAIN.X + 8.5, FOUNTAIN.Z), w = 5 },
@@ -647,15 +649,32 @@ function LandsBuilder.build()
 	garage(world)
 	local B = require(script.Parent.LobbyBuilder).stations
 	B.rewards(world)
-	-- the two walk-on bays in gold, inlaid in the forecourt's paving (they were raised cyan frames on the grass)
+	-- the two walk-on bays in gold, inlaid in the apron's paving (they were raised cyan frames on the grass): slim
+	-- gold strips (0.5 wide, the outer edge kept) lying just over the plaza's stones (server/LobbyPaving's DISC_LIFT)
 	local gold = C(255, 196, 46)
+	local inlayTop = 0.53
 	for _, d in (world:FindFirstChild("FreeRewards") :: Instance):GetDescendants() do
 		if d:IsA("Model") and d.Name == "PadFrame" then
+			local mid = d:GetBoundingBox().Position
 			for _, s in d:GetChildren() do
 				if s:IsA("BasePart") then
 					s.Color = gold
 					s.Material = Enum.Material.Plastic
 					s.TopSurface = Enum.SurfaceType.Smooth
+					local size = s.Size
+					local lc = s.CFrame:PointToObjectSpace(mid)
+					local thinX = size.X < size.Z
+					local t = math.min(size.X, size.Z)
+					local shift = (t - 0.5) / 2
+					local cf = s.CFrame
+					if thinX then
+						s.Size = Vector3.new(0.5, 0.1, size.Z + 2 * shift)
+						cf = cf * CFrame.new(-math.sign(lc.X) * shift, 0, 0)
+					else
+						s.Size = Vector3.new(size.X, 0.1, 0.5) -- (the long sides run the full width; the short ones grow to meet them)
+						cf = cf * CFrame.new(0, 0, -math.sign(lc.Z) * shift)
+					end
+					s.CFrame = cf + Vector3.new(0, inlayTop - 0.05 - cf.Position.Y, 0)
 				end
 			end
 			if d:GetAttribute("Color") ~= nil then

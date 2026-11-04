@@ -148,7 +148,7 @@ local function villager(parent: Instance, cf: CFrame, act: string, look: number,
 	tag(m, "CampVillager", attrs)
 end
 
-local function people(world: Instance, ctx: Ctx)
+local function _people(world: Instance, ctx: Ctx)
 	local f = folder(world, "Villagers")
 	-- along the curved walk and back (a round there and back again)
 	local round = {}
@@ -385,7 +385,7 @@ end
 function LobbyLife.dress(world: Instance, ctx: Ctx)
 	local steps: { { any } } = {
 		{ "fountain garden", fountainGarden },
-		{ "villagers", people },
+		-- (no villagers: owner, 4 Nov, of the gnome by the fountain: "die kabouter is beetje slecht")
 		{ "animals", animals },
 		{ "horizon", horizon },
 	}

@@ -227,7 +227,7 @@ function LobbyGarden.dress(world: Instance, ctx: Ctx)
 	table.clear(taken)
 	-- (the fountain garden and the rewards stall, already standing behind the spawn's sides)
 	take(-26, ctx.spawn.Z, 10)
-	take(20, ctx.spawn.Z - 8, 9)
+	take(26, ctx.spawn.Z, 10)
 	local steps: { { any } } = {
 		{ "star walk", starWalk },
 		{ "groves", groves },

@@ -242,7 +242,76 @@ local function layArc(f: Instance, areas: { Area }, idx: number, area: Area)
 	end
 end
 
+-- THE LOBBY'S ROUND PLAZAS, crisp (owner, 4 Nov: "de tegels voelen nog beetje sloppy"). Rings of rectangular stones
+-- can't close round a circle: their corners poked out past the kerb, the joints opened into wedges toward the
+-- outside, and where a walk ran in its stones lay over the ring's at a slant. Now each ring is drawn whole, as
+-- circles stacked from the outside in (grout, then the stone's lighter rim, then its face), cut into stones by thin
+-- grout joints laid across it, every other ring's joints half a stone round. The plaza stands a hair over the walks
+-- (DISC_LIFT), so a walk running in passes under its edge: one clean circle at every join. Its kerb is a dark ring
+-- just under the walks' stones, so it shows all round and a walk running in covers it. (A plaza with an open middle,
+-- `r0`, the area camps', is still laid stone by stone below.)
+local DISC_LIFT = 0.06
+local KERB_RING_TOP = BED_TOP + STONE_H - 0.02
+
+local function cyl(f: Instance, centre: CFrame, r: number, top: number, color: Color3): Part
+	local bottom = 0.02
+	local p = part(f, "Ring", Vector3.new(top - bottom, r * 2, r * 2), centre * CFrame.new(0, (top + bottom) / 2, 0) * CFrame.Angles(0, 0, math.rad(90)), color)
+	p.Shape = Enum.PartType.Cylinder
+	p.Material = Enum.Material.Plastic
+	return p
+end
+
+local function layRings(f: Instance, idx: number, area: Area)
+	local c, R = area.c :: Vector2, area.r :: number
+	local centre = CFrame.new(c.X, 0, c.Y)
+	cyl(f, centre, R + 0.8, KERB_RING_TOP, KERB[1])
+	local top = BED_TOP + STONE_H + DISC_LIFT
+	local r0 = if area.medallion then 2.6 else 1.9
+	local ringW = 3.1
+	local rings = math.max(1, math.floor((R - r0) / ringW + 0.5))
+	ringW = (R - r0) / rings
+	for k = rings, 1, -1 do -- (outside in: each ring's circles stand a hair over the one outside it)
+		local rOut = r0 + k * ringW
+		local rMid = rOut - ringW / 2
+		local col = if area.medallion and k % 2 == 1 and k < rings then CREAM else TONES[if k % 2 == 0 then 1 else 3]
+		if k == rings then
+			col = col:Lerp(CampGround.BORDER, 0.18)
+		end
+		cyl(f, centre, rOut, top, GROUT)
+		cyl(f, centre, rOut - GAP / 2, top + 0.002, col:Lerp(Color3.new(1, 1, 1), 0.18))
+		cyl(f, centre, rOut - GAP / 2 - 0.28, top + 0.004, col)
+		local nStones = math.max(6, math.floor(2 * math.pi * rMid / STONE + 0.5))
+		for j = 0, nStones - 1 do
+			local t = math.rad((j + (if k % 2 == 0 then 0.5 else 0)) * 360 / nStones)
+			local p = Vector3.new(c.X + math.sin(t) * rMid, 0, c.Y - math.cos(t) * rMid)
+			local out = Vector3.new(math.sin(t), 0, -math.cos(t))
+			part(f, "Joint", Vector3.new(GAP, 0.02, ringW), CFrame.lookAt(p, p + out) * CFrame.new(0, top + 0.006 + 0.01, 0), GROUT)
+		end
+		top += 0.01
+	end
+	-- the walk plate, level with the stones
+	local pl = part(f, "WalkPlate", Vector3.new(0.2, R * 2, R * 2), centre * CFrame.new(0, top - 0.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.new(1, 1, 1))
+	pl.Shape = Enum.PartType.Cylinder
+	pl.Transparency = 1
+	pl.CanCollide = true
+	-- the middle, over the inner ring
+	local lift = top - (BED_TOP + STONE_H) + 0.004
+	if not area.medallion then
+		stone(f, centre * CFrame.Angles(0, math.rad(45), 0), 2.8, 2.8, TONES[3], lift)
+	else
+		for i, a in { 0, 45 } do
+			stone(f, centre * CFrame.Angles(0, math.rad(a), 0), 3.6, 3.6, if i == 1 then GOLD else GOLD_DARK, lift + i * 0.004)
+		end
+		local boss = part(f, "Boss", Vector3.new(0.12, 1.6, 1.6), centre * CFrame.new(0, BED_TOP + STONE_H + lift + 0.06, 0) * CFrame.Angles(0, 0, math.rad(90)), C(255, 236, 160))
+		boss.Shape = Enum.PartType.Cylinder
+	end
+end
+
 local function layDisc(f: Instance, areas: { Area }, idx: number, area: Area)
+	if not area.r0 then
+		layRings(f, idx, area)
+		return
+	end
 	local c, R = area.c :: Vector2, area.r :: number
 	local centre = CFrame.new(c.X, 0, c.Y)
 	local lift = idx * 0.003

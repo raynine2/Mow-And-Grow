@@ -786,7 +786,8 @@ local function markHotbar()
 			local want = id ~= nil and toolView(State.data, id).mastered == true
 			local tag = body:FindFirstChild("Mastered")
 			if want and not tag then
-				masteredTag(body, 80, 6, 6)
+				-- (4 Nov: on the slot's foot, not under it: under it, the hotbar's tag ran off the bottom of the screen)
+				masteredTag(body, 80, -2, 6)
 			elseif tag and not want then
 				tag:Destroy()
 			end

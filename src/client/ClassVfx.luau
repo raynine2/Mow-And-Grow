@@ -490,7 +490,8 @@ local hands = {
 	views = {} :: { BasePart },
 	arms = nil :: Instance?,
 }
-local HAND_LIGHT = 3 -- (the class's colour on your fists, over the ViewModel's own white HandLight)
+local HAND_LIGHT = 1.5 -- (the class's colour on your fists, over the ViewModel's own white HandLight; at 3 the two
+-- together burned the fists to white)
 local function clearHands()
 	for _, e in hands.list do
 		e:Destroy()
@@ -905,17 +906,17 @@ RunService.RenderStepped:Connect(function(dt)
 		local hand = la.Parent :: BasePart
 		la.WorldPosition = hand.Position + (camPos - hand.Position).Unit * 0.9
 	end
-	-- the screen: a faint rest, a flare that fades (equip, gimmicks); only in first person
+	-- the screen: only a flare that fades (equip, gimmicks), only in first person. (4 Nov, owner: "some parts feel
+	-- so sloppy ai slop"; LihFolk vault: let the screen clear) the edges and corner art used to stay on faintly all
+	-- the time, a frame round the screen behind the HUD's own cards
 	screen.flare = math.max(0, screen.flare - dt * 0.9)
-	local t = os.clock()
-	local show = fp and screen.id ~= nil
-	local rest = if show then screen.base - 0.015 * math.sin(t * 1.6) else 1
-	local tr = if show then math.min(rest, 1 - screen.flare * 0.55) else 1
+	local show = fp and screen.id ~= nil and screen.flare > 0
+	local tr = if show then 1 - screen.flare * 0.55 else 1
 	for _, f in edges do
 		f.BackgroundTransparency = tr
 	end
 	for _, c in corners do
-		c.ImageTransparency = if show and c.Image ~= "" then math.min(0.5 + 0.06 * math.sin(t * 1.6), 1 - screen.flare) else 1
+		c.ImageTransparency = if show and c.Image ~= "" then 1 - screen.flare * 0.9 else 1
 	end
 end)
 

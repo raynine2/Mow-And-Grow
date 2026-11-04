@@ -1257,6 +1257,15 @@ function HatchFx.play(eggId: string, ids: { string }, fresh: { boolean }?, onDon
 				e.aura.ImageColor3 = WHITE
 				TweenService:Create(e.auraBoard, TweenInfo.new(0.25), { Size = UDim2.fromScale(14 * e.scale, 14 * e.scale) }):Play()
 				TweenService:Create(e.aura, TweenInfo.new(0.9), { ImageColor3 = rarityColor(e.pet.rarity), ImageTransparency = 0.55 }):Play()
+				-- (4 Nov) then it settles behind the critter: left at 14 studs and half opaque, a grey Common's glow was a
+				-- big washed-out white disc filling the result screen (white belongs in a thin core, not a wide body)
+				local settle = if e.rank <= 2 then 0.84 else 0.72
+				task.delay(0.9, function()
+					if e.auraBoard.Parent then
+						TweenService:Create(e.auraBoard, TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromScale(8.5 * e.scale, 8.5 * e.scale) }):Play()
+						TweenService:Create(e.aura, TweenInfo.new(0.6), { ImageTransparency = settle }):Play()
+					end
+				end)
 				e.glow.Color = WHITE
 				e.glow.Brightness = 2.5
 				spawnPet(s, e)

@@ -603,7 +603,9 @@ State.on("data", function(d)
 		end
 		local q = d.run.quest
 		questOn = q ~= nil
-		show(quest, questOn and not Coach.active())
+		-- (4 Nov: only in a run. A saved run's quest showed in the lobby too, "Walk onto the sell pad" where there's
+		-- no sell pad: applyMode hid the card, then the next data update showed it again)
+		show(quest, questOn and currentMode == "Run" and not Coach.active())
 		if q then
 			questNum.Text = ("QUEST %d/%d"):format(q.index, q.total)
 			questTitle.Text = UI.words(q.title)

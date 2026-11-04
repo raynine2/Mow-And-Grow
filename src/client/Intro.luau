@@ -66,11 +66,12 @@ local generation = 0 -- bumps every showing
 
 -- what's said, in this order (N: a narration line over the pictures; L: the Mayor). Short: the pictures tell it.
 local LINES = {
-	L0 = "Ahh... not a blade out of place.",
-	N3b = "...and it got into the valley's guardians.",
-	L1 = "...help?",
+	-- (owner, 4 Nov: "fix the text also": shorter, louder, the Mayor's own voice)
+	L0 = "Mmm... smell that? Fresh-cut PERFECTION!",
+	N3b = "The glitch is taking the guardians!",
+	L1 = "...a little help here?",
 	L2 = "MOWERRRS!!!",
-	L4 = "Mow it ALL... and set the guardians FREE!",
+	L4 = "Mow EVERYTHING! Free the guardians!",
 }
 local ORDER = { "L0", "N3b", "L1", "L2", "L4" }
 
@@ -739,8 +740,9 @@ local function tearScene(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolea
 	end
 	local C = Corruption.new(kingFeet)
 	corrupt = C
-	-- the tear: high over him, a little toward us, facing the camp
-	local sky = kingFeet + UP * (H * 1.75) + toCamp * (H * 0.3)
+	-- the tear: behind him and over his head, facing the camp (owner, 4 Nov: "it needs to go thru a rift but u have to
+	-- also see the boss fully and not being blovked by a hole": the rift is behind him, he stands in front of it)
+	local sky = kingFeet + UP * (H * 1.45) - toCamp * (H * 0.6)
 	local head = kingFeet + UP * (H * 0.8)
 	local f0 = m.face()
 	local camAt = f0 + toCamp * 7.5 - toCamp:Cross(UP) * 3.6 + UP * 1.4
@@ -870,20 +872,26 @@ local function othersScene(P: Plan, kingFeet: Vector3): boolean
 		end
 		showBoss(z, kingFeet, toCamp)
 		local side = toCamp:Cross(UP) * (if i == 1 then 1 else -1)
-		Film.at(0.18, function()
+		-- (owner, 4 Nov: "u only see it for 1 miliseconf", "go thru a rift but ... see the boss fully") the whole
+		-- guardian in the picture, a rift tearing open behind it, the corruption striking out of the rift into its head
+		local riftAt = kingFeet + UP * (H2 * 0.8) - toCamp * (H2 * 0.75) + side * (H2 * 0.15)
+		local eye = kingFeet + UP * (H2 * 0.5) + toCamp * (H2 * 2.1) + side * (H2 * 0.45)
+		FilmVfx.play("RiftOpen", CFrame.lookAt(riftAt, eye), { scale = H2 / 20 })
+		Film.at(0.35, function()
 			local h = headOf(kingFeet, H2)
+			FilmVfx.play("RiftStrike", CFrame.lookAt(riftAt, h), { length = (h - riftAt).Magnitude, scale = H2 / 20 })
 			FilmVfx.play("SparkHit", CFrame.lookAt(h, h + toCamp), { scale = H2 / 24 })
 			FilmAudio.sfx("bigHit", { volume = 0.5, pitch = 0.85 + i * 0.12 })
 			FilmAudio.sfx("growl2", { volume = 0.8, pitch = 0.8 + i * 0.1 })
-			Film.flash(Color3.new(1, 1, 1), 0.25, 0.15)
-			Film.shake(0.3, 2)
+			FilmPanels.impact({ bossModel() }, { at = h, invert = i == 2 })
+			Film.shake(0.35, 2)
 			BossView.flinch(true)
 			kingEyesOff = pinkEyes(H2)
 		end)
-		local ok = Film.run(0.95, function(k)
-			local h = headOf(kingFeet, H2)
-			local pos = h + toCamp * (H2 * (1.15 - 0.06 * k)) + side * (H2 * 0.26) - UP * (H2 * 0.15)
-			return Film.look(pos, h, (if i == 1 then 6 else -6)), Film.mm(40), h
+		local ok = Film.run(1.9, function(k)
+			local look = kingFeet + UP * (H2 * (0.55 + 0.05 * k))
+			local pos = eye - toCamp * (H2 * 0.25 * k)
+			return Film.look(pos, look, (if i == 1 then 4 else -4)), Film.mm(30), look
 		end, { cut = "smash", hand = 0.3 })
 		if not ok then
 			return false
@@ -1508,6 +1516,30 @@ local function film()
 	-- (client/BossView shows one boss at a time; if a fight's boss is in it, e.g. a rejoin mid-fight, the film's
 	-- guardians stay out of it)
 	bossesOk = BossView.get() == nil
+	-- (owner, 4 Nov: "the bosses load in after they go so its like u only see it for 1 miliseconf ... it needs to be
+	-- loaded in before it goes to the scene") every guardian's model and textures load while the screen is still black
+	if bossesOk then
+		local models = ReplicatedStorage:FindFirstChild("BossModels")
+		if models then
+			local list = {}
+			for z = 1, #Config.ZONES do
+				local ok, def = pcall(BossMoves.get, z)
+				local m = ok and def and models:FindFirstChild(def.rig)
+				if m then
+					table.insert(list, m)
+				end
+			end
+			local loaded = false
+			task.spawn(function()
+				pcall(ContentProvider.PreloadAsync, ContentProvider, list)
+				loaded = true
+			end)
+			local t0 = os.clock()
+			while not loaded and os.clock() - t0 < 4 and playing do
+				task.wait()
+			end
+		end
+	end
 	FilmPanels.reset()
 	local kingFeet = kingSpot(P)
 	if startAt == "glitch" then

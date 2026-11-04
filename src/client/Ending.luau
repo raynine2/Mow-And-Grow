@@ -86,14 +86,15 @@ local chapter = "film" -- "film" | "skip" | "credits" | "teaser" | "title"
 local skippedAll = false
 
 local LINES = {
-	E1 = "And just like that... the last wild grass in the valley was gone.",
-	E2 = "Meadow by meadow, hill by hill... the whole valley could breathe again.",
+	-- (owner, 4 Nov: "fix the text also": shorter, louder, the Mayor's own voice)
+	E1 = "The last wild blade... GONE.",
+	E2 = "Every guardian free. Every field fresh.",
 	E3 = "You... you actually DID it!",
-	E4 = "Every meadow, every hill, every last blade... MOWED!",
-	E5 = "The valley is SAVED! Now, everyone... say GRASS!",
-	E6 = "Ahh... peace and quiet. At last.",
+	E4 = "Not ONE blade left standing!",
+	E5 = "The valley is SAVED! Everyone... say GRASS!",
+	E6 = "Finally... some peace and qui-",
 	E8 = "W-what was THAT?!",
-	D1 = "This valley... is MINE.",
+	D1 = "Your little valley... is MINE now.",
 }
 local ORDER = { "E1", "E2", "E3", "E4", "E5", "E6", "E8" }
 

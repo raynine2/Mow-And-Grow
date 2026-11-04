@@ -27,6 +27,12 @@ end
 local function S(name: string, nth: number?): Piece
 	return { path = { "Structures", name }, nth = nth }
 end
+local function P1(n: number): Piece
+	return { path = { "Pack1", "BZ1_SS1 VFX PART #" .. n } }
+end
+local function SP(name: string, nth: number?): Piece
+	return { path = { "Pack2", "Spellcasting + Small Impact VFX", name }, nth = nth }
+end
 
 PackVfxBuild.SPEC = {
 	-- hits (client/HitFx)
@@ -61,6 +67,46 @@ PackVfxBuild.SPEC = {
 	Portal = { from = { A(7) }, Hold = 1.5, Life = 3, Face = true },
 	BlackHole = { from = { A(16) }, Hold = 3, Life = 5 },
 	GoldBeam = { from = { { path = { "KiBlasts", "Ki (気) Blast 2" } } }, base = "beam", Hold = 1.2, Life = 2.5 },
+	-- (owner, 4 Nov: "u just use the supersaiyan effect for everything ... look at alot of vfx") the whole pack looked
+	-- through, and a different look picked for each job instead of the spiky bursts above:
+	--   grass and ground
+	GreenImpact = { from = { P1(61) }, Hold = 0.15, Scale = 0.2 }, -- grass blades shooting up out of a green ring
+	GreenSwirl = { from = { P1(163) }, Hold = 0.12, Scale = 0.5 }, -- a green ring slashed on the ground
+	GrassTuft = { from = { P1(142) }, Hold = 0.2, Scale = 0.5 }, -- a tuft of grass springing up
+	GrassStreak = { from = { P1(125) }, Hold = 0.1, Scale = 0.4 }, -- green streaks flying out
+	DustKick = { from = { SP("Dust", 1) }, Hold = 0.2, Burst = 2 }, -- a puff of dust off the ground
+	GroundRing = { from = { P1(57) }, Hold = 0.12, Scale = 0.35 }, -- a white ripple rolling out on the ground
+	GroundSlam = { from = { P1(129) }, Hold = 0.12, Scale = 0.45 }, -- a white flash and a dark ring: a heavy landing
+	Crater = { from = { { path = { "Bonus", "Bonus VFX " }, nth = 4 } }, Hold = 0.3, Life = 2.4 }, -- a black crater with blue sparks
+	MagicCircle = { from = { P1(18) }, Hold = 0.2, Scale = 0.4 }, -- a rune circle on the ground (a wind-up)
+	--   hits (in the boss's colour; nothing spiky)
+	InkHit = { from = { P1(152) }, Hold = 0.1, Scale = 0.25 }, -- a white star in a splash of ink
+	SlashX = { from = { P1(148) }, Hold = 0.1, Scale = 0.2 }, -- two slash lines crossing
+	BlueSlash = { from = { P1(147) }, Hold = 0.1, Scale = 0.35 }, -- a slash impact with dark spikes and a ring
+	CorruptHit = { from = { P1(131) }, Hold = 0.1, Scale = 0.35 }, -- pink and black ink rings
+	InkCrack = { from = { P1(157) }, Hold = 0.1, Scale = 0.35 }, -- a red crack in a black ring
+	RingBurst = { from = { I(71) }, Hold = 0.1 }, -- a fiery ring with a grey shockwave
+	FlameRing = { from = { SP("Part3") }, Hold = 0.12 }, -- a golden ring of fire
+	GreenCrescent = { from = { SP("Crescent Slash") }, Grow = true, GrowTime = 0.4, GrowFrom = 0.5, Life = 0.6, Hold = 0.1 },
+	WaterSwirl = { from = { P1(37) }, Hold = 0.15, Scale = 0.35 }, -- a swirl of water
+	Glint = { from = { P1(117) }, Hold = 0.12, Scale = 0.6 }, -- a four-point glint
+	WhiteFlash = { from = { P1(118) }, Hold = 0.1, Scale = 0.35 }, -- a white flash with a ring
+	SpeedLines = { from = { I(65) }, Hold = 0.1 }, -- anime speed lines bursting out
+	--   the films
+	InkSwirl = { from = { P1(13) }, Hold = 0.12, Scale = 0.3 }, -- an ink swirl round a white flash (an impact frame)
+	Rift = { from = { SP("Portals") }, Hold = 2, Life = 3.2 }, -- the green/purple twin portal (owner: "yes portals")
+	Glitch = { from = { { path = { "Pack2", "Spellcasting + Small Impact VFX", "Soul Shroud Elementals", "Lines" } } }, Hold = 1, Life = 2.6 }, -- purple/orange streaks (owner: "this one for like idk corruption glitch")
+	Scribble = { from = { P1(88) }, Hold = 0.3, Scale = 0.6 }, -- a red lightning scribble
+	RedRift = { from = { P1(66) }, Hold = 1, Scale = 0.7, Life = 2.4 }, -- a red vortex with lightning
+	VoidRing = { from = { P1(90) }, Hold = 1.5, Life = 2.6 }, -- a black ring round a purple light: open in the middle
+	VoidEye = { from = { P1(101) }, Hold = 0.8, Scale = 0.5, Life = 2.8 }, -- a purple vortex eye
+	CorruptOrb = { from = { P1(114) }, Hold = 0.6, Scale = 0.4, Life = 3 }, -- a dark purple orb dripping
+	DarkPillar = { from = { A(29) }, Hold = 1.2, Life = 2.6 }, -- a column of dark purple flame
+	LightPillar = { from = { P1(121) }, Hold = 0.5, Scale = 0.8, Life = 2.2 }, -- a pillar of light
+	Absorb = { from = { { path = { "Pack2", "VFX Objects", "Absorb" } } }, Hold = 1, Life = 2.2 }, -- energy pulled inwards
+	WindVortex = { from = { SP("Stylized Wind") }, Hold = 0.5, Scale = 0.5, Life = 2.2 }, -- a white wind vortex
+	LeafSwirl = { from = { SP("Wind Swirls") }, Hold = 0.6, Life = 2 }, -- a swirl with leaves
+	Petals = { from = { P1(97) }, Hold = 0.15, Burst = 3 }, -- white petals bursting (a firework)
 	-- ambience (client/PackAmbience): loops
 	Dust = { from = { { path = { "Weather", "Weather I", "Glow Dust" } } } },
 	Leaves = { from = { { path = { "Weather", "Leaves", "Leaves" }, nth = 1 } } },

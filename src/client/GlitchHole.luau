@@ -108,7 +108,9 @@ local function packEye(): Eye?
 		place = function(at: Vector3, toward: Vector3, width: number, open: number)
 			local cf = CFrame.lookAt(at, at + toward)
 			if open > 0.3 and not core then
-				core = PackFx.loop("Orb", cf, { color = PINK, scale = math.clamp(width / 14, 0.3, 4) })
+				-- (a black ring round a purple light: open in the middle, and it keeps its particles on it as it moves; owner:
+				-- "the boss eye thing ... stays when it moves")
+				core = PackFx.loop("VoidRing", cf, { scale = math.clamp(width / 24, 0.3, 4), locked = true })
 			elseif open < 0.05 and core then
 				core.stop(0.3)
 				core = nil
@@ -118,7 +120,7 @@ local function packEye(): Eye?
 			end
 			if open > 0.6 and not opened then
 				opened = true
-				PackFx.play("PurpleBurst", at, { scale = math.clamp(width / 8, 0.5, 5), force = true, soft = true })
+				PackFx.play("Glitch", at, { scale = math.clamp(width / 6, 0.5, 5), force = true, soft = true })
 			elseif open < 0.1 then
 				opened = false
 			end

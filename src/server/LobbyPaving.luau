@@ -13,7 +13,8 @@
 -- Where two walks meet, the one listed first keeps its stones.
 -- LobbyPaving.lay(parent, areas) -> Folder. Areas (lobby space, y = 0 the ground; angles as server/LandsBuilder's arc:
 -- degrees off the axis toward the spawn, + to the left):
---   { kind = "disc", c = Vector2, r = number, medallion = boolean? }
+--   { kind = "disc", c = Vector2, r = number, medallion = boolean?, r0 = number? }   (r0: rings start there, the
+--     middle left open: the area camps' drop-off pad stands in it)
 --   { kind = "seg", a = Vector2, b = Vector2, w = number }
 --   { kind = "arc", c = Vector2, r = number, w = number, a0 = number, a1 = number }
 local CampGround = require(script.Parent.CampGround)
@@ -33,6 +34,9 @@ local GAP = 0.32 -- the joints
 local BED_TOP = 0.06
 local STONE_H = 0.3
 local KERB_H = 0.46
+-- LobbyPaving.lay(parent, areas, look): another stone palette (server/HubPlaza, the area camps). Any key left out
+-- keeps the lobby's.
+export type Look = { tones: { Color3 }?, cream: Color3?, grout: Color3?, groutNeon: boolean?, kerb: { Color3 }? }
 
 export type Area = { kind: string, c: Vector2?, r: number?, a: Vector2?, b: Vector2?, w: number?, a0: number?, a1: number?, medallion: boolean? }
 
@@ -248,8 +252,10 @@ local function layDisc(f: Instance, areas: { Area }, idx: number, area: Area)
 	pl.Shape = Enum.PartType.Cylinder
 	pl.Transparency = 1
 	pl.CanCollide = true
-	local r0 = 1.9
-	if not area.medallion then
+	local r0 = area.r0 or 1.9
+	if area.r0 then
+		-- (the middle stays open)
+	elseif not area.medallion then
 		-- a plain square stone in the middle, turned 45 degrees
 		stone(f, centre * CFrame.Angles(0, math.rad(45), 0), 2.8, 2.8, TONES[3], lift)
 	else
@@ -297,9 +303,16 @@ local function layDisc(f: Instance, areas: { Area }, idx: number, area: Area)
 	end
 end
 
-function LobbyPaving.lay(parent: Instance, areas: { Area }): Folder
+function LobbyPaving.lay(parent: Instance, areas: { Area }, look: Look?): Folder
 	local f = Instance.new("Folder")
 	f.Name = "Paving"
+	local saved = { TONES, CREAM, GROUT, KERB }
+	if look then
+		TONES = look.tones or TONES
+		CREAM = look.cream or CREAM
+		GROUT = look.grout or GROUT
+		KERB = look.kerb or KERB
+	end
 	for i, area in areas do
 		if area.kind == "disc" then
 			layDisc(f, areas, i, area)
@@ -307,6 +320,15 @@ function LobbyPaving.lay(parent: Instance, areas: { Area }): Folder
 			laySeg(f, areas, i, area)
 		else
 			layArc(f, areas, i, area)
+		end
+	end
+	TONES, CREAM, GROUT, KERB = saved[1] :: any, saved[2] :: any, saved[3] :: any, saved[4] :: any
+	if look and look.groutNeon then
+		-- (the ember camp: its joints glow like lava between dark stones)
+		for _, b in f:GetChildren() do
+			if b:IsA("BasePart") and b.Name == "Bed" then
+				b.Material = Enum.Material.Neon
+			end
 		end
 	end
 	f.Parent = parent

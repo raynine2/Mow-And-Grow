@@ -27,6 +27,10 @@ local Outposts = {}
 
 local R = 24 -- the plaza's radius (20 until 29 Oct)
 local DRESS_CAMPS = false -- server/CampDress's arch, lamp posts, house, landmark, animals, villagers (off: see above)
+-- (4 Nov, owner: "the zone hubs ... feel a bit ass") the second look: a round plaza in the area's own stone on a
+-- plinth, framed by the area's ForgeGUI pillars and wall, the stalls turned to the pad (server/HubPlaza). False: the
+-- square tile plaza as before.
+local NEW_LOOK = true
 local CELL = 4 -- paving grid
 local UP = Vector3.yAxis
 local part = VoxelKit.part
@@ -467,12 +471,28 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 	levelPlaza(w, base, top, 1.5)
 	local arena = Config.BOSS_ARENAS and Config.BOSS_ARENAS[z]
 	local avoid = if arena then { at = Vector2.new(arena.x, arena.z), r = (Config.BOSS_ARENA_RADIUS or 70) + 3 } else nil
-	plaza(f, base, top, th, ground, rng, avoid)
+	local look = NEW_LOOK and require(script.Parent.HubPlaza).LOOKS[def.id] or nil
+	if look then
+		-- the open middle round the pad (its top and the steps under it)
+		local r0 = math.max(pad.Size.Y, pad.Size.Z) / 2
+		for _, p in pad.Parent and pad.Parent:GetChildren() or {} do
+			if p:IsA("BasePart") and p.Name == pad.Name .. "Step" and flat(p.Position - c).Magnitude < 4 then
+				r0 = math.max(r0, math.max(p.Size.Y, p.Size.Z) / 2)
+			end
+		end
+		require(script.Parent.HubPlaza).ground(f, base, R, r0 + 0.2, look, ground, avoid == nil)
+	else
+		plaza(f, base, top, th, ground, rng, avoid)
+	end
 	-- the two stalls behind the pad, facing it; the gas pump to one side; a bench either side. (29 Oct, owner: "why is
 	-- the middle so close to the stores": they stood against the pad's 9-stud ring; now set back on the bigger plaza,
 	-- an open ring round the pad.) All of it turns round the pad, as one, until none of it stands in the boss arena
 	-- (the isles' camp has the arena right behind it).
 	local PIECES = { { -7.5, -16, 6.5 }, { 7.5, -16, 6.5 }, { 16, -4, 2.5 }, { -16, 2, 3 }, { 16, 5, 3 } }
+	if look then
+		-- (the second look: the stalls on the back arc, the pillars, the wall's middle and ends, the pump, the benches)
+		PIECES = { { -7.3, -12.6, 6.5 }, { 7.3, -12.6, 6.5 }, { 8.2, 20.4, 2.5 }, { -8.2, 20.4, 2.5 }, { 19.4, -10.3, 2.5 }, { -19.4, -10.3, 2.5 }, { 0, -22.7, 3 }, { 15.8, -16.3, 3 }, { -15.8, -16.3, 3 }, { 17, 0, 2.5 }, { -14.6, 8.4, 3 } }
+	end
 	local cosT, sinT = 1, 0
 	if avoid then
 		for _, deg in { 0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180 } do
@@ -499,13 +519,29 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 		local p = base + turned(right * x + fwd * zz)
 		return CFrame.lookAt(p, p + turned(face or fwd))
 	end
-	stall(f, at(-7.5, -16), "SHOP", "Shop", th, rng, def.id)
-	stall(f, at(7.5, -16), "UPGRADES", "Upgrades", th, rng, def.id)
-	if gasPump then
-		gasPump(f, at(16, -4).Position, info, turned(-right))
+	if look then
+		-- the stalls on the back arc, both turned to the pad; the pump on the right, a bench on the left; the frame
+		local function facing(x: number, zz: number): CFrame
+			local p = at(x, zz).Position
+			return CFrame.lookAt(p, Vector3.new(base.X, p.Y, base.Z))
+		end
+		stall(f, facing(-7.3, -12.6), "SHOP", "Shop", th, rng, def.id)
+		stall(f, facing(7.3, -12.6), "UPGRADES", "Upgrades", th, rng, def.id)
+		if gasPump then
+			local p = at(17, 0).Position
+			gasPump(f, p, info, flat(base - p).Unit)
+		end
+		bench(f, facing(-14.6, 8.4)) -- (a bench's sitter looks along its LookVector, its back away from the pad)
+		require(script.Parent.HubPlaza).frame(f, look, R, at, base)
+	else
+		stall(f, at(-7.5, -16), "SHOP", "Shop", th, rng, def.id)
+		stall(f, at(7.5, -16), "UPGRADES", "Upgrades", th, rng, def.id)
+		if gasPump then
+			gasPump(f, at(16, -4).Position, info, turned(-right))
+		end
+		bench(f, at(-16, 2, right))
+		bench(f, at(16, 5, -right))
 	end
-	bench(f, at(-16, 2, right))
-	bench(f, at(16, 5, -right))
 	f.Parent = w
 	-- (29 Oct) the rest of the camp: server/CampDress, when it's on (DRESS_CAMPS); else the camp is the plaza
 	local hubR = R

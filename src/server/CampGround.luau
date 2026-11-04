@@ -79,17 +79,21 @@ CampGround.BORDER_K = BORDER_K
 --   * where a corner still stands in a raised terrace (the shop's chimney corner; the world's ground is 8-stud
 --     cells), those cells drop to the camp's level, a clean notch square with the walls; the cells' small decorations
 --     come down with them, and a cell with anything else on it stays;
---   * the Garage also moves 10 studs out of its front: its back, workbench and deck stood inside the raised ground of
---     the meadow boss arena behind it (10 clears it, measured, and nothing stands there).
+--   * the Garage turns to face the Tool Shop across the square (owner, after it was first squared to face the same way
+--     as before: "je loopt de huis uit ziet een garage de zijkant"), the two fronts looking at each other, and moves
+--     6 studs toward the square's middle and 2 out of its front, clear of the meadow boss arena's raised ground behind
+--     it (its back, workbench and deck stood inside it; measured, nothing stands where it goes).
 -- Its prompts, pump and mower spawn move with it. The rest of the camp's pieces stood at the same slant (the bag stand
 -- at 163, the shredder at 73, its sell pad at -17): each turns about its own middle to the nearest square angle too.
 -- The saved map is untouched: CampGround.SQUARE = false undoes it all.
 -- `foot`: the building's footprint in its "0Anchor" frame (-Z is the front), measured in Studio.
 type Rect = { x0: number, x1: number, z0: number, z1: number }
 CampGround.SQUARE = true
-local SQUARE_UP: { [string]: { yaw: number, forward: number?, foot: Rect } } = {
+local SQUARE_UP: { [string]: { yaw: number, forward: number?, move: Vector3?, foot: Rect } } = {
+	-- (its front, -Z, looks west across the square)
 	["TOOL SHOP"] = { yaw = 90, foot = { x0 = -28.5, x1 = 25.5, z0 = -16, z1 = 26.8 } },
-	Garage = { yaw = 0, forward = 10, foot = { x0 = -11.5, x1 = 11.8, z0 = -9.5, z1 = 14.5 } },
+	-- (its front looks east, at the Tool Shop's)
+	Garage = { yaw = -90, forward = 2, move = Vector3.new(0, 0, -6), foot = { x0 = -11.5, x1 = 11.8, z0 = -9.5, z1 = 14.5 } },
 }
 -- units whose every model (with the loose parts nearest it) turns about its own pivot
 local SQUARE_PIECES = { "BAG STAND", "Shredder" }
@@ -340,7 +344,7 @@ function CampGround.squareUp(w: Instance, info: any?): (number, number)
 			continue
 		end
 		local old = anchor.CFrame
-		local new = CFrame.new(old.Position) * CFrame.Angles(0, math.rad(f.yaw), 0) * CFrame.new(0, 0, -(f.forward or 0))
+		local new = CFrame.new(old.Position + (f.move or Vector3.zero)) * CFrame.Angles(0, math.rad(f.yaw), 0) * CFrame.new(0, 0, -(f.forward or 0))
 		local delta = new * old:Inverse()
 		moveTree(unit, delta)
 		table.insert(moves, { at = old.Position, r = 40, delta = delta })

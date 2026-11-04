@@ -528,9 +528,11 @@ local function dressing(world: Instance)
 	end
 end
 
--- A clipped hedge round the square's south half and sides (the windmill's side stays open), framing it: blocks with a
--- studded top, two greens, a gap toward each land beyond and none on a walk. (World Composition: made things align,
--- a clear edge so the open lawn inside reads as a place.)
+-- A hedge round the square's south half and sides (the windmill's side stays open), framing it, a gap toward each
+-- land beyond and none on a walk. (World Composition: made things align, a clear edge so the open lawn inside reads
+-- as a place.) (4 Nov, owner on the hedge of studded green blocks: "REMAKE THIS ... WITH THE STYLE WE HAVE") It's the
+-- game's own voxel bushes now, the trees' look, in a row close enough to grow into one leafy hedge, every so often a
+-- flowering one; solid, as the blocks were.
 local HEDGE_R = 72
 local function hedge(world: Instance)
 	local f = PropKit.folder("Hedge", world)
@@ -540,8 +542,9 @@ local function hedge(world: Instance)
 	for _, l in LANDS do
 		table.insert(gaps, 180 - l.a)
 	end
-	local piece = 4.4
-	local n = math.floor(2 * math.pi * HEDGE_R * (220 / 360) / piece)
+	local rng = Random.new(4242)
+	local step = 3.7
+	local n = math.floor(2 * math.pi * HEDGE_R * (220 / 360) / step)
 	for i = 0, n - 1 do
 		local t = -110 + (i + 0.5) * 220 / n
 		local open = false
@@ -552,13 +555,17 @@ local function hedge(world: Instance)
 			end
 		end
 		local rad = math.rad(t)
-		local p = RING_CENTRE + Vector3.new(math.sin(rad) * HEDGE_R, 0, -math.cos(rad) * HEDGE_R)
+		local r = HEDGE_R + (if i % 2 == 0 then -0.4 else 0.4)
+		local p = RING_CENTRE + Vector3.new(math.sin(rad) * r, 0, -math.cos(rad) * r)
 		if not open and not Paving.covers(areas, Vector2.new(p.X, p.Z), 3) then
-			local cf = CFrame.lookAt(p, p + Vector3.new(math.cos(rad), 0, math.sin(rad)))
-			local body = block(f, "Hedge", Vector3.new(2.6, 2.6, piece + 0.05), cf * CFrame.new(0, 1.3, 0), C(52, 120, 46), Enum.Material.Plastic)
-			body.TopSurface = Enum.SurfaceType.Smooth
-			local top = block(f, "HedgeTop", Vector3.new(2.6, 0.7, piece + 0.05), cf * CFrame.new(0, 2.95, 0), if i % 2 == 0 then C(86, 160, 62) else C(78, 150, 56), Enum.Material.Plastic)
-			top.TopSurface = Enum.SurfaceType.Studs
+			local name = if rng:NextNumber() < 0.18 then "Bush_blossom" else "Bush_meadow"
+			local bush = VM.place(f, name, p, { scale = rng:NextNumber(0.58, 0.68), yaw = -rad + rng:NextInteger(0, 1) * math.pi, collide = true, name = "Hedge" })
+			if not bush then
+				-- (no voxel models imported) the old clipped blocks
+				local cf = CFrame.lookAt(p, p + Vector3.new(math.cos(rad), 0, math.sin(rad)))
+				local body = block(f, "Hedge", Vector3.new(2.6, 2.6, step + 0.05), cf * CFrame.new(0, 1.3, 0), C(52, 120, 46), Enum.Material.Grass)
+				body.TopSurface = Enum.SurfaceType.Smooth
+			end
 		end
 	end
 end

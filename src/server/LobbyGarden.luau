@@ -9,11 +9,12 @@
 --     either side of the landing, three little rocks floating above with crystals on them (a taste of the Isles);
 --   * THE VEGETABLE PATCH on the left, behind the fountain: a white picket fence with a gate toward the walk, three
 --     beds (cabbages, carrots, pumpkins), sunflowers along the back, a scarecrow, a gnome with a watering can,
---     a wheelbarrow and crates by the gate, stepping stones from the walk, a couple of chickens;
+--     a wheelbarrow and crates by the gate, stepping stones from the walk; beside it a red HEN HOUSE with its hens;
+--   * between them and the walk: three little CHERRY TREES on the left, a PICNIC with two gnomes on the right;
 --   * THE LILY POND on the right, behind the rewards stall: a pond with a stony edge, lily pads and flowers, koi,
---     reeds and cattails, a little wooden jetty you can walk out on with a gnome fishing off its end, a bench;
---   * FLOWERS AND TALL GRASS in clusters over the lawn (odd groups, thicker toward the hedge), bushes along the
---     hedge's inside;
+--     reeds and cattails, a little wooden jetty you can walk out on with a gnome fishing off its end, a bench; past
+--     it, by the garage, the golden MOWER STATUE on a stone plinth;
+--   * FLOWERS AND TALL GRASS in clusters over the lawn;
 --   * past the hedge, ALL ROUND THE ISLAND between the hedge and the forest: little groves, bushes, rocks, tufts
 --     and flowers in the nearest land's colours, so the ring of grass between the lands isn't bare either.
 -- Lobby space as LandsBuilder's: y = 0 the ground, +Z north (the windmill), the observatory south of the spawn.
@@ -370,11 +371,6 @@ local function vegetablePatch(world: Instance, ctx: Ctx)
 		part(f, "SteppingStone", CFrame.new(p) * CFrame.Angles(0, rng:NextNumber(-0.4, 0.4), 0), Vector3.new(1.6, 0.16, 1.3), jitter(rng, C(196, 190, 180), 0.06), "stone")
 		take(p.X, p.Z, 1.2)
 	end
-	-- two hens pecking round the outside
-	for _ = 1, 2 do
-		critter(f, "critter_chicken", A + Vector3.new(-9, 0.12, 9), "walk", 3, 1.6, 1.2)
-	end
-	take(A.X - 9, A.Z + 9, 3.5)
 	fxSpot(f, A + Vector3.new(0, 3.5, 0), Vector3.new(14, 4, 9), "butterflies", C(255, 236, 120))
 end
 
@@ -513,6 +509,140 @@ local function pond(world: Instance, ctx: Ctx)
 end
 
 -------------------------------------------------------------------------------------------------------------
+-- the farm corner, the picnic, the cherry trees, the statue
+-------------------------------------------------------------------------------------------------------------
+local BARN = C(196, 84, 64)
+local TRIM = C(246, 238, 222)
+local ROOF = C(112, 80, 62)
+
+-- a little red hen house on legs left of the fountain, a ramp down to its yard, the hens round it
+local function henHouse(world: Instance, ctx: Ctx)
+	local f = folder(world, "HenHouse")
+	local at = Vector3.new(-47, 0, ctx.spawn.Z - 4)
+	local cf = CFrame.lookAt(at, Vector3.new(ctx.spawn.X, 0, ctx.spawn.Z - 8))
+	take(at.X, at.Z, 5)
+	for _, x in { -1.8, 1.8 } do
+		for _, z in { -1.3, 1.3 } do
+			part(f, "Leg", cf * CFrame.new(x, 0.6, z), Vector3.new(0.45, 1.2, 0.45), C(150, 110, 80), "log", true)
+		end
+	end
+	part(f, "Floor", cf * CFrame.new(0, 1.3, 0), Vector3.new(4.6, 0.25, 3.4), C(120, 88, 64), Enum.Material.WoodPlanks, true)
+	part(f, "Body", cf * CFrame.new(0, 2.65, 0), Vector3.new(4.4, 2.5, 3.2), BARN, Enum.Material.WoodPlanks, true)
+	for _, x in { -2.2, 2.2 } do
+		for _, z in { -1.6, 1.6 } do
+			part(f, "Trim", cf * CFrame.new(x, 2.65, z), Vector3.new(0.3, 2.55, 0.3), TRIM)
+		end
+	end
+	part(f, "TrimTop", cf * CFrame.new(0, 3.9, -1.6), Vector3.new(4.7, 0.25, 0.3), TRIM)
+	-- the gable roof, two slabs and a ridge
+	for _, s in { -1, 1 } do
+		part(f, "Roof", cf * CFrame.new(0, 4.55, s * 0.95) * CFrame.Angles(s * math.rad(32), 0, 0), Vector3.new(5.2, 0.3, 2.6), ROOF, nil, true)
+	end
+	part(f, "Ridge", cf * CFrame.new(0, 5.25, 0), Vector3.new(5.3, 0.3, 0.4), ROOF:Lerp(Color3.new(0, 0, 0), 0.2))
+	part(f, "Gable", cf * CFrame.new(-2.21, 4.15, 0) * CFrame.Angles(math.rad(45), 0, 0), Vector3.new(0.2, 1.6, 1.6), BARN)
+	part(f, "Gable", cf * CFrame.new(2.21, 4.15, 0) * CFrame.Angles(math.rad(45), 0, 0), Vector3.new(0.2, 1.6, 1.6), BARN)
+	-- the door with straw in it, a round window, the ramp with its cleats
+	part(f, "Door", cf * CFrame.new(-0.9, 2.3, -1.61), Vector3.new(1.2, 1.5, 0.06), C(40, 30, 26))
+	part(f, "Straw", cf * CFrame.new(-0.9, 1.65, -1.55), Vector3.new(1.0, 0.25, 0.2), VoxelKit.C.straw)
+	local win = part(f, "Window", cf * CFrame.new(1.0, 2.9, -1.62) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.06, 0.9, 0.9), C(255, 214, 140), Enum.Material.Neon)
+	win.Shape = Enum.PartType.Cylinder
+	local ramp = cf * CFrame.new(-0.9, 0.85, -2.95) * CFrame.Angles(math.rad(-33), 0, 0)
+	part(f, "Ramp", ramp, Vector3.new(1.1, 0.16, 3.0), C(150, 112, 78), Enum.Material.WoodPlanks, true)
+	for k = -1, 1 do
+		part(f, "Cleat", ramp * CFrame.new(0, 0.12, k * 0.8), Vector3.new(1.1, 0.1, 0.14), C(110, 80, 56))
+	end
+	-- the yard: straw on the ground, a feed trough, a hay bale
+	for _ = 1, 6 do
+		part(f, "StrawBit", CFrame.new(at + Vector3.new(rng:NextNumber(-4, 4), 0.05, rng:NextNumber(-4, 4))) * CFrame.Angles(0, rng:NextNumber(0, 3), 0), Vector3.new(rng:NextNumber(0.8, 1.6), 0.1, rng:NextNumber(0.5, 1.0)), jitter(rng, VoxelKit.C.straw, 0.08))
+	end
+	local trough = cf * CFrame.new(2.6, 0.3, -3.6)
+	part(f, "Trough", trough, Vector3.new(2.2, 0.6, 0.8), C(140, 104, 72), Enum.Material.WoodPlanks)
+	part(f, "Grain", trough * CFrame.new(0, 0.28, 0), Vector3.new(1.9, 0.08, 0.55), C(232, 196, 110))
+	VoxelKit.hay(f, cf * CFrame.new(-3.4, 0, 1.6) * CFrame.Angles(0, 0.3, 0), rng)
+	for _ = 1, 3 do
+		critter(f, "critter_chicken", (cf * CFrame.new(0, 0.12, -5)).Position, "walk", 3.4, 1.6, 1.2)
+	end
+end
+
+-- a picnic on the lawn right of the walk: a checked blanket, a basket, plates, two gnomes sitting on it
+local function picnic(world: Instance, ctx: Ctx)
+	local f = folder(world, "Picnic")
+	local at = Vector3.new(15, 0, ctx.spawn.Z - 29)
+	local cf = CFrame.new(at) * CFrame.Angles(0, math.rad(12), 0)
+	take(at.X, at.Z, 5)
+	for i = 0, 3 do
+		for j = 0, 2 do
+			local red = (i + j) % 2 == 0
+			part(f, "Blanket", cf * CFrame.new(-2.25 + i * 1.5, 0.06, -1.5 + j * 1.5), Vector3.new(1.5, 0.08, 1.5), if red then C(220, 64, 60) else C(250, 244, 236), Enum.Material.Fabric)
+		end
+	end
+	local basket = cf * CFrame.new(0.4, 0, 0)
+	part(f, "Basket", basket * CFrame.new(0, 0.45, 0), Vector3.new(1.3, 0.7, 0.9), C(196, 150, 90), Enum.Material.Fabric)
+	part(f, "BasketLid", basket * CFrame.new(0, 0.86, 0.2), Vector3.new(1.35, 0.12, 0.5), C(176, 130, 76))
+	part(f, "Handle", basket * CFrame.new(0, 1.25, -0.05), Vector3.new(1.0, 0.14, 0.14), C(150, 110, 66))
+	for _, x in { -0.45, 0.45 } do
+		part(f, "Handle", basket * CFrame.new(x, 1.0, -0.05), Vector3.new(0.14, 0.5, 0.14), C(150, 110, 66))
+	end
+	for _, z in { -0.9, 0.9 } do
+		local plate = part(f, "Plate", cf * CFrame.new(-1.3, 0.14, z) * CFrame.Angles(0, 0, math.rad(90)), Vector3.new(0.06, 0.95, 0.95), C(250, 250, 250))
+		plate.Shape = Enum.PartType.Cylinder
+		part(f, "Sandwich", cf * CFrame.new(-1.3, 0.25, z), Vector3.new(0.55, 0.18, 0.4), C(236, 200, 140))
+	end
+	local apple = part(f, "Apple", cf * CFrame.new(1.6, 0.3, 0.9), Vector3.one * 0.42, C(220, 50, 46))
+	apple.Shape = Enum.PartType.Ball
+	part(f, "Juice", cf * CFrame.new(1.6, 0.5, -0.7), Vector3.new(0.35, 0.8, 0.35), C(255, 170, 60), Enum.Material.Glass)
+	-- the two picnickers on the blanket's long sides, facing each other (sitting: client/CampLife)
+	for i, z in { -2.1, 2.1 } do
+		local p = (cf * CFrame.new(-0.6, -0.85, z)).Position
+		villager(f, CFrame.lookAt(p, (cf * CFrame.new(-0.6, -0.85, 0)).Position), "sit", if i == 1 then 2 else 3)
+	end
+end
+
+-- three little cherry trees left of the walk, petals on the grass under them, a basket of cherries
+local function orchard(world: Instance, ctx: Ctx)
+	local f = folder(world, "Orchard")
+	for i, p in { Vector3.new(-12, 0, ctx.spawn.Z - 30), Vector3.new(-21, 0, ctx.spawn.Z - 31.5), Vector3.new(-15, 0, ctx.spawn.Z - 37) } do
+		local s = if i == 1 then 0.32 else 0.27
+		if VM.place(f, "Tree_blossom_" .. i, p, { scale = s, yaw = rng:NextInteger(0, 3) * math.pi / 2 }) then
+			VM.blocker(f, Vector3.new(4.8 * s, 20 * s, 4.8 * s), CFrame.new(p + Vector3.new(0, 10 * s, 0)))
+		end
+		take(p.X, p.Z, 4.5)
+		for _ = 1, 9 do
+			local a, d = rng:NextNumber(0, 6.28), rng:NextNumber(1.5, 5)
+			part(f, "Petal", CFrame.new(p + Vector3.new(math.cos(a) * d, 0.04, math.sin(a) * d)) * CFrame.Angles(0, rng:NextNumber(0, 1.5), 0), Vector3.new(0.4, 0.06, 0.4), if rng:NextNumber() < 0.6 then C(255, 170, 210) else C(255, 220, 236))
+		end
+	end
+	local b = Vector3.new(-8.6, 0, ctx.spawn.Z - 35)
+	part(f, "Basket", CFrame.new(b + Vector3.new(0, 0.4, 0)), Vector3.new(1.2, 0.8, 1.2), C(196, 150, 90), Enum.Material.Fabric)
+	for _ = 1, 6 do
+		local c = part(f, "Cherry", CFrame.new(b + Vector3.new(rng:NextNumber(-0.35, 0.35), 0.9, rng:NextNumber(-0.35, 0.35))), Vector3.one * 0.32, C(200, 30, 50))
+		c.Shape = Enum.PartType.Ball
+	end
+	fxSpot(f, Vector3.new(-16, 4, ctx.spawn.Z - 33), Vector3.new(14, 5, 12), "butterflies", C(255, 170, 210))
+end
+
+-- the golden mower on a stone plinth, between the pond and the garage, turned to the spawn
+local function statue(world: Instance, ctx: Ctx)
+	local f = folder(world, "MowerStatue")
+	local at = Vector3.new(52, 0, ctx.spawn.Z - 3)
+	local cf = CFrame.lookAt(at, Vector3.new(ctx.spawn.X, 0, ctx.spawn.Z))
+	take(at.X, at.Z, 5.5)
+	part(f, "Plinth", cf * CFrame.new(0, 0.35, 0), Vector3.new(7.4, 0.7, 7.4), C(206, 200, 190), "stone", true)
+	part(f, "Plinth", cf * CFrame.new(0, 1.15, 0), Vector3.new(6.0, 0.9, 6.0), C(220, 214, 204), "stone", true)
+	part(f, "PlinthTop", cf * CFrame.new(0, 1.7, 0), Vector3.new(6.3, 0.2, 6.3), C(196, 160, 90))
+	local plaque = part(f, "Plaque", cf * CFrame.new(0, 1.15, -3.02), Vector3.new(3.2, 0.6, 0.08), C(250, 200, 80), Enum.Material.Metal)
+	plaque.CastShadow = false
+	if VM.place(f, "Prop_mower_statue", (cf * CFrame.new(0, 1.8, 0)).Position, { scale = 0.62, yaw = math.atan2(-cf.LookVector.X, -cf.LookVector.Z), collide = true }) == nil then
+		Models.place("mower_tractor", f, cf * CFrame.new(0, 1.8, 0), 0.8, true)
+	end
+	for _, c in { Vector3.new(-4.6, 0, -4.6), Vector3.new(4.6, 0, -4.6), Vector3.new(-4.6, 0, 4.6), Vector3.new(4.6, 0, 4.6) } do
+		local p = (cf * CFrame.new(c)).Position
+		flowers(f, p.X, p.Z, "meadow")
+	end
+	fxSpot(f, (cf * CFrame.new(0, 5, 0)).Position, Vector3.new(6, 6, 6), "sparkle", C(255, 220, 120))
+end
+
+-------------------------------------------------------------------------------------------------------------
 -- the lawn behind the spawn, and the ring past the hedge
 -------------------------------------------------------------------------------------------------------------
 local function nearestLand(ctx: Ctx, x: number, z: number): (string, number)
@@ -563,22 +693,10 @@ end
 
 local function lawn(world: Instance, ctx: Ctx)
 	local f = folder(world, "BackLawn")
-	-- bushes in odd groups along the hedge's inside, round the back half (not in front of the gate)
-	for _, deg in { -58, -52, -40, -24, 24, 34, 50 } do
-		local a = math.rad(deg)
-		local r = ctx.hedgeR - 4.5
-		local p = ctx.centre + Vector3.new(math.sin(a) * r, 0, -math.cos(a) * r)
-		if free(p.X, p.Z, 3) and not ctx.covers(p.X, p.Z, 3) then
-			if VM.place(f, if math.abs(deg) % 3 == 0 then "Bush_blossom" else "Bush_meadow", p, { scale = rng:NextNumber(0.45, 0.55), yaw = rng:NextInteger(0, 3) * math.pi / 2 }) == nil then
-				VoxelKit.bush(f, CFrame.new(p), C(66, 140, 52), rng, FLOWERS.meadow)
-			end
-			take(p.X, p.Z, 3)
-		end
-	end
-	-- flowers and long grass over the lawn behind the spawn
+	-- flowers and long grass over the lawn behind the spawn (the hedge itself is voxel bushes now: LandsBuilder)
 	local placed = 0
 	for _ = 1, 400 do
-		if placed >= 34 then
+		if placed >= 40 then
 			break
 		end
 		local x, z = rng:NextNumber(-62, 62), rng:NextNumber(ctx.backZ, ctx.spawn.Z - 6)
@@ -645,6 +763,10 @@ function LobbyGarden.dress(world: Instance, ctx: Ctx)
 		{ "star walk", starWalk },
 		{ "vegetable patch", vegetablePatch },
 		{ "lily pond", pond },
+		{ "hen house", henHouse },
+		{ "picnic", picnic },
+		{ "cherry trees", orchard },
+		{ "statue", statue },
 		{ "lawn", lawn },
 		{ "meadows", ring },
 	}

@@ -651,15 +651,29 @@ BUILD.LawnLegend = function(a)
 	for i, sx in { -1, 1 } do
 		local a0 = att(a, t, "Aurora" .. i, Vector3.new(sx * w * 0.8, t.Size.Y / 2 + 0.5, t.Size.Z / 2 + 0.9))
 		local a1 = att(a, t, "AuroraTop" .. i, Vector3.new(sx * w * 1.9, t.Size.Y / 2 + 5.2, t.Size.Z / 2 + 1.9))
+		-- the night behind it: a deep violet band (the dark value layer, saturated, never grey)
+		local b0 = att(a, t, "Night" .. i, Vector3.new(sx * w * 0.8, t.Size.Y / 2 + 0.5, t.Size.Z / 2 + 1.2))
+		local b1 = att(a, t, "NightTop" .. i, Vector3.new(sx * w * 1.9, t.Size.Y / 2 + 5.2, t.Size.Z / 2 + 2.3))
+		beam(a, b0, b1, {
+			tex = FxTex.smear,
+			color = cs(C(48, 18, 96), C(70, 24, 130)),
+			w0 = 1.2,
+			w1 = 3,
+			c0 = sx * 0.6,
+			c1 = sx * -0.5,
+			trans = ns(0, 1, 0.25, 0.35, 0.7, 0.45, 1, 1),
+			light = 0,
+		})
+		-- the lights over it, scrolling up
 		beam(a, a0, a1, {
 			tex = T.energy,
-			color = cs(C(150, 100, 255), C(110, 200, 255), C(90, 255, 220)),
+			color = cs(C(170, 90, 255), C(80, 180, 255), C(60, 255, 210)),
 			w0 = 0.9,
 			w1 = 2.4,
 			c0 = sx * 0.6,
 			c1 = sx * -0.5,
-			trans = ns(0, 0.9, 0.2, 0.15, 0.75, 0.3, 1, 1),
-			light = 0.9,
+			trans = ns(0, 0.9, 0.2, 0, 0.75, 0.15, 1, 1),
+			light = 0.6,
 			speed = 0.6,
 		})
 	end

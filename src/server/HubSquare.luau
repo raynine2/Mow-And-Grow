@@ -17,7 +17,10 @@ local Models = require(script.Parent.Models)
 
 local HubSquare = {}
 
-HubSquare.ON = true
+-- (4 Nov, ~03:00, owner, standing in it: "the main lobby that ur standing in feels so ass and looks ass idk the bricks
+-- and the random lanterns and plants ... remove it or wtf": off. The code stays; true brings the square back. The
+-- camp's paving and loose lanterns went with it: server/CampGround.)
+HubSquare.ON = false
 HubSquare.CENTRE = Vector3.new(52, 0, 345) -- (x, z: the middle of the open paving; y comes from the ground)
 HubSquare.ARCH = Vector3.new(24, 0, 327) -- the west path where it enters the square
 

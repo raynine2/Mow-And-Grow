@@ -34,15 +34,15 @@ LandsBuilder.ON = true
 
 local C = Color3.fromRGB
 local SPAWN = Vector3.new(0, 0, -62)
-local HERO = { pos = Vector3.new(0, 0, 14), height = 96, width = 40 }
-local PAD_R = 36 -- the pads' arc round the windmill's middle
-local PAD_W = 11 -- each dais across
+local HERO = { pos = Vector3.new(0, 0, 16), height = 104, width = 76 } -- (its sails are most of its width)
+local PAD_R = 40 -- the pads' arc round the windmill's middle
+local PAD_W = 13 -- each dais across
 local PADS = { -- (degrees from the axis, + to the left as you face the windmill)
 	{ a = 0, kind = "solo" },
-	{ a = 22, kind = "party" },
-	{ a = -22, kind = "party" },
-	{ a = -44, kind = "party" },
-	{ a = 44, kind = "continue" },
+	{ a = 25, kind = "party" },
+	{ a = -25, kind = "party" },
+	{ a = -50, kind = "party" },
+	{ a = 50, kind = "continue" },
 }
 local WALK_R = PAD_R + 9 -- the curved walk in front of the pads
 local SQUARE_R = 78 -- the mown square round the axis
@@ -67,7 +67,7 @@ local CLASSES = Vector3.new(-50, 0, -40)
 local GARAGE = Vector3.new(50, 0, -40)
 local CROSS_Z = -40
 Layout.SPAWN = SPAWN
-Layout.REWARDS = { pos = Vector3.new(17, 0, -66) }
+Layout.REWARDS = { pos = Vector3.new(24, 0, -70) }
 Layout.GRASS_CUT = { pos = Vector3.new(44, 0, 10) }
 Layout.BEST_TIMES = { pos = Vector3.new(-44, 0, 10) }
 
@@ -220,7 +220,7 @@ local function padSign(parent: Instance, at: Vector3, title: string, base: Color
 	local holder = PropKit.part({ size = Vector3.one, cf = CFrame.new(at), color = Color3.new(1, 1, 1), parent = parent, transparency = 1, collide = false, name = "PadStatus" })
 	holder.CanQuery = false
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromScale(11, 5.4)
+	gui.Size = UDim2.fromScale(9.5, 4.7)
 	gui.LightInfluence = 0
 	gui.MaxDistance = 170
 	gui.Parent = holder
@@ -307,7 +307,7 @@ local function pad(m: Instance, i: number, p: any): any
 	local marker = PropKit.part({ size = Vector3.one, cf = cf * CFrame.new(0, top + 1.6, 0), color = base, parent = m, transparency = 1, collide = false, name = "PadInfo" .. i })
 	marker.CanQuery = false
 	local title = if kind == "solo" then "SOLO" elseif kind == "continue" then "CONTINUE" else "PARTY"
-	local status, pill, box = padSign(m, (cf * CFrame.new(0, top + 9, 0)).Position, title, base)
+	local status, pill, box = padSign(m, (cf * CFrame.new(0, top + 7.5, 0)).Position, title, base)
 	local maxN = if kind == "party" then Config.PARTY_MAX else 1
 	local state = ""
 	local def = {

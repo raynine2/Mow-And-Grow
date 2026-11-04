@@ -456,17 +456,37 @@ hudArrow.AnchorPoint = Vector2.new(1, 0.5)
 hudArrow.Visible = false
 hudArrow.ZIndex = 30
 hudArrow.Parent = UI.gui
--- (4 Nov, owner, on the yellow bar with a turned square for a head: "make this a good arrow") the glossy gold arrow
--- icon (assets/icons/arrow_point.png, tools/icons/make_arrow.py) once it's uploaded (tools/upload_models.ps1 --icons
--- puts arrow_point in shared/IconIds); the old bar and square only until then
+-- (4 Nov, owner, on the yellow bar with a turned square for a head: "make this a good arrow", then of the drawn one:
+-- "do it like this exact") the glossy gold arrow, assets/icons/arrow_point.png (tools/icons/make_arrow.py): the
+-- uploaded picture once there is one (tools/upload_models.ps1 --icons puts arrow_point in shared/IconIds), till then
+-- the same pixels from shared/ArrowPixels drawn into an EditableImage; the old bar and square only if both fail
 local arrowIcon = (Config.ICONS :: any).arrow_point :: string?
-if arrowIcon and arrowIcon ~= "" then
+local arrowContent: Content? = nil
+if not (arrowIcon and arrowIcon ~= "") then
+	local ok, res = pcall(function()
+		local AssetService = game:GetService("AssetService")
+		local EncodingService = game:GetService("EncodingService")
+		local px = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("ArrowPixels")) :: any
+		local raw = EncodingService:DecompressBuffer(EncodingService:Base64Decode(buffer.fromstring(px.data)), Enum.CompressionAlgorithm.Zstd)
+		local img = AssetService:CreateEditableImage({ Size = Vector2.new(px.w, px.h) })
+		img:WritePixelsBuffer(Vector2.zero, Vector2.new(px.w, px.h), raw)
+		return Content.fromObject(img)
+	end)
+	if ok then
+		arrowContent = res
+	end
+end
+if (arrowIcon and arrowIcon ~= "") or arrowContent then
 	hudArrow.Size = UDim2.fromOffset(96, 60)
 	local img = Instance.new("ImageLabel")
 	img.Name = "Arrow"
 	img.BackgroundTransparency = 1
 	img.Size = UDim2.fromScale(1, 1)
-	img.Image = arrowIcon
+	if arrowIcon and arrowIcon ~= "" then
+		img.Image = arrowIcon
+	else
+		img.ImageContent = arrowContent :: Content
+	end
 	img.ScaleType = Enum.ScaleType.Fit
 	img.ZIndex = 31
 	img.Parent = hudArrow

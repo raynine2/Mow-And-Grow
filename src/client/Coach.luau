@@ -456,11 +456,27 @@ hudArrow.AnchorPoint = Vector2.new(1, 0.5)
 hudArrow.Visible = false
 hudArrow.ZIndex = 30
 hudArrow.Parent = UI.gui
-local shaft = UI.frame({ size = UDim2.fromOffset(40, 16), pos = UDim2.fromOffset(0, 12), color = C.yellow, parent = hudArrow, radius = 4, outline = 3 })
-shaft.ZIndex = 30
-local head = UI.frame({ size = UDim2.fromOffset(28, 28), pos = UDim2.fromOffset(36, 6), color = C.yellow, parent = hudArrow, radius = 4, outline = 3 })
-head.Rotation = 45
-head.ZIndex = 31
+-- (4 Nov, owner, on the yellow bar with a turned square for a head: "make this a good arrow") the glossy gold arrow
+-- icon (assets/icons/arrow_point.png, tools/icons/make_arrow.py) once it's uploaded (tools/upload_models.ps1 --icons
+-- puts arrow_point in shared/IconIds); the old bar and square only until then
+local arrowIcon = (Config.ICONS :: any).arrow_point :: string?
+if arrowIcon and arrowIcon ~= "" then
+	hudArrow.Size = UDim2.fromOffset(96, 60)
+	local img = Instance.new("ImageLabel")
+	img.Name = "Arrow"
+	img.BackgroundTransparency = 1
+	img.Size = UDim2.fromScale(1, 1)
+	img.Image = arrowIcon
+	img.ScaleType = Enum.ScaleType.Fit
+	img.ZIndex = 31
+	img.Parent = hudArrow
+else
+	local shaft = UI.frame({ size = UDim2.fromOffset(40, 16), pos = UDim2.fromOffset(0, 12), color = C.yellow, parent = hudArrow, radius = 4, outline = 3 })
+	shaft.ZIndex = 30
+	local head = UI.frame({ size = UDim2.fromOffset(28, 28), pos = UDim2.fromOffset(36, 6), color = C.yellow, parent = hudArrow, radius = 4, outline = 3 })
+	head.Rotation = 45
+	head.ZIndex = 31
+end
 
 local function findButton(name: string): GuiObject?
 	local pg = player:FindFirstChildOfClass("PlayerGui")

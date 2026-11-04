@@ -731,9 +731,9 @@ end
 local function clearShot(froms: { Vector3 }, tos: { Vector3 }, r: number, big: number): () -> ()
 	local hidden: { BasePart } = {}
 	local excl: { Instance } = {}
-	for _, n in { "BossView", "PackFxLive", "IntroSet", "FilmSet" } do
-		local f = workspace:FindFirstChild(n)
-		if f then
+	local keep = { BossView = true, PackFxLive = true, IntroSet = true, FilmSet = true, Corruption = true }
+	for _, f in workspace:GetChildren() do
+		if keep[f.Name] then
 			table.insert(excl, f)
 		end
 	end
@@ -780,6 +780,7 @@ local function clearShot(froms: { Vector3 }, tos: { Vector3 }, r: number, big: n
 			end
 		end
 	end
+	workspace:SetAttribute("FilmClearedParts", #hidden) -- (to check it in a test)
 	return function()
 		for _, p in hidden do
 			p.LocalTransparencyModifier = 0
@@ -1763,6 +1764,18 @@ function Intro.preview(from: string?)
 	previewing = true
 	startAt = from
 	task.spawn(play)
+end
+
+-- (Studio only, for tests) the workspace attribute IntroPreview = "<from>" plays this film from that scene in the game's
+-- own copy of it (requiring it from the command bar makes a second copy, with its own BossView and effects)
+if game:GetService("RunService"):IsStudio() then
+	workspace:GetAttributeChangedSignal("IntroPreview"):Connect(function()
+		local v = workspace:GetAttribute("IntroPreview")
+		if type(v) == "string" and v ~= "" then
+			workspace:SetAttribute("IntroPreview", nil)
+			Intro.preview(if v == "start" then nil else v)
+		end
+	end)
 end
 
 return Intro

@@ -2365,4 +2365,16 @@ function Ending.preview(from: string?)
 	task.spawn(Ending.play, { gems = 0, time = 0, preview = true, from = from })
 end
 
+-- (Studio only, for tests) the workspace attribute EndingPreview = "<from>" plays this film from that scene in the game's
+-- own copy of it (requiring it from the command bar makes a second copy, with its own BossView and effects)
+if game:GetService("RunService"):IsStudio() then
+	workspace:GetAttributeChangedSignal("EndingPreview"):Connect(function()
+		local v = workspace:GetAttribute("EndingPreview")
+		if type(v) == "string" and v ~= "" then
+			workspace:SetAttribute("EndingPreview", nil)
+			Ending.preview(if v == "start" then nil else v)
+		end
+	end)
+end
+
 return Ending

@@ -551,30 +551,30 @@ BUILD.GrassTitan = function(a)
 		emitter(a, s, {
 			tex = FxTex.blade,
 			color = cs(C(150, 220, 90), C(76, 140, 43), C(36, 76, 26)),
-			size = ns(0, 0, 0.25, 1.1, 1, 0.8),
+			size = ns(0, 0, 0.25, 0.9, 1, 0.7),
 			rate = 6,
 			life = NumberRange.new(1, 1.4),
 			speed = NumberRange.new(0.4, 0.8),
 			spread = Vector2.new(25, 25),
 			orient = Enum.ParticleOrientation.FacingCameraWorldUp,
-			squash = ns(0, 0.5, 1, 0.4),
+			squash = ns(0, -0.15, 1, -0.15), -- (the blade texture is tall already: a touch wider, not taller)
 			rot = NumberRange.new(-35, 35),
 			spin = NumberRange.new(0, 0),
 			light = 0.2,
 		})
 	end
-	local stepAt = feet(a, "Step", 0, 0, 0.55) -- (half a blade up: particles are drawn round their centre)
+	local stepAt = feet(a, "Step", 0, 0, 0.3) -- (half a blade up: particles are drawn round their centre)
 	local tuft = emitter(a, stepAt, {
 		tex = FxTex.blade,
 		color = cs(C(110, 180, 64), C(76, 140, 43), C(107, 74, 43)),
-		size = ns(0, 0, 0.35, 1, 1, 0),
+		size = ns(0, 0, 0.35, 0.6, 1, 0),
 		rate = 0,
 		life = NumberRange.new(1.2, 1.5),
 		speed = NumberRange.new(0.1, 0.3),
 		spread = Vector2.new(15, 15),
 		orient = Enum.ParticleOrientation.FacingCameraWorldUp,
-		squash = ns(0, 0.6, 1, 0.5),
-		rot = NumberRange.new(-30, 30),
+		squash = ns(0, -0.25, 1, -0.25),
+		rot = NumberRange.new(-35, 35),
 		spin = NumberRange.new(0, 0),
 	})
 	beam(a, l, r, {
@@ -590,7 +590,7 @@ BUILD.GrassTitan = function(a)
 	a.tick = function(au, _, level)
 		if level > 0 and au.walked >= 2.6 then
 			au.walked = 0
-			tuft:Emit(if level == 2 then 5 else 2)
+			tuft:Emit(if level == 2 then 4 else 2)
 		end
 	end
 end

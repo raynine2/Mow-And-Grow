@@ -65,6 +65,8 @@ local SEA = -6
 local FLOOR = -24
 
 local FOUNTAIN = Vector3.new(-26, 0, -62) -- (4 Nov) the fountain garden, right of the spawn (server/LobbyLife)
+local BACK_Z = -104 -- (4 Nov) the star walk's landing at the observatory's steps, behind the spawn (server/LobbyGarden)
+local GATE_DEG = 7.5 -- its gate pillars on the hedge, either side of the walk
 local CLASSES = Vector3.new(-50, 0, -40)
 local GARAGE = Vector3.new(50, 0, -40)
 local CROSS_Z = -40
@@ -235,6 +237,10 @@ local function walkAreas(): { any }
 		-- (4 Nov) the fountain garden's round apron and the short walk to it, mirroring the rewards stall's
 		{ kind = "disc", c = v2(FOUNTAIN), r = 9 },
 		{ kind = "seg", a = Vector2.new(SPAWN.X - 9, SPAWN.Z), b = Vector2.new(FOUNTAIN.X + 8.5, FOUNTAIN.Z), w = 5 },
+		-- (4 Nov, owner on the lawn behind the spawn: "VERY VERY BLAND AND EMPTY") the star walk from the spawn's plaza
+		-- through the hedge to a round landing at the observatory's steps
+		{ kind = "seg", a = Vector2.new(SPAWN.X, SPAWN.Z - 9), b = Vector2.new(SPAWN.X, BACK_Z), w = 6 },
+		{ kind = "disc", c = Vector2.new(SPAWN.X, BACK_Z), r = 6.5 },
 	}
 end
 
@@ -541,7 +547,7 @@ local function hedge(world: Instance)
 		local open = false
 		for _, g in gaps do
 			local d = ((t - g + 180) % 360) - 180
-			if math.abs(d) < 5 then
+			if math.abs(d) < (if g == 0 then GATE_DEG + 2 else 5) then -- (the star walk's gate pillars stand in the first)
 				open = true
 			end
 		end
@@ -676,6 +682,25 @@ function LandsBuilder.build()
 		fountain = FOUNTAIN,
 		reach = REACH,
 		sea = SEA,
+	})
+	-- (4 Nov, owner: "I DONT LIKE THE BACK AREA OF THE MAP VERY VERY BLAND AND EMPTY") the star walk, the vegetable
+	-- patch, the lily pond, flowers over the lawn, and meadows all round past the hedge (server/LobbyGarden)
+	local Paving = require(script.Parent.LobbyPaving)
+	local areas = walkAreas()
+	require(script.Parent.LobbyGarden).dress(world, {
+		spawn = SPAWN,
+		centre = RING_CENTRE,
+		hedgeR = HEDGE_R,
+		backZ = BACK_Z,
+		gateDeg = GATE_DEG,
+		lands = landsCtx,
+		patchR = PATCH_R,
+		forestR = 132,
+		squareC = SQUARE_C,
+		squareR = SQUARE_R,
+		covers = function(x: number, z: number, grow: number): boolean
+			return Paving.covers(areas, Vector2.new(x, z), grow)
+		end,
 	})
 	bounds(world)
 	local sp = SPAWN + Vector3.new(0, 0.8, 0)

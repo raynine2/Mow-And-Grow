@@ -1,39 +1,44 @@
 -- GRASS TITAN (Legendary). The card: a giant mossy boulder-and-vine foot with daisies stomping a striped lawn, a green
 -- shockwave ring. Gimmick: Titan Stomp, landing from a jump hits every clump within 12 studs twice (every 4 s).
--- Built from the ForgeGUI props (gt_boulder, gt_crown), the ForgeGUI stone-rune emblem and the VFX Forge layers of
--- Loop_GrassTitan (Pebbles, Moss, Rise, Quake):
---   - mossy boulder boots on both feet, a vine winding up each leg out of them. While the Titan Stomp is ready the boots
---     glow green (a green haze, green light, sparks off their cracks); right after a stomp they go dark and light up
---     again as it recharges
---   - the stomp's reach (12 studs) drawn on the ground while it's ready; while it recharges a dim ring grows out to it
---   - three big mossy boulders floating in a crescent behind you in a green glow, shedding pebbles and moss; small
---     rocks circling your waist on green trails
---   - the stone rune crown floating over your head on a ring of glowing runes
---   - the stone-rune emblem under you in a soft green glow, a ring of mossy standing stones round it (they hop when a
---     stomp lands, sink into the ground while you run), green light rising off it
---   - every running step lands like a quake (a green ring and dust under that boot, the rocks jolt); a stomp slams the
---     floating rocks down, flings pebbles and sends a shockwave out to the reach
+-- Built from the ForgeGUI props (gt_foot, gt_slab, gt_boulder, gt_crown), the ForgeGUI stone-rune emblem and the VFX
+-- Forge layers of Loop_GrassTitan (Pebbles, Moss, Rise, Quake), in deep emerald on a dark pool so it doesn't wash out
+-- into the lawn:
+--   - the titan's foot: a giant ghostly mossy stone foot hovering high behind you, side on (toes to your right). While
+--     the stomp is ready it hangs poised, toes up, glowing; on a Titan Stomp it slams down behind you (a shockwave out
+--     to the reach, dust, pebbles) and rises again as the stomp recharges. Seen from behind (your own camera) it goes
+--     see-through so it never hides you
+--   - six standing rune stones (menhirs) round you at the stomp's reach (12 studs), runes facing you. They rise out of
+--     the ground as the stomp recharges and their runes light up when it's ready; a stomp crashes them back into the
+--     ground. The ones between the camera and you stay sunk, so they frame you instead of hiding you
+--   - chunky cracked boulder boots on both feet, a vine winding up each leg out of them; they glow while the stomp is
+--     ready. Every running step lands like a quake: a green ring, dust and glowing cracks under that boot
+--   - the stone rune crown floating over your head, its runes glowing, on a ring of glowing runes
+--   - the stone-rune emblem on a dark emerald pool, three thin emerald line rings turning over it, green light rising
+--     off it, and the stomp's reach (12 studs) drawn as a bright line with a dark edge (a dim ring growing back out to
+--     it while the stomp recharges)
 return function(H)
 	local K, T, rgb, ns, ease, smooth, WHITE = H.K, H.T, H.rgb, H.ns, H.ease, H.smooth, H.WHITE
 	local BFX, FX = H.BFX, H.FX
 	local E = H.E
 	local LOOP = "Loop_GrassTitan"
-	local GLOW = rgb(150, 255, 105) -- the glowing cracks' green
-	local MOSS = rgb(95, 190, 65) -- moss green: the aura's own colour
+	local EMERALD = rgb(40, 200, 110) -- the glowing cracks' deep emerald: the aura's own colour
+	local JADE = rgb(150, 245, 180) -- pale jade: bright cores and lines
+	local LEAF = rgb(90, 215, 120)
+	local DEEP = rgb(12, 58, 36) -- the dark emerald pool and the dark edges
 	local VINE_L, VINE_D = rgb(150, 225, 95), rgb(62, 140, 50)
-	local DIM = rgb(78, 104, 74) -- the reach ring while the stomp recharges
+	local DIM = rgb(36, 84, 58) -- the reach ring while the stomp recharges
 	local DARK = rgb(95, 100, 95) -- the boots' tint while it recharges (on props that can take a tint)
 	local RADIUS, COOLDOWN = 12, 4 -- server/ClassPerks STOMP_RADIUS, STOMP_COOLDOWN
-	local BOOT = Vector3.new(1.3, 1.12, 1.72) -- a boulder boot: the round boulder stretched heel to toe
-	-- the crescent of boulders behind you: angle from straight behind (rad), height over your middle, size, distance out
-	-- (the middle one rides high, clear of the crown, so the crown reads against the sky)
-	local CRESCENT = { { -1.2, 1.5, 1.7, 3.2 }, { 0, 4.7, 2.1, 2.7 }, { 1.2, 1.5, 1.7, 3.2 } }
-	-- the small rocks circling your waist: size, distance out, height
-	local DEBRIS = { { 0.55, 2.35, -0.35 }, { 0.42, 2.6, 0.05 }, { 0.62, 2.45, -0.6 }, { 0.38, 2.7, 0.2 }, { 0.5, 2.3, -0.15 }, { 0.45, 2.55, -0.5 } }
+	local BOOT = Vector3.new(1.75, 1.62, 2.55) -- a boulder boot: the round boulder stretched heel to toe
+	local FOOT_L = 9 -- the titan's foot, heel to toe
+	local FOOT_BACK, FOOT_UP = 4.6, 6.2 -- poised: this far behind you, its sole this high over the ground
+	local FALL = 0.12 -- the foot's slam down
+	local CRASH = 0.35 -- the rune stones crashing into the ground after a stomp
+	local SLAB_H = { 5.6, 6.2, 5.3, 6.0, 5.5, 6.3 } -- the rune stones' heights
 
-	-- a base worked out once per frame (several pieces ask for it)
-	local function once(base: (any) -> CFrame): (any) -> CFrame
-		local lastT, last = -1, CFrame.identity
+	-- a value worked out once per frame (several pieces ask for it)
+	local function once(base: (any) -> any): (any) -> any
+		local lastT, last = -1, nil
 		return function(f)
 			if f.t ~= lastT then
 				lastT = f.t
@@ -42,26 +47,26 @@ return function(H)
 			return last
 		end
 	end
-	-- tints a prop through its SurfaceAppearance, where it has one (a MeshPart's own texture can't be tinted)
-	local function tinter(p: BasePart): (Color3) -> ()
-		local sa = p:FindFirstChildOfClass("SurfaceAppearance")
-		return function(c: Color3)
-			if sa then
-				pcall(function()
-					(sa :: any).Color = c
-				end)
-			end
+	-- a prop's SurfaceAppearance (tint, glow), if it has one
+	local function saOf(p: BasePart): Instance?
+		return p:FindFirstChildOfClass("SurfaceAppearance")
+	end
+	local function setSA(sa: Instance?, prop: string, v: any)
+		if sa then
+			pcall(function()
+				(sa :: any)[prop] = v
+			end)
 		end
 	end
-	-- how far the floating rocks drop `dt` seconds after a running step lands (a small jolt)...
+	-- how far the foot and crown drop `dt` seconds after a running step lands (a small jolt)...
 	local function jolt(dt: number): number
 		if dt < 0 or dt > 0.5 then
 			return 0
 		end
 		return 0.2 * math.exp(-dt * 9) * math.sin(dt * 34)
 	end
-	-- ...and after a stomp (0 to 1: slammed down, then bouncing back)
-	local function slam(dt: number): number
+	-- ...and how the crown jumps after a stomp lands (0 to 1: up, then bouncing back)
+	local function bounce(dt: number): number
 		local k = dt / 1.1
 		if k < 0 or k >= 1 then
 			return 0
@@ -73,54 +78,60 @@ return function(H)
 	end
 
 	return function()
-		local a = H.aura(H.RANK.Legendary, MOSS)
-		local lastStomp = -100 -- (os.clock of the last Titan Stomp: the boots light up again over COOLDOWN)
-		local stepAt, slamAt = -100, -100 -- the last running step and the last stomp (the floating rocks jolt / slam)
-		local centre = once(function(f): CFrame
-			return CFrame.new(f.root.Position) * f.yaw
-		end)
-		local drop = once(function(f): CFrame
-			return CFrame.new(0, -(jolt(f.t - stepAt) + 1.7 * slam(f.t - slamAt)), 0)
-		end)
+		local a = H.aura(H.RANK.Legendary, EMERALD)
+		local lastStomp = -100 -- (os.clock of the last Titan Stomp: everything lights up again over COOLDOWN)
+		local slamAt = -100 -- the foot's last slam (it lands FALL later)
+		local landPending = false
+		local stepAt = -100 -- the last running step (the foot and crown jolt)
+		local function recharge(t: number): number
+			return math.clamp((t - lastStomp) / COOLDOWN, 0, 1)
+		end
 
-		-- the ground: a soft green glow, the stone-rune emblem (grows in), green light rising off it
-		H.glowDisc(a, 13.5, BFX.glow, MOSS, 0.45, 0, 0.07, 1)
+		-- THE GROUND: a dark emerald pool (so the green glows against it), a soft emerald glow, the stone-rune emblem
+		-- (grows in), three thin line rings turning over it, green light rising off it
+		H.glowDisc(a, 15.5, BFX.glow, DEEP, 0.3, 0, 0.05, 1)
+		H.glowDisc(a, 12.5, BFX.glow, EMERALD, 0.66, 0, 0.07, 1)
 		H.sigil(a, 10, T.embGrassTitan, WHITE, 0.18, 0, 0.12, 0.9, 1.1)
+		H.glowRing(a, 4.45, JADE, 0.5, 0.3, 0.15, 1)
+		H.glowRing(a, 5.2, EMERALD, 0.4, -0.2, 0.16, 1)
+		H.glowRing(a, 6.1, LEAF, 0.5, 0.14, 0.17, 1)
 		local riseHold = H.feetPiece(a, Vector3.new(6.4, 0.2, 6.4), 0.3)
 		local rise = H.layer(a, LOOP, "Rise", riseHold)
 		for _, e in rise do
 			e.ShapePartial = 0 -- (as H.updraft: a flat cone, so the streaks rise off the whole circle)
+			e.Color = K.seq(rgb(195, 255, 215), EMERALD)
+			e.LightEmission = 0.75
 		end
-		-- the stomp's reach: bright at 12 studs while the stomp is ready (the readiness job below)
-		local reach, reachImgs = H.glowRing(a, RADIUS, GLOW, 0.35, 0, 0.16, 1.3)
+		-- the stomp's reach: a bright line with a dark edge at 12 studs while the stomp is ready (the readiness job)
+		local reachDark = H.glowRing(a, RADIUS + 0.15, DEEP, 0.35, 0, 0.13, 1)
+		local reach, reachImgs = H.glowRing(a, RADIUS, JADE, 0.3, 0, 0.16, 1.1)
 
-		-- the boulder boots (the card's stomping foot), each with its own glow, light and sparks for the readiness, a
-		-- vine winding up the leg out of it and a dust holder on the ground under it (the quake of each step)
+		-- THE BOULDER BOOTS (the card's stomping foot): chunky cracked rock with moss and daisies, each with its own light
+		-- and sparks for the readiness, a vine winding up the leg out of it and a dust holder on the ground under it
 		local boots = {}
-		local quakes, pebbles = {}, {}
+		local quakes = {}
 		for i, foot in { "RightFoot", "LeftFoot" } do
 			local side = if i == 1 then 1 else -1
 			local footAt = once(function(f): CFrame
 				local l = H.limb(f, foot)
 				if l then
-					return l.CFrame * CFrame.new(side * 0.05, 0.42 - l.Size.Y / 2, -0.1)
+					return l.CFrame * CFrame.new(side * 0.22, 0.62 - l.Size.Y / 2, -0.15)
 				end
-				return f.root * CFrame.new(side * 0.5, -2.55, -0.1)
+				return f.root * CFrame.new(side * 0.7, -2.38, -0.15)
 			end)
 			local boot = H.prop(a.body, "gt_boulder", BOOT.Z)
 			boot.Size = BOOT
 			K.move(a, boot, footAt)
-			local haze = E(boot, { tex = BFX.glow, colors = K.seq(GLOW, MOSS), rate = 5, life = { 0.5, 0.8 }, speed = { 0, 0 }, size = 2.6, spread = 0, light = 1, bright = 1, lock = true, trans = ns(0, 1, 0.4, 0.7, 1, 1) })
-			local sparks = E(boot, { tex = FX.spark, colors = K.seq(WHITE, GLOW), rate = 4, life = { 0.4, 0.8 }, speed = { 0.6, 1.6 }, size = 0.2, grow = true, accel = Vector3.new(0, 2.5, 0), spread = 180, light = 1, bright = 2 })
+			local sparks = E(boot, { tex = FX.spark, colors = K.seq(JADE, EMERALD), rate = 4, life = { 0.4, 0.8 }, speed = { 0.6, 1.6 }, size = 0.22, grow = true, accel = Vector3.new(0, 2.5, 0), spread = 180, light = 0.8, bright = 1.5 })
 			local light = Instance.new("PointLight")
-			light.Color = GLOW
+			light.Color = EMERALD
 			light.Range = 7
-			light.Brightness = 1.8
+			light.Brightness = 1.6
 			light.Shadows = false
 			light.Parent = boot
 			H.detail(a, sparks, light)
 			H.layer(a, LOOP, "Moss", boot, false, 0.8)
-			local quakeHold = K.piece(a.model, Vector3.new(1.2, 0.2, 1.2))
+			local quakeHold = K.piece(a.model, Vector3.new(1.4, 0.2, 1.4))
 			K.move(a, quakeHold, function(f)
 				local p = footAt(f).Position
 				return CFrame.new(p.X, f.feet.Y - 0.1, p.Z)
@@ -135,13 +146,16 @@ return function(H)
 			for k = 0, 6 do
 				local u = k / 6
 				local th = side * u * math.pi * 2.3 + 0.5
-				local r = 0.68 - 0.1 * u
-				pts[k + 1] = Vector3.new(math.cos(th) * r, 0.3 + u * 1.5, math.sin(th) * r)
+				local r = 0.66 - 0.12 * u
+				pts[k + 1] = Vector3.new(math.cos(th) * r, 0.6 + u * 1.6, math.sin(th) * r)
 			end
 			for _, b in H.chain(vineHold, pts, { colors = K.seq(VINE_L, VINE_D), w0 = 0.34, w1 = 0.14, tex = T.vineStrip, texLen = 1.2, light = 0.15, bright = 1.2 }) do
 				H.detail(a, b)
 			end
-			table.insert(boots, { part = boot, at = footAt, haze = haze, sparks = sparks, light = light, quake = quake, tint = tinter(boot) })
+			local sa = saOf(boot)
+			table.insert(boots, { part = boot, at = footAt, sparks = sparks, light = light, quake = quake, tint = function(c: Color3)
+				setSA(sa, "Color", c)
+			end })
 		end
 		-- the boots grow out of the ground round your feet when the aura forms
 		local grown = false
@@ -162,98 +176,191 @@ return function(H)
 				b.part.Size = BOOT * k
 			end
 		end)
-
-		-- three big boulders floating in a crescent behind you (the middle one high over your head), swaying and turning
-		-- slowly with the moss kept on top; they rise out of the ground when the aura forms
-		for i, s in CRESCENT do
-			local rock = H.prop(a.body, "gt_boulder", s[3])
-			local ph = i * 2.1
-			K.move(a, rock, function(f)
-				local k = ease((f.t - a.born - 0.06 * i) / 0.7)
-				local ang = s[1] + 0.07 * math.sin(f.t * 0.45 + ph)
-				local y = (s[2] + 0.2 * math.sin(f.t * 1.1 + ph)) * k - 3.3 * (1 - k)
-				return drop(f) * centre(f) * CFrame.new(math.sin(ang) * s[4], y, math.cos(ang) * s[4]) * CFrame.Angles(0.12 * math.sin(f.t * 0.6 + ph), f.t * 0.3 + ph, 0.1 * math.cos(f.t * 0.5 + ph))
-			end)
-			for _, e in H.layer(a, LOOP, "Pebbles", rock, false, s[3] / 2) do
-				table.insert(pebbles, e)
-				if i ~= 2 then
-					H.detail(a, e)
+		-- the cracks a running step leaves: two sets of thin glowing fissures (one per boot), left where you stepped
+		-- and fading
+		local cracks = {}
+		for c = 1, 2 do
+			local cr = { at = CFrame.new(0, -1000, 0), born = -100, tr = 1, parts = {} }
+			for s = 1, 5 do
+				local len = 0.8 + 0.3 * ((s * 7 + c) % 4)
+				local p = H.solid(a.model, Vector3.new(0.13, 0.05, len), EMERALD, Enum.Material.Neon)
+				p.Transparency = 1
+				local off = CFrame.Angles(0, s / 5 * math.pi * 2 + c * 0.6 + 0.3 * math.sin(s * 3.1), 0) * CFrame.new(0, 0, -len / 2 - 0.3)
+				K.move(a, p, function(f)
+					return cr.at * off
+				end)
+				table.insert(cr.parts, p)
+			end
+			cracks[c] = cr
+		end
+		H.job(a, function(self, f)
+			for _, cr in cracks do
+				local age = f.t - cr.born
+				local tr = if age < 0.75 then 0.15 + 0.85 * smooth(age / 0.75) else 1
+				if math.abs(tr - cr.tr) > 0.04 or (tr == 1 and cr.tr ~= 1) then
+					cr.tr = tr
+					for _, p in cr.parts do
+						p.Transparency = tr
+					end
 				end
 			end
-			if i == 2 then
-				H.layer(a, LOOP, "Moss", rock)
-			end
-			-- held up by the titan's power: a green glow round each boulder, green motes rising off it
-			K.addEmitter(a, E(rock, { tex = BFX.glow, colors = K.seq(GLOW, MOSS), rate = 2.5, life = { 0.6, 0.9 }, speed = { 0, 0 }, size = s[3] * 1.7, spread = 0, light = 1, bright = 1, lock = true, trans = ns(0, 1, 0.4, 0.78, 1, 1) }))
-			local motes = E(rock, { tex = FX.spark, colors = K.seq(WHITE, GLOW), rate = 2, life = { 0.8, 1.2 }, speed = { 0.3, 0.8 }, size = 0.18, grow = true, accel = Vector3.new(0, 1.5, 0), spread = 180, light = 1, bright = 2 })
-			K.addEmitter(a, motes)
-			H.detail(a, motes)
-		end
-		-- small rocks circling your waist on a tilted ring, green trails behind them (pulled round by the titan's weight)
-		local belt = once(function(f): CFrame
-			return CFrame.new(f.root.Position) * CFrame.Angles(math.rad(10), 0, math.rad(-6)) * CFrame.Angles(0, f.t * 1.0, 0)
 		end)
-		for i, d in DEBRIS do
-			local pebble = H.prop(a.body, "gt_boulder", d[1])
-			local th = (i - 1) / #DEBRIS * math.pi * 2
-			K.move(a, pebble, function(f)
-				local r = d[2] * ease((f.t - a.born - 0.1 - 0.04 * i) / 0.6)
-				return drop(f) * belt(f) * CFrame.new(math.cos(th) * r, d[3] + 0.12 * math.sin(f.t * 1.7 + i), math.sin(th) * r) * CFrame.Angles(0.3 * math.sin(f.t + i), f.t * 0.9 + i, 0.2 * math.cos(f.t * 0.8 + i))
-			end)
-			local trail = H.trailed(pebble, K.seq(GLOW, MOSS), 0.9, d[1] * 0.45)
-			H.detail(a, pebble, trail)
+
+		-- THE TITAN'S FOOT (ForgeGUI, toes at its -Z, sole down): ghostly (see-through, a deep emerald glow and a dark
+		-- edge), hovering high behind you side on with its toes to your right, swaying. Ready: poised, toes up. A stomp:
+		-- it slams flat onto the ground behind you, holds, then rises as the stomp recharges (hanging lower and dimmer
+		-- until it's ready). It drops in from the sky when the aura forms.
+		local foot = H.prop(a.body, "gt_foot", FOOT_L)
+		local fs = H.propSize("gt_foot", FOOT_L)
+		local footSA = saOf(foot)
+		if foot:IsA("MeshPart") then
+			foot.Transparency = 0.25
 		end
-		-- a ring of mossy standing stones round the emblem (the boulder stood on end), rising out of the ground when the
-		-- aura forms; they hop when a stomp lands and sink into the ground while you run
+		setSA(footSA, "Color", rgb(200, 255, 215)) -- (a pale ghostly green)
+		local FOOT_TURN = CFrame.Angles(0, -math.pi / 2, 0) -- (toes to your right: side on, it reads as a foot)
+		-- 0 = flat on the ground, 1 = poised
+		local function footLift(t: number): number
+			local dt = t - slamAt
+			if dt >= 0 and dt < FALL then
+				local k = dt / FALL
+				return 1 - k * k
+			elseif dt >= FALL and dt < FALL + 0.4 then
+				return 0
+			end
+			local hang = 0.62 + 0.38 * smooth(recharge(t))
+			local up = if dt >= 0 then smooth((dt - FALL - 0.4) / 1.1) else 1
+			return hang * up
+		end
+		local footCF = once(function(f): CFrame
+			local k = ease((f.t - a.born - 0.05) / 0.8)
+			local lift = footLift(f.t)
+			local y = fs.Y * 0.5 + FOOT_UP * lift + 0.18 * math.sin(f.t * 1.2) * lift + 14 * (1 - k) - 0.6 * jolt(f.t - stepAt)
+			local tilt = math.rad(13) * lift + 0.04 * math.sin(f.t * 0.9) -- (toes up while poised, flat as it lands)
+			return CFrame.new(f.feet) * f.yaw * CFrame.new(0, y, FOOT_BACK) * FOOT_TURN * CFrame.Angles(tilt, 0, 0.03 * math.sin(f.t * 0.7))
+		end)
+		K.move(a, foot, footCF)
+		local footGlow = E(foot, { tex = BFX.glow, colors = K.seq(EMERALD, DEEP), rate = 3, life = { 0.8, 1.2 }, speed = { 0, 0 }, size = 4.2, spread = 0, light = 0.6, bright = 1, lock = true, trans = ns(0, 1, 0.4, 0.78, 1, 1) })
+		K.addEmitter(a, footGlow)
+		local pebbles = H.layer(a, LOOP, "Pebbles", foot, false, 1.5)
+		H.layer(a, LOOP, "Moss", foot, false, 1.3)
+		local ghost = Instance.new("Highlight") -- (the ghostly look: an emerald sheen and a dark edge)
+		ghost.Adornee = foot
+		ghost.FillColor = EMERALD
+		ghost.FillTransparency = 0.82
+		ghost.OutlineColor = DEEP:Lerp(EMERALD, 0.35)
+		ghost.OutlineTransparency = 0.25
+		ghost.DepthMode = Enum.HighlightDepthMode.Occluded
+		ghost.Parent = a.body
+		H.detail(a, ghost)
+		-- dust where it lands
+		local dustHold = K.piece(a.model, Vector3.new(6, 0.3, 4))
+		K.move(a, dustHold, function(f)
+			local p = footCF(f).Position
+			return CFrame.new(p.X, f.feet.Y, p.Z) * f.yaw
+		end)
+		local footDust = H.layer(a, LOOP, "Quake", dustHold, false, 1.6)
+		-- your own camera behind you: the foot goes see-through so it never hides you
+		local faded = false
+		H.job(a, function(self, f)
+			local cam = workspace.CurrentCamera
+			local behind = f.player ~= nil and f.player == H.player and cam ~= nil and cam.CFrame.LookVector:Dot(f.root.LookVector) > 0.3
+			if behind ~= faded then
+				faded = behind
+				foot.LocalTransparencyModifier = if behind then 0.55 else 0
+				ghost.FillTransparency = if behind then 0.94 else 0.82
+				ghost.OutlineTransparency = if behind then 0.7 else 0.25
+			end
+		end)
+
+		-- THE RUNE STONES (ForgeGUI menhirs, the rune on their -Z face): six round you at the stomp's reach, runes facing
+		-- you. They stand while the stomp is ready (runes lit), crash into the ground when a stomp lands and rise again
+		-- as it recharges; they sink while you run, and the ones on the camera's side of you stay down so they never
+		-- hide you. They rise out of the ground one after another when the aura forms.
+		local camDir = once(function(f): Vector3 -- (from you towards the camera, flat)
+			local cam = workspace.CurrentCamera
+			if not cam then
+				return Vector3.zero
+			end
+			local d = cam.CFrame.Position - f.feet
+			d = Vector3.new(d.X, 0, d.Z)
+			if d.Magnitude < 1 then
+				return Vector3.zero
+			end
+			return d.Unit
+		end)
+		local standing = once(function(f): number -- (how far all of them stand, before the camera's say)
+			local dl = f.t - slamAt - FALL
+			local r
+			if dl >= 0 and dl < CRASH then
+				r = 1 - smooth(dl / CRASH)
+			else
+				r = smooth((recharge(f.t) - 0.15) / 0.85)
+			end
+			return r * smooth((f.calm - 0.25) / 0.6)
+		end)
+		local slabs = {}
 		for i = 1, 6 do
 			local th = (i - 0.5) / 6 * math.pi * 2
-			local h = 1.15 + 0.3 * ((i * 5) % 3) / 2
-			local stone = H.prop(a.model, "gt_boulder", 1)
-			stone.Size = Vector3.new(0.78, h, 0.64)
-			local turn = CFrame.Angles(0.08 * math.sin(i * 2.3), math.pi / 2 - th, 0.08 * math.cos(i * 1.7))
-			K.move(a, stone, function(f)
-				local k = ease((f.t - a.born - 0.15 - 0.05 * i) / 0.6)
-				local dt = (f.t - slamAt - 0.03 * i) / 0.45
-				local hop = if dt > 0 and dt < 1 then 0.9 * math.sin(dt * math.pi) else 0
-				local y = f.feet.Y - 0.5 + h / 2 - (h + 0.4) * math.max(1 - k, 1 - f.calm) + hop
-				return CFrame.new(f.feet.X + math.cos(th) * 5.6, y, f.feet.Z + math.sin(th) * 5.6) * turn
+			local slab = H.prop(a.model, "gt_slab", SLAB_H[i])
+			local ss = H.propSize("gt_slab", SLAB_H[i])
+			local dir = Vector3.new(math.cos(th), 0, math.sin(th))
+			local turn = CFrame.Angles(0.05 * math.sin(i * 2.3), math.pi / 2 - th, 0.05 * math.cos(i * 1.7)) -- (-Z towards you)
+			K.move(a, slab, function(f)
+				local cd = camDir(f)
+				local camK = 1 - smooth((dir.X * cd.X + dir.Z * cd.Z - 0.15) / 0.5)
+				local formK = math.min(1, ease((f.t - a.born - 0.25 - 0.07 * i) / 0.7))
+				local up = standing(f) * camK * formK
+				local dl = f.t - slamAt - FALL - 0.02 * i
+				local shake = if dl > 0 and dl < CRASH then 0.12 * math.sin(dl * 60) else 0
+				local y = f.feet.Y - 0.45 + ss.Y / 2 - (ss.Y + 0.6) * (1 - up)
+				return CFrame.new(f.feet.X + dir.X * RADIUS + shake, y, f.feet.Z + dir.Z * RADIUS) * turn
 			end)
+			-- the rune's glow on its face (lit while the stomp is ready)
+			local glowAt = H.att(slab, Vector3.new(0, ss.Y * 0.08, -ss.Z / 2 - 0.15))
+			local glow = E(glowAt, { tex = BFX.glow, colors = K.seq(JADE, EMERALD), rate = 1.2, life = { 0.8, 1.2 }, speed = { 0, 0 }, size = 2.4, spread = 0, light = 0.6, bright = 1, lock = true, trans = ns(0, 1, 0.4, 0.7, 1, 1) })
+			H.detail(a, glow)
+			table.insert(slabs, { part = slab, sa = saOf(slab), glow = glow })
 		end
 
-		-- the stone rune crown floating over your head, turning slowly, on a ring of glowing runes with gem glints; it
-		-- drops in from above when the aura forms and hops when a stomp lands
+		-- THE CROWN: the stone rune crown floating over your head, turning slowly, its runes glowing, on a ring of glowing
+		-- runes with gem glints; it drops in from above when the aura forms and jumps when a stomp lands
+		local CROWN = 2.95
+		local crown = H.prop(a.body, "gt_crown", CROWN)
+		local cs = H.propSize("gt_crown", CROWN)
+		setSA(saOf(crown), "EmissiveStrength", 2.5)
 		local crownAt = once(function(f): CFrame
 			local k = ease((f.t - a.born - 0.1) / 0.6)
-			local hop = 0.5 * slam(f.t - slamAt) + 0.6 * jolt(f.t - stepAt)
-			local up = 0.95 + 0.1 * math.sin(f.t * 1.5) + 3 * (1 - k) + hop
+			local hop = 0.5 * bounce(f.t - slamAt - FALL) + 0.6 * jolt(f.t - stepAt)
+			local up = cs.Y * 0.5 + 0.4 + 0.1 * math.sin(f.t * 1.5) + 3 * (1 - k) + hop
 			return CFrame.new(f.head + Vector3.new(0, up, 0)) * f.yaw * CFrame.Angles(0.06 * math.sin(f.t * 1.1), f.t * 0.5, 0.06 * math.cos(f.t * 0.9))
 		end)
-		local crown = H.prop(a.body, "gt_crown", 2.1)
 		K.move(a, crown, crownAt)
-		local band = K.piece(a.body, Vector3.new(1.9, 0.4, 1.9))
+		local band = K.piece(a.body, Vector3.new(2.7, 0.4, 2.7))
 		K.move(a, band, function(f)
-			return crownAt(f) * CFrame.new(0, -0.7, 0)
+			return crownAt(f) * CFrame.new(0, -cs.Y * 0.5 - 0.05, 0)
 		end)
-		local runes = K.beamRing(band, 0.95, 0.2, K.seq(GLOW, MOSS), 3, 0.05, 12, false)
+		local runes = K.beamRing(band, 1.33, 0.28, K.seq(JADE, EMERALD), 3, 0.05, 12, false)
 		for _, b in runes do
 			b.Texture = T.runeStrip
 			b.TextureMode = Enum.TextureMode.Stretch
-			b.LightEmission = 1
+			b.LightEmission = 0.7
 			H.detail(a, b)
 		end
-		local glints = E(band, { tex = T.glint, flip = 4, colors = K.seq(WHITE, GLOW), rate = 2.5, life = { 0.4, 0.7 }, speed = { 0, 0.2 }, size = 0.45, spread = 180, light = 1, bright = 2 })
+		local glints = E(band, { tex = T.glint, flip = 4, colors = K.seq(WHITE, JADE), rate = 2.5, life = { 0.4, 0.7 }, speed = { 0, 0.2 }, size = 0.5, spread = 180, light = 0.8, bright = 1.6 })
 		K.addEmitter(a, glints)
 		H.detail(a, glints)
 
-		-- Titan Stomp readiness: dark right after a stomp, lighting up as it recharges (the reach ring grows back out
-		-- to 12 studs, dim), then bright again when it's ready (the reach flashes, the boots puff green)
+		-- TITAN STOMP READINESS: dark right after a stomp, lighting up as it recharges (the reach ring grows back out to
+		-- 12 studs, dim; the foot rises, the rune stones climb out of the ground), then bright again when it's ready
+		-- (the reach flashes, the runes and the foot glow, the boots spark)
 		local shown = -1
 		H.job(a, function(self, f)
-			local c = math.clamp((f.t - lastStomp) / COOLDOWN, 0, 1)
+			local c = recharge(f.t)
 			local ready = c >= 1
 			if not ready then
 				local d = (2.5 + (RADIUS - 2.5) * smooth(c)) * 2 / 0.92
 				reach.Size = Vector3.new(d, 0.05, d)
+				reachDark.Size = Vector3.new(d + 0.33, 0.05, d + 0.33)
 			end
 			local q = if ready then 1 else math.floor(c * 24) / 24
 			if q == shown then
@@ -261,36 +368,46 @@ return function(H)
 			end
 			local first = shown < 0
 			shown = q
-			local col = DIM:Lerp(GLOW, q * q)
+			local col = DIM:Lerp(JADE, q * q)
 			for _, img in reachImgs do
 				img.ImageColor3 = col
 			end
 			if ready then
 				local d = RADIUS * 2 / 0.92
 				reach.Size = Vector3.new(d, 0.05, d)
+				reachDark.Size = Vector3.new(d + 0.33, 0.05, d + 0.33)
 			end
 			for _, b in boots do
-				b.light.Brightness = if ready then 1.8 else 0.15 + 0.5 * q
-				b.haze.Rate = if ready then 5 else 0
+				b.light.Brightness = if ready then 1.6 else 0.15 + 0.5 * q
 				b.sparks.Rate = if ready then 4 else 0
 				b.tint(if ready then WHITE else DARK:Lerp(WHITE, q * 0.5))
 			end
+			for _, s in slabs do
+				setSA(s.sa, "EmissiveStrength", if ready then 3 else 0.4 + q)
+				s.glow.Rate = if ready then 1.2 else 0
+			end
+			setSA(footSA, "EmissiveStrength", if ready then 3 else 0.5 + 1.5 * q)
+			footGlow.Rate = if ready then 3 else 1
 			if ready and not first then
-				K.pulse(f.feet, RADIUS * 2 - 5, RADIUS * 2, GLOW, 0.5, 0.2)
+				K.pulse(f.feet, RADIUS * 2 - 5, RADIUS * 2, EMERALD, 0.5, 0.2)
 				for _, b in boots do
-					b.haze:Emit(3)
 					b.sparks:Emit(10)
 				end
+				for _, s in slabs do
+					s.glow:Emit(2)
+				end
+				footGlow:Emit(3)
 				self.lightKick = 1.8
 			end
 		end)
 		-- while it's ready and you stand, a faint ring runs out to the reach every few seconds
 		H.every(a, 3, function(self, f)
 			if f.t - lastStomp > COOLDOWN and f.calm > 0.6 then
-				K.pulse(f.feet, RADIUS * 2 - 4, RADIUS * 2 + 0.4, GLOW, 1, 0.6)
+				K.pulse(f.feet, RADIUS * 2 - 4, RADIUS * 2 + 0.4, EMERALD, 1, 0.6)
 			end
 		end)
-		-- every running step lands like a quake, left and right in turn: a green ring and dust under that boot
+		-- every running step lands like a quake, left and right in turn: a green ring, dust and glowing cracks under
+		-- that boot (the cracks stay where you stepped)
 		local nextFoot = 1
 		H.every(a, 0.4, function(self, f)
 			if f.calm > 0.5 then
@@ -299,41 +416,56 @@ return function(H)
 			nextFoot = 3 - nextFoot
 			local b = boots[nextFoot]
 			local p = b.at(f).Position
-			K.pulse(Vector3.new(p.X, f.feet.Y, p.Z), 1, 7, GLOW, 0.45, 0.3)
+			K.pulse(Vector3.new(p.X, f.feet.Y, p.Z), 1, 7, EMERALD, 0.45, 0.3)
 			for _, e in b.quake do
 				e:Emit(4)
 			end
+			local cr = cracks[nextFoot]
+			cr.at = CFrame.new(p.X, f.feet.Y - 0.2, p.Z) * CFrame.Angles(0, (f.t * 3.7) % (math.pi * 2), 0)
+			cr.born = f.t
 			stepAt = f.t
 		end)
 
-		H.shell(a, K.seq(GLOW, MOSS), 6, 1)
-		K.feetTrail(a, K.seq(GLOW, MOSS))
-		K.outline(a, GLOW, 0.35)
-		K.light(a, GLOW, 1.2, 14)
+		H.shell(a, K.seq(JADE, EMERALD), 6, 1)
+		K.feetTrail(a, K.seq(JADE, EMERALD))
+		K.outline(a, EMERALD, 0.35)
+		K.light(a, EMERALD, 1.2, 14)
 		H.lightJob(a, 0.08)
-		-- the Titan Stomp landing: the rocks slam down, a shockwave out to the reach, dust and pebbles everywhere
+		-- the Titan Stomp: the foot slams down behind you; as it lands, a shockwave out to the reach, the rune stones
+		-- crash into the ground, dust and pebbles everywhere
 		H.gimmick(a, { stomp = true }, 8, function(self, d)
-			lastStomp = os.clock()
-			slamAt = lastStomp
+			local now = os.clock()
+			lastStomp = now
+			slamAt = now
+			landPending = true
+			self.lightKick = 1.6
+		end)
+		H.job(a, function(self, f)
+			if not landPending or f.t < slamAt + FALL then
+				return
+			end
+			landPending = false
 			self.lightKick = 3
-			local feet = self.rootPos - Vector3.new(0, 2.7, 0)
-			K.pulse(feet, 1, RADIUS * 2, GLOW, 0.7, 0)
-			K.pulse(feet, 1, 10, WHITE, 0.4, 0.3)
+			K.pulse(f.feet, 1, RADIUS * 2, EMERALD, 0.7, 0)
+			K.pulse(f.feet, 1, 10, JADE, 0.4, 0.3)
 			for _, e in quakes do
 				e:Emit(10)
 			end
+			for _, e in footDust do
+				e:Emit(14)
+			end
 			for _, e in pebbles do
-				e:Emit(6)
+				e:Emit(8)
 			end
 			for _, e in rise do
 				e:Emit(10)
 			end
 		end)
-		-- the entrance: a quake (the boots grow, the boulders rise out of the ground, the crown drops in) and a
-		-- shockwave out to the reach
+		-- the entrance: a quake (the boots grow, the rune stones rise out of the ground, the crown drops in, the titan's
+		-- foot comes down out of the sky) and a shockwave out to the reach
 		a.onForm = function(self, feet)
-			K.pulse(feet, 1, RADIUS * 2, GLOW, 0.9, 0)
-			K.pulse(feet, 1, 12, WHITE, 0.55, 0.25)
+			K.pulse(feet, 1, RADIUS * 2, EMERALD, 0.9, 0)
+			K.pulse(feet, 1, 12, JADE, 0.55, 0.25)
 			for _, e in quakes do
 				e:Emit(10)
 			end

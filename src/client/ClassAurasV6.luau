@@ -66,12 +66,12 @@ local T = {
 	streak = id(81969979283442), -- (LihFolk)
 	stripBody = id(73446398119013), -- (LihFolk)
 	-- (1 Nov) the classes' ground emblems, made with ForgeGUI (round badges in each class's own colours)
-	embWeedPuller = id(134819203583527),
-	embGardener = id(102584787469437),
-	embGroundskeeper = id(81046637025369),
-	embLawnBaron = id(82616276328621),
+	embWeedPuller = id(114994880106224), -- (v2: a dandelion clock in the middle; v1 134819203583527)
+	embGardener = id(124774936957582), -- (v2: no painted shears; v1 102584787469437)
+	embGroundskeeper = id(72066482323492), -- (v2: a clean pitch, chalk centre; v1 81046637025369)
+	embLawnBaron = id(95299285294616), -- (v2: no painted top hat; v1 82616276328621)
 	embHedgeReaper = id(111657549783818),
-	embMowerSpecialist = id(98993571315656),
+	embMowerSpecialist = id(72740391979680), -- (v2: orange deck, bright blade; v1 98993571315656)
 	embGrassTitan = id(105990669445080),
 	embUltimateGardener = id(105160067947603),
 	embLawnLegend = id(116953970308643),

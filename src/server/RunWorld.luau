@@ -650,6 +650,14 @@ function RunWorld.build()
 	task.wait()
 	-- a camp round every other area's drop-off pad (server/Outposts; owner 27 Oct: "this type of hub in every zone")
 	print(("[RunWorld] %d area camps built"):format(require(script.Parent.Outposts).build(w, info, RunBuilder.gasPump)))
+	-- (4 Nov, owner: "starting hub remake") the starting hub's village square: the golden gnome fountain, flower beds,
+	-- lanterns with bunting and the welcome arch (server/HubSquare; HubSquare.ON turns it off)
+	local okSquare, errSquare = pcall(function()
+		require(script.Parent.HubSquare).dress(w)
+	end)
+	if not okSquare then
+		warn("[RunWorld] village square: " .. tostring(errSquare))
+	end
 	task.wait()
 	print(("[RunWorld] %d squares of rim built up round the isles' void (holes in the map)"):format(sealRim(w)))
 	local pads = w:FindFirstChild("Pads")

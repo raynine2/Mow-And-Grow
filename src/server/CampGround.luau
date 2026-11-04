@@ -77,11 +77,14 @@ CampGround.BORDER_K = BORDER_K
 -- walls to a couple of studs out, a hair above the paving so it lies over the stones it crosses; the Tool Shop's band
 -- in front runs out past its porch steps as a little terrace. The paving stones it covers whole go.
 -- Rectangles in the unit's "0Anchor" frame (-Z is the front): `inner` the band's inside edge (under the walls, outside
--- the room, measured in Studio), `outer` its outside edge.
+-- the room, measured in Studio), `outer` its outside edge. `forward`: the building first moves that many studs out of
+-- its front, because its back stood in the raised ground of the meadow boss arena behind it (the Garage: its workbench
+-- and deck inside that ground; 12 studs clears it, measured, and nothing stands there). Its prompt, pump and mower
+-- spawn move with it.
 type Rect = { x0: number, x1: number, z0: number, z1: number }
-local FOOTINGS: { [string]: { inner: Rect, outer: Rect } } = {
+local FOOTINGS: { [string]: { inner: Rect, outer: Rect, forward: number? } } = {
 	["TOOL SHOP"] = { inner = { x0 = -24, x1 = 23.2, z0 = -10.6, z1 = 22 }, outer = { x0 = -30.2, x1 = 27.2, z0 = -17.7, z1 = 28.5 } },
-	Garage = { inner = { x0 = -9.8, x1 = 9.8, z0 = -9.2, z1 = 12.6 }, outer = { x0 = -13.2, x1 = 13.5, z0 = -11.2, z1 = 16.2 } },
+	Garage = { inner = { x0 = -9.8, x1 = 9.8, z0 = -9.2, z1 = 12.6 }, outer = { x0 = -13.2, x1 = 13.5, z0 = -11.2, z1 = 16.2 }, forward = 12 },
 }
 local KERB_H = 0.33 -- the kerb stones' height over the ground (the paving's are 0.3, their top plates 0.305)
 local BED_H = 0.312 -- the grout under them
@@ -125,8 +128,22 @@ local function strip(parent: Instance, at: CFrame, x0: number, x1: number, z0: n
 	end
 end
 
--- Lays every building's footing (after CampGround.apply). Returns how many footings were laid.
-function CampGround.footings(w: Instance): number
+-- Moves everything in `inst` by the world transform `delta` (models by their pivot, loose parts by their CFrame).
+local function moveTree(inst: Instance, delta: CFrame)
+	for _, c in inst:GetChildren() do
+		if c:IsA("Model") then
+			c:PivotTo(delta * c:GetPivot())
+		elseif c:IsA("BasePart") then
+			c.CFrame = delta * c.CFrame
+		elseif c:IsA("Folder") then
+			moveTree(c, delta)
+		end
+	end
+end
+
+-- Lays every building's footing (after CampGround.apply). `info`: the run's (RunWorld.build), whose pump and mower
+-- spawn positions move with a building moved forward. Returns how many footings were laid.
+function CampGround.footings(w: Instance, info: any?): number
 	if not CampGround.ON then
 		return 0
 	end
@@ -141,6 +158,22 @@ function CampGround.footings(w: Instance): number
 		local anchor = unit and unit:FindFirstChild("0Anchor")
 		if not unit or not anchor or not anchor:IsA("BasePart") then
 			continue
+		end
+		if f.forward then
+			local was = anchor.Position
+			local delta = anchor.CFrame * CFrame.new(0, 0, -f.forward) * anchor.CFrame:Inverse()
+			moveTree(unit, delta)
+			if info then
+				local spawn = info.garageSpawn
+				if typeof(spawn) == "CFrame" and (spawn.Position - was).Magnitude < 40 then
+					info.garageSpawn = delta * spawn
+				end
+				for _, pump in info.pumps or {} do
+					if typeof(pump.pos) == "Vector3" and (pump.pos - was).Magnitude < 30 then
+						pump.pos = delta * pump.pos
+					end
+				end
+			end
 		end
 		local at = CFrame.new(anchor.Position.X, anchor.Position.Y, anchor.Position.Z) * anchor.CFrame.Rotation
 		local o, i = f.outer, f.inner

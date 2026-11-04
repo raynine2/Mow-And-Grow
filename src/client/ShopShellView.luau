@@ -20,7 +20,7 @@
 -- the lodge's bright room, a different house) One house now: the lodge's room is there all along, seen through the
 -- cabin's doorway from outside, and only the cabin's shell goes when your camera is in (its door tunnel and floor
 -- poke into the room). What of the lodge stands outside its room's walls (roof, plinth, barge boards, ridge: the
--- "old house" outside) never shows on this screen. The room is only in the world while your camera is near the
+-- "old house" outside) only shows while your camera is inside, where it's the room's ceiling and the cabin is hidden. The room is only in the world while your camera is near the
 -- door side (FPS: from behind or far off you can't see into it anyway); then the invisible walls stand in for its
 -- walls as before.
 local RunService = game:GetService("RunService")
@@ -36,6 +36,9 @@ local UNITS = {
 	{
 		unit = "Garage",
 		building = "GarageBuilding",
+		-- (4 Nov) seen from outside, the voxel garage's roof, gables and vents (above its tie beams) poked up through the
+		-- ForgeGUI garage's roof: from outside they stay hidden
+		ceiling = 13.9,
 		keep = { FloorSlab = true, FloorFill = true, BayLine = true, OilStain = true, WorkDeck = true, DeckBoard = true },
 	},
 }
@@ -51,11 +54,12 @@ type View = {
 	conns: { RBXScriptConnection },
 	walls: Folder?, -- (this screen's invisible walls while the lodge is out)
 	jamb: { number }?,
+	ceiling: number?, -- (lodge parts reaching above this, in the anchor's frame, count as outside)
 	jambs: Folder?, -- (invisible blocks either side of the cabin's narrow door)
 }
 local views: { View } = {}
 for i, u in UNITS do
-	views[i] = { keep = u.keep, shell = nil, lodge = nil, anchor = nil, inside = nil, near = nil, out = {}, conns = {}, jamb = (u :: any).jamb }
+	views[i] = { keep = u.keep, shell = nil, lodge = nil, anchor = nil, inside = nil, near = nil, out = {}, conns = {}, jamb = (u :: any).jamb, ceiling = (u :: any).ceiling }
 end
 
 -- Invisible walls round the room box (the lodge's walls stand just outside it), the doorway left open.
@@ -146,7 +150,7 @@ local function isOut(v: View, p: BasePart): boolean
 		local h = p.Size / 2
 		for _, k in { Vector3.new(-1, -1, -1), Vector3.new(1, -1, -1), Vector3.new(-1, 1, -1), Vector3.new(1, 1, -1), Vector3.new(-1, -1, 1), Vector3.new(1, -1, 1), Vector3.new(-1, 1, 1), Vector3.new(1, 1, 1) } do
 			local l = a.CFrame:PointToObjectSpace(p.CFrame:PointToWorldSpace(h * k))
-			if l.X < mn.X - OUT_GROW or l.X > mx.X + OUT_GROW or l.Z < mn.Z - OUT_GROW or l.Z > mx.Z + OUT_GROW or l.Y > mx.Y + 0.5 or l.Y < -2 then
+			if l.X < mn.X - OUT_GROW or l.X > mx.X + OUT_GROW or l.Z < mn.Z - OUT_GROW or l.Z > mx.Z + OUT_GROW or l.Y > (v.ceiling or mx.Y) + 0.5 or l.Y < -2 then
 				c = true
 				break
 			end
@@ -160,7 +164,7 @@ local function setLodge(v: View, p: Instance, show: boolean)
 	if not p:IsA("BasePart") or v.keep[p.Name] then
 		return
 	end
-	if show and isOut(v, p) then
+	if show and not v.inside and isOut(v, p) then
 		show = false
 	end
 	if show then
@@ -193,9 +197,10 @@ local function apply(v: View)
 				end
 			end
 		end
-		-- (outside pieces still in the world, every piece when the room goes)
+		-- (outside pieces still in the world while you're outside, every piece when the room goes; inside, the whole
+		-- lodge shows, its roof your ceiling, as the cabin's shell is hidden then)
 		for _, p in v.lodge:GetDescendants() do
-			if p:IsA("BasePart") and (not room or isOut(v, p)) then
+			if p:IsA("BasePart") and (not room or (not v.inside and isOut(v, p))) then
 				setLodge(v, p, false)
 			end
 		end

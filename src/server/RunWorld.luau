@@ -671,7 +671,7 @@ function RunWorld.build()
 	end
 	-- (4 Nov, owner: "i dont like how the buildings are mixed with the ground") each building on its own band of stones
 	local okFoot, nFoot = pcall(function()
-		return require(script.Parent.CampGround).footings(w)
+		return require(script.Parent.CampGround).footings(w, info)
 	end)
 	if okFoot then
 		print(("[RunWorld] %d buildings on their own footings"):format(nFoot))

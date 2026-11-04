@@ -22,8 +22,8 @@ local LobbyPaving = {}
 
 local C = Color3.fromRGB
 -- (warmer and deeper than the camp's tones: in the lobby's bright light those read nearly white)
-local TONES = { C(222, 156, 88), C(208, 144, 80), C(230, 168, 98), C(198, 136, 76) }
-local CREAM = C(236, 200, 140)
+local TONES = { C(214, 140, 72), C(200, 128, 66), C(226, 154, 84), C(190, 122, 64) }
+local CREAM = C(232, 190, 124)
 local GOLD = C(250, 196, 70)
 local GOLD_DARK = C(214, 150, 50)
 local GROUT = C(86, 62, 46)
@@ -111,6 +111,13 @@ local function stone(f: Instance, cf: CFrame, sx: number, sz: number, color: Col
 	end
 	local s = part(f, "Stone", Vector3.new(sx, STONE_H, sz), cf * CFrame.new(0, BED_TOP + STONE_H / 2 + lift, 0), color)
 	CampGround.pave(s, color)
+	-- (matte: SmoothPlastic's shine washed the stones out to beige in the lobby's sun)
+	s.Material = Enum.Material.Plastic
+	local kids = f:GetChildren()
+	local top = kids[#kids] -- (CampGround.pave's inset top, just added)
+	if top and top.Name == "StoneTop" and top:IsA("BasePart") then
+		top.Material = Enum.Material.Plastic
+	end
 end
 
 local function kerbPiece(f: Instance, cf: CFrame, len: number, k: number)

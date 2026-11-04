@@ -166,9 +166,9 @@ type TrailDef = { at: Vector3, atModel: Vector3, width: number, life: number, co
 local TRAIL: { [string]: TrailDef } = {
 	-- (4 Nov: the generated sickle lies flat, its blade out to the left: the middle of its blade, template (-1.3, 0,
 	-- -2.35) at TOOL scale)
-	-- (4 Nov, later: the better sickle's blade arcs from its crown at z -3.18 round to its tip out at the left: the
-	-- middle of that arc, template (-0.85, 0, -2.95) at TOOL scale)
-	Sickle = { at = Vector3.new(-1.0, 0.1, -3.35), atModel = Vector3.new(-0.53, 0.05, -1.83), width = 0.32, life = 0.13, color = Color3.fromRGB(228, 238, 255) },
+	-- (4 Nov, later: the voxel sickle's blade arcs round (-1, 0, -2) from the collar to its tip out at the left: the
+	-- middle of that arc, its crown, template (-1, 0, -3) at TOOL scale)
+	Sickle = { at = Vector3.new(-1.0, 0.1, -3.35), atModel = Vector3.new(-0.62, 0.05, -1.86), width = 0.32, life = 0.13, color = Color3.fromRGB(228, 238, 255) },
 	-- the scythe's blade high over the shaft: a wide lavender sweep that lingers a little longer
 	-- (30 Oct: the blade sweeps back from the end of the shaft, server/PartModels/tool_scythe; its inner edge's middle)
 	-- (31 Oct: the ForgeGUI scythe, server/Models FORGE_TOOLS: the middle of its crystal blade, template (0, 4.3, -3.8)
@@ -504,7 +504,7 @@ end
 -- the head's axis and a soft disc blurs round it, so it reads as a spinning string. tool_whacker's head spins about
 -- this axis (its own space).
 local WHACK_AXIS = Vector3.new(0, 0.81, 0.59).Unit
-local whack: { model: Model, line: BasePart, rel: CFrame, hub: Vector3, len: number }? = nil
+local whack: { model: Model, line: BasePart, rel: CFrame, hub: Vector3, len: number, axis: Vector3 }? = nil
 local blur: Part? = nil
 local function whackHead(m: Model?, t: number)
 	if not m then
@@ -518,7 +518,9 @@ local function whackHead(m: Model?, t: number)
 		local piv = m:GetPivot()
 		for _, p in m:GetDescendants() do
 			if p:IsA("BasePart") and p.Size.Y > p.Size.X * 10 and p.Color.R > 0.9 and p.Color.G > 0.9 and p.Color.B > 0.9 then
-				whack = { model = m, line = p, rel = piv:ToObjectSpace(p.CFrame), hub = piv:PointToObjectSpace(p.Position), len = p.Size.Y }
+				-- (4 Nov: the voxel whacker spins about its own Y: the template's attribute WhackAxis)
+				local ax = m:GetAttribute("WhackAxis") :: Vector3?
+				whack = { model = m, line = p, rel = piv:ToObjectSpace(p.CFrame), hub = piv:PointToObjectSpace(p.Position), len = p.Size.Y, axis = if ax then ax.Unit else WHACK_AXIS }
 			end
 		end
 		if not whack then
@@ -527,7 +529,7 @@ local function whackHead(m: Model?, t: number)
 	end
 	local w = whack :: any
 	local piv = m:GetPivot()
-	local axis = piv:VectorToWorldSpace(WHACK_AXIS)
+	local axis = piv:VectorToWorldSpace(w.axis)
 	local hub = piv:PointToWorldSpace(w.hub)
 	w.line.CFrame = CFrame.new(hub) * CFrame.fromAxisAngle(axis, AutoFeel.spin(t)) * CFrame.new(-hub) * piv * w.rel
 	if not blur then

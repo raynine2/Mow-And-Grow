@@ -32,7 +32,7 @@ WOOD = PAL.mat([(122, 76, 46), (146, 94, 58), (170, 116, 74), (198, 142, 88), (2
 LEATHER = PAL.mat([(58, 30, 24), (78, 42, 30), (100, 56, 38), (122, 72, 48)], edge=0.4)
 GOLD = PAL.mat([(160, 108, 28), (196, 140, 36), (232, 178, 52), (255, 210, 80), (255, 236, 150)], noise=0.4, edge=0.9, top=0.8)
 STEEL = PAL.mat([(112, 120, 136), (140, 148, 164), (168, 176, 190), (196, 202, 214), (222, 228, 236)], noise=0.45, edge=0.6, top=0.7)
-STEEL_D = PAL.mat([(70, 74, 88), (88, 92, 108), (108, 114, 130)], noise=0.3, edge=0.4)
+STEEL_D = PAL.mat([(64, 64, 70), (80, 80, 88), (98, 98, 106)], noise=0.3, edge=0.4)
 EDGE = PAL.mat([(214, 222, 234), (236, 242, 250), (255, 255, 255)], noise=0.4, edge=0.5, top=0.6)
 RED = PAL.mat([(150, 40, 36), (184, 54, 44), (212, 72, 54), (232, 96, 66), (246, 124, 84)], noise=0.4, edge=0.6, top=0.7)
 RED_D = PAL.mat([(104, 28, 28), (128, 36, 32)], noise=0.3)
@@ -152,24 +152,25 @@ def lasermower():
     # vents on the back deck
     for k in range(3):
         S.carve(box(P, (0, 1.16, -0.05 + k * 0.25), (0.42, 0.04, 0.05)), BLACK)
-    S.add(box(P, (0, 1.0, 1.32), (0.55, 0.32, 0.34), rr=0.12), NAVY)  # the battery pack behind
-    S.add(box(P, (0, 1.0, 1.68), (0.4, 0.2, 0.04)), CYAN)
-    mower_handle(S, NAVY, BLACK)
+    S.add(box(P, (0, 1.0, 1.32), (0.55, 0.32, 0.34), rr=0.12), PANEL)  # the battery pack behind
+    S.add(box(P, (0, 1.0, 1.68), (0.4, 0.04, 0.04)), CYAN)
+    mower_handle(S, STEEL_D, BLACK)
     S.add(box(P, (0, 3.3, 3.42), (0.18, 0.1, 0.05)), CYAN)  # a little screen on the grip bar
     return S
 
 
 # ---------------------------------------------------------------------------------------------------------------
 # the weed whacker: the right fist on the rear grip (origin), the motor behind it, the shaft straight ahead along -Z,
-# the loop handle's top bar where the left fist goes (0, 0.82, -1.55), and the head at the far end, its spool's
-# middle at the hub (0, -0.3, -5.17), turned to client/ViewModel's WHACK_AXIS so the line spins flat over the grass
+# the loop handle's top bar where the left fist goes (0, 0.82, -1.55), and the head at the far end: a gearbox down
+# to the spool, its middle at the hub (0, -0.42, -5.17), turning about the template's Y (the template's attribute
+# WhackAxis, read by client/ViewModel), and the guard level over it on the operator's side (a tilted guard turned into
+# stairs on the voxel grid)
 # ---------------------------------------------------------------------------------------------------------------
-HUB = A((0, -0.3, -5.17))
-AXIS = A((0, 0.81, 0.59)) / np.linalg.norm((0, 0.81, 0.59))
+HUB = A((0, -0.42, -5.17))
 
 
 def whacker():
-    S = Sculpt(PAL, "whacker", (-1.0, -0.9, -6.1), (1.0, 1.1, 2.1), V, seed=9, shade=SHADE)
+    S = Sculpt(PAL, "whacker", (-1.0, -0.9, -6.2), (1.0, 1.1, 2.1), V, seed=9, shade=SHADE)
     P = S.P
     # the motor: a lime housing with a black cap and an orange pull-start
     S.add(box(P, (0, 0.08, 1.18), (0.36, 0.38, 0.6), rr=0.16), LIME)
@@ -178,19 +179,18 @@ def whacker():
     S.paint((np.abs(P[:, 1] - 0.08) < 0.07) & (P[:, 2] > 0.6), WHITE, depth=0.13)
     # the rear grip and the shaft
     S.add(cyl(P, (0, 0, 0.55), (0, 0, -0.42), 0.17), BLACK)
-    S.add(cyl(P, (0, 0, 0.5), (0, 0, -4.85), 0.13), STEEL)
+    S.add(cyl(P, (0, 0, 0.5), (0, 0, -4.9), 0.13), STEEL)
     # the loop handle: a black arch over the shaft, its top bar at y 0.82
     ring = torus(P, (0, 0.4, -1.55), 0.42, 0.08, rot(90, 0, 0))
     S.add(np.maximum(ring, -(P[:, 1] - 0.0)), BLACK)
     S.add(cyl(P, (0, 0, -1.47), (0, 0, -1.63), 0.15), BLACK)
-    # the head: a gearbox down from the shaft's end to the spool, the spool, and the guard over the line
-    S.add(cone(P, (0, 0, -4.8), HUB + 0.28 * AXIS, 0.13, 0.15), STEEL_D)
-    S.add(cyl(P, HUB - 0.2 * AXIS, HUB + 0.12 * AXIS, 0.24, 0.04), GREEN)
-    S.add(cyl(P, HUB - 0.26 * AXIS, HUB - 0.18 * AXIS, 0.14), BLACK)
-    q = P - HUB
-    disc = cyl(P, HUB + 0.14 * AXIS, HUB + 0.24 * AXIS, 0.82)
-    toward = q @ A((0, -0.59, 0.81))  # the guard covers the operator's half
-    S.add(np.maximum(disc, -(toward + 0.18)), ORANGE)
+    # the head: the gearbox block at the shaft's end, the spool under it, the level guard behind
+    S.add(box(P, (0, -0.08, -5.05), (0.2, 0.22, 0.24), rr=0.05), STEEL_D)
+    S.add(cyl(P, HUB + A((0, -0.18, 0)), HUB + A((0, 0.16, 0)), 0.27, 0.05), GREEN)
+    S.add(cyl(P, HUB + A((0, -0.26, 0)), HUB + A((0, -0.16, 0)), 0.15), BLACK)
+    S.add(cyl(P, HUB + A((0, 0.2, 0)), HUB + A((0, 0.32, 0)), 0.9), ORANGE)
+    S.carve(box(P, HUB + A((0, 0.26, -0.75)), (1.0, 0.2, 0.6)))  # the guard covers the operator's half only
+    S.add(box(P, HUB + A((0, 0.26, 0.0)), (0.92, 0.07, 0.07)), ORANGE)
     return S
 
 

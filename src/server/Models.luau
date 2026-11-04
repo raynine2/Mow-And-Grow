@@ -403,10 +403,14 @@ end
 -- mesh, no helper parts: client/ViewModel shows every part of the tool you hold, an unseen one too. No emissive glow
 -- from the texture: a game script may not set a SurfaceAppearance's EmissiveMaskContent.)
 type ForgeTool = {
-	forge: string,
-	turn: CFrame,
-	length: number,
-	center: Vector3,
+	forge: string?,
+	turn: CFrame?,
+	length: number?,
+	center: Vector3?,
+	-- (4 Nov, owner: the AI-made tools "don't fit our voxel look") instead of a mesh: a voxel sculpture from
+	-- shared/VoxelToolShapes (made by tools/blender/voxel/tools_voxel.py), its group sculpted in the template's own frame
+	-- (forge, turn, length, center unused), built of parts like the Mayor (shared/SculptKit)
+	voxel: string?,
 	light: Vector3?,
 	gem: Vector3?,
 	sparkle: { Vector3 }?,
@@ -428,6 +432,8 @@ type ForgeTool = {
 	-- (4 Nov) where the other fist holds the tool (template studs): the template's attribute "LoopGrip", read by
 	-- client/ViewModel (the weed whacker's left fist)
 	loopGrip: Vector3?,
+	-- (4 Nov) the axis its line spins about (template space): the attribute "WhackAxis", read by client/ViewModel
+	whackAxis: Vector3?,
 }
 -- the scissors from the ForgeGUI half (ForgeModelIds.scissorhalf): its long side (+X, the tip) along the template's
 -- -Z, its loop (+Y) out to +X, flat in Y; the bolt at (-0.065, -0.096) x its length from its middle. Two copies on
@@ -452,49 +458,36 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 	-- (4 Nov) the sickle from Roblox's generator, held like a real sickle (owner: "hoe hou ik het vast ... slecht": the
 	-- blade stood straight up like a hook and the handle ran past the fist): the handle straight ahead along -Z, the
 	-- fist on its leather wrap (the template's origin), and the blade lying flat.
-	-- (4 Nov, later: the better one, ForgeModelIds.gen2_sickle) its handle is straight up the mesh (x 0.27 right of the
-	-- middle when 4 long): the knob 0.82 behind the fist, the brass collar at z -0.46, the blade's crown at (0, 0, -3.18),
-	-- its back out to the right (1.16, 0, -2.11) and its tip out to the left at (-1.7, 0, -2.38), edge inward. Measured
-	-- from the mesh's vertices in Studio.
+	-- (4 Nov, later: the AI-made ones "don't fit our voxel look": the sickle, both mowers and the weed whacker are voxel
+	-- sculptures now, shared/VoxelToolShapes from tools/blender/voxel/tools_voxel.py, sculpted in these same frames on
+	-- the vault's held-item grain, 0.125 studs. The repainted AI meshes, ForgeModelIds.gen2_*, aren't used.)
+	-- the sickle: the brass collar at z -1.6, the blade an arc round (-1, 0, -2) of radius 1 from the collar forward
+	-- to its crown at (-1, 0, -3) and round to its tip out at the left (-1.94, 0, -1.66), edge inward
 	tool_sickle = {
-		forge = "gen2_sickle",
-		turn = CFrame.fromMatrix(Vector3.zero, Vector3.new(1, 0, 0), Vector3.new(0, 0, -1)),
-		length = 4.0,
-		center = Vector3.new(-0.27, 0, -1.18),
-		sparkle = { Vector3.new(-0.85, 0.1, -2.95) },
+		voxel = "sickle",
+		sparkle = { Vector3.new(-1.4, 0.12, -2.75) },
 		sparkleColors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 225, 255) },
 		sparkleRate = 0.6,
-		trail = { Vector3.new(0, 0, -3.05), Vector3.new(-1.6, 0, -2.4) },
+		trail = { Vector3.new(-0.06, 0, -2.34), Vector3.new(-1.85, 0, -1.62) },
 	},
-	-- (4 Nov) the mowers from Roblox's generator: as the part models stand (wheels on y 0, the handle up to the back,
-	-- +Z), scaled to the part model's height, their handle's top at its handle's top (the first try's, measured from the
-	-- vertices: push (0.09, 3.42, 3.58), laser (0.02, 3.65, 3.62))
+	-- the mowers: on their wheels (y 0), the handle up to the back (+Z), its grip bar at (0, 3.42, 3.58) (where the
+	-- first generated ones had theirs, matched to the part models')
 	tool_pushmower = {
-		forge = "gen2_pushmower",
-		turn = CFrame.new(),
-		length = 4.419,
-		center = Vector3.new(0.133, 1.71, 1.488),
+		voxel = "pushmower",
 	},
 	tool_lasermower = {
-		forge = "gen2_lasermower",
-		turn = CFrame.new(),
-		length = 5.113,
-		center = Vector3.new(0.082, 1.825, 1.193),
-		light = Vector3.new(0, 0.6, 0),
+		voxel = "lasermower",
+		light = Vector3.new(0, 1.2, -0.55),
 		lightColor = Color3.fromRGB(80, 230, 255),
 	},
-	-- (4 Nov) the weed whacker from Roblox's generator (ForgeModelIds.gen2_whacker), like the part model: the right fist
-	-- on the shaft just under the motor (the origin), the motor and its D-handle behind and above it, the shaft
-	-- straight ahead along -Z (turned 103.8 deg about X: in the mesh it runs down and leans toward +Z), the guard below
-	-- its far end and the spool's middle at (0, 0.05, -5.17), where the part model's line spun. A new line there (the
-	-- generated mesh has none), the left fist further down the shaft. Measured from the mesh's vertices in Studio.
+	-- the weed whacker: the right fist on the rear grip (the origin), the motor behind, the shaft along -Z, the loop
+	-- handle's top bar at (0, 0.82, -1.55) for the left fist, the spool's middle at (0, -0.42, -5.17) (by where the
+	-- part model's line spun), turning about the template's Y under a level guard; the spinning line there
 	tool_whacker = {
-		forge = "gen2_whacker",
-		turn = CFrame.Angles(math.rad(103.8), 0, 0),
-		length = 6.705,
-		center = Vector3.new(0, 0.151, -1.932),
-		line = { at = Vector3.new(0, 0.051, -5.172), len = 2.9 },
-		loopGrip = Vector3.new(0, 0, -1.7),
+		voxel = "whacker",
+		line = { at = Vector3.new(0, -0.42, -5.17), len = 2.9 },
+		loopGrip = Vector3.new(0, 0.82, -1.55),
+		whackAxis = Vector3.yAxis,
 	},
 	tool_scythe = {
 		forge = "megascythe",
@@ -512,7 +505,7 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 }
 
 -- a spot on a tool's mesh (`at` in the template's studs) for a light or an emitter
-local function spot(mesh: MeshPart, name: string, at: Vector3): Attachment
+local function spot(mesh: BasePart, name: string, at: Vector3): Attachment
 	local a = Instance.new("Attachment")
 	a.Name = name
 	a.CFrame = mesh.CFrame:ToObjectSpace(CFrame.new(at))
@@ -520,7 +513,7 @@ local function spot(mesh: MeshPart, name: string, at: Vector3): Attachment
 	return a
 end
 
-local function lightAt(mesh: MeshPart, name: string, at: Vector3, color: Color3, range: number, brightness: number)
+local function lightAt(mesh: BasePart, name: string, at: Vector3, color: Color3, range: number, brightness: number)
 	local p = spot(mesh, name, at)
 	local l = Instance.new("PointLight")
 	l.Color = color
@@ -529,24 +522,89 @@ local function lightAt(mesh: MeshPart, name: string, at: Vector3, color: Color3,
 	l.Parent = p
 end
 
+-- (4 Nov) a voxel tool's parts (shared/VoxelToolShapes group `group`) into `model`, in the template's frame; returns
+-- the biggest part (lights and spots go on it), nil if the group isn't there
+local function voxelTool(group: string, model: Model): BasePart?
+	local Shapes = require(ReplicatedStorage.MowALawn.VoxelToolShapes) :: any
+	local SculptKit = require(ReplicatedStorage.MowALawn.SculptKit)
+	local g = nil
+	for _, each in Shapes.GROUPS do
+		if each.name == group then
+			g = each
+		end
+	end
+	if not g then
+		return nil
+	end
+	local biggest: BasePart? = nil
+	local most = 0
+	for _, b in SculptKit.decode(g) do
+		local e = Shapes.PALETTE[b.colour]
+		local p = Instance.new("Part")
+		p.Name = "Voxel"
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Size = b.size
+		p.CFrame = CFrame.new(b.centre)
+		p.Material = Enum.Material.SmoothPlastic
+		p.CastShadow = math.max(b.size.X, b.size.Y, b.size.Z) >= 0.3
+		if e then
+			p.Color = Color3.fromRGB(e[1], e[2], e[3])
+			pcall(function()
+				p.Material = (Enum.Material :: any)[e[4]]
+			end)
+			if e[5] == "glow" then
+				p.CastShadow = false
+			elseif e[5] == "glass" then
+				p.Transparency = 0.35
+				p.CastShadow = false
+			end
+		end
+		p.Parent = model
+		local v = b.size.X * b.size.Y * b.size.Z
+		if v > most then
+			most = v
+			biggest = p
+		end
+	end
+	return biggest
+end
+
 local function swapTools(): number
 	local n = 0
 	for name, t in FORGE_TOOLS do
-		local raw = forgeRaw[t.forge]
-		local body = raw and raw:FindFirstChild("Body") :: MeshPart?
-		if not body then
-			continue
-		end
 		local model = Instance.new("Model")
 		model.Name = name
-		local mesh = body:Clone()
-		mesh.Size *= t.length / math.abs(t.turn:VectorToWorldSpace(mesh.Size).Z)
-		mesh.CFrame = CFrame.new(t.center) * t.turn
-		mesh.Anchored = true
-		mesh.CanCollide = false
-		mesh.CanQuery = false
-		mesh.CanTouch = false
-		mesh.Parent = model
+		local mesh: BasePart
+		if t.voxel then
+			local built = voxelTool(t.voxel, model)
+			if not built then
+				model:Destroy()
+				continue
+			end
+			mesh = built
+		else
+			local raw = t.forge and forgeRaw[t.forge]
+			local body = raw and raw:FindFirstChild("Body") :: MeshPart?
+			if not body then
+				model:Destroy()
+				continue
+			end
+			local turn = t.turn or CFrame.new()
+			local m = body:Clone()
+			m.Size *= (t.length or 1) / math.abs(turn:VectorToWorldSpace(m.Size).Z)
+			m.CFrame = CFrame.new(t.center or Vector3.zero) * turn
+			m.Anchored = true
+			m.CanCollide = false
+			m.CanQuery = false
+			m.CanTouch = false
+			m.Parent = model
+			mesh = m
+		end
 		if t.copies then
 			-- (the first copy is this mesh, the rest clones; lights and spots below go on the first)
 			mesh.CFrame = t.copies[1]
@@ -614,6 +672,9 @@ local function swapTools(): number
 		end
 		if t.loopGrip then
 			model:SetAttribute("LoopGrip", t.loopGrip)
+		end
+		if t.whackAxis then
+			model:SetAttribute("WhackAxis", t.whackAxis)
 		end
 		model.WorldPivot = CFrame.new()
 		model:SetAttribute("ForgeTool", true)

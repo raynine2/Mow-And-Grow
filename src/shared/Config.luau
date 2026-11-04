@@ -1630,6 +1630,8 @@ Config.CAMP_LINES = {
 	frost = { "Brrr! Mow fast to stay warm!", "The penguins love visitors.", "The snowman's name is Gerald.", "Ice grass sells like hot cakes!", "Keep your hands in your mittens!" },
 	ember = { "Careful, the ground is hot!", "Fresh from the forge!", "The salamanders keep the lava warm.", "Ash on your boots? Normal here.", "Strike while the iron's hot!" },
 	isles = { "The stars are close tonight.", "Make a wish on a wisp!", "The telescope sees far, far away...", "Crystals hum if you listen.", "Mowing among the stars!" },
+	-- (4 Nov) the lobby's villagers (server/LobbyLife)
+	lobby = { "Welcome to the windmill square!", "Step on a pad to start mowing!", "Bring friends: a party pad takes four!", "The windmill never stops turning.", "Pick a class at the cottage!", "Free rewards by the spawn, every day!", "Lovely day for a mow." },
 }
 
 -------------------------------------------------------------------------------------------------------------

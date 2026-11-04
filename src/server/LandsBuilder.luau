@@ -64,6 +64,7 @@ local CELL = 8
 local SEA = -6
 local FLOOR = -24
 
+local FOUNTAIN = Vector3.new(-26, 0, -62) -- (4 Nov) the fountain garden, right of the spawn (server/LobbyLife)
 local CLASSES = Vector3.new(-50, 0, -40)
 local GARAGE = Vector3.new(50, 0, -40)
 local CROSS_Z = -40
@@ -187,6 +188,24 @@ local function ground(world: Instance)
 			end
 		end
 	end
+	-- (4 Nov, owner picked "the edges": the grass ran out in a dirt cliff into the sea) a sandy beach in two steps all
+	-- round, on the same wobbly edge
+	local nb = math.ceil((REACH + 30) / CELL)
+	for j = -nb, nb - 1 do
+		local z = (j + 0.5) * CELL
+		for i = -nb, nb - 1 do
+			local x = (i + 0.5) * CELL
+			local wob = math.sin(x * 0.031 + 1.3) * 10 + math.cos(z * 0.027 + 0.4) * 10
+			local reach = math.max(math.abs(x), math.abs(z)) + wob
+			local land = i < n and j < n and i >= -n and j >= -n and reach < REACH - 8
+			if not land and reach < REACH + 16 then
+				local btop = if reach < REACH + 4 then -1.4 else -3.6
+				local sand = if reach < REACH + 4 then C(236, 214, 160) else C(222, 198, 146)
+				local b = block(f, "Beach", Vector3.new(CELL, btop - FLOOR, CELL), CFrame.new(x, (btop + FLOOR) / 2, z), sand, Enum.Material.Sand)
+				b.CastShadow = false
+			end
+		end
+	end
 	local sea = block(world, "Sea", Vector3.new(1400, 1, 1400), CFrame.new(0, SEA - 0.5, 0), C(40, 150, 220), Enum.Material.Glass)
 	sea.Transparency = 0.25
 	sea.CanCollide = false
@@ -213,6 +232,9 @@ local function walkAreas(): { any }
 		-- running into them: "its not good and overlapping maybe change the blue stff"), and the walk to it
 		{ kind = "seg", a = Vector2.new(Layout.REWARDS.pos.X - 13, Layout.REWARDS.pos.Z), b = Vector2.new(Layout.REWARDS.pos.X - 3.2, Layout.REWARDS.pos.Z), w = 18 },
 		{ kind = "seg", a = Vector2.new(SPAWN.X + 5, SPAWN.Z - 3), b = Vector2.new(Layout.REWARDS.pos.X - 13, Layout.REWARDS.pos.Z + 2), w = 6 },
+		-- (4 Nov) the fountain garden's round apron and the short walk to it, mirroring the rewards stall's
+		{ kind = "disc", c = v2(FOUNTAIN), r = 9 },
+		{ kind = "seg", a = Vector2.new(SPAWN.X - 9, SPAWN.Z), b = Vector2.new(FOUNTAIN.X + 8.5, FOUNTAIN.Z), w = 5 },
 	}
 end
 
@@ -635,6 +657,26 @@ function LandsBuilder.build()
 	dressing(world)
 	hedge(world)
 	lands(world)
+	-- (4 Nov, owner: "main lobby needs a bit work done", picked more life and the edges) the fountain garden,
+	-- villagers, each land's animals, butterflies, the far shores on the horizon (server/LobbyLife)
+	local landsCtx = {}
+	for _, l in LANDS do
+		table.insert(landsCtx, { id = l.id, pos = landPos(l) })
+	end
+	require(script.Parent.LobbyLife).dress(world, {
+		lands = landsCtx,
+		centre = RING_CENTRE,
+		arc = arc,
+		walkR = WALK_R,
+		walkArc = WALK_ARC,
+		crossZ = CROSS_Z,
+		crossX0 = CLASSES.X + 16.5,
+		crossX1 = GARAGE.X - 18,
+		spawn = SPAWN,
+		fountain = FOUNTAIN,
+		reach = REACH,
+		sea = SEA,
+	})
 	bounds(world)
 	local sp = SPAWN + Vector3.new(0, 0.8, 0)
 	Environment.spawn(world, CFrame.lookAt(sp, sp + Vector3.zAxis)) -- looking north at the pads and the windmill

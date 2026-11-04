@@ -1,5 +1,7 @@
 -- Lobby ambience and touches (client), all driven by tags the lobby map carries (server/LobbyKit):
---   LobbyFX spots: "motes" (dust drifting over the clearing), "sparkle" (chests, stall pads), "mist", "bats"
+--   LobbyFX spots: "motes" (dust drifting over the clearing), "sparkle" (chests, stall pads), "mist", "bats",
+--     (4 Nov, server/LobbyLife) "fountain" (water spraying up and falling back) and "butterflies" (a few voxel
+--     butterflies fluttering about the spot, their wings in its Color)
 --   LobbyLantern: flickering lantern lights near the camera
 --   LobbyPadZone: stepping on a glowing pad plays a VFX Forge sparkle burst and opens its Window
 --   LobbyBoard: the YOU row (from this player's "LB_<key>" attribute, server/LobbyBoards)
@@ -63,6 +65,34 @@ local function makeBat(): { BasePart }
 	return { piece(Vector3.new(0.5, 0.45, 0.8)), piece(Vector3.new(1.3, 0.08, 0.7)), piece(Vector3.new(1.3, 0.08, 0.7)) }
 end
 
+-- butterflies: a body and two wings that flap, wandering about their spot on a smooth noise path
+type Fly = { body: BasePart, wl: BasePart, wr: BasePart, centre: Vector3, size: Vector3, seed: number, last: Vector3? }
+local flies: { Fly } = {}
+local function makeFly(centre: Vector3, size: Vector3, color: Color3, seed: number): Fly
+	local function piece(sz: Vector3, c: Color3): Part
+		local p = Instance.new("Part")
+		p.Size = sz
+		p.Color = c
+		p.Material = Enum.Material.SmoothPlastic
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Parent = workspace
+		return p
+	end
+	local wing = color:Lerp(Color3.new(1, 1, 1), (seed % 3) * 0.12)
+	return {
+		body = piece(Vector3.new(0.14, 0.14, 0.55), Color3.fromRGB(50, 40, 40)),
+		wl = piece(Vector3.new(0.5, 0.04, 0.5), wing),
+		wr = piece(Vector3.new(0.5, 0.04, 0.5), wing),
+		centre = centre,
+		size = size,
+		seed = seed,
+	}
+end
+
 local function onSpot(spot: Instance)
 	if not spot:IsA("BasePart") then
 		return
@@ -94,6 +124,23 @@ local function onSpot(spot: Instance)
 			Size = seq(0, 2.5, 1, 5), Transparency = seq(0, 1, 0.3, 0.7, 1, 1), Lifetime = NumberRange.new(3, 5),
 			Speed = NumberRange.new(0.3, 0.8), SpreadAngle = Vector2.new(60, 60), Rate = Budget.Rate(1.5),
 		})
+	elseif kind == "fountain" then
+		-- the jet: droplets thrown up and falling back into the basin, a little spray at the top
+		emitter(spot, {
+			Texture = Tex.Glow, Color = ColorSequence.new(Color3.fromRGB(235, 248, 255), c), LightEmission = 0.4,
+			Size = seq(0, 0.32, 1, 0.16), Transparency = seq(0, 0.15, 0.8, 0.35, 1, 1),
+			Lifetime = NumberRange.new(0.75, 1.05), Speed = NumberRange.new(9, 11.5), SpreadAngle = Vector2.new(9, 9),
+			EmissionDirection = Enum.NormalId.Top, Acceleration = Vector3.new(0, -34, 0), Rate = Budget.Rate(60),
+		})
+		emitter(spot, {
+			Texture = Tex.Glow, Color = ColorSequence.new(Color3.fromRGB(245, 252, 255)), LightEmission = 0.3,
+			Size = seq(0, 0.5, 1, 1.1), Transparency = seq(0, 0.7, 1, 1), Lifetime = NumberRange.new(0.6, 1),
+			Speed = NumberRange.new(1, 2.5), SpreadAngle = Vector2.new(180, 30), Rate = Budget.Rate(10),
+		})
+	elseif kind == "butterflies" and not Budget.IsLow() and spot:IsA("BasePart") then
+		for i = 1, 3 do
+			table.insert(flies, makeFly(spot.Position, spot.Size, c, i * 37 + math.floor(spot.Position.X)))
+		end
 	elseif kind == "bats" and not Budget.IsLow() then
 		for i = 1, 3 do
 			table.insert(bats, { parts = makeBat(), centre = spot.Position, phase = i * 2.1, r = 4 + i * 1.3 })
@@ -102,6 +149,16 @@ local function onSpot(spot: Instance)
 end
 
 local function offSpot(spot: Instance)
+	if spot:GetAttribute("Kind") == "butterflies" and spot:IsA("BasePart") then
+		for i = #flies, 1, -1 do
+			if (flies[i].centre - spot.Position).Magnitude < 0.5 then
+				flies[i].body:Destroy()
+				flies[i].wl:Destroy()
+				flies[i].wr:Destroy()
+				table.remove(flies, i)
+			end
+		end
+	end
 	if spot:GetAttribute("Kind") == "bats" then
 		for i = #bats, 1, -1 do
 			if (bats[i].centre - (spot :: BasePart).Position).Magnitude < 0.5 then
@@ -316,6 +373,25 @@ RunService.RenderStepped:Connect(function(dt)
 		b.parts[1].CFrame = cf
 		b.parts[2].CFrame = cf * CFrame.Angles(0, 0, flap) * CFrame.new(-0.85, 0, 0)
 		b.parts[3].CFrame = cf * CFrame.Angles(0, 0, -flap) * CFrame.new(0.85, 0, 0)
+	end
+	-- butterflies wander about their spots, wings flapping (only near the camera)
+	local camPos = workspace.CurrentCamera.CFrame.Position
+	for _, f in flies do
+		if (f.centre - camPos).Magnitude < 160 then
+			local s = f.seed
+			local half = f.size / 2
+			local pos = f.centre + Vector3.new(math.noise(t * 0.22, s, 0.5) * half.X * 1.6, math.noise(t * 0.4, s + 7.7, 0.5) * half.Y + 0.5, math.noise(t * 0.22, s + 3.3, 0.5) * half.Z * 1.6)
+			local dir = if f.last then pos - f.last else Vector3.zAxis
+			f.last = pos
+			if dir.Magnitude < 1e-4 then
+				dir = Vector3.zAxis
+			end
+			local cf = CFrame.lookAt(pos, pos + Vector3.new(dir.X, 0, dir.Z) + Vector3.new(0, 0, 1e-3))
+			local flap = math.sin(t * 22 + s) * 1.1
+			f.body.CFrame = cf
+			f.wl.CFrame = cf * CFrame.Angles(0, 0, flap) * CFrame.new(-0.27, 0, 0)
+			f.wr.CFrame = cf * CFrame.Angles(0, 0, -flap) * CFrame.new(0.27, 0, 0)
+		end
 	end
 	acc += dt
 	if acc < 1 / 15 then

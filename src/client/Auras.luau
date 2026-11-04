@@ -128,8 +128,10 @@ local function att(a: Aura, p: BasePart, name: string, pos: Vector3): Attachment
 	return at
 end
 
-local function feet(a: Aura, name: string, x: number?, z: number?): Attachment
-	local drop = (if a.hum then a.hum.HipHeight else 2) + a.root.Size.Y / 2 - 0.15
+-- At your feet, `up` studs over the ground (0.35 if not given: lower, and what's kicked up falls straight into the
+-- floor and is never seen; tested 4 Nov).
+local function feet(a: Aura, name: string, x: number?, z: number?, up: number?): Attachment
+	local drop = (if a.hum then a.hum.HipHeight else 2) + a.root.Size.Y / 2 - (up or 0.35)
 	return att(a, a.root, name, Vector3.new(x or 0, -drop, z or 0))
 end
 
@@ -275,12 +277,12 @@ BUILD.WeedPuller = function(a)
 	emitter(a, feet(a, "Heels", 0, 0.4), {
 		tex = FxTex.leaf,
 		color = cs(C(76, 158, 62), C(150, 214, 92)),
-		size = ns(0, 0.26, 1, 0),
+		size = ns(0, 0.34, 1, 0.05),
 		rate = 3,
-		life = NumberRange.new(0.5, 0.8),
-		speed = NumberRange.new(2, 4),
+		life = NumberRange.new(0.6, 0.85),
+		speed = NumberRange.new(4.5, 6.5),
 		spread = Vector2.new(35, 35),
-		accel = Vector3.new(0, -20, 0),
+		accel = Vector3.new(0, -16, 0),
 		dir = Enum.NormalId.Top,
 		spin = NumberRange.new(-180, 180),
 		walk = true,
@@ -293,9 +295,9 @@ BUILD.Gardener = function(a)
 	for _, at in { l, r } do
 		emitter(a, at, {
 			tex = FxTex.glow,
-			color = cs(C(225, 250, 255), C(120, 214, 240), C(30, 110, 140)),
-			size = ns(0, 0.16, 0.7, 0.13, 1, 0.05),
-			rate = 2.4,
+			color = cs(C(235, 252, 255), C(120, 214, 240), C(30, 110, 140)),
+			size = ns(0, 0.3, 0.7, 0.24, 1, 0.08),
+			rate = 3,
 			life = NumberRange.new(0.6, 0.8),
 			speed = NumberRange.new(0, 0.4),
 			spread = Vector2.new(60, 60),
@@ -306,8 +308,8 @@ BUILD.Gardener = function(a)
 	emitter(a, att(a, torso(a), "Glint", Vector3.new(0, 0.4, 0)), {
 		tex = SPARKLE,
 		color = cs(C(200, 245, 255)),
-		size = ns(0, 0, 0.3, 0.32, 1, 0),
-		rate = 0.6,
+		size = ns(0, 0, 0.3, 0.5, 1, 0),
+		rate = 1.2,
 		life = NumberRange.new(0.35, 0.5),
 		speed = NumberRange.new(0, 0),
 		spread = Vector2.new(180, 180),
@@ -318,8 +320,8 @@ end
 
 -- Rare: a fresh mowing stripe behind your feet (a flat trail, light over a darker rim) and clippings flicking off it.
 BUILD.Groundskeeper = function(a)
-	local l = feet(a, "StripeL", -0.75, 0.2)
-	local r = feet(a, "StripeR", 0.75, 0.2)
+	local l = feet(a, "StripeL", -0.75, 0.2, 0.12)
+	local r = feet(a, "StripeR", 0.75, 0.2, 0.12)
 	trail(a, l, r, {
 		tex = FxTex.smear,
 		color = cs(C(170, 236, 120), C(96, 182, 70), C(46, 112, 44)),
@@ -354,9 +356,9 @@ end
 BUILD.LawnBaron = function(a)
 	emitter(a, att(a, torso(a), "Pollen", Vector3.new(0, -0.2, 0)), {
 		tex = FxTex.glow,
-		color = cs(C(255, 236, 150), C(242, 193, 78), C(150, 96, 20)),
-		size = ns(0, 0, 0.2, 0.2, 1, 0.08),
-		rate = 5,
+		color = cs(C(255, 244, 190), C(242, 193, 78), C(150, 96, 20)),
+		size = ns(0, 0, 0.2, 0.32, 1, 0.12),
+		rate = 6,
 		life = NumberRange.new(1.4, 2),
 		speed = NumberRange.new(0.5, 1),
 		spread = Vector2.new(70, 70),
@@ -381,8 +383,8 @@ BUILD.LawnBaron = function(a)
 	emitter(a, att(a, torso(a), "Coin", Vector3.new(0, 0.2, 0)), {
 		tex = T.coin,
 		color = cs(WHITE),
-		size = ns(0, 0, 0.2, 0.32, 1, 0.2),
-		rate = 1,
+		size = ns(0, 0, 0.2, 0.5, 1, 0.3),
+		rate = 1.2,
 		life = NumberRange.new(0.8, 1.1),
 		speed = NumberRange.new(1, 1.6),
 		spread = Vector2.new(50, 50),
@@ -399,9 +401,9 @@ BUILD.HedgeReaper = function(a)
 	for i, s in { l, r } do
 		table.insert(vines, beam(a, b, s, {
 			tex = T.vine,
-			color = cs(C(70, 140, 80), C(46, 94, 58)),
-			w0 = 0.35,
-			w1 = 0.25,
+			color = cs(C(110, 190, 110), C(60, 120, 70)),
+			w0 = 0.7,
+			w1 = 0.45,
 			c0 = if i == 1 then 0.6 else -0.6,
 			c1 = 0.4,
 			trans = ns(0, 0.1, 1, 0.2),
@@ -507,7 +509,7 @@ BUILD.GrassTitan = function(a)
 			light = 0.2,
 		})
 	end
-	local stepAt = feet(a, "Step", 0, 0)
+	local stepAt = feet(a, "Step", 0, 0, 0.1)
 	local tuft = emitter(a, stepAt, {
 		tex = FxTex.blade,
 		color = cs(C(110, 180, 64), C(76, 140, 43), C(107, 74, 43)),
@@ -618,21 +620,31 @@ end
 -- Mythic: a calm aurora rising behind your shoulders (two slow scrolling beams), fireflies, a soft light; an equip chime.
 BUILD.LawnLegend = function(a)
 	local t = torso(a)
-	local h = head(a)
 	local w = t.Size.X / 2
+	-- (the curtain stands a stud and more behind you, so it never washes over your head; the vault: rims, not washes)
 	for i, sx in { -1, 1 } do
-		local a0 = att(a, t, "Aurora" .. i, Vector3.new(sx * w * 0.6, 0.5, t.Size.Z / 2 + 0.1))
-		local a1 = att(a, h, "AuroraTop" .. i, Vector3.new(sx * 1.4, 2.6, 1.1))
+		local a0 = att(a, t, "Aurora" .. i, Vector3.new(sx * w * 0.7, 0.2, t.Size.Z / 2 + 1.1))
+		local a1 = att(a, t, "AuroraTop" .. i, Vector3.new(sx * w * 1.6, 4.6, t.Size.Z / 2 + 2.2))
+		beam(a, a0, a1, {
+			tex = FxTex.smear,
+			color = cs(C(70, 30, 120), C(120, 70, 210), C(63, 224, 197)),
+			w0 = 1.0,
+			w1 = 2.4,
+			c0 = sx * 0.6,
+			c1 = sx * -0.4,
+			trans = ns(0, 0.9, 0.25, 0.45, 0.75, 0.5, 1, 1),
+			light = 0.5,
+		})
 		beam(a, a0, a1, {
 			tex = T.energy,
-			color = cs(C(91, 42, 134), C(140, 90, 220), C(63, 224, 197)),
-			w0 = 0.5,
-			w1 = 1.3,
-			c0 = sx * 0.8,
-			c1 = 1.2,
-			trans = ns(0, 0.85, 0.3, 0.35, 0.8, 0.45, 1, 1),
-			light = 0.7,
-			speed = 0.5,
+			color = cs(C(180, 140, 255), C(120, 255, 230)),
+			w0 = 0.6,
+			w1 = 1.6,
+			c0 = sx * 0.6,
+			c1 = sx * -0.4,
+			trans = ns(0, 0.95, 0.3, 0.4, 0.8, 0.5, 1, 1),
+			light = 0.9,
+			speed = 0.6,
 		})
 	end
 	emitter(a, att(a, t, "Fireflies", Vector3.new(0, 0.6, 0.6)), {

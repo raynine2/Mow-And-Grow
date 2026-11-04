@@ -9,18 +9,10 @@
 -- server/Field puts one where a clump falls and destroys it when the area is cleared.
 local Stubble = {}
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local C = Color3.fromRGB
--- each area's stem shades, the same as its clumps' (models.py GRASS): [1] the stalk's main shade
-local SHADES: { [string]: { Color3 } } = {
-	meadow = { C(48, 160, 64), C(62, 180, 74), C(38, 140, 58) },
-	wheat = { C(232, 176, 58), C(246, 196, 80), C(214, 150, 44) },
-	blossom = { C(86, 182, 96), C(70, 160, 84) },
-	pine = { C(40, 150, 110), C(54, 170, 124), C(30, 126, 94) },
-	swamp = { C(110, 146, 58), C(92, 128, 50) },
-	frost = { C(244, 250, 255), C(220, 238, 255), C(200, 226, 250) },
-	ember = { C(64, 52, 58), C(80, 64, 70) },
-	isles = { C(180, 140, 255), C(150, 110, 240) },
-}
+-- each area's stem shades, the same as its clumps' (shared/GrassShades): [1] the stalk's main shade
+local SHADES: { [string]: { Color3 } } = require(ReplicatedStorage.MowALawn.GrassShades) :: any
 local STRAW = C(226, 206, 118) -- the inside of a cut stem
 local CUT = 0.55 -- how far the cut face turns to straw
 local VOXEL = 0.4 -- studs per voxel at scale 1

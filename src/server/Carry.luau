@@ -3,9 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local PlayerData = require(script.Parent.PlayerData)
 local Stats = require(script.Parent.Stats)
-local Models = require(script.Parent.Models)
 local VoxelModels = require(script.Parent.VoxelModels)
-local BundleArt = require(ReplicatedStorage.MowALawn.BundleArt)
+local BundleVoxel = require(ReplicatedStorage.MowALawn.BundleVoxel)
 
 local Carry = {}
 
@@ -17,6 +16,8 @@ Carry.VOXEL_SCALE = 0.8
 -- long and this thick (rows are a stud apart, so they overlap a little like the voxel ones did)
 Carry.BUNDLE_LENGTH = 2.3
 Carry.BUNDLE_THICK = 1.3
+-- the voxel bundles (shared/BundleVoxel, 4 Nov): this long across your back (about a stud thick)
+Carry.VOXEL_LENGTH = 2.3
 
 -- The voxel bundle mesh for a mutation (the plain one if that mutation has none), or nil before they're imported.
 function Carry.voxelName(mut: string?): string?
@@ -26,8 +27,6 @@ function Carry.voxelName(mut: string?): string?
 	end
 	return if VoxelModels.has("Bundle_None") then "Bundle_None" else nil
 end
-local BUNDLE_COLOR = Color3.fromRGB(150, 220, 80)
-local TAPE = Color3.fromRGB(255, 205, 50)
 
 function Carry.count(player: Player): number
 	local data = PlayerData.get(player)
@@ -66,79 +65,27 @@ function Carry.refresh(player: Player)
 		local mut = Config.mutation(b.m or "None")
 		local row = (i - 1) % 6
 		local col = (i - 1) // 6
-		local spot = torso.CFrame * CFrame.new(col * 2.4 - (if n > 6 then 1.2 else 0), -0.6 + row * 1.0, 1.3) * CFrame.new(0, -0.5, 0)
-		-- the ForgeGUI bundle for its area and mutation, lying across the back along the shoulders
-		local art = BundleArt.make(b.z, mut.id, Carry.BUNDLE_LENGTH, Carry.BUNDLE_THICK)
-		if art then
-			art.Name = "Bundle"
-			art.CFrame = BundleArt.lying(art, spot)
-			art.Anchored = false
-			local weld = Instance.new("WeldConstraint")
-			weld.Part0 = art
-			weld.Part1 = torso
-			weld.Parent = art
-			art.Parent = stack
-			continue
-		end
-		local vname = Carry.voxelName(mut.id)
-		local mesh = vname and VoxelModels.place(stack, vname, spot.Position, { scale = Carry.VOXEL_SCALE, shadow = false })
-		if mesh then
-			-- lying across the back, its long side along the shoulders (some meshes are long in Z, some in X)
-			local across = if mesh.Size.Z > mesh.Size.X then CFrame.Angles(0, math.rad(90), 0) else CFrame.identity
-			mesh.CFrame = spot * CFrame.new(0, mesh.Size.Y / 2, 0) * across
-			mesh.Anchored = false
-			mesh.Massless = true
-			local w = Instance.new("WeldConstraint")
-			w.Part0 = mesh
-			w.Part1 = torso
-			w.Parent = mesh
-			continue
-		end
-		local placed = Models.place("bundle", stack, spot, 0.9)
-		if placed then
-			Models.weldTo(placed, torso)
-			if mut.color then
-				for _, p in placed:GetDescendants() do
-					if p:IsA("BasePart") and p.Material == Enum.Material.Grass then
-						p.Color = mut.color
-					end
-				end
+		-- (4 Nov, owner: "make it better ... it feels so bas and low qaulity") the game's own voxel bundle
+		-- (shared/BundleVoxel; it was the ForgeGUI one, shared/BundleArt), stacked neatly up the middle of your back,
+		-- each row turned the other way so cut ends and tips alternate like a hand-stacked pile; past six, a second
+		-- stack right behind the first (it was a second column off to one side, the whole pile lopsided)
+		local T = BundleVoxel.thickness(Carry.VOXEL_LENGTH)
+		local turn = if row % 2 == 1 then CFrame.Angles(0, math.pi, 0) else CFrame.identity
+		local at = torso.CFrame * CFrame.new(if row % 2 == 1 then 0.08 else -0.08, -1.05 + row * (T + 0.03), 0.62 + T / 2 + col * (T + 0.05)) * turn
+		local vb = BundleVoxel.make(b.z, mut.id, Carry.VOXEL_LENGTH)
+		vb:PivotTo(at)
+		for _, p in vb:GetDescendants() do
+			if p:IsA("BasePart") then
+				p.Anchored = false
+				local w = Instance.new("WeldConstraint")
+				w.Part0 = p
+				w.Part1 = torso
+				w.Parent = p
 			end
-			continue
 		end
-		local part = Instance.new("Part")
-		part.Name = "Bundle"
-		part.Size = Vector3.new(2.2, 0.9, 1.4)
-		part.Color = mut.color or BUNDLE_COLOR
-		part.Material = if mut.id == "None" then Enum.Material.Plastic else Enum.Material.SmoothPlastic
-		part.TopSurface = Enum.SurfaceType.Smooth
-		part.CanCollide = false
-		part.CanQuery = false
-		part.CanTouch = false
-		part.Massless = true
-		part.CFrame = torso.CFrame * CFrame.new(col * 2.3 - (if n > 6 then 1.15 else 0), -0.6 + row * 0.95, 1.3)
-		local tape = Instance.new("Part")
-		tape.Name = "Tape"
-		tape.Size = Vector3.new(0.4, 0.95, 1.45)
-		tape.Color = TAPE
-		tape.CanCollide = false
-		tape.CanQuery = false
-		tape.CanTouch = false
-		tape.Massless = true
-		tape.CFrame = part.CFrame
-		tape.Parent = stack
-		local w2 = Instance.new("WeldConstraint")
-		w2.Part0 = tape
-		w2.Part1 = torso
-		w2.Parent = tape
-		local w = Instance.new("WeldConstraint")
-		w.Part0 = part
-		w.Part1 = torso
-		w.Parent = part
-		part.Parent = stack
+		vb.Parent = stack
 	end
 	if #data.run.carry > MAX_VISIBLE then
-		local top = stack:GetChildren()[1] :: BasePart
 		local gui = Instance.new("BillboardGui")
 		gui.Size = UDim2.fromScale(3, 1.2)
 		gui.StudsOffsetWorldSpace = Vector3.new(0, 4.5, 0)
@@ -154,7 +101,7 @@ function Carry.refresh(player: Player)
 		stroke.Thickness = 2
 		stroke.Parent = label
 		label.Parent = gui
-		gui.Parent = top
+		gui.Parent = stack
 	end
 	stack.Parent = char
 end

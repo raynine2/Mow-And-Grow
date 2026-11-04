@@ -10,6 +10,7 @@ local TweenService = game:GetService("TweenService")
 local Format = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Format"))
 local State = require(script.Parent.State)
 local UI = require(script.Parent.UI)
+local Skin = require(script.Parent.Skin)
 
 local WelcomeBack = {}
 
@@ -44,61 +45,72 @@ local function closePopup()
 	end
 end
 
+-- (4 Nov, owner: "match this ui with what we have") Drawn with the game's own kit (client/Skin): the grass-galaxy
+-- panel the big windows use, the coins and gems on the HUD's own counter plates with the big icon over the left end,
+-- the kit's green button. (It was a plain navy box with a gold line and flat dark rows.)
+local W = 460
+local function amountRow(parent: Instance, y: number, icon: string, text: string)
+	local row = Instance.new("Frame")
+	row.Name = "Row_" .. icon
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.fromOffset(320, 72)
+	row.Position = UDim2.new(0.5, 0, 0, y)
+	row.AnchorPoint = Vector2.new(0.5, 0)
+	row.Parent = parent
+	local plate, face = Skin.frame(row, "ui_plate", Vector2.new(270, 60), { pos = UDim2.fromOffset(44, 6), name = "Plate" })
+	local t = UI.text(face, text, UDim2.new(1, -46, 1, -4), { pos = UDim2.fromOffset(42, 2), align = Enum.TextXAlignment.Left, stroke = 3.5 })
+	t.ZIndex = plate.ZIndex + 2
+	local ic = UI.icon(row, icon, 72, UDim2.fromOffset(0, 0))
+	ic.ZIndex = plate.ZIndex + 3
+end
+
 local function showPopup(d)
 	closePopup()
 	local inRun = State.isRun()
-	local f = UI.frame({ size = UDim2.fromOffset(440, 290), pos = UDim2.fromScale(0.5, 0.5), anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(34, 22, 66), parent = UI.gui, radius = 22, outline = 4, name = "WelcomeBack" })
-	f.ZIndex = 60
+	local rows = (if (d.coins or 0) > 0 then 1 else 0) + (if (d.gems or 0) > 0 then 1 else 0)
+	local H = 214 + rows * 78
+	local f = Instance.new("Frame")
+	f.Name = "WelcomeBack"
+	f.BackgroundTransparency = 1
+	f.Size = UDim2.fromOffset(W, H)
+	f.Position = UDim2.fromScale(0.5, 0.5)
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
 	popup = f
-	local st = f:FindFirstChildOfClass("UIStroke")
-	if st then
-		st.Color = GOLD
-	end
-	local function z(g: GuiObject)
-		g.ZIndex = 61
-		for _, k in g:GetDescendants() do
-			if k:IsA("GuiObject") then
-				k.ZIndex = 62
-			end
-		end
-	end
-	z(UI.text(f, "WELCOME BACK!", UDim2.new(1, -30, 0, 50), { pos = UDim2.fromOffset(15, 14), color = GOLD, stroke = 4 }))
-	z(UI.text(f, ("Your lawn kept growing while you were away (%s%s)."):format(away(d.mins or 0), if d.capped then ", max" else ""), UDim2.new(1, -40, 0, 44), { pos = UDim2.fromOffset(20, 66), stroke = 1.5, textSize = 18 }))
-	local y = 118
+	local panel = Skin.frame(f, "ui_sign", Vector2.new(W, H), { name = "Panel", maxScale = 0.5 })
+	panel.Size = UDim2.fromScale(1, 1)
+	UI.text(f, "WELCOME BACK!", UDim2.new(1, -60, 0, 50), { pos = UDim2.fromOffset(30, 26), color = GOLD, stroke = 4 })
+	UI.text(f, ("Your lawn kept growing while you were away (%s%s)."):format(away(d.mins or 0), if d.capped then ", max" else ""), UDim2.new(1, -90, 0, 40), { pos = UDim2.fromOffset(45, 78), stroke = 2, textSize = 18 })
+	local y = 124
 	if (d.coins or 0) > 0 then
-		local row = UI.frame({ size = UDim2.new(1, -60, 0, 44), pos = UDim2.fromOffset(30, y), color = Color3.fromRGB(20, 12, 44), parent = f, radius = 12, outline = 0, name = "Coins" })
-		z(row)
-		local ic = UI.icon(row, "coin", 34, UDim2.new(0, 10, 0.5, 0), Vector2.new(0, 0.5))
-		ic.ZIndex = 62
-		z(UI.text(row, "+" .. Format.commas(d.coins) .. " coins", UDim2.new(1, -60, 1, -10), { pos = UDim2.fromOffset(52, 5), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(255, 225, 110), stroke = 2 }))
-		y += 50
+		amountRow(f, y, "coin", "+" .. Format.commas(d.coins))
+		y += 78
 	end
 	if (d.gems or 0) > 0 then
-		local row = UI.frame({ size = UDim2.new(1, -60, 0, 44), pos = UDim2.fromOffset(30, y), color = Color3.fromRGB(20, 12, 44), parent = f, radius = 12, outline = 0, name = "Gems" })
-		z(row)
-		local ic = UI.icon(row, "gem", 34, UDim2.new(0, 10, 0.5, 0), Vector2.new(0, 0.5))
-		ic.ZIndex = 62
-		z(UI.text(row, "+" .. Format.commas(d.gems) .. " gems", UDim2.new(1, -60, 1, -10), { pos = UDim2.fromOffset(52, 5), align = Enum.TextXAlignment.Left, color = Color3.fromRGB(150, 230, 255), stroke = 2 }))
-		y += 50
+		amountRow(f, y, "gem", "+" .. Format.commas(d.gems))
+		y += 78
 	end
-	f.Size = UDim2.fromOffset(440, y + 74)
 	if not inRun then
 		-- the coins are in the saved run: CONTINUE takes you straight there
-		local go = UI.button(f, "CONTINUE RUN", C.green, UDim2.fromOffset(220, 52), function()
+		UI.button(f, "CONTINUE RUN", C.green, UDim2.fromOffset(220, 56), function()
 			closePopup()
 			continueRun()
-		end, { pos = UDim2.new(0.5, -6, 1, -14), anchor = Vector2.new(1, 1), name = "Continue" })
-		z(go)
-		local later = UI.button(f, "LATER", Color3.fromRGB(120, 110, 140), UDim2.fromOffset(150, 52), function()
+		end, { pos = UDim2.new(0.5, -6, 1, -30), anchor = Vector2.new(1, 1), name = "Continue" })
+		UI.button(f, "LATER", Color3.fromRGB(120, 110, 140), UDim2.fromOffset(150, 56), function()
 			closePopup()
-		end, { pos = UDim2.new(0.5, 6, 1, -14), anchor = Vector2.new(0, 1), name = "Later" })
-		z(later)
+		end, { pos = UDim2.new(0.5, 6, 1, -30), anchor = Vector2.new(0, 1), name = "Later" })
 	else
-		local ok = UI.button(f, "NICE!", C.green, UDim2.fromOffset(200, 52), function()
+		UI.button(f, "NICE!", C.green, UDim2.fromOffset(210, 56), function()
 			closePopup()
-		end, { pos = UDim2.new(0.5, 0, 1, -14), anchor = Vector2.new(0.5, 1), name = "Ok" })
-		z(ok)
+		end, { pos = UDim2.new(0.5, 0, 1, -30), anchor = Vector2.new(0.5, 1), name = "Ok" })
 	end
+	-- over the HUD: lift every piece by the same amount (keeps their order: icon over plate, text over face)
+	f.ZIndex = 60
+	for _, k in f:GetDescendants() do
+		if k:IsA("GuiObject") then
+			k.ZIndex += 60
+		end
+	end
+	f.Parent = UI.gui
 	local sc = Instance.new("UIScale")
 	sc.Scale = 0.6
 	sc.Parent = f

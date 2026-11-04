@@ -33,7 +33,7 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Format = require(ReplicatedStorage.MowALawn.Format)
 local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
-local BundleArt = require(ReplicatedStorage.MowALawn.BundleArt)
+local BundleVoxel = require(ReplicatedStorage.MowALawn.BundleVoxel)
 
 local okIcons, IconIds = pcall(require, ReplicatedStorage.MowALawn:FindFirstChild("IconIds"))
 
@@ -843,26 +843,17 @@ end
 
 -- Grass bundles (the clippings players carry) stacked against a wall: `cf` at the floor by the wall, -Z out, X along.
 local function bundleStack(parent: Instance, cf: CFrame, bottom: number, deep: number)
-	local L, H, Dp = 2.2, 1.5, 1.4
-	-- the ForgeGUI bundles (shared/BundleArt): a mix of the areas' grass, stacked as thick as they are
-	local sample = BundleArt.make(1, nil, L)
-	if sample then
-		H = BundleArt.thickness(sample) * 0.95
-		Dp = H
-		sample:Destroy()
-	end
+	local L = 2.2
+	-- the voxel bundles (shared/BundleVoxel, 4 Nov: the same as the ones on your back; they were the ForgeGUI ones),
+	-- a mix of the areas' grass, stacked as thick as they are, every other one turned
+	local H = BundleVoxel.thickness(L)
+	local Dp = H
 	local k = 0
 	local function put(x: number, y: number, z: number)
 		k += 1
-		local art = BundleArt.make((k * 3) % 8 + 1, nil, L)
-		if art then
-			art.CFrame = BundleArt.lying(art, cf * CFrame.new(x, y, z))
-			art.Parent = parent
-			return
-		end
-		if not Models.place("bundle", parent, cf * CFrame.new(x, y, z), 1, false) then
-			part(parent, "Bundle", cf * CFrame.new(x, y + H / 2, z), Vector3.new(L, H, Dp), C.grass, Enum.Material.Grass, true)
-		end
+		local vb = BundleVoxel.make((k * 3) % 8 + 1, nil, L)
+		vb:PivotTo(cf * CFrame.new(x, y, z) * (if k % 2 == 0 then CFrame.Angles(0, math.pi, 0) else CFrame.identity))
+		vb.Parent = parent
 	end
 	for row = 0, deep - 1 do
 		for i = 0, bottom - 1 do

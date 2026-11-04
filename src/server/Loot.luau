@@ -9,8 +9,7 @@ local Config = require(ReplicatedStorage.MowALawn.Config)
 local Net = require(script.Parent.Net)
 local Models = require(script.Parent.Models)
 local Carry = require(script.Parent.Carry)
-local VoxelModels = require(script.Parent.VoxelModels)
-local BundleArt = require(ReplicatedStorage.MowALawn.BundleArt)
+local BundleVoxel = require(ReplicatedStorage.MowALawn.BundleVoxel)
 
 local Loot = {}
 
@@ -50,41 +49,12 @@ end
 local function bundleVisual(pos: Vector3, mut: string?, z: number?): Instance
 	local m = Config.mutation(mut or "None")
 	local yaw = rng:NextNumber(0, math.pi * 2)
-	-- the ForgeGUI bundle for its area and mutation (shared/BundleArt), lying on its side
-	local art = BundleArt.make(z, m.id, 2.6, 1.6)
-	if art then
-		art.Name = "Bundle"
-		art.CFrame = BundleArt.lying(art, CFrame.new(pos) * CFrame.Angles(0, yaw, 0))
-		art.Parent = folder
-		return art
-	end
-	-- the voxel bundle for this grass (server/Carry.voxelName), once its models are in Studio
-	local vname = Carry.voxelName(m.id)
-	local mesh = vname and VoxelModels.place(folder :: Folder, vname, pos, { scale = Carry.VOXEL_SCALE, yaw = yaw })
-	if mesh then
-		mesh.Name = "Bundle"
-		return mesh
-	end
-	local cf = CFrame.new(pos) * CFrame.Angles(0, yaw, 0)
-	local placed = Models.place("bundle", folder :: Folder, cf, 0.9, true)
-	if placed then
-		if m.color then
-			for _, p in placed:GetDescendants() do
-				if p:IsA("BasePart") and p.Material == Enum.Material.Grass then
-					p.Color = m.color
-				end
-			end
-		end
-		return placed
-	end
-	local part = Instance.new("Part")
-	part.Name = "Bundle"
-	part.Anchored = true
-	part.Size = Vector3.new(2.2, 0.9, 1.4)
-	part.Color = m.color or Color3.fromRGB(150, 220, 80)
-	part.CFrame = cf * CFrame.new(0, 0.45, 0)
-	part.Parent = folder
-	return part
+	-- the voxel bundle for its area and mutation (shared/BundleVoxel, 4 Nov: the same as the ones on your back; it
+	-- was the ForgeGUI one, shared/BundleArt)
+	local vb = BundleVoxel.make(z, m.id, 2.6)
+	vb:PivotTo(CFrame.new(pos) * CFrame.Angles(0, yaw, 0))
+	vb.Parent = folder
+	return vb
 end
 
 local function gemVisual(pos: Vector3): Instance

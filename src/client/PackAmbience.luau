@@ -16,7 +16,7 @@ local PhonePerf = require(script.Parent.PhonePerf) :: any
 
 local PackAmbience = {}
 
-type Layer = { name: string, color: Color3?, ahead: number? }
+type Layer = { name: string, color: Color3?, ahead: number?, rate: number? }
 
 -- by area style (Config.ZONES[z].style); "lobby" and "hub" for the rest
 local SETS: { [string]: { Layer } } = {
@@ -31,6 +31,8 @@ local SETS: { [string]: { Layer } } = {
 	prairie = { { name = "Leaves", color = Color3.fromRGB(235, 130, 50) }, { name = "Dust", color = Color3.fromRGB(255, 190, 120) } },
 	jungle = { { name = "Dust", color = Color3.fromRGB(170, 255, 140) }, { name = "Fog", color = Color3.fromRGB(180, 220, 170), ahead = 30 } },
 }
+
+local DEFAULT_RATE: { [string]: number } = { Dust = 0.06, Fog = 0.04, Leaves = 0.8 }
 
 local current = ""
 local loops: { { h: PackFx.Loop, ahead: number } } = {}
@@ -76,7 +78,8 @@ local function switch(key: string)
 		local ahead = layer.ahead or 12
 		local cf = spotFor(ahead)
 		if cf then
-			table.insert(loops, { h = PackFx.loop(layer.name, cf, { color = layer.color }), ahead = ahead })
+			-- (the pack's weather is made to fill a scene: Glow Dust 255 a second, the fog 200; here it's a light touch)
+			table.insert(loops, { h = PackFx.loop(layer.name, cf, { color = layer.color, rate = layer.rate or DEFAULT_RATE[layer.name] or 1 }), ahead = ahead })
 		end
 	end
 end

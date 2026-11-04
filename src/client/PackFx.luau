@@ -86,18 +86,26 @@ local function folder(): Folder
 	return f
 end
 
--- (owner, 4 Nov: "the cutscenes are blinding") the pack glows hard: every layer is kept at or under these
-local GLOW_MAX, BRIGHT_MAX = 0.75, 2.5
+-- (owner, 4 Nov: "the cutscenes are blinding") the pack glows hard: no layer is brighter than this. (Its
+-- LightEmission stays: the pack's glowing layers are drawn additively, where a dark colour is see-through; less
+-- LightEmission would show their dark squares.)
+local BRIGHT_MAX = 2.5
 local WHITE = Color3.new(1, 1, 1)
 
--- A colour moved over to `color`, keeping its lightness (white cores stay light, dark smoke stays dark).
+local function lumOf(c: Color3): number
+	return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B
+end
+
+-- A colour moved over to `color` at the same lightness: dark stays dark (see-through when additive), the white-hot
+-- cores stay light.
 local function shade(c: Color3, color: Color3): Color3
-	local lum = 0.299 * c.R + 0.587 * c.G + 0.114 * c.B
-	if lum < 0.08 then
-		return c -- black layers (smoke, the hole) keep their colour
+	local lum = lumOf(c)
+	if lum < 0.06 then
+		return c
 	end
-	local base = color:Lerp(Color3.new(0, 0, 0), math.clamp(0.55 - lum, 0, 0.45))
-	return base:Lerp(WHITE, math.clamp((lum - 0.55) * 0.9, 0, 0.55))
+	local k = math.min(lum / math.max(lumOf(color), 0.08), 1.6)
+	local t = Color3.new(math.min(1, color.R * k), math.min(1, color.G * k), math.min(1, color.B * k))
+	return t:Lerp(WHITE, math.clamp((lum - 0.72) * 2, 0, 0.6))
 end
 
 local function tintSeq(seq: ColorSequence, color: Color3): ColorSequence
@@ -115,24 +123,16 @@ local function prepare(t: Model, o: any): Model
 	for _, d in m:GetDescendants() do
 		if d:IsA("ParticleEmitter") then
 			d.Enabled = false
-			if d.LightEmission > GLOW_MAX then
-				d.LightEmission = GLOW_MAX
-			end
 			if d.Brightness > BRIGHT_MAX then
 				d.Brightness = BRIGHT_MAX
 			end
-			if b < 1 then
-				d.Rate *= b
-			end
+			d.Rate *= b * (o.rate or 1)
 			if o.color and not d:GetAttribute("NoTint") then
 				d.Color = tintSeq(d.Color, o.color)
 			end
 		elseif d:IsA("Beam") or d:IsA("Trail") then
 			local e = d :: any
 			e.Enabled = false
-			if e.LightEmission > GLOW_MAX then
-				e.LightEmission = GLOW_MAX
-			end
 			if o.color and not d:GetAttribute("NoTint") then
 				e.Color = tintSeq(e.Color, o.color)
 			end
@@ -240,6 +240,7 @@ export type Opts = {
 	life: number?,
 	follow: BasePart?,
 	force: boolean?, -- plays even past the cap (a film's big moment)
+	rate: number?, -- x its particle rate (the ambience runs the pack's weather thinner)
 }
 
 -- Plays template `name` once at `at`. Returns the clone, or nil.
@@ -378,7 +379,7 @@ function PackFx.reveal(at: Vector3, color: Color3, scale: number)
 		return
 	end
 	PackFx.play("Reveal", at, { color = color, scale = 0.7 * math.clamp(scale, 1, 2), force = true })
-	PackFx.play("RevealRing", at - Vector3.new(0, 1.5, 0), { color = color, scale = 0.45 * math.clamp(scale, 1, 2), force = true })
+	PackFx.play("Shock", at - Vector3.new(0, 1.5, 0), { color = color, scale = 0.5 * math.clamp(scale, 1, 2), force = true })
 end
 
 -- (owner: "all 8, 1-2 attacks each") the signature attacks of each boss, by move kind (no two bosses share one;

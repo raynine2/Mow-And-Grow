@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
+local HttpService = game:GetService("HttpService")
 
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local Net = require(script.Parent.Net)
@@ -197,8 +198,50 @@ local function snapshot(player: Player, data)
 	return view
 end
 
+-- (4 Nov, owner: "fix lag and optimize the game") Only what changed goes out: the snapshot was sent whole up to 10
+-- times a second while mowing (every cut and pickup changes the run's counters), stats, index, pets, skills and all.
+-- Each top-level field is compared with what this player was last sent (as JSON); a delta { __delta, set, gone }
+-- carries the changed ones (client/State merges it). The whole snapshot on join and every 10 s, in case one is lost.
+local FULL_EVERY = 10
+local sentJson: { [Player]: { [string]: string } } = {}
+local sentFullAt: { [Player]: number } = {}
+Players.PlayerRemoving:Connect(function(player)
+	sentJson[player] = nil
+	sentFullAt[player] = nil
+end)
 PlayerData.onChanged(function(player, data)
-	Net.send(player, "State", snapshot(player, data))
+	local view = snapshot(player, data)
+	local enc: { [string]: string } = {}
+	for k, v in view do
+		local ok, j = pcall(HttpService.JSONEncode, HttpService, v)
+		enc[k] = if ok then j else "?" .. os.clock() -- (can't be compared: always sent)
+	end
+	local prev = sentJson[player]
+	local now = os.clock()
+	sentJson[player] = enc
+	if not prev or now - (sentFullAt[player] or 0) >= FULL_EVERY then
+		sentFullAt[player] = now
+		Net.send(player, "State", view)
+		return
+	end
+	local set: { [string]: any } = {}
+	local gone: { string } = {}
+	local any = false
+	for k, j in enc do
+		if prev[k] ~= j then
+			set[k] = view[k]
+			any = true
+		end
+	end
+	for k in prev do
+		if enc[k] == nil then
+			table.insert(gone, k)
+			any = true
+		end
+	end
+	if any then
+		Net.send(player, "State", { __delta = true, set = set, gone = gone })
+	end
 end)
 
 -- Potato Mode (client/Potato): only remembered here, in both the lobby and runs

@@ -32,7 +32,26 @@ end
 
 State.dataAt = os.clock() -- when the latest snapshot arrived (timers in it count down from here)
 remotes:WaitForChild("State").OnClientEvent:Connect(function(data)
-	State.dataAt = os.clock()
+	if type(data) == "table" and data.__delta then
+		-- (4 Nov) only the fields that changed (server/Main.server): merged into the last snapshot, a fresh table
+		local cur = State.data
+		if type(cur) ~= "table" then
+			return -- (the whole snapshot comes within 10 s)
+		end
+		local merged = table.clone(cur)
+		for k, v in data.set do
+			merged[k] = v
+		end
+		for _, k in data.gone do
+			merged[k] = nil
+		end
+		if data.set.daily ~= nil or data.set.dailyIn ~= nil or data.set.freeGems ~= nil then
+			State.dataAt = os.clock() -- (the timers' fields came: they count down from now)
+		end
+		data = merged
+	else
+		State.dataAt = os.clock()
+	end
 	State.data = data
 	State.mode = data.mode or State.mode
 	State.emit("data", data)

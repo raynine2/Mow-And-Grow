@@ -690,8 +690,8 @@ function LandsBuilder.build()
 		reach = REACH,
 		sea = SEA,
 	})
-	-- (4 Nov, owner: "I DONT LIKE THE BACK AREA OF THE MAP VERY VERY BLAND AND EMPTY") the star walk, the vegetable
-	-- patch, the lily pond, flowers over the lawn, and meadows all round past the hedge (server/LobbyGarden)
+	-- (4 Nov, owner: "I DONT LIKE THE BACK AREA OF THE MAP VERY VERY BLAND AND EMPTY") the star walk, cherry trees and
+	-- groves, the mower statue, bushes and rocks all round past the hedge: only the game's models (server/LobbyGarden)
 	local Paving = require(script.Parent.LobbyPaving)
 	local areas = walkAreas()
 	require(script.Parent.LobbyGarden).dress(world, {

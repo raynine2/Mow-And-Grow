@@ -27,6 +27,7 @@ local SEED_SIZE = 0.55
 local Spec = require(script.Parent.BossVfxSpec)
 local PHONE = require(script.Parent.PhonePerf).on -- phones: lighter hits (owner, 26 Oct)
 local BossView = require(script.Parent.BossView)
+local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack: each boss's signature attacks
 local Sound = require(script.Parent.Sound)
 local SoundConfig = require(Shared:WaitForChild("Config")) -- (29 Oct) boss move cues
 
@@ -1224,6 +1225,9 @@ function BossVfx.impact(z: number, s: any, kind: string, floorColor: Color3?)
 	local def = BossMoves.get(z)
 	local ring = accentColor()
 	cue(kind, s.pos)
+	if PackFx.on() then
+		pcall(PackFx.boss, kind, s, ring)
+	end
 	if s.type == "circle" then
 		burst(s.pos, s.r)
 		dust(s.pos, s.r, def.dust, 10)

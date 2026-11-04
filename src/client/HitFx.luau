@@ -26,6 +26,7 @@ WeaponFx.install(Presets)
 -- (28 Oct) keyframed swings (their contact frame times the impact) and each weapon's rebuilt hit look
 local ViewAnims = require(script.Parent.ViewAnims)
 local WeaponVfx = require(script.Parent.WeaponVfx)
+local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack on top (Config.SOULSHROUD_VFX)
 
 local HitFx = {}
 local player = Players.LocalPlayer
@@ -895,6 +896,9 @@ function HitFx.play(event: string, pos: Vector3, grass: Color3, mine: boolean, c
 	local g = groundAt(pos)
 	local hgt = (m and m:GetAttribute("Height") :: number?) or 6 * sc
 	local ctx: Ctx = { g = g, s = sc, r = r, h = hgt, stalk = m and m:GetAttribute("Stalk") :: number? }
+	if PackFx.on() then
+		pcall(PackFx.hit, fam or event, pos, grass, mine, sc, opts)
+	end
 	if preset.pop then
 		pop(preset.pop, pos, style, opts and opts.pop, g)
 	end

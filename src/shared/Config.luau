@@ -860,6 +860,10 @@ Config.SOLS_AURAS = { Groundskeeper = true, LawnBaron = true, HedgeReaper = true
 -- (4 Nov, owner: "remake elke aura met classes") the class auras remade from scratch in client/Auras; client/RarityFx's
 -- class auras and client/ClassVfx's body, fists, screen and burst switch off while this is on (false = the old ones)
 Config.AURAS_V2 = true
+-- (4 Nov; owner: "remake vfx with this pack ... make it revertable tho so if i dont like it it can be reverted") the
+-- SoulShroud pack's effects (client/PackFx, client/PackAmbience: hits, the bosses' attacks, the lobby / areas, the
+-- films), played on top of the old ones. false = exactly the old look. (No auras: "my friend is doing that".)
+Config.SOULSHROUD_VFX = true
 
 Config.CLASS_VFX = {
 	WeedPuller = { main = Color3.fromRGB(150, 98, 52), second = Color3.fromRGB(255, 214, 60), glow = Color3.fromRGB(255, 240, 190), dark = Color3.fromRGB(60, 38, 20), corner = "rbxassetid://120045138286252" },

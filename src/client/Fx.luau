@@ -26,6 +26,7 @@ local ClumpWound = require(script.Parent.ClumpWound) -- (28 Oct) the cut carved 
 local ClumpCarve = require(script.Parent.ClumpCarve) -- (28 Oct) real notches: a carved clump breaks at its cut
 local ViewAnims = require(script.Parent.ViewAnims) -- (28 Oct) keyframed swings: when your blow lands
 local WeaponVfx = require(script.Parent.WeaponVfx) -- (28 Oct) each weapon's rebuilt look, falls and dust
+local PackFx = require(script.Parent.PackFx)
 local GnomeHunt = require(script.Parent.GnomeHunt) -- (27 Oct) the Golden Gnome hunt: found gnomes, the gold strip
 
 local Fx = {}
@@ -621,6 +622,7 @@ handlers.reveal = function(d)
 	local radius = clump and clump:GetAttribute("Radius") :: number?
 	local at = WeaponVfx.lastImpact(d.pos) or (d.pos + Vector3.new(0, 2.5, 0))
 	WeaponVfx.reveal(at, m.color, if radius then radius / 1.6 else 1, d.by == player.UserId and near(d.pos, 40))
+	PackFx.reveal(at, m.color, if radius then radius / 1.6 else 1) -- (4 Nov) the SoulShroud pack (Config.SOULSHROUD_VFX)
 	Fx.floatText(d.pos + Vector3.new(0, 2, 0), m.id:upper() .. "!", m.color, 1.25)
 	Moments.reveal(d) -- the light pillar, the chime, and for a rare find of yours the slow-motion beat
 end

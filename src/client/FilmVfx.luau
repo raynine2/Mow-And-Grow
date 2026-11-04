@@ -24,6 +24,7 @@ local RunService = game:GetService("RunService")
 
 local Potato = require(script.Parent.Potato)
 local PhonePerf = require(script.Parent.PhonePerf)
+local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack's effects for the films' moments too
 
 local FilmVfx = {}
 
@@ -323,6 +324,9 @@ function FilmVfx.play(name: string, at: CFrame | Vector3, opts: Opts?): Model?
 	if not RunService:IsClient() then
 		return nil
 	end
+	if PackFx.on() then
+		pcall(PackFx.film, name, if typeof(at) == "Vector3" then CFrame.new(at) else at, opts)
+	end
 	local t = FilmVfx.template(name)
 	local a = t and emitApi()
 	if not (t and a) then
@@ -421,6 +425,7 @@ function FilmVfx.clear()
 	for m in live do
 		FilmVfx.stop(m)
 	end
+	PackFx.clear()
 end
 
 -- (Studio only, for checking a template on screen) setting the workspace attribute FilmVfxPreview to

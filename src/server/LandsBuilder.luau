@@ -1,22 +1,21 @@
 --!strict
--- THE LOBBY: THE GATES TO THE EIGHT LANDS (4 Nov, third remake; owner, on a lobby of blocks: "U CALL THIS A MAIN LOBBY
--- THIS IS TERRIBLE ... USE OBISDIAN AND FIX THJIS SHIT USE MODELS WE HAVE", then picked "the best models": our
--- ForgeGUI models, the arena gateways as party pads, the cabins like the camp's, the eight lands' landmarks round it).
--- Built only from the game's own finished models: the ForgeGUI buildings and landmarks (shared/ForgeModelIds) and the
--- voxel trees, bushes and rocks (ServerStorage.VoxelModels). Composition from the LihFolk vault (Level Design for
--- Roblox: "courtyard + gates" for a game whose main action is picking where to go, spawn facing the main thing, every
--- station visible or signposted from it; World Composition: one hero, framed, tallest; dense at the edges, clear in the
--- middle; Zone and Biome Art Direction: each land's landmark visible as the pull forward).
---
---   * You spawn at the south end of a paved courtyard, looking north at a wall of five arena gateways, one per land:
---     walk into a gateway's arch to start (SOLO in the middle, PARTY either side, the gold-wheat one is CONTINUE).
---   * Over the gates rises the hero: the giant ForgeGUI windmill.
---   * Round the courtyard, beyond a low hedge, the lands themselves: each land's ForgeGUI landmark on a patch of its
---     own ground with its own trees and rocks (wheat, blossom, pine, swamp, frost, ember; Starlight's observatory
---     behind you), a forest belt behind them all.
---   * On the courtyard's sides: CLASSES (a ForgeGUI cottage, the aura mannequin in front), the GARAGE (the camp's
---     ForgeGUI garage, the mower on its turntable inside), FREE REWARDS a few steps left of the spawn, GRASS CUT and
---     BEST TIMES at the courtyard's south corners.
+-- THE LOBBY: THE WINDMILL SQUARE AND THE EIGHT LANDS (4 Nov; built from the game's own finished models after the owner
+-- said of a lobby of blocks "U CALL THIS A MAIN LOBBY THIS IS TERRIBLE ... USE MODELS WE HAVE", then, of a row of five
+-- different arena gateways: "i dont like the gates u used its veyr bad doesnt fit ... make the whole lobby better ...
+-- dont make it rommelig en onzin").
+-- Composition from the LihFolk vault (World Composition and Set Dressing; Level Design for Roblox):
+--   * ONE hero: the ForgeGUI windmill at the north end, the tallest, brightest thing; the spawn faces it.
+--   * The party pads are grouped in front of it on one arc ("world gates grouped on one terrace"), five copies of one
+--     piece (the meadow's round ForgeGUI altar, sunk so its top is a dais) with one sign style, no mix of looks.
+--   * ONE walk: from the spawn straight up the axis to the pads, a curved walk along their front, one cross walk to the
+--     two stations; everything symmetric about the axis (made things align); lamps in pairs along the axis.
+--   * Negative space: the square is a freshly mown lawn in stripes running toward the windmill (leading lines), nothing
+--     standing on it but the lamps and two flower beds where the axis meets the arc.
+--   * Stations at the square's sides, facing in: CLASSES (the ForgeGUI cottage, the aura mannequin by its porch) to
+--     the right, the GARAGE (the camp's ForgeGUI garage, the mower inside) to the left, FREE REWARDS a few steps left of
+--     the spawn, GRASS CUT and BEST TIMES either side of the windmill.
+--   * Around it, kept back as scenery: each land's ForgeGUI landmark on a patch of its own ground with its voxel trees
+--     (density at the edges), a forest belt round the island.
 -- Lobby space: y = 0 the ground, +Z north, +X to your left as you look north from the spawn.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -34,29 +33,29 @@ local LandsBuilder = {}
 LandsBuilder.ON = true
 
 local C = Color3.fromRGB
-local SPAWN = Vector3.new(0, 0, -64)
-local COURT = { x0 = -64, x1 = 64, z0 = -96, z1 = -22 }
-local GATE_Z = -27 -- the gates' middles
-local GATE_W = 23
-local GATES = { -- (x, the land, the pad's kind) left to right as you face them
-	{ x = 50, land = "wheat", kind = "continue" },
-	{ x = 25, land = "blossom", kind = "party" },
-	{ x = 0, land = "meadow", kind = "solo" },
-	{ x = -25, land = "pine", kind = "party" },
-	{ x = -50, land = "swamp", kind = "party" },
+local SPAWN = Vector3.new(0, 0, -62)
+local HERO = { pos = Vector3.new(0, 0, 14), height = 96, width = 40 }
+local PAD_R = 36 -- the pads' arc round the windmill's middle
+local PAD_W = 11 -- each dais across
+local PADS = { -- (degrees from the axis, + to the left as you face the windmill)
+	{ a = 0, kind = "solo" },
+	{ a = 22, kind = "party" },
+	{ a = -22, kind = "party" },
+	{ a = -44, kind = "party" },
+	{ a = 44, kind = "continue" },
 }
--- (measured on the gate meshes: the arch's opening as a share of the width, server/ArenaForge)
-local OPEN = { meadow = 0.36, wheat = 0.43, blossom = 0.37, pine = 0.29, swamp = 0.29 }
-local HERO = { pos = Vector3.new(0, 0, 42), height = 112 }
-local RING_CENTRE = Vector3.new(0, 0, -44)
+local WALK_R = PAD_R + 9 -- the curved walk in front of the pads
+local SQUARE_R = 78 -- the mown square round the axis
+local SQUARE_C = Vector3.new(0, 0, -22)
+local RING_CENTRE = Vector3.new(0, 0, -30)
 local LANDS = { -- (angle from north, + to the left; the starlight observatory behind the spawn)
-	{ id = "wheat", lm = "lm_wheat", a = 30, r = 120 },
-	{ id = "blossom", lm = "lm_blossom", a = -30, r = 120 },
-	{ id = "pine", lm = "lm_pine", a = 62, r = 124 },
-	{ id = "swamp", lm = "lm_swamp", a = -62, r = 124 },
-	{ id = "frost", lm = "lm_frost", a = 96, r = 116 },
-	{ id = "ember", lm = "lm_ember", a = -96, r = 116 },
-	{ id = "isles", lm = "lm_starlight", a = 180, r = 112 },
+	{ id = "wheat", lm = "lm_wheat", a = 34, r = 124 },
+	{ id = "blossom", lm = "lm_blossom", a = -34, r = 124 },
+	{ id = "pine", lm = "lm_pine", a = 68, r = 128 },
+	{ id = "swamp", lm = "lm_swamp", a = -68, r = 128 },
+	{ id = "frost", lm = "lm_frost", a = 104, r = 122 },
+	{ id = "ember", lm = "lm_ember", a = -104, r = 122 },
+	{ id = "isles", lm = "lm_starlight", a = 180, r = 118 },
 }
 local PATCH_R = 30
 local REACH = 232 -- the island's half size
@@ -64,12 +63,13 @@ local CELL = 8
 local SEA = -6
 local FLOOR = -24
 
-local CLASSES = Vector3.new(-48, 0, -58)
-local GARAGE = Vector3.new(49, 0, -60)
+local CLASSES = Vector3.new(-50, 0, -40)
+local GARAGE = Vector3.new(50, 0, -40)
+local CROSS_Z = -40
 Layout.SPAWN = SPAWN
-Layout.REWARDS = { pos = Vector3.new(19, 0, -81) }
-Layout.GRASS_CUT = { pos = Vector3.new(44, 0, -88) }
-Layout.BEST_TIMES = { pos = Vector3.new(-44, 0, -88) }
+Layout.REWARDS = { pos = Vector3.new(17, 0, -66) }
+Layout.GRASS_CUT = { pos = Vector3.new(44, 0, 10) }
+Layout.BEST_TIMES = { pos = Vector3.new(-44, 0, 10) }
 
 local OPEN_C = C(80, 255, 95)
 local BUSY_C = C(40, 210, 255)
@@ -123,26 +123,35 @@ local function landPos(l: any): Vector3
 	return RING_CENTRE + Vector3.new(math.sin(a) * l.r, 0, math.cos(a) * l.r)
 end
 
+-- A point on a circle round the windmill, `a` degrees off the axis toward the spawn.
+local function arc(a: number, r: number): Vector3
+	local t = math.rad(a)
+	return HERO.pos + Vector3.new(math.sin(t) * r, 0, -math.cos(t) * r)
+end
+
 local function hash(i: number, j: number, k: number): number
 	local n = math.sin(i * 127.1 + j * 311.7 + k * 74.7) * 43758.5453
 	return n - math.floor(n)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- ground
+-- ground and walks
 -------------------------------------------------------------------------------------------------------------
--- The ground colour of the 8-stud square at (x, z): a land's own two greens (or golds, pinks, whites...) on its patch,
--- the meadow's elsewhere, checkered at random like the run's areas.
+-- The ground colour of the 8-stud square at (x, z): the square a mown lawn (two greens in stripes two squares wide,
+-- running toward the windmill), a land's own colours on its patch, the meadow's checker elsewhere.
 local function groundAt(x: number, z: number): Color3
 	local p = Vector3.new(x, 0, z)
+	local meadow = zone("meadow").palette
+	if (p - SQUARE_C).Magnitude < SQUARE_R then
+		return if math.floor((x + 1000) / 16) % 2 == 0 then meadow.ground else meadow.ground2
+	end
 	for _, l in LANDS do
 		if (p - landPos(l)).Magnitude < PATCH_R then
 			local pal = zone(l.id).palette
 			return if hash(x, z, 3) < 0.5 then pal.ground else pal.ground2
 		end
 	end
-	local pal = zone("meadow").palette
-	return if hash(x, z, 9) < 0.5 then pal.ground else pal.ground2
+	return if hash(x, z, 9) < 0.5 then meadow.ground else meadow.ground2
 end
 
 local function ground(world: Instance)
@@ -184,59 +193,34 @@ local function ground(world: Instance)
 	block(world, "SeaFloor", Vector3.new(1400, 2, 1400), CFrame.new(0, FLOOR - 1, 0), C(226, 200, 140))
 end
 
--- The walks, in the camp's golden paving (server/HubPaths): a round plaza at the spawn, a walk fanning out to each
--- gate (leading lines: World Composition), an apron along the gate row, and walks to every station and out to the
--- lands. Between them the courtyard is lawn, with flower beds and lamps (dressing()).
-local SPAWN_PLAZA = 13
-local APRON_Z = GATE_Z - 7
-local function walkSegments(): { any }
-	local s0 = Vector2.new(SPAWN.X, SPAWN.Z)
-	local segs = {}
-	local function walk(a: Vector2, b: Vector2, w: number)
-		table.insert(segs, { a = a, b = b, width = w })
-	end
-	for _, g in GATES do
-		walk(s0, Vector2.new(g.x, APRON_Z), 7)
-	end
-	walk(Vector2.new(-58, APRON_Z), Vector2.new(58, APRON_Z), 9)
-	walk(s0, Vector2.new(CLASSES.X + 14, CLASSES.Z), 7)
-	walk(s0, Vector2.new(GARAGE.X - 13, GARAGE.Z), 7)
-	walk(s0, Vector2.new(Layout.REWARDS.pos.X - 6, Layout.REWARDS.pos.Z), 6)
-	for _, b in { Layout.GRASS_CUT.pos, Layout.BEST_TIMES.pos } do
-		walk(s0, Vector2.new(b.X * 0.85, b.Z + 6), 6)
-	end
-	-- out to the lands, from the apron's ends or the spawn plaza, whichever is nearer
-	local starts = { Vector2.new(-58, APRON_Z), Vector2.new(58, APRON_Z), s0 }
-	for _, l in LANDS do
-		local p = landPos(l)
-		local to = Vector2.new(p.X, p.Z)
-		local from = starts[1]
-		for _, st in starts do
-			if (st - to).Magnitude < (from - to).Magnitude then
-				from = st
-			end
-		end
-		local stop = to - (to - from).Unit * (PATCH_R - 6)
-		walk(from, stop, 6)
-	end
-	return segs
-end
-
-local function paving(world: Instance)
+-- The walks in the camp's golden paving (server/HubPaths): a small round plaza at the spawn, the axis to the pads, the
+-- curved walk in front of them (short straight pieces), and the cross walk to the two stations.
+local function walks(world: Instance)
 	local HubPaths = require(script.Parent.HubPaths)
-	HubPaths.pave(HubPaths.lay(world, walkSegments(), 0, 11, { { centre = Vector2.new(SPAWN.X, SPAWN.Z), radius = SPAWN_PLAZA } }), Vector3.zero)
+	local segs = {}
+	local function walk(a: Vector3, b: Vector3, w: number)
+		table.insert(segs, { a = Vector2.new(a.X, a.Z), b = Vector2.new(b.X, b.Z), width = w })
+	end
+	walk(SPAWN, arc(0, WALK_R), 9)
+	local step = 11
+	for a = -52, 52 - step, step do
+		walk(arc(a, WALK_R), arc(a + step, WALK_R), 7)
+	end
+	walk(Vector3.new(CLASSES.X + 14, 0, CROSS_Z), Vector3.new(GARAGE.X - 13, 0, CROSS_Z), 7)
+	HubPaths.pave(HubPaths.lay(world, segs, 0, 11, { { centre = Vector2.new(SPAWN.X, SPAWN.Z), radius = 10 } }), Vector3.zero)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- the gates (the party pads)
+-- the pads
 -------------------------------------------------------------------------------------------------------------
 local TURN = CFrame.Angles(0, math.pi / 2, 0) -- (the 30 Oct ForgeGUI meshes face their -Z: server/ArenaForge)
+local ALTAR_TOP = 0.95 -- (the meadow altar's flat top as a share of its height, measured: server/ArenaForge)
 
-local function gateSign(parent: Instance, at: Vector3, title: string, base: Color3): (TextLabel, TextLabel, Frame)
+local function padSign(parent: Instance, at: Vector3, title: string, base: Color3): (TextLabel, TextLabel, Frame)
 	local holder = PropKit.part({ size = Vector3.one, cf = CFrame.new(at), color = Color3.new(1, 1, 1), parent = parent, transparency = 1, collide = false, name = "PadStatus" })
 	holder.CanQuery = false
 	local gui = Instance.new("BillboardGui")
-	gui.Size = UDim2.fromScale(13, 6.4)
+	gui.Size = UDim2.fromScale(11, 5.4)
 	gui.LightInfluence = 0
 	gui.MaxDistance = 170
 	gui.Parent = holder
@@ -275,77 +259,61 @@ local function gateSign(parent: Instance, at: Vector3, title: string, base: Colo
 	return status, pill, box
 end
 
--- The pad on the ground in the arch: a dark stone ring round a disc in the state's colour (a ring of blocks: no
--- smooth cylinders in the voxel world).
-local function padDisc(parent: Instance, cf: CFrame, r: number, color: Color3): { BasePart }
-	local inlay: { BasePart } = {}
-	local g = 1
-	local n = math.ceil(r / g)
-	for j = -n, n - 1 do
-		local zc = (j + 0.5) * g
-		if math.abs(zc) < r then
-			local hw = math.floor(math.sqrt(r * r - zc * zc) / g + 0.5) * g
-			if hw > 0 then
-				local rim = block(parent, "PadRim", Vector3.new(hw * 2, 0.5, g), cf * CFrame.new(0, 0.25, zc), C(70, 66, 74))
-				rim.TopSurface = Enum.SurfaceType.Studs
-				rim.Material = Enum.Material.Plastic
-				local iw = hw * 2 - 2
-				local ri = r - 1
-				if math.abs(zc) < ri and iw > 0.5 then
-					local hi = math.floor(math.sqrt(ri * ri - zc * zc) / g + 0.5) * g
-					if hi > 0 then
-						local p = block(parent, "PadGlow", Vector3.new(hi * 2, 0.12, g), cf * CFrame.new(0, 0.56, zc), color)
-						p.CanCollide = false
-						p.CastShadow = false
-						table.insert(inlay, p)
-					end
-				end
-			end
-		end
+-- A thin ring of light on the dais's top in the pad's state colour (blocks round a circle: no smooth cylinders).
+local function glowRing(parent: Instance, cf: CFrame, r: number): { BasePart }
+	local parts: { BasePart } = {}
+	local n = 28
+	for i = 0, n - 1 do
+		local a = i / n * math.pi * 2
+		local p = block(parent, "PadGlow", Vector3.new(2 * math.pi * r / n + 0.15, 0.1, 0.45), cf * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -r), OPEN_C, Enum.Material.Neon)
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CastShadow = false
+		table.insert(parts, p)
 	end
-	return inlay
+	return parts
 end
 
-local function gate(world: Instance, m: Instance, i: number, g: any): any
-	local pos = Vector3.new(g.x, 0, GATE_Z)
-	local cf = facing(pos, Vector3.new(g.x, 0, SPAWN.Z)) -- (its front toward the courtyard)
-	local model = Models.placeForge("fa_gate_" .. g.land, m, cf * TURN, { depth = GATE_W }, true)
-	local openHalf = GATE_W * (OPEN[g.land] or 0.33) / 2
-	local height = 14
-	if model then
-		model.Name = "Gate_" .. g.land
-		local body = model:FindFirstChildWhichIsA("MeshPart", true)
-		if body then
-			height = body.Size.Y
-		end
-		for _, p in model:GetDescendants() do
-			if p:IsA("BasePart") then
-				p.CanQuery = false
-				p.CanTouch = false
+local function pad(m: Instance, i: number, p: any): any
+	local pos = arc(p.a, PAD_R)
+	local cf = facing(pos, SPAWN)
+	local top = 0.6
+	local altar = Models.placeForge("fa_altar_meadow", m, cf * TURN, { depth = PAD_W, width = PAD_W }, true)
+	if altar then
+		altar.Name = "PadDais"
+		local body = altar:FindFirstChildWhichIsA("MeshPart", true)
+		local h = if body then body.Size.Y else 2
+		-- sunk so its flat top is a step over the lawn (a dais you step onto)
+		local sink = math.max(0, h * ALTAR_TOP - 1.1)
+		altar:PivotTo(altar:GetPivot() - Vector3.new(0, sink, 0))
+		top = h * ALTAR_TOP - sink
+		for _, q in altar:GetDescendants() do
+			if q:IsA("BasePart") then
+				q.CanQuery = false
+				q.CanTouch = false
 			end
 		end
-		-- its towers are solid; the way in is the arch
-		local towerW = GATE_W / 2 - openHalf
-		for _, side in { -1, 1 } do
-			local col = block(m, "TowerCollider", Vector3.new(towerW, 26, 8), cf * CFrame.new(side * (openHalf + towerW / 2), 13, 0), Color3.new(1, 1, 1))
-			invisible(col)
-		end
+		-- a flat invisible top to stand on (the mesh has no collisions)
+		local step = block(m, "PadStep", Vector3.new(PAD_W * 0.8, top, PAD_W * 0.8), cf * CFrame.new(0, top / 2, 0), Color3.new(1, 1, 1))
+		invisible(step)
 	end
-	local kind = g.kind
+	local kind = p.kind
 	local base = if kind == "continue" then SAVE_C else OPEN_C
-	local r = math.min(openHalf - 0.4, 4.6)
-	local padAt = cf * CFrame.new(0, 0, -1)
-	local inlay = padDisc(m, padAt, r, base)
-	local marker = PropKit.part({ size = Vector3.one, cf = padAt * CFrame.new(0, 1.6, 0), color = base, parent = m, transparency = 1, collide = false, name = "PadInfo" .. i })
+	local r = PAD_W * 0.36
+	local ring = glowRing(m, cf * CFrame.new(0, top + 0.05, 0), r)
+	for _, q in ring do
+		q.Color = base
+	end
+	local marker = PropKit.part({ size = Vector3.one, cf = cf * CFrame.new(0, top + 1.6, 0), color = base, parent = m, transparency = 1, collide = false, name = "PadInfo" .. i })
 	marker.CanQuery = false
 	local title = if kind == "solo" then "SOLO" elseif kind == "continue" then "CONTINUE" else "PARTY"
-	local status, pill, box = gateSign(m, (cf * CFrame.new(0, height + 4.2, -1)).Position, title, base)
+	local status, pill, box = padSign(m, (cf * CFrame.new(0, top + 9, 0)).Position, title, base)
 	local maxN = if kind == "party" then Config.PARTY_MAX else 1
 	local state = ""
 	local def = {
 		kind = kind,
-		pos = (padAt * CFrame.new(0, 0.6, 0)).Position,
-		radius = r - 0.3,
+		pos = (cf * CFrame.new(0, top, 0)).Position,
+		radius = r + 0.6,
 		label = status,
 		title = title,
 		show = function(newState: string, n: number, left: number?, who: string?, limit: number?)
@@ -359,158 +327,44 @@ local function gate(world: Instance, m: Instance, i: number, g: any): any
 			else
 				status.Text = "Teleporting..."
 			end
-			local p = LobbyPads.pillFor(kind, newState, n, capN, left)
-			if p ~= pill.Text or newState ~= state then
+			local text = LobbyPads.pillFor(kind, newState, n, capN, left)
+			if text ~= pill.Text or newState ~= state then
 				state = newState
 				local c = if newState == "open" then base else BUSY_C
-				for _, q in inlay do
+				for _, q in ring do
 					q.Color = c
 				end
 				box.BackgroundColor3 = c
-				pill.Text = p
+				pill.Text = text
 			end
 		end,
 	}
 	def.show("open", 0, nil)
-	-- a little sparkle rising in the arch
-	LobbyKit.tag(LobbyKit.spot(m, padAt * CFrame.new(0, 2, 0), Vector3.new(r * 1.6, 3, r * 1.6), "PadFX"), "LobbyFX", { Kind = "sparkle", Color = base })
-	local _ = world
+	LobbyKit.tag(LobbyKit.spot(m, cf * CFrame.new(0, top + 1.5, 0), Vector3.new(r * 1.6, 2, r * 1.6), "PadFX"), "LobbyFX", { Kind = "sparkle", Color = base })
 	return def
 end
 
-local function gates(world: Instance): { any }
+local function pads(world: Instance): { any }
 	local m = PropKit.folder("PartyBooths", world)
-	-- pad 1 is SOLO (the guide arrow shows "PadInfo1" to new players), then the parties, CONTINUE last
-	local order = {}
-	for _, kind in { "solo", "party", "continue" } do
-		for _, g in GATES do
-			if g.kind == kind then
-				table.insert(order, g)
-			end
-		end
-	end
 	local defs = {}
-	for i, g in order do
-		table.insert(defs, gate(world, m, i, g))
+	-- (pad 1 is SOLO: the guide arrow shows "PadInfo1" to new players)
+	for i, p in PADS do
+		table.insert(defs, pad(m, i, p))
 	end
 	return defs
 end
 
 -------------------------------------------------------------------------------------------------------------
--- the hero and the lands
+-- the hero, the stations, the lands
 -------------------------------------------------------------------------------------------------------------
 local function hero(world: Instance)
 	local m = PropKit.folder("Landmark", world)
 	local cf = facing(HERO.pos, SPAWN)
-	local mill = Models.placeForge("windmill", m, cf, { height = HERO.height }, false)
-	if not mill then
+	if not Models.placeForge("windmill", m, cf, { height = HERO.height, width = HERO.width, depth = HERO.width }, false) then
 		VM.place(m, "Landmark_windmill", HERO.pos, { scale = 1.4, collide = true })
 	end
 end
 
-local function tree(parent: Instance, land: string, foot: Vector3, scale: number, rng: Random)
-	local name = "Tree_" .. land .. "_" .. rng:NextInteger(1, 3)
-	if not VM.has(name) then
-		name = "Tree_meadow_" .. rng:NextInteger(1, 3)
-	end
-	local s = scale * 0.75
-	VM.place(parent, name, foot, { scale = s, yaw = rng:NextInteger(0, 3) * math.pi / 2 })
-	VM.blocker(parent, Vector3.new(4.8 * s, 20 * s, 4.8 * s), CFrame.new(foot + Vector3.new(0, 10 * s, 0)))
-end
-
--- A land on the ring: its landmark facing the courtyard, its trees round the back half, rocks and bushes in front.
-local function land(parent: Instance, l: any, rng: Random)
-	local f = Instance.new("Folder")
-	f.Name = zone(l.id).name
-	f.Parent = parent
-	local at = landPos(l)
-	local toward = RING_CENTRE
-	Models.placeForge(l.lm, f, facing(at, toward), { height = 40, width = 44, depth = 44 }, false)
-	local out = (at - toward).Unit
-	local right = out:Cross(Vector3.yAxis)
-	for k = 1, 6 do
-		local a = (k - 3.5) / 2.5 * 1.25
-		local p = at + out * (PATCH_R - 6) * math.cos(a) + right * (PATCH_R - 4) * math.sin(a)
-		tree(f, l.id, p + Vector3.new(rng:NextNumber(-2, 2), 0, rng:NextNumber(-2, 2)), rng:NextNumber(1.1, 1.5), rng)
-	end
-	for _, s in { -1, 1 } do
-		local p = at - out * (PATCH_R - 8) + right * s * 16
-		VM.place(f, "Rock_" .. l.id .. "_big", p, { scale = rng:NextNumber(1.2, 1.6), yaw = rng:NextNumber(0, math.pi * 2), collide = true })
-		VM.place(f, "Bush_" .. l.id, p + right * s * 6 + out * 3, { scale = 0.9, yaw = rng:NextNumber(0, math.pi * 2), collide = true })
-		VM.place(f, "Rock_" .. l.id, at - out * (PATCH_R - 4) + right * s * 7, { scale = 1.2, yaw = rng:NextNumber(0, math.pi * 2) })
-	end
-end
-
-local function lands(world: Instance)
-	local f = PropKit.folder("Lands", world)
-	local rng = Random.new(77)
-	for _, l in LANDS do
-		land(f, l, rng)
-		task.wait()
-	end
-	-- the forest belt round everything, and a few meadow trees between the lands (none near the courtyard, the gates'
-	-- backs or a land's patch)
-	local forest = PropKit.folder("Forest", world)
-	for x = -REACH, REACH, 20 do
-		for z = -REACH, REACH, 20 do
-			local p = Vector3.new(x + rng:NextNumber(-4, 4), 0, z + rng:NextNumber(-4, 4))
-			local d = (p - RING_CENTRE).Magnitude
-			local edge = math.max(math.abs(p.X), math.abs(p.Z))
-			local nearLand = false
-			for _, l in LANDS do
-				if (p - landPos(l)).Magnitude < PATCH_R + 10 then
-					nearLand = true
-				end
-			end
-			local nearHero = (p - HERO.pos).Magnitude < 40
-			if not nearLand and not nearHero and edge < REACH - 22 then
-				if d > 160 then
-					tree(forest, if rng:NextNumber() < 0.45 then "pine" else "meadow", p, rng:NextNumber(1.3, 1.8), rng)
-				elseif d > 92 and rng:NextNumber() < 0.35 then
-					tree(forest, "meadow", p, rng:NextNumber(1.0, 1.3), rng)
-				end
-			end
-		end
-		task.wait()
-	end
-end
-
--- A low hedge of bushes round the courtyard (gaps for the walks), so it reads as a place, and the lands beyond it.
-local function hedge(world: Instance)
-	local f = PropKit.folder("Hedge", world)
-	local rng = Random.new(12)
-	local walks = walkSegments()
-	local function onWalk(p: Vector3): boolean
-		local q = Vector2.new(p.X, p.Z)
-		for _, s in walks do
-			local ab = s.b - s.a
-			local t = math.clamp((q - s.a):Dot(ab) / math.max(ab:Dot(ab), 1e-3), 0, 1)
-			if (q - (s.a + ab * t)).Magnitude < s.width / 2 + 3 then
-				return true
-			end
-		end
-		return false
-	end
-	local function row(a: Vector3, b: Vector3)
-		local len = (b - a).Magnitude
-		local n = math.floor(len / 7)
-		for i = 0, n do
-			local p = a + (b - a) * (i / math.max(n, 1))
-			local gap = onWalk(p)
-			if not gap then
-				VM.place(f, "Bush_meadow", p, { scale = rng:NextNumber(0.85, 1.05), yaw = rng:NextInteger(0, 3) * math.pi / 2, collide = true })
-			end
-		end
-	end
-	local x0, x1, z0, z1 = COURT.x0 - 3, COURT.x1 + 3, COURT.z0 - 3, COURT.z1
-	row(Vector3.new(x0, 0, z0), Vector3.new(x1, 0, z0))
-	row(Vector3.new(x0, 0, z0), Vector3.new(x0, 0, z1 - 6))
-	row(Vector3.new(x1, 0, z0), Vector3.new(x1, 0, z1 - 6))
-end
-
--------------------------------------------------------------------------------------------------------------
--- stations
--------------------------------------------------------------------------------------------------------------
 local function promptAt(parent: Instance, cf: CFrame, name: string): BasePart
 	local p = PropKit.part({ size = Vector3.new(2, 2, 2), cf = cf, color = Color3.new(1, 1, 1), parent = parent, transparency = 1, collide = false, name = name })
 	p.CanQuery = false
@@ -524,7 +378,7 @@ end
 
 local function classes(world: Instance): (TextLabel, Model?)
 	local m = PropKit.folder("Classes", world)
-	local at = facing(CLASSES, CLASSES + Vector3.xAxis) -- (its front looks east, across the courtyard)
+	local at = facing(CLASSES, CLASSES + Vector3.xAxis) -- (its front looks east, across the square)
 	local house = Models.placeForge("house_blue", m, at, { width = 22, depth = 19, height = 24 }, true)
 	if house then
 		PropKit.solidForge(house)
@@ -532,10 +386,9 @@ local function classes(world: Instance): (TextLabel, Model?)
 	title(m, (at * CFrame.new(0, 27, -6)).Position, "CLASSES", C(200, 160, 255))
 	PropKit.prompt(promptAt(m, at * CFrame.new(0, 3, -13), "ClassPorch"), "Browse", "Classes", "Classes", 12)
 	PropKit.prompt(promptAt(m, at * CFrame.new(0, 3, -9), "ClassCounter"), "Browse", "Classes", "Classes", 12)
-	LobbyPads.space(m, at * CFrame.new(0, 0.02, -15), 14, 6)
-	LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(0, 2, -15), Vector3.new(12, 3, 5), "ClassesFX"), "LobbyFX", { Kind = "sparkle", Color = C(200, 225, 255) })
-	-- the mannequin south of the porch, turned to the spawn
-	local dummy = require(script.Parent.AuraMannequin).build(m, facing((at * CFrame.new(-12, 0, -14)).Position, SPAWN))
+	LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(0, 2, -13), Vector3.new(10, 3, 4), "ClassesFX"), "LobbyFX", { Kind = "sparkle", Color = C(200, 225, 255) })
+	-- the mannequin beside the porch, turned to the spawn
+	local dummy = require(script.Parent.AuraMannequin).build(m, facing((at * CFrame.new(-11, 0, -12)).Position, SPAWN))
 	local hidden = Instance.new("TextLabel") -- (server/Lobby writes the stock here; the Classes window shows it)
 	hidden.Name = "StockText"
 	return hidden, dummy
@@ -543,7 +396,7 @@ end
 
 local function garage(world: Instance)
 	local m = PropKit.folder("Garage", world)
-	local at = facing(GARAGE, GARAGE - Vector3.xAxis) -- (its open front looks west, across the courtyard)
+	local at = facing(GARAGE, GARAGE - Vector3.xAxis) -- (its open front looks west, across the square)
 	local shell = Models.placeForge("garage_shell", m, at * CFrame.new(0, -0.6, 2.92) * TURN, { depth = 23.5 }, true)
 	if shell then
 		for _, p in shell:GetDescendants() do
@@ -558,39 +411,93 @@ local function garage(world: Instance)
 		end
 	end
 	title(m, (at * CFrame.new(0, 25, -4)).Position, "GARAGE", PropKit.TITLE)
-	local spot = at * CFrame.new(0, 0, 0)
-	if not Models.place("turntable", m, spot, 1) then
-		block(m, "TurntableBase", Vector3.new(10, 0.6, 10), spot * CFrame.new(0, 0.3, 0), C(70, 70, 78), Enum.Material.DiamondPlate)
+	if not Models.place("turntable", m, at, 1) then
+		block(m, "TurntableBase", Vector3.new(10, 0.6, 10), at * CFrame.new(0, 0.3, 0), C(70, 70, 78), Enum.Material.DiamondPlate)
 	end
-	local floor = PropKit.cylinder(m, 5, 0.6, spot * CFrame.new(0, 0.3, 0), Color3.new(1, 1, 1))
+	local floor = PropKit.cylinder(m, 5, 0.6, at * CFrame.new(0, 0.3, 0), Color3.new(1, 1, 1))
 	floor.Transparency = 1
 	floor.CanCollide = false
 	floor.Name = "Turntable"
-	Models.place("mower_tractor", m, spot * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, math.rad(200), 0), 1, true)
+	Models.place("mower_tractor", m, at * CFrame.new(0, 0.6, 0) * CFrame.Angles(0, math.rad(200), 0), 1, true)
 	PropKit.prompt(floor, "Open", "Garage", "Garage", 14) -- (one prompt: client/MowerLock hangs its padlock over it)
 end
 
--- The courtyard's lawn between the walks: flower beds, benches facing the gates, lamp posts along the fan.
+-- The square's few made things, all in pairs about the axis: lamp posts along the axis walk (clear of the cross walk),
+-- two flower beds beside it.
 local function dressing(world: Instance)
 	local f = PropKit.folder("Dressing", world)
-	local function piece(name: string, pos: Vector3, toward: Vector3)
-		local d = toward - pos
-		VM.place(f, name, pos, { yaw = math.atan2(-d.X, -d.Z), collide = true })
-	end
-	-- (in the wedges between the fan's walks, halfway to the gates)
-	for _, x in { -37, -12.5, 12.5, 37 } do
-		piece("S_flower_bed", Vector3.new(x * 0.62, 0, -48), Vector3.new(0, 0, -48))
+	for _, z in { -56, -49 } do
+		for _, sx in { -1, 1 } do
+			local p = Vector3.new(sx * 6.6, 0, z)
+			if not Models.place("lantern_post", f, CFrame.lookAt(p, Vector3.new(0, 0, z)), 0.9, true) then
+				VM.place(f, "S_lantern_post", p, { collide = true })
+			end
+		end
 	end
 	for _, sx in { -1, 1 } do
-		piece("S_bench", Vector3.new(sx * 30, 0, -50), Vector3.new(sx * 30, 0, -20))
-		piece("S_flower_bed", Vector3.new(sx * 54, 0, -42), Vector3.new(0, 0, -42))
+		local p = Vector3.new(sx * 14, 0, -52)
+		VM.place(f, "S_flower_bed", p, { yaw = math.pi / 2, collide = true })
 	end
-	-- lamp posts on the apron, between the gates
-	for _, x in { -37.5, -12.5, 12.5, 37.5 } do
-		local p = Vector3.new(x, 0, APRON_Z - 3)
-		if not Models.place("lantern_post", f, CFrame.lookAt(p, p - Vector3.zAxis), 0.9, true) then
-			VM.place(f, "S_lantern_post", p, { collide = true })
+end
+
+local function tree(parent: Instance, land: string, foot: Vector3, scale: number, rng: Random)
+	local name = "Tree_" .. land .. "_" .. rng:NextInteger(1, 3)
+	if not VM.has(name) then
+		name = "Tree_meadow_" .. rng:NextInteger(1, 3)
+	end
+	local s = scale * 0.75
+	VM.place(parent, name, foot, { scale = s, yaw = rng:NextInteger(0, 3) * math.pi / 2 })
+	VM.blocker(parent, Vector3.new(4.8 * s, 20 * s, 4.8 * s), CFrame.new(foot + Vector3.new(0, 10 * s, 0)))
+end
+
+-- A land on the ring: its landmark facing the square, its trees round the back half, two big rocks in front.
+local function land(parent: Instance, l: any, rng: Random)
+	local f = Instance.new("Folder")
+	f.Name = zone(l.id).name
+	f.Parent = parent
+	local at = landPos(l)
+	Models.placeForge(l.lm, f, facing(at, RING_CENTRE), { height = 40, width = 44, depth = 44 }, false)
+	local out = (at - RING_CENTRE).Unit
+	local right = out:Cross(Vector3.yAxis)
+	for k = 1, 5 do
+		local a = (k - 3) / 2 * 1.2
+		local p = at + out * (PATCH_R - 6) * math.cos(a) + right * (PATCH_R - 4) * math.sin(a)
+		tree(f, l.id, p, rng:NextNumber(1.2, 1.5), rng)
+	end
+	for _, s in { -1, 1 } do
+		VM.place(f, "Rock_" .. l.id .. "_big", at - out * (PATCH_R - 9) + right * s * 17, { scale = rng:NextNumber(1.2, 1.5), yaw = rng:NextNumber(0, math.pi * 2), collide = true })
+	end
+end
+
+local function lands(world: Instance)
+	local f = PropKit.folder("Lands", world)
+	local rng = Random.new(77)
+	for _, l in LANDS do
+		land(f, l, rng)
+		task.wait()
+	end
+	-- the forest belt round everything; a few meadow trees between the lands (none on the square or a land's patch)
+	local forest = PropKit.folder("Forest", world)
+	for x = -REACH, REACH, 20 do
+		for z = -REACH, REACH, 20 do
+			local p = Vector3.new(x + rng:NextNumber(-4, 4), 0, z + rng:NextNumber(-4, 4))
+			local d = (p - RING_CENTRE).Magnitude
+			local edge = math.max(math.abs(p.X), math.abs(p.Z))
+			local clear = (p - SQUARE_C).Magnitude < SQUARE_R + 12
+			for _, l in LANDS do
+				if (p - landPos(l)).Magnitude < PATCH_R + 10 then
+					clear = true
+				end
+			end
+			if not clear and edge < REACH - 22 then
+				if d > 160 then
+					tree(forest, if rng:NextNumber() < 0.45 then "pine" else "meadow", p, rng:NextNumber(1.3, 1.8), rng)
+				elseif rng:NextNumber() < 0.3 then
+					tree(forest, "meadow", p, rng:NextNumber(1.0, 1.3), rng)
+				end
+			end
 		end
+		task.wait()
 	end
 end
 
@@ -607,8 +514,8 @@ function LandsBuilder.build()
 	workspace.Terrain:Clear()
 	require(script.Parent.WorldGen).lighting()
 	ground(world)
-	paving(world)
-	local pads = gates(world)
+	walks(world)
+	local padDefs = pads(world)
 	hero(world)
 	local stockLabel, dummy = classes(world)
 	garage(world)
@@ -616,14 +523,13 @@ function LandsBuilder.build()
 	B.rewards(world)
 	local leaderLabel = B.leaderboard(world)
 	local bestLabel = B.bestTimes(world)
-	hedge(world)
 	dressing(world)
 	lands(world)
 	bounds(world)
 	local sp = SPAWN + Vector3.new(0, 0.8, 0)
-	Environment.spawn(world, CFrame.lookAt(sp, sp + Vector3.zAxis)) -- looking north at the gates and the windmill
-	LobbyKit.tag(LobbyKit.spot(world, CFrame.new(0, 10, -55), Vector3.new(120, 14, 70), "Motes"), "LobbyFX", { Kind = "motes" })
-	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = pads, mannequin = dummy }
+	Environment.spawn(world, CFrame.lookAt(sp, sp + Vector3.zAxis)) -- looking north at the pads and the windmill
+	LobbyKit.tag(LobbyKit.spot(world, CFrame.new(0, 10, -30), Vector3.new(110, 14, 70), "Motes"), "LobbyFX", { Kind = "motes" })
+	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = padDefs, mannequin = dummy }
 end
 
 return LandsBuilder

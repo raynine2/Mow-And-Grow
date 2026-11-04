@@ -655,7 +655,7 @@ local function kingSpot(P: Plan): Vector3
 						end
 					end
 				end
-				if not blocked(eye, feet + UP * (H * 1.75) + toCamp * (H * 0.3), boxes) then
+				if not blocked(eye, feet + UP * (H * 2.05) - toCamp * (H * 0.35), boxes) then
 					score += 1
 				end
 				for _, s in { 0, 1, -1 } do
@@ -825,7 +825,8 @@ local function tearScene(P: Plan, m: IntroCast.Mayor, kingFeet: Vector3): boolea
 	corrupt = C
 	-- the tear: behind him and over his head, facing the camp (owner, 4 Nov: "it needs to go thru a rift but u have to
 	-- also see the boss fully and not being blovked by a hole": the rift is behind him, he stands in front of it)
-	local sky = kingFeet + UP * (H * 1.45) - toCamp * (H * 0.6)
+	-- (5 Nov, a run test: at 1.45 H it showed as a streak down through his face from the low camera: higher)
+	local sky = kingFeet + UP * (H * 2.05) - toCamp * (H * 0.35)
 	local head = kingFeet + UP * (H * 0.8)
 	local f0 = m.face()
 	local camAt = f0 + toCamp * 7.5 - toCamp:Cross(UP) * 3.6 + UP * 1.4

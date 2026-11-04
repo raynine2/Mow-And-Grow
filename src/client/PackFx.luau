@@ -583,8 +583,8 @@ end
 local FILM: { [string]: { any } } = {
 	-- (owner, 4 Nov: "look at alot of vfx and fx": every moment has its own look now, none of the spiky bursts)
 	-- the opening
-	SkyTear = { { "Rift", scale = 2.2 }, { "Glitch", scale = 2 } },
-	SparkHit = { { "InkHit", scale = 0.6 }, { "Scribble", scale = 0.5 } },
+	SkyTear = { { "Rift", scale = 2.2 } }, -- (the glitch streaks over him ran down through his face: they're at the hit)
+	SparkHit = { { "InkHit", scale = 0.6 }, { "Scribble", scale = 0.5 }, { "Glitch", scale = 0.6 } },
 	KingBurst = { { "InkSwirl", scale = 0.8 }, { "FlameRing", scale = 1.4, color = Color3.fromRGB(255, 225, 90) } },
 	SeedBlast = { { "LeafSwirl", scale = 1.2 } },
 	BlowFlash = { { "WindVortex", scale = 1 }, { "LeafSwirl", scale = 1.4 } },

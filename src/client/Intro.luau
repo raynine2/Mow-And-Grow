@@ -63,6 +63,8 @@ local played = false
 local worldReady = false
 local previewing = false -- (a replay from the DEV panel: the server isn't told it was seen)
 local startAt: string? = nil -- (a DEV replay from a later beat: Intro.preview)
+local forceV2: boolean? = nil -- (a DEV replay of one version: true = the new opening, false = the old one, nil = Config)
+local showingV2 = false -- (this showing is the new opening: finish stops it)
 local generation = 0 -- bumps every showing
 
 -- what's said, in this order (N: a narration line over the pictures; L: the Mayor). Short: the pictures tell it.
@@ -1567,7 +1569,8 @@ local function finish()
 	end
 	playing = false
 	Film.stop(STEP)
-	if ((Config :: any).FILMS_V2 or {}).on then
+	if showingV2 then
+		showingV2 = false
 		pcall(function()
 			(require(script.Parent.Opening) :: any).stop()
 		end)
@@ -1683,6 +1686,8 @@ end
 
 local function play()
 	local cam = workspace.CurrentCamera
+	local force = forceV2 -- (read once: a DEV pick never carries over to a later showing)
+	forceV2 = nil
 	if playing or played or not cam then
 		return
 	end
@@ -1711,8 +1716,11 @@ local function play()
 		end
 	end)
 	-- (5 Nov) Films v2: the new opening (client/Opening) plays instead; the old one below stays for FILMS_V2.on = false
+	-- (the DEV panel's INTRO 1 / INTRO 2 pick one whatever the switch says)
 	local V2 = (Config :: any).FILMS_V2
-	if V2 and V2.on then
+	local useV2 = if force ~= nil then force else (V2 and V2.on) == true
+	if useV2 then
+		showingV2 = true
 		local Opening = require(script.Parent.Opening) :: any
 		local ok, ready = pcall(Opening.prepare)
 		if not playing or generation ~= mine then
@@ -1802,13 +1810,15 @@ State.on("data", maybePlay)
 
 -- The DEV panel's PLAY OPENING: the opening film again, on this client only (the run's "seen it" isn't touched).
 -- `from`: "glitch" starts at the sky tearing open (the clash), so the owner sees what changed without the rest.
-function Intro.preview(from: string?)
+-- `version`: 1 = the old opening, 2 = the new one (Films v2), nil = whichever Config.FILMS_V2.on picks.
+function Intro.preview(from: string?, version: number?)
 	if playing then
 		return
 	end
 	played = false
 	previewing = true
 	startAt = from
+	forceV2 = if version == 2 then true elseif version == 1 then false else nil
 	task.spawn(play)
 end
 

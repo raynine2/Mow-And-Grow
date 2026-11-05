@@ -34,9 +34,14 @@ local BUTTONS = {
 	{ "FIND A GNOME", "gnome", Color3.fromRGB(230, 180, 40) },
 	{ "ALMOST CLEAR", "almost", Color3.fromRGB(150, 90, 220) },
 	{ "CUT ONE CLUMP", "cutOne", Color3.fromRGB(150, 90, 220) },
-	{ "PLAY OPENING", "playOpening", Color3.fromRGB(255, 170, 40) }, -- (this client only: client/Intro.preview)
-	{ "PLAY ENDING", "playEnding", Color3.fromRGB(255, 70, 150) }, -- (this client only: client/Ending.preview)
-	{ "OPENING: CLASH", "playClash", Color3.fromRGB(255, 170, 40) }, -- (the opening from the sky tearing open)
+	-- (5 Nov, owner: "maak in dev panel weer iets aan intro 2 en ending 2") the films, on this client only
+	-- (client/Intro.preview, client/Ending.preview): 2 = the new ones (Films v2), 1 = the old ones, whatever
+	-- Config.FILMS_V2.on says
+	{ "INTRO 2 (NEW)", "playOpening2", Color3.fromRGB(255, 170, 40) },
+	{ "ENDING 2 (NEW)", "playEnding2", Color3.fromRGB(255, 70, 150) },
+	{ "INTRO 1 (OLD)", "playOpening1", Color3.fromRGB(200, 140, 60) },
+	{ "ENDING 1 (OLD)", "playEnding1", Color3.fromRGB(200, 80, 140) },
+	{ "INTRO 1: CLASH", "playClash", Color3.fromRGB(200, 140, 60) }, -- (the old opening from the sky tearing open)
 	{ "ENDING: CREDITS", "playCredits", Color3.fromRGB(255, 70, 150) }, -- (the ending from the credits on)
 	{ "MAYOR VOICE", "mayorVoice", Color3.fromRGB(170, 110, 255) }, -- (this client only: client/Babble's voices)
 }
@@ -81,18 +86,18 @@ local function build()
 			if b[2] == "mayorVoice" then
 				nextVoice(btn)
 				return
-			elseif b[2] == "playEnding" then
+			elseif b[2] == "playEnding2" or b[2] == "playEnding1" then
 				-- the ending film, credits and end screen, played right here without finishing the run
 				UI.close()
-				require(script.Parent.Ending).preview()
+				require(script.Parent.Ending).preview(nil, if b[2] == "playEnding2" then 2 else 1)
 				return
-			elseif b[2] == "playOpening" then
+			elseif b[2] == "playOpening2" or b[2] == "playOpening1" then
 				UI.close()
-				require(script.Parent.Intro).preview()
+				require(script.Parent.Intro).preview(nil, if b[2] == "playOpening2" then 2 else 1)
 				return
 			elseif b[2] == "playClash" then
 				UI.close()
-				require(script.Parent.Intro).preview("glitch")
+				require(script.Parent.Intro).preview("glitch", 1)
 				return
 			elseif b[2] == "playCredits" then
 				UI.close()

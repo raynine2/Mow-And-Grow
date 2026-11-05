@@ -2311,8 +2311,10 @@ function Ending.play(d: any)
 		end -- (in the teaser itself SKIP is hidden and does nothing: a second tap can't skip it)
 	end)
 	IntroUi.fade(0, 0.8)
+	-- (the DEV panel's ENDING 1 / ENDING 2 pick one whatever the switch says: d.version)
 	local V2 = (Config :: any).FILMS_V2
-	if V2 and V2.on then
+	local useV2 = if d.version == 2 then true elseif d.version == 1 then false else (V2 and V2.on) == true
+	if useV2 then
 		finaleV2()
 		wrapUp(d)
 		return
@@ -2426,9 +2428,9 @@ end
 
 -- The DEV panel's PLAY ENDING: the whole ending, the credits, the scene after them and the end screen, on this
 -- client only, without finishing the run (nobody is sent anywhere; BACK TO GAME on the end screen carries on).
--- `from` = "credits" starts at the credits.
-function Ending.preview(from: string?)
-	task.spawn(Ending.play, { gems = 0, time = 0, preview = true, from = from })
+-- `from` = "credits" starts at the credits. `version`: 1 = the old film, 2 = the new finale, nil = Config.FILMS_V2.on.
+function Ending.preview(from: string?, version: number?)
+	task.spawn(Ending.play, { gems = 0, time = 0, preview = true, from = from, version = version })
 end
 
 -- (Studio only, for tests) the workspace attribute EndingPreview = "<from>" plays this film from that scene in the game's

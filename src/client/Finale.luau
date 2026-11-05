@@ -1497,11 +1497,14 @@ local function lesson(): boolean
 		local k = ease.inn(math.clamp((now() - T.attack) / (T.catch - T.attack), 0, 1))
 		standW(R, fromR:Lerp(toR, k) + Vector3.new(0, math.sin(k * math.pi) * 1.2, 0), gv(C_STOP, 0))
 	end
-	if not shot(T.catch, function(k)
-		local mid = R.root.Position:Lerp(C.root.Position, 0.45)
-		local side = flat(C.root.Position - fromR).Unit:Cross(UP)
-		local p = mid + side * (12 - k * 2) + Vector3.new(0, -0.6, 0)
-		return look(p, mid + Vector3.new(0, 0.8, 0), -4), mm(28), mid
+	-- (side on, the lens far enough off to hold them both and closing in as he does: tested in Studio, from a fixed
+	-- 11 studs they were both out of the frame, one off each side)
+	local side = flat(gv(C_STOP, 0) - fromR).Unit:Cross(UP)
+	if not shot(T.catch, function(_k)
+		local a, b = R.root.Position, C.root.Position
+		local mid = a:Lerp(b, 0.5) + Vector3.new(0, 0.6, 0)
+		local d = math.max(9, (flat(b - a).Magnitude * 0.5 + 3) / 0.9)
+		return look(mid + side * d + Vector3.new(0, -1.2, 0), mid, -4), mm(24), mid
 	end, { hand = 0.3 }) then
 		return false
 	end

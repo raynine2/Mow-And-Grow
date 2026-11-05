@@ -7,16 +7,17 @@
 -- is checked again. Checksum: #source and hash = (h * 31 + byte) % 2147483647, as in HANDOFF.md.
 -- Not touched: client/HatchFx and client/HatchSpace (another session's hatch work, only in Studio).
 local HttpService = game:GetService("HttpService")
-local SHA = "ce4593604c07952f766c293af7ec0373397c327f"
+local SHA = "3a78d4fd13a41abb6ea6938786573c20bde41251"
 local ROWS = {
 	-- studio path, git path, class, old {len, hash} (nil = new script), new len, new hash
 	{ "client/Demon", "src/client/Demon.luau", "ModuleScript", { 16765, 2008863917 }, 20880, 1263055163 },
-	{ "client/Ending", "src/client/Ending.luau", "ModuleScript", { 89904, 138518819 }, 91123, 982933106 },
+	{ "client/Ending", "src/client/Ending.luau", "ModuleScript", { 89904, 138518819 }, 91419, 2052957462 },
 	{ "client/Film", "src/client/Film.luau", "ModuleScript", { 27907, 784949653 }, 28538, 1954711534 },
 	{ "client/FilmSheet", "src/client/FilmSheet.luau", "ModuleScript", { 8936, 3978950 }, 9267, 1828810865 },
-	{ "client/Intro", "src/client/Intro.luau", "ModuleScript", { 68682, 546277695 }, 69408, 201922613 },
+	{ "client/Intro", "src/client/Intro.luau", "ModuleScript", { 68682, 546277695 }, 70061, 488327117 },
 	{ "client/Life", "src/client/Life.luau", "ModuleScript", { 16112, 1014388094 }, 17202, 1533465536 },
 	{ "client/PackFx", "src/client/PackFx.luau", "ModuleScript", { 31204, 619662781 }, 31611, 936743537 },
+	{ "client/DevPanel", "src/client/DevPanel.luau", "ModuleScript", { 5456, 1901967215 }, 5896, 638875714 },
 	{ "server/Main", "src/server/Main.server.luau", "Script", { 14240, 124357307 }, 14347, 964737058 },
 	{ "shared/Config", "src/shared/Config.luau", "ModuleScript", { 109445, 1257112737 }, 110543, 170756471 },
 	{ "client/AnimeFx", "src/client/AnimeFx.luau", "ModuleScript", nil, 24713, 653644677 },

@@ -600,27 +600,6 @@ local function key(pos: Vector3?, color: Color3?, brightness: number?, range: nu
 	l.Range = range or 10
 end
 
--- A cel-shaded slash (SR 15.2: flat streaks of light): a crescent of white-hot segments with a gold rim, in the plane
--- facing `normal` through `center`, from a0 to a1 degrees, `radius` studs; it flashes, then thins away.
-local function slashArc(center: Vector3, normal: Vector3, up: Vector3, radius: number, a0: number, a1: number, color: Color3?)
-	local n = 16
-	local f = CFrame.lookAt(center, center + normal, up)
-	for i = 0, n - 1 do
-		local k0, k1 = i / n, (i + 1) / n
-		local g0, g1 = math.rad(a0 + (a1 - a0) * k0), math.rad(a0 + (a1 - a0) * k1)
-		local p0 = (f * CFrame.new(math.cos(g0) * radius, math.sin(g0) * radius, 0)).Position
-		local p1 = (f * CFrame.new(math.cos(g1) * radius, math.sin(g1) * radius, 0)).Position
-		local mid = (p0 + p1) / 2
-		local len = (p1 - p0).Magnitude
-		local thick = 0.2 + math.sin(math.pi * (k0 + k1) / 2) * radius * 0.16
-		local cf = CFrame.lookAt(mid, p1, f.LookVector)
-		local core = neon(Vector3.new(thick, 0.12, len + 0.15), cf, WHITE, 0)
-		local rim = neon(Vector3.new(thick * 1.9, 0.08, len + 0.3), cf * CFrame.new(0, -0.05, 0), color or GOLD, 0.35)
-		fadeOut(core, 0.24, Vector3.new(0.05, 0.12, len))
-		fadeOut(rim, 0.3, Vector3.new(0.05, 0.08, len))
-	end
-end
-
 -------------------------------------------------------------------------------------------------------------
 -- I. NIGHT
 -------------------------------------------------------------------------------------------------------------
@@ -928,6 +907,7 @@ local function actI(): boolean
 		local spot = Vector3.new(hand.X, at(DEMON_AT, 0).Y + 0.4, hand.Z)
 		fx("GroundSlam", spot, { scale = 1.8 })
 		fx("Dust", spot, { scale = 2.4 })
+		AnimeFx.hit(spot + Vector3.new(0, 2, 0), PINK, 10, true)
 		pcall(function()
 			AnimeFx.impact(armParts(D, "R"), "neg", { hold = 0.08, at = spot })
 		end)
@@ -1053,7 +1033,7 @@ local function actII(): boolean
 	shearsMode = "shoulder"
 	sfx("swingBlade", 1.2, 0.8)
 	sfx("bladeDraw", 1, 1.1)
-	AnimeFx.card(Config.FILMS_V2.ownerName, Config.FILMS_V2.ownerTitle, GOLD, 1.5)
+	AnimeFx.card(Config.FILMS_V2.ownerName, Config.FILMS_V2.ownerTitle, GOLD, 1.5, "主")
 	Film.punch(3)
 	local moonPos = S.moon.Position
 	if not shot(T.clawUp, function(k)
@@ -1133,6 +1113,7 @@ local function exchange(): boolean
 		Film.shake(0.7, 1.6)
 		fx("GroundSlam", at(R1, 0.3), { scale = 1.6 })
 		fx("Dust", at(R1, 0.5), { scale = 2.2 })
+		AnimeFx.hit(at(R1, 2), PINK, 9, true)
 		armPath()
 		-- the streak: from where he stood up onto the arm
 		local a, b = at(R1, 1.5), run[1]
@@ -1206,8 +1187,12 @@ local function exchange(): boolean
 				R:pose("snipOpen", 0.1, "out")
 			end
 		end)
-		local centre = c - UP * tune("ArmTop", 3.6)
-		slashArc(centre, side, dir, 6.5, -80 + i * 30, 100 + i * 30)
+		local centre = c - UP * tune("CutDepth", 3.4)
+		-- (round 2: the reference's flat cuts: a white crescent over a gold one across the arm, a hit bursting where
+		-- the blades meet it)
+		local across = (UP * (if i == 2 then -1 else 1) + side * 0.6).Unit
+		AnimeFx.cut(centre + dir * 0.5, centre + across * 4, centre - across * 4, GOLD, 11)
+		AnimeFx.hit(centre, PINK, 5.5, i == 3)
 		fx("CorruptHit", centre, { scale = 1.0 })
 		sfx("bladeSlash", 1.2, 0.95 + i * 0.08)
 		sfx("slice", 1.0, 0.8 + i * 0.12)
@@ -1378,11 +1363,12 @@ local function loadingRing(d: any, from: number, done: number)
 	label.Size = UDim2.fromScale(1.8, 0.2)
 	label.AnchorPoint = Vector2.new(0.5, 0)
 	label.Position = UDim2.fromScale(0.5, 0.97)
-	label.Font = Enum.Font.FredokaOne
+	-- (round 2: clean small spaced capitals, not the game's round font)
+	label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
 	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(255, 214, 240)
-	label.TextStrokeColor3 = Color3.fromRGB(60, 0, 40)
-	label.TextStrokeTransparency = 0.2
+	label.TextColor3 = Color3.fromRGB(255, 232, 246)
+	label.TextStrokeColor3 = Color3.fromRGB(40, 0, 26)
+	label.TextStrokeTransparency = 0.35
 	label.Text = ""
 	label.Parent = bb
 	local name = "ring" .. tostring(d)
@@ -1400,12 +1386,12 @@ local function loadingRing(d: any, from: number, done: number)
 				f.BackgroundTransparency = if dist == 0 then 0 elseif dist == 1 then 0.2 elseif dist == 2 then 0.4 else 0.6
 				f.BackgroundColor3 = if dist == 0 then Color3.fromRGB(255, 236, 248) else PINK
 			end
-			label.Text = string.format("ADAPTING %d%%", math.clamp(math.floor((tt - from) / (done - from) * 100), 0, 99))
+			label.Text = string.format("A\u{2009}D\u{2009}A\u{2009}P\u{2009}T\u{2009}I\u{2009}N\u{2009}G   %d%%", math.clamp(math.floor((tt - from) / (done - from) * 100), 0, 99))
 		elseif tt < done + 0.7 then
 			for _, f in dots do
 				f.BackgroundTransparency = if math.floor((tt - done) * 12) % 2 == 0 then 0 else 0.3
 			end
-			label.Text = "ADAPTED"
+			label.Text = "A\u{2009}D\u{2009}A\u{2009}P\u{2009}T\u{2009}E\u{2009}D"
 		else
 			bb:Destroy()
 			tracks[name] = nil
@@ -1490,6 +1476,7 @@ local function clang(): boolean
 	sfx("hit", 1.0, 0.6)
 	fx("Sparks", hit, { scale = 1.6, color = GOLD })
 	fx("Hit", hit, { scale = 1.0 })
+	AnimeFx.hit(hit, GOLD, 6, true)
 	task.delay(0.03, function()
 		AnimeFx.impact({ R.model, SH.model, table.unpack(armParts(D, "R")) }, "neg", { hold = 0.1, at = hit })
 	end)
@@ -1524,6 +1511,7 @@ local function clang(): boolean
 		sfx("bigHit", 0.9, 0.9)
 		Film.shake(0.9, 1.6)
 		Film.flash(WHITE, 0.6, 0.12)
+		AnimeFx.hit(flyFrom + UP, WHITE, 7, true)
 		R:pose("flung", 0.06, "snap")
 		R:shake(1)
 		shearsMode = "out"
@@ -1819,7 +1807,7 @@ local function stance(): boolean
 	local a = SH:tips()
 	fx("Glint", a:Lerp(SH.pivot.Position, 0.4), { scale = 1.2 })
 	sfx("chip", 0.8, 2)
-	AnimeFx.technique("ONE SNIP", "the Owner's ultimate", GOLD, 0.62)
+	AnimeFx.technique("ONE SNIP", "the Owner's ultimate", GOLD, 0.62, "断")
 	if not shot(T.ult, function(_k)
 		-- (framed on the blades where they are each frame, from the side away from his body: aimed at where the tips
 		-- were when the shot began, pass 2 saw only the ground)
@@ -1856,6 +1844,13 @@ local function snip(): boolean
 	-- 25. [SR 18.25, a white smear; TSB, whiteouts] ONE SNIP: white
 	music.fade(1, 0.05)
 	R:pose("ultCut", 0.06, "snap")
+	do
+		local mid = at(R3, CUT_Y + 1)
+		local cam = workspace.CurrentCamera
+		local right = if cam then flat(cam.CFrame.RightVector) else Vector3.xAxis
+		right = if right.Magnitude > 0.1 then right.Unit else Vector3.xAxis
+		AnimeFx.cut(mid + Vector3.new(0, 2, 0), mid - right * 30, mid + right * 30, GOLD, 70)
+	end
 	AnimeFx.smear(-4, 1)
 	AnimeFx.cover(WHITE, 0, 0, "white")
 	AnimeFx.slash(0, { y = 0.5, life = 0.2, width = 0.025 })
@@ -2220,6 +2215,7 @@ local function punch(): boolean
 	local fist = H:grip("Right").Position
 	fx("RingBurst", fist, { scale = 2.4, color = GOLD })
 	fx("Shock", fist, { scale = 2.6, color = GOLD })
+	AnimeFx.hit(fist, GOLD, 12, true)
 	task.defer(function()
 		local subjects = { H.model, R.model, SH.model }
 		for _, p in armParts(D2, "R") do

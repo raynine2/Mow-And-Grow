@@ -1138,7 +1138,7 @@ local function oneLeft(): boolean
 		SH:glow(math.clamp((now() - openFrom) / 2.2, 0, 1))
 	end
 	after(T.raise + 0.75, function()
-		AnimeFx.technique("ENDLESS LAWN", "the Owner's realm", GOLD, 1.0)
+		AnimeFx.technique("ENDLESS LAWN", "the Owner's realm", GOLD, 1.0, "庭")
 	end)
 	after(T.realm - 0.45, function()
 		AnimeFx.cover(WHITE, 0, 0.42, "white")
@@ -1609,6 +1609,7 @@ local function lesson(): boolean
 	Film.shake(0.9, 1.4)
 	local caughtAt = C:grip("Right").Position
 	fx("Sparks", caughtAt, { scale = 1.6, color = HOT })
+	AnimeFx.hit(caughtAt, HOT, 6, true)
 	burst(caughtAt, HOT, 6, 30, 0.8)
 	task.defer(function()
 		AnimeFx.impact({ C.model, R.model, SH.model }, "strobe", { states = { "ink", "neg", "ink", "neg" }, per = 0.06, at = caughtAt })
@@ -1713,6 +1714,12 @@ local function snip(): boolean
 	sfx("eggCrack", 1.4, 0.4)
 	AnimeFx.smear(8, -1, HOT)
 	AnimeFx.slash(-12, { y = 0.45, life = 0.18, width = 0.03, color = HOT })
+	-- (round 2: its cut across the sky, the reference's flat crescent, huge)
+	do
+		local root = C.root
+		local sky = root.Position + root.LookVector * 60 + Vector3.new(0, 34, 0)
+		AnimeFx.cut(sky, sky - root.RightVector * 40 + Vector3.new(0, 10, 0), sky + root.RightVector * 40 - Vector3.new(0, 6, 0), HOT, 120)
+	end
 	Film.shake(1, 1.2)
 	task.defer(function()
 		AnimeFx.impact({ C.model, SH.model }, "strobe", { states = { "neg", "red", "neg" }, per = 0.06 })
@@ -1810,7 +1817,7 @@ local function ending(): boolean
 	playPiece(3, 1.1)
 	after(T.card, function()
 		AnimeFx.cover(BLACK, 1, 0.05, "black")
-		AnimeFx.card("YOU", "the last glitch", PINK, 2.2)
+		AnimeFx.card("YOU", "the last glitch", PINK, 2.2, "影")
 		Film.shake(0.6, 1.4)
 		sfx("titleHit", 1, 0.8)
 	end)

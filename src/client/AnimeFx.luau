@@ -95,71 +95,157 @@ local function keep(i: Instance, life: number)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- subtitles: one at a time, bottom middle, just over the bottom bar
+-- (round 2, owner 5 Nov: "i dont like the text pop up i feel like its very sloppy please take inspiration from jjk")
+-- The films' type, after the clean, hard typography of jujutsu anime cards: a high-contrast serif for what's said and
+-- for names, small spaced capitals under a thin rule, a stamped seal with one character, and everything in and out on
+-- a cut (no bouncing, no sliding across the screen). Our own words and marks.
+-------------------------------------------------------------------------------------------------------------
+local SERIF = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Regular)
+local SERIF_BOLD = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Bold)
+local SERIF_BLACK = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Heavy)
+local SANS = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Medium)
+local SANS_BOLD = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+local CRIMSON = Color3.fromRGB(214, 30, 52)
+
+-- "OWNER" -> "O W N E R" with thin spaces (tracked capitals)
+local function tracked(text: string): string
+	local out = string.gsub(text, "([%w%p])", "%1\u{2009}")
+	return (string.gsub(out, "\u{2009}$", ""))
+end
+
+local function typeLabel(parent: Instance, text: string, font: Font, color: Color3, z: number): TextLabel
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.Text = text
+	t.FontFace = font
+	t.TextColor3 = color
+	t.TextScaled = true
+	t.ZIndex = z
+	t.Parent = parent
+	return t
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- subtitles: one at a time, bottom middle, just over the bottom bar: white serif in brackets, a hairline of black
+-- round it and a soft shadow; *starred* words in crimson. In on a quick fade, out on a quick fade.
 -------------------------------------------------------------------------------------------------------------
 local lastSub: Frame? = nil
--- (after the TSB reference: white serif type in brackets, a soft dark band behind it; *starred* words in red)
 function AnimeFx.sub(text: string, life: number?)
 	local g = gui()
 	if not g then
 		return
 	end
 	if lastSub and lastSub.Parent then
-		local old = lastSub
-		for _, d in old:GetDescendants() do
-			if d:IsA("TextLabel") then
-				tween(d, 0.08, { TextTransparency = 1 })
-			elseif d:IsA("UIStroke") then
-				tween(d, 0.08, { Transparency = 1 })
-			end
-		end
-		tween(old, 0.08, { BackgroundTransparency = 1 })
-		task.delay(0.1, function()
-			old:Destroy()
-		end)
+		lastSub:Destroy()
 	end
 	local bar = IntroUi.bar()
-	local root = frame(g, "Sub", BLACK, 1, Z_TEXT)
+	local root = Instance.new("Frame")
+	root.Name = "Sub"
+	root.BackgroundTransparency = 1
 	root.AnchorPoint = Vector2.new(0.5, 1)
-	root.Position = UDim2.fromScale(0.5, 1 - bar - 0.012)
-	root.Size = UDim2.fromScale(0.9, 0.085)
-	local band = Instance.new("UIGradient")
-	band.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0.45), NumberSequenceKeypoint.new(0.75, 0.45), NumberSequenceKeypoint.new(1, 1) })
-	band.Parent = root
-	local rich = string.gsub(text, "%*(.-)%*", '<font color="#FF3048">%1</font>')
-	-- (the game's own font everywhere in the films: the owner, 4 Nov, "just use the ui we have in game")
-	local t = label(root, "[" .. rich .. "]", Enum.Font.FredokaOne, WHITE, Z_TEXT + 1)
+	root.Position = UDim2.fromScale(0.5, 1 - bar - 0.02)
+	root.Size = UDim2.fromScale(0.86, 0.06)
+	root.ZIndex = Z_TEXT
+	root.Parent = g
+	local rich = string.gsub(text, "%*(.-)%*", '<font color="#D61E34">%1</font>')
+	local body = '<font color="#B8B4C4">[</font> ' .. rich .. ' <font color="#B8B4C4">]</font>'
+	local shadow = typeLabel(root, string.gsub(body, '<font color="#%x+">', '<font color="#000000">'), SERIF_BOLD, BLACK, Z_TEXT)
+	shadow.RichText = true
+	shadow.Size = UDim2.fromScale(1, 1)
+	shadow.Position = UDim2.new(0, 2, 0, 3)
+	shadow.TextTransparency = 1
+	local t = typeLabel(root, body, SERIF_BOLD, WHITE, Z_TEXT + 1)
 	t.RichText = true
-	t.AnchorPoint = Vector2.new(0.5, 0.5)
-	t.Position = UDim2.fromScale(0.5, 0.5)
-	t.Size = UDim2.fromScale(1, 0.62)
+	t.Size = UDim2.fromScale(1, 1)
 	t.TextTransparency = 1
-	local lim = Instance.new("UITextSizeConstraint")
-	lim.MaxTextSize = 36
-	lim.MinTextSize = 14
-	lim.Parent = t
-	local st = stroke(t, 1.6)
+	for _, l in { t, shadow } do
+		local lim = Instance.new("UITextSizeConstraint")
+		lim.MaxTextSize = 30
+		lim.MinTextSize = 14
+		lim.Parent = l
+	end
+	local st = stroke(t, 1.2)
 	st.Transparency = 1
-	tween(t, 0.1, { TextTransparency = 0 })
-	tween(st, 0.1, { Transparency = 0.3 })
-	tween(root, 0.15, { BackgroundTransparency = 0.25 })
+	tween(t, 0.12, { TextTransparency = 0 })
+	tween(st, 0.12, { Transparency = 0.2 })
+	tween(shadow, 0.12, { TextTransparency = 0.55 })
 	lastSub = root
 	local hold = life or math.clamp(0.9 + #text * 0.05, 1.2, 3.2)
 	task.delay(hold, function()
 		if root.Parent then
-			tween(t, 0.25, { TextTransparency = 1 })
-			tween(st, 0.25, { Transparency = 1 })
-			tween(root, 0.25, { BackgroundTransparency = 1 })
+			tween(t, 0.2, { TextTransparency = 1 })
+			tween(st, 0.2, { Transparency = 1 })
+			tween(shadow, 0.2, { TextTransparency = 1 })
 		end
 	end)
-	keep(root, hold + 0.3)
+	keep(root, hold + 0.25)
+end
+
+-- a seal: a square stamp in `color` with one character, pressed in (it lands from a little bigger, hard)
+local function seal(parent: Instance, mark: string, color: Color3, pos: UDim2, size: number, z: number): Frame
+	local f = Instance.new("Frame")
+	f.Name = "Seal"
+	f.BackgroundColor3 = color
+	f.BorderSizePixel = 0
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = pos
+	f.SizeConstraint = Enum.SizeConstraint.RelativeYY
+	f.Size = UDim2.fromScale(size, size)
+	f.ZIndex = z
+	f.Parent = parent
+	local inner = Instance.new("UIStroke")
+	inner.Color = color:Lerp(BLACK, 0.35)
+	inner.Thickness = 3
+	inner.Parent = f
+	local lum = color.R * 0.3 + color.G * 0.59 + color.B * 0.11
+	local t = typeLabel(f, mark, SANS_BOLD, if lum > 0.6 then Color3.fromRGB(28, 16, 10) else WHITE, z + 1)
+	t.AnchorPoint = Vector2.new(0.5, 0.5)
+	t.Position = UDim2.fromScale(0.5, 0.5)
+	t.Size = UDim2.fromScale(0.8, 0.8)
+	local sc = Instance.new("UIScale")
+	sc.Scale = 1.4
+	sc.Parent = f
+	tween(sc, 0.08, { Scale = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	return f
+end
+
+-- a thin rule that draws itself from the left
+local function rule(parent: Instance, color: Color3, pos: UDim2, width: number, z: number, delay: number?): Frame
+	local f = Instance.new("Frame")
+	f.Name = "Rule"
+	f.BackgroundColor3 = color
+	f.BorderSizePixel = 0
+	f.Position = pos
+	f.Size = UDim2.new(0, 0, 0, 2)
+	f.ZIndex = z
+	f.Parent = parent
+	task.delay(delay or 0, function()
+		if f.Parent then
+			tween(f, 0.28, { Size = UDim2.new(width, 0, 0, 2) }, Enum.EasingStyle.Quart)
+		end
+	end)
+	return f
+end
+
+-- a name revealed left to right (a hard edge sweeping across it)
+local function reveal(t: TextLabel, time: number)
+	local grad = Instance.new("UIGradient")
+	grad.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.49, 0),
+		NumberSequenceKeypoint.new(0.5, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	grad.Offset = Vector2.new(-0.5, 0)
+	grad.Parent = t
+	tween(grad, time, { Offset = Vector2.new(0.5, 0) }, Enum.EasingStyle.Quart)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- the name card: a dark band slams across on a slant, the name in huge letters drives in from the right, the title
--- under it in gold; a white cut runs along the band as it lands
+-- the name card: a dark wash from the left, a seal stamped in, the name in a heavy serif revealed left to right, a
+-- thin rule drawing under it, the title in small spaced capitals; on a cut it's gone. `mark`: the seal's character.
 -------------------------------------------------------------------------------------------------------------
-function AnimeFx.card(name: string, title: string, color: Color3?, life: number?)
+function AnimeFx.card(name: string, title: string, color: Color3?, life: number?, mark: string?)
 	local g = gui()
 	if not g then
 		return
@@ -172,97 +258,100 @@ function AnimeFx.card(name: string, title: string, color: Color3?, life: number?
 	root.Size = UDim2.fromScale(1, 1)
 	root.ZIndex = Z_TEXT
 	root.Parent = g
-	-- the band
-	local band = frame(root, "Band", Color3.fromRGB(10, 8, 14), 0.08, Z_TEXT)
-	band.AnchorPoint = Vector2.new(0.5, 0.5)
-	band.Size = UDim2.fromScale(1.6, 0.26)
-	band.Position = UDim2.fromScale(-0.9, 0.62)
-	band.Rotation = -7
-	local edgeTop = frame(band, "EdgeTop", c, 0, Z_TEXT)
-	edgeTop.Size = UDim2.new(1, 0, 0, 4)
-	local edgeBot = frame(band, "EdgeBottom", c, 0, Z_TEXT)
-	edgeBot.Size = UDim2.new(1, 0, 0, 4)
-	edgeBot.Position = UDim2.new(0, 0, 1, -4)
-	-- the name
-	local big = label(root, string.upper(name), Enum.Font.FredokaOne, WHITE, Z_TEXT + 1)
+	local wash = frame(root, "Wash", BLACK, 0, Z_TEXT)
+	wash.Size = UDim2.fromScale(0.75, 0.42)
+	wash.Position = UDim2.fromScale(0, 0.42)
+	local fade = Instance.new("UIGradient")
+	fade.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(0.55, 0.55), NumberSequenceKeypoint.new(1, 1) })
+	fade.Parent = wash
+	seal(root, mark or string.sub(name, 1, 1), c, UDim2.fromScale(0.105, 0.6), 0.13, Z_TEXT + 2)
+	local big = typeLabel(root, tracked(string.upper(name)), SERIF_BLACK, WHITE, Z_TEXT + 2)
 	big.AnchorPoint = Vector2.new(0, 0.5)
-	big.Size = UDim2.fromScale(0.62, 0.17)
-	big.Position = UDim2.fromScale(1.2, 0.585)
-	big.Rotation = -7
+	big.Position = UDim2.fromScale(0.17, 0.585)
+	big.Size = UDim2.fromScale(0.6, 0.115)
 	big.TextXAlignment = Enum.TextXAlignment.Left
-	stroke(big, 3)
-	local small = label(root, string.upper(title), Enum.Font.FredokaOne, c, Z_TEXT + 1)
+	reveal(big, 0.16)
+	rule(root, c, UDim2.fromScale(0.172, 0.655), 0.4, Z_TEXT + 2, 0.08)
+	local small = typeLabel(root, tracked(string.upper(title)), SANS, Color3.fromRGB(226, 222, 232), Z_TEXT + 2)
 	small.AnchorPoint = Vector2.new(0, 0.5)
-	small.Size = UDim2.fromScale(0.5, 0.06)
-	small.Position = UDim2.fromScale(1.3, 0.69)
-	small.Rotation = -7
+	small.Position = UDim2.fromScale(0.172, 0.695)
+	small.Size = UDim2.fromScale(0.42, 0.032)
 	small.TextXAlignment = Enum.TextXAlignment.Left
-	stroke(small, 2)
-	-- in: band sweeps, name drives in, title a beat later
-	tween(band, 0.16, { Position = UDim2.fromScale(0.5, 0.62) }, Enum.EasingStyle.Quart)
-	tween(big, 0.2, { Position = UDim2.fromScale(0.16, 0.585) }, Enum.EasingStyle.Back)
-	task.delay(0.1, function()
-		tween(small, 0.22, { Position = UDim2.fromScale(0.2, 0.69) }, Enum.EasingStyle.Quart)
-	end)
-	task.delay(0.15, function()
-		if root.Parent then
-			AnimeFx.slash(-7, { y = 0.62, life = 0.12, width = 0.012 })
+	small.TextTransparency = 1
+	task.delay(0.16, function()
+		if small.Parent then
+			tween(small, 0.18, { TextTransparency = 0 })
 		end
 	end)
-	-- a slow drift while it holds, then out to the left
-	tween(big, hold, { Position = UDim2.fromScale(0.12, 0.585) }, Enum.EasingStyle.Linear)
-	task.delay(hold, function()
-		if root.Parent then
-			tween(band, 0.18, { Position = UDim2.fromScale(2.2, 0.62) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-			tween(big, 0.16, { Position = UDim2.fromScale(-0.8, 0.585), TextTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-			tween(small, 0.16, { Position = UDim2.fromScale(-0.7, 0.69), TextTransparency = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-		end
-	end)
-	keep(root, hold + 0.3)
+	-- (a slow push while it holds, then gone on a cut)
+	tween(big, hold, { Position = UDim2.fromScale(0.178, 0.585) }, Enum.EasingStyle.Linear)
+	keep(root, hold)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- a slash: a long white blade of light across the screen at `angle` degrees, through (0.5, opts.y), shown for a
--- frame or two and gone (opts: y, life, width, color, x)
+-- (round 2, owner 5 Nov: "i dont feel like ur using good fx on some parts like the slash ... look at the video look
+-- how they did it") The reference's FX are flat, hard, bright shapes laid over the picture: a white wedge across the
+-- whole frame for two frames where a blade cuts (Sukuna Raid 18.25), a crescent of white over a coloured one at the
+-- cut, a star that bursts into a ring where a hit lands, a long flare streak. The textures are the game's own
+-- (shared/FxIds, assets/fx).
 -------------------------------------------------------------------------------------------------------------
+local FxIds = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("FxIds")) :: any
+local RECT_BLADE = { 92, 2, 72, 251 } -- (the blade texture's shape: a long wedge, its point up)
+local RECT_SLASH = { 34, 72, 444, 216 } -- (the crescent)
+
+-- a wedge across the screen through (x, y) (scale), pointing along `angle` degrees, `thick` and `len` scale of the
+-- picture's height / width
+local function wedge(g: Instance, x: number, y: number, angle: number, thick: number, len: number, color: Color3, z: number): ImageLabel
+	local abs = (g :: any).AbsoluteSize :: Vector2
+	local im = Instance.new("ImageLabel")
+	im.Name = "Wedge"
+	im.BackgroundTransparency = 1
+	im.Image = FxIds.blade
+	im.ImageRectOffset = Vector2.new(RECT_BLADE[1], RECT_BLADE[2])
+	im.ImageRectSize = Vector2.new(RECT_BLADE[3], RECT_BLADE[4])
+	im.ScaleType = Enum.ScaleType.Stretch
+	im.ImageColor3 = color
+	im.AnchorPoint = Vector2.new(0.5, 0.5)
+	im.Position = UDim2.fromScale(x, y)
+	im.Size = UDim2.fromOffset(math.max(abs.Y * thick, 2), abs.X * len)
+	im.Rotation = angle + 90
+	im.ZIndex = z
+	im.Parent = g
+	return im
+end
+
+-- A slash across the screen: a long hard white wedge at `angle` degrees through (0.5, opts.y), a thin sliver along
+-- it, for a couple of frames, gone without a fade (opts: y, x, life, width, color)
 function AnimeFx.slash(angle: number, opts: any?)
 	local g = gui()
 	if not g then
 		return
 	end
 	local o = opts or {}
-	local life = o.life or 0.09
-	local f = frame(g, "Slash", o.color or WHITE, 0, Z_PICTURE)
-	f.AnchorPoint = Vector2.new(0.5, 0.5)
-	f.Position = UDim2.fromScale(o.x or 0.5, o.y or 0.5)
-	f.Size = UDim2.fromScale(0.05, o.width or 0.03)
-	f.Rotation = angle
-	local grad = Instance.new("UIGradient")
-	grad.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 1),
-		NumberSequenceKeypoint.new(0.18, 0.15),
-		NumberSequenceKeypoint.new(0.5, 0),
-		NumberSequenceKeypoint.new(0.82, 0.15),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	grad.Parent = f
-	-- (the blade tapers: thinner at the ends)
-	local core = frame(f, "Core", WHITE, 0, Z_PICTURE)
-	core.AnchorPoint = Vector2.new(0.5, 0.5)
-	core.Position = UDim2.fromScale(0.5, 0.5)
-	core.Size = UDim2.fromScale(1, 0.35)
-	tween(f, life * 0.4, { Size = UDim2.fromScale(2.4, o.width or 0.03) }, Enum.EasingStyle.Quart)
-	task.delay(life * 0.5, function()
-		if f.Parent then
-			tween(f, life * 0.6, { BackgroundTransparency = 1, Size = UDim2.fromScale(2.6, 0.002) })
-			tween(core, life * 0.6, { BackgroundTransparency = 1 })
-		end
-	end)
-	keep(f, life + 0.05)
+	local life = math.max(o.life or 0.07, 0.05)
+	local w = (o.width or 0.03) * 3.2
+	local c = o.color or WHITE
+	local root = Instance.new("Frame")
+	root.Name = "Slash"
+	root.BackgroundTransparency = 1
+	root.Size = UDim2.fromScale(1, 1)
+	root.ZIndex = Z_PICTURE
+	root.Parent = g
+	local x, y = o.x or 0.5, o.y or 0.5
+	local main = wedge(root, x, y, angle, w, 1.5, c, Z_PICTURE)
+	local r = math.rad(angle + 90)
+	local off = 0.045 + w * 0.6
+	wedge(root, x + math.cos(r) * off * 0.6, y + math.sin(r) * off, angle, w * 0.16, 1.1, c, Z_PICTURE)
+	wedge(root, x - math.cos(r) * off * 0.9, y - math.sin(r) * off * 1.4, angle, w * 0.08, 0.8, c, Z_PICTURE)
+	-- (it shoots across: from short to full length in a frame)
+	local full = main.Size
+	main.Size = UDim2.fromOffset(full.X.Offset, full.Y.Offset * 0.55)
+	tween(main, 0.03, { Size = full }, Enum.EasingStyle.Linear)
+	keep(root, life)
 end
 
--- A smear: a huge white wedge across half the frame for a couple of frames, gone without a fade (the reference's
--- slash frames). `angle` degrees, `side` 1 or -1 (which way the wedge's thick end points).
+-- A smear: the reference's slash frame, three hard white wedges across most of the frame for a couple of frames.
+-- `angle` degrees, `side` 1 or -1 (which way their points go).
 function AnimeFx.smear(angle: number, side: number?, color: Color3?)
 	local g = gui()
 	if not g then
@@ -271,64 +360,155 @@ function AnimeFx.smear(angle: number, side: number?, color: Color3?)
 	local root = Instance.new("Frame")
 	root.Name = "Smear"
 	root.BackgroundTransparency = 1
-	root.AnchorPoint = Vector2.new(0.5, 0.5)
-	root.Position = UDim2.fromScale(0.5, 0.5)
-	root.Size = UDim2.fromScale(2.2, 0.55)
-	root.Rotation = angle
+	root.Size = UDim2.fromScale(1, 1)
 	root.ZIndex = Z_PICTURE
 	root.Parent = g
-	-- (a wedge: stacked bars, each shorter and thinner toward the tip, ragged)
-	local s = side or 1
-	for i = 0, 9 do
-		local k = i / 9
-		local bar = frame(root, "Bar", color or WHITE, 0, Z_PICTURE)
-		bar.AnchorPoint = Vector2.new(if s > 0 then 0 else 1, 0.5)
-		bar.Position = UDim2.fromScale(if s > 0 then 0.04 * k else 1 - 0.04 * k, 0.5 + (k - 0.5) * 0.85)
-		bar.Size = UDim2.fromScale(1 - k * 0.55 + (math.random() - 0.5) * 0.08, 0.11 - k * 0.006)
-		local grad = Instance.new("UIGradient")
-		grad.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, if s > 0 then 0 else 1), NumberSequenceKeypoint.new(0.8, 0.05), NumberSequenceKeypoint.new(1, if s > 0 then 1 else 0) })
-		grad.Parent = bar
+	local a = angle + (if (side or 1) > 0 then 0 else 180)
+	local r = math.rad(a + 90)
+	local c = color or WHITE
+	for i, spec in { { 0, 0.34, 1.7 }, { 0.2, 0.1, 1.3 }, { -0.17, 0.05, 1.0 } } do
+		wedge(root, 0.5 + math.cos(r) * spec[1] * 0.6, 0.5 + math.sin(r) * spec[1], a, spec[2], spec[3], c, Z_PICTURE + i)
 	end
 	keep(root, 0.07)
 end
 
--- A technique's title card (after the TSB reference's): its name huge in the middle, a line under it, for `life` s.
-function AnimeFx.technique(name: string, sub: string, color: Color3?, life: number?)
+-------------------------------------------------------------------------------------------------------------
+-- world FX: flat billboards in the world (they glow, light nothing, sit over the picture so they're never lost)
+-------------------------------------------------------------------------------------------------------------
+local function sprite(at: Vector3, image: string, rect: { number }?, size: Vector2, color: Color3, rot: number, z: number): (BillboardGui, ImageLabel)
+	local a = Instance.new("Attachment")
+	a.Name = "AnimeFx"
+	a.Position = at
+	a.Parent = workspace.Terrain
+	local bb = Instance.new("BillboardGui")
+	bb.Size = UDim2.fromScale(size.X, size.Y)
+	bb.LightInfluence = 0
+	bb.Brightness = 1.4
+	bb.AlwaysOnTop = true
+	bb.Parent = a
+	local im = Instance.new("ImageLabel")
+	im.BackgroundTransparency = 1
+	im.AnchorPoint = Vector2.new(0.5, 0.5)
+	im.Position = UDim2.fromScale(0.5, 0.5)
+	im.Size = UDim2.fromScale(1, 1)
+	im.Image = image
+	if rect then
+		im.ImageRectOffset = Vector2.new(rect[1], rect[2])
+		im.ImageRectSize = Vector2.new(rect[3], rect[4])
+	end
+	im.ImageColor3 = color
+	im.Rotation = rot
+	im.ZIndex = z
+	im.Parent = bb
+	table.insert(live, a)
+	return bb, im
+end
+
+local function gone(bb: BillboardGui, life: number)
+	local a = bb.Parent
+	task.delay(life, function()
+		if a then
+			local k = table.find(live, a)
+			if k then
+				table.remove(live, k)
+			end
+			a:Destroy()
+		end
+	end)
+end
+
+-- the angle (degrees, on screen) of the line from p0 to p1 as the camera sees it now
+local function screenAngle(p0: Vector3, p1: Vector3): number
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return 0
+	end
+	local a = cam:WorldToViewportPoint(p0)
+	local b = cam:WorldToViewportPoint(p1)
+	return math.deg(math.atan2(b.Y - a.Y, b.X - a.X))
+end
+AnimeFx.screenAngle = screenAngle
+
+-- A cut where a blade passes: a white crescent over a coloured one, along the blade's path from `from` to `to` (world)
+-- as the camera sees it, `size` studs across; it snaps open in a frame and thins away.
+function AnimeFx.cut(at: Vector3, from: Vector3, to: Vector3, color: Color3?, size: number?)
+	local s = size or 9
+	local rot = screenAngle(from, to)
+	local h = RECT_SLASH[4] / RECT_SLASH[3]
+	local bbG, glow = sprite(at, FxIds.slash, RECT_SLASH, Vector2.new(s * 1.3, s * 1.3 * h * 1.25), color or GOLD, rot, 1)
+	local bbW, core = sprite(at, FxIds.slash, RECT_SLASH, Vector2.new(s, s * h), WHITE, rot, 2)
+	glow.ImageTransparency = 0.1
+	bbW.Size = UDim2.fromScale(s * 0.55, s * h * 0.4)
+	tween(bbW, 0.035, { Size = UDim2.fromScale(s, s * h) }, Enum.EasingStyle.Linear)
+	task.delay(0.09, function()
+		tween(bbW, 0.16, { Size = UDim2.fromScale(s * 1.15, s * h * 0.05) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		tween(core, 0.16, { ImageTransparency = 0.6 })
+		tween(bbG, 0.2, { Size = UDim2.fromScale(s * 1.5, s * h * 0.1) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		tween(glow, 0.2, { ImageTransparency = 1 })
+	end)
+	gone(bbW, 0.3)
+	gone(bbG, 0.32)
+end
+
+-- A hit: a white star that bursts into a ring (the impact flipbook), a flare, and a long streak through it.
+-- `size` studs; `big` adds the spiky burst behind it.
+function AnimeFx.hit(at: Vector3, color: Color3?, size: number?, big: boolean?)
+	local s = size or 5
+	local c = color or GOLD
+	local bb, im = sprite(at, FxIds.impact, { 0, 0, 256, 256 }, Vector2.new(s, s), WHITE, math.random(0, 359), 4)
+	task.spawn(function()
+		for i = 1, 11 do
+			task.wait(0.022)
+			if not im.Parent then
+				return
+			end
+			im.ImageRectOffset = Vector2.new((i % 4) * 256, math.floor(i / 4) * 256)
+		end
+	end)
+	gone(bb, 0.3)
+	local bbF, flare = sprite(at, FxIds.flare, nil, Vector2.new(s * 1.6, s * 1.6), c:Lerp(WHITE, 0.5), 0, 3)
+	tween(bbF, 0.14, { Size = UDim2.fromScale(s * 2.4, s * 2.4) })
+	tween(flare, 0.16, { ImageTransparency = 1 })
+	gone(bbF, 0.2)
+	local bbS, streak = sprite(at, FxIds.glow, nil, Vector2.new(s * 7, s * 0.32), c, 0, 2)
+	tween(bbS, 0.25, { Size = UDim2.fromScale(s * 10, s * 0.06) }, Enum.EasingStyle.Quad)
+	tween(streak, 0.25, { ImageTransparency = 1 })
+	gone(bbS, 0.3)
+	if big then
+		local bbB, burst = sprite(at, FxIds.burst, nil, Vector2.new(s * 1.4, s * 1.4), c, math.random(0, 359), 1)
+		tween(bbB, 0.12, { Size = UDim2.fromScale(s * 2.6, s * 2.6) }, Enum.EasingStyle.Quart)
+		task.delay(0.08, function()
+			tween(burst, 0.14, { ImageTransparency = 1 })
+		end)
+		gone(bbB, 0.25)
+	end
+end
+
+-- A technique's title card: the picture darkened, a big seal at the left, the name in a heavy tracked serif between two
+-- thin rules, the line under it in small spaced capitals; in and out on cuts. `mark`: the seal's character.
+function AnimeFx.technique(name: string, sub: string, color: Color3?, life: number?, mark: string?)
 	local g = gui()
 	if not g then
 		return
 	end
+	local c = color or Color3.fromRGB(255, 214, 90)
 	local hold = life or 0.9
-	local root = frame(g, "Technique", BLACK, 0.35, Z_TEXT)
-	local big = label(root, string.upper(name), Enum.Font.FredokaOne, color or Color3.fromRGB(255, 214, 90), Z_TEXT + 1)
-	big.AnchorPoint = Vector2.new(0.5, 0.5)
-	big.Position = UDim2.fromScale(0.5, 0.46)
-	big.Size = UDim2.fromScale(0.86, 0.2)
-	big.Rotation = -3
-	stroke(big, 5)
-	local sc = Instance.new("UIScale")
-	sc.Scale = 1.45
-	sc.Parent = big
-	local small = label(root, sub, Enum.Font.FredokaOne, WHITE, Z_TEXT + 1)
-	small.AnchorPoint = Vector2.new(0.5, 0.5)
-	small.Position = UDim2.fromScale(0.5, 0.6)
-	small.Size = UDim2.fromScale(0.5, 0.045)
-	small.Rotation = -3
-	stroke(small, 1.5)
-	tween(sc, 0.12, { Scale = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-	task.delay(0.12, function()
-		if sc.Parent then
-			tween(sc, hold, { Scale = 0.94 }, Enum.EasingStyle.Linear)
-		end
-	end)
-	task.delay(hold, function()
-		if root.Parent then
-			tween(root, 0.08, { BackgroundTransparency = 1 })
-			tween(big, 0.08, { TextTransparency = 1 })
-			tween(small, 0.08, { TextTransparency = 1 })
-		end
-	end)
-	keep(root, hold + 0.1)
+	local root = frame(g, "Technique", BLACK, 0.42, Z_TEXT)
+	seal(root, mark or string.sub(name, 1, 1), c, UDim2.fromScale(0.2, 0.47), 0.2, Z_TEXT + 2)
+	local big = typeLabel(root, tracked(string.upper(name)), SERIF_BLACK, WHITE, Z_TEXT + 2)
+	big.AnchorPoint = Vector2.new(0, 0.5)
+	big.Position = UDim2.fromScale(0.29, 0.45)
+	big.Size = UDim2.fromScale(0.56, 0.14)
+	big.TextXAlignment = Enum.TextXAlignment.Left
+	reveal(big, 0.12)
+	rule(root, c, UDim2.fromScale(0.29, 0.365), 0.5, Z_TEXT + 2, 0)
+	rule(root, c, UDim2.fromScale(0.29, 0.535), 0.5, Z_TEXT + 2, 0.05)
+	local small = typeLabel(root, tracked(string.upper(sub)), SANS, Color3.fromRGB(226, 222, 232), Z_TEXT + 2)
+	small.AnchorPoint = Vector2.new(0, 0.5)
+	small.Position = UDim2.fromScale(0.29, 0.585)
+	small.Size = UDim2.fromScale(0.45, 0.034)
+	small.TextXAlignment = Enum.TextXAlignment.Left
+	keep(root, hold)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -625,29 +805,32 @@ function AnimeFx.logo(): Frame?
 end
 
 -------------------------------------------------------------------------------------------------------------
--- a word on its own (the finale's YOU.), a line under it
+-- a word on its own (the finale's THE FINAL FIGHT): black, the title in a heavy tracked serif, a rule drawing under it,
+-- the line under that in small spaced capitals a beat later
 -------------------------------------------------------------------------------------------------------------
 function AnimeFx.word(big: string, small: string?, color: Color3?): Frame?
 	local g = gui()
 	if not g then
 		return nil
 	end
+	local c = color or CRIMSON
 	local root = frame(g, "Word", BLACK, 0, Z_TEXT)
-	local t = label(root, big, Enum.Font.FredokaOne, color or WHITE, Z_TEXT + 1)
+	local t = typeLabel(root, tracked(string.upper(big)), SERIF_BLACK, WHITE, Z_TEXT + 1)
 	t.AnchorPoint = Vector2.new(0.5, 0.5)
-	t.Position = UDim2.fromScale(0.5, 0.46)
-	t.Size = UDim2.fromScale(0.7, 0.22)
-	t.TextTransparency = 1
-	tween(t, 0.06, { TextTransparency = 0 })
+	t.Position = UDim2.fromScale(0.5, 0.45)
+	t.Size = UDim2.fromScale(0.72, 0.13)
+	reveal(t, 0.2)
+	local r = rule(root, c, UDim2.fromScale(0.5, 0.535), 0.3, Z_TEXT + 1, 0.15)
+	r.AnchorPoint = Vector2.new(0.5, 0)
 	if small then
-		local s = label(root, small, Enum.Font.FredokaOne, Color3.fromRGB(200, 196, 214), Z_TEXT + 1)
+		local s = typeLabel(root, tracked(string.upper(small)), SANS, Color3.fromRGB(200, 196, 214), Z_TEXT + 1)
 		s.AnchorPoint = Vector2.new(0.5, 0.5)
-		s.Position = UDim2.fromScale(0.5, 0.62)
-		s.Size = UDim2.fromScale(0.6, 0.045)
+		s.Position = UDim2.fromScale(0.5, 0.59)
+		s.Size = UDim2.fromScale(0.4, 0.036)
 		s.TextTransparency = 1
-		task.delay(0.9, function()
+		task.delay(0.8, function()
 			if s.Parent then
-				tween(s, 0.5, { TextTransparency = 0 })
+				tween(s, 0.4, { TextTransparency = 0 })
 			end
 		end)
 	end

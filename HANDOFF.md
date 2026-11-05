@@ -1,4 +1,4 @@
-# Handoff: where Mow And Grow is (5 Nov 2026)
+# Handoff: where Mow And Grow is (6 Nov 2026)
 
 For the next person (and their Claude) picking this up. Read `CLAUDE.md` first for the rules, then this.
 
@@ -34,6 +34,7 @@ For the next person (and their Claude) picking this up. Read `CLAUDE.md` first f
 
 | Commit | What |
 |---|---|
+| `c92d562`+ | **6 Nov ~00:20–01:00, game-loop fixes (owner: "polish everything ... fix the game loop ... think about everything"). IN Studio** (`tools/studio-patches/2026-11-06-game-loop/install.luau` from `c3d5535`: Config, Quests, Run, Stats, Boss, Guide, FirstLawn, each old checksum checked; old copies in `MowALawnBackups.pre_gameloop_6nov`). **NOT published.** A friend whose new run joins a party in a later area gets the tool and bag a player would have there (`Config.CATCHUP`; they came in with Bare Hands); the onboarding quests count the run's areas cleared and bosses beaten (`run.counts`), so a step that comes up after its area was already done completes at once (tested in Studio: a late joiner jumps from step 5 to 9); "Mow the whole <area 2>" is goal 2; the boss step is named after the boss; auto-finished clumps count as cuts; the guide arrow points at the boss summon pad while a boss waits (`worldState.bossPad`; the first-run coach still owns the arrow while it's on); 2x Clippings doubles every clump's drops (it added +1); a saved run keeps its difficulty; mower upgrades can't be bought while mowers are locked; texts say "hand tools". Also `c4408b1`: News "Update 2". |
 | `866b956` | **6 Nov ~00:08: PUBLISHED at the owner's request**: the no-rewards pass (hold-to-cut, quest skip, sprint, grass toys), the funny moments (squash, bonk, shredder spit-out, emote wheel) and less waiting are live (the tab's "@ date" label cleared). Squash / bonk / spit-out still not seen with 2 players. |
 | `a786ba9` | **5 Nov ~23:10, less waiting (IN Studio: Config set straight from `a786ba9` after a checksum check; old copy in `MowALawnBackups.pre_funny_5nov.shared.Config.wait`; NOT published)** (owner's TikTok: first 30 s, progression, downtime, social, satisfying; 2/4/5 were done tonight, the first 30 s kept as they are): `FIRST_TIMER.autoStart` 6 -> 3, `PARTY_COUNTDOWN` 15 -> 10, `BOSS_DOWN_TIME` 10 -> 6. The loading screen and the lobby-to-run teleport (two loading screens for a first-timer) are the biggest wait left. |
 | `31bb9fa` | **5 Nov ~22:30–23:45: the funny moments are IN Studio** (`tools/studio-patches/2026-11-05-funny/install.luau`, from `58ed4aa`, checked; NOT published). Checked in Studio: the emote wheel opens on G, FLEX and SNEEZE play on the character, no errors. **Not seen yet (needs 2 players: Studio Test > Clients and Servers):** the TIMBER squash, bonking a friend, the Shredder spit-out (only in runs; the lobby has no working shredder), the EMOTE touch button on a phone. |
@@ -322,6 +323,12 @@ shows the empty world for a moment (live servers teleport instead).
   re-bake without asking.
 
 ## Studio vs. git: please read
+
+**6 Nov ~01:00: other work is in Studio but NOT in git:** the voxel bosses (`ReplicatedStorage.VoxelBosses`,
+`MowALawn.VoxelBossData`, `BossRig`, and changes to `Intro`, `Ending`, `BossView`, `FilmPanels`, `FilmSet`, plus
+`StarterPlayerScripts.VoxelBossIdle`) and the voxel pets (`ReplicatedStorage.VoxelPets`, `shared/VoxelPetAnim`). Only
+their Config flags (`VOXEL_BOSSES`, `VOXEL_PETS`) are in git (`c3d5535`, and the commit after it). Another session was editing Studio at the same time as
+this one: **don't Rojo sync**, and copy those scripts into git before anything else replaces them.
 
 **5 Nov, ~19:06 (Amsterdam): round 3b published** (owner: "sure"; File → Publish again; the tab's "@ 05 Nov 2026 18:04"
 mark went away). **Round 3b, installed ~18:05:** The owner: "The text needs to be simple ... look up a

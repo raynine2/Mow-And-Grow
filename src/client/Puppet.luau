@@ -37,6 +37,8 @@ end
 -------------------------------------------------------------------------------------------------------------
 local P = {}
 P.rest = {}
+-- (rh / lh: where a reaching wrist goes, in the chest's space: x right, y up, -z ahead; the shoulders sit at
+-- (+-0.85, 0.56, 0) and an arm reaches about 1.6. rpole / lpole: the way the elbow points.)
 P.stand = { -- relaxed, weight on one leg
 	LeftShoulder = v(2, 0, -6), RightShoulder = v(2, 0, 6), LeftElbow = v(8, 0, 0), RightElbow = v(8, 0, 0),
 	LeftHip = v(2, 0, -2), RightHip = v(-2, 4, 3), RightKnee = v(-4, 0, 0), Waist = v(0, 0, 1),
@@ -46,55 +48,50 @@ P.cool = { -- the hero stance: chin up, chest out, arms loose
 	LeftShoulder = v(-4, 0, -10), RightShoulder = v(-4, 0, 10), LeftElbow = v(12, 0, 0), RightElbow = v(12, 0, 0),
 	LeftHip = v(0, -6, -5), RightHip = v(0, 6, 5),
 }
--- Rayan with the shears resting on his right shoulder (the shears follow his right hand)
+-- Rayan with the shears resting on his right shoulder (his right hand by his shoulder, the blades behind him)
 P.shoulder = {
 	Waist = v(-3, -6, 0), Neck = v(-4, 8, 0),
-	RightShoulder = v(150, 10, 18), RightElbow = v(95, 0, 0), RightWrist = v(0, 0, 0),
+	rh = v(0.75, 0.75, -0.75), rpole = v(1, -1, 0.3),
 	LeftShoulder = v(4, 0, -8), LeftElbow = v(10, 0, 0),
 	LeftHip = v(0, -5, -4), RightHip = v(0, 5, 4),
 }
 -- dragging the closed shears behind him in his right hand
 P.drag = {
 	Waist = v(-2, 8, 0), Neck = v(-3, -6, 0),
-	RightShoulder = v(-28, 0, 14), RightElbow = v(4, 0, 0), RightWrist = v(-20, 0, 0),
+	rh = v(1.05, -0.95, 0.55), rpole = v(1, 0, -1),
 	LeftShoulder = v(6, 0, -8), LeftElbow = v(12, 0, 0),
 }
 -- two hands on the handles, shears open wide in front (the snip about to close)
 P.snipOpen = {
 	Waist = v(4, 18, 0), Neck = v(-8, -14, 0),
-	RightShoulder = v(70, -30, 62), RightElbow = v(28, 0, 0),
-	LeftShoulder = v(70, 30, -62), LeftElbow = v(28, 0, 0),
+	rh = v(1.2, -0.05, -1.05), lh = v(-1.2, -0.05, -1.05), rpole = v(1, -1, 0.5), lpole = v(-1, -1, 0.5),
 	LeftHip = v(28, 0, -8), LeftKnee = v(-34, 0, 0), RightHip = v(-22, 0, 8), RightKnee = v(-16, 0, 0),
 	hip = v(0, -0.45, 0),
 }
--- the snip closed: hands together, follow-through
+-- the snip closed: hands together, thrust through
 P.snipShut = {
 	Waist = v(10, -26, 0), Neck = v(-12, 22, 0),
-	RightShoulder = v(84, 22, 10), RightElbow = v(10, 0, 0),
-	LeftShoulder = v(84, -22, -10), LeftElbow = v(10, 0, 0),
+	rh = v(0.2, 0.05, -1.5), lh = v(-0.2, 0.05, -1.5), rpole = v(1, -1, 0.3), lpole = v(-1, -1, 0.3),
 	LeftHip = v(34, 0, -10), LeftKnee = v(-40, 0, 0), RightHip = v(-26, 0, 10), RightKnee = v(-20, 0, 0),
 	hip = v(0, -0.6, 0.2),
 }
 -- in the air, shears open overhead (a leaping snip)
 P.leapOpen = {
 	Waist = v(-16, 0, 0), Neck = v(-14, 0, 0),
-	RightShoulder = v(160, -20, 40), RightElbow = v(20, 0, 0),
-	LeftShoulder = v(160, 20, -40), LeftElbow = v(20, 0, 0),
+	rh = v(0.95, 1.75, -0.45), lh = v(-0.95, 1.75, -0.45), rpole = v(1, 0, 1), lpole = v(-1, 0, 1),
 	LeftHip = v(40, 0, -10), LeftKnee = v(-90, 0, 0), RightHip = v(-10, 0, 10), RightKnee = v(-60, 0, 0),
 }
 -- landed low after a cut, one knee down, shears out to the side
 P.landCut = {
 	Waist = v(26, -20, 0), Neck = v(-26, 18, 0),
-	RightShoulder = v(30, 0, 70), RightElbow = v(6, 0, 0),
-	LeftShoulder = v(40, 0, -30), LeftElbow = v(30, 0, 0),
+	rh = v(2.0, -0.1, -0.5), rpole = v(0, -1, 1), lh = v(-0.55, -1.25, -0.9), lpole = v(-1, 0, 1),
 	LeftHip = v(70, 0, -14), LeftKnee = v(-80, 0, 0), RightHip = v(-10, 0, 16), RightKnee = v(-100, 0, 0), RightAnkle = v(40, 0, 0),
 	hip = v(0, -1.55, 0),
 }
 -- blocked: the blade stopped, arms jarred back
 P.jolt = {
 	Waist = v(-16, 10, 0), Neck = v(-14, -10, 0),
-	RightShoulder = v(60, 0, 40), RightElbow = v(40, 0, 0),
-	LeftShoulder = v(60, 0, -40), LeftElbow = v(40, 0, 0),
+	rh = v(0.6, 0.45, -0.95), lh = v(-0.45, 0.4, -0.95), rpole = v(1, -1, 0), lpole = v(-1, -1, 0),
 	LeftHip = v(-10, 0, -6), RightHip = v(16, 0, 6), RightKnee = v(-20, 0, 0),
 }
 -- knocked flying: back arched, limbs trailing
@@ -108,42 +105,39 @@ P.flung = {
 P.kneel = {
 	Waist = v(30, 0, 0), Neck = v(-10, 0, 0),
 	RightShoulder = v(10, 0, 20), RightElbow = v(20, 0, 0),
-	LeftShoulder = v(50, 0, -10), LeftElbow = v(60, 0, 0),
+	lh = v(-0.45, -1.35, -0.85), lpole = v(-1, 0, 1),
 	LeftHip = v(80, 0, -6), LeftKnee = v(-80, 0, 0), RightHip = v(-10, 0, 10), RightKnee = v(-100, 0, 0), RightAnkle = v(30, 0, 0),
 	hip = v(0, -1.5, 0),
 }
 -- the neck crack: head tipped to one side, then the other
 P.crackL = { Waist = v(-2, 0, 0), Neck = v(0, 0, 26), LeftShoulder = v(2, 0, -8), RightShoulder = v(2, 0, 8), LeftElbow = v(10, 0, 0), RightElbow = v(10, 0, 0), LeftHip = v(0, -5, -4), RightHip = v(0, 5, 4) }
 P.crackR = { Waist = v(-2, 0, 0), Neck = v(0, 0, -26), LeftShoulder = v(2, 0, -8), RightShoulder = v(2, 0, 8), LeftElbow = v(10, 0, 0), RightElbow = v(10, 0, 0), LeftHip = v(0, -5, -4), RightHip = v(0, 5, 4) }
--- the ultimate's stance: low and wide, shears held level and open at the hip
+-- the ultimate's stance: low and wide, turned, both hands at the right hip, the shears level and open
 P.ultStance = {
 	Waist = v(14, 40, 0), Neck = v(-14, -38, 0),
-	RightShoulder = v(40, -50, 40), RightElbow = v(50, 0, 0),
-	LeftShoulder = v(60, 40, -60), LeftElbow = v(40, 0, 0),
+	rh = v(1.15, -0.85, 0.35), lh = v(0.35, -0.75, -0.55), rpole = v(1, 0, 1), lpole = v(-0.5, -1, 0),
 	LeftHip = v(46, 0, -22), LeftKnee = v(-62, 0, 0), RightHip = v(-20, 0, 26), RightKnee = v(-40, 0, 0),
 	hip = v(0, -1.2, 0),
 }
--- the ultimate's follow-through: turned right round, shears shut level
+-- the ultimate's follow-through: turned right round, the shears shut level out to the left
 P.ultCut = {
 	Waist = v(10, -56, 0), Neck = v(-10, 48, 0),
-	RightShoulder = v(80, 60, 30), RightElbow = v(8, 0, 0),
-	LeftShoulder = v(84, 20, -20), LeftElbow = v(12, 0, 0),
+	rh = v(-0.55, -0.3, -1.3), lh = v(-1.35, -0.35, -0.6), rpole = v(1, -1, 0), lpole = v(-1, -1, 0),
 	LeftHip = v(30, 0, -26), LeftKnee = v(-40, 0, 0), RightHip = v(-30, 0, 26), RightKnee = v(-36, 0, 0),
 	hip = v(0, -1.0, 0),
 }
--- crushed under the blow: braced, arms up
+-- crushed under the blow: braced, arms up over his head
 P.brace = {
 	Waist = v(20, 0, 0), Neck = v(-30, 0, 0),
-	RightShoulder = v(150, 0, 30), RightElbow = v(60, 0, 0),
-	LeftShoulder = v(150, 0, -30), LeftElbow = v(60, 0, 0),
+	rh = v(0.55, 1.6, -0.55), lh = v(-0.55, 1.6, -0.55), rpole = v(1, 0, 0), lpole = v(-1, 0, 0),
 	LeftHip = v(30, 0, -14), LeftKnee = v(-60, 0, 0), RightHip = v(-6, 0, 14), RightKnee = v(-50, 0, 0),
 	hip = v(0, -1.0, 0),
 }
--- THE PLAYER: the superhero landing (one knee, one fist on the ground)
+-- THE PLAYER: the superhero landing (one knee down, one fist on the ground, the other arm back)
 P.heroLand = {
 	Waist = v(38, 0, 0), Neck = v(-30, 0, 0),
-	RightShoulder = v(20, 0, 6), RightElbow = v(10, 0, 0), RightWrist = v(0, 0, 0),
-	LeftShoulder = v(-30, 0, -40), LeftElbow = v(30, 0, 0),
+	rh = v(0.55, -1.5, -0.75), rpole = v(1, 0, 1),
+	lh = v(-1.35, -0.45, 0.75), lpole = v(-1, -1, 0),
 	LeftHip = v(70, 0, -10), LeftKnee = v(-70, 0, 0), RightHip = v(-20, 0, 18), RightKnee = v(-110, 0, 0), RightAnkle = v(40, 0, 0),
 	hip = v(0, -1.6, 0),
 }
@@ -158,16 +152,16 @@ P.heroRise = {
 -- the wind-up: right fist pulled right back, left arm out front aiming, body coiled
 P.windup = {
 	Waist = v(8, 50, 0), Neck = v(-8, -46, 0),
-	RightShoulder = v(-40, 0, 40), RightElbow = v(120, 0, 0), RightWrist = v(0, 0, 0),
-	LeftShoulder = v(80, -30, -10), LeftElbow = v(10, 0, 0),
+	rh = v(1.05, 0.35, 0.95), rpole = v(1, -0.4, 1),
+	lh = v(-0.25, 0.45, -1.45), lpole = v(-1, -1, 0),
 	LeftHip = v(40, 0, -20), LeftKnee = v(-40, 0, 0), RightHip = v(-30, 0, 16), RightKnee = v(-30, 0, 0),
 	hip = v(0, -0.7, 0.3),
 }
--- the punch: right arm thrown dead straight, body turned through, front knee bent
+-- the punch: right arm thrown dead straight, body turned through, front knee bent, left fist back at the hip
 P.punch = {
 	Waist = v(14, -38, 0), Neck = v(-12, 34, 0),
-	RightShoulder = v(92, 30, 6), RightElbow = v(0, 0, 0), RightWrist = v(0, 0, 0),
-	LeftShoulder = v(-10, 0, -30), LeftElbow = v(90, 0, 0),
+	rh = v(0.55, 0.55, -2.4), rpole = v(1, -1, 0),
+	lh = v(-0.8, -0.25, 0.55), lpole = v(-1, -0.3, 1),
 	LeftHip = v(46, 0, -22), LeftKnee = v(-46, 0, 0), RightHip = v(-40, 0, 20), RightKnee = v(-10, 0, 0),
 	hip = v(0, -0.8, -0.6),
 }
@@ -176,23 +170,23 @@ P.lookUp = {
 	Waist = v(-10, 0, 0), Neck = v(-30, 0, 0),
 	LeftShoulder = v(4, 0, -8), RightShoulder = v(4, 0, 8), LeftElbow = v(10, 0, 0), RightElbow = v(10, 0, 0),
 }
--- arms folded? no: one hand raised, catching something above (the copy catches the blade)
+-- one hand up, catching something above and ahead (the copy catches the blade)
 P.catch = {
 	Waist = v(-6, 20, 0), Neck = v(-16, -10, 0),
-	RightShoulder = v(150, -10, 30), RightElbow = v(26, 0, 0), RightWrist = v(-20, 0, 0),
+	rh = v(0.45, 1.5, -1.0), rpole = v(1, 0, 0.5), RightWrist = v(-20, 0, 0),
 	LeftShoulder = v(0, 0, -10), LeftElbow = v(12, 0, 0),
 	LeftHip = v(4, -6, -6), RightHip = v(-4, 6, 6),
 }
 -- holding the shears up in one hand, looking at them
 P.inspect = {
 	Waist = v(-4, 10, 0), Neck = v(-6, -14, 0),
-	RightShoulder = v(70, -20, 20), RightElbow = v(70, 0, 0), RightWrist = v(0, 0, 0),
+	rh = v(0.4, 0.35, -1.25), rpole = v(1, -1, 0),
 	LeftShoulder = v(0, 0, -8), LeftElbow = v(10, 0, 0),
 }
 -- the realm opened: shears raised high in one hand
 P.raise = {
 	Waist = v(-10, 0, 0), Neck = v(-20, 0, 0),
-	RightShoulder = v(170, 0, 10), RightElbow = v(6, 0, 0),
+	rh = v(0.6, 2.0, -0.25), rpole = v(1, 0, 0),
 	LeftShoulder = v(10, 0, -30), LeftElbow = v(20, 0, 0),
 	LeftHip = v(0, 0, -8), RightHip = v(0, 0, 8),
 }

@@ -210,6 +210,17 @@ local look = Film.look
 local ease = { out = Film.out, inn = Film.inn, inOut = Film.inOut, smooth = Film.smooth }
 
 -- a puppet standing at `p` facing `q` (world points; on the ground at p's height)
+-- (Studio, for whoever tunes the film: a workspace attribute Tune_<name> = a number overrides a value while it plays)
+local function tune(name: string, default: number): number
+	if RunService:IsStudio() then
+		local v = workspace:GetAttribute("Tune_" .. name)
+		if type(v) == "number" then
+			return v
+		end
+	end
+	return default
+end
+
 local function standW(pup: any, p: Vector3, q: Vector3)
 	local dir = flat(q - p)
 	if dir.Magnitude < 1e-3 then
@@ -1537,9 +1548,10 @@ local function lesson(): boolean
 		local k = math.clamp((tt - dashAt) / (T.catch - dashAt), 0, 1)
 		local e = 1 - (1 - k) ^ 2
 		standW(R, fromR:Lerp(toR, e) + Vector3.new(0, math.sin(k * math.pi) * 0.7, 0), gv(C_STOP, 0))
-		if k > 0 and k < 1 and os.clock() - lastGhost > 0.035 then
+		-- (sparse and faint: dense, from behind him, they piled up into one glowing blob that hid him)
+		if k > 0 and k < 1 and os.clock() - lastGhost > 0.055 then
 			lastGhost = os.clock()
-			R:ghost(Color3.fromRGB(255, 214, 120), 0.62, 0.3)
+			R:ghost(Color3.fromRGB(255, 214, 120), 0.84, 0.2)
 		end
 	end
 	after(dashAt, function()
@@ -1559,9 +1571,10 @@ local function lesson(): boolean
 		local d = math.clamp((tt - dashAt) / (T.catch - dashAt), 0, 1)
 		local base = fromR:Lerp(toR, 1 - (1 - d) ^ 1.6)
 		local push = (1 - d) * k * 1.5
-		local cp = base - toward * (7.5 - push) + right * 2.6 + UP * 2.4
+		-- (on his left: on his right the player stood in the frame)
+		local cp = base - toward * (tune("LungeBack", 7.5) - push) + right * tune("LungeSide", -4.6) + UP * tune("LungeUp", 2.4)
 		local aim = gv(C_STOP, 0) + UP * 2.2
-		return look(cp, aim, -3), mm(30), aim
+		return look(cp, aim, 3), mm(tune("LungeMM", 30)), aim
 	end, { hand = 0.3, keep = function()
 		return { R.root.Position + UP, C.root.Position + UP, C.root.Position - UP * 1.8 }
 	end }) then

@@ -7,6 +7,9 @@
 --   * A clump going down under a mower: a soft grass-green ring rolls out over the ground (a VFX Forge mesh effect:
 --     Model > Start/End parts, played with VFXLib.Forge) and a few cut blades drift down.
 --   * The Mega Scythe: a few violet wisps rise off every clump it bites, the reaper's touch.
+--   * (5 Nov, grass toys) Trample paths: running over the lawn on foot leaves a narrow, faint trail behind you (and
+--     other players near you), like drawing on the lawn; it fades after a while (Config.GRASS_TOYS.trample). Same
+--     stripes, a pool of their own so footpaths never use up the mowers' stripes.
 -- Pooled: the stripe parts are reused, one chute per mower, nothing left running when a mower goes away.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,6 +17,8 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local State = require(script.Parent.State)
+local PhonePerf = require(script.Parent.PhonePerf)
+local TOYS = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config")).GRASS_TOYS
 local FxIds = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("FxIds")) :: { [string]: string }
 local VFXLib = ReplicatedStorage:WaitForChild("VFXLib")
 local Assets = require(VFXLib:WaitForChild("Assets"))
@@ -45,12 +50,16 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- lawn stripes
 -------------------------------------------------------------------------------------------------------------
-type Stripe = { part: Part, born: number, fading: boolean }
-local stripes: { Stripe } = {}
-local nextStripe = 1
+type Stripe = { part: Part, born: number, fading: boolean, tween: Tween? }
+-- a pool of stripe pieces, reused round-robin: the mowers' and the footpaths' (5 Nov)
+type Pool = { list: { Stripe }, nextOne: number, max: number, life: number, fade: number }
+local mowPool: Pool = { list = {}, nextOne = 1, max = STRIPE_MAX, life = STRIPE_LIFE, fade = STRIPE_FADE }
+local footPool: Pool = { list = {}, nextOne = 1, max = TOYS.trampleMax, life = TOYS.trampleLife, fade = TOYS.trampleFade }
 local layer = 0 -- each new piece sits a hair higher, so crossing stripes never flicker
 
-local function stripePart(): Stripe
+local function stripePart(pool: Pool): Stripe
+	local stripes = pool.list
+	local nextStripe = pool.nextOne
 	local s = stripes[nextStripe]
 	if not s then
 		local p = Instance.new("Part")
@@ -67,23 +76,27 @@ local function stripePart(): Stripe
 		s = { part = p, born = 0, fading = false }
 		stripes[nextStripe] = s
 	end
-	nextStripe = nextStripe % STRIPE_MAX + 1
+	pool.nextOne = nextStripe % pool.max + 1
 	return s
 end
 
--- Lay one piece of stripe from `a` to `b` (both on the ground), `width` wide.
-local function layStripe(a: Vector3, b: Vector3, width: number, color: Color3)
+-- Lay one piece of stripe from `a` to `b` (both on the ground), `width` wide (`pool`, `transparency`: a footpath's).
+local function layStripe(a: Vector3, b: Vector3, width: number, color: Color3, pool: Pool?, transparency: number?)
 	local d = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
 	if d.Magnitude < 0.05 then
 		return
 	end
 	layer = (layer + 1) % 40
-	local s = stripePart()
+	local s = stripePart(pool or mowPool)
+	if s.tween then
+		s.tween:Cancel() -- (5 Nov) a piece taken back mid-fade: stop the fade, or it fades the new piece away
+		s.tween = nil
+	end
 	local mid = (a + b) / 2
 	s.part.Size = Vector3.new(width, 0.05, d.Magnitude + 0.5)
 	s.part.CFrame = CFrame.lookAt(mid, mid + d) + Vector3.new(0, 0.03 + layer * 0.0015, 0)
 	s.part.Color = color
-	s.part.Transparency = 0.45
+	s.part.Transparency = transparency or 0.45
 	s.born = os.clock()
 	s.fading = false
 end
@@ -199,6 +212,95 @@ local function collect(): { Model }
 	return list
 end
 
+-- The lawn under `pos` (its colour and height), or nil off the grass (paths, the yard, the plaza).
+local function lawnAt(pos: Vector3): (Color3?, number)
+	local hit = workspace:Raycast(pos + Vector3.new(0, 3, 0), Vector3.new(0, -8, 0), groundRay)
+	-- (Potato Mode makes the ground smooth plastic: its real material is kept in PotatoMat)
+	if hit and (hit.Material == Enum.Material.Grass or hit.Instance:GetAttribute("PotatoMat") == "Grass") then
+		local inst = hit.Instance
+		local color = if inst:IsA("BasePart") then inst.Color else workspace.Terrain:GetMaterialColor(Enum.Material.Grass)
+		return color, hit.Position.Y
+	end
+	return nil, pos.Y
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- trample paths (5 Nov, Config.GRASS_TOYS.trample): a narrow, faint trail behind feet on the lawn
+-------------------------------------------------------------------------------------------------------------
+local feet: { [Player]: { last: Vector3?, seen: number } } = {}
+
+-- Where `p`'s feet are on the ground, if they're walking (not riding, not pushing a mower, not in the air).
+local function feetOf(p: Player): Vector3?
+	local char = p.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.SeatPart or char:FindFirstChild("PushMowerModel") then
+		return nil
+	end
+	-- (in the air: no trail; other players' FloorMaterial isn't kept up to date here, their state is)
+	local state = hum:GetState()
+	if state == Enum.HumanoidStateType.Freefall or state == Enum.HumanoidStateType.Jumping or (p == player and hum.FloorMaterial == Enum.Material.Air) then
+		return nil
+	end
+	local v = root.AssemblyLinearVelocity
+	if v.X * v.X + v.Z * v.Z < TOYS.trampleMinSpeed * TOYS.trampleMinSpeed then
+		return nil
+	end
+	return root.Position - Vector3.new(0, hum.HipHeight + root.Size.Y / 2, 0)
+end
+
+local function trampleOne(p: Player, pos: Vector3, now: number)
+	local st = feet[p]
+	if not st then
+		st = { last = nil, seen = now }
+		feet[p] = st
+	end
+	st.seen = now
+	local last = st.last
+	if not last then
+		st.last = pos
+		return
+	end
+	local moved = Vector3.new(pos.X - last.X, 0, pos.Z - last.Z)
+	if moved.Magnitude < TOYS.trampleStep then
+		return
+	end
+	st.last = pos
+	if moved.Magnitude > 8 then -- (a teleport is no trail)
+		return
+	end
+	local ground, y = lawnAt(pos)
+	if ground then
+		-- flattened grass: the light/dark tone of a mower stripe, a little darker, and much fainter
+		local color = stripeColor(ground, moved.Unit):Lerp(Color3.new(ground.R * 0.8, ground.G * 0.85, ground.B * 0.75), 0.4)
+		layStripe(Vector3.new(last.X, y, last.Z), Vector3.new(pos.X, y, pos.Z), TOYS.trampleWidth, color, footPool, TOYS.trampleTransparency)
+	end
+end
+
+local function trample(now: number, eye: Vector3)
+	if not TOYS.trample then
+		return
+	end
+	local low = player:GetAttribute("Potato") or PhonePerf.on
+	footPool.max = if low then TOYS.trampleMaxLow else TOYS.trampleMax
+	for _, p in Players:GetPlayers() do
+		if p ~= player and (low or not TOYS.trampleOthers) then
+			continue
+		end
+		local pos = feetOf(p)
+		if pos and (p == player or (pos - eye).Magnitude < TOYS.trampleNear) then
+			trampleOne(p, pos, now)
+		elseif feet[p] then
+			feet[p].last = nil -- (stopped, jumped or rode: start the trail fresh)
+		end
+	end
+	for p, st in feet do
+		if now - st.seen > 5 or not p.Parent then
+			feet[p] = nil
+		end
+	end
+end
+
 local acc = 0
 RunService.Heartbeat:Connect(function(dt)
 	acc += dt
@@ -256,11 +358,15 @@ RunService.Heartbeat:Connect(function(dt)
 			mowers[m] = nil
 		end
 	end
+	trample(now, cam.CFrame.Position)
 	-- old stripes fade away
-	for _, s in stripes do
-		if not s.fading and s.born > 0 and now - s.born > STRIPE_LIFE then
-			s.fading = true
-			TweenService:Create(s.part, TweenInfo.new(STRIPE_FADE), { Transparency = 1 }):Play() -- (from its 0.45)
+	for _, pool in { mowPool, footPool } do
+		for _, s in pool.list do
+			if not s.fading and s.born > 0 and now - s.born > pool.life then
+				s.fading = true
+				s.tween = TweenService:Create(s.part, TweenInfo.new(pool.fade), { Transparency = 1 }) -- (from its 0.45)
+				;(s.tween :: Tween):Play()
+			end
 		end
 	end
 end)

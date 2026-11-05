@@ -3,6 +3,9 @@
 -- shrinking, ends in a little sparkle with a bloop that climbs in pitch as you hoover up a pile, and then flies
 -- on to the HUD (Hud "lootPicked"). A new Index entry gets a notice.
 -- Everything here is only for looks; the server decides what's picked up.
+-- (5 Nov, grass toys, Config.GRASS_TOYS) A bundle someone runs into is kicked by the server (server/Loot): here it
+-- hops and tumbles from where it was to where it went, with a little grass puff and a rustle. Jumping onto a bundle
+-- bounces your own character up like a little trampoline (smaller each bounce in a row) and squashes the bundle.
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,6 +24,11 @@ local player = Players.LocalPlayer
 type Pop = { model: Model | BasePart, target: CFrame, t: number, scale: number? }
 local pops: { Pop } = {}
 local spinners: { [Instance]: CFrame } = {}
+local TOYS = Config.GRASS_TOYS
+local bundles: { [Model]: boolean } = {} -- bundles on the ground (for jumping on)
+type Roll = { model: Model, from: Vector3, to: CFrame, t: number, axis: Vector3, scale: number? }
+local rolls: { Roll } = {}
+local onKick: (Model, number?) -> () = function() end -- set below, once the puff exists
 
 -- (28 Oct, owner's brief: "a gem pops up from the stump") set below, once bodyColor exists
 local gemGlint: (Instance, Vector3) -> () = function() end
@@ -74,8 +82,15 @@ local function onDrop(m: Instance)
 	end
 	table.insert(pops, { model = m :: any, target = target, t = 0 })
 	setPivot(m, target * CFrame.new(0, -1, 0))
+	if m:IsA("Model") and m.Name == "Bundle" then
+		bundles[m] = true
+		m:GetAttributeChangedSignal("Kick"):Connect(function()
+			onKick(m)
+		end)
+	end
 	m.Destroying:Connect(function()
 		spinners[m] = nil
+		bundles[m :: any] = nil
 		if m:GetAttribute("Owner") == player.UserId then
 			local ok, copy = pcall(function()
 				m.Archivable = true
@@ -115,7 +130,32 @@ if firstWorld then
 	watchWorld(firstWorld)
 end
 
+-- A kicked bundle's hop-and-roll: from where it was to where the server put it, along a low arc, tumbling over
+-- forwards, then the landing squash (the pops' spring). Covers the server's snap.
+local function stepRolls(dt: number)
+	for i = #rolls, 1, -1 do
+		local r = rolls[i]
+		r.t += dt
+		local m = r.model
+		local k = math.min(r.t / TOYS.kickTime, 1)
+		if not m.Parent then
+			table.remove(rolls, i)
+		elseif k >= 1 then
+			table.remove(rolls, i)
+			setPivot(m, r.to)
+			table.insert(pops, { model = m, target = r.to, t = 0.35, scale = r.scale })
+		else
+			local e = 1 - (1 - k) * (1 - k) -- fast off the foot, slowing as it lands
+			local pos = r.from:Lerp(r.to.Position, e) + Vector3.new(0, math.sin(k * math.pi) * TOYS.kickHop, 0)
+			-- one full tumble over forwards that ends upright in its final turn
+			local roll = CFrame.fromAxisAngle(r.axis, (1 - e) * -math.pi * 2)
+			setPivot(m, CFrame.new(pos) * roll * r.to.Rotation)
+		end
+	end
+end
+
 RunService.RenderStepped:Connect(function(dt)
+	stepRolls(dt)
 	for i = #pops, 1, -1 do
 		local p = pops[i]
 		p.t += dt
@@ -281,6 +321,139 @@ local function pickup(d: any, again: boolean)
 		pickSound(d.kind)
 	end
 end
+
+-------------------------------------------------------------------------------------------------------------
+-- grass toys: kicked bundles and jumping on them (Config.GRASS_TOYS)
+-------------------------------------------------------------------------------------------------------------
+-- A little puff of grass bits where a kicked bundle leaves the ground (none in Potato Mode).
+local function puff(pos: Vector3, color: Color3)
+	if player:GetAttribute("Potato") then
+		return
+	end
+	local a = Instance.new("Attachment")
+	a.Parent = workspace.Terrain
+	a.Position = pos + Vector3.new(0, 0.3, 0)
+	local e = Instance.new("ParticleEmitter")
+	e.Enabled = false
+	e.Texture = FxIds.splinter or FxIds.glow or "rbxasset://textures/particles/sparkles_main.dds"
+	e.Color = ColorSequence.new(color:Lerp(Color3.new(1, 1, 0.85), 0.2), color)
+	e.LightInfluence = 1
+	e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.28), NumberSequenceKeypoint.new(1, 0.1) })
+	e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.7, 0.2), NumberSequenceKeypoint.new(1, 1) })
+	e.Lifetime = NumberRange.new(0.3, 0.55)
+	e.Speed = NumberRange.new(4, 8)
+	e.SpreadAngle = Vector2.new(60, 60)
+	e.EmissionDirection = Enum.NormalId.Top
+	e.Acceleration = Vector3.new(0, -30, 0)
+	e.Rotation = NumberRange.new(0, 360)
+	e.RotSpeed = NumberRange.new(-300, 300)
+	e.Parent = a
+	e:Emit(7)
+	Debris:AddItem(a, 0.8)
+end
+
+-- the camera's distance to `pos`: sounds and puffs only for kicks you could see
+local function nearCam(pos: Vector3, within: number): boolean
+	local cam = workspace.CurrentCamera
+	return cam ~= nil and (cam.CFrame.Position - pos).Magnitude < within
+end
+
+-- Stop whatever `m` is doing (its landing squash, an earlier roll): back at full size and on its resting spot.
+-- Returns that size and spot.
+local function settleBundle(m: Model): (number, CFrame)
+	local scale, rest = m:GetScale(), m:GetPivot()
+	for i = #pops, 1, -1 do
+		if pops[i].model == m then
+			scale, rest = pops[i].scale or scale, pops[i].target
+			table.remove(pops, i)
+		end
+	end
+	for i = #rolls, 1, -1 do
+		if rolls[i].model == m then
+			scale, rest = rolls[i].scale or scale, rolls[i].to
+			table.remove(rolls, i)
+		end
+	end
+	m:ScaleTo(scale)
+	setPivot(m, rest)
+	return scale, rest
+end
+
+onKick = function(m: Model, tries: number?)
+	local from = m:GetAttribute("KickFrom")
+	local yaw = m:GetAttribute("KickYaw")
+	if typeof(from) ~= "Vector3" or type(yaw) ~= "number" or not m.Parent then
+		return
+	end
+	-- where the server put it; if its move hasn't reached us yet (still on the old spot), wait a few frames for it
+	local pivotNow = m:GetPivot().Position
+	local flat = Vector3.new(pivotNow.X - (from :: Vector3).X, 0, pivotNow.Z - (from :: Vector3).Z).Magnitude
+	if flat < 0.5 and (tries or 0) < 10 then
+		task.delay(0.03, onKick, m, (tries or 0) + 1)
+		return
+	end
+	local to = CFrame.new(pivotNow) * CFrame.Angles(0, yaw :: number, 0)
+	local scale = settleBundle(m)
+	local dir = Vector3.new(to.X - (from :: Vector3).X, 0, to.Z - (from :: Vector3).Z)
+	local axis = if dir.Magnitude > 0.05 then Vector3.yAxis:Cross(dir.Unit) else Vector3.xAxis
+	table.insert(rolls, { model = m, from = from :: Vector3, to = to, t = 0, axis = axis, scale = scale })
+	setPivot(m, CFrame.new(from :: Vector3) * to.Rotation)
+	if nearCam(from :: Vector3, 70) then
+		puff(from :: Vector3, bodyColor(m))
+		Sound.play(TOYS.kickSound, 0.12, if nearCam(from :: Vector3, 20) then 0.8 else 0.4)
+	end
+end
+
+-- Jumping on a bundle: your feet coming down onto its top while you fall (bundles don't collide, so this is the
+-- moment you'd land on it) sends you back up, once per landing; bounces in a row get smaller until you just land.
+local bounceChain, bounceAt = 0, 0
+local THICK = 1.2 -- a bundle lying down is about this tall (shared/BundleVoxel.thickness of a 2.6 bundle: 1.16)
+local function tryBounce()
+	if not TOYS.bounce or next(bundles) == nil then
+		return
+	end
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.SeatPart or hum.Health <= 0 then
+		return
+	end
+	local now = os.clock()
+	local v = root.AssemblyLinearVelocity
+	if hum.FloorMaterial ~= Enum.Material.Air and now - bounceAt > 0.3 then
+		bounceChain = 0 -- back on the ground: the next bounce is a full one
+	end
+	if v.Y > -4 or now - bounceAt < 0.25 then
+		return
+	end
+	local p = root.Position
+	local feet = p.Y - hum.HipHeight - root.Size.Y / 2
+	for m in bundles do
+		local at = m:GetPivot().Position
+		local dx, dz = at.X - p.X, at.Z - p.Z
+		if dx * dx + dz * dz < TOYS.bounceRadius * TOYS.bounceRadius and feet <= at.Y + THICK + 0.4 and feet >= at.Y - 0.6 then
+			local speed = TOYS.bounceSpeed * TOYS.bounceDecay ^ bounceChain
+			if speed < TOYS.bounceMin then
+				return
+			end
+			bounceChain += 1
+			bounceAt = now
+			root.AssemblyLinearVelocity = Vector3.new(v.X, speed, v.Z)
+			-- squash the bundle (the pops' landing spring), unless it's rolling
+			local busy = false
+			for _, r in rolls do
+				busy = busy or r.model == m
+			end
+			if not busy then
+				local scale, rest = settleBundle(m)
+				table.insert(pops, { model = m, target = rest, t = 0.35, scale = scale })
+			end
+			Sound.playAt(TOYS.bounceSound, 0.9 + 0.12 * bounceChain, 0.6)
+			return
+		end
+	end
+end
+RunService.Heartbeat:Connect(tryBounce)
 
 State.on("fx", function(kind, d)
 	if kind == "pickup" then

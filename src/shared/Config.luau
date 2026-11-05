@@ -82,6 +82,57 @@ Config.LOOT = {
 }
 Config.GEM_DROP = { chance = 0.035, min = 1, max = 3 } -- per cut patch, before Gem Value / 2x Gems
 
+-- GRASS TOYS (5 Nov, owner, after "is the core fun for an 8-year-old with every reward removed?": he picked these
+-- three). The grass and the bundles are toys you can play with between the cutting, no reward attached.
+--   kick / bounce: bundles on the ground get kicked and roll when you run into them (server/Loot moves them, client/LootFx
+--     hides the snap with a hop-and-roll), and bounce you up like a little trampoline when you jump on them
+--     (client/LootFx, your own character only).
+--   sway: tall clumps you walk past lean away from you and spring back (client/Wind spots them, client/HitFx sways).
+--   trample: running over the lawn leaves a faint flattened trail that fades (client/MowFx, its stripe system).
+-- Sounds are existing Config.SOUNDS keys (licensed audio only).
+Config.GRASS_TOYS = {
+	kick = true,
+	bounce = true,
+	sway = true,
+	trample = true,
+	-- kick (server/Loot, checked each pickup tick, ~8 times a second)
+	kickRadius = 2.2, -- studs (flat) from your middle to the bundle
+	kickMinSpeed = 10, -- studs/s you must be moving
+	kickMin = 3, -- studs a kick sends it (more the faster you run) ...
+	kickMax = 6, -- ... up to this
+	kickDrift = 12, -- a bundle never ends up further than this from where it dropped
+	kickCooldown = 0.45, -- seconds before the same bundle can be kicked again (its roll plays out)
+	kickStep = 2.5, -- the most it can go up or down a step in one kick (never off a terrace edge)
+	kickTime = 0.35, -- seconds of the hop-and-roll on screen (client/LootFx)
+	kickHop = 1.3, -- studs high the hop goes
+	kickSound = "rustle",
+	-- bounce (client/LootFx)
+	bounceRadius = 2, -- studs (flat) from your middle to the bundle as your feet come down on it
+	bounceSpeed = 36, -- studs/s up on the first bounce
+	bounceDecay = 0.8, -- each bounce in a row is this much of the last one ...
+	bounceMin = 16, -- ... and below this you just land
+	bounceSound = "eggPop",
+	-- sway (client/Wind finds them, client/HitFx.sway moves them)
+	swayReach = 1.8, -- studs past the clump's own Radius that you brush it
+	swayMinSpeed = 4, -- studs/s you must be moving
+	swayAngle = 9, -- degrees it leans away at first
+	swayTime = 1.1, -- seconds the spring takes to settle
+	swayCooldown = 0.45, -- seconds before the same clump can be pushed again (at most ~2 pushes a second each)
+	swayMax = 10, -- clumps swaying at once (Potato Mode and phones: swayMaxLow)
+	swayMaxLow = 4,
+	-- trample (client/MowFx)
+	trampleWidth = 1.1, -- studs wide (a mower's stripe is 2.6 to 8)
+	trampleStep = 1.4, -- studs between trail pieces
+	trampleMinSpeed = 4, -- studs/s you must be moving
+	trampleTransparency = 0.72, -- fainter than a mower's stripe (0.45)
+	trampleLife = 8, -- seconds before it starts to fade
+	trampleFade = 2,
+	trampleMax = 140, -- trail pieces alive at once, all players together (Potato Mode and phones: trampleMaxLow)
+	trampleMaxLow = 50,
+	trampleOthers = true, -- other players near you leave trails too (not in Potato Mode or on phones)
+	trampleNear = 60, -- studs from the camera for other players' trails
+}
+
 -- Bags: bought in order at the Bag Stand in the hub (coins, reset every run). The Bottomless Sack game pass
 -- (Config.PASSES.BigBag) makes your bag endless.
 Config.BAGS = {

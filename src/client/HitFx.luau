@@ -27,6 +27,7 @@ WeaponFx.install(Presets)
 local ViewAnims = require(script.Parent.ViewAnims)
 local WeaponVfx = require(script.Parent.WeaponVfx)
 local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack on top (Config.SOULSHROUD_VFX)
+local PhonePerf = require(script.Parent.PhonePerf) -- (5 Nov) fewer clumps sway at once on phones (HitFx.sway)
 
 local HitFx = {}
 local player = Players.LocalPlayer
@@ -575,9 +576,83 @@ local leans: { [Model]: Lean } = setmetatable({}, { __mode = "k" }) :: any
 local wobbling: { [Model]: number } = setmetatable({}, { __mode = "k" }) :: any -- when its current wobble started
 local released: { [Model]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
+-- (5 Nov, grass toys: "tall grass you push") A clump you brush past leans away from you and springs back: a
+-- gentler, slower cousin of the hit wobble, the whole clump turned about its foot (no squash, nothing re-laid).
+-- client/Wind spots the brushing and calls HitFx.sway. A clump being chopped (it has a lean) is left alone, and a
+-- hit cancels a sway (leanOf puts it back first). One shared frame loop, at most Config.GRASS_TOYS.swayMax at once.
+type Sway = { base: CFrame, axis: Vector3, start: number, amount: number }
+local swaying: { [Model]: Sway } = {}
+local swayCount = 0
+local swayConn: RBXScriptConnection? = nil
+
+local function endSway(m: Model, putBack: boolean)
+	local sw = swaying[m]
+	if not sw then
+		return
+	end
+	swaying[m] = nil
+	swayCount -= 1
+	if putBack and m.Parent then
+		m:PivotTo(sw.base)
+	end
+end
+
+local function stepSways()
+	local now = os.clock()
+	local T = Config.GRASS_TOYS.swayTime
+	for m, sw in swaying do
+		local t = now - sw.start
+		if t > T or not m.Parent or released[m] or wobbling[m] then
+			endSway(m, not released[m])
+		else
+			-- a pushed spring: out to its lean in ~0.15 s, back past upright, settled by swayTime
+			local angle = math.rad(sw.amount) * 1.9 * math.exp(-t * 3.5) * math.sin(t * 7)
+			m:PivotTo(CFrame.fromAxisAngle(sw.axis, angle) * sw.base.Rotation + sw.base.Position)
+		end
+	end
+	if swayCount <= 0 and swayConn then
+		swayConn:Disconnect()
+		swayConn = nil
+	end
+end
+
+-- Push clump `m` away along `away` (flat), `amount` degrees at most. Returns whether it sways. A clump already
+-- swaying is pushed again only once its spring is back near upright (Config.GRASS_TOYS.swayCooldown).
+function HitFx.sway(m: Model, away: Vector3, amount: number?): boolean
+	local toys = Config.GRASS_TOYS
+	if not m.Parent or released[m] or wobbling[m] or leans[m] then
+		return false
+	end
+	local flat = Vector3.new(away.X, 0, away.Z)
+	if flat.Magnitude < 0.05 then
+		return false
+	end
+	local axis = Vector3.yAxis:Cross(flat.Unit)
+	local now = os.clock()
+	local sw = swaying[m]
+	if sw then
+		if now - sw.start < toys.swayCooldown then
+			return false
+		end
+		sw.start, sw.axis = now, axis
+		return true
+	end
+	local cap = if Players.LocalPlayer:GetAttribute("Potato") or PhonePerf.on then toys.swayMaxLow else toys.swayMax
+	if swayCount >= cap then
+		return false
+	end
+	swaying[m] = { base = m:GetPivot(), axis = axis, start = now, amount = amount or toys.swayAngle }
+	swayCount += 1
+	if not swayConn then
+		swayConn = RunService.RenderStepped:Connect(stepSways)
+	end
+	return true
+end
+
 local function leanOf(m: Model): Lean
 	local l = leans[m]
 	if not l then
+		endSway(m, true) -- (a pushed clump being hit: upright first, so the lean starts from its real pose)
 		local base = m:GetPivot()
 		local parts = {}
 		for _, p in m:GetDescendants() do
@@ -675,6 +750,7 @@ end
 -- Stop moving `m` (it's falling over: client/Fx animates it from here). Puts it back to its full size and
 -- returns its upright pose.
 function HitFx.release(m: Model): CFrame?
+	endSway(m, true) -- (a clump falling mid-sway falls from upright)
 	released[m] = true
 	local l = leans[m]
 	if l and l.squashed then

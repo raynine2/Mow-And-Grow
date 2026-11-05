@@ -2,6 +2,9 @@
 -- can pick it up, by walking within their reach (Loot.reach: Grasp around them, and round a ride-on mower they
 -- drive). The server does the pickup itself (there is no remote), so a client can't fake collecting.
 -- Drops aren't saved: bundles still on the ground when you leave are lost, like an unfinished swing.
+-- (5 Nov, grass toys) Anyone running into a bundle on the ground kicks it a few studs along (Config.GRASS_TOYS.kick):
+-- the server moves it (never through a wall, off a terrace edge or far from where it dropped) and bumps its "Kick"
+-- attribute, and every client plays a hop-and-roll from the old spot to the new one (client/LootFx).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -13,7 +16,7 @@ local BundleVoxel = require(ReplicatedStorage.MowALawn.BundleVoxel)
 
 local Loot = {}
 
-type Drop = { owner: Player, kind: string, z: number, m: string?, gems: number, pos: Vector3, model: Instance?, readyAt: number, dead: boolean? }
+type Drop = { owner: Player, kind: string, z: number, m: string?, gems: number, pos: Vector3, home: Vector3, kickAt: number, model: Instance?, readyAt: number, dead: boolean? }
 type Reach = { pos: Vector3, radius: number }
 
 local drops: { Drop } = {}
@@ -96,7 +99,7 @@ function Loot.drop(player: Player, kind: string, origin: Vector3, z: number, m: 
 		local hit = workspace:Raycast(pos + Vector3.new(0, origin.Y + 12, 0), Vector3.new(0, -60, 0), groundRay)
 		pos = Vector3.new(pos.X, if hit then hit.Position.Y else origin.Y, pos.Z)
 	end
-	local d: Drop = { owner = player, kind = kind, z = z, m = m, gems = gems or 0, pos = pos, model = nil, readyAt = os.clock() + (delay or 0) }
+	local d: Drop = { owner = player, kind = kind, z = z, m = m, gems = gems or 0, pos = pos, home = pos, kickAt = 0, model = nil, readyAt = os.clock() + (delay or 0) }
 	local function show()
 		if d.dead or not folder then
 			return
@@ -139,6 +142,119 @@ local function within(points: { Reach }, pos: Vector3): boolean
 	return false
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- kicking (Config.GRASS_TOYS): a running player's middle comes near a bundle on the ground
+-------------------------------------------------------------------------------------------------------------
+local TOYS = Config.GRASS_TOYS
+local wallRay = RaycastParams.new()
+wallRay.FilterType = Enum.RaycastFilterType.Exclude
+wallRay.RespectCanCollide = true -- the map's invisible walls can't be queried, but they do collide
+
+type Kicker = { pos: Vector3, vel: Vector3, feet: number }
+
+-- Everyone who could kick something right now: on foot (not riding), moving fast enough.
+local function kickers(): { Kicker }
+	local list: { Kicker } = {}
+	local chars: { Instance } = {}
+	for _, p in Players:GetPlayers() do
+		local char = p.Character
+		local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if char then
+			table.insert(chars, char)
+		end
+		if root and hum and hum.Health > 0 and not hum.SeatPart then
+			local v = root.AssemblyLinearVelocity
+			local flat = Vector3.new(v.X, 0, v.Z)
+			if flat.Magnitude >= TOYS.kickMinSpeed then
+				table.insert(list, { pos = root.Position, vel = flat, feet = root.Position.Y - hum.HipHeight - root.Size.Y / 2 })
+			end
+		end
+	end
+	wallRay.FilterDescendantsInstances = chars
+	return list
+end
+
+-- Where a kick from `k` sends a bundle at `d.pos`, or nil when it can't go anywhere.
+local function kickTarget(d: Drop, k: Kicker): Vector3?
+	local away = Vector3.new(d.pos.X - k.pos.X, 0, d.pos.Z - k.pos.Z)
+	local dir = k.vel.Unit * 0.7 + (if away.Magnitude > 0.05 then away.Unit * 0.3 else Vector3.zero)
+	if dir.Magnitude < 0.05 then
+		return nil
+	end
+	dir = dir.Unit
+	local dist = math.clamp(k.vel.Magnitude * 0.25, TOYS.kickMin, TOYS.kickMax)
+	-- not through a wall, a clump or a building: stop a stud short of it
+	local from = d.pos + Vector3.new(0, 1, 0)
+	local wall = workspace:Raycast(from, dir * (dist + 1), wallRay)
+	if wall then
+		dist = math.max(0, (wall.Position - from).Magnitude - 1)
+	end
+	local to = d.pos + dir * dist
+	-- never far from where it dropped
+	local off = Vector3.new(to.X - d.home.X, 0, to.Z - d.home.Z)
+	if off.Magnitude > TOYS.kickDrift then
+		to = Vector3.new(d.home.X, to.Y, d.home.Z) + off.Unit * TOYS.kickDrift
+	end
+	if Vector3.new(to.X - d.pos.X, 0, to.Z - d.pos.Z).Magnitude < 1 then
+		return nil
+	end
+	-- on the ground under the new spot, and not off a terrace edge or the map (the plots map is flat at y = 0)
+	local world = workspace:FindFirstChild("World")
+	local ground = world and world:FindFirstChild("Ground")
+	if ground then
+		groundRay.FilterDescendantsInstances = { ground, world:FindFirstChild("Ways") or ground }
+		local hit = workspace:Raycast(to + Vector3.new(0, TOYS.kickStep + 1, 0), Vector3.new(0, -(TOYS.kickStep * 2 + 2), 0), groundRay)
+		if not hit or math.abs(hit.Position.Y - d.pos.Y) > TOYS.kickStep then
+			return nil
+		end
+		return Vector3.new(to.X, hit.Position.Y, to.Z)
+	end
+	return Vector3.new(to.X, d.pos.Y, to.Z)
+end
+
+local function kick(d: Drop, to: Vector3, now: number)
+	local model = d.model
+	if not model or not model:IsA("Model") then
+		return
+	end
+	local look = model:GetPivot().LookVector
+	local yaw = math.atan2(-look.X, -look.Z) + rng:NextNumber(-1.2, 1.2) -- it lands turned a little
+	local from = d.pos
+	d.pos = to
+	d.kickAt = now
+	model:PivotTo(CFrame.new(to) * CFrame.Angles(0, yaw, 0))
+	-- (set last: the client reads the other two when Kick changes)
+	model:SetAttribute("KickFrom", from)
+	model:SetAttribute("KickYaw", yaw)
+	model:SetAttribute("Kick", ((model:GetAttribute("Kick") :: number?) or 0) + 1)
+end
+
+local function kicks(now: number)
+	if not TOYS.kick or #drops == 0 then
+		return
+	end
+	local list = kickers()
+	if #list == 0 then
+		return
+	end
+	for _, d in drops do
+		if d.kind ~= "bundle" or d.dead or not d.model or now < d.readyAt or now - d.kickAt < TOYS.kickCooldown then
+			continue
+		end
+		for _, k in list do
+			local flat = Vector3.new(d.pos.X - k.pos.X, 0, d.pos.Z - k.pos.Z).Magnitude
+			if flat <= TOYS.kickRadius and math.abs(k.feet - d.pos.Y) < 3 then
+				local to = kickTarget(d, k)
+				if to then
+					kick(d, to, now)
+				end
+				break
+			end
+		end
+	end
+end
+
 local function tick()
 	local reachOf: { [Player]: { Reach } } = {}
 	local fullWarned: { [Player]: boolean } = {}
@@ -168,6 +284,8 @@ local function tick()
 			end
 		end
 	end
+	-- what's still on the ground after the pickups can be kicked
+	kicks(now)
 end
 
 -- Remove everything (a run restarting in Studio) or one player's loot.

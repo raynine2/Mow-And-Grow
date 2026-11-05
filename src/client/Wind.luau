@@ -5,12 +5,18 @@
 -- (round-robin). Each clump is always put back relative to its own cached upright pivot. If something else
 -- moved it since our last write (the server shrinking a hit clump, HitFx's wobble), we leave it alone until it
 -- has been still for a moment, then re-read where it really stands and carry on, so we never fight anyone.
+--
+-- (5 Nov, grass toys) Brushing: the near list also tells which clumps you walk past; those lean away from you and
+-- spring back (HitFx.sway, Config.GRASS_TOYS.sway). Checked 10 times a second, only for clumps already near.
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Wind = {}
 local player = Players.LocalPlayer
 local PhonePerf = require(script.Parent.PhonePerf)
+local HitFx = require(script.Parent.HitFx)
+local TOYS = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config")).GRASS_TOYS
 
 local RADIUS = 45 -- clumps further than this stand still
 local FADE = 10 -- the sway fades out over the last studs of RADIUS
@@ -194,6 +200,40 @@ local function rescan(now: number, at: Vector3)
 	cursor = 1
 end
 
+-- Clumps you're brushing past (on foot, moving): push them away from you.
+local brushAt = 0
+local function brush(now: number)
+	if not TOYS.sway or now - brushAt < 0.1 then
+		return
+	end
+	brushAt = now
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local hum = char and char:FindFirstChildOfClass("Humanoid")
+	if not root or not hum or hum.SeatPart then
+		return
+	end
+	local v = root.AssemblyLinearVelocity
+	if v.X * v.X + v.Z * v.Z < TOYS.swayMinSpeed * TOYS.swayMinSpeed then
+		return
+	end
+	local p = root.Position
+	for _, c in near do
+		local dx, dz = c.pos.X - p.X, c.pos.Z - p.Z
+		local d2 = dx * dx + dz * dz
+		if d2 < 64 and math.abs(c.pos.Y - p.Y) < 8 and c.model.Parent then
+			local r = (c.model:GetAttribute("Radius") :: number?) or 1.6
+			local reach = r + TOYS.swayReach
+			if d2 < reach * reach then
+				-- away from you, a little along the way you're going
+				local away = Vector3.new(dx, 0, dz)
+				away = (if away.Magnitude > 0.05 then away.Unit else Vector3.zero) + Vector3.new(v.X, 0, v.Z).Unit * 0.5
+				HitFx.sway(c.model, away)
+			end
+		end
+	end
+end
+
 RunService.Heartbeat:Connect(function()
 	local now = os.clock()
 	if now - hookAt > 1 then
@@ -211,6 +251,7 @@ RunService.Heartbeat:Connect(function()
 		scanAt = now
 		rescan(now, at)
 	end
+	brush(now)
 	local count = #near
 	if count == 0 then
 		return

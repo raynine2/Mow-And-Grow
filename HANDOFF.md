@@ -311,6 +311,12 @@ shows the empty world for a moment (live servers teleport instead).
 
 ## Studio vs. git: please read
 
+**5 Nov, ~18:35 (Amsterdam): round 3b in Studio, NOT published yet.** The owner: "The text needs to be simple ... look up a
+reference from anime ... what u have rn is very bad". The films' words are now plain: one clean sans (Gotham), white, a
+thin black outline, like anime TV subtitles and the Blue Lock animation he sent; names big and heavy low on the left with
+a small line under; no brackets, coloured words, seals or rules. `install-b.luau` (AnimeFx, Opening from `d27174a`,
+checked; old copies in `ServerStorage.MowALawnBackups.pre_films_v2_round3b_5nov`; FilmDev removed). Played in Studio.
+
 **5 Nov, ~17:23 (Amsterdam): published.** The owner asked ("Push it", then "Ja, publish live"); Claude pressed File →
 Publish in his Studio. That published the saved version of 16:09 (it has round 3 and everything else in the Team Create
 session, the hatch work included); the tab's "@ 05 Nov 2026 16:09" mark went away after. The experience is still

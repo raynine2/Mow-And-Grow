@@ -100,38 +100,55 @@ local function keep(i: Instance, life: number)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- (round 2, owner 5 Nov: "i dont like the text pop up i feel like its very sloppy please take inspiration from jjk")
--- The films' type, after the clean, hard typography of jujutsu anime cards: a high-contrast serif for what's said and
--- for names, small spaced capitals under a thin rule, a stamped seal with one character, and everything in and out on
--- a cut (no bouncing, no sliding across the screen). Our own words and marks.
+-- (owner, 5 Nov 17:56, of the serif cards: "The text needs to be simple ... look up a reference from anime ... what u
+-- have rn is very bad") The films' words now look like anime TV subtitles and the Roblox anime animations he sent
+-- (Blue Lock, "I Won't let you shoot."): one clean sans-serif, white, a thin black outline, and nothing else: no
+-- brackets, no coloured words, no stamps, no lines. A name is like a plain anime character card: the name big and heavy,
+-- a small line under it. Everything in and out on a short fade.
 -------------------------------------------------------------------------------------------------------------
-local SERIF_BOLD = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Bold)
-local SERIF_BLACK = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Heavy)
-local SANS = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Medium)
-local SANS_BOLD = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-local CRIMSON = Color3.fromRGB(214, 30, 52)
+local FONT = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+local FONT_HEAVY = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy)
+local FONT_SMALL = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Medium)
+local SOFT = Color3.fromRGB(226, 226, 232) -- (the small lines under a name)
 
--- "OWNER" -> "O W N E R" with thin spaces (tracked capitals)
-local function tracked(text: string): string
-	local out = string.gsub(text, "([%w%p])", "%1\u{2009}")
-	return (string.gsub(out, "\u{2009}$", ""))
-end
-
-local function typeLabel(parent: Instance, text: string, font: Font, color: Color3, z: number): TextLabel
+-- white words with a thin black outline, `maxSize` px at most
+local function words(parent: Instance, text: string, font: Font, color: Color3, maxSize: number, outline: number, z: number): TextLabel
 	local t = Instance.new("TextLabel")
 	t.BackgroundTransparency = 1
 	t.Text = text
 	t.FontFace = font
 	t.TextColor3 = color
 	t.TextScaled = true
+	t.TextTransparency = 1
 	t.ZIndex = z
+	local lim = Instance.new("UITextSizeConstraint")
+	lim.MaxTextSize = maxSize
+	lim.MinTextSize = 12
+	lim.Parent = t
+	local st = Instance.new("UIStroke")
+	st.Color = BLACK
+	st.Thickness = outline
+	st.Transparency = 1
+	st.Parent = t
 	t.Parent = parent
 	return t
 end
 
+-- fade a group of words in (or out)
+local function fade(list: { TextLabel }, show: boolean, time: number)
+	for _, t in list do
+		if t.Parent then
+			tween(t, time, { TextTransparency = if show then 0 else 1 })
+			local st = t:FindFirstChildOfClass("UIStroke")
+			if st then
+				tween(st, time, { Transparency = if show then 0.1 else 1 })
+			end
+		end
+	end
+end
+
 -------------------------------------------------------------------------------------------------------------
--- subtitles: one at a time, bottom middle, just over the bottom bar: white serif in brackets, a hairline of black
--- round it and a soft shadow; *starred* words in crimson. In on a quick fade, out on a quick fade.
+-- subtitles: one at a time, bottom middle, just over the bottom bar. ("*word*" marks from older lines are dropped.)
 -------------------------------------------------------------------------------------------------------------
 local lastSub: Frame? = nil
 function AnimeFx.sub(text: string, life: number?)
@@ -145,117 +162,33 @@ function AnimeFx.sub(text: string, life: number?)
 	local bar = IntroUi.bar()
 	local root = Instance.new("Frame")
 	root.Name = "Sub"
-	root:SetAttribute("KeepFont", true) -- (client/TextStyle leaves the films' own type alone)
+	root:SetAttribute("KeepFont", true) -- (client/TextStyle leaves the films' own words alone)
 	root.BackgroundTransparency = 1
 	root.AnchorPoint = Vector2.new(0.5, 1)
-	root.Position = UDim2.fromScale(0.5, 1 - bar - 0.02)
-	root.Size = UDim2.fromScale(0.86, 0.06)
+	root.Position = UDim2.fromScale(0.5, 1 - bar - 0.025)
+	root.Size = UDim2.fromScale(0.8, 0.05)
 	root.ZIndex = Z_TEXT
 	root.Parent = g
-	local rich = string.gsub(text, "%*(.-)%*", '<font color="#D61E34">%1</font>')
-	local body = '<font color="#B8B4C4">[</font> ' .. rich .. ' <font color="#B8B4C4">]</font>'
-	local shadow = typeLabel(root, string.gsub(body, '<font color="#%x+">', '<font color="#000000">'), SERIF_BOLD, BLACK, Z_TEXT)
-	shadow.RichText = true
-	shadow.Size = UDim2.fromScale(1, 1)
-	shadow.Position = UDim2.new(0, 2, 0, 3)
-	shadow.TextTransparency = 1
-	local t = typeLabel(root, body, SERIF_BOLD, WHITE, Z_TEXT + 1)
-	t.RichText = true
+	local t = words(root, (string.gsub(text, "%*", "")), FONT, WHITE, 28, 1.6, Z_TEXT)
 	t.Size = UDim2.fromScale(1, 1)
-	t.TextTransparency = 1
-	for _, l in { t, shadow } do
-		local lim = Instance.new("UITextSizeConstraint")
-		lim.MaxTextSize = 30
-		lim.MinTextSize = 14
-		lim.Parent = l
-	end
-	local st = stroke(t, 1.2)
-	st.Transparency = 1
-	tween(t, 0.12, { TextTransparency = 0 })
-	tween(st, 0.12, { Transparency = 0.2 })
-	tween(shadow, 0.12, { TextTransparency = 0.55 })
+	fade({ t }, true, 0.1)
 	lastSub = root
 	local hold = life or math.clamp(0.9 + #text * 0.05, 1.2, 3.2)
 	task.delay(hold, function()
-		if root.Parent then
-			tween(t, 0.2, { TextTransparency = 1 })
-			tween(st, 0.2, { Transparency = 1 })
-			tween(shadow, 0.2, { TextTransparency = 1 })
-		end
+		fade({ t }, false, 0.15)
 	end)
-	keep(root, hold + 0.25)
-end
-
--- a seal: a square stamp in `color` with one character, pressed in (it lands from a little bigger, hard)
-local function seal(parent: Instance, mark: string, color: Color3, pos: UDim2, size: number, z: number): Frame
-	local f = Instance.new("Frame")
-	f.Name = "Seal"
-	f.BackgroundColor3 = color
-	f.BorderSizePixel = 0
-	f.AnchorPoint = Vector2.new(0.5, 0.5)
-	f.Position = pos
-	f.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	f.Size = UDim2.fromScale(size, size)
-	f.ZIndex = z
-	f.Parent = parent
-	local inner = Instance.new("UIStroke")
-	inner.Color = color:Lerp(BLACK, 0.35)
-	inner.Thickness = 3
-	inner.Parent = f
-	local lum = color.R * 0.3 + color.G * 0.59 + color.B * 0.11
-	local t = typeLabel(f, mark, SANS_BOLD, if lum > 0.6 then Color3.fromRGB(28, 16, 10) else WHITE, z + 1)
-	t.AnchorPoint = Vector2.new(0.5, 0.5)
-	t.Position = UDim2.fromScale(0.5, 0.5)
-	t.Size = UDim2.fromScale(0.8, 0.8)
-	local sc = Instance.new("UIScale")
-	sc.Scale = 1.4
-	sc.Parent = f
-	tween(sc, 0.08, { Scale = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-	return f
-end
-
--- a thin rule that draws itself from the left
-local function rule(parent: Instance, color: Color3, pos: UDim2, width: number, z: number, delay: number?): Frame
-	local f = Instance.new("Frame")
-	f.Name = "Rule"
-	f.BackgroundColor3 = color
-	f.BorderSizePixel = 0
-	f.Position = pos
-	f.Size = UDim2.new(0, 0, 0, 2)
-	f.ZIndex = z
-	f.Parent = parent
-	task.delay(delay or 0, function()
-		if f.Parent then
-			tween(f, 0.28, { Size = UDim2.new(width, 0, 0, 2) }, Enum.EasingStyle.Quart)
-		end
-	end)
-	return f
-end
-
--- a name revealed left to right (a hard edge sweeping across it)
-local function reveal(t: TextLabel, time: number)
-	local grad = Instance.new("UIGradient")
-	grad.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.49, 0),
-		NumberSequenceKeypoint.new(0.5, 1),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	grad.Offset = Vector2.new(-0.5, 0)
-	grad.Parent = t
-	tween(grad, time, { Offset = Vector2.new(0.5, 0) }, Enum.EasingStyle.Quart)
+	keep(root, hold + 0.2)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- the name card: a dark wash from the left, a seal stamped in, the name in a heavy serif revealed left to right, a
--- thin rule drawing under it, the title in small spaced capitals; on a cut it's gone. `mark`: the seal's character.
+-- the name card: low on the left, the name big and heavy, a small line under it; in on a short fade with a small
+-- slide, out on a fade. (`color` and `mark` are kept for the films' calls; the card doesn't use them.)
 -------------------------------------------------------------------------------------------------------------
-function AnimeFx.card(name: string, title: string, color: Color3?, life: number?, mark: string?)
+function AnimeFx.card(name: string, title: string, _color: Color3?, life: number?, _mark: string?)
 	local g = gui()
 	if not g then
 		return
 	end
-	local c = color or GOLD
 	local hold = life or 1.9
 	local root = Instance.new("Frame")
 	root.Name = "NameCard"
@@ -264,40 +197,23 @@ function AnimeFx.card(name: string, title: string, color: Color3?, life: number?
 	root.Size = UDim2.fromScale(1, 1)
 	root.ZIndex = Z_TEXT
 	root.Parent = g
-	-- (a soft dark pool behind the type, no hard edges: the glow texture, black)
-	local wash = Instance.new("ImageLabel")
-	wash.Name = "Wash"
-	wash.BackgroundTransparency = 1
-	wash.Image = FxIds.glow
-	wash.ImageColor3 = BLACK
-	wash.ImageTransparency = 0.2
-	wash.AnchorPoint = Vector2.new(0.5, 0.5)
-	wash.Position = UDim2.fromScale(0.3, 0.62)
-	wash.Size = UDim2.fromScale(1.0, 0.62)
-	wash.ZIndex = Z_TEXT
-	wash.Parent = root
-	seal(root, mark or string.sub(name, 1, 1), c, UDim2.fromScale(0.105, 0.6), 0.13, Z_TEXT + 2)
-	local big = typeLabel(root, tracked(string.upper(name)), SERIF_BLACK, WHITE, Z_TEXT + 2)
-	big.AnchorPoint = Vector2.new(0, 0.5)
-	big.Position = UDim2.fromScale(0.17, 0.585)
-	big.Size = UDim2.fromScale(0.6, 0.115)
+	local big = words(root, string.upper(name), FONT_HEAVY, WHITE, 64, 2.4, Z_TEXT)
+	big.AnchorPoint = Vector2.new(0, 1)
+	big.Position = UDim2.new(0.06, -14, 0.76, 0)
+	big.Size = UDim2.fromScale(0.62, 0.085)
 	big.TextXAlignment = Enum.TextXAlignment.Left
-	reveal(big, 0.16)
-	rule(root, c, UDim2.fromScale(0.172, 0.655), 0.4, Z_TEXT + 2, 0.08)
-	local small = typeLabel(root, tracked(string.upper(title)), SANS, Color3.fromRGB(226, 222, 232), Z_TEXT + 2)
-	small.AnchorPoint = Vector2.new(0, 0.5)
-	small.Position = UDim2.fromScale(0.172, 0.695)
-	small.Size = UDim2.fromScale(0.42, 0.032)
+	local small = words(root, title, FONT_SMALL, SOFT, 26, 1.4, Z_TEXT)
+	small.AnchorPoint = Vector2.new(0, 0)
+	small.Position = UDim2.new(0.061, -14, 0.768, 0)
+	small.Size = UDim2.fromScale(0.5, 0.036)
 	small.TextXAlignment = Enum.TextXAlignment.Left
-	small.TextTransparency = 1
-	task.delay(0.16, function()
-		if small.Parent then
-			tween(small, 0.18, { TextTransparency = 0 })
-		end
+	fade({ big, small }, true, 0.14)
+	tween(big, 0.3, { Position = UDim2.fromScale(0.06, 0.76) }, Enum.EasingStyle.Quart)
+	tween(small, 0.3, { Position = UDim2.fromScale(0.061, 0.768) }, Enum.EasingStyle.Quart)
+	task.delay(math.max(hold - 0.18, 0.1), function()
+		fade({ big, small }, false, 0.18)
 	end)
-	-- (a slow push while it holds, then gone on a cut)
-	tween(big, hold, { Position = UDim2.fromScale(0.178, 0.585) }, Enum.EasingStyle.Linear)
-	keep(root, hold)
+	keep(root, hold + 0.05)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -616,32 +532,33 @@ function AnimeFx.hit(at: Vector3, color: Color3?, size: number?, big: boolean?)
 	end)
 end
 
--- A technique's title card: the picture darkened, a big seal at the left, the name in a heavy tracked serif between two
--- thin rules, the line under it in small spaced capitals; in and out on cuts. `mark`: the seal's character.
-function AnimeFx.technique(name: string, sub: string, color: Color3?, life: number?, mark: string?)
+-- A technique's name: the picture dimmed a little, the name big and heavy in the middle, a small line under it; in and
+-- out on a short fade. (`color` and `mark` are kept for the films' calls; it doesn't use them.)
+function AnimeFx.technique(name: string, sub: string, _color: Color3?, life: number?, _mark: string?)
 	local g = gui()
 	if not g then
 		return
 	end
-	local c = color or Color3.fromRGB(255, 214, 90)
 	local hold = life or 0.9
-	local root = frame(g, "Technique", BLACK, 0.42, Z_TEXT)
+	local root = frame(g, "Technique", BLACK, 1, Z_TEXT)
 	root:SetAttribute("KeepFont", true)
-	seal(root, mark or string.sub(name, 1, 1), c, UDim2.fromScale(0.2, 0.47), 0.2, Z_TEXT + 2)
-	local big = typeLabel(root, tracked(string.upper(name)), SERIF_BLACK, WHITE, Z_TEXT + 2)
-	big.AnchorPoint = Vector2.new(0, 0.5)
-	big.Position = UDim2.fromScale(0.29, 0.45)
-	big.Size = UDim2.fromScale(0.56, 0.14)
-	big.TextXAlignment = Enum.TextXAlignment.Left
-	reveal(big, 0.12)
-	rule(root, c, UDim2.fromScale(0.29, 0.365), 0.5, Z_TEXT + 2, 0)
-	rule(root, c, UDim2.fromScale(0.29, 0.535), 0.5, Z_TEXT + 2, 0.05)
-	local small = typeLabel(root, tracked(string.upper(sub)), SANS, Color3.fromRGB(226, 222, 232), Z_TEXT + 2)
-	small.AnchorPoint = Vector2.new(0, 0.5)
-	small.Position = UDim2.fromScale(0.29, 0.585)
-	small.Size = UDim2.fromScale(0.45, 0.034)
-	small.TextXAlignment = Enum.TextXAlignment.Left
-	keep(root, hold)
+	tween(root, 0.1, { BackgroundTransparency = 0.6 })
+	local big = words(root, string.upper(name), FONT_HEAVY, WHITE, 84, 2.8, Z_TEXT)
+	big.AnchorPoint = Vector2.new(0.5, 0.5)
+	big.Position = UDim2.fromScale(0.5, 0.47)
+	big.Size = UDim2.fromScale(0.7, 0.11)
+	local small = words(root, sub, FONT_SMALL, SOFT, 28, 1.4, Z_TEXT)
+	small.AnchorPoint = Vector2.new(0.5, 0.5)
+	small.Position = UDim2.fromScale(0.5, 0.565)
+	small.Size = UDim2.fromScale(0.5, 0.036)
+	fade({ big, small }, true, 0.08)
+	task.delay(math.max(hold - 0.14, 0.05), function()
+		if root.Parent then
+			tween(root, 0.14, { BackgroundTransparency = 1 })
+		end
+		fade({ big, small }, false, 0.14)
+	end)
+	keep(root, hold + 0.02)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -938,34 +855,27 @@ function AnimeFx.logo(): Frame?
 end
 
 -------------------------------------------------------------------------------------------------------------
--- a word on its own (the finale's THE FINAL FIGHT): black, the title in a heavy tracked serif, a rule drawing under it,
--- the line under that in small spaced capitals a beat later
+-- a word on its own (the finale's THE FINAL FIGHT): black, the word big and heavy, the small line under it a beat later
 -------------------------------------------------------------------------------------------------------------
-function AnimeFx.word(big: string, small: string?, color: Color3?): Frame?
+function AnimeFx.word(big: string, small: string?, _color: Color3?): Frame?
 	local g = gui()
 	if not g then
 		return nil
 	end
-	local c = color or CRIMSON
 	local root = frame(g, "Word", BLACK, 0, Z_TEXT)
 	root:SetAttribute("KeepFont", true)
-	local t = typeLabel(root, tracked(string.upper(big)), SERIF_BLACK, WHITE, Z_TEXT + 1)
+	local t = words(root, string.upper(big), FONT_HEAVY, WHITE, 84, 2.4, Z_TEXT + 1)
 	t.AnchorPoint = Vector2.new(0.5, 0.5)
-	t.Position = UDim2.fromScale(0.5, 0.45)
-	t.Size = UDim2.fromScale(0.72, 0.13)
-	reveal(t, 0.2)
-	local r = rule(root, c, UDim2.fromScale(0.5, 0.535), 0.3, Z_TEXT + 1, 0.15)
-	r.AnchorPoint = Vector2.new(0.5, 0)
+	t.Position = UDim2.fromScale(0.5, 0.47)
+	t.Size = UDim2.fromScale(0.7, 0.11)
+	fade({ t }, true, 0.25)
 	if small then
-		local s = typeLabel(root, tracked(string.upper(small)), SANS, Color3.fromRGB(200, 196, 214), Z_TEXT + 1)
+		local s = words(root, small, FONT_SMALL, SOFT, 28, 1.4, Z_TEXT + 1)
 		s.AnchorPoint = Vector2.new(0.5, 0.5)
-		s.Position = UDim2.fromScale(0.5, 0.59)
+		s.Position = UDim2.fromScale(0.5, 0.565)
 		s.Size = UDim2.fromScale(0.4, 0.036)
-		s.TextTransparency = 1
 		task.delay(0.8, function()
-			if s.Parent then
-				tween(s, 0.4, { TextTransparency = 0 })
-			end
+			fade({ s }, true, 0.4)
 		end)
 	end
 	table.insert(live, root)

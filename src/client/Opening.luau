@@ -1373,13 +1373,13 @@ local function loadingRing(d: any, from: number, done: number)
 	label.Size = UDim2.fromScale(1.8, 0.2)
 	label.AnchorPoint = Vector2.new(0.5, 0)
 	label.Position = UDim2.fromScale(0.5, 0.97)
-	-- (round 2: clean small spaced capitals, not the game's round font; client/TextStyle leaves it alone)
+	-- (plain white capitals with a thin outline, like the films' other words; client/TextStyle leaves it alone)
 	label:SetAttribute("KeepFont", true)
 	label.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
 	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(255, 232, 246)
-	label.TextStrokeColor3 = Color3.fromRGB(40, 0, 26)
-	label.TextStrokeTransparency = 0.35
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextStrokeColor3 = Color3.new(0, 0, 0)
+	label.TextStrokeTransparency = 0.2
 	label.Text = ""
 	label.Parent = bb
 	local name = "ring" .. tostring(d)
@@ -1397,12 +1397,12 @@ local function loadingRing(d: any, from: number, done: number)
 				f.BackgroundTransparency = if dist == 0 then 0 elseif dist == 1 then 0.2 elseif dist == 2 then 0.4 else 0.6
 				f.BackgroundColor3 = if dist == 0 then Color3.fromRGB(255, 236, 248) else PINK
 			end
-			label.Text = string.format("A\u{2009}D\u{2009}A\u{2009}P\u{2009}T\u{2009}I\u{2009}N\u{2009}G   %d%%", math.clamp(math.floor((tt - from) / (done - from) * 100), 0, 99))
+			label.Text = string.format("ADAPTING %d%%", math.clamp(math.floor((tt - from) / (done - from) * 100), 0, 99))
 		elseif tt < done + 0.7 then
 			for _, f in dots do
 				f.BackgroundTransparency = if math.floor((tt - done) * 12) % 2 == 0 then 0 else 0.3
 			end
-			label.Text = "A\u{2009}D\u{2009}A\u{2009}P\u{2009}T\u{2009}E\u{2009}D"
+			label.Text = "ADAPTED"
 		else
 			bb:Destroy()
 			tracks[name] = nil

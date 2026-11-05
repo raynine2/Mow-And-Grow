@@ -146,6 +146,8 @@ local function spray(mouth: Vector3, amount: number)
 	end
 end
 
+SellFx.spray = spray -- (5 Nov) client/Funny's shredder spit-out sprays the same clippings
+
 -------------------------------------------------------------------------------------------------------------
 -- bundles fly from your back into the hopper
 -------------------------------------------------------------------------------------------------------------

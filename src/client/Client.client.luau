@@ -17,6 +17,7 @@ require(modules:WaitForChild("ViewModel"))
 require(modules:WaitForChild("Inspect")) -- (29 Oct) Y / the eye button: inspect what you're holding
 require(modules:WaitForChild("Soundscape")) -- footsteps, birds and breeze
 require(modules:WaitForChild("Fx"))
+require(modules:WaitForChild("Funny")) -- (5 Nov) Config.FUNNY: squashed by a falling clump, bonks, the shredder spit-out
 require(modules:WaitForChild("BossCine")) -- boss fights: the model, effects, cutscenes, your HP (after Fx)
 require(modules:WaitForChild("BossKill")) -- (29 Oct) the summon pad's light pillar, the climactic kill (after BossCine)
 require(modules:WaitForChild("ShopDisplays")) -- tool shop status lamps + turning tools, the camp fountain

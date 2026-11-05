@@ -27,6 +27,7 @@ local Analytics = require(script.Parent.Analytics) -- (29 Oct) where players qui
 local Guns = require(script.Parent.Guns)
 local BossArena = require(script.Parent.BossArena)
 local ClassPerks = require(script.Parent.ClassPerks)
+local Funny = require(script.Parent.Funny) -- (5 Nov) Config.FUNNY: squash, bonk, shredder spit-out
 local Rebirth = require(script.Parent.Rebirth)
 
 local Run = {}
@@ -481,6 +482,10 @@ local function onSwing(player: Player, look: any)
 	local flat = Vector3.new(aim.X, 0, aim.Z)
 	local at = root.Position + (if flat.Magnitude > 0.1 then flat.Unit * 3 else Vector3.zero)
 	ClassPerks.landed(player, gimmick, hit, at, def.damage * stats.power)
+	-- (5 Nov, Config.FUNNY.bonk) a swing that struck nothing, aimed at a friend in reach: a harmless bonk
+	if not hit then
+		Funny.bonk(player, aim, def.radius)
+	end
 end
 
 -- Auto tools and mowers cut every tick.
@@ -878,6 +883,14 @@ function Run.start()
 	end
 
 	Field.onCut = onCut
+	-- (5 Nov) the funny moments (server/Funny): never while a film or the ending holds a player
+	Funny.start({
+		busy = function(p: Player): boolean
+			local film = filmUntil[p]
+			return completing or (film ~= nil and os.clock() < film)
+		end,
+		pads = info.sellPads or {},
+	})
 	Field.onProgress = pushWorld
 	-- the classes' gimmicks (server/ClassPerks)
 	Field.forceMutation = ClassPerks.forcedMutation

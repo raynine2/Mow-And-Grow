@@ -133,6 +133,78 @@ Config.GRASS_TOYS = {
 	trampleNear = 60, -- studs from the camera for other players' trails
 }
 
+-------------------------------------------------------------------------------------------------------------
+-- FUNNY MOMENTS (5 Nov, owner: "make your friends laugh"; he picked these three). Nothing here hurts, costs or
+-- takes anything: no damage, no coins, no bundles, nothing sold. Never during a boss fight (near an arena or as a
+-- fighter), a film, the ending, or (on the victim's own screen) the egg hatch. The server decides (server/Funny),
+-- every client draws it (client/Funny). Sounds are existing Config.SOUNDS keys, pitched.
+--   squash: a felled clump's top lands on a player: flat like a pancake for a moment, stars round the head, BONK!
+--   bonk:   a hand-tool swing that hits no grass but is aimed at another player: a tiny nudge, a squeak, a word.
+--   spit:   jump into a Giant Grass Shredder's hopper: it gulps you, rumbles and spits you out of the chute.
+-------------------------------------------------------------------------------------------------------------
+Config.FUNNY = {
+	squash = {
+		on = true,
+		minHeight = 3, -- studs: smaller clumps don't squash anybody
+		width = 1.6, -- studs added to the clump's radius either side of its fall line
+		from = 0.3, -- the first 30% of the fall line (the clump's foot) doesn't count
+		upDown = 7, -- studs: your middle must be within this of the clump's foot height
+		time = 2, -- seconds flat (you can't walk meanwhile)
+		flat = 0.18, -- the body's height while flat (x its own)
+		wide = 1.3, -- and its width
+		cooldown = 6, -- seconds before the same player can be squashed again
+		word = "BONK!",
+		wordColor = Color3.fromRGB(255, 214, 60),
+		sound = "slam", -- the thud, pitched up
+		soundPitch = 1.35,
+		squish = "pickup", -- the squish, pitched down
+		squishPitch = 0.6,
+		boing = "eggPop", -- springing back up
+		boingPitch = 1.5,
+		stars = 5,
+	},
+	bonk = {
+		on = true,
+		reach = 1.5, -- studs on top of the tool's own radius
+		cone = 55, -- degrees either side of where you aim
+		upDown = 5, -- studs
+		pairCooldown = 1.5, -- seconds before the same player can bonk the same friend again
+		immune = 2.5, -- seconds a bonked player can't be bonked by anyone (no stun-lock)
+		speed = 20, -- studs/s sideways (the cap: the victim's client never applies more)
+		hop = 22, -- studs/s up (a small hop)
+		edge = 6, -- studs ahead the ground is checked (no nudge near a drop or the void)
+		drop = 5, -- the most the ground there may be lower than where they stand
+		words = { "BONK!", "BOING!", "WHAP!" },
+		wordColors = { Color3.fromRGB(255, 214, 60), Color3.fromRGB(120, 230, 255), Color3.fromRGB(255, 130, 200) },
+		sound = "pickup", -- squeaky: the bubble pop pitched up
+		soundPitch = 1.9,
+		thud = "punch",
+		thudPitch = 1.4,
+		thudVolume = 0.35,
+		stars = 8, -- star bits in the burst (phones: half; Potato Mode: none)
+	},
+	spit = {
+		on = true,
+		reach = 7, -- studs (flat) from the hopper mouth: jumping against or onto the machine counts
+		rise = 5, -- your middle must be this far above the sell pad's floor (in the air, or up on the machine)
+		above = 7, -- and no more than this above the hopper mouth
+		gulpTime = 1, -- seconds inside the machine
+		land = { 7, 9, 11, 5 }, -- studs in front of the chute to try for the landing (the first safe one)
+		apex = 9, -- studs the arc goes up above the chute
+		cooldown = 8, -- seconds before the same player can be shredded again
+		words = { "YUCK!", "SHREDDED!", "BLEH!" },
+		wordColor = Color3.fromRGB(140, 235, 90),
+		gulpWord = "GULP!",
+		gulpSound = "bhPull",
+		gulpPitch = 1.3,
+		spitSound = "bhOut",
+		spitPitch = 1.4,
+		splat = "pickup",
+		splatPitch = 0.75,
+		clippings = 26, -- grass bits in the spray round you (phones: half; Potato Mode: none)
+	},
+}
+
 -- Bags: bought in order at the Bag Stand in the hub (coins, reset every run). The Bottomless Sack game pass
 -- (Config.PASSES.BigBag) makes your bag endless.
 Config.BAGS = {

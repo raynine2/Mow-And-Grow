@@ -67,6 +67,7 @@ Field.onProgress = nil :: (() -> ())?
 Field.forceMutation = nil :: ((Player?, string) -> string?)? -- a class's forced mutation (server/ClassPerks)
 Field.onForced = nil :: ((Player, Vector3) -> ())?
 Field.onElder = nil :: ((Player, Patch) -> ())? -- (29 Oct) an area's Elder Clump fell (server/RunEvents)
+Field.onFell = nil :: ((Patch) -> ())? -- (5 Nov) any clump starts to fall (server/Funny: who its top lands on)
 -- Where zone z's clumps stand ({ cf, scale } each). RunBuilder.patches for the plots map; server/Run sets
 -- RunWorld.patches for the generated world.
 Field.spots = nil :: ((number) -> { any })?
@@ -607,6 +608,9 @@ local function fell(p: Patch, player: Player, auto: boolean?)
 		z = p.z,
 		by = if auto then 0 else player.UserId, -- (an auto-finished leftover is nobody's own cut: no personal effects)
 	})
+	if Field.onFell then
+		task.spawn(Field.onFell, p) -- (5 Nov, Config.FUNNY.squash) runs on its own thread: it waits for the landing
+	end
 	task.delay(FALL_TIME + 0.1, function()
 		stubble(p)
 	end)

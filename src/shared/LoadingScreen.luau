@@ -370,7 +370,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the loading bar: the HUD's wooden groove, mowed stripes filling it, tall grass growing out of the rest
 -------------------------------------------------------------------------------------------------------------
-type Bar = { gx: number, gy: number, gw: number, gh: number, fill: Frame, cutIn: Frame, artIn: Frame, cutUp: Frame, artUp: Frame, reach: number, mower: GuiObject, plate: GuiObject, pct: TextLabel }
+type Bar = { gx: number, gy: number, gw: number, gh: number, fill: CanvasGroup, cutIn: Frame, artIn: Frame, cutUp: Frame, artUp: Frame, reach: number, mower: GuiObject, plate: GuiObject, pct: TextLabel }
 local function bar(stage: Frame): Bar
 	local holder = frame(stage, UDim2.fromOffset(BAR.w, BAR.h), UDim2.fromOffset(BAR.x, BAR.y), WHITE)
 	holder.Name = "Bar"
@@ -380,9 +380,18 @@ local function bar(stage: Frame): Bar
 	local gx, gy = BAR.x + BAR_FACE[1] * k, BAR.y + BAR_FACE[2] * k
 	local gw, gh = BAR.w - (BAR_FACE[1] + BAR_FACE[3]) * k, BAR.h - (BAR_FACE[2] + BAR_FACE[4]) * k
 	-- mowed: short lawn in stripes, with a glossy top, rounded like the groove
-	local fill = frame(stage, UDim2.fromOffset(0, gh), UDim2.fromOffset(gx, gy), Color3.fromRGB(116, 200, 66), math.floor(gh / 2))
+	-- (5 Nov, seen on screen: as a Frame its square stripes stuck out past its rounded left end, "corners are
+	-- sticking out the circle thing"; a CanvasGroup clips them to its corner)
+	local fill = Instance.new("CanvasGroup")
+	fill.Size = UDim2.fromOffset(0, gh)
+	fill.Position = UDim2.fromOffset(gx, gy)
+	fill.BackgroundColor3 = Color3.fromRGB(116, 200, 66)
+	fill.BorderSizePixel = 0
+	local fillCorner = Instance.new("UICorner")
+	fillCorner.CornerRadius = UDim.new(0, math.floor(gh / 2))
+	fillCorner.Parent = fill
+	fill.Parent = stage
 	fill.Name = "Mowed"
-	fill.ClipsDescendants = true
 	for i = 0, math.ceil(gw / 34) do
 		local s = frame(fill, UDim2.fromOffset(17, gh), UDim2.fromOffset(i * 34, 0), Color3.fromRGB(150, 222, 88))
 		s.Name = "Stripe"
@@ -432,7 +441,7 @@ local function bar(stage: Frame): Bar
 	local up, cutUp, artUp = layer("UncutUp", reach, gy - reach)
 	grassArt(artUp, reach)
 	local fade = Instance.new("UIGradient")
-	local a, b = math.clamp(1 - r * 2.4 / gw, 0, 1), math.clamp(1 - r * 0.7 / gw, 0, 1)
+	local a, b = math.clamp(1 - r * 3.4 / gw, 0, 1), math.clamp(1 - r * 1.5 / gw, 0, 1)
 	fade.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
 		NumberSequenceKeypoint.new(a, 0),

@@ -853,12 +853,17 @@ local streak = { clump = nil :: Model?, n = 0, at = 0 }
 local function streakPitch(m: Model?): number
 	local now = os.clock()
 	if m and m == streak.clump and now - streak.at < 1.2 then
-		streak.n = math.min(streak.n + 1, #SCALE - 3) -- (up to la: the cut has ti and the octave left)
+		streak.n += 1
 	else
 		streak.n = 0
 	end
 	streak.clump, streak.at = m, now
-	return SCALE[streak.n + 1]
+	-- up to la (the cut has ti and the octave left), then a big clump's long chop rocks between sol and la
+	local top = #SCALE - 2
+	if streak.n < top then
+		return SCALE[streak.n + 1]
+	end
+	return SCALE[top - 1 + (streak.n - top) % 2]
 end
 
 -- the note your cut lands on: one step above your last hit on the clump you were just chopping (nil when you
@@ -867,7 +872,7 @@ function HitFx.cutNote(): number?
 	if streak.clump == nil or os.clock() - streak.at > 1.5 then
 		return nil
 	end
-	local note = SCALE[math.min(streak.n + 2, #SCALE)]
+	local note = SCALE[math.min(streak.n + 2, #SCALE - 1)] -- (one up from the last hit: ti after a long chop)
 	streak.clump, streak.n = nil, 0
 	return note
 end

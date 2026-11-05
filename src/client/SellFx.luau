@@ -220,6 +220,21 @@ local function coinNote(): number
 	end
 	return RUN[#RUN - 1 + (pitchStep % 2)]
 end
+-- (coins land in bunches, several on one frame: their ticks go out on a steady beat instead, like a counter
+-- ringing up, never more than one every TICK s)
+local TICK = 0.055
+local nextTick = 0
+local function tick(key: string, pitch: number, volume: number?)
+	local now = os.clock()
+	nextTick = math.max(nextTick, now)
+	local wait = nextTick - now
+	nextTick += TICK
+	if wait < 0.005 then
+		Sound.playAt(key, pitch, volume)
+	else
+		task.delay(wait, Sound.playAt, key, pitch, volume)
+	end
+end
 
 local function coinPart(): Part
 	local c = Instance.new("Part")
@@ -259,13 +274,13 @@ local function collect(c: Part)
 			Speed = NumberRange.new(4, 8),
 			SpreadAngle = Vector2.new(180, 180),
 		})
-		Sound.playAt("click", coinNote())
+		tick("click", coinNote())
 		if pitchStep % 2 == 0 then
 			State.emit("flyCoins", 1)
 		end
 		saleLeft -= 1
 		if saleLeft == 0 then
-			Sound.playAt("pickup", 2, 0.8) -- the last coin in: the octave, and the counter's done
+			tick("pickup", 2, 0.8) -- the last coin in: the octave, and the counter's done
 		end
 	end)
 end
@@ -358,7 +373,9 @@ function SellFx.sell(d: { [string]: any })
 			spray(mouth, 1)
 			-- (5 Nov) each bundle into the hopper a step higher (do, re, mi ...): the build-up before the payout
 			local chip = Config.SOUNDS.chip
-			Sound.playAt("chip", (if chip then chip.pitch or 1 else 1) * ({ 1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888 })[math.min(landed, 7)], 0.8)
+			local steps = { 1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888 }
+			local step = if landed <= #steps then steps[landed] else steps[#steps - 1 + (landed % 2)] -- (then la, ti, la ...)
+			Sound.playAt("chip", (if chip then chip.pitch or 1 else 1) * step, 0.8)
 			if landed == count then
 				-- the last bundle is in: the machine coughs up the money
 				task.delay(0.15, function()

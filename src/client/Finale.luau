@@ -1311,7 +1311,8 @@ local function copyWalk()
 			local fp = C.root * CFrame.new(side, 0, 0)
 			local at = Vector3.new(fp.Position.X, groundOf(C) + 0.05, fp.Position.Z)
 			pixels(at, 6, 0.6)
-			stepRing(stepEmitter(at + Vector3.new(0, 0.15, 0)), PINK, 0.7)
+			-- (not additive: on the bright gold an additive pink washed out to white)
+			stepRing(stepEmitter(at + Vector3.new(0, 0.15, 0)), Color3.fromRGB(235, 0, 150), 0)
 			sfx("stepThud", 1.2, 0.6)
 			sfx("bossThud", 0.35, 1.6)
 		end
@@ -1341,20 +1342,20 @@ local function you(): boolean
 	if not shot(T.step2, function(_k)
 		local root = C.root
 		local g = groundOf(C)
-		-- (tested in Studio: from 3 studs the two black legs filled the frame; from the ground, further, the gold
-		-- between them and the ring running out)
-		local p = root.Position + root.LookVector * 5.2 + root.RightVector * 2.2
-		p = Vector3.new(p.X, g + 0.3, p.Z)
-		return look(p, Vector3.new(root.Position.X, g + 0.85, root.Position.Z) - root.LookVector * 0.3, 3), mm(30), root.Position
+		-- (tested in Studio: from 3 studs the two black legs filled the frame; and from the ground the ring running out
+		-- over it was edge-on, a line you couldn't see: from knee height, looking down at the step, it spreads round it)
+		local p = root.Position + root.LookVector * 5.6 + root.RightVector * 2.0
+		p = Vector3.new(p.X, g + 1.9, p.Z)
+		return look(p, Vector3.new(root.Position.X, g + 0.5, root.Position.Z) - root.LookVector * 0.2, 3), mm(28), root.Position
 	end, { hand = 0.15 }) then
 		return false
 	end
 	if not shot(T.walkIn, function(_k)
 		local root = C.root
 		local g = groundOf(C)
-		local p = root.Position + root.LookVector * 5.4 - root.RightVector * 2.4
-		p = Vector3.new(p.X, g + 0.35, p.Z)
-		return look(p, Vector3.new(root.Position.X, g + 0.85, root.Position.Z) - root.LookVector * 0.3, -3), mm(30), root.Position
+		local p = root.Position + root.LookVector * 5.8 - root.RightVector * 2.2
+		p = Vector3.new(p.X, g + 2.0, p.Z)
+		return look(p, Vector3.new(root.Position.X, g + 0.5, root.Position.Z) - root.LookVector * 0.2, -3), mm(28), root.Position
 	end, { hand = 0.15 }) then
 		return false
 	end
@@ -1395,13 +1396,13 @@ local function you(): boolean
 		return false
 	end
 	key(nil)
-	-- 23. its feet again, from low beside them
+	-- 23. its feet again, from beside them
 	if not shot(T.face, function(_k)
 		local root = C.root
 		local g = groundOf(C)
-		local p = root.Position + root.RightVector * 5.6 + root.LookVector * 1.0
-		p = Vector3.new(p.X, g + 0.35, p.Z)
-		return look(p, Vector3.new(root.Position.X, g + 0.9, root.Position.Z) - root.LookVector * 0.5, 2), mm(30), root.Position
+		local p = root.Position + root.RightVector * 6.0 + root.LookVector * 1.0
+		p = Vector3.new(p.X, g + 2.0, p.Z)
+		return look(p, Vector3.new(root.Position.X, g + 0.6, root.Position.Z) - root.LookVector * 0.5, 2), mm(28), root.Position
 	end, { hand = 0.2 }) then
 		return false
 	end

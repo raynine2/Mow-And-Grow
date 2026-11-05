@@ -212,12 +212,13 @@ local function headCf(pup: any): CFrame
 	local h = pup:part("Head")
 	return if h then (pup.world[h] or h.CFrame) else pup.root * CFrame.new(0, 1.5, 0)
 end
--- a point on the face at the eyes' height (a seventh of the head over its middle, on its front), `side` studs to
--- the face's own right: close-ups aim here, along the head's own look, so a turned or tipped head stays framed
-local function eyesOf(pup: any, side: number?): Vector3
+-- a point on the face at the eyes' height (`up` of the head's height over its middle, 0.06 if not given; Rayan's
+-- face has them right at the middle), on its front, `side` studs to the face's own right: close-ups aim here, along
+-- the head's own look, so a turned or tipped head stays framed
+local function eyesOf(pup: any, side: number?, up: number?): Vector3
 	local h = pup:part("Head")
 	local size = if h then h.Size else Vector3.new(1.2, 1.2, 1.2)
-	return (headCf(pup) * CFrame.new(side or 0, size.Y * 0.14, -size.Z * 0.5)).Position
+	return (headCf(pup) * CFrame.new(side or 0, size.Y * (up or 0.06), -size.Z * 0.5)).Position
 end
 local function chestOf(pup: any): CFrame
 	local c = pup:part("UpperTorso")
@@ -964,10 +965,10 @@ local function armFalls(): boolean
 		key(h + R.root.LookVector * 1.6 + Vector3.new(0, 0.6, 0), PINK, if flick % 7 < 3 then 2.6 else 0.6, 6)
 	end
 	if not shot(T.reset, function(k)
-		-- (his right eye: a bandage covers the left)
+		-- (his right eye: a bandage covers the left; seen through the strands of his fringe, tested in Studio)
 		local hc = headCf(R)
-		local e = eyesOf(R, 0.24)
-		local p = e + hc.LookVector * (1.9 - k * 0.25) + hc.RightVector * 0.12 + hc.UpVector * 0.04
+		local e = eyesOf(R, 0.26, 0)
+		local p = e + hc.LookVector * (2.0 - k * 0.25) + hc.RightVector * 0.3 - hc.UpVector * 0.12
 		return CFrame.lookAt(p, e, hc.UpVector), mm(85), e
 	end, { hand = 0.12 }) then
 		return false
@@ -988,29 +989,50 @@ local function loadingRing(d: any, from: number, done: number)
 	bb.Size = UDim2.fromScale(14 * d.scale, 14 * d.scale)
 	bb.StudsOffset = Vector3.new(0, 16 * d.scale, 0) -- (just over the top of its head)
 	bb.LightInfluence = 0
+	bb.AlwaysOnTop = true -- (its own head hid half of it)
 	bb.Adornee = head
 	bb.Parent = head
+	-- a loading spinner (the glitch thinking): eight rounded dots, a bright one chasing round, a faint ring behind
+	local rim = Instance.new("Frame")
+	rim.BackgroundTransparency = 1
+	rim.AnchorPoint = Vector2.new(0.5, 0.5)
+	rim.Position = UDim2.fromScale(0.5, 0.5)
+	rim.Size = UDim2.fromScale(0.76, 0.76)
+	rim.Parent = bb
+	local rimCorner = Instance.new("UICorner")
+	rimCorner.CornerRadius = UDim.new(0.5, 0)
+	rimCorner.Parent = rim
+	local rimStroke = Instance.new("UIStroke")
+	rimStroke.Color = PINK
+	rimStroke.Thickness = 3
+	rimStroke.Transparency = 0.55
+	rimStroke.Parent = rim
 	local dots = {}
 	for i = 1, 8 do
-		local a = (i / 8) * math.pi * 2
+		local a = (i / 8) * math.pi * 2 - math.pi / 2
 		local f = Instance.new("Frame")
 		f.BorderSizePixel = 0
 		f.AnchorPoint = Vector2.new(0.5, 0.5)
-		f.Size = UDim2.fromScale(0.16, 0.16)
+		f.Size = UDim2.fromScale(0.17, 0.17)
 		f.Position = UDim2.fromScale(0.5 + math.cos(a) * 0.38, 0.5 + math.sin(a) * 0.38)
 		f.BackgroundColor3 = PINK
-		f.BackgroundTransparency = 0.75
+		f.BackgroundTransparency = 0.5
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0.5, 0)
+		c.Parent = f
 		f.Parent = bb
 		dots[i] = f
 	end
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1.6, 0.28)
-	label.AnchorPoint = Vector2.new(0.5, 0)
-	label.Position = UDim2.fromScale(0.5, 1.02)
-	label.Font = Enum.Font.Arcade
+	label.Size = UDim2.fromScale(1.8, 0.26)
+	label.AnchorPoint = Vector2.new(0.5, 1)
+	label.Position = UDim2.fromScale(0.5, -0.02)
+	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
-	label.TextColor3 = Color3.fromRGB(255, 196, 236)
+	label.TextColor3 = Color3.fromRGB(255, 214, 240)
+	label.TextStrokeColor3 = Color3.fromRGB(60, 0, 40)
+	label.TextStrokeTransparency = 0.2
 	label.Text = ""
 	label.Parent = bb
 	local name = "ring" .. tostring(d)
@@ -1025,7 +1047,8 @@ local function loadingRing(d: any, from: number, done: number)
 			local lit = math.floor((tt - from) * 14) % 8 + 1
 			for i, f in dots do
 				local dist = (lit - i) % 8
-				f.BackgroundTransparency = if dist == 0 then 0 elseif dist == 1 then 0.35 elseif dist == 2 then 0.6 else 0.85
+				f.BackgroundTransparency = if dist == 0 then 0 elseif dist == 1 then 0.2 elseif dist == 2 then 0.4 else 0.6
+				f.BackgroundColor3 = if dist == 0 then Color3.fromRGB(255, 236, 248) else PINK
 			end
 			label.Text = string.format("ADAPTING %d%%", math.clamp(math.floor((tt - from) / (done - from) * 100), 0, 99))
 		elseif tt < done + 0.7 then
@@ -1085,10 +1108,11 @@ local function reset(): boolean
 	end)
 	shearsMode = "out"
 	shearsOpen = 0
-	-- (wide enough for the ring over its head and him small below)
+	-- (low from the south-west past the shed's log wall, tested in Studio: the whole demon against the sky's pink
+	-- cracks, the loading ring over its head, the arm flying back in; from close below it read as dark noise)
 	if not shot(T.clang, function(k)
-		local p = at(R2 + Vector3.new(14, 3, 12))
-		return look(p, at(Vector3.new(-10, 30 + k * 4, -50)), 2), mm(20), at(Vector3.new(-12, 20, -50))
+		local p = at(Vector3.new(-22 + k * 1.5, 3, 8 - k * 2))
+		return look(p, at(Vector3.new(-6, 27 + k * 2, -52)), 2), mm(27), at(Vector3.new(-8, 20, -52))
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -1099,17 +1123,19 @@ end
 -- CLANG; the backhand; through the shed; down in the wreck
 -------------------------------------------------------------------------------------------------------------
 local function clang(): boolean
-	-- 16. [TSB 6.5, a black-and-white impact frame] the same cut clangs off the arm: sparks, a jolt
-	local elbow = D.frame("foreR").Position
-	local body = at(DEMON_AT, 10)
-	local out = Vector3.new(elbow.X - body.X, 0, elbow.Z - body.Z).Unit
-	local p = elbow + out * 4.2 + UP * 0.5
+	-- 16. [TSB 6.5, a black-and-white impact frame] the same cut clangs off the arm: sparks, a jolt. He comes down on
+	-- top of the forearm (it sticks out sideways from the elbow along its root's -Y, ~15 studs, ~8 thick: placed
+	-- beside the elbow he stood inside it)
+	local fr = D.frame("foreR")
+	local elbow = fr.Position
+	local axis = elbow - fr.UpVector * 7
+	local p = axis + UP * 6.2
 	R.root = CFrame.lookAt(p, Vector3.new(elbow.X, p.Y, elbow.Z))
 	R:pose("snipOpen", 0)
 	R:pose("jolt", 0.1, "snap")
 	R:update(0)
 	shearsMode = "two"
-	local hit = elbow + out * 1.2
+	local hit = axis + UP * 3.6
 	sfx("bladeClang", 1.4, 0.9)
 	sfx("hit", 1.0, 0.6)
 	fx("Sparks", hit, { scale = 1.6, color = GOLD })
@@ -1118,10 +1144,11 @@ local function clang(): boolean
 		AnimeFx.impact({ R.model, SH.model, table.unpack(armParts(D, "R")) }, "neg", { hold = 0.1, at = hit })
 	end)
 	Film.shake(0.5, 2.5)
-	if not shot(T.back, function(_k)
-		local side = out:Cross(UP).Unit
-		local cp = hit + out * 7 + side * 3.5 + UP * 1.5
-		return look(cp, hit:Lerp(p, 0.4), 8), mm(30), hit
+	-- (from low in front of the arm, tested in Studio: him over it against the sky's cracks, the arm's dark bulk
+	-- under him)
+	if not shot(T.back, function(k)
+		local cp = axis + Vector3.new(-9 - k * 0.5, 1, 11 + k * 0.5)
+		return look(cp, axis + UP * 5, -6), mm(28), p
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -1174,22 +1201,89 @@ local function clang(): boolean
 	return true
 end
 
--- the shed's bricks fly apart, away from where he came in
+-- a flash of light that fades (a crash, a hit): lights up what's round it for a moment
+local function burst(pos: Vector3, color: Color3, brightness: number, range: number, life: number)
+	local holder = Instance.new("Part")
+	holder.Name = "Burst"
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.2, 0.2, 0.2)
+	holder.CFrame = CFrame.new(pos)
+	holder.Parent = stageFolder()
+	local l = Instance.new("PointLight")
+	l.Color = color
+	l.Brightness = brightness
+	l.Range = range
+	l.Shadows = false
+	l.Parent = holder
+	TweenService:Create(l, TweenInfo.new(life, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Brightness = 0 }):Play()
+	task.delay(life + 0.1, function()
+		holder:Destroy()
+	end)
+end
+
+-- a brick lying flat on the ground at `at` (its thinnest side down), turned `yaw`
+local function restOn(p: BasePart, at: Vector3, yaw: number): CFrame
+	local s = p.Size
+	local turn = if s.X <= s.Y and s.X <= s.Z then CFrame.Angles(0, 0, math.rad(90)) elseif s.Z <= s.Y then CFrame.Angles(math.rad(90), 0, 0) else CFrame.identity
+	local half = math.min(s.X, s.Y, s.Z) / 2
+	return CFrame.new(at.X, S.at.Position.Y + half, at.Z) * CFrame.Angles(0, yaw, 0) * turn
+end
+
+-- the shed's bricks fly apart, away from where he came in, and come down round the wreck (left in the air, they
+-- hung over every shot after)
+local debris: { { part: BasePart, rest: CFrame } } = {}
 local function blowShed(from: Vector3)
 	local shedModel = S.shed
 	if not shedModel then
 		return
 	end
 	local rng = Random.new(7)
+	table.clear(debris)
 	for _, p in shedModel:GetDescendants() do
 		if p:IsA("BasePart") then
 			local out = (p.Position - from)
 			out = Vector3.new(out.X, 0, out.Z)
-			local dir = (if out.Magnitude > 0.1 then out.Unit else Vector3.xAxis) + Vector3.new(0, rng:NextNumber(0.3, 1.2), 0)
-			local goal = (p.CFrame + dir * rng:NextNumber(4, 16) + Vector3.new(0, -rng:NextNumber(0, 3), 0)) * CFrame.Angles(rng:NextNumber(-2, 2), rng:NextNumber(-2, 2), rng:NextNumber(-2, 2))
-			TweenService:Create(p, TweenInfo.new(rng:NextNumber(0.5, 1.1), Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = goal }):Play()
+			local dir = if out.Magnitude > 0.1 then out.Unit else Vector3.xAxis
+			local dist = rng:NextNumber(4, 16)
+			local up = (p.CFrame + dir * dist * 0.55 + Vector3.new(0, rng:NextNumber(2, 7), 0)) * CFrame.Angles(rng:NextNumber(-2, 2), rng:NextNumber(-2, 2), rng:NextNumber(-2, 2))
+			local rest = restOn(p, p.Position + dir * dist, rng:NextNumber(0, math.pi * 2))
+			table.insert(debris, { part = p, rest = rest })
+			local t1 = rng:NextNumber(0.35, 0.55)
+			TweenService:Create(p, TweenInfo.new(t1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = up }):Play()
+			task.delay(t1, function()
+				if p.Parent then
+					TweenService:Create(p, TweenInfo.new(rng:NextNumber(0.3, 0.45), Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = rest }):Play()
+				end
+			end)
 		end
 	end
+end
+
+-- (the ultimate) the wreck's bricks near him lift off the ground and hang, turning slowly; dropDebris lets go
+local lifted: { { part: BasePart, rest: CFrame } } = {}
+local function liftDebris(center: Vector3, radius: number, time: number)
+	local rng = Random.new(11)
+	table.clear(lifted)
+	for _, d in debris do
+		local p = d.part
+		if p.Parent and (flat(p.Position) - flat(center)).Magnitude < radius and p.Size.Magnitude < 12 then
+			table.insert(lifted, d)
+			local goal = (d.rest + Vector3.new(0, rng:NextNumber(1.5, 5), 0)) * CFrame.Angles(rng:NextNumber(-0.5, 0.5), rng:NextNumber(-1, 1), rng:NextNumber(-0.5, 0.5))
+			TweenService:Create(p, TweenInfo.new(time * rng:NextNumber(0.7, 1), Enum.EasingStyle.Sine, Enum.EasingDirection.Out), { CFrame = goal }):Play()
+		end
+	end
+end
+local function dropDebris()
+	for _, d in lifted do
+		if d.part.Parent then
+			TweenService:Create(d.part, TweenInfo.new(0.35 + math.random() * 0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = d.rest }):Play()
+		end
+	end
+	table.clear(lifted)
 end
 
 local function shed(): boolean
@@ -1197,6 +1291,7 @@ local function shed(): boolean
 	local hitAt = at(SHED + Vector3.new(6, 2, 0))
 	after(T.shed - 0.1, function()
 		blowShed(hitAt)
+		burst(hitAt + Vector3.new(0, 2, 0), Color3.fromRGB(255, 196, 140), 7, 36, 0.7)
 		sfx("crate", 1.3, 0.8)
 		sfx("crate2", 1.2, 0.6)
 		sfx("thud", 1.3, 0.6)
@@ -1220,6 +1315,16 @@ local function shed(): boolean
 	R:pose("down", 0)
 	shearsMode = "out"
 	shearsOpen = 0
+	-- (broken planks lying round him: the shed's own bricks flew out away from him)
+	local rngW = Random.new(3)
+	for i = 1, 8 do
+		local a = (i / 8) * math.pi * 2 + rngW:NextNumber(-0.3, 0.3)
+		local r = rngW:NextNumber(2.2, 4.5)
+		local size = Vector3.new(rngW:NextNumber(0.6, 1.1), rngW:NextNumber(0.25, 0.4), rngW:NextNumber(2.5, 5))
+		local pos = at(SHED + Vector3.new(-1 + math.cos(a) * r, 0, 2 + math.sin(a) * r))
+		local tilt = CFrame.Angles(rngW:NextNumber(-0.25, 0.25), 0, rngW:NextNumber(-0.2, 0.2))
+		FilmSet.block(stageFolder(), size, CFrame.new(pos + Vector3.new(0, size.Y / 2 + 0.05, 0)) * CFrame.Angles(0, rngW:NextNumber(0, 6.28), 0) * tilt, Color3.fromRGB(122, 86, 58):Lerp(Color3.fromRGB(70, 48, 34), rngW:NextNumber()), Enum.Material.WoodPlanks, "Plank")
+	end
 	fx("Dust", at(SHED + Vector3.new(-1, 0, 2), 1), { scale = 2 })
 	if not shot(T.up, function(k)
 		-- (centred between his chest and his head: on his hips, pass 2 cut his head off)
@@ -1257,7 +1362,8 @@ local function getsUp(): boolean
 	if not shot(T.fine, function(k)
 		local h = headOf(R)
 		local root = R.root
-		local cp = root.Position + root.LookVector * 6.5 + root.RightVector * 1.8 + Vector3.new(0, -1.6 + k * 0.3, 0)
+		-- (a little more from his right: the figure on his chest stood in front of his face straight on)
+		local cp = root.Position + root.LookVector * 6.0 + root.RightVector * 2.9 + Vector3.new(0, -1.3 + k * 0.3, 0)
 		key(cp:Lerp(h, 0.6) + Vector3.new(0, 1, 0), Color3.fromRGB(255, 190, 220), 1.2, 9)
 		return look(cp, h + Vector3.new(0, -1.2, 0), 3), mm(30), h
 	end, { hand = 0.35 }) then
@@ -1296,6 +1402,8 @@ local function stance(): boolean
 	R:pose("ultStance", 0.35, "inOut")
 	shearsMode = "two"
 	SH:glow(0)
+	-- (the wreck's bricks round him lift and hang while he gathers it; they drop when the cut lands)
+	liftDebris(at(R3, 0), 22, 2.6)
 	local glowFrom = now()
 	tracks.glow = function()
 		SH:glow(math.clamp((now() - glowFrom) / 2.8, 0, 1))
@@ -1407,7 +1515,8 @@ local function slide(): boolean
 	if S.disc then
 		fadeOut(S.disc, 0.4)
 	end
-	local cut = S.mow(R3, RING)
+	dropDebris()
+	local cut = S.mow(at(R3, 0), RING) -- (the tufts' places are world positions: given R3 itself, nothing was cut)
 	for i = 1, math.min(#cut, 30) do
 		local p = cut[math.random(1, #cut)]
 		fx(if i % 2 == 0 then "GrassTuft" else "GrassStreak", p + Vector3.new(0, 1.5, 0), { scale = 0.9, color = Color3.fromRGB(110, 190, 70) })
@@ -1449,9 +1558,10 @@ local function slide(): boolean
 		return false
 	end
 	-- 28. low in the stubble, clippings still in the air, Rayan beyond, still in his follow-through
+	-- (further back than at first, tested in Studio: all of him in the follow-through, the blade's edge glowing)
 	if not shot(T.regrow, function(k)
-		local p = at(R3 + Vector3.new(3, 0.6, 6 - k))
-		return look(p, at(R3, 1.6)), mm(35), at(R3, 2)
+		local p = at(R3 + Vector3.new(5.5, 0.6, 12.5 - k))
+		return look(p, at(R3 + Vector3.new(-0.5, 0, -0.5), 2.6)), mm(33), at(R3, 2)
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -1505,10 +1615,12 @@ local function regrow(): boolean
 	R:look(at(BIG_AT, 30), 1)
 	shearsMode = "out"
 	shearsOpen = 0
+	-- (from further behind him, tested in Studio: all of him small against the new one taking shape; from close his
+	-- back filled the frame)
 	if not shot(T.bigger, function(k)
 		local root = R.root
-		local p = root.Position - root.LookVector * 5 + root.RightVector * 2.6 + Vector3.new(0, -1.6, 0)
-		return look(p, at(BIG_AT, 10 + k * 12), 5), mm(21), at(BIG_AT, 12)
+		local p = root.Position - root.LookVector * 10 + root.RightVector * 4.5 + Vector3.new(0, -2.3, 0)
+		return look(p, at(BIG_AT, 13 + k * 8), 4), mm(20), at(BIG_AT, 12)
 	end, { hand = 0.5 }) then
 		return false
 	end
@@ -1551,14 +1663,17 @@ local function bigger(): boolean
 	end, { hand = 0.6 }) then
 		return false
 	end
-	-- 31. [SR 11.2, dark shapes over a lit face] his face from low in front, looking up; the fists' shadow coming
-	-- down over the top of the frame
+	-- 31. [SR 11.2, dark shapes over a lit face] his face turned up to us, seen from where the fists are coming
+	-- (from low in front, the figure on his chest and his raised arm hid it); their shadow swallows the frame
+	after(T.slam - 0.35, function()
+		AnimeFx.cover(BLACK, 0.05, 0.33, "shadow")
+	end)
 	if not shot(T.slam, function(k)
 		local h = headOf(R)
 		local root = R.root
-		local cp = h + root.LookVector * 3.4 + root.RightVector * 0.8 + Vector3.new(0, -2.0, 0)
-		key(h + root.LookVector * 2 + Vector3.new(0, -1, 0), PINK, 1.6, 8)
-		return look(cp, h + Vector3.new(0, 1.2 + k * 0.6, 0), 6), mm(32), h
+		local cp = h + Vector3.new(0, 3.2 - k * 0.5, 0) + root.LookVector * 1.3 + root.RightVector * 0.5
+		key(h + Vector3.new(0, 2, 0) + root.LookVector * 1, PINK, 1.6, 8)
+		return look(cp, h, 4), mm(33), h
 	end, { hand = 0.7 }) then
 		return false
 	end
@@ -1603,6 +1718,7 @@ end
 local function streak(): boolean
 	-- 33. a gold streak out of the sky between them: impact, the fists thrown back up
 	AnimeFx.cover(BLACK, 1, 0, "black")
+	AnimeFx.cover(BLACK, 1, 0, "shadow")
 	local land = at(P1, 0)
 	local beam = neon(Vector3.new(1.6, 420, 1.6), CFrame.new(land + Vector3.new(0, 210, 0)), Color3.fromRGB(255, 230, 150), 0)
 	fadeOut(beam, 0.35, Vector3.new(0.2, 420, 0.2))
@@ -1643,8 +1759,8 @@ local function streak(): boolean
 	clearR = 4
 	if not shot(T.resume, function(k)
 		local root = H.root
-		local cp = root.Position + root.LookVector * 7 + root.RightVector * 4.5 + Vector3.new(0, -2.4, 0)
-		return look(cp, root.Position + Vector3.new(0, 1.5 + k * 2, 0), -4), mm(24), root.Position
+		local cp = root.Position + root.LookVector * 7 + root.RightVector * 4.5 + Vector3.new(0, -1.7, 0)
+		return look(cp, root.Position + Vector3.new(0, 2.6 + k * 2, 0), -4), mm(24), root.Position
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -1669,7 +1785,8 @@ local function punch(): boolean
 	end, { hand = 0.12 }) then
 		return false
 	end
-	-- 36. [SR 24.0, a low close-up, set] up out of the crouch, the fist goes back; gold gathers on it
+	-- 36. [SR 16.0, the small figure and the big thing] up out of the crouch, the fist goes back, gold gathers on it,
+	-- and the giant fists come down at him: from low at his side, wide (close in, the blocky arms read as nothing)
 	H:pose("windup", 0.25, "out")
 	sfx("zapCharge", 1.2, 1.1)
 	local gold = fx("GoldBurst", H:grip("Right").Position, { scale = 0.6 })
@@ -1685,9 +1802,9 @@ local function punch(): boolean
 	if not shot(T.punch, function(k)
 		local root = H.root
 		local h = headOf(H)
-		local cp = root.Position + root.LookVector * 4.5 - root.RightVector * 1.2 + Vector3.new(0, -2.2, 0)
+		local cp = root.Position + root.RightVector * (10 - k) + root.LookVector * 2.5 + Vector3.new(0, -1.6, 0)
 		key(h + root.LookVector * 2.5, GOLD, 1.8, 8)
-		return look(cp, h + Vector3.new(0, -0.6 + k * 0.4, 0), 7), mm(26), h
+		return look(cp, root.Position + root.LookVector * 3 + Vector3.new(0, 3.5 + k, 0), 3), mm(26), h
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -1721,12 +1838,14 @@ local function punch(): boolean
 	P.armR = { pitch = -50, yaw = 14 }
 	P.armL = { pitch = -50, yaw = 14 }
 	P.lean = -8
+	-- (tested in Studio: the fist big in the middle, his face over it, lit gold; the giant fists it meets, right at
+	-- the lens, are hidden by the near clip)
 	if not shot(T.shatter, function(k)
 		local root = H.root
 		local f = H:grip("Right").Position
-		local cp = f + root.LookVector * (2.4 + k * 0.6) + root.RightVector * 0.4 + Vector3.new(0, 0.3, 0)
+		local cp = f + root.LookVector * (2.6 + k * 0.4) + root.RightVector * 1.1 + Vector3.new(0, 0.5, 0)
 		key(f + root.LookVector * 1.2, GOLD, 3, 8)
-		return look(cp, headOf(H):Lerp(f, 0.35), -6), mm(24), f
+		return look(cp, headOf(H):Lerp(f, 0.45), -8), mm(25), f
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -1816,9 +1935,10 @@ local function breakUp(): boolean
 		fx("PinkBurst", at(BIG_AT, 20), { scale = 3 })
 		fx("CorruptOrb", at(BIG_AT, 18), { scale = 3 })
 	end)
+	-- (from behind his right: from behind his left the lens sat on Rayan's head, kneeling there)
 	if not shot(T.pillars, function(k)
 		local root = H.root
-		local p = root.Position - root.LookVector * 6.5 - root.RightVector * 2.2 + Vector3.new(0, -1.4 + k * 1.2, 0)
+		local p = root.Position - root.LookVector * 3.5 + root.RightVector * 5.5 + Vector3.new(0, -1.5 + k * 1.2, 0)
 		return look(p, at(BIG_AT, 18 + k * 14), -3), mm(20), at(BIG_AT, 16)
 	end, { hand = 0.5 }) then
 		return false
@@ -1900,9 +2020,11 @@ local function lastEye(): boolean
 		sfx("whoosh", 1.3, 1.5)
 		sfx("zapStrike", 0.8, 1.8)
 	end)
+	-- (over the player's head from higher and wider, tested in Studio: the back of their head on the left, the eye in
+	-- the middle, the pink cracks and pillars behind; lower and closer, the shoulder filled the frame)
 	if not shot(T.rayan, function(k)
-		local p = hd - face * 2.6 + H.root.RightVector * 1.6 + Vector3.new(0, 0.3, 0)
-		return look(p, home:Lerp(hd, 0.35)), mm(45), home
+		local p = hd - face * (2.4 + k * 0.3) + H.root.RightVector * 2.1 + Vector3.new(0, 1.0, 0)
+		return look(p, home + Vector3.new(0, -0.3, 0)), mm(33), home
 	end, { hand = 0.25 }) then
 		return false
 	end
@@ -1924,18 +2046,19 @@ local function rookie(): boolean
 	after(T.rookie, function()
 		AnimeFx.sub("Not bad, *rookie*.", 1.3)
 	end)
-	-- 41a. over Rayan's shoulder (his hair and the shears big on the left) onto the player
+	-- 41a. the two of them from in front, side by side: Rayan turned to the player, the shears on his shoulder, a
+	-- pink pillar between them far off (over his shoulder, his hair filled the frame and the player's face was away)
+	clearR = 6
 	if not shot(T.free - 0.05, function(k)
-		local rh = headOf(R)
-		local hh = headOf(H)
-		local toH = (hh - rh).Unit
-		local side = toH:Cross(UP).Unit
-		local cp = rh - toH * 2.2 - side * 0.9 + Vector3.new(0, 0.35, 0)
-		key(hh - toH * 2 + Vector3.new(0, 1, 0), Color3.fromRGB(255, 226, 200), 1.4, 8)
-		return look(cp, hh + Vector3.new(0, -0.2, 0)), mm(42 + k * 4), hh
+		local mid = (R.root.Position + H.root.Position) / 2
+		local face = H.root.LookVector
+		local cp = mid + face * (7.5 - k * 0.6) + Vector3.new(0, 0.9, 0)
+		key(mid + face * 3 + Vector3.new(0, 3, 0), Color3.fromRGB(255, 226, 200), 1.2, 10)
+		return look(cp, mid + Vector3.new(0, 1.7, 0)), mm(37), mid + Vector3.new(0, 1.7, 0)
 	end, { hand = 0.25 }) then
 		return false
 	end
+	clearR = 4
 	-- 41b. the two of them from behind, low, looking out at the pink pillars on the hills: "Free them. Mow it ALL."
 	key(nil)
 	after(T.free, function()
@@ -1945,8 +2068,8 @@ local function rookie(): boolean
 	if not shot(T.title, function(k)
 		local mid = (R.root.Position + H.root.Position) / 2
 		local face = H.root.LookVector
-		local cp = mid - face * (6.5 + k * 0.8) + H.root.RightVector * 0.6 + Vector3.new(0, -1.8, 0)
-		return look(cp, mid + face * 40 + Vector3.new(0, 9, 0), 2), mm(26), mid
+		local cp = mid - face * (8.5 + k * 0.8) + H.root.RightVector * 0.6 + Vector3.new(0, -2.0, 0)
+		return look(cp, mid + face * 40 + Vector3.new(0, 12, 0), 2), mm(24), mid
 	end, { hand = 0.3 }) then
 		return false
 	end

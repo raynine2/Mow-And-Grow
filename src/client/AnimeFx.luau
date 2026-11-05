@@ -127,10 +127,8 @@ function AnimeFx.sub(text: string, life: number?)
 	band.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0.45), NumberSequenceKeypoint.new(0.75, 0.45), NumberSequenceKeypoint.new(1, 1) })
 	band.Parent = root
 	local rich = string.gsub(text, "%*(.-)%*", '<font color="#FF3048">%1</font>')
-	local t = label(root, "[" .. rich .. "]", Enum.Font.Merriweather, WHITE, Z_TEXT + 1)
-	pcall(function()
-		t.FontFace = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Bold)
-	end)
+	-- (the game's own font everywhere in the films: the owner, 4 Nov, "just use the ui we have in game")
+	local t = label(root, "[" .. rich .. "]", Enum.Font.FredokaOne, WHITE, Z_TEXT + 1)
 	t.RichText = true
 	t.AnchorPoint = Vector2.new(0.5, 0.5)
 	t.Position = UDim2.fromScale(0.5, 0.5)
@@ -186,14 +184,14 @@ function AnimeFx.card(name: string, title: string, color: Color3?, life: number?
 	edgeBot.Size = UDim2.new(1, 0, 0, 4)
 	edgeBot.Position = UDim2.new(0, 0, 1, -4)
 	-- the name
-	local big = label(root, string.upper(name), Enum.Font.GothamBlack, WHITE, Z_TEXT + 1)
+	local big = label(root, string.upper(name), Enum.Font.FredokaOne, WHITE, Z_TEXT + 1)
 	big.AnchorPoint = Vector2.new(0, 0.5)
 	big.Size = UDim2.fromScale(0.62, 0.17)
 	big.Position = UDim2.fromScale(1.2, 0.585)
 	big.Rotation = -7
 	big.TextXAlignment = Enum.TextXAlignment.Left
 	stroke(big, 3)
-	local small = label(root, string.upper(title), Enum.Font.PermanentMarker, c, Z_TEXT + 1)
+	local small = label(root, string.upper(title), Enum.Font.FredokaOne, c, Z_TEXT + 1)
 	small.AnchorPoint = Vector2.new(0, 0.5)
 	small.Size = UDim2.fromScale(0.5, 0.06)
 	small.Position = UDim2.fromScale(1.3, 0.69)
@@ -302,7 +300,7 @@ function AnimeFx.technique(name: string, sub: string, color: Color3?, life: numb
 	end
 	local hold = life or 0.9
 	local root = frame(g, "Technique", BLACK, 0.35, Z_TEXT)
-	local big = label(root, string.upper(name), Enum.Font.GothamBlack, color or Color3.fromRGB(255, 214, 90), Z_TEXT + 1)
+	local big = label(root, string.upper(name), Enum.Font.FredokaOne, color or Color3.fromRGB(255, 214, 90), Z_TEXT + 1)
 	big.AnchorPoint = Vector2.new(0.5, 0.5)
 	big.Position = UDim2.fromScale(0.5, 0.46)
 	big.Size = UDim2.fromScale(0.86, 0.2)
@@ -311,7 +309,7 @@ function AnimeFx.technique(name: string, sub: string, color: Color3?, life: numb
 	local sc = Instance.new("UIScale")
 	sc.Scale = 1.45
 	sc.Parent = big
-	local small = label(root, sub, Enum.Font.Merriweather, WHITE, Z_TEXT + 1)
+	local small = label(root, sub, Enum.Font.FredokaOne, WHITE, Z_TEXT + 1)
 	small.AnchorPoint = Vector2.new(0.5, 0.5)
 	small.Position = UDim2.fromScale(0.5, 0.6)
 	small.Size = UDim2.fromScale(0.5, 0.045)
@@ -579,7 +577,7 @@ function AnimeFx.logo(): Frame?
 		im.ImageTransparency = 1
 		logo = im
 	else
-		local t = label(root, "MOW A LAWN", Enum.Font.GothamBlack, Color3.fromRGB(255, 230, 120), Z_TEXT + 1)
+		local t = label(root, "MOW A LAWN", Enum.Font.FredokaOne, Color3.fromRGB(255, 230, 120), Z_TEXT + 1)
 		stroke(t, 6)
 		t.TextTransparency = 1
 		logo = t
@@ -635,14 +633,14 @@ function AnimeFx.word(big: string, small: string?, color: Color3?): Frame?
 		return nil
 	end
 	local root = frame(g, "Word", BLACK, 0, Z_TEXT)
-	local t = label(root, big, Enum.Font.GothamBlack, color or WHITE, Z_TEXT + 1)
+	local t = label(root, big, Enum.Font.FredokaOne, color or WHITE, Z_TEXT + 1)
 	t.AnchorPoint = Vector2.new(0.5, 0.5)
 	t.Position = UDim2.fromScale(0.5, 0.46)
 	t.Size = UDim2.fromScale(0.7, 0.22)
 	t.TextTransparency = 1
 	tween(t, 0.06, { TextTransparency = 0 })
 	if small then
-		local s = label(root, small, Enum.Font.GothamBold, Color3.fromRGB(200, 196, 214), Z_TEXT + 1)
+		local s = label(root, small, Enum.Font.FredokaOne, Color3.fromRGB(200, 196, 214), Z_TEXT + 1)
 		s.AnchorPoint = Vector2.new(0.5, 0.5)
 		s.Position = UDim2.fromScale(0.5, 0.62)
 		s.Size = UDim2.fromScale(0.6, 0.045)

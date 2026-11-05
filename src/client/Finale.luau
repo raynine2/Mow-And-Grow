@@ -31,6 +31,7 @@ local Lighting = game:GetService("Lighting")
 local MowALawn = ReplicatedStorage:WaitForChild("MowALawn")
 local Config = require(MowALawn:WaitForChild("Config")) :: any
 local BossMoves = require(MowALawn:WaitForChild("BossMoves")) :: any
+local FxIds = require(MowALawn:WaitForChild("FxIds")) :: { [string]: string }
 local Film = require(script.Parent.Film)
 local FilmAudio = require(script.Parent.FilmAudio)
 local IntroUi = require(script.Parent.IntroUi)
@@ -139,6 +140,9 @@ local function now(): number
 	local s = cue and cue.sound
 	if piece and s and s.Parent and s.IsPlaying and s.TimePosition >= PIECES[piece].at - 0.02 then
 		t = PIECES[piece].from + (s.TimePosition - PIECES[piece].at)
+		-- (the plain clock kept level with the track, so when the track ends it carries on from here: tested in
+		-- Studio, after the last piece ended it ran on from where it was last set, half a minute back, and jumped)
+		freeBase, freeStart = t, os.clock()
 	else
 		t = freeBase + (os.clock() - freeStart) * rate
 	end
@@ -377,7 +381,7 @@ clearView = function(cf: CFrame, focus: Vector3?)
 	end
 	if G and G.tuftParts and (p - G.at.Position).Magnitude < 600 then
 		for _, rec in G.tuftParts do
-			hideIf(rec.parts, inTheWay(rec.at, 1.4, p, dir, segLen))
+			hideIf(rec.parts, inTheWay(rec.at, rec.r, p, dir, segLen))
 		end
 	end
 end
@@ -450,7 +454,9 @@ end
 local function makeEyes(parent: Instance): { BasePart }
 	local out = {}
 	for i = 1, 2 do
-		local e = FilmSet.block(parent, Vector3.new(0.2, 0.09, 0.05), CFrame.identity, Color3.fromRGB(255, 70, 210), Enum.Material.Neon, "CopyEye")
+		-- (thin slits slanting down to the middle: tested in Studio, two flat level bars on a black block head looked
+		-- like another game's monster, and with their inner ends raised they looked worried, not angry)
+		local e = FilmSet.block(parent, Vector3.new(0.25, 0.055, 0.05), CFrame.identity, Color3.fromRGB(255, 70, 210), Enum.Material.Neon, "CopyEye")
 		e.CastShadow = false
 		local l = Instance.new("PointLight")
 		l.Color = PINK
@@ -475,7 +481,7 @@ local function placeEyes()
 	end
 	for i, e in copyEyes do
 		local side = if i == 1 then -0.2 else 0.2
-		e.CFrame = hc * CFrame.new(side * size.X / 1.2, size.Y * 0.07, -size.Z * 0.5 - 0.02) * CFrame.Angles(0, 0, math.rad(if i == 1 then 8 else -8))
+		e.CFrame = hc * CFrame.new(side * size.X / 1.2, size.Y * 0.07, -size.Z * 0.5 - 0.02) * CFrame.Angles(0, 0, math.rad(if i == 1 then -15 else 15))
 		e.LocalTransparencyModifier = if C.shown then 0 else 1
 	end
 end
@@ -531,9 +537,18 @@ end
 local function makeShard(at: Vector3): Model
 	local m = Instance.new("Model")
 	m.Name = "LastShard"
-	local a = FilmSet.block(m, Vector3.new(0.5, 1.5, 0.5), CFrame.new(at) * CFrame.Angles(0.3, 0.6, 0.2), HOT, Enum.Material.Neon, "Core")
-	local b = FilmSet.block(m, Vector3.new(0.35, 0.9, 0.35), CFrame.new(at + Vector3.new(0.3, -0.2, 0.15)) * CFrame.Angles(-0.4, 0.2, 0.7), PINK, Enum.Material.Neon, "Spur")
-	local c = FilmSet.block(m, Vector3.new(0.3, 0.7, 0.3), CFrame.new(at + Vector3.new(-0.28, -0.25, -0.1)) * CFrame.Angles(0.5, -0.3, -0.6), PINK, Enum.Material.Neon, "Spur")
+	-- a small crystal cluster growing up out of one point (tested in Studio: with its two spurs hanging down from the
+	-- middle it read as a little glowing figure with legs)
+	local base = at - Vector3.new(0, 0.75, 0)
+	local function piece(size: Vector3, from: Vector3, dir: Vector3, twist: number, color: Color3, name: string): BasePart
+		local d = dir.Unit
+		local r = d:Cross(Vector3.new(0.3, 0.1, 1)).Unit
+		local cf = CFrame.fromMatrix(from + d * (size.Y / 2), r, d) * CFrame.Angles(0, twist, 0)
+		return FilmSet.block(m, size, cf, color, Enum.Material.Neon, name)
+	end
+	local a = piece(Vector3.new(0.5, 1.7, 0.5), base, Vector3.new(0.1, 1, -0.06), math.rad(45), HOT, "Core")
+	local b = piece(Vector3.new(0.32, 0.95, 0.32), base + Vector3.new(0.14, 0.05, 0.06), Vector3.new(0.6, 1, 0.2), math.rad(30), PINK, "Spur")
+	local c = piece(Vector3.new(0.28, 0.75, 0.28), base + Vector3.new(-0.12, 0.05, -0.08), Vector3.new(-0.55, 1, -0.3), math.rad(10), PINK, "Spur")
 	for _, p in { a, b, c } do
 		p.CastShadow = false
 	end
@@ -548,24 +563,71 @@ local function makeShard(at: Vector3): Model
 	return m
 end
 
--- (TSB's walk-in) a glowing ring running out over the ground from a step
-local function ringOut(at: Vector3, color: Color3, alpha: number, reach: number)
-	local n = 20
-	for i = 1, n do
-		local a = (i / n) * math.pi * 2
-		local d = Vector3.new(math.cos(a), 0, math.sin(a))
-		local from = at + d * 0.6 + Vector3.new(0, 0.05, 0)
-		local to = at + d * reach + Vector3.new(0, 0.05, 0)
-		local seg = neon(Vector3.new(0.9, 0.06, 0.18), CFrame.lookAt(from, from + d:Cross(UP)), color, alpha)
-		TweenService:Create(seg, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { CFrame = CFrame.lookAt(to, to + d:Cross(UP)), Transparency = 1, Size = Vector3.new(1.8, 0.04, 0.08) }):Play()
-		task.delay(0.65, function()
-			seg:Destroy()
-		end)
+-- A footstep's effects are particles, not parts (tested in Studio: neon ring segments seen from the ground read as
+-- planks of light): one emitter function at a spot on the ground, gone after 3 s.
+local function stepEmitter(at: Vector3): (string, { [string]: any }, number) -> ()
+	local p = FilmSet.block(stageFolder(), Vector3.new(0.2, 0.2, 0.2), CFrame.new(at), WHITE, Enum.Material.SmoothPlastic, "Step")
+	p.Transparency = 1
+	local a = Instance.new("Attachment")
+	a.Parent = p
+	task.delay(3, function()
+		p:Destroy()
+	end)
+	return function(tex: string, props: { [string]: any }, count: number)
+		local e = Instance.new("ParticleEmitter")
+		e.Texture = tex
+		e.Rate = 0
+		e.EmissionDirection = Enum.NormalId.Top
+		e.LightInfluence = 0
+		for k, v in props do
+			(e :: any)[k] = v
+		end
+		e.Parent = a
+		e:Emit(count)
 	end
 end
+-- a flat ring running out over the ground from a step (TSB's walk-in)
+local function stepRing(emitter: (string, { [string]: any }, number) -> (), color: Color3, glow: number)
+	emitter(FxIds.ring, {
+		Orientation = Enum.ParticleOrientation.VelocityPerpendicular, -- (flat on the ground)
+		Speed = NumberRange.new(0.01),
+		Lifetime = NumberRange.new(1.1),
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(1, 7) }),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) }),
+		Color = ColorSequence.new(color),
+		LightEmission = glow,
+	}, 1)
+end
+-- a step in the morning: a soft gold ring spreading over the ground, gold motes kicked up into the low sun, a little dust
+local function goldStep(at: Vector3)
+	local emitter = stepEmitter(at)
+	stepRing(emitter, Color3.fromRGB(255, 214, 120), 1)
+	emitter(FxIds.glow, {
+		Lifetime = NumberRange.new(1.2, 2.2),
+		Speed = NumberRange.new(1.2, 3),
+		SpreadAngle = Vector2.new(60, 60),
+		Acceleration = Vector3.new(0, -0.6, 0),
+		Drag = 1.5,
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.12), NumberSequenceKeypoint.new(1, 0.04) }),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }),
+		Color = ColorSequence.new(Color3.fromRGB(255, 226, 150)),
+		LightEmission = 1,
+	}, 14)
+	emitter(FxIds.poof, {
+		Lifetime = NumberRange.new(0.8, 1.3),
+		Speed = NumberRange.new(1, 2.2),
+		SpreadAngle = Vector2.new(80, 20),
+		Drag = 3,
+		Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 1.6) }),
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(1, 1) }),
+		Color = ColorSequence.new(Color3.fromRGB(230, 190, 150)),
+		LightEmission = 0.2,
+		LightInfluence = 0.6,
+	}, 5)
+end
 
--- pink pixels popping up off the ground round a point, and a ring of them running out (a footstep, a twitch)
-local function pixels(at: Vector3, count: number, spread: number, ring: boolean?)
+-- pink pixels popping up off the ground round a point (a footstep, a twitch)
+local function pixels(at: Vector3, count: number, spread: number)
 	local rng = Random.new()
 	for _ = 1, count do
 		local off = Vector3.new(rng:NextNumber(-spread, spread), 0, rng:NextNumber(-spread, spread))
@@ -576,9 +638,6 @@ local function pixels(at: Vector3, count: number, spread: number, ring: boolean?
 		task.delay(0.75, function()
 			p:Destroy()
 		end)
-	end
-	if ring then
-		ringOut(at, HOT, 0.1, 5.5)
 	end
 end
 
@@ -665,7 +724,10 @@ local function realmTufts(g: any)
 				table.insert(parts, d)
 			end
 		end
-		table.insert(g.tuftParts, { parts = parts, at = m:GetPivot().Position })
+		-- (its box's middle and half its width: tested in Studio, a fixed 1.4 round the foot left the big blades of a
+		-- tuft beside the lens filling the lunge's frame)
+		local box, size = m:GetBoundingBox()
+		table.insert(g.tuftParts, { parts = parts, at = box.Position, r = math.max(size.X, size.Z) * 0.5 })
 	end
 end
 
@@ -819,8 +881,6 @@ local function walkTrack(pup: any, from: Vector3, to: Vector3, t0: number, t1: n
 		if steps and k < 1 and tt >= nextStep then
 			nextStep = tt + 0.55
 			sfx(steps, 0.8, 0.9 + math.random() * 0.15)
-			-- (a puff of the morning's gold dust off each step)
-			fx("DustKick", Vector3.new(pup.root.Position.X, groundOf(pup) + 0.2, pup.root.Position.Z), { scale = 0.55, color = Color3.fromRGB(255, 214, 150) })
 		end
 	end
 end
@@ -860,9 +920,7 @@ local function morning(): boolean
 		local lf = H.model:FindFirstChild("LeftFoot", true) :: BasePart?
 		local rf = H.model:FindFirstChild("RightFoot", true) :: BasePart?
 		local foot = if lf and rf then (if lf.Position.Y < rf.Position.Y then lf else rf) else H.root
-		local at = Vector3.new(foot.Position.X, groundOf(H) + 0.05, foot.Position.Z)
-		ringOut(at, GOLD, 0.35, 4.5)
-		fx("DustKick", at + Vector3.new(0, 0.15, 0), { scale = 0.8, color = SUN })
+		goldStep(Vector3.new(foot.Position.X, groundOf(H) + 0.2, foot.Position.Z))
 		sfx("stepThud", 0.7, 0.8)
 	end)
 	if not shot(T.fist, function(k)
@@ -899,8 +957,8 @@ local function morning(): boolean
 	-- from closer his back filled the frame and hid Rayan)
 	if not shot(T.rayan, function(k)
 		local root = H.root
-		local p = root.Position - root.LookVector * (5.6 - k * 0.4) + root.RightVector * 2.6 + Vector3.new(0, 1.0, 0)
-		return look(p, chestOf(R).Position + Vector3.new(0, 0.4, 0), 1), mm(55), chestOf(R).Position
+		local p = root.Position - root.LookVector * (5.2 - k * 0.4) + root.RightVector * 2.9 + Vector3.new(0, 1.9, 0)
+		return look(p, chestOf(R).Position + Vector3.new(0, 0.2, 0), 1), mm(55), chestOf(R).Position
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -966,7 +1024,7 @@ local function shardTwitch(m: Model, base: CFrame, power: number)
 		local off = Vector3.new(math.noise(t * 17, 0.3), math.noise(t * 13, 2.1) * 0.5, math.noise(t * 11, 4.4)) * j * 0.25
 		m:PivotTo(base * CFrame.new(off) * CFrame.Angles(math.noise(t * 7, 5) * j * 0.6, t * 0.8, math.noise(t * 8, 6) * j * 0.6))
 		if frames % 9 == 0 and j > 0.4 then
-			pixels(base.Position - Vector3.new(0, 0.3, 0), 2, 0.5, false)
+			pixels(base.Position - Vector3.new(0, 0.3, 0), 2, 0.5)
 		end
 	end
 end
@@ -1087,9 +1145,10 @@ local function realm(): boolean
 	if not shot(T.twitch, function(k)
 		local hc = headCf(R)
 		local e = eyesOf(R, 0.1, 0)
-		local p = e + hc.LookVector * (3.4 - k * 0.4) - hc.RightVector * 0.9 - UP * 0.5
+		-- (tested in Studio: from below his eyes the shears' grip on his shoulder rose over his mouth)
+		local p = e + hc.LookVector * (3.4 - k * 0.4) - hc.RightVector * 0.9 + UP * 0.25
 		key(e + hc.LookVector * 2 + UP * 1.4, Color3.fromRGB(255, 230, 170), 1.2, 8)
-		return look(p, e, -3), mm(50), e
+		return look(p, e - UP * 0.15, -3), mm(50), e
 	end, { hand = 0.15 }) then
 		return false
 	end
@@ -1100,8 +1159,9 @@ local function realm(): boolean
 	sfx("servo", 0.9, 0.7)
 	if not shot(T.flee, function(k)
 		local s = gv(G_SHARD)
-		local p = s + Vector3.new(-2.4 + k * 0.5, 0.5, 2.2)
-		return look(p, s + Vector3.new(0, 0.3, 0), -5), mm(60), s
+		-- (tested in Studio: from 3 studs on a long lens it filled the frame; now the guardians stand behind it)
+		local p = s + Vector3.new(-5.2 + k * 0.7, 0.3, 3.8 - k * 0.3)
+		return look(p, s + Vector3.new(0, 0.5, 0), -5), mm(45), s
 	end, { hand = 0.15 }) then
 		return false
 	end
@@ -1164,7 +1224,7 @@ local function flee(): boolean
 	if not shot(T.quiet, function(k)
 		local mid = (R.root.Position + H.root.Position) / 2
 		local back = -flat(gv(TEAR) - mid).Unit
-		local p = mid + back * (5.5 + k * 0.6) + Vector3.new(0, 0.9, 0)
+		local p = mid + back * (6.6 + k * 0.6) + Vector3.new(0, 1.1, 0)
 		return look(p, gv(TEAR, TEAR_H * 0.35), 0), mm(30), gv(TEAR, 12)
 	end, { hand = 0.25 }) then
 		return false
@@ -1197,7 +1257,9 @@ local function copyWalk()
 			lastFoot = foot
 			local side = if foot % 2 == 0 then -0.5 else 0.5
 			local fp = C.root * CFrame.new(side, 0, 0)
-			pixels(Vector3.new(fp.Position.X, groundOf(C) + 0.05, fp.Position.Z), 6, 0.6, true)
+			local at = Vector3.new(fp.Position.X, groundOf(C) + 0.05, fp.Position.Z)
+			pixels(at, 6, 0.6)
+			stepRing(stepEmitter(at + Vector3.new(0, 0.15, 0)), PINK, 0.7)
 			sfx("stepThud", 1.2, 0.6)
 			sfx("bossThud", 0.35, 1.6)
 		end
@@ -1213,8 +1275,9 @@ local function you(): boolean
 	FilmAudio.amb("eerie", 0.6, 1)
 	-- 18. [a menace hold] the tear, wide and still: nothing comes out
 	if not shot(T.step1, function(k)
-		local p = gv(Vector3.new(0.5, 3.5, -18 - k))
-		return look(p, gv(TEAR, TEAR_H * 0.42), 0), mm(32), gv(TEAR, 10)
+		-- (tested in Studio: from 44 studs it filled the frame top to bottom; low in the gold now, the guardians flanking)
+		local p = gv(Vector3.new(0.3, 1.3, -4 - k * 0.6))
+		return look(p, gv(TEAR, TEAR_H * 0.4), 0), mm(28), gv(TEAR, 10)
 	end, { hand = 0.15 }) then
 		return false
 	end
@@ -1226,18 +1289,20 @@ local function you(): boolean
 	if not shot(T.step2, function(_k)
 		local root = C.root
 		local g = groundOf(C)
-		local p = root.Position + root.LookVector * 2.6 + root.RightVector * 2.2
-		p = Vector3.new(p.X, g + 0.5, p.Z)
-		return look(p, Vector3.new(root.Position.X, g + 0.4, root.Position.Z), 3), mm(38), root.Position
+		-- (tested in Studio: from 3 studs the two black legs filled the frame; from the ground, further, the gold
+		-- between them and the ring running out)
+		local p = root.Position + root.LookVector * 5.2 + root.RightVector * 2.2
+		p = Vector3.new(p.X, g + 0.3, p.Z)
+		return look(p, Vector3.new(root.Position.X, g + 0.85, root.Position.Z) - root.LookVector * 0.3, 3), mm(30), root.Position
 	end, { hand = 0.15 }) then
 		return false
 	end
 	if not shot(T.walkIn, function(_k)
 		local root = C.root
 		local g = groundOf(C)
-		local p = root.Position + root.LookVector * 2.8 - root.RightVector * 2.4
-		p = Vector3.new(p.X, g + 0.55, p.Z)
-		return look(p, Vector3.new(root.Position.X, g + 0.5, root.Position.Z), -3), mm(38), root.Position
+		local p = root.Position + root.LookVector * 5.4 - root.RightVector * 2.4
+		p = Vector3.new(p.X, g + 0.35, p.Z)
+		return look(p, Vector3.new(root.Position.X, g + 0.85, root.Position.Z) - root.LookVector * 0.3, -3), mm(30), root.Position
 	end, { hand = 0.15 }) then
 		return false
 	end
@@ -1249,15 +1314,20 @@ local function you(): boolean
 	end, { hand = 0.2 }) then
 		return false
 	end
-	-- 22. [SR 8.75, the reaction] the player's face
+	-- 22. [SR 8.75, the reaction] the player: he sets his feet, a dolly zoom on him (the lens backs off as it closes in,
+	-- the realm stretching behind him), the pink of its eyes on his face. (Tested in Studio: an extreme close-up of
+	-- the face can't react, most avatars' faces smile; a default smiley filled the frame.)
 	H:look(headOf(C), 1)
+	H:pose("brace", 0.25)
 	sfx("heartbeat", 1.1)
 	if not shot(T.step3, function(k)
-		local hc = headCf(H)
-		local e = eyesOf(H, 0)
-		local p = e + hc.LookVector * (2.4 - k * 0.3) + hc.UpVector * 0.04
-		key(e + hc.LookVector * 1.4 + UP * 0.6, HOT, 1.4, 6)
-		return CFrame.lookAt(p, e, hc.UpVector), mm(80), e
+		local head = headOf(H)
+		local f = flat(C.root.Position - H.root.Position).Unit
+		local e = ease.inOut(k)
+		local d = 3.2 + e * 4.8
+		local p = head + f * d + f:Cross(UP) * (d * 0.2) - UP * 0.35
+		key(head + f * 1.6 + UP * 0.6, HOT, 1.4, 6)
+		return look(p, head - UP * 0.45, 0), math.deg(2 * math.atan(1.49 / d)), head
 	end, { hand = 0.12 }) then
 		return false
 	end
@@ -1266,9 +1336,9 @@ local function you(): boolean
 	if not shot(T.face, function(_k)
 		local root = C.root
 		local g = groundOf(C)
-		local p = root.Position + root.RightVector * 3.6 + root.LookVector * 0.6
-		p = Vector3.new(p.X, g + 0.6, p.Z)
-		return look(p, Vector3.new(root.Position.X, g + 0.7, root.Position.Z) - root.LookVector * 0.5, 2), mm(30), root.Position
+		local p = root.Position + root.RightVector * 5.6 + root.LookVector * 1.0
+		p = Vector3.new(p.X, g + 0.35, p.Z)
+		return look(p, Vector3.new(root.Position.X, g + 0.9, root.Position.Z) - root.LookVector * 0.5, 2), mm(30), root.Position
 	end, { hand = 0.2 }) then
 		return false
 	end
@@ -1297,8 +1367,9 @@ local function you(): boolean
 		local rh = headOf(R)
 		local to = (headOf(C) - rh)
 		local dir = flat(to).Unit
-		local p = rh - dir * (2.4 - k * 0.2) + dir:Cross(UP) * 1.1 + Vector3.new(0, 0.2, 0)
-		return look(p, headOf(C) - Vector3.new(0, 0.6, 0), 2), mm(40), headOf(C)
+		-- (over his left shoulder: tested in Studio, over the right one the shears' grip filled half the frame)
+		local p = rh - dir * (2.6 - k * 0.2) - dir:Cross(UP) * 1.2 + Vector3.new(0, 0.25, 0)
+		return look(p, headOf(C) - Vector3.new(0, 0.6, 0), -2), mm(40), headOf(C)
 	end, { hand = 0.2 }) then
 		return false
 	end
@@ -1320,6 +1391,12 @@ end
 -------------------------------------------------------------------------------------------------------------
 local function darkenShears(k: number)
 	corrupt = k
+	-- (the black creeps from its hand along the blades: the parts nearest its hand go first)
+	local hand = if C then C:grip("Right").Position else SH.pivot.Position
+	local far = 0.1
+	for _, p in SH.parts do
+		far = math.max(far, (p.Position - hand).Magnitude)
+	end
 	for _, p in SH.parts do
 		local base = p:GetAttribute("BaseColor")
 		if typeof(base) ~= "Color3" then
@@ -1328,8 +1405,9 @@ local function darkenShears(k: number)
 			base = p.Color
 		end
 		local isEdge = p.Material == Enum.Material.Neon
-		p.Color = (base :: Color3):Lerp(if isEdge then HOT else INK, k)
-		if not isEdge and k > 0.5 then
+		local kp = math.clamp(k * 1.7 - (p.Position - hand).Magnitude / far * 0.7, 0, 1)
+		p.Color = (base :: Color3):Lerp(if isEdge then HOT else INK, kp)
+		if not isEdge and kp > 0.5 then
 			p.Material = Enum.Material.SmoothPlastic
 			p.Reflectance = 0
 		end
@@ -1420,11 +1498,15 @@ local function lesson(): boolean
 	task.defer(function()
 		AnimeFx.impact({ C.model, R.model, SH.model }, "strobe", { states = { "ink", "neg", "ink", "neg" }, per = 0.06, at = caughtAt })
 	end)
+	-- (tested in Studio: from behind its hand its own shoulder filled the frame; from the side, further, the whole
+	-- clash: its raised hand on the blades, Rayan pushing, a guardian between them)
 	if not shot(T.take, function(k)
 		local hand = C:grip("Right").Position
-		local cr = C.root
-		local p = hand + cr.LookVector * -2.6 + cr.RightVector * 1.6 + Vector3.new(0, 0.3 - k * 0.1, 0)
-		return look(p, hand:Lerp(R:grip("Right").Position, 0.45), 8), mm(30), hand
+		local rg = R:grip("Right").Position
+		local side = flat(rg - hand).Unit:Cross(UP)
+		local mid = hand:Lerp(rg, 0.4)
+		local p = mid + side * (8 - k * 0.6) + Vector3.new(0, -0.8, 0)
+		return look(p, mid + Vector3.new(0, 0.3, 0), 6), mm(28), mid
 	end, { hand = 0.2 }) then
 		return false
 	end
@@ -1435,13 +1517,15 @@ local function lesson(): boolean
 	tracks.creep = function()
 		darkenShears(math.clamp((now() - creepFrom) / 1.1, 0, 1))
 	end
+	-- (tested in Studio: from 3 studs one blade filled the frame; from 6, its black hand on the blades, the dark running
+	-- down them to the glowing pivot)
 	if not shot(T.thrown, function(k)
 		local hand = C:grip("Right").Position
-		local mid = hand:Lerp(SH.pivot.Position, 0.5)
+		local mid = hand:Lerp(SH.pivot.Position, 0.4)
 		local across = (SH.pivot.Position - hand):Cross(UP)
 		local side = if across.Magnitude > 0.1 then across.Unit else C.root.RightVector
-		local p = mid + side * (3.4 - k * 0.4) + Vector3.new(0, 0.6, 0)
-		return look(p, mid, 5), mm(42), mid
+		local p = mid + side * (6.2 - k * 0.5) + Vector3.new(0, 0.9, 0)
+		return look(p, mid, 5), mm(35), mid
 	end, { hand = 0.15 }) then
 		return false
 	end
@@ -1474,11 +1558,13 @@ local function lesson(): boolean
 			fx("Dust", flyTo, { scale = 1.6 })
 		end
 	end
+	-- (tested in Studio: centred nearer it, Rayan flew out of the frame before the shot was half over; now the whole
+	-- flight, from it to where he lands past the player)
 	if not shot(T.lift, function(k)
-		local mid = C.root.Position:Lerp(flyTo, 0.4)
+		local mid = C.root.Position:Lerp(flyTo, 0.5)
 		local side = back:Cross(UP)
-		local p = mid + side * (17 - k * 2) + Vector3.new(0, 1.5, 0)
-		return look(p, mid + Vector3.new(0, 1.2, 0), 3), mm(24), mid
+		local p = mid + side * (22 - k * 1.5) + Vector3.new(0, 3.0, 0)
+		return look(p, mid + Vector3.new(0, 1.8, 0), 2), mm(22), mid
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -1520,10 +1606,13 @@ local function snip(): boolean
 		pnl.part.Transparency = 0.25
 	end
 	burst(gv(Vector3.new(0, 40, 0)), WHITE, 6, 200, 1)
+	-- (from behind it, past its raised shears, up at the sky going white over the realm: tested in Studio, the lens
+	-- looked the other way, at the sky beyond the tear, and it wasn't in the shot at all)
 	if not shot(T.fall, function(k)
 		local root = C.root
-		local p = root.Position - root.LookVector * (6 + k) + root.RightVector * 1.8 + Vector3.new(0, -1.2, 0)
-		return look(p, gv(Vector3.new(0, 60, -120)), 4), mm(22), headOf(C)
+		local p = root.Position - root.LookVector * (6 + k) + root.RightVector * 4.6 + Vector3.new(0, -1.5, 0)
+		local to = root.Position + root.LookVector * 30 + Vector3.new(0, 16, 0) - root.RightVector * 4
+		return look(p, to, 4), mm(24), headOf(C)
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -1545,10 +1634,17 @@ local function snip(): boolean
 	end
 	sfx("burst", 1.2, 0.5)
 	sfx("rumble", 1.1, 0.6)
+	-- (side on to its fall: tested in Studio, from across the realm it fell away from the lens and just seemed to sink)
 	if not shot(T.turn, function(k)
-		local target = if gd then gd.at.Position + Vector3.new(0, gd.size.Y * 0.35, 0) else gv(Vector3.new(0, 20, -60))
-		local p = gv(Vector3.new(-36 + k * 3, 3, 24))
-		return look(p, target, 2), mm(22), target
+		if not gd then
+			local target = gv(Vector3.new(0, 20, -60))
+			return look(gv(Vector3.new(-36 + k * 3, 3, 24)), target, 2), mm(22), target
+		end
+		local base = gd.at.Position
+		local out = flat(base - gv(Vector3.zero)).Unit
+		local mid = base + out * (gd.size.Y * 0.45) + Vector3.new(0, gd.size.Y * 0.33, 0)
+		local p = mid + UP:Cross(out).Unit * (gd.size.Y * 2.2 - k * 2) - out * 4 + Vector3.new(0, -2, 0)
+		return look(p, mid, 2), mm(26), mid
 	end, { hand = 0.4 }) then
 		return false
 	end

@@ -484,8 +484,10 @@ function FilmSet.realm(at: CFrame, opts: any?): any
 		return at * CFrame.new(x, y, z)
 	end
 	set.W = W
-	block(folder, Vector3.new(2400, 4, 2400), W(0, -2, 0), Color3.fromRGB(222, 168, 58), Enum.Material.Grass, "Ground")
-	-- gold tufts, flat and bright
+	-- (5 Nov, tested in Studio) a hair higher than the meadow's ground tiles, which reach this far: level with them the
+	-- two fought and the meadow's green showed through the gold
+	block(folder, Vector3.new(2400, 4, 2400), W(0, -1.94, 0), Color3.fromRGB(222, 168, 58), Enum.Material.Grass, "Ground")
+	-- gold tufts, flat and bright (their SurfaceAppearance goes, or it paints them green over the gold)
 	local n = if light then 160 else 420
 	for _, p in scatter(rng, n, 6, 140, function()
 		return true
@@ -496,6 +498,8 @@ function FilmSet.realm(at: CFrame, opts: any?): any
 				if d:IsA("MeshPart") then
 					d.TextureID = ""
 					d.Color = Color3.fromRGB(255, 214, 96):Lerp(Color3.fromRGB(255, 240, 180), rng:NextNumber(0, 0.5))
+				elseif d:IsA("SurfaceAppearance") then
+					d:Destroy()
 				end
 			end
 			table.insert(set.tufts, m)
@@ -519,6 +523,7 @@ function FilmSet.realm(at: CFrame, opts: any?): any
 	end
 	local cap = block(folder, Vector3.new(260, 2, 260), W(0, R * 0.98, 0), Color3.fromRGB(255, 236, 190), Enum.Material.Glass, "Panel")
 	cap.Transparency = 0.35
+	cap.CastShadow = false -- (its shadow lay across the lawn as a huge square)
 	table.insert(set.panels, { part = cap, cf = cap.CFrame, dir = Vector3.yAxis })
 	-- the eight guardians in a ring round the middle, facing in (BossModels, statues)
 	local bm = ReplicatedStorage:FindFirstChild("BossModels")

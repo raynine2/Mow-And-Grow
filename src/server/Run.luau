@@ -27,6 +27,7 @@ local Analytics = require(script.Parent.Analytics) -- (29 Oct) where players qui
 local Guns = require(script.Parent.Guns)
 local BossArena = require(script.Parent.BossArena)
 local ClassPerks = require(script.Parent.ClassPerks)
+local Rebirth = require(script.Parent.Rebirth)
 
 local Run = {}
 
@@ -191,6 +192,11 @@ local function completeRun(ending: boolean?)
 			local gems = math.floor(Config.RUN_COMPLETE_GEMS * Stats.compute(p, data).gems)
 			data.gems += gems
 			data.stats.runs += 1
+			-- (5 Nov) Rebirth Stars for the finished run, by its difficulty (server/Rebirth; the card plays in the lobby)
+			local okR, errR = pcall(Rebirth.award, p, data, Run.difficulty)
+			if not okR then
+				warn("[Run] rebirth stars: " .. tostring(errR))
+			end
 			local time = if data.run then data.run.time or 0 else 0
 			if ending then
 				Analytics.complete(p, time)
@@ -928,6 +934,12 @@ function Run.start()
 		if z == zone then
 			for _, p in Players:GetPlayers() do
 				Quests.event(p, "zone", 1)
+				-- (5 Nov) the lifetime count of areas mowed bare (the daily / weekly quests read it: server/QuestBoard)
+				local d = PlayerData.get(p)
+				if d and d.run then
+					d.stats.areas = (d.stats.areas or 0) + 1
+					PlayerData.changed(p)
+				end
 			end
 			if Config.BOSSES then
 				Boss.ready(z) -- its arena's summon pad lights up (hand tools only: no boss crate any more)

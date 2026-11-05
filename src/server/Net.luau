@@ -26,6 +26,8 @@ local INBOUND = {
 	"ClassAct", -- (action)                 "stomp": a Grass Titan landed from a jump (server/ClassPerks)
 	"Inspect", -- (clip)                    you inspect your item; server/Main passes it on to the other players
 	--                                       (back out on the same remote: (player, clip), client/RiderPose)
+	"Progress", -- (action, ...)            (5 Nov) "claim" (period "daily"|"weekly", slot): a quest's reward
+	--                                       (server/QuestBoard); "starsSeen": the Rebirth Stars card was shown (server/Rebirth)
 }
 -- server -> client
 local OUTBOUND = {

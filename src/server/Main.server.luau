@@ -38,6 +38,8 @@ require(script.Parent.Offline).start() -- time away with a saved run pays coins 
 require(script.Parent.SkillTrees).start() -- (30 Oct) weapon skill trees: buying pips (runs), MASTERED for good
 require(script.Parent.Invites).start() -- (1 Nov) a friend new to the game who joins from your invite pays you gems once
 require(script.Parent.FilmCast).start() -- (5 Nov) the films' cast: the owner's avatar as Rayan (Films v2)
+require(script.Parent.Rebirth).start() -- (5 Nov) Rebirth Stars: the RebirthStars attribute (the stars come from server/Run)
+require(script.Parent.QuestBoard).start() -- (5 Nov) daily + weekly quests and their "Progress" remote, in both modes
 
 -- Spawn on the world's own SpawnLocation, not one from the place template (the Baseplate's). This only
 -- changes the running game; the place file keeps its parts. The Baseplate is hidden while playing because
@@ -157,6 +159,8 @@ local function snapshot(player: Player, data)
 		newPlayer = PlayerData.isNew(data), -- Config.FIRST_TIMER: no News window yet (client/NewsWindow)
 		bestTime = data.bestTime,
 		skills = require(script.Parent.SkillTrees).view(data), -- (30 Oct) weapon skill trees (client/SkillTreeWindow)
+		rebirth = require(script.Parent.Rebirth).view(data), -- (5 Nov) Rebirth Stars (client/QuestsWindow, StatsWindow)
+		quests = require(script.Parent.QuestBoard).view(player, data), -- (5 Nov) daily + weekly quests (client/QuestsWindow)
 		dryRun = data._dryRun == true,
 		run = nil :: any,
 	}
@@ -328,6 +332,13 @@ Net.on("Dev", 8, function(player, action, arg)
 		end
 		local got = require(script.Parent.Pets).hatch(player, data, egg.id, 1, true)
 		msg = if got then "Free " .. egg.name .. ": " .. table.concat(got, ", ") else "Couldn't hatch " .. egg.name
+	elseif action == "rebirthStar" then
+		-- (5 Nov) as if a Normal run was finished: +1 Rebirth Star, its milestone gems and the card
+		local r = require(script.Parent.Rebirth).award(player, data, "Normal")
+		msg = if r then ("+%d star (%d now)"):format(r.got, r.stars) else "Stars are maxed"
+	elseif action == "questsDone" then
+		require(script.Parent.QuestBoard).devFinish(player, data)
+		msg = "Every daily and weekly quest is done: claim them in QUESTS"
 	elseif system.devAction then
 		msg = system.devAction(player, data, action, arg)
 	else

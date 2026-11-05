@@ -1143,6 +1143,97 @@ Config.GROUP_GEMS = 100
 Config.INVITE = { gems = 150, welcomeGems = 50, perDay = 10, minAccountAge = 3 }
 
 -------------------------------------------------------------------------------------------------------------
+-- (5 Nov, owner after the balance review: "Rebirth / prestige") REBIRTH STARS (server/Rebirth): finishing a run (the
+-- last boss falls) gives `starsByDifficulty[<the run's difficulty id>]` stars, kept forever (profile `rebirth`). Each
+-- star is +`coinsPer` coins (sell) and +`gemsPer` gems, added next to the gem perks in server/Stats; never power. Stars
+-- stop at `maxStars`. Reaching a milestone's `at` stars gives its `title` (on the Quests window, the Stats window and
+-- the tag over your head) and pays its `gems` once (flat: no gem boosts, like the daily rewards).
+-------------------------------------------------------------------------------------------------------------
+Config.REBIRTH = {
+	starsByDifficulty = { Normal = 1, Hard = 2, Expert = 3 },
+	coinsPer = 0.05,
+	gemsPer = 0.03,
+	maxStars = 25,
+	milestones = {
+		{ at = 1, title = "Sprout", gems = 100 },
+		{ at = 3, title = "Hedge Hero", gems = 200 },
+		{ at = 5, title = "Turf Tamer", gems = 300 },
+		{ at = 10, title = "Meadow Master", gems = 500 },
+		{ at = 15, title = "Grass Guardian", gems = 750 },
+		{ at = 25, title = "Evergreen Legend", gems = 1500 },
+	},
+}
+
+-- The highest milestone reached with `stars` (nil below the first), and the next one (nil at the last).
+function Config.rebirthMilestone(stars: number)
+	local got, nextOne = nil, nil
+	for _, m in Config.REBIRTH.milestones do
+		if stars >= m.at then
+			got = m
+		elseif not nextOne then
+			nextOne = m
+		end
+	end
+	return got, nextOne
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- (5 Nov, owner: "Daily + weekly quests") the QUESTS window (server/QuestBoard, client/QuestsWindow), in the lobby and
+-- in runs. Not the run's onboarding chain (Config.QUESTS above). Every player gets `daily` quests picked from
+-- DAILY_QUESTS each UTC day (new ones at 00:00 UTC) and `weekly` from WEEKLY_QUESTS each week (Monday 00:00 UTC),
+-- picked from the period number and their UserId and saved with their progress. Rewards are flat gems (no gem boosts,
+-- like the daily rewards); `egg` adds a free egg of that id (its gem price instead if the pet bag is full).
+-- `kind` says what counts; each kind reads one lifetime counter in the profile's `stats` (QUEST_KINDS.stat), so a
+-- quest counts from the moment it was handed out. `per` divides the counter (seconds of playtime -> minutes).
+-------------------------------------------------------------------------------------------------------------
+Config.QUEST_BOARD = { daily = 3, weekly = 3 }
+Config.QUEST_KINDS = {
+	cut = { stat = "cut", icon = "scissors" }, -- clumps cut (also the leftovers an area mows by itself)
+	sell = { stat = "sold", icon = "bundle" }, -- bundles sold at a shredder
+	boss = { stat = "bosses", icon = "crown" }, -- bosses beaten
+	area = { stat = "areas", icon = "pin" }, -- areas mowed bare (server/Run)
+	par = { stat = "parClears", icon = "stopwatch" }, -- areas cleared under Config.AREA_CHALLENGE's par (server/RunEvents)
+	hatch = { stat = "hatched", icon = "egg_garden" }, -- eggs hatched (server/Pets)
+	coins = { stat = "coinsEarned", icon = "coin" }, -- run coins from grass (cuts, sales, Elder Clumps)
+	run = { stat = "runs", icon = "star" }, -- runs finished
+	minutes = { stat = "playtime", per = 60, icon = "stopwatch" }, -- minutes played (lobby or run)
+}
+Config.DAILY_QUESTS = {
+	{ id = "d_cut", kind = "cut", goal = 400, gems = 50, title = "Cut %s clumps" },
+	{ id = "d_sell", kind = "sell", goal = 300, gems = 50, title = "Sell %s bundles" },
+	{ id = "d_boss", kind = "boss", goal = 3, gems = 60, title = "Beat %s bosses" },
+	{ id = "d_area", kind = "area", goal = 4, gems = 60, title = "Clear %s areas" },
+	{ id = "d_par", kind = "par", goal = 2, gems = 70, title = "Beat %s area speed challenges" },
+	{ id = "d_hatch", kind = "hatch", goal = 2, gems = 60, title = "Hatch %s eggs" },
+	{ id = "d_coins", kind = "coins", goal = 500000, gems = 60, title = "Earn %s run coins" },
+	{ id = "d_run", kind = "run", goal = 1, gems = 80, title = "Finish a run" },
+	{ id = "d_play", kind = "minutes", goal = 20, gems = 40, title = "Play for %s minutes" },
+}
+Config.WEEKLY_QUESTS = {
+	{ id = "w_run", kind = "run", goal = 3, gems = 400, title = "Finish %s runs", egg = "GardenEgg" },
+	{ id = "w_area", kind = "area", goal = 20, gems = 300, title = "Clear %s areas" },
+	{ id = "w_boss", kind = "boss", goal = 15, gems = 300, title = "Beat %s bosses" },
+	{ id = "w_cut", kind = "cut", goal = 3000, gems = 250, title = "Cut %s clumps" },
+	{ id = "w_sell", kind = "sell", goal = 2500, gems = 250, title = "Sell %s bundles" },
+	{ id = "w_coins", kind = "coins", goal = 15000000, gems = 300, title = "Earn %s run coins" },
+	{ id = "w_par", kind = "par", goal = 8, gems = 350, title = "Beat %s area speed challenges", egg = "GardenEgg" },
+	{ id = "w_hatch", kind = "hatch", goal = 10, gems = 200, title = "Hatch %s eggs" },
+	{ id = "w_play", kind = "minutes", goal = 150, gems = 200, title = "Play for %s minutes" },
+}
+
+-- A quest definition by id (daily or weekly).
+function Config.boardQuest(id: string)
+	for _, list in { Config.DAILY_QUESTS, Config.WEEKLY_QUESTS } do
+		for _, q in list do
+			if q.id == id then
+				return q
+			end
+		end
+	end
+	return nil
+end
+
+-------------------------------------------------------------------------------------------------------------
 -- Lobby parties
 -------------------------------------------------------------------------------------------------------------
 Config.PARTY_MAX = 4

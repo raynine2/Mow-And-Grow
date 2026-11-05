@@ -57,7 +57,9 @@ local DEFAULT = {
 	groupClaimed = false,
 	-- lifetime stats (the STATS window): clumps cut, bundles sold, coins earned, mutated ("rare") clumps cut,
 	-- seconds played; newsSeen = the newest Config.NEWS id the player has seen
-	stats = { cut = 0, runs = 0, bosses = 0, sold = 0, coinsEarned = 0, rare = 0, playtime = 0, newsSeen = 0 },
+	-- (5 Nov) areas = areas mowed bare, parClears = areas cleared under their speed par, hatched = eggs hatched: the
+	-- daily / weekly quests count these (Config.QUEST_KINDS)
+	stats = { cut = 0, runs = 0, bosses = 0, sold = 0, coinsEarned = 0, rare = 0, playtime = 0, newsSeen = 0, areas = 0, parClears = 0, hatched = 0 },
 	guns = {}, -- boss-crate guns bought with Robux: [gunId] = true
 	peaceful = false, -- Peaceful Mode for runs this player hosts (no night monsters, no best time)
 	potato = false, -- Potato Mode: low graphics on this player's screen (client/Potato)
@@ -71,6 +73,10 @@ local DEFAULT = {
 	gnomes = {}, -- Golden Gnome hunt: [Config.GNOMES id] = how many you've picked up (server/Gnomes)
 	gnomeSet = false, -- the full-set gems were paid
 	medals = {}, -- run medals (Config.RUN_MEDALS): [id] = how many runs earned it
+	rebirth = 0, -- (5 Nov) Rebirth Stars, 0..Config.REBIRTH.maxStars (server/Rebirth)
+	-- (5 Nov) the daily / weekly quests (server/QuestBoard): day / week = the period they were handed out for;
+	-- daily / weekly = { { id, base = the stat's value when handed out, claimed } }
+	board = { day = 0, week = 0, daily = {}, weekly = {} },
 	run = nil, -- the saved run, see PlayerData.newRun
 	receipts = {}, -- recent processed purchase ids
 }

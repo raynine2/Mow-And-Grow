@@ -102,7 +102,9 @@ local function tag(player: Player)
 	end
 	local gui = head:FindFirstChild("BestTimeTag") :: BillboardGui?
 	local bosses = crowns(data)
-	if (data.bestTime or 0) <= 0 and bosses <= 0 then
+	-- (5 Nov) Rebirth Stars and their milestone title (server/Rebirth) go on the tag too
+	local stars = math.clamp(math.floor(tonumber(data.rebirth) or 0), 0, Config.REBIRTH.maxStars)
+	if (data.bestTime or 0) <= 0 and bosses <= 0 and stars <= 0 then
 		if gui then
 			gui:Destroy()
 		end
@@ -137,6 +139,16 @@ local function tag(player: Player)
 	end
 	if bosses > 0 then
 		table.insert(parts, "👑 " .. bosses .. "/8")
+	end
+	if stars > 0 then
+		local m = Config.rebirthMilestone(stars)
+		table.insert(parts, "⭐ " .. stars .. (if m then " " .. m.title else ""))
+	end
+	-- (wider with the stars' title on it: the text is scaled to fit)
+	local width = if stars > 0 then 300 else 190
+	local bb = gui :: BillboardGui
+	if bb.Size.X.Offset ~= width then
+		bb.Size = UDim2.fromOffset(width, 28)
 	end
 	local text = table.concat(parts, "   ")
 	if label.Text ~= text then

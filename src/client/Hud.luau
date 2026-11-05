@@ -1,6 +1,7 @@
 -- The always-on screen, laid out like Chop A Forest:
 --   left: big coin + gem counters   bottom-left: backpack "3/5"     bottom: tool hotbar
---   right: round wooden badge buttons (run: SHOP R, UPGRADES TAB; lobby: PETS P, SHOP R, STATS TAB, NEWS J)
+--   right: round wooden badge buttons (run: PETS P, SHOP R, UPGRADES TAB, QUESTS Q; lobby: PETS P, SHOP R, STATS TAB,
+--          QUESTS Q, NEWS J, INVITE)
 --   top-left: quest tracker, and the Potato Mode button beside it
 --   top-centre: day / night bar (ReplicatedStorage DayPhase/DayLeft/DayLength)
 --   top-right: run timer, area name, AREA n/8, % cleared and the next area (or the boss bar during a fight)
@@ -290,7 +291,8 @@ local sideScale = Instance.new("UIScale")
 sideScale.Parent = side
 local function placeSide()
 	if Device.touch then
-		sideScale.Scale = 0.8
+		-- (5 Nov: the lobby's column has six buttons since QUESTS, so a little smaller there to stay on the screen)
+		sideScale.Scale = if sideMode == "Run" then 0.8 else 0.7
 		side.AnchorPoint = Vector2.new(1, 0)
 		side.Position = UDim2.new(1, -12, 0, if sideMode == "Run" then 240 else 118)
 		return
@@ -325,6 +327,8 @@ local function inviteFriends()
 	end)
 end
 
+-- (5 Nov) the QUESTS button's red dot: a daily / weekly quest is done and waiting to be claimed (client/QuestsWindow)
+local questsReady = false
 local function sideButtons(mode: string)
 	UI.clear(side)
 	sideMode = mode
@@ -332,15 +336,25 @@ local function sideButtons(mode: string)
 	roundButton("SHOP", "basket", "R", "Store", 1)
 	if mode == "Run" then
 		roundButton("UPGRADES", "upgrade", "TAB", "Upgrades", 2)
-		side.Size = UDim2.fromOffset(124, 3 * 126) -- (three buttons: it said two)
+		roundButton("QUESTS", "quest", "Q", "Quests", 3)
+		side.Size = UDim2.fromOffset(124, 4 * 126) -- (four buttons)
 	else
 		roundButton("STATS", "clipboard", "TAB", "Stats", 2)
+		roundButton("QUESTS", "quest", "Q", "Quests", 3)
 		roundButton("NEWS", "newspaper", "J", "News", 4)
 		roundButton("INVITE", "invite", "", "Invite", 5, inviteFriends)
-		side.Size = UDim2.fromOffset(124, 5 * 126)
+		side.Size = UDim2.fromOffset(124, 6 * 126)
 	end
+	Hud.setDot("Quests", questsReady)
 	placeSide()
 end
+State.on("data", function(d)
+	local ready = type(d) == "table" and type(d.quests) == "table" and (tonumber(d.quests.ready) or 0) > 0
+	if ready ~= questsReady then
+		questsReady = ready
+		Hud.setDot("Quests", ready)
+	end
+end)
 
 -------------------------------------------------------------------------------------------------------------
 -- hotbar (bottom centre): every tool you own this run, in shop order; press 1-7 or click to equip / unequip
@@ -756,6 +770,8 @@ UserInputService.InputBegan:Connect(function(input, processed)
 		UI.open(if currentMode == "Run" then "Upgrades" else "Stats")
 	elseif input.KeyCode == Enum.KeyCode.J then
 		UI.open("News")
+	elseif input.KeyCode == Enum.KeyCode.Q then
+		UI.open("Quests") -- (5 Nov) daily + weekly quests, Rebirth Stars (client/QuestsWindow)
 	else
 		local n = table.find(NUMBER_KEYS, input.KeyCode)
 		if n then

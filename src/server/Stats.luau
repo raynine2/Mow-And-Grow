@@ -40,8 +40,14 @@ function Stats.compute(player: Player, data)
 	-- (3 Rainbow Butterflies were +300%, over twice Goat Man's +130%)
 	pet.power = math.min(pet.power, Config.PET_POWER_CAP or math.huge)
 
+	-- (5 Nov) Rebirth Stars (server/Rebirth): +coins and +gems per star, next to the gem perks; never power
+	local R = Config.REBIRTH
+	local stars = if R then math.clamp(math.floor(tonumber(data.rebirth) or 0), 0, R.maxStars) else 0
+	local starSell = if R then stars * R.coinsPer else 0
+	local starGems = if R then stars * R.gemsPer else 0
+
 	local s = {}
-	s.power = (1 + (class.power or 0) + pet.power) * (if vip then 1.15 else 1)
+	s.power = (1 +(class.power or 0) + pet.power) * (if vip then 1.15 else 1)
 	s.mowerPower = (1 + (class.power or 0) + pet.power + level("power") * per("power")) * (if vip then 1.15 else 1) -- (30 Oct) ride-on mowers keep the old Power upgrade ("Mower Blades"); the tools get theirs from their skill trees (server/SkillTrees)
 	s.carry = Config.BASE_CARRY
 		+ (class.carry or 0)
@@ -54,13 +60,13 @@ function Stats.compute(player: Player, data)
 	-- pickup reach (studs) and the swing cooldown multiplier
 	s.grasp = (Config.LOOT.grasp + level("grasp") * per("grasp")) * (if run and run.vacuum then Config.VACUUM.graspMult else 1)
 	s.swing = math.max(0.4, 1 - level("swing") * per("swing"))
-	s.sell = (1 + (class.sell or 0) + pet.sell + data.perks.sell * Config.perk("sell").per + level("sell") * per("sell"))
+	s.sell = (1 + (class.sell or 0) + pet.sell + data.perks.sell * Config.perk("sell").per + starSell + level("sell") * per("sell"))
 		* (if hasPass(player, "DoubleCoins") then 2 else 1)
 		* (if vip then 1.15 else 1)
 	s.luck = 1 + (class.luck or 0) + pet.luck + data.perks.luck * Config.perk("luck").per
 	s.bundle = data.perks.bundle * Config.perk("bundle").per -- chance of a double bundle
 		+ (if hasPass(player, "DoubleClippings") then 1 else 0) -- 2x Clippings: always double
-	s.gems = (1 + data.perks.gem * Config.perk("gem").per) * (if hasPass(player, "DoubleGems") then 2 else 1)
+	s.gems = (1 + data.perks.gem * Config.perk("gem").per + starGems) * (if hasPass(player, "DoubleGems") then 2 else 1)
 	if run then
 		-- (29 Oct, owner: "party bonus") more coins from grass for every other player in the run
 		local pb = Config.PARTY_BONUS

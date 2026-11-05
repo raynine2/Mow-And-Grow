@@ -61,5 +61,6 @@ require(modules:WaitForChild("ClassDeal"))
 require(modules:WaitForChild("GemUpgrades")) -- takes over the "Perks" window (GEMS stall)
 require(modules:WaitForChild("SkillTreeWindow")) -- (30 Oct) weapon skill trees: the SKILLS button, K, gold MASTERED trees
 require(modules:WaitForChild("UpgradesWindow")) -- (30 Oct) takes over "Upgrades": grass-galaxy boxes, the weapons' skills a page each
+require(modules:WaitForChild("QuestsWindow")) -- (5 Nov) QUESTS (Q): daily + weekly quests, Rebirth Stars and their cards
 
 State.fire("Ready")

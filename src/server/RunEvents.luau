@@ -132,6 +132,8 @@ local function challengeLoop(firstZone: number)
 					for _, e in inRun() do
 						local got = math.floor(gems * Stats.compute(e.p, e.data).gems + 0.5)
 						e.data.gems += got
+						-- (5 Nov) the lifetime count of speed challenges won (the daily / weekly quests: server/QuestBoard)
+						e.data.stats.parClears = (e.data.stats.parClears or 0) + 1
 						PlayerData.changed(e.p)
 						Net.send(e.p, "Fx", "challenge", { z = cur, won = true, gems = got })
 					end

@@ -44,6 +44,9 @@ local BUTTONS = {
 	{ "INTRO 1: CLASH", "playClash", Color3.fromRGB(200, 140, 60) }, -- (the old opening from the sky tearing open)
 	{ "ENDING: CREDITS", "playCredits", Color3.fromRGB(255, 70, 150) }, -- (the ending from the credits on)
 	{ "MAYOR VOICE", "mayorVoice", Color3.fromRGB(170, 110, 255) }, -- (this client only: client/Babble's voices)
+	-- (5 Nov) Rebirth Stars and the daily / weekly quests (server/Rebirth, server/QuestBoard; lobby and runs)
+	{ "+1 REBIRTH STAR", "rebirthStar", Color3.fromRGB(255, 200, 40) },
+	{ "FINISH QUESTS", "questsDone", Color3.fromRGB(80, 200, 120) },
 }
 
 -- The Mayor's voice, tried out (owner, 28 Oct): the next of client/Babble's voices, saying two of his lines. It

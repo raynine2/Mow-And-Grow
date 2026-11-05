@@ -112,6 +112,8 @@ function Pets.hatch(player: Player, data, eggId: string, n: number, paid: boolea
 		end
 		table.insert(got, id)
 	end
+	-- (5 Nov) the lifetime count of eggs hatched (the daily / weekly quests read it: server/QuestBoard)
+	data.stats.hatched = (data.stats.hatched or 0) + n
 	afterChange(player, data)
 	Net.send(player, "Fx", "hatch", { egg = eggId, pets = got, fresh = fresh })
 	-- Legendary and up: a line in everyone's chat (after the hatch has had time to play)

@@ -133,6 +133,8 @@ function StatsWindow.build(tabs)
 	w.list.Visible = false
 	local panel = w.panel :: Frame
 	local playText = profileCard(panel)
+	-- (5 Nov) Rebirth Stars and their title, on a gold pill under the headshot (server/Rebirth; more in QUESTS)
+	local starsText = Skin.pill(panel, "0 STARS", Color3.fromRGB(240, 170, 30), "star", UDim2.fromOffset(54, 196), 230)
 	local values = {}
 	for i, c in CARDS do
 		values[c.key] = statCard(panel, i, c)
@@ -169,6 +171,9 @@ function StatsWindow.build(tabs)
 		base, baseAt = d.stats.playtime or 0, os.clock()
 		playText.Text = playtime(base)
 		boostText.Text = boostLine(d)
+		local rb = d.rebirth
+		local stars = if type(rb) == "table" then tonumber(rb.stars) or 0 else 0
+		starsText.Text = if stars > 0 then ("%d · %s"):format(stars, string.upper(rb.title or "STARS")) else "0 STARS"
 	end
 	task.spawn(function()
 		while true do

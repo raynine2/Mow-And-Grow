@@ -380,6 +380,90 @@ function Moments.daily(d: any)
 	end)
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- (5 Nov) a daily / weekly quest claimed (client/QuestsWindow), and Rebirth Stars earned (server/Rebirth)
+-------------------------------------------------------------------------------------------------------------
+-- d: { text, gems, egg?, period } from server/QuestBoard.
+function Moments.questClaim(d: any)
+	local green = UI.colors.green
+	local c = card(440, 150, 2.6, 0.3)
+	rays(c, green, 380)
+	local title = UI.text(c, if d.period == "weekly" then "WEEKLY QUEST DONE!" else "QUEST DONE!", UDim2.new(1, 0, 0, 50), { pos = UDim2.fromOffset(0, 0), stroke = 4 })
+	title.ZIndex = 58
+	UI.gradient(title, green)
+	local amount = UI.text(c, "+" .. Format.short(d.gems or 0) .. " GEMS" .. (if d.egg then " + " .. string.upper(d.egg) else ""), UDim2.new(1, 0, 0, 44), { pos = UDim2.fromOffset(0, 52), stroke = 3.5 })
+	amount.ZIndex = 58
+	amount.TextColor3 = Color3.fromRGB(220, 180, 255)
+	local line = UI.text(c, d.text or "", UDim2.new(1, 0, 0, 28), { pos = UDim2.fromOffset(0, 102), stroke = 2.5 })
+	line.ZIndex = 58
+	Sound.play("purchase")
+	Sound.playAt("rareChime", 1.1, 0.7)
+	Confetti.burst(if d.period == "weekly" then 120 else 60)
+	task.delay(0.4, function()
+		State.emit("flyGems", math.clamp(math.floor((d.gems or 0) / 25), 4, 16))
+	end)
+end
+
+-- d: { got, stars, gems, titles } (data.rebirth.show): the stars a finished run gave. The stars pop in one by one
+-- with a note a step higher each, then the new total, the bonus and any milestone title.
+function Moments.rebirth(d: any)
+	local R = Config.REBIRTH
+	local gold = UI.colors.yellow
+	local stars = tonumber(d.stars) or 0
+	local got = math.max(1, tonumber(d.got) or 1)
+	local titles = if type(d.titles) == "table" then d.titles else {}
+	local c = card(520, 250, 5.5, 0.32)
+	rays(c, gold, 480)
+	local title = UI.text(c, if got > 1 then ("+%d REBIRTH STARS!"):format(got) else "+1 REBIRTH STAR!", UDim2.new(1, 0, 0, 54), { pos = UDim2.fromOffset(0, 0), stroke = 4 })
+	title.ZIndex = 58
+	UI.gradient(title, gold)
+	local row = Instance.new("Frame")
+	row.BackgroundTransparency = 1
+	row.Size = UDim2.fromOffset(got * 70, 64)
+	row.Position = UDim2.new(0.5, 0, 0, 58)
+	row.AnchorPoint = Vector2.new(0.5, 0)
+	row.ZIndex = 57
+	row.Parent = c
+	for i = 1, got do
+		task.delay(0.25 + i * 0.28, function()
+			if not row.Parent then
+				return
+			end
+			local s = UI.icon(row, "star", 60, UDim2.fromOffset((i - 1) * 70 + 5, 2))
+			s.ZIndex = 58
+			for _, x in s:GetDescendants() do
+				if x:IsA("GuiObject") then
+					x.ZIndex = 58
+				end
+			end
+			UI.bounce(s)
+			Sound.playAt("rareChime", 1 + i * 0.12, 0.8)
+		end)
+	end
+	local total = UI.text(c, ("⭐ %d / %d   ·   +%d%% COINS   +%d%% GEMS"):format(stars, R.maxStars, math.floor(stars * R.coinsPer * 100 + 0.5), math.floor(stars * R.gemsPer * 100 + 0.5)), UDim2.new(1, -20, 0, 32), { pos = UDim2.fromOffset(10, 128), stroke = 2.5 })
+	total.ZIndex = 58
+	local sub
+	if #titles > 0 then
+		sub = ("NEW TITLE: %s!  +%s gems"):format(string.upper(titles[#titles]), Format.short(tonumber(d.gems) or 0))
+	else
+		local _, nextOne = Config.rebirthMilestone(stars)
+		sub = if nextOne then ("Next title: %s at %d stars"):format(nextOne.title, nextOne.at) else "Every title earned!"
+	end
+	local subText = UI.text(c, sub, UDim2.new(1, -20, 0, 30), { pos = UDim2.fromOffset(10, 166), stroke = 2.5 })
+	subText.ZIndex = 58
+	subText.TextColor3 = if #titles > 0 then gold else Color3.fromRGB(220, 220, 240)
+	local hint = UI.text(c, "Finish runs on HARD or EXPERT for more stars", UDim2.new(1, -20, 0, 24), { pos = UDim2.fromOffset(10, 202), stroke = 2 })
+	hint.ZIndex = 58
+	Sound.play("victory")
+	Confetti.burst(160)
+	task.delay(0.7, Confetti.burst, 100)
+	if #titles > 0 then
+		task.delay(1.2, function()
+			State.emit("flyGems", 12)
+		end)
+	end
+end
+
 -- Joining the lobby with today's reward waiting: one reminder.
 local reminded = false
 State.on("data", function()

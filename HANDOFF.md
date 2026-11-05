@@ -1,4 +1,4 @@
-# Handoff: where Mow And Grow is (4 Nov 2026)
+# Handoff: where Mow And Grow is (5 Nov 2026)
 
 For the next person (and their Claude) picking this up. Read `CLAUDE.md` first for the rules, then this.
 
@@ -34,6 +34,7 @@ For the next person (and their Claude) picking this up. Read `CLAUDE.md` first f
 
 | Commit | What |
 |---|---|
+| `072972d`..`f0c45fa` | **5 Nov ~01:00–03:45, Films v2: the opening rebuilt from scratch (work in progress, NOT in Studio yet)** (owner: "scrap but not delete ... the whole intro and outro ... make it feel like an anime fight like sukuna vs mahoraga ... let the end boss come like toji"; reference videos MobWshN54vo (most important), _SaVIYa7dnI, qRjNRrKiaTc; later "Really use reference videos I've send and dibble check"). Story, the owner's answers and the shot list: `docs/FilmsV2.md`. New client modules: `Opening` (~49 s, cut to the licensed DistroKid track `FILM_SOUNDS.animeCharge`), `FilmSet` (the moonlit meadow; Rayan's gold realm for the finale), `Puppet` (R15 avatars posed in code with IK), `Shears` (Rayan's gold shears), `AnimeFx` (bracket subtitles, name card, smears, impact frames, technique card, logo slam); `server/FilmCast` builds the owner's avatar as RAYAN. `Config.FILMS_V2.on = false` brings the old films back (kept, not deleted). Two review passes held every shot in Studio and fixed what was seen; what's left is in the open items below. |
 | `5a738a2`..`265c82e` | **5 Nov ~00:45 (owner: "de bosses zitten random ergens verstopt").** In a run the opening's guardians stood behind the camp's roofs, trees and the garage's COMING SOON sign. New `client/FilmClear.keep(getModel)`: while a guardian is shown (Intro `showBoss`, Ending's two `BossView.show`), every 0.08 s it spherecasts from the lens to 9 points on the guardian and hides on this client the whole world model in the way (under 160 studs; ground never), and turns the world's floating signs off; all back when the guardian leaves. `Film.start` also hides `MowerLocks` (padlock + sign) for every film. The tear sits higher over the King (it ran through his face), no glitch streaks at the rifts. The films' Mowers (player clones, `IntroCast.cloneOf`) carry no bundle stack (it filled the ending's guardian shot). **Seen in a run, on screen:** the King under the tear, the King close-up, Bramble/Jungle/Bunker/Harvest corrupted whole and clear, the ending's guardian saved at the Starlight arena, the Mayor and the garage without padlock. Not seen: the demon/hole part of the ending, boss fights with the new hits. ForceMode back to "Lobby". |
 | `607550b`..`b335c95` | **4-5 Nov ~00:00, SoulShroud round 3 (owner: "u just use the supersaiyan effect for everything ... look at alot of vfx", "the boss eye thing ... stays when it moves", "the bosses load in after they go", "go thru a rift but ... see the boss fully", "best intro and outro"; picks while watching: "yes portals", Lines "for corruption glitch", Bonus #83 crater; of the corrupted eyes' pink glows: "this shit thing").** The whole pack was looked at in Play (Pack2, Impact, Alternate, Bonus, Structures, Pack1; Pack3 only partly: small single layers). 34 new templates in `PackVfxBuild.SPEC` (helpers `P1`, `SP`; rebuilt, 69 templates, none missing): grass/ground (GreenImpact, GreenSwirl, GrassTuft, GrassStreak, DustKick, GroundRing, GroundSlam, Crater, MagicCircle), hits (InkHit, SlashX, BlueSlash, CorruptHit, InkCrack, RingBurst, FlameRing, GreenCrescent, WaterSwirl, Glint, WhiteFlash, SpeedLines), films (InkSwirl, Rift = the twin portal, Glitch = Elementals/Lines, Scribble, RedRift, VoidRing, VoidEye, CorruptOrb, DarkPillar, LightPillar, Absorb, WindVortex, LeafSwirl, Petals). The spiky bursts (GoldBurst, BigBurst, PinkBurst, PurpleBurst, Star, FireBurst) are no longer played anywhere: each boss has its own hit in THEME and a rune circle on wind-up; FILM redrawn; a hit on a boss is SlashX. Pack1 effects use Rate 0 layers that `run` emits once, so a burst is gone in ~0.4 s: look at them with `stream = true` (as the test did). `GlitchHole`'s eye is a VoidRing loop with `locked = true` (new `PackFx.loop` option: particles move with it). Corrupted eyes: only the neon dot (`FILM.PinkEye = {}`). Intro: guardians preloaded before the film; the rift behind each guardian; `clearShot` hides (this client, one shot) trees between the lens and a guardian / the King (`FilmClearedParts` attribute counts them); new lines. Studio hooks `IntroPreview` / `EndingPreview` (only once the module is loaded: the DevPanel buttons load it). **Seen on screen:** every new template; the opening's King and one guardian (in the lobby, which isn't where the real film plays). `b335c95` fixed a crash of the opening in a run (`clearShot` read `.Size` off a grass clump Model). **Not seen:** the opening in a run (Studio's 3D view stopped drawing in the run twice; the world was built and the film ran), the ending, boss fights with the new hits. ForceMode is back to "Lobby". |
 | `e1f1999`, `8ecf413` | **4 Nov ~23:30 (owner: "i dont like the font ur using and text in general ... just use the ui we have in game", "the house is seetrhough", the garage "things are in the ground").** Film / credits fonts all Fredoka One (IntroUi, FilmPanels, Ending), name cards on the galaxy plate with the gold title, plainer lines ("READY TO MOW IT ALL!", "GUARDIAN SAVED!", "YOU MOWED THE WHOLE VALLEY!"). Classes house: two opaque cores inside its mesh (`LandsBuilder.classes`; also added by hand to `Workspace.Maps.Lobby.Classes` so the edit view matches; checked on screen). Garage padlock hangs on the shut door halfway up. **Not seen on screen: the film text and the padlock** (Studio's Play stuck on "Start play hasn't finished yet"). |
@@ -173,6 +174,41 @@ All of it passes `tools/compile-check.luau` and `rojo build`. Everything up to `
 and was playtested there with no script errors.
 
 ## Not done yet / open items
+
+**Films v2, paused 5 Nov 03:47 (owner: "Pause", "Save it").** Nothing of Films v2 is in the Studio place yet: the
+tests hot-loaded it into Play sessions only, so saving the place is safe (its Edit side was checked at 03:50: no
+test leftovers, `ForceMode = "Lobby"`). Everything is on the branch at `f0c45fa` or later. To check a shot in Studio:
+workspace attribute `FilmHoldAt = <film seconds>` holds the picture there; `Opening.tryCam(from, to, fov)` (set
+coordinates, Studio only) tries another lens while held; `Opening.cast()` gives the set and actors to measure from.
+Seen on screen in pass 2, still to do (shot numbers as in `client/Opening`'s comments):
+- 6, the boots: make it the side tracking shot that tested well: lens at root + right·9.5 + look·1.3 at ground + 1.1,
+  aimed at root − look·2.6 at ground + 1.2, `mm(35)` (the gold shears drag big across the frame).
+- 8, the name card: the moon is now east; the oak at set (44, 0, −22) stands in front of it: move it, and keep the
+  far ring's trees out of a ±12° corridor round the line from R1 to the moon.
+- 10 (cut 1): too close on his arms; make it higher and further, like cut 3. Cuts 2 and 3 read well.
+- 13, the arm falls: lens at R2 + (8, 6, 7) aimed at R2 + (−6, 2, −5.5), `mm(26)` (tested). The fissure's rim rocks
+  (`FilmSet` `set.rim`, they move) must join `set.props` so they're hidden too (one stood in the old lens).
+- 14, his eye: now aimed along the head's own look (works), but strands of his hair cross the eye: move the lens a
+  little to his right and under the fringe.
+- 15, the reset: too dark to read; a wide low lens from the south-west with the loading ring over its head (the ring
+  now sits 16·scale over the head root instead of 30).
+- 16, the clang: the lens was inside the demon's arm. Re-frame from behind him, west of the elbow (the demon's
+  blocks right at a lens are now hidden, `Demon.nearClip`, but the shot still needs a real framing).
+- 18 shed, 22 stance, 26 after, 27a stubs, 28 regrow, 29 bigger, 30a, 31 slam, 33 streak, 34 hero, 38 shatter,
+  41b: all were blocked by the hay/crates that stood at R3 and P1. `f0c45fa` moved those props out and hides any
+  prop between a lens and its subject: look at each again.
+- 19, down in the wreck (from above): his head is cut off; aim at his chest/head.
+- 20, he gets up: the tung tung figure on his chest hides his face from straight in front: a 3/4 angle.
+- 24, the glint: the lens looks at the ground; frame the shears from their live tips every frame.
+- 35, the player's eyes: showed the mouth (the head tips up to look at the demon); now aimed along the head: check.
+- 36 wind-up and 37 THE PUNCH: unreadable (the lens in the demon's fists / his own arm). The climax: most care.
+- 39 pillars: now neon beams behind the hills: check. 40 the last eye: the player's shoulder fills the frame.
+  41a: Rayan's hair fills the frame: pull back.
+- Good as they are: 1 valley, 4 rise, 5 roar, 7 over the shoulder, 9 claw, 11–12 cuts, 17 backhand, 21 "Fine",
+  23 the ring from above, 42 title.
+Then: pass 3 over every shot; then the finale (`client/Finale`, ~60 s: Rayan's realm, the player's dark copy; not
+started); then copy everything into Studio (Edit, from GitHub by commit, checksums, old copies to
+`ServerStorage.MowALawnBackups`), and the owner saves.
 
 **4 Nov, open (slop the vault flags that needs a decision, not a quick fix):** (a) the spawn's first view is the
 holographic mower padlocks with "COMING SOON / next update" (the owner asked for those locks on 30 Oct) and a big empty

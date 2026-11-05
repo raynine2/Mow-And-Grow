@@ -1081,8 +1081,9 @@ local function exchange(): boolean
 		local up = ease.out(math.clamp((tt - T.clawUp) / 0.35, 0, 1))
 		local down = ease.inn(math.clamp((tt - (T.claw - 0.16)) / 0.16, 0, 1))
 		-- (round 2: it leans right over and the claw reaches the ground where he stood; it stopped ~15 studs short)
-		P.lean = down * tune("ClawLean", 30)
-		P.armR = { pitch = -45 * up * (1 - down) + tune("ClawPitch", 48) * down, yaw = 6 * up + tune("ClawYaw", 14) * down }
+		-- (pitch: + swings it back, - forward; measured in Studio: -28 with a 22 lean and 44 in puts the claw on him)
+		P.lean = down * tune("ClawLean", 22)
+		P.armR = { pitch = tune("ClawRaise", -110) * up * (1 - down) + tune("ClawPitch", -28) * down, yaw = 6 * up + tune("ClawYaw", 44) * down }
 	end
 	sfx("growl2", 1.0, 0.8)
 	after(T.claw - 0.25, function()

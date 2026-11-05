@@ -311,7 +311,8 @@ shows the empty world for a moment (live servers teleport instead).
 
 ## Studio vs. git: please read
 
-**5 Nov, ~18:35 (Amsterdam): round 3b in Studio, NOT published yet.** The owner: "The text needs to be simple ... look up a
+**5 Nov, ~19:06 (Amsterdam): round 3b published** (owner: "sure"; File → Publish again; the tab's "@ 05 Nov 2026 18:04"
+mark went away). **Round 3b, installed ~18:05:** The owner: "The text needs to be simple ... look up a
 reference from anime ... what u have rn is very bad". The films' words are now plain: one clean sans (Gotham), white, a
 thin black outline, like anime TV subtitles and the Blue Lock animation he sent; names big and heavy low on the left with
 a small line under; no brackets, coloured words, seals or rules. `install-b.luau` (AnimeFx, Opening from `d27174a`,

@@ -1567,6 +1567,11 @@ local function finish()
 	end
 	playing = false
 	Film.stop(STEP)
+	if ((Config :: any).FILMS_V2 or {}).on then
+		pcall(function()
+			(require(script.Parent.Opening) :: any).stop()
+		end)
+	end
 	FilmVoice.clear()
 	Babble.stop()
 	FilmAudio.finish(1.2)
@@ -1705,6 +1710,26 @@ local function play()
 			finish()
 		end
 	end)
+	-- (5 Nov) Films v2: the new opening (client/Opening) plays instead; the old one below stays for FILMS_V2.on = false
+	local V2 = (Config :: any).FILMS_V2
+	if V2 and V2.on then
+		local Opening = require(script.Parent.Opening) :: any
+		local ok, ready = pcall(Opening.prepare)
+		if not playing or generation ~= mine then
+			return
+		end
+		if ok and ready then
+			Film.start(STEP)
+			local played, err = pcall(Opening.play)
+			if not played then
+				warn("[Intro] " .. tostring(err))
+			end
+		else
+			warn("[Intro] the new opening couldn't be made: " .. tostring(ready))
+		end
+		finish()
+		return
+	end
 	-- the black cover is up: the Mayor's voice starts being made, the sounds load, the far places stream in
 	local lines = {}
 	for _, k in ORDER do

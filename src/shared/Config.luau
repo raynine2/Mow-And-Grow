@@ -1460,6 +1460,22 @@ Config.FILM_SOUNDS = {
 	brush = { id = "rbxassetid://125359999408555", volume = 0.13, len = 2 }, -- ForgeGUI 29 Oct. old: rbxassetid://9116143977, volume 0.5, len 2.0 (Kelp Impact Big 26 ("machete on thick brush"))
 	eerie = { id = "rbxassetid://131360268717654", volume = 0.29, len = 30 }, -- ForgeGUI 29 Oct. old: rbxassetid://9112775414, volume 0.45, len 63.7 (Eerie Ambience 2)
 	servo = { id = "rbxassetid://89253553273170", volume = 0.1, len = 12 }, -- ForgeGUI 29 Oct. old: rbxassetid://9119008083, volume 0.35, len 12.9 (Servo Short Bursts (sliced into glitches))
+	-- (5 Nov, Films v2) Roblox-licensed music (DistroKid): ForgeGUI was out of credits for an original score
+	animeCharge = { id = "rbxassetid://84037283619823", volume = 0.5, len = 186 }, -- DistroKid: Anime Charge (Cinematic Battle Music); 100 BPM, bars from 0.08 s
+}
+
+-- (5 Nov, owner: the old opening and ending scrapped but kept, "maybe i would like to use this and revert") THE NEW
+-- FILMS: client/Opening (an anime fight: Rayan, the valley's owner, against the Glitch Demon, and the player's one
+-- punch) and client/Finale (the player's dark copy walks into Rayan's realm). on = false brings back the old ones
+-- (client/Intro, client/Ending) exactly as they were. docs/FilmsV2.md has the story and the shot list.
+Config.FILMS_V2 = {
+	on = true,
+	owner = 1994267229, -- RayanPoepHoof: the valley's owner in the films (server/FilmCast builds his avatar)
+	ownerName = "RAYAN",
+	ownerTitle = "Owner of the Valley",
+	setAt = Vector3.new(-24000, 0, -24000), -- the meadow set (client/FilmSet), far off every map
+	realmAt = Vector3.new(-24000, 0, -27000), -- Rayan's realm
+	music = "animeCharge",
 }
 
 -------------------------------------------------------------------------------------------------------------

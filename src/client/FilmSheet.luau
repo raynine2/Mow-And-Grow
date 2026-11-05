@@ -174,12 +174,12 @@ local function showSheet()
 end
 
 if RunService:IsStudio() then
-	local run = Film.run
-	Film.run = function(len: number, fn: any, opts: any): boolean
+	-- (a shot wrapped so it photographs itself at its points; nil when no sheet is wanted)
+	local function wrapShot(fn: any): any?
 		local per = perShot()
 		local hold = holdTime()
 		if not per and not hold then
-			return run(len, fn, opts)
+			return nil
 		end
 		if shown then
 			-- a new film: a new sheet (an ending's parts, credits and teaser, all go on one)
@@ -197,7 +197,7 @@ if RunService:IsStudio() then
 			points[i] = if n == 1 then 0.5 else 0.08 + (i - 1) / (n - 1) * 0.84
 		end
 		local nextI = 1
-		local function shot(k: number, t: number): (CFrame, number, Vector3?)
+		return function(k: number, t: number): (CFrame, number, Vector3?)
 			local cf, fov, focus = fn(k, t)
 			if nextI <= #points and k >= points[nextI] then
 				local p = points[nextI]
@@ -212,7 +212,15 @@ if RunService:IsStudio() then
 			end
 			return cf, fov, focus
 		end
-		return run(len, shot, opts)
+	end
+	local run = Film.run
+	Film.run = function(len: number, fn: any, opts: any): boolean
+		return run(len, wrapShot(fn) or fn, opts)
+	end
+	-- (Films v2 cut to the music's clock with Film.cut)
+	local cut = Film.cut
+	Film.cut = function(len: number, fn: any, opts: any)
+		return cut(len, wrapShot(fn) or fn, opts)
 	end
 
 	local was = false
@@ -236,7 +244,7 @@ if RunService:IsStudio() then
 		-- (a moment later: a test tool that set the attribute has let go of the game by then)
 		task.delay(1.5, function()
 			workspace:SetAttribute("PlayFilm", nil)
-			if which == "opening" or which == "clash" then
+			if which == "opening" or which == "clash" or which == "opening2" then
 				require(script.Parent:FindFirstChild("Intro") :: ModuleScript).preview(if which == "clash" then "glitch" else nil)
 			elseif which == "ending" or which == "credits" then
 				require(script.Parent:FindFirstChild("Ending") :: ModuleScript).preview(if which == "credits" then "credits" else nil)

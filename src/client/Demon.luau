@@ -166,6 +166,7 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 	local ghostRel: { CFrame } = {}
 	local ghostGroup: { number } = {}
 	local ghostSide: { number } = {}
+	local groupParts: { [number]: { BasePart } } = {} -- (each group's welded blocks: Films v2 splits and shatters it)
 	local made = 0
 	for gi, g in groups do
 		local root: Part? = nil
@@ -196,6 +197,8 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 			local rel = CFrame.new(b.at * scale)
 			local p = newPart(model, b.size * scale, colour, neon, b.ghost)
 			if root then
+				groupParts[gi] = groupParts[gi] or {}
+				table.insert(groupParts[gi], p)
 				p.CFrame = base * rel
 				local w = Instance.new("WeldConstraint")
 				w.Part0 = root
@@ -251,6 +254,10 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 	model.Parent = parent or workspace
 
 	local state = { rise = 0, eyes = 0, roar = 0, glitch = 0 }
+	-- (Films v2: a film's own pose on top: hook(frames, groupIndex, t) may move any group's frame, in the world; and a
+	-- body cut in two, its top half a group of its own, "top")
+	local api: any = { hook = nil }
+	local topIndex: number? = nil
 	local height = HEIGHT * scale
 	local glitchUntil, nextGlitch, jumpHead = 0, os.clock() + 0.8, false
 	local jitter = CFrame.identity
@@ -329,6 +336,12 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		end
 		local glitching = now < glitchUntil
 		groupFrames(t)
+		if topIndex then
+			frames[topIndex] = frames[groupIndex.body]
+		end
+		if api.hook then
+			api.hook(frames, groupIndex, t)
+		end
 		-- (glitches push across the screen: the camera's right)
 		local cam = workspace.CurrentCamera
 		local right = if cam then cam.CFrame.RightVector else Vector3.xAxis
@@ -414,32 +427,90 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 	if model:IsDescendantOf(workspace) then
 		update(0)
 	end
-	return {
-		model = model,
-		state = state,
-		base = base,
-		scale = scale,
-		height = height,
-		update = update,
-		-- force a glitch right now (lasting `time`, default a couple of frames): it slices and jumps
-		glitchNow = function(time: number?)
-			glitchUntil = os.clock() + (time or 0.08)
-			jumpHead = false
-			sliced = true
-			cutBands()
-			jitter = CFrame.new(scale * (math.random() - 0.5) * 5, 0, 0)
-		end,
-		head = function(): CFrame
-			return headCf
-		end,
-		-- the point between its eyes (for close-ups)
-		eyes = function(): Vector3
-			return (headCf * CFrame.new(Shape.EYES * scale)).Position
-		end,
-		destroy = function()
-			model:Destroy()
-		end,
-	}
+	api.model = model
+	api.state = state
+	api.base = base
+	api.scale = scale
+	api.height = height
+	api.update = update
+	-- force a glitch right now (lasting `time`, default a couple of frames): it slices and jumps
+	api.glitchNow = function(time: number?)
+		glitchUntil = os.clock() + (time or 0.08)
+		jumpHead = false
+		sliced = true
+		cutBands()
+		jitter = CFrame.new(scale * (math.random() - 0.5) * 5, 0, 0)
+	end
+	api.head = function(): CFrame
+		return headCf
+	end
+	-- the point between its eyes (for close-ups)
+	api.eyes = function(): Vector3
+		return (headCf * CFrame.new(Shape.EYES * scale)).Position
+	end
+	-- a group's frame this frame (e.g. "armR"), and where its pivot is
+	api.frame = function(name: string): CFrame
+		return frames[groupIndex[name] or 1]
+	end
+	-- (Films v2) cut the body in two at `y` design units over the waist: the blocks above it go to a group of their
+	-- own ("top", following the body until a hook moves it); the head, arms, wings and fragments go with it
+	api.split = function(y: number)
+		if topIndex then
+			return
+		end
+		local bi = groupIndex.body
+		local bodyCf = frames[bi]
+		local r = Instance.new("Part")
+		r.Name = "Root_top"
+		r.Anchored = true
+		r.CanCollide = false
+		r.CanQuery = false
+		r.CanTouch = false
+		r.Transparency = 1
+		r.Size = Vector3.one * 0.2
+		r.CFrame = bodyCf
+		r.Parent = model
+		local ti = #frames + 1
+		frames[ti] = bodyCf
+		roots[ti] = r
+		groupIndex.top = ti
+		groupParts[ti] = {}
+		local keepList = {}
+		for _, p in groupParts[bi] or {} do
+			if bodyCf:PointToObjectSpace(p.Position).Y > y * scale then
+				local w = p:FindFirstChildOfClass("WeldConstraint")
+				if w then
+					w.Enabled = false
+					w.Part0 = r
+					w.Enabled = true
+				end
+				table.insert(groupParts[ti], p)
+			else
+				table.insert(keepList, p)
+			end
+		end
+		groupParts[bi] = keepList
+		topIndex = ti
+	end
+	-- n blocks picked through it (where they are, their size and colour), for a shatter drawn by the film
+	api.samples = function(n: number): { { cf: CFrame, size: Vector3, color: Color3 } }
+		local all = {}
+		for _, list in groupParts do
+			for _, p in list do
+				table.insert(all, p)
+			end
+		end
+		local out = {}
+		for _ = 1, math.min(n, #all) do
+			local p = all[math.random(1, #all)]
+			table.insert(out, { cf = p.CFrame, size = p.Size, color = p.Color })
+		end
+		return out
+	end
+	api.destroy = function()
+		model:Destroy()
+	end
+	return api
 end
 
 return Demon

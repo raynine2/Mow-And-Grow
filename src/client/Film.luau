@@ -647,8 +647,7 @@ local function render(dt: number)
 	end
 end
 
--- Play a shot for `len` seconds of film time. Returns false if the film was stopped meanwhile.
-function Film.run(len: number, fn: ShotFn, opts: ShotOpts?): boolean
+local function cutTo(len: number, fn: ShotFn, opts: ShotOpts?)
 	shot = fn
 	shotOpts = opts or {}
 	shotStart = clock
@@ -662,6 +661,17 @@ function Film.run(len: number, fn: ShotFn, opts: ShotOpts?): boolean
 		Film.shake(0.45, 2.5)
 		Film.punch(6)
 	end
+end
+
+-- Cut to a shot (k runs 0..1 over `len` seconds of film time) and return at once: the film times its own cuts
+-- (Films v2 cut to the music's clock).
+function Film.cut(len: number, fn: ShotFn, opts: ShotOpts?)
+	cutTo(len, fn, opts)
+end
+
+-- Play a shot for `len` seconds of film time. Returns false if the film was stopped meanwhile.
+function Film.run(len: number, fn: ShotFn, opts: ShotOpts?): boolean
+	cutTo(len, fn, opts)
 	while Film.playing and clock < shotStart + shotLen do
 		task.wait()
 	end

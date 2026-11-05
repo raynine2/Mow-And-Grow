@@ -394,10 +394,18 @@ function Puppet.new(source: Model, opts: { name: string?, parent: Instance? }?):
 	self.lookW = 0
 	-- the shake (a hit: the body jolts)
 	self.jolt = 0
+	-- (round 2) the fluid layer: every joint follows its pose through a spring, so moves overlap and follow through
+	self.fluidOn = true
+	self.springX = {} :: { [string]: Vector3 }
+	self.springV = {} :: { [string]: Vector3 }
+	self.hipX, self.hipV = ZERO, ZERO
+	self.springReset = true
 	for _, name in ORDER do
 		self.angles[name] = ZERO
 		self.from[name] = ZERO
 		self.to[name] = ZERO
+		self.springX[name] = ZERO
+		self.springV[name] = ZERO
 	end
 	local byName: { [string]: BasePart } = {}
 	for _, p in parts do
@@ -428,6 +436,7 @@ function Puppet.new(source: Model, opts: { name: string?, parent: Instance? }?):
 				from = ZERO, to = ZERO, w = 0, wFrom = 0, wTo = 0,
 				poleFrom = spec[7], poleTo = spec[7],
 				now = ZERO, -- (where the end was last frame, in its space)
+				sx = ZERO, sv = ZERO, -- (the fluid layer: the reach's end through a spring)
 			}
 		end
 	end
@@ -485,6 +494,8 @@ function Puppet.pose(self: any, pose: any, time: number?, ease: string?)
 		a.poleTo = pole or a.pole
 	end
 	if (time or 0) <= 0 then
+		-- (an instant pose: set straight, no swing into it)
+		self.springReset = true
 		for _, name in ORDER do
 			self.angles[name] = self.to[name]
 		end
@@ -647,6 +658,36 @@ local function walkPose(phase: number, style: string): ({ [string]: Vector3 }, V
 	return out, v(0, bob, 0)
 end
 
+-- (round 2, owner 5 Nov: the reference's animation "is so fluid and nice it feels like a real anime scene"; ours
+-- jumped from pose to pose in two or three frames) The fluid layer: each joint chases its pose through a spring,
+-- the body's core quickest and the head, hands and forearms a little behind, a touch under-damped so a fast move
+-- overshoots and settles. A snap still lands in about a tenth of a second, but it travels there.
+local FREQ: { [string]: number } = {
+	Root = 5.5, Waist = 4.6, Neck = 3.6,
+	LeftShoulder = 4.4, RightShoulder = 4.4, LeftElbow = 3.8, RightElbow = 3.8, LeftWrist = 3.4, RightWrist = 3.4,
+	LeftHip = 6.0, RightHip = 6.0, LeftKnee = 6.0, RightKnee = 6.0, LeftAnkle = 6.0, RightAnkle = 6.0,
+}
+local ZETA = 0.62
+local HAND_FREQ, FOOT_FREQ, HIP_FREQ = 4.6, 7.0, 5.5
+
+-- one spring step toward `target` (a value and its speed), split into steps short enough to stay steady
+local function spring(x: Vector3, v: Vector3, target: Vector3, f: number, dt: number): (Vector3, Vector3)
+	local w = 2 * math.pi * f
+	local steps = math.max(1, math.ceil(dt * 240))
+	local h = dt / steps
+	for _ = 1, steps do
+		v += ((target - x) * (w * w) - v * (2 * ZETA * w)) * h
+		x += v * h
+	end
+	return x, v
+end
+
+-- The fluid layer on (the default) or off (poses exactly as blended).
+function Puppet.fluid(self: any, on: boolean)
+	self.fluidOn = on
+	self.springReset = true
+end
+
 -- Place everything for this frame; `dt` is the film's (slow motion slows the acting too).
 function Puppet.update(self: any, dt: number)
 	self.t += dt
@@ -675,6 +716,25 @@ function Puppet.update(self: any, dt: number)
 			final[name] = if add then angles[name]:Lerp(add + (if name == "Waist" or name == "Root" then angles[name] else ZERO), w) else angles[name]
 		end
 		hip = hip:Lerp(bob, w)
+	end
+	-- the fluid layer (held still while the film is: dt 0)
+	local resetNow = self.springReset
+	if self.fluidOn then
+		local sx, sv = self.springX, self.springV
+		if resetNow then
+			for _, name in ORDER do
+				sx[name] = final[name] or ZERO
+				sv[name] = ZERO
+			end
+			self.hipX, self.hipV = hip, ZERO
+		elseif dt > 0 then
+			for _, name in ORDER do
+				sx[name], sv[name] = spring(sx[name], sv[name], final[name] or ZERO, FREQ[name] or 4, dt)
+			end
+			self.hipX, self.hipV = spring(self.hipX, self.hipV, hip, HIP_FREQ, dt)
+		end
+		final = sx
+		hip = self.hipX
 	end
 	-- breathing (a little, always)
 	local br = math.sin(self.t * 1.9) * 1.2
@@ -749,7 +809,18 @@ function Puppet.update(self: any, dt: number)
 		local flat = root.Rotation
 		for _, a in self.limbs do
 			a.w = a.wFrom + (a.wTo - a.wFrom) * e
-			a.cur = a.from:Lerp(a.to, e)
+			local goal = a.from:Lerp(a.to, e)
+			if not self.fluidOn then
+				a.cur = goal
+			elseif resetNow then
+				a.sx, a.sv = goal, ZERO
+				a.cur = goal
+			else
+				if dt > 0 then
+					a.sx, a.sv = spring(a.sx, a.sv, goal, if a.leg then FOOT_FREQ else HAND_FREQ, dt)
+				end
+				a.cur = a.sx
+			end
 			a.poleNow = a.poleFrom:Lerp(a.poleTo, e)
 			local space = if a.leg then root else chest
 			if a.w > 0.001 then
@@ -781,6 +852,7 @@ function Puppet.update(self: any, dt: number)
 			world[s.part] = b * s.rel
 		end
 	end
+	self.springReset = false
 	local cfs = self.cfs
 	for i, p in self.parts do
 		cfs[i] = world[p] or root

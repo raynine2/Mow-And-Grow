@@ -1025,6 +1025,9 @@ Config.EGGS = {
 		products = { { count = 1, key = "GoldenEgg1" }, { count = 3, key = "GoldenEgg3" }, { count = 10, key = "GoldenEgg10", tag = "BEST VALUE" } },
 	},
 }
+-- (5 Nov, owner: the hatch's background "revertible") where eggs hatch (client/HatchFx): "space" = the floating lawn in
+-- the world 2 rift (client/HatchSpace), "garden" = the dusk glitch garden it replaced. Switch back any time.
+Config.HATCH_SCENE = "space"
 Config.HATCH_LUCK = { pass = 1.5, super = 2 } -- HatchLuck / SuperHatchLuck (they stack: x3)
 Config.HATCH_LUCK_RARITIES = { Epic = true, Legendary = true, Mythic = true, Secret = true }
 

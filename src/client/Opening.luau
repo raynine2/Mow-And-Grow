@@ -1806,8 +1806,8 @@ local function stance(): boolean
 	floor.CanTouch = false
 	floor.CastShadow = false
 	floor.Shape = Enum.PartType.Cylinder
-	floor.Material = Enum.Material.SmoothPlastic
-	floor.Color = Color3.fromRGB(6, 4, 10)
+	floor.Material = Enum.Material.Neon -- (black Neon stays pitch black whatever the night's light; plastic went navy)
+	floor.Color = Color3.new(0, 0, 0)
 	floor.Size = Vector3.new(0.12, 0.1, 0.1)
 	floor.CFrame = CFrame.new(centre) * CFrame.Angles(0, 0, math.rad(90))
 	floor.Parent = stageFolder()
@@ -1816,7 +1816,7 @@ local function stance(): boolean
 	local n = 120
 	local edge = {}
 	for i = 1, n do
-		local seg = neon(Vector3.new(0.5, 0.18, 0.32), CFrame.new(centre), WHITE, 1)
+		local seg = neon(Vector3.new(0.45, 0.18, 0.5), CFrame.new(centre), WHITE, 1)
 		edge[i] = seg
 		table.insert(ring, seg)
 	end
@@ -1825,7 +1825,8 @@ local function stance(): boolean
 		for i, seg in edge do
 			local a = (i / n) * math.pi * 2
 			local p = centre + Vector3.new(math.cos(a) * r, 0.06, math.sin(a) * r)
-			seg.Size = Vector3.new(len, 0.18, 0.32)
+			-- (the length along the segment's look, the tangent: along X, the old ring was a row of dashes)
+			seg.Size = Vector3.new(0.45, 0.18, len)
 			seg.CFrame = CFrame.lookAt(p, p + Vector3.new(-math.sin(a), 0, math.cos(a)))
 			seg.Transparency = alpha
 			seg.Color = color
@@ -1833,10 +1834,32 @@ local function stance(): boolean
 	end
 	local ringFrom = now()
 	local SPREAD = 0.34 -- seconds from his feet to the ring
+	-- (inside his domain the meadow's tall grass is gone under the black: hidden as the edge passes, back on the snip)
+	local inked: { Instance } = {}
+	S.inked = inked
+	local tuftsLeft = {}
+	for _, t in S.tufts or {} do
+		if not t.cut and t.model then
+			table.insert(tuftsLeft, t)
+		end
+	end
 	tracks.ring = function()
 		local k = math.clamp((now() - ringFrom) / SPREAD, 0, 1)
 		local r = math.max(RING * (1 - (1 - k) ^ 4), 0.2) -- (expo out: a rush, then it brakes at the rim)
 		floor.Size = Vector3.new(0.12, r * 2, r * 2)
+		for i = #tuftsLeft, 1, -1 do
+			local t = tuftsLeft[i]
+			local tp = t.at.Position
+			if (Vector3.new(tp.X - centre.X, 0, tp.Z - centre.Z)).Magnitude <= r then
+				table.remove(tuftsLeft, i)
+				for _, d in t.model:GetDescendants() do
+					if d:IsA("BasePart") then
+						d.LocalTransparencyModifier = 1
+						table.insert(inked, d)
+					end
+				end
+			end
+		end
 		local cool = math.clamp((now() - ringFrom - SPREAD) / 0.5, 0, 1)
 		local hum = 0.12 + math.sin((now() - ringFrom) * 18) * 0.06 * cool
 		placeEdge(r, hum, WHITE:Lerp(GOLD, cool))
@@ -1859,10 +1882,10 @@ local function stance(): boolean
 				local r0 = rng:NextNumber(4, RING * 0.55)
 				local p = centre + Vector3.new(math.cos(a) * r0, 0.08, math.sin(a) * r0)
 				local dir = Vector3.new(math.cos(a + rng:NextNumber(0.9, 2.2)), 0, math.sin(a + rng:NextNumber(0.9, 2.2))).Unit
-				local len = rng:NextNumber(10, 30)
-				local cut = neon(Vector3.new(0.14, 0.06, len), CFrame.lookAt(p, p + dir), WHITE, 0)
+				local len = rng:NextNumber(14, 40)
+				local cut = neon(Vector3.new(0.5, 0.08, len), CFrame.lookAt(p, p + dir), WHITE, 0)
 				table.insert(ring, cut)
-				TweenService:Create(cut, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Color = GOLD, Transparency = 0.45 }):Play()
+				TweenService:Create(cut, TweenInfo.new(0.45, Enum.EasingStyle.Quad), { Color = GOLD, Transparency = 0.3 }):Play()
 				if i % 6 == 0 then
 					sfx("swipe", 0.35, rng:NextNumber(1.4, 1.9))
 				end
@@ -1931,6 +1954,9 @@ local function snip(): boolean
 	AnimeFx.smear(-4, 1)
 	AnimeFx.cover(WHITE, 0, 0, "white")
 	AnimeFx.slash(0, { y = 0.5, life = 0.2, width = 0.025 })
+	for _, d in S.inked or {} do
+		(d :: BasePart).LocalTransparencyModifier = 0 -- (the grass back under the white, to be mown)
+	end
 	-- (6 Nov, owner: "take inspiration of jjk") over the white, ink hairline cuts snap across the frame one after
 	-- another at every angle, like a cutting technique's slashes in a negative frame
 	do

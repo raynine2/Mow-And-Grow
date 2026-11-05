@@ -193,7 +193,13 @@ local function completeRun(ending: boolean?)
 			data.gems += gems
 			data.stats.runs += 1
 			-- (5 Nov) Rebirth Stars for the finished run, by its difficulty (server/Rebirth; the card plays in the lobby)
-			local okR, errR = pcall(Rebirth.award, p, data, Run.difficulty)
+			-- (only for a player who played at least Config.REBIRTH.minMinutes of it: joining a friend at the last boss
+			-- doesn't earn stars)
+			local played = (data.run and data.run.time or 0) >= (Config.REBIRTH.minMinutes or 0) * 60
+			local okR, errR = true, nil
+			if played then
+				okR, errR = pcall(Rebirth.award, p, data, Run.difficulty)
+			end
 			if not okR then
 				warn("[Run] rebirth stars: " .. tostring(errR))
 			end

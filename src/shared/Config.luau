@@ -1150,6 +1150,7 @@ Config.INVITE = { gems = 150, welcomeGems = 50, perDay = 10, minAccountAge = 3 }
 -- the tag over your head) and pays its `gems` once (flat: no gem boosts, like the daily rewards).
 -------------------------------------------------------------------------------------------------------------
 Config.REBIRTH = {
+	minMinutes = 10, -- (5 Nov) stars only for a player who played at least this much of the run (server/Run)
 	starsByDifficulty = { Normal = 1, Hard = 2, Expert = 3 },
 	coinsPer = 0.05,
 	gemsPer = 0.03,
@@ -1204,7 +1205,7 @@ Config.DAILY_QUESTS = {
 	{ id = "d_boss", kind = "boss", goal = 3, gems = 60, title = "Beat %s bosses" },
 	{ id = "d_area", kind = "area", goal = 4, gems = 60, title = "Clear %s areas" },
 	{ id = "d_par", kind = "par", goal = 2, gems = 70, title = "Beat %s area speed challenges" },
-	{ id = "d_hatch", kind = "hatch", goal = 2, gems = 60, title = "Hatch %s eggs" },
+	{ id = "d_hatch", kind = "hatch", goal = 1, gems = 60, title = "Hatch %s egg" }, -- (one egg: two cost 240 gems for 60)
 	{ id = "d_coins", kind = "coins", goal = 500000, gems = 60, title = "Earn %s run coins" },
 	{ id = "d_run", kind = "run", goal = 1, gems = 80, title = "Finish a run" },
 	{ id = "d_play", kind = "minutes", goal = 20, gems = 40, title = "Play for %s minutes" },

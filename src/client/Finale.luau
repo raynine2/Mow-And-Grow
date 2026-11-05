@@ -26,6 +26,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ContentProvider = game:GetService("ContentProvider")
 local TweenService = game:GetService("TweenService")
+local Lighting = game:GetService("Lighting")
 
 local MowALawn = ReplicatedStorage:WaitForChild("MowALawn")
 local Config = require(MowALawn:WaitForChild("Config")) :: any
@@ -67,6 +68,7 @@ Finale.T = T
 local P_FROM = Vector3.new(30, 0, -26) -- the player walks in from here (out of the sunrise)
 local P_TO = Vector3.new(4, 0, -23) -- to here, beside Rayan
 local R_AT = Vector3.new(-1, 0, -21) -- Rayan, waiting, looking out at the sunrise
+local BESIDE = Vector3.new(-0.5, 0, -25.6) -- the player beside him (north of him), the two looking at the sunrise
 local SHARD_AT = Vector3.new(1.5, 0.35, -16.5) -- the last pink shard, in the stubble behind them
 -- the realm (FilmSet.realm's frame: the middle at 0, the guardians in a ring 58 out, the gold glass sky 300 out):
 local G_R = Vector3.new(-3, 0, 6) -- Rayan
@@ -89,6 +91,7 @@ local SH: any = nil -- the shears
 local shard: Model? = nil
 local tear: any = nil
 local stage: Folder? = nil
+local skyWas: Vector3? = nil -- (the sky turned for the sunrise, put back by Finale.stop)
 local playing = false
 local prepared = false
 local conns: { RBXScriptConnection } = {}
@@ -545,6 +548,22 @@ local function makeShard(at: Vector3): Model
 	return m
 end
 
+-- (TSB's walk-in) a glowing ring running out over the ground from a step
+local function ringOut(at: Vector3, color: Color3, alpha: number, reach: number)
+	local n = 20
+	for i = 1, n do
+		local a = (i / n) * math.pi * 2
+		local d = Vector3.new(math.cos(a), 0, math.sin(a))
+		local from = at + d * 0.6 + Vector3.new(0, 0.05, 0)
+		local to = at + d * reach + Vector3.new(0, 0.05, 0)
+		local seg = neon(Vector3.new(0.9, 0.06, 0.18), CFrame.lookAt(from, from + d:Cross(UP)), color, alpha)
+		TweenService:Create(seg, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { CFrame = CFrame.lookAt(to, to + d:Cross(UP)), Transparency = 1, Size = Vector3.new(1.8, 0.04, 0.08) }):Play()
+		task.delay(0.65, function()
+			seg:Destroy()
+		end)
+	end
+end
+
 -- pink pixels popping up off the ground round a point, and a ring of them running out (a footstep, a twitch)
 local function pixels(at: Vector3, count: number, spread: number, ring: boolean?)
 	local rng = Random.new()
@@ -559,18 +578,7 @@ local function pixels(at: Vector3, count: number, spread: number, ring: boolean?
 		end)
 	end
 	if ring then
-		-- (TSB's walk-in: a glowing ring runs out from each step)
-		local n = 20
-		for i = 1, n do
-			local a = (i / n) * math.pi * 2
-			local d = Vector3.new(math.cos(a), 0, math.sin(a))
-			local seg = neon(Vector3.new(0.9, 0.06, 0.18), CFrame.lookAt(at + d * 0.6 + Vector3.new(0, 0.05, 0), at + d * 0.6 + Vector3.new(0, 0.05, 0) + d:Cross(UP)), HOT, 0.1)
-			local goal = CFrame.lookAt(at + d * 5.5 + Vector3.new(0, 0.05, 0), at + d * 5.5 + Vector3.new(0, 0.05, 0) + d:Cross(UP))
-			TweenService:Create(seg, TweenInfo.new(0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { CFrame = goal, Transparency = 1, Size = Vector3.new(1.8, 0.04, 0.08) }):Play()
-			task.delay(0.65, function()
-				seg:Destroy()
-			end)
-		end
+		ringOut(at, HOT, 0.1, 5.5)
 	end
 end
 
@@ -695,6 +703,28 @@ function Finale.prepare(): boolean
 	end)
 	S = FilmSet.meadow(CFrame.new(V2.setAt), { mown = true })
 	S.crackSky(0, 0)
+	-- (tested in Studio) the meadow's stubble was laid out for the opening: the morning's walk went straight through
+	-- some of it, so the strip he walks and the spots where Rayan and he stand are cleared; and the night's broken
+	-- rim round the fissure, sunk in the ground, read as dark planks across the low morning shots
+	local walkA, walkB = mv(P_FROM, 0), mv(P_TO, 0)
+	local keep = {}
+	for _, t in S.tufts do
+		local p = Vector3.new(t.at.Position.X, 0, t.at.Position.Z)
+		local ab = Vector3.new(walkB.X - walkA.X, 0, walkB.Z - walkA.Z)
+		local u = math.clamp((p - Vector3.new(walkA.X, 0, walkA.Z)):Dot(ab) / ab:Dot(ab), 0, 1)
+		local onPath = (p - (Vector3.new(walkA.X, 0, walkA.Z) + ab * u)).Magnitude < 3.2
+		local nearR = (p - Vector3.new(mv(R_AT, 0).X, 0, mv(R_AT, 0).Z)).Magnitude < 3.5
+			or (p - Vector3.new(mv(BESIDE, 0).X, 0, mv(BESIDE, 0).Z)).Magnitude < 3.5
+		if onPath or nearR then
+			t.model:Destroy()
+		else
+			table.insert(keep, t)
+		end
+	end
+	S.tufts = keep
+	for _, r in S.rim or {} do
+		r.part.Transparency = 1
+	end
 	if S.moon then
 		S.moon.Transparency = 1
 	end
@@ -758,6 +788,13 @@ end
 -- A. MORNING
 -------------------------------------------------------------------------------------------------------------
 local function sunrise()
+	-- (tested in Studio) the game's cartoon sky turned so the sunrise side is all soft cloud: as it stands, a deep blue
+	-- gap in its clouds sat over the east like a blot in the warm haze (Finale.stop turns it back)
+	local sky = Lighting:FindFirstChildOfClass("Sky")
+	if sky then
+		skyWas = skyWas or sky.SkyboxOrientation
+		sky.SkyboxOrientation = Vector3.new(0, 215, 0)
+	end
 	Film.light({
 		ClockTime = 6.45,
 		Brightness = 2.6,
@@ -816,41 +853,54 @@ local function morning(): boolean
 	end, { hand = 0.3 }) then
 		return false
 	end
-	-- 2. [TSB walk-in: the feet] his boot lands in the stubble
+	-- 2. [TSB walk-in: the feet] from the ground in front of him (tested in Studio: from the side his legs filled the
+	-- frame): his legs against the sunrise, a boot comes down and a gold ring runs out over the stubble (the copy's
+	-- pink rings answer it later)
+	after(T.feet + 0.1, function()
+		local lf = H.model:FindFirstChild("LeftFoot", true) :: BasePart?
+		local rf = H.model:FindFirstChild("RightFoot", true) :: BasePart?
+		local foot = if lf and rf then (if lf.Position.Y < rf.Position.Y then lf else rf) else H.root
+		local at = Vector3.new(foot.Position.X, groundOf(H) + 0.05, foot.Position.Z)
+		ringOut(at, GOLD, 0.35, 4.5)
+		fx("DustKick", at + Vector3.new(0, 0.15, 0), { scale = 0.8, color = SUN })
+		sfx("stepThud", 0.7, 0.8)
+	end)
 	if not shot(T.fist, function(k)
 		local root = H.root
 		local g = groundOf(H)
-		local p = root.Position + root.RightVector * 4.4 + root.LookVector * (1.6 - k * 1.8)
-		p = Vector3.new(p.X, g + 0.5, p.Z)
-		local target = Vector3.new(root.Position.X, g + 0.7, root.Position.Z)
-		key(target + root.RightVector * 2.5 + root.LookVector * 1.5 + UP * 1.5, SUN, 1.6, 9)
-		return look(p, target, 0), mm(34), target
+		local p = root.Position + root.LookVector * (3.7 - k * 0.5) - root.RightVector * 1.4
+		p = Vector3.new(p.X, g + 0.28, p.Z)
+		local target = Vector3.new(root.Position.X, g + 0.85, root.Position.Z) - root.LookVector * 0.6 + root.RightVector * 0.25
+		key(target + root.LookVector * 2.5 - root.RightVector * 1.5 + UP * 1.5, SUN, 1.3, 9)
+		return look(p, target, 0), mm(24), target
 	end, { hand = 0.2 }) then
 		return false
 	end
 	key(nil)
-	-- 3. [SR 27.65: the walk-out's jump cuts, another framing] in profile, tracking beside him, the sun rimming him
+	-- 3. [SR 27.65: the walk-out's jump cuts, another framing] his face, 3/4 from the front and a little below, tracking
+	-- back with him, the sunrise behind his head (tested in Studio: in profile his near arm and his hair hid him)
 	if not shot(T.walk, function(k)
 		local root = H.root
-		local chest = chestOf(H).Position
-		local p = chest + root.RightVector * 7.5 + root.LookVector * (0.8 - k * 0.6) + Vector3.new(0, -0.3, 0)
-		return look(p, chest + Vector3.new(0, 0.2, 0), 0), mm(42), chest
+		local head = headOf(H)
+		local p = head + root.LookVector * (5.9 - k * 0.5) + root.RightVector * 2.3 + Vector3.new(0, -0.65, 0)
+		return look(p, head + Vector3.new(0, -0.3, 0), 0), mm(45), head
 	end, { hand = 0.25 }) then
 		return false
 	end
-	-- 4. [SR 27.65, low and wide] walking at us, the sun behind him
+	-- 4. [SR 27.65, low and wide] walking at us, the low sun flaring beside him (tested: dead behind him it was hidden)
 	if not shot(T.back, function(k)
 		local root = H.root
-		local p = root.Position + root.LookVector * (9.5 - k) + root.RightVector * 0.6 + Vector3.new(0, -2.0, 0)
-		return look(p, root.Position + Vector3.new(0, 1.2, 0), 2), mm(30), root.Position
+		local p = root.Position + root.LookVector * (9.5 - k) - root.RightVector * 0.7 + Vector3.new(0, -2.3, 0)
+		return look(p, root.Position + Vector3.new(0, 1.2, 0) - root.RightVector * 0.3, 2), mm(30), root.Position
 	end, { hand = 0.3 }) then
 		return false
 	end
-	-- 5. [SR 29.3, over the shoulder] behind him: Rayan ahead, the shears on his shoulder, the valley beyond
+	-- 5. [SR 29.3, over the shoulder] behind him: Rayan ahead, the shears on his shoulder, the valley beyond (tested:
+	-- from closer his back filled the frame and hid Rayan)
 	if not shot(T.rayan, function(k)
 		local root = H.root
-		local p = root.Position - root.LookVector * (3.6 - k * 0.4) + root.RightVector * 1.3 + Vector3.new(0, 0.6, 0)
-		return look(p, chestOf(R).Position + Vector3.new(0, 0.6, 0), 2), mm(32), chestOf(R).Position
+		local p = root.Position - root.LookVector * (5.6 - k * 0.4) + root.RightVector * 2.6 + Vector3.new(0, 1.0, 0)
+		return look(p, chestOf(R).Position + Vector3.new(0, 0.4, 0), 1), mm(55), chestOf(R).Position
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -867,17 +917,18 @@ local function morning(): boolean
 		return false
 	end
 	key(nil)
-	-- 7. [SR 7.2, scale] the two of them from behind, low, the valley and the sunrise before them
+	-- 7. [SR 7.2, scale] the two of them side by side from behind, low, the sun coming up between them (tested in
+	-- Studio: with him where his walk ended, Rayan stood right behind him and the two read as one shape)
 	tracks.walk = nil
 	H:walk(0)
-	standW(H, mv(P_TO, 0), mv(Vector3.new(40, 0, -26), 0))
+	standW(H, mv(BESIDE, 0), mv(Vector3.new(40, 0, -26), 0))
 	H:pose("cool", 0.3)
 	R:look(nil)
 	if not shot(T.build, function(k)
 		local mid = (R.root.Position + H.root.Position) / 2
 		local face = H.root.LookVector
-		local p = mid - face * (11 + k) + H.root.RightVector * 1.5 + Vector3.new(0, -1.5, 0)
-		return look(p, mid + face * 40 + Vector3.new(0, 7, 0), 1), mm(24), mid
+		local p = mid - face * (17.5 - k * 1.2) + H.root.RightVector * 0.5 + Vector3.new(0, -1.6, 0)
+		return look(p, mid + face * 40 + Vector3.new(0, 5, 0), 1), mm(26), mid
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -930,14 +981,18 @@ local function oneLeft(): boolean
 	after(T.build + 0.6, function()
 		FilmAudio.glitch(0.5)
 	end)
+	-- (tested in Studio: from 3 studs on a long lens the shard filled the frame, an abstract white and pink slab; from
+	-- low and further it's a small glowing thing in the stubble, the two of them out of focus behind)
 	if not shot(T.oneLeft, function(k)
-		local p = base.Position + Vector3.new(2.6 - k * 0.4, 0.55, 1.6)
-		return look(p, base.Position + Vector3.new(0, 0.2, 0), 4), mm(70), base.Position
+		local p = base.Position + Vector3.new(5.5 - k * 0.8, 0.35, 3.2 - k * 0.4)
+		return look(p, base.Position + Vector3.new(0, 0.5, 0), 3), mm(50), base.Position
 	end, { hand = 0.1 }) then
 		return false
 	end
-	-- 9. [SR 9.7, an extreme close-up of an eye] Rayan heard it: "One left."
-	R:look(base.Position, 1)
+	-- 9. [SR 9.7, an extreme close-up of an eye] Rayan heard it, he turns to it: "One left." (tested: with only his head
+	-- turned, his raised arm and the shears came between the lens and his eye)
+	standW(R, Vector3.new(R.root.Position.X, groundOf(R), R.root.Position.Z), base.Position)
+	R:look(base.Position + Vector3.new(0, 2.2, 0), 1)
 	AnimeFx.sub("One *left*.", 1.1)
 	if not shot(T.raise, function(k)
 		local hc = headCf(R)
@@ -1758,6 +1813,13 @@ function Finale.stop()
 	table.clear(hidden)
 	corrupt = 0
 	shearsMode = "shoulder"
+	if skyWas then
+		local sky = Lighting:FindFirstChildOfClass("Sky")
+		if sky then
+			sky.SkyboxOrientation = skyWas
+		end
+		skyWas = nil
+	end
 end
 
 return Finale

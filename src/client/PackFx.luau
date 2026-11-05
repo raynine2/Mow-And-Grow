@@ -145,7 +145,13 @@ local function prepare(t: Model, o: any): Model
 		elseif d:IsA("BasePart") then
 			-- (owner, 4 Nov: "when i zoom uit a grrey box around me", "when i walk it turns grey") the pack's weather
 			-- sits in see-through grey boxes (its emitting volumes): a plain part half see-through or more is hidden
-			if not d:IsA("MeshPart") and d.Transparency >= 0.5 then
+			-- (5 Nov) and two pieces carry their emitters on a solid red block (DustKick, LeafSwirl): a plain block that
+			-- isn't neon and has no mesh is a carrier, never something to see (it flashed as a red cube at a footstep)
+			local carrier = d:IsA("Part")
+				and d.Shape == Enum.PartType.Block
+				and d.Material ~= Enum.Material.Neon
+				and d:FindFirstChildWhichIsA("DataModelMesh") == nil
+			if not d:IsA("MeshPart") and (d.Transparency >= 0.5 or carrier) then
 				d.Transparency = 1
 			end
 			d.Anchored = true

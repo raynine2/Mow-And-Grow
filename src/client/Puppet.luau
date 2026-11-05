@@ -63,14 +63,14 @@ P.drag = {
 }
 -- two hands on the handles, shears open wide in front (the snip about to close)
 P.snipOpen = {
-	Waist = v(4, 18, 0), Neck = v(-8, -14, 0),
+	Waist = v(4, -12, 0), Neck = v(-8, 10, 0),
 	rh = v(1.2, -0.05, -1.05), lh = v(-1.2, -0.05, -1.05), rpole = v(1, -1, 0.5), lpole = v(-1, -1, 0.5),
 	lf = v(-0.05, 0, -0.85), rf = v(0.1, 0, 0.75),
 	hip = v(0, -0.45, 0),
 }
 -- the snip closed: hands together, thrust through
 P.snipShut = {
-	Waist = v(10, -26, 0), Neck = v(-12, 22, 0),
+	Waist = v(10, 14, 0), Neck = v(-12, -12, 0),
 	rh = v(0.2, 0.05, -1.5), lh = v(-0.2, 0.05, -1.5), rpole = v(1, -1, 0.3), lpole = v(-1, -1, 0.3),
 	lf = v(-0.05, 0, -1.0), rf = v(0.15, 0, 0.85),
 	hip = v(0, -0.6, 0.2),
@@ -151,16 +151,16 @@ P.heroRise = {
 }
 -- the wind-up: right fist pulled right back, left arm out front aiming, body coiled
 P.windup = {
-	Waist = v(8, 50, 0), Neck = v(-8, -46, 0),
-	rh = v(1.05, 0.35, 0.95), rpole = v(1, -0.4, 1),
-	lh = v(-0.25, 0.45, -1.45), lpole = v(-1, -1, 0),
+	Waist = v(8, -50, 0), Neck = v(-8, 46, 0),
+	rh = v(1.0, 0.3, 1.0), rpole = v(1, -0.4, 1),
+	lh = v(-1.3, 0.45, -1.0), lpole = v(-1, -1, 0),
 	lf = v(-0.05, 0, -0.95), rf = v(0.15, 0, 0.75),
 	hip = v(0, -0.6, 0.3),
 }
 -- the punch: right arm thrown dead straight, body turned through, front knee bent, left fist back at the hip
 P.punch = {
-	Waist = v(14, -38, 0), Neck = v(-12, 34, 0),
-	rh = v(0.55, 0.55, -2.4), rpole = v(1, -1, 0),
+	Waist = v(14, 38, 0), Neck = v(-12, -34, 0),
+	rh = v(2.1, 0.5, -1.9), rpole = v(1, -1, 0),
 	lh = v(-0.8, -0.25, 0.55), lpole = v(-1, -0.3, 1),
 	lf = v(-0.1, 0, -1.25), rf = v(0.15, 0, 0.85),
 	hip = v(0, -0.7, -0.5),

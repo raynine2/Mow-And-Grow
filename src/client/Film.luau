@@ -714,6 +714,9 @@ function Film.start(name: string)
 	savedFov = if cam0 and cam0.FieldOfView > 20 and cam0.FieldOfView < 100 then cam0.FieldOfView else 70
 	-- the light is ours: BiomeLight pauses, and everything we touch is put back after
 	player:SetAttribute("BiomeLightOff", true)
+	-- (5 Nov) the weather layer round the camera (client/PackAmbience) stops while a film plays: it waits for this,
+	-- but nothing set it, and in the new opening a dust cloud spawned at the lens filled a whole shot
+	workspace:SetAttribute("FilmPlaying", true)
 	savedLight = {}
 	for _, k in LIGHT_KEYS do
 		(savedLight :: any)[k] = (Lighting :: any)[k]
@@ -811,6 +814,7 @@ function Film.stop(name: string)
 	end
 	savedAtmo = nil
 	player:SetAttribute("BiomeLightOff", nil)
+	workspace:SetAttribute("FilmPlaying", nil)
 	if gui then
 		gui:Destroy()
 		gui = nil

@@ -311,6 +311,11 @@ shows the empty world for a moment (live servers teleport instead).
 
 ## Studio vs. git: please read
 
+**5 Nov, ~17:23 (Amsterdam): published.** The owner asked ("Push it", then "Ja, publish live"); Claude pressed File →
+Publish in his Studio. That published the saved version of 16:09 (it has round 3 and everything else in the Team Create
+session, the hatch work included); the tab's "@ 05 Nov 2026 16:09" mark went away after. The experience is still
+test-only (Manage Audience: "only available to you and your collaborators"); releasing it publicly is the owner's call.
+
 **5 Nov, ~17:00: Films v2 round 3 is IN Studio too**: `tools/studio-patches/2026-11-05-films-v2-round3/install.luau`
 (Opening, Finale, AnimeFx, Shears and the new ShearsShape from `16e9976`; each old checksum matched round 2's, each new
 one checked after; old copies in `ServerStorage.MowALawnBackups.pre_films_v2_round3_5nov`). `ReplicatedStorage.FilmDev`

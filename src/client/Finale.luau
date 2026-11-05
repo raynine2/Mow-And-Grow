@@ -1520,35 +1520,56 @@ end
 local function lesson(): boolean
 	-- the music back, from its piece before the hit
 	playPiece(2, 1.05)
-	-- 27. [SR 18.25, a white smear; speed lines] Rayan lunges at it, the shears open
+	-- 27. [SR 7.1-8.6, the camera running with him] (round 2, owner: the fight "u cant really tell whats going on": he
+	-- floated across in slow motion) he sinks into his stance, the shears open and glowing, the copy waiting over his
+	-- shoulder; then he's GONE, a gold streak across the gold, the camera rushing after him
 	R:look(nil)
-	R:pose("leapOpen", 0.08, "snap")
+	R:pose("ultStance", 0.4, "out")
 	shearsMode = "lunge"
-	SH:trail(true)
-	sfx("lunge", 1.2, 0.9)
-	sfx("swingBlade", 1.1, 0.8)
-	local stopLines = AnimeFx.lines(WHITE, 0.5)
+	sfx("bladeDraw", 1.1, 0.8)
 	local fromR = gv(G_R, 0)
 	local toR = gv(C_STOP + Vector3.new(0.6, 0, 7.5), 0)
+	local dashAt = T.catch - 0.32
+	local stopLines: (() -> ())? = nil
+	local lastGhost = 0
 	tracks.lunge = function()
-		local k = ease.inn(math.clamp((now() - T.attack) / (T.catch - T.attack), 0, 1))
-		standW(R, fromR:Lerp(toR, k) + Vector3.new(0, math.sin(k * math.pi) * 1.2, 0), gv(C_STOP, 0))
+		local tt = now()
+		local k = math.clamp((tt - dashAt) / (T.catch - dashAt), 0, 1)
+		local e = 1 - (1 - k) ^ 2
+		standW(R, fromR:Lerp(toR, e) + Vector3.new(0, math.sin(k * math.pi) * 0.7, 0), gv(C_STOP, 0))
+		if k > 0 and k < 1 and os.clock() - lastGhost > 0.035 then
+			lastGhost = os.clock()
+			R:ghost(Color3.fromRGB(255, 214, 120), 0.62, 0.3)
+		end
 	end
-	-- (side on, the lens far enough off to hold them both and closing in as he does: tested in Studio, from a fixed
-	-- 11 studs they were both out of the frame, one off each side)
-	local side = flat(gv(C_STOP, 0) - fromR).Unit:Cross(UP)
-	if not shot(T.catch, function(_k)
-		local a, b = R.root.Position, C.root.Position
-		local mid = a:Lerp(b, 0.5) + Vector3.new(0, 0.6, 0)
-		local d = math.max(9, (flat(b - a).Magnitude * 0.5 + 3) / 0.9)
-		return look(mid + side * d + Vector3.new(0, -1.2, 0), mid, -4), mm(24), mid
+	after(dashAt, function()
+		R:pose("snipOpen", 0.06, "snap")
+		SH:trail(true)
+		sfx("lunge", 1.3, 0.9)
+		sfx("swingBlade", 1.2, 0.8)
+		sfx("whoosh", 1.1, 0.7)
+		stopLines = AnimeFx.lines(WHITE, 0.5)
+	end)
+	-- (behind him, low over his right shoulder, the copy small and waiting between his arm and the blades; on the
+	-- dash the lens rushes after him, a few studs behind)
+	local toward = flat(gv(C_STOP, 0) - fromR).Unit
+	local right = toward:Cross(UP)
+	if not shot(T.catch, function(k)
+		local tt = now()
+		local d = math.clamp((tt - dashAt) / (T.catch - dashAt), 0, 1)
+		local base = fromR:Lerp(toR, 1 - (1 - d) ^ 1.6)
+		local push = (1 - d) * k * 1.5
+		local cp = base - toward * (7.5 - push) + right * 2.6 + UP * 2.4
+		local aim = gv(C_STOP, 0) + UP * 2.2
+		return look(cp, aim, -3), mm(30), aim
 	end, { hand = 0.3, keep = function()
-		-- (their legs too: a tuft low in front of it hid them, below the line to its chest)
-		return { R.root.Position + UP, R.root.Position - UP * 1.8, C.root.Position + UP, C.root.Position - UP * 1.8 }
+		return { R.root.Position + UP, C.root.Position + UP, C.root.Position - UP * 1.8 }
 	end }) then
 		return false
 	end
-	stopLines()
+	if stopLines then
+		stopLines()
+	end
 	-- 28. [TSB 5.7, the white line-art strobe; SR 18.95, the hand in the foreground] it catches the blades in one bare
 	-- hand
 	tracks.lunge = nil
@@ -1628,8 +1649,9 @@ local function lesson(): boolean
 		local k = math.clamp((now() - T.thrown) / 0.9, 0, 1)
 		local p = flyFrom:Lerp(flyTo, ease.out(k)) + Vector3.new(0, math.sin(k * math.pi) * 3.5, 0)
 		R.root = CFrame.lookAt(p, p - back) * CFrame.Angles(0, 0, math.rad(k * 200))
-		if math.random() < 0.3 then
-			R:ghost(WHITE, 0.6, 0.2)
+		if os.clock() - (R.lastGhost or 0) > 0.06 then
+			R.lastGhost = os.clock()
+			R:ghost(Color3.fromRGB(255, 226, 160), 0.8, 0.18)
 		end
 		if k >= 1 then
 			tracks.fly = nil

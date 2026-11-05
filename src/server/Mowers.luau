@@ -154,7 +154,8 @@ end
 -- hang the steering wheel on a hub of its own so client/RiderPose can turn it with the rider's hands. Runs before
 -- `rig` welds everything.
 local function fitRider(placed: Model, origin: CFrame, spec: MowerSeats.Spec)
-	local roof = spec.roof
+	-- (5 Nov) the voxel mowers (server/Models swapItems) are built with room for a rider: nothing to lift
+	local roof = if placed:GetAttribute("Voxel") then nil else spec.roof
 	if roof then
 		for _, p in placed:GetDescendants() do
 			if p:IsA("BasePart") then

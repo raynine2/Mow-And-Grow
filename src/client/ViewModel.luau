@@ -173,7 +173,7 @@ local TRAIL: { [string]: TrailDef } = {
 	-- (30 Oct: the blade sweeps back from the end of the shaft, server/PartModels/tool_scythe; its inner edge's middle)
 	-- (31 Oct: the ForgeGUI scythe, server/Models FORGE_TOOLS: the middle of its crystal blade, template (0, 4.3, -3.8)
 	-- at TOOL scale)
-	MegaScythe = { at = Vector3.new(-1.5, 0.2, -5.5), atModel = Vector3.new(0, 2.65, -2.35), width = 0.75, life = 0.2, color = Color3.fromRGB(210, 170, 255) },
+	MegaScythe = { at = Vector3.new(-1.5, 0.2, -5.5), atModel = Vector3.new(0, 2.9, -3.9), width = 0.75, life = 0.2, color = Color3.fromRGB(210, 170, 255) },
 }
 local TRAIL_N = 10 -- spots kept (a beam between each pair)
 local trailSpots: { { rel: Vector3, t: number } } = {}
@@ -383,6 +383,38 @@ local function forgeScissors()
 		return
 	end
 	local folder = ReplicatedStorage:FindFirstChild("MowALawnModels")
+	-- (5 Nov, owner: "remake every model like siccor etc to voxel") the voxel half first (server/Models swapItems):
+	-- sculpted on its bolt, the blade along -Z, the loop out to -X, the half in y 0..0.19; each of its parts is a
+	-- piece of the half, the second half turned half a turn about Z
+	local voxelHalf = folder and folder:FindFirstChild("voxel_scissorhalf")
+	if voxelHalf and #voxelHalf:GetChildren() > 0 then
+		scissorForge = true
+		for _, pc in tools.Scissors or {} do
+			pc.part:Destroy()
+		end
+		local pv = SCISSOR_PIVOT.Position * TOOL
+		local pieces: { Piece } = {}
+		for _, h in { 1, -1 } do
+			local flip = if h == 1 then CFrame.new() else CFrame.Angles(0, 0, math.pi)
+			for _, src in voxelHalf:GetChildren() do
+				if src:IsA("BasePart") then
+					local m = src:Clone()
+					m.Size = src.Size * TOOL
+					m.Anchored = true
+					m.CanCollide = false
+					m.CanQuery = false
+					m.CanTouch = false
+					m.CastShadow = false
+					m.Transparency = 1
+					m:SetAttribute("Half", h)
+					m.Parent = root
+					table.insert(pieces, { part = m, offset = CFrame.new(pv) * flip * CFrame.new(src.Position * TOOL) })
+				end
+			end
+		end
+		tools.Scissors = pieces
+		return
+	end
 	local template = folder and folder:FindFirstChild("forge_scissorhalf")
 	local body = template and template:FindFirstChild("Body")
 	if not (body and body:IsA("MeshPart")) then
@@ -1004,6 +1036,9 @@ local function attrsOf(p: BasePart): { half: number?, spin: boolean }
 	return a
 end
 
+local bulkParts: { BasePart } = {}
+local bulkCfs: { CFrame } = {}
+
 local function hideAll()
 	handLight.Enabled = false
 	for _, sm in smears do
@@ -1542,11 +1577,18 @@ RunService.RenderStepped:Connect(function()
 			local open = math.rad(math.max(0, tp.r.X)) * 0.5
 			local frame = rightCf * CFrame.new(0, 0, -0.3 * HAND) * CFrame.Angles(math.rad(tp.r.Y), 0, 0) * SCISSOR_ROLL
 			local pivot = scaled(SCISSOR_PIVOT, TOOL)
+			-- (5 Nov) the voxel halves are a few hundred parts: one bulk move a frame
+			local openA = frame * pivot * CFrame.Angles(0, open, 0) * pivot:Inverse()
+			local openB = frame * pivot * CFrame.Angles(0, -open, 0) * pivot:Inverse()
+			table.clear(bulkParts)
+			table.clear(bulkCfs)
 			for _, pc in pieces do
 				local h = attrsOf(pc.part).half
-				pc.part.CFrame = if h then frame * pivot * CFrame.Angles(0, open * h, 0) * pivot:Inverse() * pc.offset else frame * pc.offset
+				table.insert(bulkParts, pc.part)
+				table.insert(bulkCfs, if h == 1 then openA * pc.offset elseif h then openB * pc.offset else frame * pc.offset)
 				vis(pc.part, 0)
 			end
+			workspace:BulkMoveTo(bulkParts, bulkCfs, Enum.BulkMoveMode.FireCFrameChanged)
 		elseif toolId == id and not held and not pushing then
 			local grip = if id == "PushMower" or id == "LaserMower" then rightCf * CFrame.new(0, 0, -0.1 * HAND) else rightCf * toolT * CFrame.new(0, 0, -0.3 * HAND)
 			for _, pc in pieces do

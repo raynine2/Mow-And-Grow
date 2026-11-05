@@ -411,6 +411,11 @@ type ForgeTool = {
 	-- shared/VoxelToolShapes (made by tools/blender/voxel/tools_voxel.py), its group sculpted in the template's own frame
 	-- (forge, turn, length, center unused), built of parts like the Mayor (shared/SculptKit)
 	voxel: string?,
+	-- (5 Nov) the group is in server/VoxelItemShapes (tools/blender/voxel/items_voxel.py: the rest of the items, owner:
+	-- "remake every model like siccor etc to voxel"), not shared/VoxelToolShapes
+	items: boolean?,
+	-- (5 Nov) the voxel group built once at each of these CFrames in the template (the scissors: one half, twice)
+	voxelCopies: { CFrame }?,
 	light: Vector3?,
 	gem: Vector3?,
 	sparkle: { Vector3 }?,
@@ -444,12 +449,13 @@ local SCISSOR_TURN = CFrame.fromMatrix(Vector3.zero, Vector3.new(0, 0, -1), Vect
 local SCISSOR_BOLT = CFrame.new(0, 0, -3.56 + 0.565 * SCISSOR_L)
 local SCISSOR_HALF = CFrame.new(0.096 * SCISSOR_L, 0.1, -0.065 * SCISSOR_L) * SCISSOR_TURN
 local FORGE_TOOLS: { [string]: ForgeTool } = {
+	-- (5 Nov) in voxels: the half is sculpted on its bolt (the origin), the blade along -Z to its tip at -2.45, the loop
+	-- out to -X, the half in y 0..0.19; the second is it turned half a turn about Z (client/ViewModel opens its own pair
+	-- from the template voxel_scissorhalf, swapItems below)
 	tool_scissors = {
-		forge = "scissorhalf",
-		turn = SCISSOR_TURN,
-		length = SCISSOR_L,
-		center = Vector3.zero,
-		copies = { SCISSOR_BOLT * SCISSOR_HALF, SCISSOR_BOLT * CFrame.Angles(0, 0, math.pi) * SCISSOR_HALF },
+		voxel = "scissorhalf",
+		items = true,
+		voxelCopies = { SCISSOR_BOLT, SCISSOR_BOLT * CFrame.Angles(0, 0, math.pi) },
 		sparkle = { Vector3.new(0, 0.12, -2.9) },
 		sparkleColors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(190, 220, 255) },
 		sparkleRate = 0.7,
@@ -490,6 +496,10 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 		whackAxis = Vector3.yAxis,
 	},
 	tool_scythe = {
+		-- (5 Nov) in voxels, in the same frame: a dark violet snath banded in silver, a crystal crescent from the head up
+		-- and back to its tip at (0, 5.4, -1.4), spikes along its back, a gem at the butt
+		voxel = "scythe",
+		items = true,
 		forge = "megascythe",
 		-- (the mesh stands up its +Y, the head at the top, the blade out to its +X: the head goes to -Z, the blade to +Y)
 		turn = CFrame.fromMatrix(Vector3.zero, Vector3.new(0, 1, 0), Vector3.new(0, 0, -1), Vector3.new(-1, 0, 0)),
@@ -497,10 +507,12 @@ local FORGE_TOOLS: { [string]: ForgeTool } = {
 		-- the blade up to y 5.4 with its tip back at z -1.4, the side grip at -2.5)
 		length = 9.7,
 		center = Vector3.new(0, 1.95, -2.25),
-		light = Vector3.new(0, 3.4, -4.2),
-		gem = Vector3.new(0, 0, 2.35),
-		sparkle = { Vector3.new(0, 2.6, -6.2), Vector3.new(0, 4, -5.2), Vector3.new(0, 4.6, -4), Vector3.new(0, 5, -2.9), Vector3.new(0, 5.2, -1.9) },
-		trail = { Vector3.new(0, 2.6, -5.6), Vector3.new(0, 5.15, -1.7) },
+		-- (5 Nov: the voxel blade's glowing inner edge; it runs from the head round to the tip nearer the snath than the
+		-- mesh's did)
+		light = Vector3.new(0, 2.6, -3.4),
+		gem = Vector3.new(0, 0, 2.72),
+		sparkle = { Vector3.new(0, 0.52, -4.14), Vector3.new(0, 1.62, -4.28), Vector3.new(0, 2.92, -4.04), Vector3.new(0, 4.15, -3.31), Vector3.new(0, 5.05, -2.23) },
+		trail = { Vector3.new(0, 0.6, -4.6), Vector3.new(0, 5.2, -2.0) },
 	},
 }
 
@@ -524,9 +536,10 @@ end
 
 -- (4 Nov) a voxel tool's parts (shared/VoxelToolShapes group `group`) into `model`, in the template's frame; returns
 -- the biggest part (lights and spots go on it), nil if the group isn't there
-local function voxelTool(group: string, model: Model): BasePart?
-	local Shapes = require(ReplicatedStorage.MowALawn.VoxelToolShapes) :: any
+local function voxelTool(group: string, model: Model, items: boolean?, at: CFrame?, name: string?): BasePart?
+	local Shapes = (if items then require(script.Parent.VoxelItemShapes) else require(ReplicatedStorage.MowALawn.VoxelToolShapes)) :: any
 	local SculptKit = require(ReplicatedStorage.MowALawn.SculptKit)
+	local frame = at or CFrame.new()
 	local g = nil
 	for _, each in Shapes.GROUPS do
 		if each.name == group then
@@ -541,7 +554,7 @@ local function voxelTool(group: string, model: Model): BasePart?
 	for _, b in SculptKit.decode(g) do
 		local e = Shapes.PALETTE[b.colour]
 		local p = Instance.new("Part")
-		p.Name = "Voxel"
+		p.Name = name or "Voxel"
 		p.Anchored = true
 		p.CanCollide = false
 		p.CanQuery = false
@@ -549,7 +562,7 @@ local function voxelTool(group: string, model: Model): BasePart?
 		p.TopSurface = Enum.SurfaceType.Smooth
 		p.BottomSurface = Enum.SurfaceType.Smooth
 		p.Size = b.size
-		p.CFrame = CFrame.new(b.centre)
+		p.CFrame = frame * CFrame.new(b.centre)
 		p.Material = Enum.Material.SmoothPlastic
 		p.CastShadow = math.max(b.size.X, b.size.Y, b.size.Z) >= 0.3
 		if e then
@@ -581,7 +594,13 @@ local function swapTools(): number
 		model.Name = name
 		local mesh: BasePart
 		if t.voxel then
-			local built = voxelTool(t.voxel, model)
+			local built = nil
+			for i, at in t.voxelCopies or { CFrame.new() } do
+				local b = voxelTool(t.voxel, model, t.items, at)
+				if i == 1 then
+					built = b
+				end
+			end
 			if not built then
 				model:Destroy()
 				continue
@@ -740,6 +759,155 @@ local function swapGen(): number
 	return n
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- (5 Nov, owner: "remake every model like siccor etc to voxel if they are already voxel keep it", "high qaulity
+-- vocel") the Leaf Vacuum, the four bags and the five ride-on mowers as voxel sculptures (server/VoxelItemShapes, made
+-- by tools/blender/voxel/items_voxel.py), each sculpted in the frame of the template it replaces (measured in Studio)
+-- so everything that places, holds or rides them keeps working. The bags are fitted into the old template's box like
+-- the generated ones were. A mower is its body, a group per tyre (an unseen hub part "Wheel<RL|RR|FL|FR>" on the axle,
+-- its height the tyre's, and its voxels "Wheel..._v": server/Mowers `rig` hangs them on a "Spin" motor, client/MowerFx
+-- rolls them), the steering wheel (voxels "SteerHub_v", joined to the hub server/Mowers makes) and "ExhaustTip" spots.
+-- Also the template voxel_scissorhalf: one scissor half on its bolt, which client/ViewModel opens and shuts.
+-------------------------------------------------------------------------------------------------------------
+local VOXEL_PROPS = { "tool_vacuum", "bag_satchel", "bag_backpack", "bag_hiker", "bag_infinite" }
+local VOXEL_FIT = { bag_satchel = true, bag_backpack = true, bag_hiker = true, bag_infinite = true }
+local VOXEL_MOWERS = { "mower_rusty", "mower_tractor", "mower_zeroturn", "mower_mulcher", "mower_rocket" }
+
+-- (the mowers' templates stay on the server: no client needs them, and they are a few thousand parts each)
+local function serverFolder(): Folder
+	local f = ServerStorage:FindFirstChild("MowALawnServerModels")
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "MowALawnServerModels"
+		f.Parent = ServerStorage
+	end
+	return f :: Folder
+end
+
+local function voxelTemplate(name: string, old: Model?, m: Model, serverOnly: boolean?)
+	if old then
+		for key, v in old:GetAttributes() do
+			if key ~= "Gen" and m:GetAttribute(key) == nil then
+				m:SetAttribute(key, v)
+			end
+		end
+	end
+	m:SetAttribute("Voxel", true)
+	m.WorldPivot = CFrame.new()
+	m.Parent = if serverOnly then serverFolder() else folder
+	if old then
+		old:Destroy()
+	end
+	templates[name] = m
+end
+
+-- the parts of the voxel group `group` scaled by k about the template's origin (the bags' fit)
+local function scaleParts(m: Model, k: number)
+	for _, p in m:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.Size *= k
+			p.CFrame = p.CFrame.Rotation + p.Position * k
+		end
+	end
+end
+
+local function voxelMower(name: string, Shapes: any): Model?
+	local m = Instance.new("Model")
+	m.Name = name
+	if not voxelTool(name, m, true) then
+		m:Destroy()
+		return nil
+	end
+	for _, g in Shapes.GROUPS do
+		local part = if g.parent == name then string.match(g.name, "%.(%w+)$") else nil
+		if part then
+			local at = CFrame.new(g.pivot)
+			if string.match(part, "^Wheel") then
+				-- the hub: unseen, on the axle, as tall as the tyre (client/MowerFx rolls it by its height)
+				local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+				local made = Instance.new("Model")
+				voxelTool(g.name, made, true, at, part .. "_v")
+				for _, v in made:GetChildren() do
+					local b = v :: BasePart
+					lo = lo:Min(b.Position - b.Size / 2)
+					hi = hi:Max(b.Position + b.Size / 2)
+					v.Parent = m
+				end
+				made:Destroy()
+				local hub = Instance.new("Part")
+				hub.Name = part
+				hub.Anchored = true
+				hub.CanCollide = false
+				hub.CanQuery = false
+				hub.CanTouch = false
+				hub.CastShadow = false
+				hub.Transparency = 1
+				hub.Size = Vector3.new(math.max(hi.X - lo.X, 0.2), math.max(hi.Y - lo.Y, 0.2), math.max(hi.Z - lo.Z, 0.2))
+				hub.CFrame = at
+				hub.Parent = m
+			elseif part == "Steer" then
+				voxelTool(g.name, m, true, at, "SteerHub_v")
+			end
+		end
+	end
+	for _, p in (Shapes.EXHAUST or {})[name] or {} do
+		local tip = Instance.new("Part")
+		tip.Name = "ExhaustTip"
+		tip.Anchored = true
+		tip.CanCollide = false
+		tip.CanQuery = false
+		tip.CanTouch = false
+		tip.CastShadow = false
+		tip.Transparency = 1
+		tip.Size = Vector3.new(0.2, 0.2, 0.2)
+		tip.CFrame = CFrame.new(p)
+		tip.Parent = m
+	end
+	return m
+end
+
+local function swapItems(): number
+	local ok, Shapes = pcall(require, script.Parent.VoxelItemShapes)
+	if not ok then
+		warn("[Models] no voxel items:", Shapes)
+		return 0
+	end
+	local n = 0
+	for _, name in VOXEL_PROPS do
+		local m = Instance.new("Model")
+		m.Name = name
+		if voxelTool(name, m, true) then
+			local old = templates[name]
+			if old and VOXEL_FIT[name] then
+				local _, size = old:GetBoundingBox()
+				local k = Models.fitScale(m:GetExtentsSize(), { height = size.Y, width = size.X * 1.1 })
+				if math.abs(k - 1) > 0.001 then
+					scaleParts(m, k)
+				end
+			end
+			voxelTemplate(name, old, m)
+			n += 1
+		else
+			m:Destroy()
+		end
+	end
+	for _, name in VOXEL_MOWERS do
+		local m = voxelMower(name, Shapes)
+		if m then
+			voxelTemplate(name, templates[name], m, true)
+			n += 1
+		end
+	end
+	local half = Instance.new("Model")
+	half.Name = "voxel_scissorhalf"
+	if voxelTool("scissorhalf", half, true) then
+		voxelTemplate("voxel_scissorhalf", templates.voxel_scissorhalf, half)
+	else
+		half:Destroy()
+	end
+	return n
+end
+
 -- Is the template `name` one of the generated props (ServerStorage.GenProps)?
 function Models.isGen(name: string): boolean
 	local t = templates[name]
@@ -754,6 +922,10 @@ function Models.loadAll(timeout: number?)
 	-- (client/ViewModel, HitFx, SellFx) could get a stale one (the old Mega Scythe in first person)
 	for _, c in folder:GetChildren() do
 		c:Destroy()
+	end
+	local serverModels = ServerStorage:FindFirstChild("MowALawnServerModels")
+	if serverModels then
+		serverModels:ClearAllChildren()
 	end
 	table.clear(templates)
 	table.clear(forgeRaw)
@@ -948,6 +1120,10 @@ function Models.loadAll(timeout: number?)
 	local gens = swapGen()
 	if gens > 0 then
 		print(("[Models] %d generated props in use (ServerStorage.GenProps)"):format(gens))
+	end
+	local items = swapItems()
+	if items > 0 then
+		print(("[Models] %d items remade in voxels (server/VoxelItemShapes)"):format(items))
 	end
 end
 

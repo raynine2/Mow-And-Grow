@@ -1177,14 +1177,23 @@ local function realm(): boolean
 	end, { hand = 0.2 }) then
 		return false
 	end
-	-- 12. [SR 6.7, a silhouette against a huge sky] low at a guardian's feet, looking up at it
-	local gd = G.guardians[3] or G.guardians[1]
+	-- 12. [SR 6.7, a silhouette against a huge sky] low at a guardian's feet, looking up at it: the pumpkin reaper and
+	-- its scythe (tested in Studio: the third by name was the squat turtle, which can't loom; the tallest otherwise)
+	local gd = nil
+	for _, g in G.guardians do
+		if g.name == "hollow" then
+			gd = g
+			break
+		elseif not gd or g.size.Y > gd.size.Y then
+			gd = g
+		end
+	end
 	if gd then
 		if not shot(T.nowhere, function(k)
 			local base = gd.at.Position
 			local inward = flat(gv(Vector3.zero) - base).Unit
-			local p = base + inward * (gd.size.Z * 0.5 + 9) + inward:Cross(UP) * 4 + Vector3.new(0, 1.2, 0)
-			return look(p, base + Vector3.new(0, gd.size.Y * (0.75 + k * 0.05), 0), 4), mm(20), base + Vector3.new(0, gd.size.Y * 0.6, 0)
+			local p = base + inward * (gd.size.Z * 0.5 + 6.5 - k) + inward:Cross(UP) * 3 + Vector3.new(0, 0.8, 0)
+			return look(p, base + Vector3.new(0, gd.size.Y * (0.7 + k * 0.04), 0), 5), mm(18), base + Vector3.new(0, gd.size.Y * 0.6, 0)
 		end, { hand = 0.3 }) then
 			return false
 		end
@@ -1264,10 +1273,12 @@ local function flee(): boolean
 	Film.shake(0.7, 1.5)
 	Film.flash(Color3.fromRGB(255, 160, 230), 0.6, 0.35)
 	burst(gv(TEAR, TEAR_H * 0.5), HOT, 8, 120, 1.2)
+	-- (from the ground near its foot, looking up the length of it as it rips open: tested in Studio, from the middle of
+	-- the realm it was the same picture as the menace hold that follows)
 	if not shot(T.look, function(k)
-		local p = gv(Vector3.new(7 - k, 3.5, -4 + k))
-		return look(p, gv(TEAR, TEAR_H * 0.45), 2), mm(28), gv(TEAR, TEAR_H * 0.4)
-	end, { hand = 0.3 }) then
+		local p = gv(TEAR + Vector3.new(9 - k, 1.0, 13 - k * 1.5))
+		return look(p, gv(TEAR, TEAR_H * (0.55 + k * 0.05)), -6), mm(18), gv(TEAR, TEAR_H * 0.5)
+	end, { hand = 0.4 }) then
 		return false
 	end
 	-- 17. over their shoulders: the two of them and the tear; the music sinks away

@@ -515,14 +515,16 @@ function FilmSet.realm(at: CFrame, opts: any?): any
 			local dir = Vector3.new(math.cos(az) * math.cos(el), math.sin(el), math.sin(az) * math.cos(el))
 			local w = 2 * math.pi * R * math.cos(el) / count + 4
 			local cf = CFrame.lookAt(W(0, 0, 0).Position + dir * R, W(0, 0, 0).Position)
-			local p = block(folder, Vector3.new(w, 14 * math.pi / 180 * R + 4, 2), cf, Color3.fromRGB(255, 226, 150), Enum.Material.Glass, "Panel")
-			p.Transparency = 0.35
+			-- (5 Nov, tested in Studio: as glass the flat panels' gaps and overlaps showed as blue triangles all over the
+			-- sky; now the dome is a faint gold haze until the snip lights it up white)
+			local p = block(folder, Vector3.new(w, 14 * math.pi / 180 * R + 4, 2), cf, Color3.fromRGB(255, 226, 150), Enum.Material.SmoothPlastic, "Panel")
+			p.Transparency = 0.93
 			p.CastShadow = false
 			table.insert(set.panels, { part = p, cf = cf, dir = dir })
 		end
 	end
-	local cap = block(folder, Vector3.new(260, 2, 260), W(0, R * 0.98, 0), Color3.fromRGB(255, 236, 190), Enum.Material.Glass, "Panel")
-	cap.Transparency = 0.35
+	local cap = block(folder, Vector3.new(260, 2, 260), W(0, R * 0.98, 0), Color3.fromRGB(255, 236, 190), Enum.Material.SmoothPlastic, "Panel")
+	cap.Transparency = 0.93
 	cap.CastShadow = false -- (its shadow lay across the lawn as a huge square)
 	table.insert(set.panels, { part = cap, cf = cap.CFrame, dir = Vector3.yAxis })
 	-- the eight guardians in a ring round the middle, facing in (BossModels, statues)
@@ -577,10 +579,10 @@ function FilmSet.realm(at: CFrame, opts: any?): any
 			p.Transparency = 0.2
 			local spin = CFrame.Angles(rng:NextNumber(-1.5, 1.5), rng:NextNumber(-1.5, 1.5), rng:NextNumber(-1.5, 1.5))
 			local goal = (pnl.cf + pnl.dir * rng:NextNumber(60, 140) + Vector3.new(0, -rng:NextNumber(40, 160), 0)) * spin
+			-- (the pieces stay glowing as they fall: as glass, in the night that follows, they were dark blue blades)
 			task.delay(rng:NextNumber(0, 0.25), function()
 				if p.Parent then
-					p.Material = Enum.Material.Glass
-					p.Color = Color3.fromRGB(255, 236, 190)
+					p.Color = Color3.fromRGB(255, 200, 240)
 					TweenService:Create(p, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = goal, Transparency = 1 }):Play()
 				end
 			end)

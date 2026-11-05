@@ -1473,8 +1473,9 @@ Config.FILM_SOUNDS = {
 -- (client/Intro, client/Ending) exactly as they were. docs/FilmsV2.md has the story and the shot list.
 Config.FILMS_V2 = {
 	on = true,
-	owner = 1994267229, -- RayanPoepHoof: the valley's owner in the films (server/FilmCast builds his avatar)
-	ownerName = "RAYAN",
+	-- (5 Nov 13:54, owner: "change my model RAYAN to bbrrbrrbrbrb ... the co owner", and his name on the card)
+	owner = 9924995589, -- bbrrbrrbrbrb, the co-owner: the valley's owner in the films (server/FilmCast builds his avatar)
+	ownerName = "BBRRBRRBRBRB",
 	ownerTitle = "Owner of the Valley",
 	setAt = Vector3.new(-24000, 0, -24000), -- the meadow set (client/FilmSet), far off every map
 	realmAt = Vector3.new(-24000, 0, -27000), -- Rayan's realm

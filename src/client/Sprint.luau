@@ -32,7 +32,7 @@ local function apply()
 		return
 	end
 	local cam = workspace.CurrentCamera
-	local free = cam ~= nil and cam.CameraType == Enum.CameraType.Custom
+	local free = cam ~= nil and cam.CameraType ~= Enum.CameraType.Scriptable -- (films and the fly-over script the camera)
 	local go = S.on ~= false and wanted and base > 0 and not h.Sit and free
 	Sprint.on = go
 	local want = if go then base * (S.mult or 1.6) else base

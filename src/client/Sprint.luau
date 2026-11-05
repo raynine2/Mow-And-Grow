@@ -23,7 +23,8 @@ Sprint.on = false -- sprinting right now (others may read it)
 
 local hum: Humanoid? = nil
 local base = 16 -- the server's walk speed
-local writing = false -- our own write of WalkSpeed (not a new base)
+local written = -1 -- the WalkSpeed we last wrote ourselves (its Changed signal is deferred: a flag set around the write
+-- missed it, and our own sprint speed came back as the new base and compounded every frame)
 local trail: ParticleEmitter? = nil
 
 local function apply()
@@ -37,9 +38,8 @@ local function apply()
 	Sprint.on = go
 	local want = if go then base * (S.mult or 1.6) else base
 	if math.abs(h.WalkSpeed - want) > 0.01 then
-		writing = true
+		written = want
 		h.WalkSpeed = want
-		writing = false
 	end
 end
 
@@ -72,12 +72,13 @@ local function onCharacter(char: Model)
 	end
 	hum = h
 	base = h.WalkSpeed
+	written = -1
 	h:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-		if writing then
-			return
+		if math.abs(h.WalkSpeed - written) < 0.01 then
+			return -- our own write
 		end
 		-- the server (or a fight) set a new speed: that's the base; sprint on top of it again
-		base = h.WalkSpeed
+		base = math.min(h.WalkSpeed, 120) -- (a guard: the game's top speed is ~40)
 		apply()
 	end)
 	local root = char:WaitForChild("HumanoidRootPart", 10) :: BasePart?

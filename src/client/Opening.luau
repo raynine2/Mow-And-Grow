@@ -699,12 +699,21 @@ local function buildSummon()
 	end
 	local holder = neon(Vector3.one * 0.2, W(DEMON_AT.X, 6, DEMON_AT.Z), PINK, 1)
 	local light = Instance.new("PointLight")
-	light.Color = PINK
+	light.Color = Color3.fromRGB(235, 110, 255)
 	light.Range = 46
 	light.Brightness = 0
 	light.Shadows = false
 	light.Parent = holder
-	summon = { tiles = tiles, segs = segs, dots = dots, light = light, lit = 0 }
+	-- (the tall grass inside it goes into the black as it spreads)
+	local swallow = {}
+	for _, t in S.tufts do
+		local q = t.at.Position
+		local d = (Vector3.new(q.X, 0, q.Z) - Vector3.new(at(DEMON_AT, 0).X, 0, at(DEMON_AT, 0).Z)).Magnitude
+		if d < POOL_R + 1.5 then
+			table.insert(swallow, { tuft = t, d = d })
+		end
+	end
+	summon = { tiles = tiles, segs = segs, dots = dots, light = light, lit = 0, swallow = swallow }
 	-- (the old fissure's broken rocks go under the ground: the pool comes up out of flat ground)
 	for _, r in S.rim do
 		r.part.CFrame = r.cf - Vector3.new(0, 9, 0)
@@ -723,6 +732,16 @@ local function stepSummon(k: number, k2: number)
 			t.part.Transparency = want
 		end
 	end
+	for _, w in summon.swallow do
+		if not w.gone and w.d <= reach then
+			w.gone = true
+			for _, part in w.tuft.parts or { w.tuft.part } do
+				if part:IsA("BasePart") then
+					part.Transparency = 1
+				end
+			end
+		end
+	end
 	local nSeg = #summon.segs
 	for i, s in summon.segs do
 		local want = if i / nSeg <= k2 then 0.15 else 1
@@ -737,7 +756,7 @@ local function stepSummon(k: number, k2: number)
 		dot.Transparency = 0
 		sfx("chip", 0.9, 0.85 + summon.lit * 0.07)
 	end
-	summon.light.Brightness = 0.4 + k2 * 2.2
+	summon.light.Brightness = 0.3 + k2 * 1.4
 end
 
 -- the ring breaks: its pixels and line fly out and fade (the roar's blast)
@@ -823,8 +842,8 @@ local function actI(): boolean
 	if not shot(T.rise, function(k)
 		local c = at(DEMON_AT, 0)
 		local e = ease.inOut(k)
-		local p = c + Vector3.new(0, 72 - e * 16, 7 - e * 2)
-		return look(p, c + Vector3.new(0, 0, 1.5), 18 * e), mm(30), c
+		local p = c + Vector3.new(0, tune("TopUp", 96) - e * 18, 8 - e * 2)
+		return look(p, c + Vector3.new(0, 0, 1.5), 18 * e), mm(tune("TopMM", 30)), c
 	end, { hand = 0.25 }) then
 		return false
 	end
@@ -882,7 +901,7 @@ local function actI(): boolean
 	clearR = 5
 	if not shot(T.eyes, function(k)
 		local c = at(DEMON_AT, 0)
-		local p = c + Vector3.new(tune("HandCamX", 9) - k * 1.2, tune("HandCamY", 1.6), tune("HandCamZ", 27) - k * 1.5)
+		local p = c + Vector3.new(tune("HandCamX", 14) - k * 1.2, tune("HandCamY", 2.4), tune("HandCamZ", 46) - k * 1.5)
 		return look(p, c + Vector3.new(tune("HandAimX", -7), tune("HandAimY", 7), tune("HandAimZ", 8)), -5), mm(24), c + Vector3.new(-7, 4, 12)
 	end, { hand = 0.5 }) then
 		return false
@@ -920,7 +939,7 @@ local function actI(): boolean
 	if not shot(T.feet, function(k)
 		local c = at(DEMON_AT, 0)
 		local e = ease.out(k)
-		local p = c + Vector3.new(-17 + e * 2, 1.4, 44 - e * 6)
+		local p = c + Vector3.new(-17 + e * 2, tune("RoarCamY", 3.6), 44 - e * 6)
 		return look(p, c + Vector3.new(0, 25 + e * 3, 0), 2), mm(19), c + Vector3.new(0, 25, 0)
 	end, { hand = 0.4 }) then
 		return false
@@ -1050,9 +1069,10 @@ local function exchange(): boolean
 		end
 		local a1 = (elbow - hand).Unit
 		local a2 = (shoulder - elbow).Unit
+		local reachUp = tune("RunUp", 0.55)
 		run = {
 			top(hand:Lerp(elbow, 0.15), a1), top(hand:Lerp(elbow, 0.55), a1), top(elbow, a1:Lerp(a2, 0.5).Unit),
-			top(elbow:Lerp(shoulder, 0.5), a2), top(elbow:Lerp(shoulder, 0.9), a2),
+			top(elbow:Lerp(shoulder, reachUp * 0.55), a2), top(elbow:Lerp(shoulder, reachUp), a2),
 		}
 	end
 	after(T.claw - 0.04, function()
@@ -1074,10 +1094,10 @@ local function exchange(): boolean
 		fadeOut(beam, 0.3, Vector3.new(0.05, 0.05, (b - a).Magnitude))
 		sfx("lunge", 1.1, 1.2)
 	end)
-	local wideFrom = at(R1, 0) + Vector3.new(-46, 9, 14)
+	local wideAim = at(Vector3.new(-4, 0, (R1.Z + DEMON_AT.Z) / 2), tune("WideAimY", 12))
+	local wideFrom = wideAim + Vector3.new(tune("WideX", -52), tune("WideY", -5), 0)
 	if not shot(T.claw + 0.16, function(k)
-		local aim = at(R1, 0):Lerp(at(DEMON_AT, 0), 0.4) + Vector3.new(-6, 9, 0)
-		return look(wideFrom + Vector3.new(0, 0, -k * 1.5), aim, 0), mm(24), aim
+		return look(wideFrom + Vector3.new(0, 0, k * 1.5), wideAim, 0), mm(tune("WideMM", 22)), wideAim
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -1157,17 +1177,17 @@ local function exchange(): boolean
 	end)
 	local stopLines = AnimeFx.lines(Color3.fromRGB(255, 240, 200), 0.35)
 	clearR = 3
+	-- (one steady side for the whole run, on the arm's outside, away from its body: the camera runs level with him)
+	local runFlat = flat(run[#run] - run[1])
+	runFlat = if runFlat.Magnitude > 0.1 then runFlat.Unit else Vector3.new(0, 0, -1)
+	local runSide = runFlat:Cross(UP).Unit
+	if runSide:Dot(run[1] - at(DEMON_AT, run[1].Y)) < 0 then
+		runSide = -runSide
+	end
 	if not shot(T.fall, function(_k)
-		local p, dir = pathAt(along(now()))
-		local side = dir:Cross(UP)
-		side = if side.Magnitude > 0.05 then side.Unit else Vector3.xAxis
-		-- (on the arm's outside: away from its body)
-		local body = at(DEMON_AT, p.Y)
-		if side:Dot(p - body) < 0 then
-			side = -side
-		end
-		local cp = p + side * tune("RunCamSide", 11) + UP * tune("RunCamUp", 3) - dir * tune("RunCamBack", 4)
-		return look(cp, p + dir * 3 + UP * 1.5, -6), mm(tune("RunCamMM", 26)), p
+		local p = pathAt(along(now()))
+		local cp = p + runSide * tune("RunCamSide", 13) + UP * tune("RunCamUp", 1.5) - runFlat * tune("RunCamBack", 5)
+		return look(cp, p + runFlat * 4 + UP * 1.2, -4), mm(tune("RunCamMM", 26)), p
 	end, { hand = 0.35 }) then
 		return false
 	end
@@ -1433,28 +1453,46 @@ local function clang(): boolean
 	end, { hand = 0.3 }) then
 		return false
 	end
-	-- 17. [SR 22.33, a white burst; TSB 7.5, a red ink burst] the backhand in slow motion: the arm swings out, he's
-	-- hit, an impact frame, he flies
+	-- 17. [SR 20.35-21.35: the fist coming at the lens until it fills the frame] (round 2) its OTHER hand swats him: from
+	-- behind him we see it come across, big, at him
 	local P = demonPose[D]
+	local swingAt, hitT = T.back + 0.12, T.back + 0.3
 	tracks.backhand = function()
-		local k = math.clamp((now() - T.back) / 0.45, 0, 1)
-		P.armR = { pitch = -10 * ease.out(k), yaw = -55 * ease.inOut(k) }
-		P.lean = 6 * k
+		local tt = now()
+		local wind = ease.out(math.clamp((tt - T.back) / 0.12, 0, 1))
+		local sweep = ease.inn(math.clamp((tt - swingAt) / (hitT - swingAt), 0, 1))
+		local follow = ease.out(math.clamp((tt - hitT) / 0.35, 0, 1))
+		P.armL = {
+			pitch = tune("SwatPitch0", -35) * wind * (1 - sweep) + tune("SwatPitch", -18) * sweep,
+			yaw = tune("SwatYaw0", -25) * wind * (1 - sweep) + (tune("SwatYaw", 70) + 22 * follow) * sweep,
+		}
+		P.lean = 6 * sweep
 	end
-	Film.speed(0.3, 0.1)
-	sfx("whoosh", 1.2, 0.5)
+	sfx("whoosh", 1.3, 0.45)
 	local flyFrom = p
 	local flyTo = at(SHED + Vector3.new(-2, 2, -1))
-	local hitT = T.back + 0.3
+	local flyDir = (flyTo - flyFrom).Unit
 	after(hitT, function()
-		AnimeFx.impact({ R.model, SH.model, table.unpack(armParts(D, "R")) }, "red", { hold = 0.12, at = flyFrom })
-		sfx("punch", 1.2, 0.7)
-		sfx("bigHit", 0.8, 0.9)
-		Film.shake(0.8, 1.6)
+		AnimeFx.impact({ R.model, SH.model, table.unpack(armParts(D, "L")) }, "red", { hold = 0.12, at = flyFrom })
+		sfx("punch", 1.3, 0.7)
+		sfx("bigHit", 0.9, 0.9)
+		Film.shake(0.9, 1.6)
+		Film.flash(WHITE, 0.6, 0.12)
 		R:pose("flung", 0.06, "snap")
 		R:shake(1)
 		shearsMode = "out"
 	end)
+	-- (behind him, low, on the side away from it: the hand comes in from the right of the frame at him)
+	local away = -flyDir
+	if not shot(hitT, function(k)
+		local cp = flyFrom - flyDir * tune("SwatCamBack", -9) + UP * tune("SwatCamUp", 0.5) + flyDir:Cross(UP).Unit * tune("SwatCamSide", 3)
+		local aim = flyFrom + away * 6 + UP * (2 + k)
+		return look(cp, aim, 4), mm(tune("SwatMM", 18)), flyFrom
+	end, { hand = 0.4 }) then
+		return false
+	end
+	-- 17b. [SR 22.6-23.6: the camera flies with him past the buildings] he flies, the camera flying beside him, the
+	-- shed coming up behind him
 	tracks.fly = function()
 		local tt = now()
 		if tt < hitT then
@@ -1462,23 +1500,26 @@ local function clang(): boolean
 		end
 		local k = math.clamp((tt - hitT) / (T.shed - hitT), 0, 1)
 		local q = flyFrom:Lerp(flyTo, k) + UP * math.sin(k * math.pi) * 3
-		local dir = (flyTo - flyFrom).Unit
-		R.root = CFrame.lookAt(q, q - dir) * CFrame.Angles(0, 0, math.rad(k * 220))
-		if math.random() < 0.35 then
-			R:ghost(Color3.fromRGB(255, 220, 160), 0.7, 0.2)
+		R.root = CFrame.lookAt(q, q - flyDir) * CFrame.Angles(0, 0, math.rad(k * 220))
+		if math.random() < 0.4 then
+			R:ghost(Color3.fromRGB(255, 220, 160), 0.65, 0.22)
 		end
 	end
-	if not shot(T.shed - 0.25, function(_k)
-		local mid = flyFrom:Lerp(flyTo, 0.3)
-		local side = (flyTo - flyFrom):Cross(UP).Unit
-		local cp = mid + side * 16 + UP * 3
-		return look(cp, R.root.Position:Lerp(mid, 0.5), -4), mm(26), R.root.Position
-	end, { hand = 0.3 }) then
+	local flySide = flyDir:Cross(UP).Unit
+	if flySide:Dot(Vector3.zAxis) < 0 then
+		flySide = -flySide
+	end
+	local stopFly = AnimeFx.lines(WHITE, 0.4)
+	if not shot(T.shed - 0.12, function(_k)
+		local q = R.root.Position
+		local cp = q + flySide * tune("FlyCamSide", 12) + UP * 1.5 - flyDir * tune("FlyCamBack", 5)
+		return look(cp, q + flyDir * 4, -5), mm(26), q
+	end, { hand = 0.5 }) then
 		return false
 	end
-	Film.speed(1, 0.15)
+	stopFly()
 	tracks.backhand = nil
-	P.armR, P.lean = nil, 0
+	P.armL, P.lean = nil, 0
 	return true
 end
 
@@ -2106,10 +2147,11 @@ local function punch(): boolean
 	if not shot(T.punch, function(k)
 		local root = H.root
 		local h = headOf(H)
-		-- (tested in Studio: the two of them small at the bottom left, the giant fist coming down on them from the right)
-		local cp = root.Position + root.RightVector * (15 - k * 1.5) - root.LookVector + Vector3.new(0, -2.2, 0)
+		-- (round 2: closer, him big on the left, the fists coming down ahead of him: wide, the two of them were specks
+		-- under a mass of blocks)
+		local cp = root.Position + root.RightVector * (tune("WindCamSide", 8.5) - k * 1) - root.LookVector * tune("WindCamBack", 3) + Vector3.new(0, tune("WindCamUp", 0.2), 0)
 		key(h + root.LookVector * 2.5, GOLD, 1.8, 8)
-		return look(cp, root.Position + root.LookVector * 4.5 + Vector3.new(0, 5.5 + k, 0), 3), mm(22), h
+		return look(cp, root.Position + root.LookVector * 6 + Vector3.new(0, tune("WindAimUp", 4.5) + k * 1.5, 0), 3), mm(tune("WindMM", 20)), h
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -2458,6 +2500,19 @@ studioControls = function()
 				snd.PlaybackSpeed = want
 			end
 			Film.speed(want, 0)
+		end
+		-- FilmTryCam = "x,y,z,tx,ty,tz[,fov[,roll]]" (set coordinates): look through another lens (Opening.tryCam)
+		local tc = workspace:GetAttribute("FilmTryCam")
+		if type(tc) == "string" and tc ~= "" then
+			local n = {}
+			for x in string.gmatch(tc, "[^,]+") do
+				table.insert(n, tonumber(x) or 0)
+			end
+			if #n >= 6 then
+				Opening.tryCam(Vector3.new(n[1], n[2], n[3]), Vector3.new(n[4], n[5], n[6]), n[7], n[8])
+			end
+		elseif tryCam then
+			tryCam = nil
 		end
 		local holdAt = workspace:GetAttribute("FilmHoldAt")
 		if not held and type(holdAt) == "number" and now() >= holdAt then

@@ -27,6 +27,7 @@ require(modules:WaitForChild("MowerFx")) -- ride-on mowers: turning wheels and b
 require(modules:WaitForChild("MowerLock")) -- (30 Oct) mowers locked for the release: holographic locks on the garage and pumps
 require(modules:WaitForChild("RiderPose")) -- (29 Oct) riders sit in their mower: a stance per mower, hands on the wheel
 require(modules:WaitForChild("Input"))
+require(modules:WaitForChild("Sprint")) -- (5 Nov) hold Shift / the SPRINT button to run
 require(modules:WaitForChild("Guide"))
 require(modules:WaitForChild("SellPointer")) -- bag full: an arrow beside you pointing to the nearest sell spot
 require(modules:WaitForChild("Ambient"))

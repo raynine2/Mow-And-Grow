@@ -233,6 +233,8 @@ end
 -- model: the clump model (default "tuft_" .. style); tint: recolour it (flat colour instead of its texture).
 -------------------------------------------------------------------------------------------------------------
 Config.BASE_CARRY = 10 -- (29 Oct) was 5: fewer walks to the Shredder
+-- (5 Nov) SPRINT: hold Shift / L3 / the SPRINT button to run `mult` x as fast, free, no stamina (client/Sprint)
+Config.SPRINT = { on = true, mult = 1.6 }
 -- Pacing (22 Oct, after the Chop A Forest teardown): aim for a free-to-play clear of 60-90 minutes, with the first
 -- boss and a ride-on mower inside the first 15. A rough sim of one good player came out at ~56 min of mowing plus
 -- the boss fights (area 1 ~7 min with its new drop-off pad, server/RunWorld). Values were x1.5 from area 2, HP -20%

@@ -1791,26 +1791,89 @@ local function stance(): boolean
 	end, { hand = 0.3 }) then
 		return false
 	end
-	-- 23. [SR 2.2, from straight above] the gold ring draws itself round him, the demon inside it
+	-- 23. [SR 2.2, from straight above] (6 Nov, owner: "the fx of the snip ult like the golden circle feels low
+	-- quality ... take inspiration of jjk": it was 72 gold dashes drawing a circle) HIS DOMAIN: from his feet the ground
+	-- goes ink-black in one rush out to the ring, a razor-thin white edge riding its front; as it closes, a
+	-- black-and-white impact frame, and a storm of hairline cuts flicks across the black floor (a cursed technique's
+	-- slashes before the one that matters); the edge cools to gold and hums. The camera turns slowly overhead.
 	local ring = {}
-	local n = 72
+	local centre = at(R3, 0.12)
+	local floor = Instance.new("Part")
+	floor.Name = "DomainFloor"
+	floor.Anchored = true
+	floor.CanCollide = false
+	floor.CanQuery = false
+	floor.CanTouch = false
+	floor.CastShadow = false
+	floor.Shape = Enum.PartType.Cylinder
+	floor.Material = Enum.Material.SmoothPlastic
+	floor.Color = Color3.fromRGB(6, 4, 10)
+	floor.Size = Vector3.new(0.12, 0.1, 0.1)
+	floor.CFrame = CFrame.new(centre) * CFrame.Angles(0, 0, math.rad(90))
+	floor.Parent = stageFolder()
+	table.insert(ring, floor)
+	-- the edge: one thin continuous ring of short segments (white-hot while it runs, gold once it's out)
+	local n = 120
+	local edge = {}
 	for i = 1, n do
-		local a = (i / n) * math.pi * 2
-		local p = at(R3 + Vector3.new(math.cos(a) * RING, 0.15, math.sin(a) * RING))
-		ring[i] = neon(Vector3.new(RING * 2 * math.pi / n + 0.6, 0.15, 0.9), CFrame.lookAt(p, p + Vector3.new(-math.sin(a), 0, math.cos(a))), GOLD, 1)
+		local seg = neon(Vector3.new(0.5, 0.18, 0.32), CFrame.new(centre), WHITE, 1)
+		edge[i] = seg
+		table.insert(ring, seg)
 	end
-	local ringFrom = now()
-	tracks.ring = function()
-		local k = math.clamp((now() - ringFrom) / 0.8, 0, 1)
-		for i, seg in ring do
-			seg.Transparency = if i / n <= k then 0.1 else 1
+	local function placeEdge(r: number, alpha: number, color: Color3)
+		local len = r * 2 * math.pi / n + 0.12
+		for i, seg in edge do
+			local a = (i / n) * math.pi * 2
+			local p = centre + Vector3.new(math.cos(a) * r, 0.06, math.sin(a) * r)
+			seg.Size = Vector3.new(len, 0.18, 0.32)
+			seg.CFrame = CFrame.lookAt(p, p + Vector3.new(-math.sin(a), 0, math.cos(a)))
+			seg.Transparency = alpha
+			seg.Color = color
 		end
 	end
-	sfx("zapCharge", 1.0, 0.7)
+	local ringFrom = now()
+	local SPREAD = 0.34 -- seconds from his feet to the ring
+	tracks.ring = function()
+		local k = math.clamp((now() - ringFrom) / SPREAD, 0, 1)
+		local r = math.max(RING * (1 - (1 - k) ^ 4), 0.2) -- (expo out: a rush, then it brakes at the rim)
+		floor.Size = Vector3.new(0.12, r * 2, r * 2)
+		local cool = math.clamp((now() - ringFrom - SPREAD) / 0.5, 0, 1)
+		local hum = 0.12 + math.sin((now() - ringFrom) * 18) * 0.06 * cool
+		placeEdge(r, hum, WHITE:Lerp(GOLD, cool))
+	end
+	sfx("suck", 1.1, 0.6)
+	sfx("swell", 0.9, 0.8)
+	-- it closes: the impact frame, the hum, the storm of cuts
+	after(ringFrom + SPREAD, function()
+		sfx("titleHit", 1.0, 0.75)
+		sfx("bladeClang", 0.8, 1.6)
+		Film.shake(0.25, 3)
+		AnimeFx.impact({ R.model, SH.model }, "neg", { hold = 0.09, at = at(R3, 2) })
+		local rng = Random.new(23)
+		for i = 1, 26 do
+			task.delay(0.05 + i * 0.011, function()
+				if not floor.Parent then
+					return
+				end
+				local a = rng:NextNumber(0, math.pi * 2)
+				local r0 = rng:NextNumber(4, RING * 0.55)
+				local p = centre + Vector3.new(math.cos(a) * r0, 0.08, math.sin(a) * r0)
+				local dir = Vector3.new(math.cos(a + rng:NextNumber(0.9, 2.2)), 0, math.sin(a + rng:NextNumber(0.9, 2.2))).Unit
+				local len = rng:NextNumber(10, 30)
+				local cut = neon(Vector3.new(0.14, 0.06, len), CFrame.lookAt(p, p + dir), WHITE, 0)
+				table.insert(ring, cut)
+				TweenService:Create(cut, TweenInfo.new(0.35, Enum.EasingStyle.Quad), { Color = GOLD, Transparency = 0.45 }):Play()
+				if i % 6 == 0 then
+					sfx("swipe", 0.35, rng:NextNumber(1.4, 1.9))
+				end
+			end)
+		end
+	end)
 	if not shot(T.glint, function(k)
-		local c = at(R3 + Vector3.new(14, 0, -22))
-		local cp = c + Vector3.new(0, 150 - k * 12, 0.01)
-		return CFrame.lookAt(cp, c, Vector3.new(0, 0, -1)), mm(30), c
+		local c = at(R3 + Vector3.new(10, 0, -16))
+		local cp = c + Vector3.new(0, 150 - k * 16, 0.01)
+		local turn = math.rad(-8 + k * 16) -- (a slow turn overhead)
+		return CFrame.lookAt(cp, c, Vector3.new(math.sin(turn), 0, -math.cos(turn))), mm(30), c
 	end) then
 		return false
 	end
@@ -1868,6 +1931,22 @@ local function snip(): boolean
 	AnimeFx.smear(-4, 1)
 	AnimeFx.cover(WHITE, 0, 0, "white")
 	AnimeFx.slash(0, { y = 0.5, life = 0.2, width = 0.025 })
+	-- (6 Nov, owner: "take inspiration of jjk") over the white, ink hairline cuts snap across the frame one after
+	-- another at every angle, like a cutting technique's slashes in a negative frame
+	do
+		local rng = Random.new(25)
+		for i = 1, 9 do
+			task.delay(0.025 + i * 0.022, function()
+				AnimeFx.slash(rng:NextNumber(-70, 70), {
+					x = rng:NextNumber(0.2, 0.8),
+					y = rng:NextNumber(0.2, 0.8),
+					life = 0.22,
+					width = rng:NextNumber(0.006, 0.014),
+					color = Color3.fromRGB(14, 8, 18),
+				})
+			end)
+		end
+	end
 	sfx("bladeSlash", 1.5, 0.7)
 	sfx("boom", 1.0, 0.8)
 	sfx("bigHit", 0.9, 0.7)

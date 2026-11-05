@@ -237,7 +237,7 @@ end
 -- half (A or B) that comes between the camera and the holder's face or upper body fades to see-through, and back
 -- when it's out of the way, so every shot keeps its moves and he is always seen. The parts can't be raycast
 -- (CanQuery off), so each sight line is tested against each part's box from where place() last put it.
-local SEE = 0.68 -- how see-through a half in the way gets
+local SEE = 0.82 -- how see-through a half in the way gets
 local function segmentHitsBox(o: Vector3, d: Vector3, cf: CFrame, half: Vector3): boolean
 	local lo = cf:PointToObjectSpace(o)
 	local ld = cf:VectorToObjectSpace(d)

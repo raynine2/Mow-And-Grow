@@ -148,9 +148,17 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 		local w = 3.4 - math.abs(i) * 0.4 + rng:NextNumber(-0.4, 0.4)
 		local cf = W(i * 2.6, -0.4, fz + math.sin(i * 1.3) * 1.6) * CFrame.Angles(0, rng:NextNumber(-0.3, 0.3), 0)
 		block(folder, Vector3.new(2.8, 0.9, math.max(w, 0.8)), cf, Color3.fromRGB(10, 6, 14), Enum.Material.Slate, "Crack")
-		local g = block(folder, Vector3.new(2.6, 0.2, math.max(w - 0.9, 0.3)), cf * CFrame.new(0, 0.38, 0), PINK, Enum.Material.Neon, "CrackGlow")
+		local g = block(folder, Vector3.new(2.6, 0.35, math.max(w - 0.9, 0.3)), cf * CFrame.new(0, 0.5, 0), PINK, Enum.Material.Neon, "CrackGlow")
 		g.Transparency = 1
 		table.insert(set.glow, g)
+		if i % 3 == 0 then
+			local pl = Instance.new("PointLight")
+			pl.Color = PINK
+			pl.Range = 18
+			pl.Brightness = 0
+			pl.Shadows = false
+			pl.Parent = g
+		end
 	end
 	for i = 1, (if light then 14 else 26) do
 		local a = (i / (if light then 14 else 26)) * math.pi * 2 + rng:NextNumber(-0.1, 0.1)
@@ -340,6 +348,19 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 		end
 	end
 
+	-- (after the reference's silhouette against a huge moon) a big moon low in the west, for Rayan's card
+	local moonDir = Vector3.new(-1, 0.38, 0.25).Unit
+	local moonAt = at.Position + at:VectorToWorldSpace(moonDir) * 420 + Vector3.new(0, 20, 0)
+	local moon = block(folder, Vector3.new(84, 84, 84), CFrame.new(moonAt), Color3.fromRGB(226, 232, 255), Enum.Material.Neon, "Moon")
+	moon.Shape = Enum.PartType.Ball
+	moon.CastShadow = false
+	local halo = block(folder, Vector3.new(150, 150, 150), CFrame.new(moonAt + (at.Position - moonAt).Unit * 30), Color3.fromRGB(150, 140, 255), Enum.Material.Neon, "MoonHalo")
+	halo.Shape = Enum.PartType.Ball
+	halo.Transparency = 0.86
+	halo.CastShadow = false
+	set.moon = moon
+	set.moonDir = moonDir
+
 	-- night motes drifting over the grass
 	local motes = block(folder, Vector3.new(160, 1, 160), W(0, 3, -20), Color3.new(), Enum.Material.SmoothPlastic, "Motes")
 	motes.Transparency = 1
@@ -371,6 +392,7 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 					if stub then
 						t.model:Destroy()
 						t.model = stub
+						t.part = stub:FindFirstChildWhichIsA("BasePart", true)
 					end
 					table.insert(cut, p)
 				end

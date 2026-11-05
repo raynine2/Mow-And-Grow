@@ -97,7 +97,8 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- subtitles: one at a time, bottom middle, just over the bottom bar
 -------------------------------------------------------------------------------------------------------------
-local lastSub: TextLabel? = nil
+local lastSub: Frame? = nil
+-- (after the TSB reference: white serif type in brackets, a soft dark band behind it; *starred* words in red)
 function AnimeFx.sub(text: string, life: number?)
 	local g = gui()
 	if not g then
@@ -105,35 +106,52 @@ function AnimeFx.sub(text: string, life: number?)
 	end
 	if lastSub and lastSub.Parent then
 		local old = lastSub
-		tween(old, 0.08, { TextTransparency = 1 })
+		for _, d in old:GetDescendants() do
+			if d:IsA("TextLabel") then
+				tween(d, 0.08, { TextTransparency = 1 })
+			elseif d:IsA("UIStroke") then
+				tween(d, 0.08, { Transparency = 1 })
+			end
+		end
+		tween(old, 0.08, { BackgroundTransparency = 1 })
 		task.delay(0.1, function()
 			old:Destroy()
 		end)
 	end
 	local bar = IntroUi.bar()
-	local t = label(g, "[" .. text .. "]", Enum.Font.GothamBold, WHITE, Z_TEXT)
-	t.Name = "Sub"
-	t.AnchorPoint = Vector2.new(0.5, 1)
-	t.Position = UDim2.fromScale(0.5, 1 - bar - 0.025)
-	t.Size = UDim2.fromScale(0.8, 0.05)
+	local root = frame(g, "Sub", BLACK, 1, Z_TEXT)
+	root.AnchorPoint = Vector2.new(0.5, 1)
+	root.Position = UDim2.fromScale(0.5, 1 - bar - 0.012)
+	root.Size = UDim2.fromScale(0.9, 0.085)
+	local band = Instance.new("UIGradient")
+	band.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0.45), NumberSequenceKeypoint.new(0.75, 0.45), NumberSequenceKeypoint.new(1, 1) })
+	band.Parent = root
+	local rich = string.gsub(text, "%*(.-)%*", '<font color="#FF3048">%1</font>')
+	local t = label(root, "[" .. rich .. "]", Enum.Font.Merriweather, WHITE, Z_TEXT + 1)
+	t.RichText = true
+	t.AnchorPoint = Vector2.new(0.5, 0.5)
+	t.Position = UDim2.fromScale(0.5, 0.5)
+	t.Size = UDim2.fromScale(1, 0.62)
 	t.TextTransparency = 1
 	local lim = Instance.new("UITextSizeConstraint")
-	lim.MaxTextSize = 34
+	lim.MaxTextSize = 36
 	lim.MinTextSize = 14
 	lim.Parent = t
-	local st = stroke(t, 2.2)
+	local st = stroke(t, 1.6)
 	st.Transparency = 1
 	tween(t, 0.1, { TextTransparency = 0 })
-	tween(st, 0.1, { Transparency = 0 })
-	lastSub = t
+	tween(st, 0.1, { Transparency = 0.3 })
+	tween(root, 0.15, { BackgroundTransparency = 0.25 })
+	lastSub = root
 	local hold = life or math.clamp(0.9 + #text * 0.05, 1.2, 3.2)
 	task.delay(hold, function()
-		if t.Parent then
+		if root.Parent then
 			tween(t, 0.25, { TextTransparency = 1 })
 			tween(st, 0.25, { Transparency = 1 })
+			tween(root, 0.25, { BackgroundTransparency = 1 })
 		end
 	end)
-	keep(t, hold + 0.3)
+	keep(root, hold + 0.3)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -240,6 +258,76 @@ function AnimeFx.slash(angle: number, opts: any?)
 		end
 	end)
 	keep(f, life + 0.05)
+end
+
+-- A smear: a huge white wedge across half the frame for a couple of frames, gone without a fade (the reference's
+-- slash frames). `angle` degrees, `side` 1 or -1 (which way the wedge's thick end points).
+function AnimeFx.smear(angle: number, side: number?, color: Color3?)
+	local g = gui()
+	if not g then
+		return
+	end
+	local root = Instance.new("Frame")
+	root.Name = "Smear"
+	root.BackgroundTransparency = 1
+	root.AnchorPoint = Vector2.new(0.5, 0.5)
+	root.Position = UDim2.fromScale(0.5, 0.5)
+	root.Size = UDim2.fromScale(2.2, 0.55)
+	root.Rotation = angle
+	root.ZIndex = Z_PICTURE
+	root.Parent = g
+	-- (a wedge: stacked bars, each shorter and thinner toward the tip, ragged)
+	local s = side or 1
+	for i = 0, 9 do
+		local k = i / 9
+		local bar = frame(root, "Bar", color or WHITE, 0, Z_PICTURE)
+		bar.AnchorPoint = Vector2.new(if s > 0 then 0 else 1, 0.5)
+		bar.Position = UDim2.fromScale(if s > 0 then 0.04 * k else 1 - 0.04 * k, 0.5 + (k - 0.5) * 0.85)
+		bar.Size = UDim2.fromScale(1 - k * 0.55 + (math.random() - 0.5) * 0.08, 0.11 - k * 0.006)
+		local grad = Instance.new("UIGradient")
+		grad.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, if s > 0 then 0 else 1), NumberSequenceKeypoint.new(0.8, 0.05), NumberSequenceKeypoint.new(1, if s > 0 then 1 else 0) })
+		grad.Parent = bar
+	end
+	keep(root, 0.07)
+end
+
+-- A technique's title card (after the TSB reference's): its name huge in the middle, a line under it, for `life` s.
+function AnimeFx.technique(name: string, sub: string, color: Color3?, life: number?)
+	local g = gui()
+	if not g then
+		return
+	end
+	local hold = life or 0.9
+	local root = frame(g, "Technique", BLACK, 0.35, Z_TEXT)
+	local big = label(root, string.upper(name), Enum.Font.GothamBlack, color or Color3.fromRGB(255, 214, 90), Z_TEXT + 1)
+	big.AnchorPoint = Vector2.new(0.5, 0.5)
+	big.Position = UDim2.fromScale(0.5, 0.46)
+	big.Size = UDim2.fromScale(0.86, 0.2)
+	big.Rotation = -3
+	stroke(big, 5)
+	local sc = Instance.new("UIScale")
+	sc.Scale = 1.45
+	sc.Parent = big
+	local small = label(root, sub, Enum.Font.Merriweather, WHITE, Z_TEXT + 1)
+	small.AnchorPoint = Vector2.new(0.5, 0.5)
+	small.Position = UDim2.fromScale(0.5, 0.6)
+	small.Size = UDim2.fromScale(0.5, 0.045)
+	small.Rotation = -3
+	stroke(small, 1.5)
+	tween(sc, 0.12, { Scale = 1 }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	task.delay(0.12, function()
+		if sc.Parent then
+			tween(sc, hold, { Scale = 0.94 }, Enum.EasingStyle.Linear)
+		end
+	end)
+	task.delay(hold, function()
+		if root.Parent then
+			tween(root, 0.08, { BackgroundTransparency = 1 })
+			tween(big, 0.08, { TextTransparency = 1 })
+			tween(small, 0.08, { TextTransparency = 1 })
+		end
+	end)
+	keep(root, hold + 0.1)
 end
 
 -------------------------------------------------------------------------------------------------------------

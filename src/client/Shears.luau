@@ -232,6 +232,75 @@ function Shears.show(self: any, on: boolean)
 	self.light.Enabled = on
 end
 
+-- (6 Nov, owner: "you don't see [bbrrbrrbrbrb] well because of the scissors": in the name card, the shed and the
+-- "Fine. Let's mow." shots the gold blades and the finger ring stood between the lens and his face) Each frame: the
+-- half (A or B) that comes between the camera and the holder's face or upper body fades to see-through, and back
+-- when it's out of the way, so every shot keeps its moves and he is always seen. The parts can't be raycast
+-- (CanQuery off), so each sight line is tested against each part's box from where place() last put it.
+local SEE = 0.68 -- how see-through a half in the way gets
+local function segmentHitsBox(o: Vector3, d: Vector3, cf: CFrame, half: Vector3): boolean
+	local lo = cf:PointToObjectSpace(o)
+	local ld = cf:VectorToObjectSpace(d)
+	local tmin, tmax = 0, 1
+	for _, a in { "X", "Y", "Z" } do
+		local oa, da, h = (lo :: any)[a], (ld :: any)[a], (half :: any)[a]
+		if math.abs(da) < 1e-6 then
+			if math.abs(oa) > h then
+				return false
+			end
+		else
+			local t1, t2 = (-h - oa) / da, (h - oa) / da
+			if t1 > t2 then
+				t1, t2 = t2, t1
+			end
+			tmin = math.max(tmin, t1)
+			tmax = math.min(tmax, t2)
+			if tmin > tmax then
+				return false
+			end
+		end
+	end
+	return true
+end
+
+-- `cam`: the camera's frame; `head` / `chest`: the holder's head and upper torso (world frames); `dt`: the frame time.
+function Shears.reveal(self: any, cam: CFrame, head: CFrame, chest: CFrame, dt: number)
+	if not self.shown then
+		return
+	end
+	local eye = cam.Position
+	local right, up = cam.RightVector, cam.UpVector
+	local hp, cp = head.Position, chest.Position
+	local points = {
+		hp, hp + right * 0.6, hp - right * 0.6, hp + up * 0.55, hp - up * 0.4,
+		cp, cp + right * 0.85, cp - right * 0.85, cp - up * 0.9,
+	}
+	local blocked = { [1] = false, [-1] = false }
+	for i, p in self.parts do
+		local s = self.side[i]
+		if blocked[s] or p.Transparency >= 1 then
+			continue
+		end
+		local cf = self.cfs[i]
+		local half = p.Size / 2 + Vector3.new(0.05, 0.05, 0.05)
+		for _, pt in points do
+			-- (stops a little short of the body: a blade resting against him isn't in the way)
+			if segmentHitsBox(eye, (pt - eye) * 0.94, cf, half) then
+				blocked[s] = true
+				break
+			end
+		end
+	end
+	self.fade = self.fade or { [1] = 0, [-1] = 0 }
+	local k = 1 - math.exp(-dt * 16)
+	for _, s in { 1, -1 } do
+		self.fade[s] += ((if blocked[s] then SEE else 0) - self.fade[s]) * k
+	end
+	for i, p in self.parts do
+		p.LocalTransparencyModifier = self.fade[self.side[i]]
+	end
+end
+
 function Shears.destroy(self: any)
 	self.model:Destroy()
 end

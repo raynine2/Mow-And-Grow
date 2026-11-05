@@ -1858,6 +1858,12 @@ local function frame(dt: number, t: number)
 		end
 	end
 	placeShears()
+	-- (6 Nov, owner: "you don't see him well because of the scissors") a blade in front of his face / body goes
+	-- see-through (client/Shears.reveal)
+	local cam = workspace.CurrentCamera
+	if SH and R and cam then
+		SH:reveal(cam.CFrame, headCf(R), chestOf(R), dt)
+	end
 	placeEyes()
 	for _, fn in tracks do
 		fn(dt, t)

@@ -905,7 +905,7 @@ local function actI(): boolean
 		local shoot = ease.out(math.clamp((tt - T.rise) / shootLen, 0, 1))
 		local slam = ease.inn(math.clamp((tt - (T.rise + shootLen)) / (slamAt - T.rise - shootLen), 0, 1))
 		local free = ease.inOut(math.clamp((tt - T.roar) / 0.4, 0, 1))
-		local lift = math.max(tune("ArmLift", 34) * shoot - (rise - hidden) * D.height * 1.05, 0)
+		local lift = math.max(tune("ArmLift", 41) * shoot - (rise - hidden) * D.height * 1.05, 0)
 		local pitch = tune("ArmUp", -172) * (1 - slam) + tune("HandPitch", -100) * slam
 		if tt < T.rise then
 			pitch = 30
@@ -934,9 +934,10 @@ local function actI(): boolean
 	end)
 	clearR = 5
 	if not shot(T.eyes, function(k)
-		local c = at(DEMON_AT, 0)
-		local p = c + Vector3.new(tune("HandCamX", 14) - k * 1.2, tune("HandCamY", 2.4), tune("HandCamZ", 46) - k * 1.5)
-		return look(p, c + Vector3.new(tune("HandAimX", -7), tune("HandAimY", 7), tune("HandAimZ", 8)), -5), mm(24), c + Vector3.new(-7, 4, 12)
+		-- (low in front of where the hand comes down, tested in Studio: the hand big on the left, planted on the pool's
+		-- edge, the black and the ring behind it)
+		local p = V(tune("HandCamX", 2) - k * 1, tune("HandCamY", 3.2), tune("HandCamZ", -8) - k * 1.5)
+		return look(p, V(-12, 6.5, -46), -4), mm(tune("HandMM", 30)), V(-12, 3, -44)
 	end, { hand = 0.5 }) then
 		return false
 	end
@@ -951,7 +952,12 @@ local function actI(): boolean
 		local fwd = flat(D.head().LookVector)
 		fwd = if fwd.Magnitude > 0.1 then fwd.Unit else Vector3.zAxis
 		local p = e + fwd * (tune("EyeCamDist", 30) - k * 4) + Vector3.new(tune("EyeCamSide", 5), tune("EyeCamUp", -3), 0)
-		return look(p, e + Vector3.new(0, -2, 0), 4), mm(tune("EyeMM", 38)), e
+		-- (never under the ground: as its head comes up out of the pool the eyes are only a few studs over it)
+		local floor = at(DEMON_AT, 0).Y + 1.6
+		if p.Y < floor then
+			p = Vector3.new(p.X, floor, p.Z)
+		end
+		return look(p, e + Vector3.new(0, -1, 0), 4), mm(tune("EyeMM", 38)), e
 	end, { hand = 0.35 }) then
 		return false
 	end
@@ -1074,8 +1080,9 @@ local function exchange(): boolean
 		local tt = now()
 		local up = ease.out(math.clamp((tt - T.clawUp) / 0.35, 0, 1))
 		local down = ease.inn(math.clamp((tt - (T.claw - 0.16)) / 0.16, 0, 1))
-		P.lean = down * 14
-		P.armR = { pitch = -45 * up * (1 - down) + 25 * down, yaw = 6 * up + 16 * down }
+		-- (round 2: it leans right over and the claw reaches the ground where he stood; it stopped ~15 studs short)
+		P.lean = down * tune("ClawLean", 30)
+		P.armR = { pitch = -45 * up * (1 - down) + tune("ClawPitch", 48) * down, yaw = 6 * up + tune("ClawYaw", 14) * down }
 	end
 	sfx("growl2", 1.0, 0.8)
 	after(T.claw - 0.25, function()
@@ -1133,10 +1140,12 @@ local function exchange(): boolean
 		fadeOut(beam, 0.3, Vector3.new(0.05, 0.05, (b - a).Magnitude))
 		sfx("lunge", 1.1, 1.2)
 	end)
-	local wideAim = at(Vector3.new(-4, 0, (R1.Z + DEMON_AT.Z) / 2), tune("WideAimY", 17))
-	local wideFrom = wideAim + Vector3.new(tune("WideX", -64), tune("WideY", -9), 0)
+	-- (high behind where he stood, tested in Studio: from the side its own body hid the arm; from here the arm comes
+	-- down the frame at us, the dust where he was, and the streak runs up it)
+	local wideAim = V(tune("WideAimX", -6), tune("WideAimY", 5), tune("WideAimZ", -38))
+	local wideFrom = V(tune("WideX", 6), tune("WideY", 26), tune("WideZ", 2))
 	if not shot(T.claw + 0.16, function(k)
-		return look(wideFrom + Vector3.new(0, 0, k * 1.5), wideAim, 0), mm(tune("WideMM", 19)), wideAim
+		return look(wideFrom + Vector3.new(0, k * 1.2, k * 1.5), wideAim, 0), tune("WideFov", 52), wideAim
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -1549,7 +1558,7 @@ local function clang(): boolean
 	local stopFly = AnimeFx.lines(WHITE, 0.4)
 	if not shot(T.shed - 0.12, function(_k)
 		local q = R.root.Position
-		local cp = q + flySide * tune("FlyCamSide", 12) + UP * 1.5 - flyDir * tune("FlyCamBack", 5)
+		local cp = q + flySide * tune("FlyCamSide", 12) + UP * 2.6 - flyDir * tune("FlyCamBack", 5)
 		return look(cp, q + flyDir * 4, -5), mm(26), q
 	end, { hand = 0.5 }) then
 		return false
@@ -2186,9 +2195,11 @@ local function punch(): boolean
 		local h = headOf(H)
 		-- (round 2: closer, him big on the left, the fists coming down ahead of him: wide, the two of them were specks
 		-- under a mass of blocks)
-		local cp = root.Position + root.RightVector * (tune("WindCamSide", 14) - k * 1) - root.LookVector * tune("WindCamBack", 5) + Vector3.new(0, tune("WindCamUp", -1.2), 0)
+		-- (low behind the two of them, tested in Studio: them small at the bottom, the giant and its fists over them)
+		local cp = root.Position + root.RightVector * tune("WindCamSide", 1) - root.LookVector * (tune("WindCamBack", 12.5) - k * 1.5)
+		cp = Vector3.new(cp.X, at(P1, 0).Y + tune("WindCamUp", 2.2), cp.Z)
 		key(h + root.LookVector * 2.5, GOLD, 1.8, 8)
-		return look(cp, root.Position + root.LookVector * 5 + Vector3.new(0, tune("WindAimUp", 7) + k * 1.5, 0), 3), mm(tune("WindMM", 18)), h
+		return look(cp, root.Position + root.LookVector * 4 + Vector3.new(0, tune("WindAimUp", 6) + k * 1.5, 0), 2), tune("WindFov", 55), h
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -2229,9 +2240,9 @@ local function punch(): boolean
 		local f = H:grip("Right").Position
 		-- (round 2: from the side, the whole of him, the arm straight into the fist; right at the fist it was a wall of
 		-- his own shoulder and hair)
-		local cp = root.Position + root.RightVector * tune("PunchCamSide", 10) - root.LookVector * (1 - k) + Vector3.new(0, tune("PunchCamUp", 0.8), 0)
+		local cp = root.Position + root.RightVector * tune("PunchCamSide", 17) - root.LookVector * (3 - k) + Vector3.new(0, tune("PunchCamUp", 2.5), 0)
 		key(f + root.LookVector * 1.2, GOLD, 3, 8)
-		return look(cp, root.Position + root.LookVector * 3.5 + Vector3.new(0, 1.6 + k * 0.8, 0), -6), mm(tune("PunchMM", 24)), f
+		return look(cp, root.Position + root.LookVector * 5 + Vector3.new(0, 4 + k * 0.8, 0), -6), mm(tune("PunchMM", 20)), f
 	end, { hand = 0.3 }) then
 		return false
 	end

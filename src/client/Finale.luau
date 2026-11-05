@@ -1341,12 +1341,23 @@ local function you(): boolean
 	end, { hand = 0.2 }) then
 		return false
 	end
-	-- 22. [SR 8.75, the reaction] the player: he sets his feet, a dolly zoom on him (the lens backs off as it closes in,
-	-- the realm stretching behind him), the pink of its eyes on his face. (Tested in Studio: an extreme close-up of
-	-- the face can't react, most avatars' faces smile; a default smiley filled the frame.)
+	-- 22. [SR 8.75, the reaction] the player flinches back half a step, a dolly zoom on him (the lens backs off as it
+	-- closes in, the realm stretching behind him), the pink of its eyes on his face. (Tested in Studio: an extreme
+	-- close-up of the face can't react, most avatars' faces smile, a default smiley filled the frame; and any pose with
+	-- his hands up filled it with his arms.)
 	H:look(headOf(C), 1)
-	H:pose("brace", 0.25)
 	sfx("heartbeat", 1.1)
+	do
+		local from = H.root
+		local away = -flat(C.root.Position - H.root.Position).Unit
+		tracks.flinch = function()
+			local k = ease.out(math.clamp((now() - T.react) / 0.35, 0, 1))
+			H.root = from + away * (0.7 * k)
+			if k >= 1 then
+				tracks.flinch = nil
+			end
+		end
+	end
 	if not shot(T.step3, function(k)
 		local head = headOf(H)
 		local f = flat(C.root.Position - H.root.Position).Unit

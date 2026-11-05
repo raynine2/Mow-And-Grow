@@ -704,6 +704,9 @@ Config.WORLD_GEN = true
 -- (6 Nov) the voxel bosses (ReplicatedStorage.VoxelBosses, owner's CLAUDE_CODE_PROMPT.md): the 8 guardians in the
 -- fights are the voxel models, with their enraged form swapped in at 50% HP. false = the old Blender bosses again.
 Config.VOXEL_BOSSES = true
+-- (6 Nov) the voxel pets (ReplicatedStorage.VoxelPets, the owner's GardenPets pack, idle loops in shared/VoxelPetAnim):
+-- every pet but the Bumble Bee. false = the Blender pets again.
+Config.VOXEL_PETS = true
 -- Name signs on the hub buildings (shop boards, the arches, START A RUN, floating DROP BUNDLES / GAS labels).
 -- Off: the buildings speak for themselves and their prompts name them. Price tags and the score boards stay.
 Config.HUB_SIGNS = false

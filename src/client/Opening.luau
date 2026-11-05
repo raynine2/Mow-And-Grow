@@ -162,15 +162,24 @@ local function waitUntil(t: number): boolean
 	return playing
 end
 
--- cut to a shot that runs until film time `untilT` (k 0..1 over it), and wait for it
+-- cut to a shot that runs until film time `untilT` (k 0..1 over it), and wait for it. Every frame, just before the
+-- picture is taken, whatever stands in the lens's way is hidden (clearView: tall grass, props, the demons' blocks).
+-- opts.props = false keeps the props (a shot framed through them on purpose).
 local lastFocus: Vector3? = nil
+local clearView: (cf: CFrame, focus: Vector3?, opts: any) -> ()
+local tryCam: any = nil -- (Studio: a camera tried out by hand while the film is held, { cf, fov, focus })
 local function shot(untilT: number, fn: (k: number, t: number) -> (CFrame, number, Vector3?), opts: any?): boolean
 	if not playing then
 		return false
 	end
+	local o = opts or {}
 	Film.cut(math.max(untilT - now(), 0.05), function(k: number, t: number)
 		local cf, fov, focus = fn(k, t)
+		if tryCam then
+			cf, fov, focus = tryCam.cf, tryCam.fov, tryCam.focus
+		end
 		lastFocus = focus
+		clearView(cf, focus, o)
 		return cf, fov, focus
 	end, opts)
 	return waitUntil(untilT)
@@ -197,6 +206,18 @@ end
 local function headOf(pup: any): Vector3
 	local h = pup:part("Head")
 	return if h then (pup.world[h] or h.CFrame).Position else pup.root.Position + Vector3.new(0, 1.5, 0)
+end
+-- the head's own frame (its LookVector: where the face looks, after a look() has turned it)
+local function headCf(pup: any): CFrame
+	local h = pup:part("Head")
+	return if h then (pup.world[h] or h.CFrame) else pup.root * CFrame.new(0, 1.5, 0)
+end
+-- a point on the face at the eyes' height (a seventh of the head over its middle, on its front), `side` studs to
+-- the face's own right: close-ups aim here, along the head's own look, so a turned or tipped head stays framed
+local function eyesOf(pup: any, side: number?): Vector3
+	local h = pup:part("Head")
+	local size = if h then h.Size else Vector3.new(1.2, 1.2, 1.2)
+	return (headCf(pup) * CFrame.new(side or 0, size.Y * 0.14, -size.Z * 0.5)).Position
 end
 local function chestOf(pup: any): CFrame
 	local c = pup:part("UpperTorso")
@@ -475,20 +496,48 @@ end
 -- side): SR = "Sukuna Raid Intro" (MobWshN54vo, at its seconds), TSB = "Unlimited Flexworks" (qRjNRrKiaTc),
 -- BL = the Blue Lock cutscenes (_SaVIYa7dnI).
 -------------------------------------------------------------------------------------------------------------
--- the lens's helpers: tall grass by the lens hidden, a key light for close-ups, cel-shaded slash arcs
+-- the lens's helpers: what's in its way hidden, a key light for close-ups, cel-shaded slash arcs
 -------------------------------------------------------------------------------------------------------------
 local clearR = 4
 local hiddenTufts: { [BasePart]: boolean } = {}
-local function clearGrass()
-	local cam = workspace.CurrentCamera
-	if not cam or not S then
+clearView = function(cf: CFrame, focus: Vector3?, opts: any)
+	if not S then
 		return
 	end
-	local p = cam.CFrame.Position
-	local f = lastFocus
+	local p = cf.Position
+	local f = focus
 	local seg = if f then f - p else nil
 	local segLen = if seg then seg.Magnitude else 0
 	local dir = if seg and segLen > 0.01 then seg / segLen else nil
+	-- the demons' blocks right at the lens (it never looks out from inside one)
+	if D then
+		D.nearClip(p, 0.8)
+	end
+	if D2 and D2.folder and D2.folder.Parent then
+		D2.nearClip(p, 0.8)
+	end
+	-- the props: one the lens is in, or one between it and the subject
+	for _, pr in S.props or {} do
+		local hide = false
+		if opts.props ~= false and pr.radius < 24 then
+			local d = pr.center - p
+			if d.Magnitude < pr.radius + 1 then
+				hide = true
+			elseif dir then
+				local along = d:Dot(dir)
+				if along > 0 and along < segLen - pr.radius * 0.5 - 1 then
+					hide = (d - dir * along).Magnitude < pr.radius * 0.8
+				end
+			end
+		end
+		if hide ~= pr.hidden then
+			pr.hidden = hide
+			for _, part in pr.parts do
+				part.LocalTransparencyModifier = if hide then 1 else 0
+			end
+		end
+	end
+	-- the tall grass by the lens, and in its line of sight
 	for _, t in S.tufts do
 		local part = t.part
 		if part and part.Parent then
@@ -670,6 +719,7 @@ local function actI(): boolean
 		sfx("sting", 0.9)
 		Film.punch(4)
 	end)
+	clearR = 6
 	if not shot(T.roar, function(k)
 		local p = V(6, 1.2, -6 + k * 1.2)
 		return look(p, V(0, 22 + k * 4, -52), 3), mm(19), V(0, 24, -52)
@@ -909,10 +959,11 @@ local function armFalls(): boolean
 		key(h + R.root.LookVector * 1.6 + Vector3.new(0, 0.6, 0), PINK, if flick % 7 < 3 then 2.6 else 0.6, 6)
 	end
 	if not shot(T.reset, function(k)
-		local h = headOf(R)
-		local root = R.root
-		local p = h + root.LookVector * (1.6 - k * 0.2) + root.RightVector * 0.12 + Vector3.new(0, 0.12, 0)
-		return look(p, h + root.RightVector * 0.18 + Vector3.new(0, 0.12, 0)), mm(85), h
+		-- (his right eye: a bandage covers the left)
+		local hc = headCf(R)
+		local e = eyesOf(R, 0.24)
+		local p = e + hc.LookVector * (1.9 - k * 0.25) + hc.RightVector * 0.12 + hc.UpVector * 0.04
+		return CFrame.lookAt(p, e, hc.UpVector), mm(85), e
 	end, { hand = 0.12 }) then
 		return false
 	end
@@ -930,7 +981,7 @@ local function loadingRing(d: any, from: number, done: number)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "Adapt"
 	bb.Size = UDim2.fromScale(14 * d.scale, 14 * d.scale)
-	bb.StudsOffset = Vector3.new(0, 30 * d.scale, 0)
+	bb.StudsOffset = Vector3.new(0, 16 * d.scale, 0) -- (just over the top of its head)
 	bb.LightInfluence = 0
 	bb.Adornee = head
 	bb.Parent = head
@@ -1591,11 +1642,11 @@ local function punch(): boolean
 	H:pose("heroRise", 0.3)
 	H:look(at(BIG_AT, 18), 1)
 	if not shot(T.windup, function(k)
-		local hd = headOf(H)
-		local root = H.root
-		local p = hd + root.LookVector * (2.2 - k * 0.3) + Vector3.new(0, 0.05, 0)
-		key(hd + root.LookVector * 1.4 + Vector3.new(0, 0.8, 0), Color3.fromRGB(255, 220, 150), 2, 6)
-		return look(p, hd + Vector3.new(0, 0.12, 0)), mm(85), hd
+		local hc = headCf(H)
+		local e = eyesOf(H, 0)
+		local p = e + hc.LookVector * (2.3 - k * 0.3) + hc.UpVector * 0.03
+		key(e + hc.LookVector * 1.4 + hc.UpVector * 0.8, Color3.fromRGB(255, 220, 150), 2, 6)
+		return CFrame.lookAt(p, e, hc.UpVector), mm(85), e
 	end, { hand = 0.12 }) then
 		return false
 	end
@@ -1753,15 +1804,26 @@ local function breakUp(): boolean
 	end, { hand = 0.5 }) then
 		return false
 	end
-	-- 39. [SR 7.2, far and high] eight pink pillars rise from the eight lands round the valley
+	-- 39. [SR 7.2, far and high] eight pink pillars rise from the eight lands round the valley (beams of neon behind
+	-- the hills, where the shards came down; they stay up to the end)
 	sfx("sting", 1.1, 0.8)
 	for i = 1, 8 do
 		local a = (i / 8) * math.pi * 2 + 0.3
-		local p = at(BIG_AT) + Vector3.new(math.cos(a) * 420, 0, math.sin(a) * 420)
-		task.delay(i * 0.08, function()
-			fx("DarkPillar", p, { scale = 6, color = PINK, hold = 4, life = 6 })
-			fx("LightPillar", p, { scale = 5, color = PINK, hold = 4, life = 6 })
-		end)
+		local base = at(BIG_AT) + Vector3.new(math.cos(a) * 560, -20, math.sin(a) * 560)
+		local height = 900
+		local core = neon(Vector3.new(1, 9, 9), CFrame.new(base) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(255, 214, 240), 0)
+		local halo = neon(Vector3.new(1, 30, 30), CFrame.new(base) * CFrame.Angles(0, 0, math.rad(90)), PINK, 0.55)
+		for _, b in { core, halo } do
+			pcall(function()
+				b.Shape = Enum.PartType.Cylinder
+			end)
+			local goal = { Size = Vector3.new(height, b.Size.Y, b.Size.Z), CFrame = CFrame.new(base + Vector3.new(0, height / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)) }
+			task.delay(i * 0.09, function()
+				if b.Parent then
+					TweenService:Create(b, TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), goal):Play()
+				end
+			end)
+		end
 	end
 	if not shot(T.lastEye, function(k)
 		local p = at(P1 + Vector3.new(30, 60 + k * 10, 60))
@@ -1915,7 +1977,6 @@ local function frame(dt: number, t: number)
 	for _, fn in tracks do
 		fn(dt, t)
 	end
-	clearGrass()
 end
 
 -- (Studio only, for whoever builds the film) workspace attributes:
@@ -2027,6 +2088,23 @@ function Opening.play()
 		end
 	end
 	playing = false
+end
+
+-- (Studio, for whoever frames the shots) while the film is held: look through another lens (set coordinates, as
+-- the shots use them), nil to give the shot its own back; and the cast, to measure from.
+function Opening.tryCam(from: Vector3?, to: Vector3?, fov: number?, roll: number?)
+	if not RunService:IsStudio() then
+		return
+	end
+	if not from or not to or not S then
+		tryCam = nil
+		return
+	end
+	local a, b = V(from.X, from.Y, from.Z), V(to.X, to.Y, to.Z)
+	tryCam = { cf = look(a, b, roll or 0), fov = fov or 40, focus = b }
+end
+function Opening.cast(): any
+	return { S = S, R = R, H = H, D = D, D2 = D2, SH = SH, T = T, now = now, V = V }
 end
 
 -- Take everything away (the end, or SKIP). Safe to call any time.

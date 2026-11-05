@@ -507,6 +507,60 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		end
 		return out
 	end
+	-- (Films v2) a lens inside it or right against it sees through: the blocks within `margin` studs of `pos` are hidden
+	-- on this client (the ones hidden before and clear now come back); nil shows them all. Each group's blocks keep
+	-- their place on its root, so a group is only looked through when `pos` is inside its box.
+	local relOf: { [BasePart]: Vector3 } = {}
+	local boxOf: { [number]: { lo: Vector3, hi: Vector3 } } = {}
+	local clipped: { [BasePart]: boolean } = {}
+	api.nearClip = function(pos: Vector3?, margin: number?)
+		local m = margin or 0.8
+		local hide: { [BasePart]: boolean } = {}
+		if pos then
+			for gi, r in roots do
+				local list = groupParts[gi]
+				if list and #list > 0 then
+					local rcf = r.CFrame
+					local box = boxOf[gi]
+					if not box then
+						local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+						for _, p in list do
+							local rel = relOf[p] or rcf:PointToObjectSpace(p.Position)
+							relOf[p] = rel
+							lo = lo:Min(rel - p.Size / 2)
+							hi = hi:Max(rel + p.Size / 2)
+						end
+						box = { lo = lo, hi = hi }
+						boxOf[gi] = box
+					end
+					local q = rcf:PointToObjectSpace(pos)
+					if q.X > box.lo.X - m and q.Y > box.lo.Y - m and q.Z > box.lo.Z - m and q.X < box.hi.X + m and q.Y < box.hi.Y + m and q.Z < box.hi.Z + m then
+						for _, p in list do
+							local rel = relOf[p]
+							if rel then
+								local d = q - rel
+								local h = p.Size / 2
+								if math.abs(d.X) < h.X + m and math.abs(d.Y) < h.Y + m and math.abs(d.Z) < h.Z + m then
+									hide[p] = true
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		for p in clipped do
+			if not hide[p] then
+				p.LocalTransparencyModifier = 0
+			end
+		end
+		for p in hide do
+			if not clipped[p] then
+				p.LocalTransparencyModifier = 1
+			end
+		end
+		clipped = hide
+	end
 	api.destroy = function()
 		model:Destroy()
 	end

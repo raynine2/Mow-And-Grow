@@ -181,15 +181,32 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	pinkLight.Parent = set.glow[1] or folder
 	set.pinkLight = pinkLight
 
-	-- the shed (the game's garage, 223 bricks) west of the middle, its open front facing east, and hay beside it
-	set.shed = prop("garage_shed", W(-31, 0, -6) * CFrame.Angles(0, math.rad(90), 0), 0.8, folder)
-	for _, h in { { -22, 4, 20 }, { -21, 8, -40 }, { -25, -12, 70 }, { -16, -15, 10 } } do
-		prop("hay_bale", W(h[1], 0, h[2]) * CFrame.Angles(0, math.rad(h[3]), 0), 1.1, folder)
+	-- the small props (hay, barrels, fences, lanterns, rocks, the near trees): a film hides one that comes between its
+	-- lens and what it's shooting (set.props)
+	set.props = {}
+	local function dress(m: Model?): Model?
+		if m then
+			local box, size = m:GetBoundingBox()
+			local parts = {}
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then
+					table.insert(parts, d)
+				end
+			end
+			table.insert(set.props, { model = m, parts = parts, center = box.Position, radius = size.Magnitude / 2, hidden = false })
+		end
+		return m
 	end
-	prop("hay_bale", W(-21.5, 3.9, 5.5) * CFrame.Angles(0, math.rad(35), 0), 1.0, folder)
-	prop("barrel", W(-24, 0, -16), 1.1, folder)
-	prop("crate_stack", W(-25.5, 0, 9), 1.0, folder)
-	prop("wheelbarrow", W(-18, 0, -18) * CFrame.Angles(0, math.rad(-30), 0), 1.0, folder)
+	-- the shed (the game's garage, 223 bricks) west of the middle, its open front facing east; its hay, barrel, crates
+	-- and wheelbarrow round its back and south side, out of the fight (they stood in half the shots)
+	set.shed = prop("garage_shed", W(-31, 0, -6) * CFrame.Angles(0, math.rad(90), 0), 0.8, folder)
+	for _, h in { { -35, 11, 20 }, { -31.5, 13.5, 75 }, { -44, -17, 10 } } do
+		dress(prop("hay_bale", W(h[1], 0, h[2]) * CFrame.Angles(0, math.rad(h[3]), 0), 1.1, folder))
+	end
+	dress(prop("hay_bale", W(-33.5, 3.9, 12.3) * CFrame.Angles(0, math.rad(35), 0), 1.0, folder))
+	dress(prop("barrel", W(-40.5, 0, 1), 1.1, folder))
+	dress(prop("crate_stack", W(-39, 0, 8), 1.0, folder))
+	dress(prop("wheelbarrow", W(-26, 0, 12) * CFrame.Angles(0, math.rad(-30), 0), 1.0, folder))
 
 	-- the path's fences and lanterns
 	for z = 18, 120, 8.4 do
@@ -197,12 +214,13 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 			if rng:NextNumber() < 0.88 then
 				local x = pathX(z) + side * 8.5
 				local lean = if rng:NextNumber() < 0.15 then rng:NextNumber(-12, 12) else 0
-				prop("fence", W(x, 0, z) * CFrame.Angles(0, math.rad(90 + rng:NextNumber(-4, 4)), math.rad(lean)), 1, folder)
+				dress(prop("fence", W(x, 0, z) * CFrame.Angles(0, math.rad(90 + rng:NextNumber(-4, 4)), math.rad(lean)), 1, folder))
 			end
 		end
 	end
-	for _, l in { { -9, 24 }, { 9, 46 }, { -9, 70 }, { 9, 96 }, { 17, -12 }, { -15, -28 } } do
-		local m = prop("lantern_post", W(pathX(l[2]) + l[1], 0, l[2]) * CFrame.Angles(0, math.rad(rng:NextNumber(0, 360)), 0), 1.15, folder)
+	-- (along the path only: two that stood in the fight blocked the moon and the cuts)
+	for _, l in { { -9, 24 }, { 9, 46 }, { -9, 70 }, { 9, 96 } } do
+		local m = dress(prop("lantern_post", W(pathX(l[2]) + l[1], 0, l[2]) * CFrame.Angles(0, math.rad(rng:NextNumber(0, 360)), 0), 1.15, folder))
 		if m then
 			local top: BasePart? = nil
 			for _, d in m:GetDescendants() do
@@ -227,6 +245,9 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 		local m = prop(name, W(x, 0, z) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0), s, folder)
 		if m then
 			table.insert(set.trees, m)
+			if x * x + z * z < 100 * 100 then
+				dress(m)
+			end
 		end
 	end
 	tree("oak", 44, -22, 1.05)
@@ -247,11 +268,11 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 		end
 	end
 	for _, r in { { -14, 72, 1.3 }, { 26, -36, 1.0 }, { -36, 30, 1.2 }, { 60, 8, 1.5 }, { -70, -10, 1.4 } } do
-		prop("rock", W(r[1], 0, r[2]) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), r[3], folder)
+		dress(prop("rock", W(r[1], 0, r[2]) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), r[3], folder))
 	end
-	prop("stump", W(18, 0, 28), 1.1, folder)
-	prop("log", W(22, 0, 31) * CFrame.Angles(0, math.rad(60), 0), 1.2, folder)
-	prop("signpost", W(pathX(110) + 6, 0, 110) * CFrame.Angles(0, math.rad(-20), 0), 1.0, folder)
+	dress(prop("stump", W(18, 0, 28), 1.1, folder))
+	dress(prop("log", W(22, 0, 31) * CFrame.Angles(0, math.rad(60), 0), 1.2, folder))
+	dress(prop("signpost", W(pathX(110) + 6, 0, 110) * CFrame.Angles(0, math.rad(-20), 0), 1.0, folder))
 
 	-- the horizon: hills all round, the windmill on the north-east hill against the cracked sky, the town south-east
 	local hills = if light then 6 else 11
@@ -361,8 +382,9 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 		end
 	end
 
-	-- (after the reference's silhouette against a huge moon) a big moon low in the west, for Rayan's card
-	local moonDir = Vector3.new(-0.97, 0.105, 0.22).Unit
+	-- (after the reference's silhouette against a huge moon) a big moon low in the east, for Rayan's card: seen from
+	-- the west through where he stops, the line clears the demon's left claw (south of it) and nothing stands in it
+	local moonDir = Vector3.new(0.985, 0.1, 0.14).Unit
 	local moonAt = at.Position + at:VectorToWorldSpace(moonDir) * 360
 	local moon = block(folder, Vector3.new(72, 72, 72), CFrame.new(moonAt), Color3.fromRGB(226, 232, 255), Enum.Material.Neon, "Moon")
 	moon.Shape = Enum.PartType.Ball

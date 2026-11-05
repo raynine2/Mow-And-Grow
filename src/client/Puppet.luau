@@ -65,14 +65,14 @@ P.drag = {
 P.snipOpen = {
 	Waist = v(4, 18, 0), Neck = v(-8, -14, 0),
 	rh = v(1.2, -0.05, -1.05), lh = v(-1.2, -0.05, -1.05), rpole = v(1, -1, 0.5), lpole = v(-1, -1, 0.5),
-	LeftHip = v(28, 0, -8), LeftKnee = v(-34, 0, 0), RightHip = v(-22, 0, 8), RightKnee = v(-16, 0, 0),
+	lf = v(-0.05, 0, -0.85), rf = v(0.1, 0, 0.75),
 	hip = v(0, -0.45, 0),
 }
 -- the snip closed: hands together, thrust through
 P.snipShut = {
 	Waist = v(10, -26, 0), Neck = v(-12, 22, 0),
 	rh = v(0.2, 0.05, -1.5), lh = v(-0.2, 0.05, -1.5), rpole = v(1, -1, 0.3), lpole = v(-1, -1, 0.3),
-	LeftHip = v(34, 0, -10), LeftKnee = v(-40, 0, 0), RightHip = v(-26, 0, 10), RightKnee = v(-20, 0, 0),
+	lf = v(-0.05, 0, -1.0), rf = v(0.15, 0, 0.85),
 	hip = v(0, -0.6, 0.2),
 }
 -- in the air, shears open overhead (a leaping snip)
@@ -86,13 +86,13 @@ P.landCut = {
 	Waist = v(26, -20, 0), Neck = v(-26, 18, 0),
 	rh = v(2.0, -0.1, -0.5), rpole = v(0, -1, 1), lh = v(-0.55, -1.25, -0.9), lpole = v(-1, 0, 1),
 	LeftHip = v(70, 0, -14), LeftKnee = v(-80, 0, 0), RightHip = v(-10, 0, 16), RightKnee = v(-100, 0, 0), RightAnkle = v(40, 0, 0),
-	hip = v(0, -1.55, 0),
+	hip = v(0, -1.55, 0), snap = true,
 }
 -- blocked: the blade stopped, arms jarred back
 P.jolt = {
 	Waist = v(-16, 10, 0), Neck = v(-14, -10, 0),
 	rh = v(0.6, 0.45, -0.95), lh = v(-0.45, 0.4, -0.95), rpole = v(1, -1, 0), lpole = v(-1, -1, 0),
-	LeftHip = v(-10, 0, -6), RightHip = v(16, 0, 6), RightKnee = v(-20, 0, 0),
+	lf = v(0, 0, -0.3), rf = v(0.05, 0, 0.6), hip = v(0, -0.15, 0.2),
 }
 -- knocked flying: back arched, limbs trailing
 P.flung = {
@@ -107,7 +107,7 @@ P.kneel = {
 	RightShoulder = v(10, 0, 20), RightElbow = v(20, 0, 0),
 	lh = v(-0.45, -1.35, -0.85), lpole = v(-1, 0, 1),
 	LeftHip = v(80, 0, -6), LeftKnee = v(-80, 0, 0), RightHip = v(-10, 0, 10), RightKnee = v(-100, 0, 0), RightAnkle = v(30, 0, 0),
-	hip = v(0, -1.5, 0),
+	hip = v(0, -1.5, 0), snap = true,
 }
 -- the neck crack: head tipped to one side, then the other
 P.crackL = { Waist = v(-2, 0, 0), Neck = v(0, 0, 26), LeftShoulder = v(2, 0, -8), RightShoulder = v(2, 0, 8), LeftElbow = v(10, 0, 0), RightElbow = v(10, 0, 0), LeftHip = v(0, -5, -4), RightHip = v(0, 5, 4) }
@@ -116,22 +116,22 @@ P.crackR = { Waist = v(-2, 0, 0), Neck = v(0, 0, -26), LeftShoulder = v(2, 0, -8
 P.ultStance = {
 	Waist = v(14, 40, 0), Neck = v(-14, -38, 0),
 	rh = v(1.15, -0.85, 0.35), lh = v(0.35, -0.75, -0.55), rpole = v(1, 0, 1), lpole = v(-0.5, -1, 0),
-	LeftHip = v(46, 0, -22), LeftKnee = v(-62, 0, 0), RightHip = v(-20, 0, 26), RightKnee = v(-40, 0, 0),
-	hip = v(0, -1.2, 0),
+	lf = v(-0.45, 0, -1.05), rf = v(0.5, 0, 0.85),
+	hip = v(0, -1.0, 0),
 }
 -- the ultimate's follow-through: turned right round, the shears shut level out to the left
 P.ultCut = {
 	Waist = v(10, -56, 0), Neck = v(-10, 48, 0),
 	rh = v(-0.55, -0.3, -1.3), lh = v(-1.35, -0.35, -0.6), rpole = v(1, -1, 0), lpole = v(-1, -1, 0),
-	LeftHip = v(30, 0, -26), LeftKnee = v(-40, 0, 0), RightHip = v(-30, 0, 26), RightKnee = v(-36, 0, 0),
-	hip = v(0, -1.0, 0),
+	lf = v(-0.45, 0, -1.05), rf = v(0.5, 0, 0.85),
+	hip = v(0, -0.85, 0),
 }
 -- crushed under the blow: braced, arms up over his head
 P.brace = {
 	Waist = v(20, 0, 0), Neck = v(-30, 0, 0),
 	rh = v(0.55, 1.6, -0.55), lh = v(-0.55, 1.6, -0.55), rpole = v(1, 0, 0), lpole = v(-1, 0, 0),
-	LeftHip = v(30, 0, -14), LeftKnee = v(-60, 0, 0), RightHip = v(-6, 0, 14), RightKnee = v(-50, 0, 0),
-	hip = v(0, -1.0, 0),
+	lf = v(-0.3, 0, -0.45), rf = v(0.3, 0, 0.5),
+	hip = v(0, -0.9, 0),
 }
 -- THE PLAYER: the superhero landing (one knee down, one fist on the ground, the other arm back)
 P.heroLand = {
@@ -139,14 +139,14 @@ P.heroLand = {
 	rh = v(0.55, -1.5, -0.75), rpole = v(1, 0, 1),
 	lh = v(-1.35, -0.45, 0.75), lpole = v(-1, -1, 0),
 	LeftHip = v(70, 0, -10), LeftKnee = v(-70, 0, 0), RightHip = v(-20, 0, 18), RightKnee = v(-110, 0, 0), RightAnkle = v(40, 0, 0),
-	hip = v(0, -1.6, 0),
+	hip = v(0, -1.6, 0), snap = true,
 }
 -- standing up out of the landing, head up
 P.heroRise = {
 	Waist = v(6, 0, 0), Neck = v(-12, 0, 0),
 	RightShoulder = v(4, 0, 12), RightElbow = v(20, 0, 0),
 	LeftShoulder = v(4, 0, -12), LeftElbow = v(20, 0, 0),
-	LeftHip = v(10, 0, -8), LeftKnee = v(-14, 0, 0), RightHip = v(-8, 0, 8), RightKnee = v(-10, 0, 0),
+	lf = v(-0.1, 0, -0.25), rf = v(0.1, 0, 0.3),
 	hip = v(0, -0.2, 0),
 }
 -- the wind-up: right fist pulled right back, left arm out front aiming, body coiled
@@ -154,16 +154,16 @@ P.windup = {
 	Waist = v(8, 50, 0), Neck = v(-8, -46, 0),
 	rh = v(1.05, 0.35, 0.95), rpole = v(1, -0.4, 1),
 	lh = v(-0.25, 0.45, -1.45), lpole = v(-1, -1, 0),
-	LeftHip = v(40, 0, -20), LeftKnee = v(-40, 0, 0), RightHip = v(-30, 0, 16), RightKnee = v(-30, 0, 0),
-	hip = v(0, -0.7, 0.3),
+	lf = v(-0.05, 0, -0.95), rf = v(0.15, 0, 0.75),
+	hip = v(0, -0.6, 0.3),
 }
 -- the punch: right arm thrown dead straight, body turned through, front knee bent, left fist back at the hip
 P.punch = {
 	Waist = v(14, -38, 0), Neck = v(-12, 34, 0),
 	rh = v(0.55, 0.55, -2.4), rpole = v(1, -1, 0),
 	lh = v(-0.8, -0.25, 0.55), lpole = v(-1, -0.3, 1),
-	LeftHip = v(46, 0, -22), LeftKnee = v(-46, 0, 0), RightHip = v(-40, 0, 20), RightKnee = v(-10, 0, 0),
-	hip = v(0, -0.8, -0.6),
+	lf = v(-0.1, 0, -1.25), rf = v(0.15, 0, 0.85),
+	hip = v(0, -0.7, -0.5),
 }
 -- looking up at something (hands loose)
 P.lookUp = {
@@ -195,7 +195,7 @@ P.down = {
 	Root = v(-80, 0, 0), Waist = v(-10, 0, 0), Neck = v(20, 0, 0),
 	RightShoulder = v(40, 0, 60), LeftShoulder = v(30, 0, -70), RightElbow = v(30, 0, 0), LeftElbow = v(20, 0, 0),
 	LeftHip = v(30, 0, -10), LeftKnee = v(-50, 0, 0), RightHip = v(10, 0, 10), RightKnee = v(-20, 0, 0),
-	hip = v(0, -2.2, 0),
+	hip = v(0, -2.2, 0), snap = true,
 }
 Puppet.POSES = P
 
@@ -405,25 +405,48 @@ function Puppet.new(source: Model, opts: { name: string?, parent: Instance? }?):
 	end
 	self.byName = byName
 	self.joints = joints
-	-- the arms' chains, for reaching (a pose's rh / lh: where the wrist goes)
-	self.arms = {}
-	for _, side in { "Right", "Left" } do
-		local sh, el, wr = found[side .. "Shoulder"], found[side .. "Elbow"], found[side .. "Wrist"]
+	-- the limbs' chains, for reaching: a pose's rh / lh put the wrists somewhere (in the chest's space), rf / lf the
+	-- ankles (in the root's space: the ground is at -3 under a standing body), so feet stay planted when it crouches
+	self.limbs = {}
+	for _, spec in {
+		{ "RightArm", "RightShoulder", "RightElbow", "RightWrist", "rh", "rpole", v(1.2, -1, 1), 1, "chest" },
+		{ "LeftArm", "LeftShoulder", "LeftElbow", "LeftWrist", "lh", "lpole", v(-1.2, -1, 1), 1, "chest" },
+		{ "RightLeg", "RightHip", "RightKnee", "RightAnkle", "rf", "rknee", v(0.25, 0, -1), -1, "root" },
+		{ "LeftLeg", "LeftHip", "LeftKnee", "LeftAnkle", "lf", "lknee", v(-0.25, 0, -1), -1, "root" },
+	} do
+		local sh, el, wr = found[spec[2]], found[spec[3]], found[spec[4]]
 		if sh and el and wr then
 			local b1 = el.c0.Position - sh.c1.Position
 			local b2 = wr.c0.Position - el.c1.Position
-			self.arms[side] = {
+			self.limbs[spec[1]] = {
 				sh = sh, el = el, wr = wr,
 				l1 = b1.Magnitude, l2 = b2.Magnitude,
 				b1 = b1.Unit, b2 = b2.Unit,
+				key = spec[5], poleKey = spec[6], pole = spec[7], sign = spec[8], space = spec[9],
+				leg = spec[9] == "root",
 				-- the reach: from (where it was) to (where it's going), its weight eased the same way
 				from = ZERO, to = ZERO, w = 0, wFrom = 0, wTo = 0,
-				pole = if side == "Right" then v(1.2, -1, 1) else v(-1.2, -1, 1),
-				poleFrom = ZERO, poleTo = ZERO,
-				now = ZERO, -- (where the wrist was last frame, in the chest's space)
+				poleFrom = spec[7], poleTo = spec[7],
+				now = ZERO, -- (where the end was last frame, in its space)
 			}
 		end
 	end
+	-- the rest pose's feet: rf / lf are offsets from where the ankles stand at rest (so v(0, 0, -0.8) = a step ahead,
+	-- still on the ground); the ground itself, for snapping kneeling poses down onto it
+	local rest: { [BasePart]: CFrame } = { [hrp] = CFrame.identity }
+	for _, j in joints do
+		rest[j.child] = rest[j.parent] * j.c0 * j.c1inv
+	end
+	local ground = 0
+	for _, a in self.limbs do
+		if a.leg then
+			a.rest = (rest[a.el.child] * a.wr.c0).Position
+			local foot = a.wr.child
+			ground = math.min(ground, rest[foot].Position.Y - foot.Size.Y / 2)
+		end
+	end
+	self.ground = if ground < 0 then ground else -3
+	self.snapW, self.snapFrom, self.snapTo = 0, 0, 0
 	self.stuck = stuck
 	self.parts = parts
 	self.world = {} :: { [BasePart]: CFrame }
@@ -449,9 +472,11 @@ function Puppet.pose(self: any, pose: any, time: number?, ease: string?)
 	self.blendT0 = self.t
 	self.blendLen = time or 0
 	self.ease = EASE[ease or "out"] or EASE.out
-	for side, a in self.arms do
-		local want = if side == "Right" then p.rh else p.lh
-		local pole = if side == "Right" then p.rpole else p.lpole
+	self.snapFrom = self.snapW
+	self.snapTo = if p.snap then 1 else 0
+	for _, a in self.limbs do
+		local want = p[a.key]
+		local pole = p[a.poleKey]
 		a.from = if a.w > 0.01 then a.cur or a.now else a.now
 		a.to = want or a.from
 		a.wFrom = a.w
@@ -464,7 +489,8 @@ function Puppet.pose(self: any, pose: any, time: number?, ease: string?)
 			self.angles[name] = self.to[name]
 		end
 		self.hip = self.hipTo
-		for _, a in self.arms do
+		self.snapW = self.snapTo
+		for _, a in self.limbs do
 			a.w = a.wTo
 			a.cur = a.to
 			a.poleNow = a.poleTo
@@ -472,7 +498,8 @@ function Puppet.pose(self: any, pose: any, time: number?, ease: string?)
 	end
 end
 
--- Two-bone reach: the upper and lower arm placed so the wrist is at `target` (world), the elbow toward `pole`.
+-- Two-bone reach: the upper and lower limb placed so its end (a wrist, an ankle) is at `target` (world), its middle
+-- (the elbow, the knee) toward `pole`.
 local function orient(bLocal: Vector3, bWorld: Vector3, hinge: Vector3): CFrame
 	local xL = (Vector3.xAxis - bLocal * Vector3.xAxis:Dot(bLocal)).Unit
 	local zL = xL:Cross(bLocal)
@@ -499,7 +526,7 @@ local function reach(a: any, shoulder: Vector3, target: Vector3, pole: Vector3):
 	local bone = (elbow - shoulder).Unit
 	local fore = (wrist - elbow)
 	fore = if fore.Magnitude > 1e-4 then fore.Unit else bone
-	local hinge = perp:Cross(dir).Unit
+	local hinge = perp:Cross(dir).Unit * a.sign -- (a knee bends the other way round from an elbow)
 	local upper = CFrame.new(shoulder) * orient(a.b1, bone, hinge) * CFrame.new(-a.sh.c1.Position)
 	local lower = CFrame.new(elbow) * orient(a.b2, fore, hinge) * CFrame.new(-a.el.c1.Position)
 	return upper, lower
@@ -691,30 +718,61 @@ function Puppet.update(self: any, dt: number)
 		end
 		world[jt.child] = world[jt.parent] * jt.c0 * T * jt.c1inv
 	end
-	-- reaching arms (a pose's rh / lh): blended in over the FK arm by the reach's weight
+	-- kneeling and lying poses (snap = true) are set down on the ground: the body moves so its lowest corner is on it
+	self.snapW = self.snapFrom + (self.snapTo - self.snapFrom) * e
+	if self.snapW > 0.001 then
+		local low = math.huge
+		for _, p in self.parts do
+			local cf = world[p]
+			if cf and p ~= self.hrp then
+				local h = p.Size * 0.5
+				local up = cf.UpVector * h.Y
+				local rt = cf.RightVector * h.X
+				local bk = cf.LookVector * h.Z
+				local y = cf.Position.Y - math.abs(up.Y) - math.abs(rt.Y) - math.abs(bk.Y)
+				if y < low then
+					low = y
+				end
+			end
+		end
+		local shift = Vector3.new(0, (root.Position.Y + self.ground - low) * self.snapW, 0)
+		for p, cf in world do
+			if p ~= self.hrp then
+				world[p] = cf + shift
+			end
+		end
+	end
+	-- reaching limbs (a pose's rh / lh / rf / lf): blended in over the FK limb by the reach's weight
 	local chestPart = self.byName.UpperTorso
 	local chest = chestPart and world[chestPart]
 	if chest then
-		for side, a in self.arms do
+		local flat = root.Rotation
+		for _, a in self.limbs do
 			a.w = a.wFrom + (a.wTo - a.wFrom) * e
 			a.cur = a.from:Lerp(a.to, e)
 			a.poleNow = a.poleFrom:Lerp(a.poleTo, e)
+			local space = if a.leg then root else chest
 			if a.w > 0.001 then
-				local shoulder = (chest * a.sh.c0).Position
-				local tgt = chest * a.cur
-				local upper, lower = reach(a, shoulder, tgt, chest:VectorToWorldSpace(a.poleNow))
-				local wa = final[side .. "Wrist"] or ZERO
-				local hand = lower * a.wr.c0 * CFrame.Angles(rad(wa.X), rad(wa.Y), rad(wa.Z)) * a.wr.c1inv
+				local start = (world[a.sh.parent] * a.sh.c0).Position
+				local upper, lower = reach(a, start, space * (if a.leg then a.rest + a.cur else a.cur), space:VectorToWorldSpace(a.poleNow))
+				local ea = final[a.wr.name] or ZERO
+				local tip
+				if a.leg then
+					-- (a planted foot lies flat, pointing the way the body faces, then the pose's ankle turn)
+					tip = CFrame.new((lower * a.wr.c0).Position) * flat * CFrame.Angles(rad(ea.X), rad(ea.Y), rad(ea.Z)) * a.wr.c1inv
+				else
+					tip = lower * a.wr.c0 * CFrame.Angles(rad(ea.X), rad(ea.Y), rad(ea.Z)) * a.wr.c1inv
+				end
 				local ua, la, hp = a.sh.child, a.el.child, a.wr.child
 				if a.w >= 0.999 then
-					world[ua], world[la], world[hp] = upper, lower, hand
+					world[ua], world[la], world[hp] = upper, lower, tip
 				else
 					world[ua] = world[ua]:Lerp(upper, a.w)
 					world[la] = world[la]:Lerp(lower, a.w)
-					world[hp] = world[hp]:Lerp(hand, a.w)
+					world[hp] = world[hp]:Lerp(tip, a.w)
 				end
 			end
-			a.now = chest:PointToObjectSpace((world[a.el.child] * a.wr.c0).Position)
+			a.now = space:PointToObjectSpace((world[a.el.child] * a.wr.c0).Position) - (if a.leg then a.rest else ZERO)
 		end
 	end
 	for _, s in self.stuck do

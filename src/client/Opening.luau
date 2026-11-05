@@ -431,6 +431,10 @@ local SOUNDS = {
 	"stepGrass", "stepThud", "eggCrack", "ambWind", "eerie", "zapCharge", "zapStrike", "lunge", "chip",
 }
 
+-- (round 2, owner: "u cant really tell whats going on": in the night the demon was a black blob of blocks) calm (no
+-- glitch jumps of its own), its hide lifted toward violet, and its whole silhouette outlined in pink
+local DEMON_LOOK = { yieldEvery = 400, calm = true, lift = 0.32, outline = Color3.fromRGB(255, 90, 200) }
+
 -- Build everything (yields; a few seconds at most). Returns false if it couldn't.
 function Opening.prepare(): boolean
 	Opening.stop()
@@ -451,7 +455,7 @@ function Opening.prepare(): boolean
 	Demon.preload(Demon.lite())
 	local folder = Instance.new("Folder")
 	folder.Name = "OpeningDemons"
-	D = Demon.new(CFrame.lookAt(at(DEMON_AT, 0), at(DEMON_AT + Vector3.new(0, 0, 1), 0)), SCALE, folder, { yieldEvery = 400 })
+	D = Demon.new(CFrame.lookAt(at(DEMON_AT, 0), at(DEMON_AT + Vector3.new(0, 0, 1), 0)), SCALE, folder, DEMON_LOOK)
 	D.hook = hookFor(D)
 	demonPose[D] = {}
 	folder.Parent = workspace
@@ -460,7 +464,7 @@ function Opening.prepare(): boolean
 	folder2.Name = "OpeningDemon2"
 	local bigFace = at(R3, 0)
 	local bigAt = at(BIG_AT, 0)
-	D2 = Demon.new(CFrame.lookAt(bigAt, Vector3.new(bigFace.X, bigAt.Y, bigFace.Z)), BIG_SCALE, folder2, { yieldEvery = 400 })
+	D2 = Demon.new(CFrame.lookAt(bigAt, Vector3.new(bigFace.X, bigAt.Y, bigFace.Z)), BIG_SCALE, folder2, DEMON_LOOK)
 	D2.hook = hookFor(D2)
 	demonPose[D2] = {}
 	D2.folder = folder2
@@ -621,12 +625,13 @@ end
 -- I. NIGHT
 -------------------------------------------------------------------------------------------------------------
 local function night()
+	-- (round 2: a brighter night: the fight was played out in the dark, the owner saw only flashes)
 	Film.light({
 		ClockTime = 0.4,
-		Brightness = 2.4,
-		ExposureCompensation = 0.3,
-		Ambient = Color3.fromRGB(52, 46, 84),
-		OutdoorAmbient = Color3.fromRGB(96, 98, 156),
+		Brightness = 2.8,
+		ExposureCompensation = 0.65,
+		Ambient = Color3.fromRGB(70, 62, 108),
+		OutdoorAmbient = Color3.fromRGB(118, 120, 182),
 		ColorShift_Top = Color3.fromRGB(160, 176, 255),
 		ColorShift_Bottom = Color3.fromRGB(60, 30, 80),
 		atmosphere = { Density = 0.34, Offset = 0.12, Haze = 1.4, Glare = 0, Color = Color3.fromRGB(86, 66, 132), Decay = Color3.fromRGB(122, 70, 150) },

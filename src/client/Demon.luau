@@ -30,6 +30,7 @@ local EYE_CORE = Color3.fromRGB(255, 226, 240)
 local OBSIDIAN = Color3.fromRGB(26, 14, 34)
 local GHOST_RED = Color3.fromRGB(255, 40, 70)
 local GHOST_CYAN = Color3.fromRGB(40, 230, 255)
+local LIT_VIOLET = Color3.fromRGB(150, 96, 206) -- (opts.lift: what its hide is lifted toward)
 local HEIGHT = 42 -- design units, waist to horn tips
 
 -------------------------------------------------------------------------------------------------------------
@@ -121,6 +122,10 @@ export type Demon = {
 export type Options = {
 	lite: boolean?, -- the LITE build (default: Demon.lite())
 	yieldEvery: number?, -- build in steps, a frame's wait every this many parts (call it in its own thread)
+	-- (Films v2 round 2, owner 5 Nov: "u cant really tell whats going on"; in the night it was a black blob)
+	calm: boolean?, -- no glitch jumps of its own (only glitchNow), the pixels and fragments flicker less
+	lift: number?, -- its dark hide lifted this far (0..1) toward a lit violet, so its shape shows against the night
+	outline: Color3?, -- a bright outline round its whole silhouette (a Highlight; api.highlight)
 }
 
 local function newPart(model: Model, size: Vector3, colour: Color3, neon: boolean, shadow: boolean): Part
@@ -144,6 +149,8 @@ end
 function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options?): Demon
 	local lite = if opts and opts.lite ~= nil then opts.lite else Demon.lite()
 	local yieldEvery = opts and opts.yieldEvery
+	local calm = opts ~= nil and opts.calm == true
+	local liftBy = if opts and opts.lift then math.clamp(opts.lift, 0, 1) else 0
 	local groups = level(if lite then "LITE" else "FULL")
 	local model = Instance.new("Model")
 	model.Name = "GlitchDemon"
@@ -195,6 +202,9 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 				colour, neon, tag = COLOURS[b.colour], e[4], e[5]
 			end
 			local rel = CFrame.new(b.at * scale)
+			if liftBy > 0 and not neon then
+				colour = colour:Lerp(LIT_VIOLET, liftBy)
+			end
 			local p = newPart(model, b.size * scale, colour, neon, b.ghost)
 			if root then
 				groupParts[gi] = groupParts[gi] or {}
@@ -252,6 +262,20 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		coreBase[p] = p.Color
 	end
 	model.Parent = parent or workspace
+	-- (opts.outline) its silhouette drawn round in one bright line, as an anime shape against the dark
+	local highlight: Highlight? = nil
+	if opts and opts.outline then
+		local h = Instance.new("Highlight")
+		h.Name = "Outline"
+		h.Adornee = model
+		h.DepthMode = Enum.HighlightDepthMode.Occluded
+		h.OutlineColor = opts.outline
+		h.OutlineTransparency = 0
+		h.FillColor = opts.outline
+		h.FillTransparency = 0.94
+		h.Parent = model
+		highlight = h
+	end
 
 	local state = { rise = 0, eyes = 0, roar = 0, glitch = 0 }
 	-- (Films v2: a film's own pose on top: hook(frames, groupIndex, t) may move any group's frame, in the world; and a
@@ -317,7 +341,10 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 
 	local function update(t: number)
 		local now = os.clock()
-		-- glitch timing: a jump every so often (more often with state.glitch)
+		-- glitch timing: a jump every so often (more often with state.glitch); a calm one only when told (glitchNow)
+		if calm and now >= nextGlitch and state.glitch <= 0 then
+			nextGlitch = now + 0.25
+		end
 		if now >= nextGlitch then
 			glitchUntil = now + 0.05 + math.random() * 0.1
 			nextGlitch = now + (0.5 + math.random() * 1.6) / (1 + state.glitch * 3)
@@ -398,17 +425,19 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		for _, p in tagged.throat or {} do
 			p.Transparency = 1 - math.clamp(state.roar * 1.4, 0, 1)
 		end
+		local flicker = if calm then 0.015 else 0.06
 		for _, p in tagged.pix or {} do
 			if glitching then
 				p.Transparency = 0
 				p.Color = if math.random() < 0.5 then MAGENTA else CYAN
-			elseif math.random() < 0.06 then
+			elseif math.random() < flicker then
 				p.Transparency = if p.Transparency > 0.5 then 0 else 1
 				p.Color = if math.random() < 0.7 then MAGENTA else CYAN
 			end
 		end
+		local gone = if calm then 0.02 else 0.08
 		for _, p in tagged.frag or {} do
-			p.Transparency = if math.random() < 0.08 then 1 else 0
+			p.Transparency = if math.random() < gone then 1 else 0
 		end
 		local pulse = 0.5 + 0.5 * math.sin(t * 3.4)
 		for p, c in coreBase do
@@ -429,6 +458,7 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 	end
 	api.model = model
 	api.state = state
+	api.highlight = highlight
 	api.base = base
 	api.scale = scale
 	api.height = height

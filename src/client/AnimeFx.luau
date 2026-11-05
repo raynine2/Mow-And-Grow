@@ -380,18 +380,28 @@ function AnimeFx.smear(angle: number, side: number?, color: Color3?)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- world FX: flat billboards in the world (they glow, light nothing, sit over the picture so they're never lost)
+-- world FX: flat billboards in the world (they glow and light nothing). (Tested in Studio, 5 Nov: a BillboardGui with
+-- AlwaysOnTop isn't drawn there at all, so these are ordinary depth-tested ones.) Each sits on the line from the lens
+-- to its point, pulled PULL of the way toward the lens and shrunk to match: the same on screen, but in front of the
+-- bodies and grass round the point. A higher z sits a little nearer still, so a white core draws over its glow.
 -------------------------------------------------------------------------------------------------------------
+local PULL = 0.45
+
 local function sprite(at: Vector3, image: string, rect: { number }?, size: Vector2, color: Color3, rot: number, z: number): (BillboardGui, ImageLabel)
+	local cam = workspace.CurrentCamera
+	local eye = if cam then cam.CFrame.Position else at
+	local k = PULL - z * 0.008
 	local a = Instance.new("Attachment")
 	a.Name = "AnimeFx"
-	a.Position = at
+	a.Position = eye + (at - eye) * k
 	a.Parent = workspace.Terrain
 	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.fromScale(size.X, size.Y)
+	bb:SetAttribute("Pull", k)
+	bb.Size = UDim2.fromScale(size.X * k, size.Y * k)
 	bb.LightInfluence = 0
 	bb.Brightness = 1.4
-	bb.AlwaysOnTop = true
+	bb.AlwaysOnTop = false
+	bb.ClipsDescendants = false
 	bb.Parent = a
 	local im = Instance.new("ImageLabel")
 	im.BackgroundTransparency = 1
@@ -409,6 +419,13 @@ local function sprite(at: Vector3, image: string, rect: { number }?, size: Vecto
 	im.Parent = bb
 	table.insert(live, a)
 	return bb, im
+end
+
+-- a sprite's size, `x` by `y` studs where its point is (it's drawn nearer the lens, smaller)
+local function studs(bb: BillboardGui, x: number, y: number): UDim2
+	local k = bb:GetAttribute("Pull")
+	local f = if type(k) == "number" then k else 1
+	return UDim2.fromScale(x * f, y * f)
 end
 
 local function gone(bb: BillboardGui, life: number)
@@ -445,12 +462,12 @@ function AnimeFx.cut(at: Vector3, from: Vector3, to: Vector3, color: Color3?, si
 	local bbG, glow = sprite(at, FxIds.slash, RECT_SLASH, Vector2.new(s * 1.3, s * 1.3 * h * 1.25), color or GOLD, rot, 1)
 	local bbW, core = sprite(at, FxIds.slash, RECT_SLASH, Vector2.new(s, s * h), WHITE, rot, 2)
 	glow.ImageTransparency = 0.1
-	bbW.Size = UDim2.fromScale(s * 0.55, s * h * 0.4)
-	tween(bbW, 0.035, { Size = UDim2.fromScale(s, s * h) }, Enum.EasingStyle.Linear)
+	bbW.Size = studs(bbW, s * 0.55, s * h * 0.4)
+	tween(bbW, 0.035, { Size = studs(bbW, s, s * h) }, Enum.EasingStyle.Linear)
 	task.delay(0.09, function()
-		tween(bbW, 0.16, { Size = UDim2.fromScale(s * 1.15, s * h * 0.05) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		tween(bbW, 0.16, { Size = studs(bbW, s * 1.15, s * h * 0.05) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 		tween(core, 0.16, { ImageTransparency = 0.6 })
-		tween(bbG, 0.2, { Size = UDim2.fromScale(s * 1.5, s * h * 0.1) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		tween(bbG, 0.2, { Size = studs(bbG, s * 1.5, s * h * 0.1) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 		tween(glow, 0.2, { ImageTransparency = 1 })
 	end)
 	gone(bbW, 0.3)
@@ -474,16 +491,16 @@ function AnimeFx.hit(at: Vector3, color: Color3?, size: number?, big: boolean?)
 	end)
 	gone(bb, 0.3)
 	local bbF, flare = sprite(at, FxIds.flare, nil, Vector2.new(s * 1.6, s * 1.6), c:Lerp(WHITE, 0.5), 0, 3)
-	tween(bbF, 0.14, { Size = UDim2.fromScale(s * 2.4, s * 2.4) })
+	tween(bbF, 0.14, { Size = studs(bbF, s * 2.4, s * 2.4) })
 	tween(flare, 0.16, { ImageTransparency = 1 })
 	gone(bbF, 0.2)
 	local bbS, streak = sprite(at, FxIds.glow, nil, Vector2.new(s * 7, s * 0.32), c, 0, 2)
-	tween(bbS, 0.25, { Size = UDim2.fromScale(s * 10, s * 0.06) }, Enum.EasingStyle.Quad)
+	tween(bbS, 0.25, { Size = studs(bbS, s * 10, s * 0.06) }, Enum.EasingStyle.Quad)
 	tween(streak, 0.25, { ImageTransparency = 1 })
 	gone(bbS, 0.3)
 	if big then
 		local bbB, burst = sprite(at, FxIds.burst, nil, Vector2.new(s * 1.4, s * 1.4), c, math.random(0, 359), 1)
-		tween(bbB, 0.12, { Size = UDim2.fromScale(s * 2.6, s * 2.6) }, Enum.EasingStyle.Quart)
+		tween(bbB, 0.12, { Size = studs(bbB, s * 2.6, s * 2.6) }, Enum.EasingStyle.Quart)
 		task.delay(0.08, function()
 			tween(burst, 0.14, { ImageTransparency = 1 })
 		end)

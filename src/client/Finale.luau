@@ -368,7 +368,7 @@ clearView = function(cf: CFrame, focus: Vector3?)
 		for _, t in S.tufts do
 			local part = t.part
 			if part and part.Parent then
-				hideIf({ part }, inTheWay(t.at.Position, 1.6 * t.scale, p, dir, segLen))
+				hideIf(t.parts or { part }, inTheWay(t.at.Position, 1.6 * t.scale, p, dir, segLen))
 			end
 		end
 	end
@@ -782,6 +782,8 @@ local function walkTrack(pup: any, from: Vector3, to: Vector3, t0: number, t1: n
 		if steps and k < 1 and tt >= nextStep then
 			nextStep = tt + 0.55
 			sfx(steps, 0.8, 0.9 + math.random() * 0.15)
+			-- (a puff of the morning's gold dust off each step)
+			fx("DustKick", Vector3.new(pup.root.Position.X, groundOf(pup) + 0.2, pup.root.Position.Z), { scale = 0.55, color = Color3.fromRGB(255, 214, 150) })
 		end
 	end
 end
@@ -809,7 +811,7 @@ local function morning(): boolean
 	-- 1. [BL, a long low tracking shot] the valley at sunrise, low over the stubble into the sun; the player a small
 	-- figure walking in out of the light
 	if not shot(T.feet, function(k)
-		local p = mv(Vector3.new(-10 + k * 2.5, 1.3 + k * 0.2, -25.5))
+		local p = mv(Vector3.new(-10 + k * 2.5, 1.3 + k * 0.2, -29))
 		return look(p, mv(Vector3.new(40, 4.5, -27)), 0), mm(30), H.root.Position
 	end, { hand = 0.3 }) then
 		return false
@@ -818,19 +820,21 @@ local function morning(): boolean
 	if not shot(T.fist, function(k)
 		local root = H.root
 		local g = groundOf(H)
-		local p = root.Position + root.RightVector * 3.2 + root.LookVector * (1.2 - k * 1.6)
-		p = Vector3.new(p.X, g + 0.45, p.Z)
-		local target = Vector3.new(root.Position.X, g + 0.5, root.Position.Z)
-		return look(p, target, 0), mm(40), target
+		local p = root.Position + root.RightVector * 4.4 + root.LookVector * (1.6 - k * 1.8)
+		p = Vector3.new(p.X, g + 0.5, p.Z)
+		local target = Vector3.new(root.Position.X, g + 0.7, root.Position.Z)
+		key(target + root.RightVector * 2.5 + root.LookVector * 1.5 + UP * 1.5, SUN, 1.6, 9)
+		return look(p, target, 0), mm(34), target
 	end, { hand = 0.2 }) then
 		return false
 	end
-	-- 3. [SR 27.65: the walk-out's jump cuts] his right hand, loose now, swinging
-	if not shot(T.walk, function(_k)
-		local hand = H:grip("Right").Position
+	key(nil)
+	-- 3. [SR 27.65: the walk-out's jump cuts, another framing] in profile, tracking beside him, the sun rimming him
+	if not shot(T.walk, function(k)
 		local root = H.root
-		local p = hand + root.RightVector * 1.8 + root.LookVector * 1.4 + UP * 0.2
-		return look(p, hand, -6), mm(45), hand
+		local chest = chestOf(H).Position
+		local p = chest + root.RightVector * 7.5 + root.LookVector * (0.8 - k * 0.6) + Vector3.new(0, -0.3, 0)
+		return look(p, chest + Vector3.new(0, 0.2, 0), 0), mm(42), chest
 	end, { hand = 0.25 }) then
 		return false
 	end

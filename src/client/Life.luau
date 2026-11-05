@@ -418,8 +418,47 @@ local function flockStep(at: Vector3, t: number)
 end
 
 -------------------------------------------------------------------------------------------------------------
+-- While a film plays (the Workspace attribute FilmPlaying, set by client/Film) none of this follows the film's
+-- camera: a leaf in the area's colours, a wind ribbon or the flock crossing a shot is something the shot never asked
+-- for (5 Nov: in the finale a glowing leaf at the lens was a big blue blob in the sunrise sky).
+local paused = false
+local leavesWere = true
+local PARKED = CFrame.new(0, -500, 0)
+local function pause(on: boolean)
+	if on == paused then
+		return
+	end
+	paused = on
+	if on then
+		leavesWere = leaves.Enabled
+		leaves.Enabled = false
+		leaves:Clear()
+		for _, r in ribbons do
+			r.active = false
+			r.trail.Enabled = false
+			r.trail:Clear()
+			r.part.CFrame = PARKED
+		end
+		flockT0 = -100
+		for _, b in flock do
+			b.body.CFrame = PARKED
+			b.wings[1].CFrame = PARKED
+			b.wings[2].CFrame = PARKED
+		end
+	else
+		leaves.Enabled = leavesWere
+	end
+end
+workspace:GetAttributeChangedSignal("FilmPlaying"):Connect(function()
+	pause(workspace:GetAttribute("FilmPlaying") == true)
+end)
+pause(workspace:GetAttribute("FilmPlaying") == true)
+
 local leafTick = 0
 RunService.Heartbeat:Connect(function(dt)
+	if paused then
+		return
+	end
 	local at = focus()
 	if not at then
 		return

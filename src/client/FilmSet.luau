@@ -333,7 +333,13 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 		local cf = W(p.X, 0, p.Z) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
 		local m = prop(if o.mown then "tuft_lawn_cut" else "tuft_lawn", cf, s, folder)
 		if m then
-			table.insert(set.tufts, { model = m, part = m:FindFirstChildWhichIsA("BasePart", true), at = cf, scale = s, cut = o.mown == true })
+			local parts = {}
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then
+					table.insert(parts, d)
+				end
+			end
+			table.insert(set.tufts, { model = m, part = m:FindFirstChildWhichIsA("BasePart", true), parts = parts, at = cf, scale = s, cut = o.mown == true })
 		end
 		if i % 120 == 0 then
 			task.wait()

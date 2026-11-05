@@ -2200,7 +2200,7 @@ local function punch(): boolean
 		local cp = root.Position + root.RightVector * tune("WindCamSide", 1) - root.LookVector * (tune("WindCamBack", 12.5) - k * 1.5)
 		cp = Vector3.new(cp.X, at(P1, 0).Y + tune("WindCamUp", 2.2), cp.Z)
 		key(h + root.LookVector * 2.5, GOLD, 1.8, 8)
-		return look(cp, root.Position + root.LookVector * 4 + Vector3.new(0, tune("WindAimUp", 6) + k * 1.5, 0), 2), tune("WindFov", 55), h
+		return look(cp, root.Position + root.LookVector * 4 + Vector3.new(0, tune("WindAimUp", 3.2) + k * 1.5, 0), 2), tune("WindFov", 64), h
 	end, { hand = 0.4 }) then
 		return false
 	end

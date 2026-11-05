@@ -6,7 +6,8 @@
 --   AnimeFx.card(name, title, color?, life?) a character's name card (RAYAN / OWNER OF THE VALLEY)
 --   AnimeFx.slash(angle, opts?)              a white cut across the screen for a frame or two
 --   AnimeFx.cut(at, from, to, color?, size?) a crescent where a blade passes (pinned to a world point, over the picture)
---   AnimeFx.hit(at, color?, size?, big?)     a hit: a star bursting into a ring, a flare, a streak (pinned the same)
+--   AnimeFx.cutScreen(at, from, to, color?, core?) the same crescent across the whole frame (an ultimate)
+--   AnimeFx.hit(at, color?, size?, big?)     a hit: a star bursting into a ring, needles, a flare, a streak (pinned)
 --   AnimeFx.lines(color?, alpha?) -> stop()  radial speed lines (at the screen's middle, or opts.at, a world point)
 --   AnimeFx.impact(subjects, style, opts?)   an impact frame: the subjects as flat silhouettes from the film's camera
 --                                            on a flat colour, the picture stuck meanwhile; style "ink" (black on
@@ -498,8 +499,87 @@ function AnimeFx.cut(at: Vector3, from: Vector3, to: Vector3, color: Color3?, si
 	end)
 end
 
--- A hit: a white star that bursts into a ring (the impact flipbook), a flare, and a long streak through it.
--- `size` studs; `big` adds the spiky burst behind it.
+-- A cut across the whole frame (an ultimate): cut()'s crescent wider than the picture, flattened, through the world
+-- point `at` along `from` -> `to` as the camera sees it, drawn over the picture's covers (a whiteout); `core` its middle
+-- (white, or ink over a whiteout). (Tested in Studio: the world-sized crescent of ONE SNIP, 70 studs, was far bigger
+-- than the frame from a lens close to him, and never seen.)
+function AnimeFx.cutScreen(at: Vector3, from: Vector3, to: Vector3, color: Color3?, core: Color3?)
+	local g = gui()
+	local cam = workspace.CurrentCamera
+	if not g or not cam then
+		return
+	end
+	local vs = cam.ViewportSize
+	local sp = cam:WorldToViewportPoint(at)
+	local y = if sp.Z > 0 then math.clamp(sp.Y / math.max(vs.Y, 1), 0.25, 0.75) else 0.5
+	local rot = screenAngle(from, to)
+	local h = RECT_SLASH[4] / RECT_SLASH[3] * 0.45
+	local root = Instance.new("Frame")
+	root.Name = "CutScreen"
+	root.BackgroundTransparency = 1
+	root.Size = UDim2.fromScale(1, 1)
+	root.ZIndex = Z_PICTURE
+	root.Parent = g
+	local w = vs.X * 1.3
+	local function arc(k: number, color3: Color3, z: number): ImageLabel
+		local im = Instance.new("ImageLabel")
+		im.BackgroundTransparency = 1
+		im.Image = FxIds.slash
+		im.ImageRectOffset = Vector2.new(RECT_SLASH[1], RECT_SLASH[2])
+		im.ImageRectSize = Vector2.new(RECT_SLASH[3], RECT_SLASH[4])
+		im.ScaleType = Enum.ScaleType.Stretch
+		im.ImageColor3 = color3
+		im.AnchorPoint = Vector2.new(0.5, 0.5)
+		im.Position = UDim2.fromScale(0.5, y)
+		im.Size = UDim2.fromOffset(w * k, w * h * k)
+		im.Rotation = rot
+		im.ZIndex = z
+		im.Parent = root
+		return im
+	end
+	local glow = arc(1.08, color or GOLD, 1)
+	local mid = arc(0.6, core or WHITE, 2)
+	tween(mid, 0.04, { Size = UDim2.fromOffset(w, w * h) }, Enum.EasingStyle.Linear)
+	task.delay(0.1, function()
+		tween(mid, 0.2, { Size = UDim2.fromOffset(w * 1.1, w * h * 0.06) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		tween(glow, 0.26, { Size = UDim2.fromOffset(w * 1.2, w * h * 0.12), ImageTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	end)
+	keep(root, 0.4)
+end
+
+-- radial needles (the reference's hit spikes): `n` thin hard wedges shooting out from a pin's point and gone
+local function needles(root: Frame, s: number, color: Color3, n: number, z: number)
+	for i = 1, n do
+		local len = s * (1.1 + math.random() * 0.9)
+		local w = s * (0.07 + math.random() * 0.06)
+		local arm = Instance.new("Frame")
+		arm.BackgroundTransparency = 1
+		arm.AnchorPoint = Vector2.new(0.5, 0.5)
+		arm.Position = UDim2.fromScale(0.5, 0.5)
+		arm.Size = studs(len * 2.4, len * 2.4)
+		arm.Rotation = (i - 1) * 360 / n + math.random(-16, 16)
+		arm.ZIndex = z
+		arm.Parent = root
+		local nd = Instance.new("ImageLabel")
+		nd.BackgroundTransparency = 1
+		nd.Image = FxIds.blade
+		nd.ImageRectOffset = Vector2.new(RECT_BLADE[1], RECT_BLADE[2])
+		nd.ImageRectSize = Vector2.new(RECT_BLADE[3], RECT_BLADE[4])
+		nd.ScaleType = Enum.ScaleType.Stretch
+		nd.ImageColor3 = color
+		nd.AnchorPoint = Vector2.new(0.5, 1)
+		nd.Position = UDim2.new(0.5, 0, 0.5, -math.floor(s * 0.18 * UNIT))
+		nd.Size = studs(w, len * 0.3)
+		nd.Parent = arm
+		tween(nd, 0.06, { Size = studs(w, len) }, Enum.EasingStyle.Quart)
+		task.delay(0.07, function()
+			tween(nd, 0.13, { Size = studs(w * 0.3, len * 1.15), ImageTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		end)
+	end
+end
+
+-- A hit: a white star that bursts into a ring (the impact flipbook) over a flash of colour, needles shooting out of it,
+-- a flare and a long streak through it. `size` studs; `big`: more and longer needles.
 function AnimeFx.hit(at: Vector3, color: Color3?, size: number?, big: boolean?)
 	local s = size or 5
 	local c = color or GOLD
@@ -507,21 +587,17 @@ function AnimeFx.hit(at: Vector3, color: Color3?, size: number?, big: boolean?)
 	if not root then
 		return
 	end
-	if big then
-		local burst = piece(root, FxIds.burst, nil, s * 1.4, s * 1.4, c:Lerp(WHITE, 0.15), math.random(0, 359), 1)
-		burst.ImageTransparency = 0.2
-		tween(burst, 0.12, { Size = studs(s * 2.6, s * 2.6) }, Enum.EasingStyle.Quart)
-		task.delay(0.08, function()
-			tween(burst, 0.14, { ImageTransparency = 1 })
-		end)
-	end
-	local streak = piece(root, FxIds.glow, nil, s * 7, s * 0.32, c, 0, 2)
+	local bloom = piece(root, FxIds.glow, nil, s * 1.6, s * 1.6, c, 0, 1)
+	bloom.ImageTransparency = 0.25
+	tween(bloom, 0.18, { Size = studs(s * 2.6, s * 2.6), ImageTransparency = 1 })
+	needles(root, if big then s * 1.3 else s * 0.85, c:Lerp(WHITE, 0.45), if big then 9 else 5, 2)
+	local streak = piece(root, FxIds.glow, nil, s * 7, s * 0.32, c, 0, 3)
 	tween(streak, 0.25, { Size = studs(s * 10, s * 0.06) }, Enum.EasingStyle.Quad)
 	tween(streak, 0.25, { ImageTransparency = 1 })
-	local flare = piece(root, FxIds.flare, nil, s * 1.6, s * 1.6, c:Lerp(WHITE, 0.5), 0, 3)
+	local flare = piece(root, FxIds.flare, nil, s * 1.6, s * 1.6, c:Lerp(WHITE, 0.5), 0, 4)
 	tween(flare, 0.14, { Size = studs(s * 2.4, s * 2.4) })
 	tween(flare, 0.16, { ImageTransparency = 1 })
-	local star = piece(root, FxIds.impact, { 0, 0, 256, 256 }, s, s, WHITE, math.random(0, 359), 4)
+	local star = piece(root, FxIds.impact, { 0, 0, 256, 256 }, s, s, WHITE, math.random(0, 359), 5)
 	task.spawn(function()
 		for i = 1, 11 do
 			task.wait(0.022)

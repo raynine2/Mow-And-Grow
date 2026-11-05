@@ -1609,7 +1609,10 @@ local function lesson(): boolean
 	Film.shake(0.9, 1.4)
 	local caughtAt = C:grip("Right").Position
 	fx("Sparks", caughtAt, { scale = 1.6, color = HOT })
-	AnimeFx.hit(caughtAt, HOT, 6, true)
+	-- (the hit bursts as the strobe's impact frames end: under them it was never seen)
+	after(T.catch + 0.24, function()
+		AnimeFx.hit(caughtAt, HOT, 6, true)
+	end)
 	burst(caughtAt, HOT, 6, 30, 0.8)
 	task.defer(function()
 		AnimeFx.impact({ C.model, R.model, SH.model }, "strobe", { states = { "ink", "neg", "ink", "neg" }, per = 0.06, at = caughtAt })
@@ -1714,11 +1717,16 @@ local function snip(): boolean
 	sfx("eggCrack", 1.4, 0.4)
 	AnimeFx.smear(8, -1, HOT)
 	AnimeFx.slash(-12, { y = 0.45, life = 0.18, width = 0.03, color = HOT })
-	-- (round 2: its cut across the sky, the reference's flat crescent, huge)
+	-- (round 2: its cut across the sky, the reference's flat crescent across the whole frame, once the strobe is over
+	-- and the lens is up on the sky: tested in Studio, a world crescent made now took its angle from the lens in front of
+	-- its face, and the strobe covered it)
 	do
 		local root = C.root
 		local sky = root.Position + root.LookVector * 60 + Vector3.new(0, 34, 0)
-		AnimeFx.cut(sky, sky - root.RightVector * 40 + Vector3.new(0, 10, 0), sky + root.RightVector * 40 - Vector3.new(0, 6, 0), HOT, 120)
+		local right = root.RightVector
+		after(T.snip + 0.2, function()
+			AnimeFx.cutScreen(sky, sky - right * 40 + Vector3.new(0, 10, 0), sky + right * 40 - Vector3.new(0, 6, 0), HOT)
+		end)
 	end
 	Film.shake(1, 1.2)
 	task.defer(function()

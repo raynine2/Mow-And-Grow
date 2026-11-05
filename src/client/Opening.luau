@@ -1188,11 +1188,18 @@ local function exchange(): boolean
 			end
 		end)
 		local centre = c - UP * tune("CutDepth", 3.4)
-		-- (round 2: the reference's flat cuts: a white crescent over a gold one across the arm, a hit bursting where
-		-- the blades meet it)
-		local across = (UP * (if i == 2 then -1 else 1) + side * 0.6).Unit
-		AnimeFx.cut(centre + dir * 0.5, centre + across * 4, centre - across * 4, GOLD, 11)
-		AnimeFx.hit(centre, PINK, 5.5, i == 3)
+		-- (round 2: the reference's flat cuts: a white crescent over a gold one where the blades bite, along the way
+		-- their tips close, and a hit bursting there. Tested in Studio: pinned in the arm under him it was left far
+		-- behind at the frame's edge, a whole screen tall)
+		local ta, tb = SH:tips()
+		local pv = SH.pivot.Position
+		local bite = pv:Lerp((ta + tb) / 2, 0.6)
+		if (ta - tb).Magnitude < 0.6 then
+			local across = (UP * (if i == 2 then -1 else 1) + side * 0.6).Unit
+			ta, tb = bite + across * 2, bite - across * 2
+		end
+		AnimeFx.cut(bite, ta, tb, GOLD, tune("CutSize", 6.5))
+		AnimeFx.hit(bite, PINK, tune("CutHit", 4), i == 3)
 		fx("CorruptHit", centre, { scale = 1.0 })
 		sfx("bladeSlash", 1.2, 0.95 + i * 0.08)
 		sfx("slice", 1.0, 0.8 + i * 0.12)
@@ -1850,7 +1857,10 @@ local function snip(): boolean
 		local cam = workspace.CurrentCamera
 		local right = if cam then flat(cam.CFrame.RightVector) else Vector3.xAxis
 		right = if right.Magnitude > 0.1 then right.Unit else Vector3.xAxis
-		AnimeFx.cut(mid + Vector3.new(0, 2, 0), mid - right * 30, mid + right * 30, GOLD, 70)
+		-- (the crescent over the whiteout, its middle ink, after the white comes up)
+		task.defer(function()
+			AnimeFx.cutScreen(mid + Vector3.new(0, 2, 0), mid - right * 30, mid + right * 30, GOLD, Color3.fromRGB(26, 16, 30))
+		end)
 	end
 	AnimeFx.smear(-4, 1)
 	AnimeFx.cover(WHITE, 0, 0, "white")
@@ -2216,7 +2226,10 @@ local function punch(): boolean
 	local fist = H:grip("Right").Position
 	fx("RingBurst", fist, { scale = 2.4, color = GOLD })
 	fx("Shock", fist, { scale = 2.6, color = GOLD })
-	AnimeFx.hit(fist, GOLD, 12, true)
+	-- (the hit bursts as the strobe's impact frames end: under them it was never seen)
+	after(T.punch + 0.27, function()
+		AnimeFx.hit(fist, GOLD, 12, true)
+	end)
 	task.defer(function()
 		local subjects = { H.model, R.model, SH.model }
 		for _, p in armParts(D2, "R") do

@@ -390,7 +390,7 @@ end
 -- depth-tested one is lost inside the bodies it's meant to be over: tested 5 Nov.)
 -------------------------------------------------------------------------------------------------------------
 local UNIT = 100 -- (pieces are sized in hundredths of a stud: a UDim's offset is a whole number)
-type Pin = { root: Frame, scale: UIScale, at: Vector3 }
+type Pin = { root: Frame, scale: UIScale, at: Vector3 | () -> Vector3 }
 local pins: { Pin } = {}
 local pinning = false
 
@@ -401,7 +401,12 @@ local function placePins()
 		if not p.root.Parent then
 			table.remove(pins, i)
 		elseif cam then
-			local s = cam:WorldToViewportPoint(p.at)
+			local at = p.at
+			local ok, w = true, at
+			if type(at) == "function" then
+				ok, w = pcall(at)
+			end
+			local s = if ok and typeof(w) == "Vector3" then cam:WorldToViewportPoint(w) else Vector3.zero
 			if s.Z < 0.3 then
 				p.root.Visible = false
 			else
@@ -417,8 +422,9 @@ local function placePins()
 	end
 end
 
--- an empty pin at a world point for `life` seconds (nil if the films' gui isn't up)
-local function pin(at: Vector3, life: number): Frame?
+-- an empty pin at a world point (or one that moves: a function giving it each frame) for `life` seconds (nil if the
+-- films' gui isn't up)
+local function pin(at: Vector3 | () -> Vector3, life: number): Frame?
 	local g = gui()
 	if not g then
 		return nil
@@ -478,12 +484,13 @@ end
 AnimeFx.screenAngle = screenAngle
 
 -- A cut where a blade passes: a white crescent over a coloured one, along the blade's path from `from` to `to` (world)
--- as the camera sees it, `size` studs across; it snaps open in a frame and thins away.
-function AnimeFx.cut(at: Vector3, from: Vector3, to: Vector3, color: Color3?, size: number?)
+-- as the camera sees it, `size` studs across; it snaps open in a frame and thins away. `follow`: a function giving
+-- where it is each frame (a blade on the move), instead of staying at `at`.
+function AnimeFx.cut(at: Vector3, from: Vector3, to: Vector3, color: Color3?, size: number?, follow: (() -> Vector3)?)
 	local s = size or 9
 	local rot = screenAngle(from, to)
 	local h = RECT_SLASH[4] / RECT_SLASH[3]
-	local root = pin(at, 0.32)
+	local root = pin(follow or at, 0.32)
 	if not root then
 		return
 	end
@@ -511,9 +518,9 @@ function AnimeFx.cutScreen(at: Vector3, from: Vector3, to: Vector3, color: Color
 	end
 	local vs = cam.ViewportSize
 	local sp = cam:WorldToViewportPoint(at)
-	local y = if sp.Z > 0 then math.clamp(sp.Y / math.max(vs.Y, 1), 0.25, 0.75) else 0.5
+	local y = if sp.Z > 0 then math.clamp(sp.Y / math.max(vs.Y, 1), 0.42, 0.62) else 0.5
 	local rot = screenAngle(from, to)
-	local h = RECT_SLASH[4] / RECT_SLASH[3] * 0.45
+	local h = RECT_SLASH[4] / RECT_SLASH[3] * 0.38
 	local root = Instance.new("Frame")
 	root.Name = "CutScreen"
 	root.BackgroundTransparency = 1
@@ -551,7 +558,7 @@ end
 local function needles(root: Frame, s: number, color: Color3, n: number, z: number)
 	for i = 1, n do
 		local len = s * (1.1 + math.random() * 0.9)
-		local w = s * (0.07 + math.random() * 0.06)
+		local w = s * (0.04 + math.random() * 0.045)
 		local arm = Instance.new("Frame")
 		arm.BackgroundTransparency = 1
 		arm.AnchorPoint = Vector2.new(0.5, 0.5)

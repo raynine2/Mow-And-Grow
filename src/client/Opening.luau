@@ -1189,17 +1189,20 @@ local function exchange(): boolean
 		end)
 		local centre = c - UP * tune("CutDepth", 3.4)
 		-- (round 2: the reference's flat cuts: a white crescent over a gold one where the blades bite, along the way
-		-- their tips close, and a hit bursting there. Tested in Studio: pinned in the arm under him it was left far
-		-- behind at the frame's edge, a whole screen tall)
+		-- their tips close, carried along with the shears, and a hit bursting on the arm. Tested in Studio: he runs so
+		-- fast that anything left where he cut is off the frame in a frame or two)
+		local function bite(): Vector3
+			local ta, tb = SH:tips()
+			return SH.pivot.Position:Lerp((ta + tb) / 2, 0.6)
+		end
 		local ta, tb = SH:tips()
-		local pv = SH.pivot.Position
-		local bite = pv:Lerp((ta + tb) / 2, 0.6)
+		local b0 = bite()
 		if (ta - tb).Magnitude < 0.6 then
 			local across = (UP * (if i == 2 then -1 else 1) + side * 0.6).Unit
-			ta, tb = bite + across * 2, bite - across * 2
+			ta, tb = b0 + across * 2, b0 - across * 2
 		end
-		AnimeFx.cut(bite, ta, tb, GOLD, tune("CutSize", 6.5))
-		AnimeFx.hit(bite, PINK, tune("CutHit", 4), i == 3)
+		AnimeFx.cut(b0, ta, tb, GOLD, tune("CutSize", 6.5), bite)
+		AnimeFx.hit(b0, PINK, tune("CutHit", 4), i == 3)
 		fx("CorruptHit", centre, { scale = 1.0 })
 		sfx("bladeSlash", 1.2, 0.95 + i * 0.08)
 		sfx("slice", 1.0, 0.8 + i * 0.12)

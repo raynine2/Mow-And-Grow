@@ -844,20 +844,36 @@ end
 -- play an event
 -------------------------------------------------------------------------------------------------------------
 -- Your hits on one clump climb in pitch (snap, snap, SNAP), so chopping builds up to the cut.
+-- (5 Nov, owner's TikTok: "research how Nintendo uses animation timing, sound effects, and visual feedback to make
+-- simple actions satisfying"; Mario's coin streaks and stomp chains climb a real scale, not a slide) the hits climb
+-- the major scale (do, re, mi ...), and the cut that brings the clump down lands on the note above the last hit
+-- (HitFx.cutNote), so a clump's chop is a little run that resolves when it goes down.
+local SCALE = { 1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888, 2 }
 local streak = { clump = nil :: Model?, n = 0, at = 0 }
 local function streakPitch(m: Model?): number
 	local now = os.clock()
 	if m and m == streak.clump and now - streak.at < 1.2 then
-		streak.n = math.min(streak.n + 1, 8)
+		streak.n = math.min(streak.n + 1, #SCALE - 3) -- (up to la: the cut has ti and the octave left)
 	else
 		streak.n = 0
 	end
 	streak.clump, streak.at = m, now
-	return 1 + streak.n * 0.045
+	return SCALE[streak.n + 1]
+end
+
+-- the note your cut lands on: one step above your last hit on the clump you were just chopping (nil when you
+-- weren't chopping one: a mower's or an auto tool's cut adds no note); the run starts again after it
+function HitFx.cutNote(): number?
+	if streak.clump == nil or os.clock() - streak.at > 1.5 then
+		return nil
+	end
+	local note = SCALE[math.min(streak.n + 2, #SCALE)]
+	streak.clump, streak.n = nil, 0
+	return note
 end
 
 local function hitSounds(event: string, m: Model?)
-	local up = streakPitch(m)
+	local up = if WeaponFx.family(event) == "auto" then 1 else streakPitch(m) -- (auto tools don't play the run)
 	local chip = Config.SOUNDS.chip
 	if WeaponFx.sounds(event, up) then
 		-- (28 Oct) the tool's own recipe (client/WeaponFx)
@@ -871,7 +887,10 @@ local function hitSounds(event: string, m: Model?)
 		Sound.play("rustle", 0.2, 0.45)
 	end
 	if chip then
-		Sound.playAt("chip", (chip.pitch or 1) * up * (0.95 + math.random() * 0.1), if WeaponFx.family(event) == "auto" then 0.5 else 1)
+		-- (5 Nov) only a hair of jitter on your own hits, so the scale stays in tune (the auto tools' keep their spread)
+		local auto = WeaponFx.family(event) == "auto"
+		local j = if auto then 0.95 + math.random() * 0.1 else 0.99 + math.random() * 0.02
+		Sound.playAt("chip", (chip.pitch or 1) * (if auto then 1 else up) * j, if auto then 0.5 else 1)
 	end
 end
 

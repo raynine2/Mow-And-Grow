@@ -338,6 +338,12 @@ handlers.cut = function(d)
 		if now - lastCutSound > 0.07 then
 			lastCutSound = now
 			Sound.play("cut", 0.12)
+			-- (5 Nov) the chop's run resolves: the chip on the note above your last hit (client/HitFx.cutNote)
+			local chip = Config.SOUNDS.chip
+			local note = HitFx.cutNote()
+			if chip and note then
+				Sound.playAt("chip", (chip.pitch or 1) * note, 0.9)
+			end
 		end
 	end
 end

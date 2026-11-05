@@ -534,6 +534,7 @@ end
 
 -- a gain: the icon pops, the plate glints and the amount floats up off it
 local gemsSeen, bagWasFull = false, false
+local bagWasPacked, shownCarry: number? = false, nil -- (5 Nov) the bundle that fills the bag gets a fanfare
 local function gained(box: GuiObject, icon: GuiObject, text: string, color: Color3)
 	UI.bounce(icon)
 	Skin.floatText(box, text, color)
@@ -595,6 +596,20 @@ State.on("data", function(d)
 		end
 		-- bundles still lying on the ground count toward the bag too (they're reserved for you)
 		local full = not d.endless and d.run.carry + (d.run.ground or 0) >= d.carryMax
+		-- (5 Nov, the Nintendo pass: a job finished gets its own little fanfare, like a full inventory's jingle) the
+		-- bundle that fills your bag: the bag pops, glints and says FULL, and the pickup bloops run up to the octave
+		local packed = not d.endless and d.run.carry >= d.carryMax
+		if packed and not bagWasPacked and shownCarry ~= nil and d.run.carry > shownCarry then
+			task.delay(0.36, function() -- (as the last bundle's icon reaches the bag: client/Hud `fly`)
+				for i, note in { 1.26, 1.498, 2 } do
+					task.delay((i - 1) * 0.07, Sound.playAt, "pickup", note, 0.9)
+				end
+				gained(bag, bagIcon, "FULL!", Color3.fromRGB(255, 220, 90))
+				Skin.burst(bagIcon, 6)
+			end)
+		end
+		bagWasPacked = packed
+		shownCarry = d.run.carry
 		bagText.Text = if d.endless then d.run.carry .. "/∞" else d.run.carry .. "/" .. d.carryMax
 		bagText.TextColor3 = if full then C.red else Color3.new(1, 1, 1)
 		if full ~= bagWasFull and bagIcon:IsA("ImageLabel") then

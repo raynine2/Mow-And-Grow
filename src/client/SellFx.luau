@@ -207,6 +207,19 @@ end
 local liveCoins = 0
 local MAX_COINS = 40
 local pitchStep = 0
+-- (5 Nov, the Nintendo pass: Mario's coins ring up a real scale and the run never drops back mid-streak) the coins
+-- coming into you climb a major pentatonic run from the start of each sale and ring on its top two notes once there
+-- (it used to slide up 12 steps and fall back to the bottom in the middle of a sale); the sale's last coin rings the
+-- octave over the top with a sparkle
+local RUN = { 1, 1.122, 1.26, 1.498, 1.682, 2, 2.245, 2.52 }
+local saleLeft = 0
+local function coinNote(): number
+	pitchStep += 1
+	if pitchStep <= #RUN then
+		return RUN[pitchStep]
+	end
+	return RUN[#RUN - 1 + (pitchStep % 2)]
+end
 
 local function coinPart(): Part
 	local c = Instance.new("Part")
@@ -246,16 +259,21 @@ local function collect(c: Part)
 			Speed = NumberRange.new(4, 8),
 			SpreadAngle = Vector2.new(180, 180),
 		})
-		pitchStep = (pitchStep + 1) % 12
-		Sound.playAt("click", 1 + pitchStep * 0.06)
+		Sound.playAt("click", coinNote())
 		if pitchStep % 2 == 0 then
 			State.emit("flyCoins", 1)
+		end
+		saleLeft -= 1
+		if saleLeft == 0 then
+			Sound.playAt("pickup", 2, 0.8) -- the last coin in: the octave, and the counter's done
 		end
 	end)
 end
 
 local function fountain(out: Vector3, away: Vector3, amount: number)
 	local n = math.clamp(5 + amount * 2, 6, 30)
+	pitchStep = 0
+	saleLeft = math.min(n, MAX_COINS - liveCoins)
 	for i = 1, n do
 		if liveCoins >= MAX_COINS then
 			return
@@ -338,7 +356,9 @@ function SellFx.sell(d: { [string]: any })
 			landed += 1
 			rumble(0.35)
 			spray(mouth, 1)
-			Sound.play("chip", 0.2)
+			-- (5 Nov) each bundle into the hopper a step higher (do, re, mi ...): the build-up before the payout
+			local chip = Config.SOUNDS.chip
+			Sound.playAt("chip", (if chip then chip.pitch or 1 else 1) * ({ 1, 1.122, 1.26, 1.335, 1.498, 1.682, 1.888 })[math.min(landed, 7)], 0.8)
 			if landed == count then
 				-- the last bundle is in: the machine coughs up the money
 				task.delay(0.15, function()

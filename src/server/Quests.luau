@@ -8,6 +8,17 @@ local Quests = {}
 
 local ABSOLUTE = { tool = true, bag = true } -- these report a level reached, not an amount gained
 
+-- (5 Nov) a quest that can't be done right now is skipped: "Get a ride-on mower" while Config.MOWERS_LOCKED (every new
+-- player's chain stopped there for good)
+local function doable(q): boolean
+	return not (q.event == "mower" and Config.MOWERS_LOCKED)
+end
+local function skipLocked(run)
+	while Config.QUESTS[run.quest.i] and not doable(Config.QUESTS[run.quest.i]) do
+		run.quest = { i = run.quest.i + 1, p = 0 }
+	end
+end
+
 -- Something happened that quests may count. For "tool" / "bag", amount is the new best tool / bag tier.
 function Quests.event(player: Player, kind: string, amount: number?)
 	local data = PlayerData.get(player)
@@ -16,6 +27,7 @@ function Quests.event(player: Player, kind: string, amount: number?)
 		return
 	end
 	run.quest = run.quest or { i = 1, p = 0 }
+	skipLocked(run)
 	local q = Config.QUESTS[run.quest.i]
 	if not q or q.event ~= kind then
 		return
@@ -29,6 +41,7 @@ function Quests.event(player: Player, kind: string, amount: number?)
 		run.coins += q.reward
 		Net.send(player, "Fx", "quest", { title = q.title, reward = q.reward })
 		run.quest = { i = run.quest.i + 1, p = 0 }
+		skipLocked(run)
 		-- the next quest may already be done (e.g. you bought the scissors early)
 		local nextQ = Config.QUESTS[run.quest.i]
 		if nextQ and nextQ.event == "tool" then
@@ -42,7 +55,9 @@ end
 
 -- What the HUD shows.
 function Quests.view(run)
-	local state = run.quest or { i = 1, p = 0 }
+	run.quest = run.quest or { i = 1, p = 0 }
+	skipLocked(run)
+	local state = run.quest
 	local q = Config.QUESTS[state.i]
 	if not q then
 		return nil

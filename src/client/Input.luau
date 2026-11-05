@@ -57,10 +57,9 @@ local function swing()
 	State.emit("swing", look)
 end
 
--- The Hold upgrade (first thing in the Hands section): until you own it, every swing is its own click.
+-- (5 Nov) holding the button keeps cutting from the start (the Hold upgrade that unlocked it is gone, shared/Config)
 local function canHold(): boolean
-	local run = State.data and State.data.run
-	return run ~= nil and run.upgrades ~= nil and (run.upgrades.hold or 0) >= 1
+	return true
 end
 
 local function hookTool(tool: Instance)

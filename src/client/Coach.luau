@@ -136,8 +136,10 @@ local touch = Device.touch
 local finished = false -- finished in this session (or never needed)
 local shownThisSession = false
 
+-- (5 Nov) the coach's last step teaches the upgrades with Swing Speed (it was the Hold upgrade, which is free now)
+local FIRST_UPGRADE = "swing"
 local function holdLevel(run: any): number
-	return (run.upgrades and run.upgrades.hold) or 0
+	return (run.upgrades and run.upgrades[FIRST_UPGRADE]) or 0
 end
 
 -- Is this a player who still needs the coach? (first run, Hold not bought yet, not an old hand)
@@ -195,9 +197,9 @@ local function pick(): Step?
 			return { id = "collect", title = "PICK UP YOUR GRASS", sub = "Walk over the bundles to put them in your bag", target = drop, lift = 2 }
 		end
 	end
-	local holdCost = Config.upgradeCost("hold", 0)
+	local holdCost = Config.upgradeCost(FIRST_UPGRADE, 0)
 	if run.coins >= holdCost then
-		return { id = "upgrade", title = "BUY YOUR FIRST UPGRADE", sub = if touch then "Tap UPGRADES and buy HOLD: keep cutting, earn faster" else "Press TAB and buy HOLD: keep cutting, earn coins faster" }
+		return { id = "upgrade", title = "BUY YOUR FIRST UPGRADE", sub = if touch then "Tap UPGRADES and buy SWING SPEED: cut faster, earn faster" else "Press TAB and buy SWING SPEED: cut faster, earn coins faster" }
 	end
 	return clumpStep("fill", ("FILL YOUR BAG   %d / %d"):format(run.carry + (run.ground or 0), max), if auto then "Mow more grass, then sell it at the shredder for coins" else "Cut more grass, then sell it at the shredder for coins")
 end
@@ -523,7 +525,7 @@ local function holdCard(): GuiObject?
 		return nil
 	end
 	local pg = player:FindFirstChildOfClass("PlayerGui")
-	local holdName = (Config.upgrade("hold") or { name = "Hold" }).name
+	local holdName = (Config.upgrade(FIRST_UPGRADE) or { name = "Swing Speed" }).name
 	for _, d in (pg and pg:GetDescendants() or {}) do
 		if d:IsA("TextLabel") and d.Text == holdName and d.Visible then
 			-- the card: the first ancestor frame big enough to be one

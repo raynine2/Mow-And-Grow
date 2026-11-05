@@ -234,7 +234,7 @@ Puppet.EASE = EASE
 -------------------------------------------------------------------------------------------------------------
 -- building
 -------------------------------------------------------------------------------------------------------------
-type Joint = { name: string, parent: BasePart, child: BasePart, c0: CFrame, c1inv: CFrame }
+type Joint = { name: string, parent: BasePart, child: BasePart, c0: CFrame, c1: CFrame, c1inv: CFrame }
 type Stuck = { part: BasePart, base: BasePart, rel: CFrame }
 
 local function stripScripts(m: Instance)
@@ -252,13 +252,13 @@ local function readJoints(m: Model): { [string]: Joint }
 		if d:IsA("AnimationConstraint") then
 			local a0, a1 = d.Attachment0, d.Attachment1
 			if a0 and a1 and a0.Parent and a1.Parent and a0.Parent:IsA("BasePart") and a1.Parent:IsA("BasePart") then
-				found[d.Name] = { name = d.Name, parent = a0.Parent :: BasePart, child = a1.Parent :: BasePart, c0 = a0.CFrame, c1inv = a1.CFrame:Inverse() }
+				found[d.Name] = { name = d.Name, parent = a0.Parent :: BasePart, child = a1.Parent :: BasePart, c0 = a0.CFrame, c1 = a1.CFrame, c1inv = a1.CFrame:Inverse() }
 			end
 		end
 	end
 	for _, d in m:GetDescendants() do
 		if d:IsA("Motor6D") and not found[d.Name] and d.Part0 and d.Part1 then
-			found[d.Name] = { name = d.Name, parent = d.Part0 :: BasePart, child = d.Part1 :: BasePart, c0 = d.C0, c1inv = d.C1:Inverse() }
+			found[d.Name] = { name = d.Name, parent = d.Part0 :: BasePart, child = d.Part1 :: BasePart, c0 = d.C0, c1 = d.C1, c1inv = d.C1:Inverse() }
 		end
 	end
 	return found
@@ -411,6 +411,25 @@ function Puppet.new(source: Model, opts: { name: string?, parent: Instance? }?):
 	end
 	self.byName = byName
 	self.joints = joints
+	-- the arms' chains, for reaching (a pose's rh / lh: where the wrist goes)
+	self.arms = {}
+	for _, side in { "Right", "Left" } do
+		local sh, el, wr = found[side .. "Shoulder"], found[side .. "Elbow"], found[side .. "Wrist"]
+		if sh and el and wr then
+			local b1 = el.c0.Position - sh.c1.Position
+			local b2 = wr.c0.Position - el.c1.Position
+			self.arms[side] = {
+				sh = sh, el = el, wr = wr,
+				l1 = b1.Magnitude, l2 = b2.Magnitude,
+				b1 = b1.Unit, b2 = b2.Unit,
+				-- the reach: from (where it was) to (where it's going), its weight eased the same way
+				from = ZERO, to = ZERO, w = 0, wFrom = 0, wTo = 0,
+				pole = if side == "Right" then v(1.2, -1, 1) else v(-1.2, -1, 1),
+				poleFrom = ZERO, poleTo = ZERO,
+				now = ZERO, -- (where the wrist was last frame, in the chest's space)
+			}
+		end
+	end
 	self.stuck = stuck
 	self.parts = parts
 	self.world = {} :: { [BasePart]: CFrame }
@@ -436,12 +455,60 @@ function Puppet.pose(self: any, pose: any, time: number?, ease: string?)
 	self.blendT0 = self.t
 	self.blendLen = time or 0
 	self.ease = EASE[ease or "out"] or EASE.out
+	for side, a in self.arms do
+		local want = if side == "Right" then p.rh else p.lh
+		local pole = if side == "Right" then p.rpole else p.lpole
+		a.from = if a.w > 0.01 then a.cur or a.now else a.now
+		a.to = want or a.from
+		a.wFrom = a.w
+		a.wTo = if want then 1 else 0
+		a.poleFrom = a.poleNow or a.pole
+		a.poleTo = pole or a.pole
+	end
 	if (time or 0) <= 0 then
 		for _, name in ORDER do
 			self.angles[name] = self.to[name]
 		end
 		self.hip = self.hipTo
+		for _, a in self.arms do
+			a.w = a.wTo
+			a.cur = a.to
+			a.poleNow = a.poleTo
+		end
 	end
+end
+
+-- Two-bone reach: the upper and lower arm placed so the wrist is at `target` (world), the elbow toward `pole`.
+local function orient(bLocal: Vector3, bWorld: Vector3, hinge: Vector3): CFrame
+	local xL = (Vector3.xAxis - bLocal * Vector3.xAxis:Dot(bLocal)).Unit
+	local zL = xL:Cross(bLocal)
+	local zW = hinge:Cross(bWorld)
+	return CFrame.fromMatrix(Vector3.zero, hinge, bWorld, zW) * CFrame.fromMatrix(Vector3.zero, xL, bLocal, zL):Inverse()
+end
+
+local function reach(a: any, shoulder: Vector3, target: Vector3, pole: Vector3): (CFrame, CFrame)
+	local d = target - shoulder
+	local dist = math.clamp(d.Magnitude, 0.05, a.l1 + a.l2 - 0.001)
+	local dir = if d.Magnitude > 1e-4 then d.Unit else Vector3.new(0, -1, 0)
+	local perp = pole - dir * pole:Dot(dir)
+	if perp.Magnitude < 1e-3 then
+		perp = Vector3.new(0, -1, 0) - dir * (-dir.Y)
+		if perp.Magnitude < 1e-3 then
+			perp = Vector3.zAxis
+		end
+	end
+	perp = perp.Unit
+	local cosA = math.clamp((a.l1 * a.l1 + dist * dist - a.l2 * a.l2) / (2 * a.l1 * dist), -1, 1)
+	local sinA = math.sqrt(1 - cosA * cosA)
+	local elbow = shoulder + dir * (a.l1 * cosA) + perp * (a.l1 * sinA)
+	local wrist = shoulder + dir * dist
+	local bone = (elbow - shoulder).Unit
+	local fore = (wrist - elbow)
+	fore = if fore.Magnitude > 1e-4 then fore.Unit else bone
+	local hinge = perp:Cross(dir).Unit
+	local upper = CFrame.new(shoulder) * orient(a.b1, bone, hinge) * CFrame.new(-a.sh.c1.Position)
+	local lower = CFrame.new(elbow) * orient(a.b2, fore, hinge) * CFrame.new(-a.el.c1.Position)
+	return upper, lower
 end
 
 -- The walk cycle on top of the pose (`weight` 0..1, eased in over a quarter second), `rate` cycles a second,
@@ -629,6 +696,32 @@ function Puppet.update(self: any, dt: number)
 			T = CFrame.new(hip) * T
 		end
 		world[jt.child] = world[jt.parent] * jt.c0 * T * jt.c1inv
+	end
+	-- reaching arms (a pose's rh / lh): blended in over the FK arm by the reach's weight
+	local chestPart = self.byName.UpperTorso
+	local chest = chestPart and world[chestPart]
+	if chest then
+		for side, a in self.arms do
+			a.w = a.wFrom + (a.wTo - a.wFrom) * e
+			a.cur = a.from:Lerp(a.to, e)
+			a.poleNow = a.poleFrom:Lerp(a.poleTo, e)
+			if a.w > 0.001 then
+				local shoulder = (chest * a.sh.c0).Position
+				local tgt = chest * a.cur
+				local upper, lower = reach(a, shoulder, tgt, chest:VectorToWorldSpace(a.poleNow))
+				local wa = final[side .. "Wrist"] or ZERO
+				local hand = lower * a.wr.c0 * CFrame.Angles(rad(wa.X), rad(wa.Y), rad(wa.Z)) * a.wr.c1inv
+				local ua, la, hp = a.sh.child, a.el.child, a.wr.child
+				if a.w >= 0.999 then
+					world[ua], world[la], world[hp] = upper, lower, hand
+				else
+					world[ua] = world[ua]:Lerp(upper, a.w)
+					world[la] = world[la]:Lerp(lower, a.w)
+					world[hp] = world[hp]:Lerp(hand, a.w)
+				end
+			end
+			a.now = chest:PointToObjectSpace((world[a.el.child] * a.wr.c0).Position)
+		end
 	end
 	for _, s in self.stuck do
 		local b = world[s.base]

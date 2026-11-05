@@ -5,6 +5,8 @@
 --   AnimeFx.sub(text, life?)                 a subtitle, "[like this]"
 --   AnimeFx.card(name, title, color?, life?) a character's name card (RAYAN / OWNER OF THE VALLEY)
 --   AnimeFx.slash(angle, opts?)              a white cut across the screen for a frame or two
+--   AnimeFx.cut(at, from, to, color?, size?) a crescent where a blade passes (pinned to a world point, over the picture)
+--   AnimeFx.hit(at, color?, size?, big?)     a hit: a star bursting into a ring, a flare, a streak (pinned the same)
 --   AnimeFx.lines(color?, alpha?) -> stop()  radial speed lines (at the screen's middle, or opts.at, a world point)
 --   AnimeFx.impact(subjects, style, opts?)   an impact frame: the subjects as flat silhouettes from the film's camera
 --                                            on a flat colour, the picture stuck meanwhile; style "ink" (black on
@@ -18,6 +20,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local IntroUi = require(script.Parent.IntroUi)
 local Film = require(script.Parent.Film)
@@ -380,34 +383,75 @@ function AnimeFx.smear(angle: number, side: number?, color: Color3?)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- world FX: flat billboards in the world (they glow and light nothing). (Tested in Studio, 5 Nov: a BillboardGui with
--- AlwaysOnTop isn't drawn there at all, so these are ordinary depth-tested ones.) Each sits on the line from the lens
--- to its point, pulled PULL of the way toward the lens and shrunk to match: the same on screen, but in front of the
--- bodies and grass round the point. A higher z sits a little nearer still, so a white core draws over its glow.
+-- world FX: flat shapes pinned to points in the world but drawn over the picture (in the films' gui, under the bars),
+-- so a body or the grass never hides them. A pin follows its point every frame; its pieces are sized in studs where
+-- the point is. (A BillboardGui with AlwaysOnTop would be the same thing, but Studio doesn't draw those at all, and a
+-- depth-tested one is lost inside the bodies it's meant to be over: tested 5 Nov.)
 -------------------------------------------------------------------------------------------------------------
-local PULL = 0.45
+local UNIT = 100 -- (pieces are sized in hundredths of a stud: a UDim's offset is a whole number)
+type Pin = { root: Frame, scale: UIScale, at: Vector3 }
+local pins: { Pin } = {}
+local pinning = false
 
-local function sprite(at: Vector3, image: string, rect: { number }?, size: Vector2, color: Color3, rot: number, z: number): (BillboardGui, ImageLabel)
+local function placePins()
 	local cam = workspace.CurrentCamera
-	local eye = if cam then cam.CFrame.Position else at
-	local k = PULL - z * 0.008
-	local a = Instance.new("Attachment")
-	a.Name = "AnimeFx"
-	a.Position = eye + (at - eye) * k
-	a.Parent = workspace.Terrain
-	local bb = Instance.new("BillboardGui")
-	bb:SetAttribute("Pull", k)
-	bb.Size = UDim2.fromScale(size.X * k, size.Y * k)
-	bb.LightInfluence = 0
-	bb.Brightness = 1.4
-	bb.AlwaysOnTop = false
-	bb.ClipsDescendants = false
-	bb.Parent = a
+	for i = #pins, 1, -1 do
+		local p = pins[i]
+		if not p.root.Parent then
+			table.remove(pins, i)
+		elseif cam then
+			local s = cam:WorldToViewportPoint(p.at)
+			if s.Z < 0.3 then
+				p.root.Visible = false
+			else
+				p.root.Visible = true
+				p.root.Position = UDim2.fromOffset(s.X, s.Y)
+				p.scale.Scale = cam.ViewportSize.Y / (2 * s.Z * math.tan(math.rad(cam.FieldOfView) / 2)) / UNIT
+			end
+		end
+	end
+	if #pins == 0 and pinning then
+		pinning = false
+		RunService:UnbindFromRenderStep("AnimeFxPins")
+	end
+end
+
+-- an empty pin at a world point for `life` seconds (nil if the films' gui isn't up)
+local function pin(at: Vector3, life: number): Frame?
+	local g = gui()
+	if not g then
+		return nil
+	end
+	local root = Instance.new("Frame")
+	root.Name = "Pin"
+	root.BackgroundTransparency = 1
+	root.Size = UDim2.fromOffset(0, 0)
+	root.ZIndex = Z_PICTURE
+	local sc = Instance.new("UIScale")
+	sc.Parent = root
+	root.Parent = g
+	table.insert(pins, { root = root, scale = sc, at = at })
+	if not pinning then
+		pinning = true
+		RunService:BindToRenderStep("AnimeFxPins", Enum.RenderPriority.Last.Value, placePins)
+	end
+	placePins()
+	keep(root, life)
+	return root
+end
+
+-- `x` by `y` studs (a pin's piece)
+local function studs(x: number, y: number): UDim2
+	return UDim2.fromOffset(math.floor(x * UNIT + 0.5), math.floor(y * UNIT + 0.5))
+end
+
+-- an image on a pin, `x` by `y` studs, turned `rot` degrees; a higher z is drawn over a lower one
+local function piece(root: Frame, image: string, rect: { number }?, x: number, y: number, color: Color3, rot: number, z: number): ImageLabel
 	local im = Instance.new("ImageLabel")
 	im.BackgroundTransparency = 1
 	im.AnchorPoint = Vector2.new(0.5, 0.5)
 	im.Position = UDim2.fromScale(0.5, 0.5)
-	im.Size = UDim2.fromScale(1, 1)
+	im.Size = studs(x, y)
 	im.Image = image
 	if rect then
 		im.ImageRectOffset = Vector2.new(rect[1], rect[2])
@@ -416,29 +460,8 @@ local function sprite(at: Vector3, image: string, rect: { number }?, size: Vecto
 	im.ImageColor3 = color
 	im.Rotation = rot
 	im.ZIndex = z
-	im.Parent = bb
-	table.insert(live, a)
-	return bb, im
-end
-
--- a sprite's size, `x` by `y` studs where its point is (it's drawn nearer the lens, smaller)
-local function studs(bb: BillboardGui, x: number, y: number): UDim2
-	local k = bb:GetAttribute("Pull")
-	local f = if type(k) == "number" then k else 1
-	return UDim2.fromScale(x * f, y * f)
-end
-
-local function gone(bb: BillboardGui, life: number)
-	local a = bb.Parent
-	task.delay(life, function()
-		if a then
-			local k = table.find(live, a)
-			if k then
-				table.remove(live, k)
-			end
-			a:Destroy()
-		end
-	end)
+	im.Parent = root
+	return im
 end
 
 -- the angle (degrees, on screen) of the line from p0 to p1 as the camera sees it now
@@ -459,19 +482,20 @@ function AnimeFx.cut(at: Vector3, from: Vector3, to: Vector3, color: Color3?, si
 	local s = size or 9
 	local rot = screenAngle(from, to)
 	local h = RECT_SLASH[4] / RECT_SLASH[3]
-	local bbG, glow = sprite(at, FxIds.slash, RECT_SLASH, Vector2.new(s * 1.3, s * 1.3 * h * 1.25), color or GOLD, rot, 1)
-	local bbW, core = sprite(at, FxIds.slash, RECT_SLASH, Vector2.new(s, s * h), WHITE, rot, 2)
+	local root = pin(at, 0.32)
+	if not root then
+		return
+	end
+	local glow = piece(root, FxIds.slash, RECT_SLASH, s * 1.3, s * 1.3 * h * 1.25, color or GOLD, rot, 1)
+	local core = piece(root, FxIds.slash, RECT_SLASH, s * 0.55, s * h * 0.4, WHITE, rot, 2)
 	glow.ImageTransparency = 0.1
-	bbW.Size = studs(bbW, s * 0.55, s * h * 0.4)
-	tween(bbW, 0.035, { Size = studs(bbW, s, s * h) }, Enum.EasingStyle.Linear)
+	tween(core, 0.035, { Size = studs(s, s * h) }, Enum.EasingStyle.Linear)
 	task.delay(0.09, function()
-		tween(bbW, 0.16, { Size = studs(bbW, s * 1.15, s * h * 0.05) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		tween(core, 0.16, { Size = studs(s * 1.15, s * h * 0.05) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 		tween(core, 0.16, { ImageTransparency = 0.6 })
-		tween(bbG, 0.2, { Size = studs(bbG, s * 1.5, s * h * 0.1) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+		tween(glow, 0.2, { Size = studs(s * 1.5, s * h * 0.1) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
 		tween(glow, 0.2, { ImageTransparency = 1 })
 	end)
-	gone(bbW, 0.3)
-	gone(bbG, 0.32)
 end
 
 -- A hit: a white star that bursts into a ring (the impact flipbook), a flare, and a long streak through it.
@@ -479,33 +503,34 @@ end
 function AnimeFx.hit(at: Vector3, color: Color3?, size: number?, big: boolean?)
 	local s = size or 5
 	local c = color or GOLD
-	local bb, im = sprite(at, FxIds.impact, { 0, 0, 256, 256 }, Vector2.new(s, s), WHITE, math.random(0, 359), 4)
-	task.spawn(function()
-		for i = 1, 11 do
-			task.wait(0.022)
-			if not im.Parent then
-				return
-			end
-			im.ImageRectOffset = Vector2.new((i % 4) * 256, math.floor(i / 4) * 256)
-		end
-	end)
-	gone(bb, 0.3)
-	local bbF, flare = sprite(at, FxIds.flare, nil, Vector2.new(s * 1.6, s * 1.6), c:Lerp(WHITE, 0.5), 0, 3)
-	tween(bbF, 0.14, { Size = studs(bbF, s * 2.4, s * 2.4) })
-	tween(flare, 0.16, { ImageTransparency = 1 })
-	gone(bbF, 0.2)
-	local bbS, streak = sprite(at, FxIds.glow, nil, Vector2.new(s * 7, s * 0.32), c, 0, 2)
-	tween(bbS, 0.25, { Size = studs(bbS, s * 10, s * 0.06) }, Enum.EasingStyle.Quad)
-	tween(streak, 0.25, { ImageTransparency = 1 })
-	gone(bbS, 0.3)
+	local root = pin(at, 0.3)
+	if not root then
+		return
+	end
 	if big then
-		local bbB, burst = sprite(at, FxIds.burst, nil, Vector2.new(s * 1.4, s * 1.4), c, math.random(0, 359), 1)
-		tween(bbB, 0.12, { Size = studs(bbB, s * 2.6, s * 2.6) }, Enum.EasingStyle.Quart)
+		local burst = piece(root, FxIds.burst, nil, s * 1.4, s * 1.4, c:Lerp(WHITE, 0.15), math.random(0, 359), 1)
+		burst.ImageTransparency = 0.2
+		tween(burst, 0.12, { Size = studs(s * 2.6, s * 2.6) }, Enum.EasingStyle.Quart)
 		task.delay(0.08, function()
 			tween(burst, 0.14, { ImageTransparency = 1 })
 		end)
-		gone(bbB, 0.25)
 	end
+	local streak = piece(root, FxIds.glow, nil, s * 7, s * 0.32, c, 0, 2)
+	tween(streak, 0.25, { Size = studs(s * 10, s * 0.06) }, Enum.EasingStyle.Quad)
+	tween(streak, 0.25, { ImageTransparency = 1 })
+	local flare = piece(root, FxIds.flare, nil, s * 1.6, s * 1.6, c:Lerp(WHITE, 0.5), 0, 3)
+	tween(flare, 0.14, { Size = studs(s * 2.4, s * 2.4) })
+	tween(flare, 0.16, { ImageTransparency = 1 })
+	local star = piece(root, FxIds.impact, { 0, 0, 256, 256 }, s, s, WHITE, math.random(0, 359), 4)
+	task.spawn(function()
+		for i = 1, 11 do
+			task.wait(0.022)
+			if not star.Parent then
+				return
+			end
+			star.ImageRectOffset = Vector2.new((i % 4) * 256, math.floor(i / 4) * 256)
+		end
+	end)
 end
 
 -- A technique's title card: the picture darkened, a big seal at the left, the name in a heavy tracked serif between two

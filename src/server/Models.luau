@@ -769,7 +769,8 @@ end
 -- rolls them), the steering wheel (voxels "SteerHub_v", joined to the hub server/Mowers makes) and "ExhaustTip" spots.
 -- Also the template voxel_scissorhalf: one scissor half on its bolt, which client/ViewModel opens and shuts.
 -------------------------------------------------------------------------------------------------------------
-local VOXEL_PROPS = { "tool_vacuum", "bag_satchel", "bag_backpack", "bag_hiker", "bag_infinite" }
+-- (template = its group in server/VoxelItemShapes)
+local VOXEL_PROPS = { tool_vacuum = "vacuum", bag_satchel = "bag_satchel", bag_backpack = "bag_backpack", bag_hiker = "bag_hiker", bag_infinite = "bag_infinite" }
 local VOXEL_FIT = { bag_satchel = true, bag_backpack = true, bag_hiker = true, bag_infinite = true }
 local VOXEL_MOWERS = { "mower_rusty", "mower_tractor", "mower_zeroturn", "mower_mulcher", "mower_rocket" }
 
@@ -873,10 +874,10 @@ local function swapItems(): number
 		return 0
 	end
 	local n = 0
-	for _, name in VOXEL_PROPS do
+	for name, group in VOXEL_PROPS do
 		local m = Instance.new("Model")
 		m.Name = name
-		if voxelTool(name, m, true) then
+		if voxelTool(group, m, true) then
 			local old = templates[name]
 			if old and VOXEL_FIT[name] then
 				local _, size = old:GetBoundingBox()

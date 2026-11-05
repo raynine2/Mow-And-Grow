@@ -287,7 +287,7 @@ Config.CAMERA_KICK = {
 --   loaner:    the tool lent to a first-timer for their first run until their first sale ("walk into the grass to
 --              mow it"); then they're back to Bare Hands and buy their own. "" = off.
 --   introAfterSale: the intro film waits for that first sale instead of playing before you've cut anything.
-Config.FIRST_TIMER = { autoStart = 6, loaner = "PushMower", introAfterSale = true }
+Config.FIRST_TIMER = { autoStart = 3, loaner = "PushMower", introAfterSale = true } -- (5 Nov, less waiting: autoStart was 6)
 -- #2 COINS ON EVERY CUT (Chop A Forest pays a few coins per hit): this share of a clump's bundle value is paid the
 -- moment you cut it (at least 1 coin); the bundles still sell in full. 0 = off.
 Config.CUT_COINS = 0.25
@@ -537,7 +537,7 @@ Config.DIFFICULTY_ORDER = { "Normal", "Hard", "Expert" }
 -- Players in a boss fight (server/BossFighters): 100 HP; at 0 you're downed for BOSS_DOWN_TIME s and a teammate
 -- standing next to you for BOSS_REVIVE_TIME s picks you up, else you get up at the arena entrance.
 Config.BOSS_PLAYER_HP = 100
-Config.BOSS_DOWN_TIME = 10
+Config.BOSS_DOWN_TIME = 6 -- (5 Nov, less waiting: was 10)
 Config.BOSS_REVIVE_TIME = 2.5
 Config.BOSS_REVIVE_RADIUS = 9
 -- juice boxes (owner, 26 Oct round 2): +30 HP, one every ~20 s and one each time the boss is stunned open
@@ -1410,7 +1410,7 @@ end
 -- Lobby parties
 -------------------------------------------------------------------------------------------------------------
 Config.PARTY_MAX = 4
-Config.PARTY_COUNTDOWN = 15
+Config.PARTY_COUNTDOWN = 10 -- (5 Nov, less waiting: was 15)
 Config.SOLO_COUNTDOWN = 3
 
 -------------------------------------------------------------------------------------------------------------

@@ -2668,6 +2668,17 @@ end
 
 -- Take everything away (the end, or SKIP). Safe to call any time.
 function Opening.stop()
+	-- (the lens stays where it is: the last shot's function is called every frame until the next film cuts, and it
+	-- looked at the cast this takes away: "attempt to index nil with 'root'" every frame through the credits)
+	pcall(function()
+		if Film.playing then
+			local cam = workspace.CurrentCamera
+			local cf, fov = cam.CFrame, cam.FieldOfView
+			Film.cut(0.05, function()
+				return cf, fov, cf.Position + cf.LookVector * 10
+			end)
+		end
+	end)
 	playing = false
 	prepared = false
 	for _, c in conns do

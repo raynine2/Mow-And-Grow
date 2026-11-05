@@ -370,7 +370,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the loading bar: the HUD's wooden groove, mowed stripes filling it, tall grass growing out of the rest
 -------------------------------------------------------------------------------------------------------------
-type Bar = { gx: number, gy: number, gw: number, gh: number, fill: Frame, uncut: Frame, grass: Frame, mower: GuiObject, plate: GuiObject, pct: TextLabel }
+type Bar = { gx: number, gy: number, gw: number, gh: number, fill: Frame, cutIn: Frame, artIn: Frame, cutUp: Frame, artUp: Frame, reach: number, mower: GuiObject, plate: GuiObject, pct: TextLabel }
 local function bar(stage: Frame): Bar
 	local holder = frame(stage, UDim2.fromOffset(BAR.w, BAR.h), UDim2.fromOffset(BAR.x, BAR.y), WHITE)
 	holder.Name = "Bar"
@@ -389,22 +389,57 @@ local function bar(stage: Frame): Bar
 	end
 	local gloss = frame(fill, UDim2.new(1, -16, 0.24, 0), UDim2.new(0, 8, 0.12, 0), Color3.new(1, 1, 1), 99)
 	gloss.BackgroundTransparency = 0.7
-	-- uncut: tall grass from the mower to the end, growing up out of the groove over the frame's top edge
+	-- uncut: tall grass from the mower to the end, growing up out of the groove over the frame's top edge.
+	-- (owner, 5 Nov, of the bar: still bugged: the grass stopped short of the groove's round end in a hard edge,
+	-- leaving the end empty) Two layers of the same grass. In the groove it's clipped to the groove's own rounded
+	-- shape (a CanvasGroup with its corner), so it fills it right into the round end; above the groove the blades
+	-- stand over the frame and fade out toward the end, so nothing sticks out past the corner.
 	local reach = 52 -- how far the grass stands above the groove
-	local uncut = frame(stage, UDim2.fromOffset(gw, gh + reach), UDim2.fromOffset(gx, gy - reach), WHITE)
-	uncut.Name = "Uncut"
-	uncut.BackgroundTransparency = 1
-	uncut.ClipsDescendants = true
-	local grass = frame(uncut, UDim2.fromOffset(gw, gh + reach), UDim2.new(), WHITE)
-	grass.BackgroundTransparency = 1
-	frame(grass, UDim2.fromOffset(gw, gh - 6), UDim2.fromOffset(0, reach + 3), Color3.fromRGB(64, 140, 44), math.floor(gh / 2)).Name = "Roots"
-	if IconIds.ui_grass then
-		local th = gh + reach - 2
-		local tw = math.floor(th * 921 / 271)
-		for x = -16, gw, tw - 22 do
-			img(grass, "ui_grass", UDim2.fromOffset(tw, th), UDim2.fromOffset(x, gh + reach), Vector2.new(0, 1))
+	local r = math.floor(gh / 2)
+	local function grassArt(parent: Instance, top: number)
+		-- the grass laid in `parent` with the groove's top edge at y = `top`
+		frame(parent, UDim2.fromOffset(gw, gh - 6), UDim2.fromOffset(0, top + 3), Color3.fromRGB(64, 140, 44), r).Name = "Roots"
+		if IconIds.ui_grass then
+			local th = gh + reach - 2
+			local tw = math.floor(th * 921 / 271)
+			for x = -16, gw, tw - 22 do
+				img(parent, "ui_grass", UDim2.fromOffset(tw, th), UDim2.fromOffset(x, top + gh), Vector2.new(0, 1))
+			end
 		end
 	end
+	local function layer(name: string, h: number, y: number): (CanvasGroup, Frame, Frame)
+		local g = Instance.new("CanvasGroup")
+		g.Name = name
+		g.BackgroundTransparency = 1
+		g.Size = UDim2.fromOffset(gw, h)
+		g.Position = UDim2.fromOffset(gx, y)
+		g.Parent = stage
+		-- (the mower's edge: everything left of it is mowed)
+		local cut = frame(g, UDim2.fromOffset(gw, h), UDim2.new(), WHITE)
+		cut.Name = "Cut"
+		cut.BackgroundTransparency = 1
+		cut.ClipsDescendants = true
+		local art = frame(cut, UDim2.fromOffset(gw, h), UDim2.new(), WHITE)
+		art.Name = "Art"
+		art.BackgroundTransparency = 1
+		return g, cut, art
+	end
+	local inGroove, cutIn, artIn = layer("UncutIn", gh, gy)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, r)
+	corner.Parent = inGroove
+	grassArt(artIn, 0)
+	local up, cutUp, artUp = layer("UncutUp", reach, gy - reach)
+	grassArt(artUp, reach)
+	local fade = Instance.new("UIGradient")
+	local a, b = math.clamp(1 - r * 2.4 / gw, 0, 1), math.clamp(1 - r * 0.7 / gw, 0, 1)
+	fade.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(a, 0),
+		NumberSequenceKeypoint.new(b, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	fade.Parent = up
 	-- the mower (the picture faces left, so it's drawn mirrored to drive right)
 	local mower: GuiObject
 	if IconIds.pushmower then
@@ -422,7 +457,7 @@ local function bar(stage: Frame): Bar
 	plate.AnchorPoint = Vector2.new(0.5, 0.5)
 	plate.BackgroundTransparency = 1
 	local pct = text(plate, "0%", UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), 3)
-	return { gx = gx, gy = gy, gw = gw, gh = gh, fill = fill, uncut = uncut, grass = grass, mower = mower, plate = plate, pct = pct }
+	return { gx = gx, gy = gy, gw = gw, gh = gh, fill = fill, cutIn = cutIn, artIn = artIn, cutUp = cutUp, artUp = artUp, reach = reach, mower = mower, plate = plate, pct = pct }
 end
 
 -- a grass clipping flying out behind the mower
@@ -565,13 +600,13 @@ function LoadingScreen.build(player: Player?): ScreenGui
 		shown += (target - shown) * math.min(1, dt * 4)
 		local x = B.gw * shown
 		B.fill.Size = UDim2.fromOffset(math.max(x, if shown > 0.01 then B.gh else 0), B.gh)
-		-- (owner, 4 Nov, of the bar: "corners are stickiing out the circle thing") the tall grass keeps off the groove's
-		-- round ends: it stands only over its straight middle
-		local r = B.gh / 2
-		local from = math.max(x, r)
-		B.uncut.Position = UDim2.fromOffset(B.gx + from, B.uncut.Position.Y.Offset)
-		B.uncut.Size = UDim2.fromOffset(math.max(0, B.gw - r - from), B.uncut.Size.Y.Offset)
-		B.grass.Position = UDim2.fromOffset(-from, 0)
+		-- the grass starts at the mower (its layers keep it inside the groove's round ends: bar())
+		B.cutIn.Position = UDim2.fromOffset(x, 0)
+		B.cutIn.Size = UDim2.fromOffset(math.max(0, B.gw - x), B.gh)
+		B.artIn.Position = UDim2.fromOffset(-x, 0)
+		B.cutUp.Position = UDim2.fromOffset(x, 0)
+		B.cutUp.Size = UDim2.fromOffset(math.max(0, B.gw - x), B.reach)
+		B.artUp.Position = UDim2.fromOffset(-x, 0)
 		local bump = math.abs(math.sin(t * 16)) * 3
 		B.mower.Position = UDim2.fromOffset(B.gx + x, B.gy + B.gh + 4 - bump)
 		B.mower.Rotation = math.sin(t * 8) * 2

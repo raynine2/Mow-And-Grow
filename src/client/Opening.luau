@@ -664,6 +664,31 @@ local function tune(name: string, default: number): number
 	return default
 end
 
+-- (round 2) the tall grass where the fight happens is trampled flat: from the low angles it hid the hits, the hand on
+-- the ground, the landings (the pool's own grass goes into the black as it spreads)
+local function clearArena()
+	local spots = { { DEMON_AT, 31 }, { R1, 9 }, { R2, 9 }, { R3, 9 }, { P1, 10 }, { SHED + Vector3.new(8, 0, 0), 8 } }
+	for _, t in S.tufts do
+		local q = t.at.Position
+		local here = Vector3.new(q.X, 0, q.Z) - Vector3.new(S.at.Position.X, 0, S.at.Position.Z)
+		local inPool = (here - Vector3.new(DEMON_AT.X, 0, DEMON_AT.Z)).Magnitude < POOL_R + 1.5
+		local hide = false
+		for _, sp in spots do
+			if (here - Vector3.new(sp[1].X, 0, sp[1].Z)).Magnitude < sp[2] then
+				hide = true
+				break
+			end
+		end
+		if hide and not inPool then
+			for _, part in t.parts or { t.part } do
+				if part:IsA("BasePart") then
+					part.Transparency = 1
+				end
+			end
+		end
+	end
+end
+
 local function buildSummon()
 	local rng = Random.new(404)
 	local tiles = {}
@@ -786,6 +811,7 @@ end
 
 local function actI(): boolean
 	night()
+	clearArena()
 	IntroUi.letterbox(true, 0)
 	IntroUi.fade(1, 1.2)
 	FilmAudio.amb("ambWind", 0.9, 1.5)
@@ -922,10 +948,10 @@ local function actI(): boolean
 	end)
 	if not shot(T.roar, function(k)
 		local e = D.eyes()
-		local c = at(DEMON_AT, 0)
-		local fwd = Vector3.new(0, 0, 1)
-		local p = Vector3.new(e.X + 4, c.Y + 1.4 + k * 0.6, e.Z) + fwd * (tune("EyeCamDist", 17) - k * 2)
-		return look(p, e + Vector3.new(0, -1.5, 0), 4), mm(40), e
+		local fwd = flat(D.head().LookVector)
+		fwd = if fwd.Magnitude > 0.1 then fwd.Unit else Vector3.zAxis
+		local p = e + fwd * (tune("EyeCamDist", 30) - k * 4) + Vector3.new(tune("EyeCamSide", 5), tune("EyeCamUp", -3), 0)
+		return look(p, e + Vector3.new(0, -2, 0), 4), mm(tune("EyeMM", 38)), e
 	end, { hand = 0.35 }) then
 		return false
 	end
@@ -1070,10 +1096,15 @@ local function exchange(): boolean
 		local fr, ar = D.frame("foreR"), D.frame("armR")
 		local elbow, shoulder = fr.Position, ar.Position
 		local hand = elbow - fr.UpVector * tune("ForeLen", 15)
+		-- (the side he runs on: up, and toward the lens's side, square to the arm; on its steep upper part straight up
+		-- put him inside it)
+		local lensSide = flat(elbow - at(DEMON_AT, elbow.Y))
+		lensSide = if lensSide.Magnitude > 0.1 then lensSide.Unit else Vector3.new(-1, 0, 0)
 		local function top(p: Vector3, along: Vector3): Vector3
-			local n = UP - along * UP:Dot(along)
+			local want = UP + lensSide * 0.8
+			local n = want - along * want:Dot(along)
 			n = if n.Magnitude > 0.05 then n.Unit else UP
-			return p + n * tune("ArmTop", 3.6)
+			return p + n * tune("ArmTop", 4.4)
 		end
 		local a1 = (elbow - hand).Unit
 		local a2 = (shoulder - elbow).Unit
@@ -1102,10 +1133,10 @@ local function exchange(): boolean
 		fadeOut(beam, 0.3, Vector3.new(0.05, 0.05, (b - a).Magnitude))
 		sfx("lunge", 1.1, 1.2)
 	end)
-	local wideAim = at(Vector3.new(-4, 0, (R1.Z + DEMON_AT.Z) / 2), tune("WideAimY", 12))
-	local wideFrom = wideAim + Vector3.new(tune("WideX", -52), tune("WideY", -5), 0)
+	local wideAim = at(Vector3.new(-4, 0, (R1.Z + DEMON_AT.Z) / 2), tune("WideAimY", 17))
+	local wideFrom = wideAim + Vector3.new(tune("WideX", -64), tune("WideY", -9), 0)
 	if not shot(T.claw + 0.16, function(k)
-		return look(wideFrom + Vector3.new(0, 0, k * 1.5), wideAim, 0), mm(tune("WideMM", 22)), wideAim
+		return look(wideFrom + Vector3.new(0, 0, k * 1.5), wideAim, 0), mm(tune("WideMM", 19)), wideAim
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -1461,27 +1492,24 @@ local function clang(): boolean
 	end, { hand = 0.3 }) then
 		return false
 	end
-	-- 17. [SR 20.35-21.35: the fist coming at the lens until it fills the frame] (round 2) its OTHER hand swats him: from
-	-- behind him we see it come across, big, at him
+	-- 17. [SR 20.35-21.35: the hit at the lens] (round 2) from behind him, looking up at its face: it glares, the arm
+	-- he's standing on WHIPS and throws him (its other hand can't reach that far round: measured in Studio), straight
+	-- at the lens
 	local P = demonPose[D]
-	local swingAt, hitT = T.back + 0.12, T.back + 0.3
+	local hitT = T.back + 0.3
 	tracks.backhand = function()
 		local tt = now()
-		local wind = ease.out(math.clamp((tt - T.back) / 0.12, 0, 1))
-		local sweep = ease.inn(math.clamp((tt - swingAt) / (hitT - swingAt), 0, 1))
-		local follow = ease.out(math.clamp((tt - hitT) / 0.35, 0, 1))
-		P.armL = {
-			pitch = tune("SwatPitch0", -35) * wind * (1 - sweep) + tune("SwatPitch", -18) * sweep,
-			yaw = tune("SwatYaw0", -25) * wind * (1 - sweep) + (tune("SwatYaw", 70) + 22 * follow) * sweep,
-		}
-		P.lean = 6 * sweep
+		local whip = ease.out(math.clamp((tt - (hitT - 0.07)) / 0.13, 0, 1))
+		local settle = ease.inOut(math.clamp((tt - hitT - 0.15) / 0.5, 0, 1))
+		P.armR = { pitch = tune("WhipPitch", -38) * whip * (1 - settle * 0.6), yaw = tune("WhipYaw", -30) * whip * (1 - settle * 0.6) }
+		P.lean = 7 * whip
 	end
 	sfx("whoosh", 1.3, 0.45)
 	local flyFrom = p
 	local flyTo = at(SHED + Vector3.new(-2, 2, -1))
 	local flyDir = (flyTo - flyFrom).Unit
 	after(hitT, function()
-		AnimeFx.impact({ R.model, SH.model, table.unpack(armParts(D, "L")) }, "red", { hold = 0.12, at = flyFrom })
+		AnimeFx.impact({ R.model, SH.model, table.unpack(armParts(D, "R")) }, "red", { hold = 0.12, at = flyFrom })
 		sfx("punch", 1.3, 0.7)
 		sfx("bigHit", 0.9, 0.9)
 		Film.shake(0.9, 1.6)
@@ -1494,8 +1522,8 @@ local function clang(): boolean
 	local away = -flyDir
 	if not shot(hitT, function(k)
 		local cp = flyFrom - flyDir * tune("SwatCamBack", -9) + UP * tune("SwatCamUp", 0.5) + flyDir:Cross(UP).Unit * tune("SwatCamSide", 3)
-		local aim = flyFrom + away * 6 + UP * (2 + k)
-		return look(cp, aim, 4), mm(tune("SwatMM", 18)), flyFrom
+		local aim = flyFrom:Lerp(D.eyes(), 0.35) + UP * k
+		return look(cp, aim, 4), mm(tune("SwatMM", 22)), flyFrom
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -1509,8 +1537,9 @@ local function clang(): boolean
 		local k = math.clamp((tt - hitT) / (T.shed - hitT), 0, 1)
 		local q = flyFrom:Lerp(flyTo, k) + UP * math.sin(k * math.pi) * 3
 		R.root = CFrame.lookAt(q, q - flyDir) * CFrame.Angles(0, 0, math.rad(k * 220))
-		if math.random() < 0.4 then
-			R:ghost(Color3.fromRGB(255, 220, 160), 0.65, 0.22)
+		if os.clock() - (R.lastGhost or 0) > 0.06 then
+			R.lastGhost = os.clock()
+			R:ghost(Color3.fromRGB(255, 220, 160), 0.78, 0.2)
 		end
 	end
 	local flySide = flyDir:Cross(UP).Unit
@@ -1527,7 +1556,7 @@ local function clang(): boolean
 	end
 	stopFly()
 	tracks.backhand = nil
-	P.armL, P.lean = nil, 0
+	P.armR, P.lean = nil, 0
 	return true
 end
 
@@ -1631,7 +1660,7 @@ local function shed(): boolean
 		sfx("thud", 1.3, 0.6)
 		sfx("slam", 1.0, 0.7)
 		Film.shake(0.7, 1.4)
-		fx("Rocks", at(SHED, 1), { scale = 1.6 })
+		Film.flash(Color3.fromRGB(255, 226, 190), 0.45, 0.14)
 		-- (the dust a beat later, small and behind the shed: the pack's dust cloud is a solid mesh that, big and in
 		-- front, filled the frame like a dark rock)
 		task.delay(0.18, function()
@@ -2157,9 +2186,9 @@ local function punch(): boolean
 		local h = headOf(H)
 		-- (round 2: closer, him big on the left, the fists coming down ahead of him: wide, the two of them were specks
 		-- under a mass of blocks)
-		local cp = root.Position + root.RightVector * (tune("WindCamSide", 8.5) - k * 1) - root.LookVector * tune("WindCamBack", 3) + Vector3.new(0, tune("WindCamUp", 0.2), 0)
+		local cp = root.Position + root.RightVector * (tune("WindCamSide", 14) - k * 1) - root.LookVector * tune("WindCamBack", 5) + Vector3.new(0, tune("WindCamUp", -1.2), 0)
 		key(h + root.LookVector * 2.5, GOLD, 1.8, 8)
-		return look(cp, root.Position + root.LookVector * 6 + Vector3.new(0, tune("WindAimUp", 4.5) + k * 1.5, 0), 3), mm(tune("WindMM", 20)), h
+		return look(cp, root.Position + root.LookVector * 5 + Vector3.new(0, tune("WindAimUp", 7) + k * 1.5, 0), 3), mm(tune("WindMM", 18)), h
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -2198,9 +2227,11 @@ local function punch(): boolean
 	if not shot(T.shatter, function(k)
 		local root = H.root
 		local f = H:grip("Right").Position
-		local cp = f + root.LookVector * (2.6 + k * 0.4) + root.RightVector * 1.1 + Vector3.new(0, 0.5, 0)
+		-- (round 2: from the side, the whole of him, the arm straight into the fist; right at the fist it was a wall of
+		-- his own shoulder and hair)
+		local cp = root.Position + root.RightVector * tune("PunchCamSide", 10) - root.LookVector * (1 - k) + Vector3.new(0, tune("PunchCamUp", 0.8), 0)
 		key(f + root.LookVector * 1.2, GOLD, 3, 8)
-		return look(cp, headOf(H):Lerp(f, 0.45), -8), mm(25), f
+		return look(cp, root.Position + root.LookVector * 3.5 + Vector3.new(0, 1.6 + k * 0.8, 0), -6), mm(tune("PunchMM", 24)), f
 	end, { hand = 0.3 }) then
 		return false
 	end

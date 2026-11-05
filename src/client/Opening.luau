@@ -520,7 +520,7 @@ clearView = function(cf: CFrame, focus: Vector3?, opts: any)
 	for _, pr in S.props or {} do
 		local hide = false
 		if opts.props ~= false and pr.radius < 24 then
-			local d = pr.center - p
+			local d = (if pr.follow then pr.follow.Position else pr.center) - p
 			if d.Magnitude < pr.radius + 1 then
 				hide = true
 			elseif dir then
@@ -776,18 +776,19 @@ local function actII(): boolean
 	R:show(true)
 	walkTrack()
 	sfx("bladeDraw", 0.8, 0.7)
-	-- 6. [BL, a low tracking shot] in front of him at boot height, backing away as he comes: his boots, the shears
-	-- scraping along behind him, sparks; the demon's pink light rims him
+	-- 6. [BL, a low tracking shot] beside him at knee height, keeping pace: the gold shears dragging big across the
+	-- frame from his hand, his boots, sparks off the tip (from the front, pass 2 saw only his legs)
 	clearR = 4
 	key(nil)
 	if not shot(T.walk, function(_k)
 		local root = R.root
 		local g = root.Position.Y + R.ground
-		local p = root.Position + root.LookVector * 6.5 + root.RightVector * 1.3
-		p = Vector3.new(p.X, g + 0.35, p.Z)
-		local target = Vector3.new(root.Position.X, g + 1.1, root.Position.Z) - root.LookVector * 1.2
-		return look(p, target, -2), mm(32), target
-	end, { hand = 0.5 }) then
+		local p = root.Position + root.RightVector * 9.5 + root.LookVector * 1.3
+		p = Vector3.new(p.X, g + 1.1, p.Z)
+		local target = root.Position - root.LookVector * 2.6
+		target = Vector3.new(target.X, g + 1.2, target.Z)
+		return look(p, target, -1.5), mm(35), target
+	end, { hand = 0.4 }) then
 		return false
 	end
 	-- 7. [SR 29.3, over the shoulder] low behind him: his back big on the left, the colossus ahead
@@ -897,10 +898,12 @@ local function exchange(): boolean
 		slashArc(c, (p - c).Unit, UP:Lerp(side, 0.4).Unit, 5, -70 + i * 40, 110 + i * 40)
 		fx("CorruptHit", c, { scale = 0.9 })
 		Film.shake(0.35, 3)
-		local camOff = ({ Vector3.new(3, -4, 0), Vector3.new(0, 2, 0), Vector3.new(0, 5, 0) })[i]
-		local roll = ({ -14, 10, -4 })[i]
+		-- (the first from higher and further: close and level it showed only his arms; cuts 2 and 3 read well)
+		local camOff = ({ Vector3.new(0, 6.5, 0), Vector3.new(0, 2, 0), Vector3.new(0, 5, 0) })[i]
+		local back = ({ 10, 7, 7 })[i]
+		local roll = ({ -12, 10, -4 })[i]
 		if not shot(times[i + 1], function(_k)
-			local cp = p + (p - c).Unit * 7 + side * 4 + camOff
+			local cp = p + (p - c).Unit * back + side * 4 + camOff
 			return look(cp, p:Lerp(c, 0.4), roll), mm(28), p
 		end, { hand = 0.15 }) then
 			return false
@@ -942,10 +945,12 @@ local function armFalls(): boolean
 	shearsOpen = 12
 	sfx("stepThud", 1.2, 0.8)
 	fx("DustKick", at(R2, 0.3), { scale = 1.2 })
+	-- (from above his right shoulder, tested in Studio: him crouched in the middle, the shears' bolt glowing below,
+	-- the arm and the demon's dark bulk behind him)
 	if not shot(T.eye, function(k)
-		local root = R.root
-		local p = root.Position + root.LookVector * 3.4 - root.RightVector * 5.5 + Vector3.new(0, -2.0, 0)
-		return look(p, root.Position:Lerp(land, 0.45) + Vector3.new(0, 1.5, 0), -3), mm(22), root.Position
+		local base = at(R2, 0)
+		local p = base + Vector3.new(8 + k * 0.6, 6 + k * 0.4, 7 + k * 0.6)
+		return look(p, base + Vector3.new(-6, 2, -5.5), -3), mm(26), at(R2, 2)
 	end, { hand = 0.5 }) then
 		return false
 	end
@@ -1217,7 +1222,8 @@ local function shed(): boolean
 	shearsOpen = 0
 	fx("Dust", at(SHED + Vector3.new(-1, 0, 2), 1), { scale = 2 })
 	if not shot(T.up, function(k)
-		local c = R.root.Position + Vector3.new(0, -1.5, 0)
+		-- (centred between his chest and his head: on his hips, pass 2 cut his head off)
+		local c = chestOf(R).Position:Lerp(headOf(R), 0.35)
 		local a = math.rad(20 + k * 25)
 		local cp = c + Vector3.new(math.cos(a) * 0.4, 13 - k * 3, math.sin(a) * 0.4)
 		return CFrame.lookAt(cp, c, Vector3.new(math.cos(a + 1.2), 0, math.sin(a + 1.2))), mm(34), c
@@ -1330,9 +1336,22 @@ local function stance(): boolean
 	sfx("chip", 0.8, 2)
 	AnimeFx.technique("ONE SNIP", "the Owner's ultimate", GOLD, 0.62)
 	if not shot(T.ult, function(_k)
+		-- (framed on the blades where they are each frame, from the side away from his body: aimed at where the tips
+		-- were when the shot began, pass 2 saw only the ground)
+		local ta, tb = SH:tips()
 		local piv = SH.pivot.Position
-		local cp = piv + R.root.RightVector * 2.6 + R.root.LookVector * 1.4 + Vector3.new(0, 0.5, 0)
-		return look(cp, piv:Lerp(a, 0.35)), mm(55), piv
+		local mid = (ta + tb) / 2
+		local along = mid - piv
+		along = if along.Magnitude > 0.1 then along.Unit else R.root.LookVector
+		local side = along:Cross(UP)
+		side = if side.Magnitude > 0.1 then side.Unit else R.root.RightVector
+		local target = piv:Lerp(mid, 0.45)
+		local root = R.root.Position
+		if (target + side * 3 - root).Magnitude < (target - side * 3 - root).Magnitude then
+			side = -side
+		end
+		local cp = target + side * 3.4 + UP * 0.9 - along * 0.8
+		return look(cp, target, -6), mm(50), target
 	end, { hand = 0.15 }) then
 		return false
 	end
@@ -2104,7 +2123,11 @@ function Opening.tryCam(from: Vector3?, to: Vector3?, fov: number?, roll: number
 	tryCam = { cf = look(a, b, roll or 0), fov = fov or 40, focus = b }
 end
 function Opening.cast(): any
-	return { S = S, R = R, H = H, D = D, D2 = D2, SH = SH, T = T, now = now, V = V }
+	return { S = S, R = R, H = H, D = D, D2 = D2, SH = SH, T = T, now = now, V = V, held = function()
+		return held
+	end, playing = function()
+		return playing
+	end }
 end
 
 -- Take everything away (the end, or SKIP). Safe to call any time.

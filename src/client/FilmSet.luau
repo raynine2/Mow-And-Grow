@@ -16,6 +16,9 @@ local PINK = Color3.fromRGB(255, 40, 170)
 local HOT = Color3.fromRGB(255, 196, 236)
 local GOLD = Color3.fromRGB(255, 200, 80)
 local LAMP = Color3.fromRGB(255, 176, 96)
+-- the moon's way from the meadow's middle (set space): low in the east, so that from the west, through where Rayan
+-- stops for his name card, the line clears the demon's left claw (south of it)
+local MOON_DIR = Vector3.new(0.985, 0.1, 0.14).Unit
 
 local function lite(): boolean
 	return Potato.on or Device.touch
@@ -197,6 +200,10 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 		end
 		return m
 	end
+	-- (the fissure's rim rocks too: they move, so the film reads their place each time, `follow`)
+	for _, r in set.rim do
+		table.insert(set.props, { parts = { r.part }, follow = r.part, center = r.part.Position, radius = r.part.Size.Magnitude / 2, hidden = false })
+	end
 	-- the shed (the game's garage, 223 bricks) west of the middle, its open front facing east; its hay, barrel, crates
 	-- and wheelbarrow round its back and south side, out of the fight (they stood in half the shots)
 	set.shed = prop("garage_shed", W(-31, 0, -6) * CFrame.Angles(0, math.rad(90), 0), 0.8, folder)
@@ -250,7 +257,15 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 			end
 		end
 	end
-	tree("oak", 44, -22, 1.05)
+	-- (nothing stands in the line from where Rayan stops for his name card, (-5, -30), to the moon: in pass 2 an oak
+	-- there hid it)
+	local moonFlat = Vector3.new(MOON_DIR.X, 0, MOON_DIR.Z).Unit
+	local function inMoonLine(x: number, z: number): boolean
+		local v = Vector3.new(x + 5, 0, z + 30)
+		local along = v:Dot(moonFlat)
+		return along > 0 and math.deg(math.atan2(v:Cross(moonFlat).Magnitude, along)) < 12
+	end
+	tree("oak", 44, 4, 1.05)
 	tree("oak_small", -54, -44, 1.1)
 	tree("birch", 52, 30, 0.95)
 	tree("oak", -62, 46, 1.0)
@@ -262,7 +277,7 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 		local a = (i / far) * math.pi * 2 + rng:NextNumber(-0.08, 0.08)
 		local r = rng:NextNumber(115, 210)
 		local p = Vector3.new(math.cos(a) * r, 0, math.sin(a) * r - 40)
-		if not onPath(p) and not (p.Z < -90 and math.abs(p.X) < 45) then
+		if not onPath(p) and not (p.Z < -90 and math.abs(p.X) < 45) and not inMoonLine(p.X, p.Z) then
 			local names = { "oak", "oak_small", "birch" }
 			tree(names[rng:NextInteger(1, 3)], p.X, p.Z, rng:NextNumber(0.9, 1.5))
 		end
@@ -382,9 +397,8 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 		end
 	end
 
-	-- (after the reference's silhouette against a huge moon) a big moon low in the east, for Rayan's card: seen from
-	-- the west through where he stops, the line clears the demon's left claw (south of it) and nothing stands in it
-	local moonDir = Vector3.new(0.985, 0.1, 0.14).Unit
+	-- (after the reference's silhouette against a huge moon) a big moon low in the east, for Rayan's card (MOON_DIR)
+	local moonDir = MOON_DIR
 	local moonAt = at.Position + at:VectorToWorldSpace(moonDir) * 360
 	local moon = block(folder, Vector3.new(72, 72, 72), CFrame.new(moonAt), Color3.fromRGB(226, 232, 255), Enum.Material.Neon, "Moon")
 	moon.Shape = Enum.PartType.Ball

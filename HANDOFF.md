@@ -309,6 +309,15 @@ shows the empty world for a moment (live servers teleport instead).
 
 ## Studio vs. git: please read
 
+**5 Nov, ~13:05: Films v2 is IN Studio** (the owner allowed `raw.githubusercontent.com` in Studio's MCP permissions;
+`tools/studio-patches/2026-11-05-films-v2/install.luau` put in 17 scripts from `3a78d4f`, every checksum checked before
+and after, old copies in `ServerStorage.MowALawnBackups.pre_films_v2_5nov`). Tested in Play: DEV → INTRO 2 (NEW)
+plays the new opening and hands back to the game; ENDING 2 (NEW) ran through to the end screen with no errors (the 3D
+view stopped drawing in the screenshots, so the owner watches that one himself). Not saved until the owner presses
+Ctrl+S. **Another session is changing `client/HatchFx` and `client/HatchSpace` in this same Studio right now**
+(99128 and 39681 bytes at 13:15): don't overwrite them, and if `Config` is put back from an older copy the films lose
+`Config.FILMS_V2` and the music (`FILM_SOUNDS.animeCharge`).
+
 **State on 5 Nov, ~10:50: Studio = git for 345 of the 356 scripts** (every script under the three Rojo folders and
 ReplicatedFirst, compared by checksum). **Only in Studio** (another session's hatch work, 5 Nov; don't overwrite, and
 **don't sync with Rojo**: it would put git's old `HatchFx` over it): `client/HatchFx` (95958 1626422871, git has an

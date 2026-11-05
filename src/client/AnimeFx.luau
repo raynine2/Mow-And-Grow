@@ -35,6 +35,7 @@ local Z_PICTURE = 3 -- under the letterbox bars (4)
 local Z_TEXT = 6 -- over them, under SKIP (8) and the black cover (10)
 
 local live: { Instance } = {}
+local FxIds = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("FxIds")) :: any
 
 local function calm(): boolean
 	return player:GetAttribute("CalmCamera") == true
@@ -100,7 +101,6 @@ end
 -- for names, small spaced capitals under a thin rule, a stamped seal with one character, and everything in and out on
 -- a cut (no bouncing, no sliding across the screen). Our own words and marks.
 -------------------------------------------------------------------------------------------------------------
-local SERIF = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Regular)
 local SERIF_BOLD = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Bold)
 local SERIF_BLACK = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Heavy)
 local SANS = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Medium)
@@ -141,6 +141,7 @@ function AnimeFx.sub(text: string, life: number?)
 	local bar = IntroUi.bar()
 	local root = Instance.new("Frame")
 	root.Name = "Sub"
+	root:SetAttribute("KeepFont", true) -- (client/TextStyle leaves the films' own type alone)
 	root.BackgroundTransparency = 1
 	root.AnchorPoint = Vector2.new(0.5, 1)
 	root.Position = UDim2.fromScale(0.5, 1 - bar - 0.02)
@@ -254,16 +255,23 @@ function AnimeFx.card(name: string, title: string, color: Color3?, life: number?
 	local hold = life or 1.9
 	local root = Instance.new("Frame")
 	root.Name = "NameCard"
+	root:SetAttribute("KeepFont", true)
 	root.BackgroundTransparency = 1
 	root.Size = UDim2.fromScale(1, 1)
 	root.ZIndex = Z_TEXT
 	root.Parent = g
-	local wash = frame(root, "Wash", BLACK, 0, Z_TEXT)
-	wash.Size = UDim2.fromScale(0.75, 0.42)
-	wash.Position = UDim2.fromScale(0, 0.42)
-	local fade = Instance.new("UIGradient")
-	fade.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(0.55, 0.55), NumberSequenceKeypoint.new(1, 1) })
-	fade.Parent = wash
+	-- (a soft dark pool behind the type, no hard edges: the glow texture, black)
+	local wash = Instance.new("ImageLabel")
+	wash.Name = "Wash"
+	wash.BackgroundTransparency = 1
+	wash.Image = FxIds.glow
+	wash.ImageColor3 = BLACK
+	wash.ImageTransparency = 0.2
+	wash.AnchorPoint = Vector2.new(0.5, 0.5)
+	wash.Position = UDim2.fromScale(0.3, 0.62)
+	wash.Size = UDim2.fromScale(1.0, 0.62)
+	wash.ZIndex = Z_TEXT
+	wash.Parent = root
 	seal(root, mark or string.sub(name, 1, 1), c, UDim2.fromScale(0.105, 0.6), 0.13, Z_TEXT + 2)
 	local big = typeLabel(root, tracked(string.upper(name)), SERIF_BLACK, WHITE, Z_TEXT + 2)
 	big.AnchorPoint = Vector2.new(0, 0.5)
@@ -295,7 +303,6 @@ end
 -- cut, a star that bursts into a ring where a hit lands, a long flare streak. The textures are the game's own
 -- (shared/FxIds, assets/fx).
 -------------------------------------------------------------------------------------------------------------
-local FxIds = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("FxIds")) :: any
 local RECT_BLADE = { 92, 2, 72, 251 } -- (the blade texture's shape: a long wedge, its point up)
 local RECT_SLASH = { 34, 72, 444, 216 } -- (the crescent)
 
@@ -494,6 +501,7 @@ function AnimeFx.technique(name: string, sub: string, color: Color3?, life: numb
 	local c = color or Color3.fromRGB(255, 214, 90)
 	local hold = life or 0.9
 	local root = frame(g, "Technique", BLACK, 0.42, Z_TEXT)
+	root:SetAttribute("KeepFont", true)
 	seal(root, mark or string.sub(name, 1, 1), c, UDim2.fromScale(0.2, 0.47), 0.2, Z_TEXT + 2)
 	local big = typeLabel(root, tracked(string.upper(name)), SERIF_BLACK, WHITE, Z_TEXT + 2)
 	big.AnchorPoint = Vector2.new(0, 0.5)
@@ -815,6 +823,7 @@ function AnimeFx.word(big: string, small: string?, color: Color3?): Frame?
 	end
 	local c = color or CRIMSON
 	local root = frame(g, "Word", BLACK, 0, Z_TEXT)
+	root:SetAttribute("KeepFont", true)
 	local t = typeLabel(root, tracked(string.upper(big)), SERIF_BLACK, WHITE, Z_TEXT + 1)
 	t.AnchorPoint = Vector2.new(0.5, 0.5)
 	t.Position = UDim2.fromScale(0.5, 0.45)

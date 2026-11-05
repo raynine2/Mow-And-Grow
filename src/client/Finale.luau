@@ -1529,7 +1529,8 @@ local function lesson(): boolean
 		local d = math.max(9, (flat(b - a).Magnitude * 0.5 + 3) / 0.9)
 		return look(mid + side * d + Vector3.new(0, -1.2, 0), mid, -4), mm(24), mid
 	end, { hand = 0.3, keep = function()
-		return { R.root.Position + UP, C.root.Position + UP }
+		-- (their legs too: a tuft low in front of it hid them, below the line to its chest)
+		return { R.root.Position + UP, R.root.Position - UP * 1.8, C.root.Position + UP, C.root.Position - UP * 1.8 }
 	end }) then
 		return false
 	end
@@ -1632,7 +1633,7 @@ local function lesson(): boolean
 		local p = mid + side * (22 - k * 1.5) + Vector3.new(0, 3.0, 0)
 		return look(p, mid + Vector3.new(0, 1.8, 0), 2), mm(22), mid
 	end, { hand = 0.4, keep = function()
-		return { C.root.Position + UP, R.root.Position + UP, H.root.Position + UP }
+		return { C.root.Position, R.root.Position, H.root.Position, C.root.Position - UP * 1.8, H.root.Position - UP * 1.8 }
 	end }) then
 		return false
 	end

@@ -853,32 +853,40 @@ local function actI(): boolean
 		p.Color = PINK
 	end
 	local P = demonPose[D]
-	local burstAt = T.rise
-	local slamAt = T.rise + tune("SlamDelay", 0.26)
+	-- (the body stays deep under the black while the arm, lifted up out of it on its own, bursts up and comes down on
+	-- the edge; then the body climbs up to it, the hand planted, as if it hauls itself out by it)
+	local slamAt = T.rise + tune("SlamDelay", 0.3)
+	local shootLen = 0.13
 	tracks.demonRise = function()
 		local tt = now()
 		if not D or tt > T.roar + 2 then
 			tracks.demonRise = nil
 			return
 		end
-		local r0, r1 = tune("RiseHand", 0.5), tune("RiseHead", 0.64)
+		local hidden, r1 = tune("RiseHidden", 0), tune("RiseHead", 0.52)
+		local rise
 		if tt < T.eyes then
-			D.state.rise = r0
+			rise = hidden
 		elseif tt < T.roar then
-			D.state.rise = r0 + (r1 - r0) * ease.out(math.clamp((tt - T.eyes) / 0.5, 0, 1))
+			rise = hidden + (r1 - hidden) * ease.out(math.clamp((tt - T.eyes) / 0.3, 0, 1))
 		else
-			D.state.rise = r1 + (1 - r1) * ease.out(math.clamp((tt - T.roar) / 0.55, 0, 1))
+			rise = r1 + (1 - r1) * ease.out(math.clamp((tt - T.roar) / 0.55, 0, 1))
 		end
-		D.state.eyes = ease.out(math.clamp((tt - (T.eyes + 0.08)) / 0.12, 0, 1))
+		D.state.rise = rise
+		D.state.eyes = ease.out(math.clamp((tt - (T.eyes + 0.1)) / 0.12, 0, 1))
 		D.state.roar = math.clamp((tt - T.roar - 0.12) / 0.25, 0, 1) * (1 - math.clamp((tt - T.roar - 1.2) / 0.6, 0, 1) * 0.8)
-		-- the hand: up out of the black, over, and down on the edge; it lets go as the rest comes out
-		local up = ease.out(math.clamp((tt - burstAt) / (slamAt - burstAt) * 1.6, 0, 1))
-		local down = ease.inn(math.clamp((tt - (burstAt + (slamAt - burstAt) * 0.55)) / ((slamAt - burstAt) * 0.45), 0, 1))
-		local free = ease.inOut(math.clamp((tt - T.roar) / 0.35, 0, 1))
-		local hold, over = tune("HandPitch", -112), tune("HandOver", -168)
-		local pitch = (30 + (over - 30) * up) * (1 - down) + hold * down
-		P.armR = { pitch = pitch * (1 - free), yaw = tune("HandYaw", 10) * (1 - free) }
-		P.lean = tune("Lean", 16) * (1 - free)
+		-- the arm: shot up out of the black, then down onto the edge; held there while the body comes up to it
+		local shoot = ease.out(math.clamp((tt - T.rise) / shootLen, 0, 1))
+		local slam = ease.inn(math.clamp((tt - (T.rise + shootLen)) / (slamAt - T.rise - shootLen), 0, 1))
+		local free = ease.inOut(math.clamp((tt - T.roar) / 0.4, 0, 1))
+		local lift = math.max(tune("ArmLift", 34) * shoot - (rise - hidden) * D.height * 1.05, 0)
+		local pitch = tune("ArmUp", -172) * (1 - slam) + tune("HandPitch", -100) * slam
+		if tt < T.rise then
+			pitch = 30
+		end
+		P.armR = { pitch = pitch * (1 - free), yaw = tune("HandYaw", 8) * (1 - free) }
+		P.cutM = if lift > 0.01 and free < 1 then CFrame.new(0, lift * (1 - free), 0) else nil
+		P.lean = tune("Lean", 10) * (1 - free)
 	end
 	sfx("impact", 1.3)
 	sfx("riseDark", 1.0)
@@ -939,8 +947,8 @@ local function actI(): boolean
 	if not shot(T.feet, function(k)
 		local c = at(DEMON_AT, 0)
 		local e = ease.out(k)
-		local p = c + Vector3.new(-17 + e * 2, tune("RoarCamY", 3.6), 44 - e * 6)
-		return look(p, c + Vector3.new(0, 25 + e * 3, 0), 2), mm(19), c + Vector3.new(0, 25, 0)
+		local p = c + Vector3.new(-18 + e * 2, tune("RoarCamY", 7.5), tune("RoarCamZ", 54) - e * 6)
+		return look(p, c + Vector3.new(0, tune("RoarAimY", 21) + e * 3, 0), 2), mm(tune("RoarMM", 21)), c + Vector3.new(0, 22, 0)
 	end, { hand = 0.4 }) then
 		return false
 	end

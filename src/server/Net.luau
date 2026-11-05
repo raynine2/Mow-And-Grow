@@ -37,6 +37,11 @@ local OUTBOUND = {
 	"World", -- (data)                      zone progress, boss HP, run info
 }
 
+-- (5 Nov) EMOTES (server/Emotes, client/Emotes): one remote both ways, like "Inspect".
+--   client -> server: (emoteId)         play one of Config.EMOTES.list (the server checks the id + cooldown)
+--   server -> every client: (player, emoteId, serverStart)   each client poses that character
+table.insert(INBOUND, "Emote")
+
 local folder = Instance.new("Folder")
 folder.Name = "MowALawnRemotes"
 local remotes: { [string]: RemoteEvent } = {}

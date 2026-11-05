@@ -40,6 +40,7 @@ require(script.Parent.Invites).start() -- (1 Nov) a friend new to the game who j
 require(script.Parent.FilmCast).start() -- (5 Nov) the films' cast: the owner's avatar as Rayan (Films v2)
 require(script.Parent.Rebirth).start() -- (5 Nov) Rebirth Stars: the RebirthStars attribute (the stars come from server/Run)
 require(script.Parent.QuestBoard).start() -- (5 Nov) daily + weekly quests and their "Progress" remote, in both modes
+require(script.Parent.Emotes).start() -- (5 Nov) the emote wheel (G): checks + passes emotes on (client/Emotes)
 
 -- Spawn on the world's own SpawnLocation, not one from the place template (the Baseplate's). This only
 -- changes the running game; the place file keeps its parts. The Baseplate is hidden while playing because

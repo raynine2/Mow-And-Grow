@@ -2212,6 +2212,64 @@ local function film(P: Plan, c: Cast, A: ArenaPlan, cameos: { Cameo }): boolean
 	return partyScenes(P, c.m, c.actors)
 end
 
+-- (5 Nov) Films v2: the new finale (client/Finale) instead of the film above, then the credits (the guardians free at
+-- last, the makers); SKIP in the finale goes straight to the end screen. The old film stays for FILMS_V2.on = false.
+local finaleSkip: (() -> ())? = nil
+local function finaleV2()
+	local Finale = require(script.Parent.Finale) :: any
+	finaleSkip = function()
+		pcall(Finale.skip)
+	end
+	task.spawn(function()
+		makersList = makers()
+	end)
+	local ok, ready = pcall(Finale.prepare)
+	Film.start(STEP)
+	if ok and ready then
+		if chapter == "film" then
+			local played, err = pcall(Finale.play)
+			if not played then
+				warn("[Ending] " .. tostring(err))
+			end
+		end
+	else
+		warn("[Ending] the new finale couldn't be made: " .. tostring(ready))
+	end
+	pcall(Finale.stop)
+	finaleSkip = nil
+	if chapter == "film" or chapter == "credits" then
+		chapter = "credits"
+		local good, res = pcall(creditsScenes, nil)
+		if not good then
+			warn("[Ending] " .. tostring(res))
+		end
+	end
+end
+
+-- the end of the ending: to black, the film away, the end screen (you stay on it until you choose or the server
+-- sends everyone back; the HUD stays hidden)
+local function wrapUp(d: any)
+	IntroUi.fade(0, 0.4)
+	task.wait(0.45)
+	stopFilm()
+	FilmAudio.hush(0.8)
+	cue("end", "calmMusic", { fade = 2, volume = 0.7 })
+	if d.preview then
+		-- (a DEV panel preview: BACK TO GAME on the end screen puts everything back, and it can be played again)
+		d.close = function()
+			if screen then
+				screen:Destroy()
+				screen = nil
+			end
+			FilmAudio.finish(1)
+			UI.gui.Enabled = savedHud
+			controls(true)
+			played = false
+		end
+	end
+	endScreen(d)
+end
+
 -- Play the ending. `d`: the server's runComplete data ({ gems, time, best, wait }); d.from = "credits" (the DEV
 -- panel) starts at the credits.
 function Ending.play(d: any)
@@ -2242,6 +2300,9 @@ function Ending.play(d: any)
 		if chapter == "film" then
 			chapter = "skip"
 			Film.playing = false
+			if finaleSkip then
+				finaleSkip()
+			end
 		elseif chapter == "credits" then
 			creditsSkipped = true
 		elseif chapter == "title" then
@@ -2250,6 +2311,12 @@ function Ending.play(d: any)
 		end -- (in the teaser itself SKIP is hidden and does nothing: a second tap can't skip it)
 	end)
 	IntroUi.fade(0, 0.8)
+	local V2 = (Config :: any).FILMS_V2
+	if V2 and V2.on then
+		finaleV2()
+		wrapUp(d)
+		return
+	end
 	-- the black cover is up: the voices start being made, the sounds load, the far places stream in, the makers'
 	-- names are looked up for the credits
 	local lines = {}
@@ -2354,27 +2421,7 @@ function Ending.play(d: any)
 			run(teaserScenes, P, c.m, c.actors)
 		end
 	end
-	IntroUi.fade(0, 0.4)
-	task.wait(0.45)
-	stopFilm()
-	FilmAudio.hush(0.8)
-	cue("end", "calmMusic", { fade = 2, volume = 0.7 })
-	if d.preview then
-		-- (a DEV panel preview: BACK TO GAME on the end screen puts everything back, and it can be played again)
-		d.close = function()
-			if screen then
-				screen:Destroy()
-				screen = nil
-			end
-			FilmAudio.finish(1)
-			UI.gui.Enabled = savedHud
-			controls(true)
-			played = false
-		end
-	end
-	endScreen(d)
-	-- you stay on the end screen until you choose or the server sends everyone back; the HUD stays hidden
-	local _ = savedHud
+	wrapUp(d)
 end
 
 -- The DEV panel's PLAY ENDING: the whole ending, the credits, the scene after them and the end screen, on this

@@ -112,7 +112,7 @@ local function onPath(p: Vector3): boolean
 	return p.Z > -6 and p.Z < 140 and math.abs(p.X - pathX(p.Z)) < 6.5
 end
 
-export type MeadowOpts = { tufts: number?, night: boolean? }
+export type MeadowOpts = { tufts: number?, night: boolean?, mown: boolean? } -- (mown: the grass all cut, for the finale)
 
 function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	local o = opts or {}
@@ -331,9 +331,9 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	for i, p in spots do
 		local s = rng:NextNumber(0.75, 1.35)
 		local cf = W(p.X, 0, p.Z) * CFrame.Angles(0, rng:NextNumber(0, math.pi * 2), 0)
-		local m = prop("tuft_lawn", cf, s, folder)
+		local m = prop(if o.mown then "tuft_lawn_cut" else "tuft_lawn", cf, s, folder)
 		if m then
-			table.insert(set.tufts, { model = m, part = m:FindFirstChildWhichIsA("BasePart", true), at = cf, scale = s, cut = false })
+			table.insert(set.tufts, { model = m, part = m:FindFirstChildWhichIsA("BasePart", true), at = cf, scale = s, cut = o.mown == true })
 		end
 		if i % 120 == 0 then
 			task.wait()
@@ -408,6 +408,7 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	halo.Transparency = 0.86
 	halo.CastShadow = false
 	set.moon = moon
+	set.moonHalo = halo
 	set.moonDir = moonDir
 
 	-- night motes drifting over the grass

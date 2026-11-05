@@ -66,6 +66,8 @@ local SHED = Vector3.new(-31, 0, -6)
 local R3 = Vector3.new(-25, 0, -11) -- out of the wreck: the ultimate's middle
 local RING = 60
 local CUT_Y = 3 -- everything in the ring is cut at this height
+local WAIST_Y = 9.5 -- (and the demon at its waist: cut at the grass's height only its feet stayed, and the slide
+-- read as the whole of it moving)
 local BIG_AT = Vector3.new(-14, 0, -32) -- the bigger demon rises here, over him
 local P1 = Vector3.new(-22, 0, -15) -- the player lands here, between Rayan and the fists
 local SCALE, BIG_SCALE = 1.2, 1.55
@@ -395,7 +397,11 @@ local function placeShears()
 	local root = R.root
 	local chest = chestOf(R)
 	if mode == "two" then
-		SH:grip2(rh, R:grip("Left").Position, chest.LookVector)
+		-- (the blades kept level, a touch up: along the chest's own look, which leans forward in the low stances,
+		-- they went down into the ground)
+		local fwd = flat(chest.LookVector)
+		fwd = if fwd.Magnitude > 0.1 then fwd.Unit else root.LookVector
+		SH:grip2(rh, R:grip("Left").Position, fwd + UP * 0.1)
 	elseif mode == "drag" then
 		-- trailing behind him, the tip on the ground
 		local back = -root.LookVector
@@ -987,9 +993,8 @@ local function loadingRing(d: any, from: number, done: number)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "Adapt"
 	bb.Size = UDim2.fromScale(14 * d.scale, 14 * d.scale)
-	bb.StudsOffset = Vector3.new(0, 16 * d.scale, 0) -- (just over the top of its head)
+	bb.StudsOffset = Vector3.new(0, 20 * d.scale, 0) -- (over its head, the words between the two)
 	bb.LightInfluence = 0
-	bb.AlwaysOnTop = true -- (its own head hid half of it)
 	bb.Adornee = head
 	bb.Parent = head
 	-- a loading spinner (the glitch thinking): eight rounded dots, a bright one chasing round, a faint ring behind
@@ -1025,9 +1030,9 @@ local function loadingRing(d: any, from: number, done: number)
 	end
 	local label = Instance.new("TextLabel")
 	label.BackgroundTransparency = 1
-	label.Size = UDim2.fromScale(1.8, 0.26)
-	label.AnchorPoint = Vector2.new(0.5, 1)
-	label.Position = UDim2.fromScale(0.5, -0.02)
+	label.Size = UDim2.fromScale(1.8, 0.2)
+	label.AnchorPoint = Vector2.new(0.5, 0)
+	label.Position = UDim2.fromScale(0.5, 0.97)
 	label.Font = Enum.Font.FredokaOne
 	label.TextScaled = true
 	label.TextColor3 = Color3.fromRGB(255, 214, 240)
@@ -1112,7 +1117,7 @@ local function reset(): boolean
 	-- cracks, the loading ring over its head, the arm flying back in; from close below it read as dark noise)
 	if not shot(T.clang, function(k)
 		local p = at(Vector3.new(-22 + k * 1.5, 3, 8 - k * 2))
-		return look(p, at(Vector3.new(-6, 27 + k * 2, -52)), 2), mm(27), at(Vector3.new(-8, 20, -52))
+		return look(p, at(Vector3.new(-6, 30 + k * 2, -52)), 2), mm(27), at(Vector3.new(-8, 20, -52))
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -1252,6 +1257,10 @@ local function blowShed(from: Vector3)
 			local up = (p.CFrame + dir * dist * 0.55 + Vector3.new(0, rng:NextNumber(2, 7), 0)) * CFrame.Angles(rng:NextNumber(-2, 2), rng:NextNumber(-2, 2), rng:NextNumber(-2, 2))
 			local rest = restOn(p, p.Position + dir * dist, rng:NextNumber(0, math.pi * 2))
 			table.insert(debris, { part = p, rest = rest })
+			-- (a brick between a lens and its subject is hidden like any prop)
+			if S.props then
+				table.insert(S.props, { parts = { p }, follow = p, center = p.Position, radius = p.Size.Magnitude / 2, hidden = false })
+			end
 			local t1 = rng:NextNumber(0.35, 0.55)
 			TweenService:Create(p, TweenInfo.new(t1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = up }):Play()
 			task.delay(t1, function()
@@ -1297,8 +1306,11 @@ local function shed(): boolean
 		sfx("thud", 1.3, 0.6)
 		sfx("slam", 1.0, 0.7)
 		Film.shake(0.7, 1.4)
-		fx("Dust", at(SHED, 2), { scale = 3.2 })
 		fx("Rocks", at(SHED, 1), { scale = 1.6 })
+		-- (the dust a beat later and smaller: at once and big it hid the bricks bursting out)
+		task.delay(0.18, function()
+			fx("Dust", at(SHED + Vector3.new(-3, 0, 0), 1.5), { scale = 1.9 })
+		end)
 	end)
 	local stopLines = AnimeFx.lines(WHITE, 0.55)
 	clearR = 6
@@ -1513,7 +1525,10 @@ end
 local function slide(): boolean
 	-- 27. everything above the line slides apart: the grass mown flat, the demon's top half off its waist
 	if S.disc then
-		fadeOut(S.disc, 0.4)
+		local disc = S.disc
+		task.delay(0.5, function()
+			fadeOut(disc, 0.5)
+		end)
 	end
 	dropDebris()
 	local cut = S.mow(at(R3, 0), RING) -- (the tufts' places are world positions: given R3 itself, nothing was cut)
@@ -1524,16 +1539,16 @@ local function slide(): boolean
 	sfx("bladeHit", 1.2, 0.8)
 	sfx("rustle", 1.4, 0.8)
 	sfx("brush", 1.2, 0.9)
-	D.split(CUT_Y / SCALE)
+	D.split(WAIST_Y / SCALE)
 	local P = demonPose[D]
 	local slideFrom = now()
-	local pivot = at(DEMON_AT, CUT_Y)
+	local pivot = at(DEMON_AT, WAIST_Y)
 	tracks.split = function()
 		local k = math.clamp((now() - slideFrom) / 1.25, 0, 1)
 		local e = ease.inn(k)
 		local away = (at(DEMON_AT, 0) - at(R3, 0)).Unit
 		local tip = CFrame.fromAxisAngle(UP:Cross(away).Unit, math.rad(62 * e))
-		P.top = CFrame.new(away * (2 + 10 * e) + Vector3.new(0, -CUT_Y * e, 0)) * about(pivot + away * 8, tip)
+		P.top = CFrame.new(away * (2 + 10 * e) + Vector3.new(0, -WAIST_Y * 0.8 * e, 0)) * about(pivot + away * 8, tip)
 	end
 	D.state.roar = 0.3
 	D.glitchNow(0.2)
@@ -1550,10 +1565,11 @@ local function slide(): boolean
 			TweenService:Create(l.top, TweenInfo.new(0.6, Enum.EasingStyle.Bounce), { CFrame = goal }):Play()
 		end
 	end
-	-- 27a. [SR 7.2, scale] wide and low from the side: the top half slides off and falls
+	-- 27a. [SR 7.2, scale] wide and low, square to the way it slides (from the east): the top half slides off its
+	-- waist and falls
 	if not shot(T.stubs, function(k)
-		local p = at(Vector3.new(26, 2.5, -14))
-		return look(p, at(DEMON_AT + Vector3.new(-2, 0, 6), 14 - k * 6)), mm(22), at(DEMON_AT, 10)
+		local p = at(Vector3.new(44 - k * 2, 4, -34))
+		return look(p, at(DEMON_AT + Vector3.new(0, 0, -2), 13 - k * 4)), mm(23), at(DEMON_AT, 10)
 	end, { hand = 0.5 }) then
 		return false
 	end
@@ -1759,8 +1775,10 @@ local function streak(): boolean
 	clearR = 4
 	if not shot(T.resume, function(k)
 		local root = H.root
-		local cp = root.Position + root.LookVector * 7 + root.RightVector * 4.5 + Vector3.new(0, -1.7, 0)
-		return look(cp, root.Position + Vector3.new(0, 2.6 + k * 2, 0), -4), mm(24), root.Position
+		-- (wide and low in front, tested in Studio: them in the crater low in the frame, the giant fist over them in the
+		-- corner; aimed higher, the frame was empty sky)
+		local cp = root.Position + root.LookVector * 6 + root.RightVector * 3.5 + Vector3.new(0, -2.0, 0)
+		return look(cp, root.Position + Vector3.new(0, 1.6 + k * 0.6, 0), -4), mm(19), root.Position
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -1802,9 +1820,10 @@ local function punch(): boolean
 	if not shot(T.punch, function(k)
 		local root = H.root
 		local h = headOf(H)
-		local cp = root.Position + root.RightVector * (10 - k) + root.LookVector * 2.5 + Vector3.new(0, -1.6, 0)
+		-- (tested in Studio: the two of them small at the bottom left, the giant fist coming down on them from the right)
+		local cp = root.Position + root.RightVector * (15 - k * 1.5) - root.LookVector + Vector3.new(0, -2.2, 0)
 		key(h + root.LookVector * 2.5, GOLD, 1.8, 8)
-		return look(cp, root.Position + root.LookVector * 3 + Vector3.new(0, 3.5 + k, 0), 3), mm(26), h
+		return look(cp, root.Position + root.LookVector * 4.5 + Vector3.new(0, 5.5 + k, 0), 3), mm(22), h
 	end, { hand = 0.4 }) then
 		return false
 	end

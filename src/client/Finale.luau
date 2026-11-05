@@ -186,18 +186,20 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- shots: cut to a shot that runs until film time `untilT`; what stands in the lens's way is hidden every frame
 -------------------------------------------------------------------------------------------------------------
-local clearView: (cf: CFrame, focus: Vector3?) -> ()
+local clearView: (cf: CFrame, focus: Vector3?, extra: { Vector3 }?) -> ()
 local tryCam: any = nil
+-- (opts.keep: a function giving more points to keep the view to clear, for a shot with two subjects apart)
 local function shot(untilT: number, fn: (k: number, t: number) -> (CFrame, number, Vector3?), opts: any?): boolean
 	if not playing then
 		return false
 	end
+	local keep = opts and opts.keep
 	Film.cut(math.max(untilT - now(), 0.05), function(k: number, t: number)
 		local cf, fov, focus = fn(k, t)
 		if tryCam then
 			cf, fov, focus = tryCam.cf, tryCam.fov, tryCam.focus
 		end
-		clearView(cf, focus)
+		clearView(cf, focus, if keep and not tryCam then keep() else nil)
 		return cf, fov, focus
 	end, opts)
 	return waitUntil(untilT)
@@ -355,15 +357,36 @@ local function inTheWay(q: Vector3, r: number, p: Vector3, dir: Vector3?, segLen
 	end
 	return false
 end
-clearView = function(cf: CFrame, focus: Vector3?)
+-- the lines from the lens to what it's looking at (the focus, and a shot's extra points)
+local sightDirs: { Vector3 } = {}
+local sightLens: { number } = {}
+local function blocks(q: Vector3, r: number, p: Vector3): boolean
+	if #sightDirs == 0 then
+		return inTheWay(q, r, p, nil, 0)
+	end
+	for i, dir in sightDirs do
+		if inTheWay(q, r, p, dir, sightLens[i]) then
+			return true
+		end
+	end
+	return false
+end
+clearView = function(cf: CFrame, focus: Vector3?, extra: { Vector3 }?)
 	local p = cf.Position
-	local seg = if focus then focus - p else nil
-	local segLen = if seg then seg.Magnitude else 0
-	local dir = if seg and segLen > 0.01 then seg / segLen else nil
+	table.clear(sightDirs)
+	table.clear(sightLens)
+	for _, q in { focus, table.unpack(extra or {}) } do
+		local seg = q - p
+		local len = seg.Magnitude
+		if len > 0.01 then
+			table.insert(sightDirs, seg / len)
+			table.insert(sightLens, len)
+		end
+	end
 	if S and (p - S.at.Position).Magnitude < 600 then
 		for _, pr in S.props or {} do
 			if pr.radius < 24 then
-				local on = inTheWay(if pr.follow then pr.follow.Position else pr.center, pr.radius, p, dir, segLen)
+				local on = blocks(if pr.follow then pr.follow.Position else pr.center, pr.radius, p)
 				if on ~= pr.hidden then
 					pr.hidden = on
 					for _, part in pr.parts do
@@ -375,13 +398,13 @@ clearView = function(cf: CFrame, focus: Vector3?)
 		for _, t in S.tufts do
 			local part = t.part
 			if part and part.Parent then
-				hideIf(t.parts or { part }, inTheWay(t.at.Position, 1.6 * t.scale, p, dir, segLen))
+				hideIf(t.parts or { part }, blocks(t.at.Position, 1.6 * t.scale, p))
 			end
 		end
 	end
 	if G and G.tuftParts and (p - G.at.Position).Magnitude < 600 then
 		for _, rec in G.tuftParts do
-			hideIf(rec.parts, inTheWay(rec.at, rec.r, p, dir, segLen))
+			hideIf(rec.parts, blocks(rec.at, rec.r, p))
 		end
 	end
 end
@@ -1505,7 +1528,9 @@ local function lesson(): boolean
 		local mid = a:Lerp(b, 0.5) + Vector3.new(0, 0.6, 0)
 		local d = math.max(9, (flat(b - a).Magnitude * 0.5 + 3) / 0.9)
 		return look(mid + side * d + Vector3.new(0, -1.2, 0), mid, -4), mm(24), mid
-	end, { hand = 0.3 }) then
+	end, { hand = 0.3, keep = function()
+		return { R.root.Position + UP, C.root.Position + UP }
+	end }) then
 		return false
 	end
 	stopLines()
@@ -1606,7 +1631,9 @@ local function lesson(): boolean
 		local side = back:Cross(UP)
 		local p = mid + side * (22 - k * 1.5) + Vector3.new(0, 3.0, 0)
 		return look(p, mid + Vector3.new(0, 1.8, 0), 2), mm(22), mid
-	end, { hand = 0.4 }) then
+	end, { hand = 0.4, keep = function()
+		return { C.root.Position + UP, R.root.Position + UP, H.root.Position + UP }
+	end }) then
 		return false
 	end
 	return true

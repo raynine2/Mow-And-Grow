@@ -286,6 +286,52 @@ end
 Config.BASE_CARRY = 10 -- (29 Oct) was 5: fewer walks to the Shredder
 -- (5 Nov) SPRINT: hold Shift / L3 / the SPRINT button to run `mult` x as fast, free, no stamina (client/Sprint)
 Config.SPRINT = { on = true, mult = 1.6 }
+
+-------------------------------------------------------------------------------------------------------------
+-- (5 Nov) EMOTES: G (D-pad up on a gamepad, the EMOTE button on a phone) opens a wheel of 6 silly emotes
+-- (owner: "make your friends laugh"). The server checks the id and the cooldown (server/Emotes) and tells everyone;
+-- every client poses that character by code for `len` seconds (client/Emotes, no uploaded animations). Moving
+-- cancels it. Not while seated, in a boss fight, a film or a hatch. `sfx`: existing Config.SOUNDS keys only, at a
+-- pitch, `at` seconds in; `words`: pop words (client/Fx.popWord) `at` seconds in.
+-------------------------------------------------------------------------------------------------------------
+Config.EMOTES = {
+	on = true,
+	cooldown = 4, -- seconds between two emotes (the server holds you to it)
+	range = 140, -- studs: emotes further than this from your camera aren't drawn or heard
+	moveCancel = 5, -- studs a second of walking that cancels an emote (after its first 0.3 s)
+	list = {
+		{
+			id = "sneeze", name = "SNEEZE", len = 2.6, color = Color3.fromRGB(140, 220, 80),
+			sfx = { { at = 0.05, key = "bhPull", pitch = 1.9, volume = 0.8 }, { at = 1.0, key = "burst", pitch = 1.35 }, { at = 1.02, key = "rustle", pitch = 0.9 } },
+			words = { { at = 0.35, text = "ah..." }, { at = 0.7, text = "AH..." }, { at = 1.0, text = "ACHOO!" } },
+		},
+		{
+			id = "dance", name = "DANCE", len = 3.2, color = Color3.fromRGB(255, 120, 220),
+			sfx = { { at = 0.0, key = "pickup", pitch = 0.9 }, { at = 0.5, key = "pickup", pitch = 1.1 }, { at = 1.0, key = "pickup", pitch = 1.25 }, { at = 1.6, key = "pickup", pitch = 0.9 }, { at = 2.1, key = "pickup", pitch = 1.1 }, { at = 2.6, key = "pickup", pitch = 1.35 } },
+			words = { { at = 0.1, text = "GROOVY!" } },
+		},
+		{
+			id = "flex", name = "FLEX", len = 2.6, color = Color3.fromRGB(255, 200, 60),
+			sfx = { { at = 0.4, key = "punch", pitch = 1.4, volume = 0.5 }, { at = 0.45, key = "rareChime", pitch = 1.15 }, { at = 1.3, key = "rareChime", pitch = 1.3, volume = 0.7 } },
+			words = { { at = 0.45, text = "STRONG!" } },
+		},
+		{
+			id = "sleep", name = "SLEEP", len = 3.8, color = Color3.fromRGB(140, 170, 255),
+			sfx = { { at = 0.05, key = "warn", pitch = 0.7, volume = 0.8 }, { at = 1.5, key = "warn", pitch = 0.45 }, { at = 2.6, key = "warn", pitch = 0.42 } },
+			words = { { at = 1.3, text = "z" }, { at = 2.0, text = "Zz" }, { at = 2.7, text = "Zzz" } },
+		},
+		{
+			id = "chicken", name = "CHICKEN", len = 3.0, color = Color3.fromRGB(255, 240, 200),
+			sfx = { { at = 0.25, key = "petChirp", pitch = 0.75 }, { at = 1.0, key = "pickup", pitch = 1.5, volume = 0.6 }, { at = 1.7, key = "petChirp", pitch = 0.65 }, { at = 2.3, key = "pickup", pitch = 1.6, volume = 0.6 } },
+			words = { { at = 0.25, text = "BAWK!" }, { at = 1.7, text = "BAWK BAWK!" } },
+		},
+		{
+			id = "blower", name = "LEAF BLOWER", len = 2.8, color = Color3.fromRGB(230, 160, 70),
+			sfx = { { at = 0.9, key = "bhOut", pitch = 1.7 }, { at = 0.92, key = "rustle", pitch = 1.2 }, { at = 1.5, key = "whoosh", pitch = 0.8, volume = 0.6 } },
+			words = { { at = 0.9, text = "PFFT!" } },
+		},
+	},
+}
 -- Pacing (22 Oct, after the Chop A Forest teardown): aim for a free-to-play clear of 60-90 minutes, with the first
 -- boss and a ride-on mower inside the first 15. A rough sim of one good player came out at ~56 min of mowing plus
 -- the boss fights (area 1 ~7 min with its new drop-off pad, server/RunWorld). Values were x1.5 from area 2, HP -20%

@@ -118,6 +118,32 @@ function CameraView.toggle()
 	zoomTo(if inFirstPerson() then THIRD else FIRST)
 end
 
+-- (5 Nov) An emote (client/Emotes): in first person you'd never see your own sneeze, so the camera steps out to a
+-- short third-person view while it plays and back into first person after. Only from first person, only while the
+-- game's camera is in charge (Custom); the camps / fields lock below writes the range again only when it changes.
+local emoteOut = false
+function CameraView.emoteView(on: boolean)
+	local cam = workspace.CurrentCamera
+	if on then
+		if emoteOut or not cam or cam.CameraType ~= Enum.CameraType.Custom or not inFirstPerson() then
+			return
+		end
+		emoteOut = true
+		player.CameraMinZoomDistance = 9
+		player.CameraMaxZoomDistance = 9
+	elseif emoteOut then
+		emoteOut = false
+		player.CameraMinZoomDistance = FIRST
+		player.CameraMaxZoomDistance = FIRST
+		task.delay(0.15, function()
+			if not emoteOut then
+				player.CameraMinZoomDistance = FIRST
+				player.CameraMaxZoomDistance = if not State.isRun() then 128 elseif locked then FIRST else MAX_ZOOM
+			end
+		end)
+	end
+end
+
 -- The camps: { centre, radius } from the World's attributes (CampCenter / CampRadius, Hub<z> / HubR<z>).
 local hubList: { { c: Vector3, r: number } } = {}
 local hubsAt = -10

@@ -701,6 +701,9 @@ end
 -- and gate positions come from attributes WorldGen puts on Workspace.World (GatePos<z>, GateEntry<z>).
 -------------------------------------------------------------------------------------------------------------
 Config.WORLD_GEN = true
+-- (6 Nov) the voxel bosses (ReplicatedStorage.VoxelBosses, owner's CLAUDE_CODE_PROMPT.md): the 8 guardians in the
+-- fights are the voxel models, with their enraged form swapped in at 50% HP. false = the old Blender bosses again.
+Config.VOXEL_BOSSES = true
 -- Name signs on the hub buildings (shop boards, the arches, START A RUN, floating DROP BUNDLES / GAS labels).
 -- Off: the buildings speak for themselves and their prompts name them. Price tags and the score boards stay.
 Config.HUB_SIGNS = false

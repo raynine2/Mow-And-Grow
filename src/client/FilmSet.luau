@@ -581,10 +581,11 @@ function FilmSet.realm(at: CFrame, opts: any?): any
 			p.Transparency = 0.2
 			local spin = CFrame.Angles(rng:NextNumber(-1.5, 1.5), rng:NextNumber(-1.5, 1.5), rng:NextNumber(-1.5, 1.5))
 			local goal = (pnl.cf + pnl.dir * rng:NextNumber(60, 140) + Vector3.new(0, -rng:NextNumber(40, 160), 0)) * spin
-			-- (the pieces stay glowing as they fall: as glass, in the night that follows, they were dark blue blades)
+			-- (the pieces stay glowing magenta as they fall, the night behind them: as glass they were dark blue blades,
+			-- and pale they were one white glow over the whole sky)
 			task.delay(rng:NextNumber(0, 0.25), function()
 				if p.Parent then
-					p.Color = Color3.fromRGB(255, 200, 240)
+					p.Color = Color3.fromRGB(255, 80, 200)
 					TweenService:Create(p, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { CFrame = goal, Transparency = 1 }):Play()
 				end
 			end)

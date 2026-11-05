@@ -533,12 +533,38 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- props: the last shard, the tear, the copy's footprints
 -------------------------------------------------------------------------------------------------------------
--- the last pink shard: a jagged little crystal of neon, a light in it
+-- the last pink shard: a little pink crystal, a light in it
 local function makeShard(at: Vector3): Model
+	-- the game's own gem (the gem drop, client/LootFx), cut pink: tested in Studio, three neon blocks read as a little
+	-- figure or a white slab, the faceted gem reads as a crystal at once
+	local gem = FilmSet.prop("gem_drop", CFrame.new(at - Vector3.new(0, 0.7, 0)), 0.8, stageFolder())
+	if gem then
+		gem.Name = "LastShard"
+		local glow: BasePart? = nil
+		for _, d in gem:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.CastShadow = false
+				if d.Material == Enum.Material.Neon then
+					d.Color = HOT
+					glow = glow or d
+				elseif d.Color.R > 0.3 then
+					d.Color = Color3.fromRGB(255, 140, 215) -- (its light facets)
+				else
+					d.Color = Color3.fromRGB(190, 20, 130) -- (its dark ones)
+				end
+			end
+		end
+		local l = Instance.new("PointLight")
+		l.Color = PINK
+		l.Range = 8
+		l.Brightness = 2
+		l.Shadows = false
+		l.Parent = glow or gem:FindFirstChildWhichIsA("BasePart", true)
+		return gem
+	end
 	local m = Instance.new("Model")
 	m.Name = "LastShard"
-	-- a small crystal cluster growing up out of one point (tested in Studio: with its two spurs hanging down from the
-	-- middle it read as a little glowing figure with legs)
+	-- (without the gem: a small crystal cluster growing up out of one point)
 	local base = at - Vector3.new(0, 0.75, 0)
 	local function piece(size: Vector3, from: Vector3, dir: Vector3, twist: number, color: Color3, name: string): BasePart
 		local d = dir.Unit
@@ -631,7 +657,8 @@ local function pixels(at: Vector3, count: number, spread: number)
 	local rng = Random.new()
 	for _ = 1, count do
 		local off = Vector3.new(rng:NextNumber(-spread, spread), 0, rng:NextNumber(-spread, spread))
-		local s = rng:NextNumber(0.18, 0.42)
+		-- (small: tested in Studio, at 0.4 studs they were blocks as big as the shard's spurs)
+		local s = rng:NextNumber(0.1, 0.24)
 		local p = neon(Vector3.one * s, CFrame.new(at + off + Vector3.new(0, s / 2, 0)), if rng:NextNumber() < 0.75 then PINK else Color3.fromRGB(90, 230, 255), 0)
 		local goal = CFrame.new(at + off * 1.4 + Vector3.new(0, rng:NextNumber(0.8, 2.6), 0))
 		TweenService:Create(p, TweenInfo.new(rng:NextNumber(0.35, 0.7), Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { CFrame = goal, Transparency = 1 }):Play()

@@ -12,6 +12,7 @@ local PlayerData = require(script.Parent.PlayerData)
 local RunBuilder = require(script.Parent.RunBuilder)
 local Boss = require(script.Parent.Boss)
 local Night = require(script.Parent.Night)
+local Stats = require(script.Parent.Stats)
 
 local Guns = {}
 
@@ -252,7 +253,12 @@ local function shoot(player: Player, aim: any)
 	if bossPos then
 		local to = bossPos + Vector3.new(0, 6, 0) - origin
 		if to.Magnitude <= def.range and to.Unit:Dot(dir) > 0.8 then
-			Boss.damage(player, math.max(1, maxHp * def.pct))
+			-- (5 Nov, balance 3) your power adds to the shot, capped (Config.GUN_POWER)
+			local gp = Config.GUN_POWER
+			local data = PlayerData.get(player)
+			local power = if data then Stats.compute(player, data).power else 1
+			local bonus = if gp then math.clamp((power - 1) * gp.per, 0, gp.max) else 0
+			Boss.damage(player, math.max(1, maxHp * def.pct * (1 + bonus)))
 			return
 		end
 	end

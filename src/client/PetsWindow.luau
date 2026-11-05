@@ -482,11 +482,16 @@ pets.refresh = function()
 	eqTitle.Text = ("Equipped %d/%d"):format(#on, Config.PET_EQUIP)
 	countText.Text = ("%d/%d"):format(#list, Config.PET_MAX)
 	local total = 0
+	local petPower = 0 -- (5 Nov) counted up to Config.PET_POWER_CAP, like server/Stats
 	for i, e in on do
 		local p = Config.pet(e.id)
 		if p then
 			for _, k in Config.PET_STATS do
-				total += (p :: any)[k] or 0
+				if k == "power" then
+					petPower += (p :: any)[k] or 0
+				else
+					total += (p :: any)[k] or 0
+				end
 			end
 			local slot = slots[i]
 			if slot then
@@ -518,6 +523,7 @@ pets.refresh = function()
 			end
 		end
 	end
+	total += math.min(petPower, Config.PET_POWER_CAP or math.huge)
 	boostText.Text = ("+%d%%"):format(math.floor(total * 100 + 0.5))
 	-- (a note over the empty box, not a grid cell: in the grid it was squeezed into one 104 px tile)
 	emptyNote.Text = if #list == 0 then "Open eggs to hatch more pets!" else "Every critter you have is equipped"

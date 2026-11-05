@@ -36,6 +36,10 @@ function Stats.compute(player: Player, data)
 		end
 	end
 
+	-- (5 Nov, balance 3, owner: "cap pet power") equipped pets add at most Config.PET_POWER_CAP power between them
+	-- (3 Rainbow Butterflies were +300%, over twice Goat Man's +130%)
+	pet.power = math.min(pet.power, Config.PET_POWER_CAP or math.huge)
+
 	local s = {}
 	s.power = (1 + (class.power or 0) + pet.power) * (if vip then 1.15 else 1)
 	s.mowerPower = (1 + (class.power or 0) + pet.power + level("power") * per("power")) * (if vip then 1.15 else 1) -- (30 Oct) ride-on mowers keep the old Power upgrade ("Mower Blades"); the tools get theirs from their skill trees (server/SkillTrees)

@@ -32,12 +32,15 @@ Config.TICK = 0.25 -- seconds between auto-cut ticks
 -- (owner, 29 Oct: "balance the game") prices and the two auto tools' damage retuned for a 25-30 min first run (a
 -- run simulator: scratch balance/sim.py). Was: Scissors 25, Sickle 1500, Push Mower 7000 (damage 30), Weed Whacker
 -- 60000 (damage 140), Mega Scythe 400000, Laser Mower 1500000.
+-- (5 Nov, balance 3, owner: "2-3 hits early") areas 2-4's grass takes 2-3 hits with the tool you'd have there (it was
+-- one: the chop, its wound and its notes never happened early); these three tools got cheaper and that grass pays
+-- more, so a first run stays ~34 min (tools/balance_model.py). Was: Sickle 600, Push Mower 2500, Weed Whacker 14000.
 Config.TOOLS = {
 	{ id = "Hands", name = "Bare Hands", cost = 0, kind = "swing", damage = 1, cooldown = 0.45, radius = 5, targets = 1, color = Color3.fromRGB(255, 205, 160) },
 	{ id = "Scissors", name = "Garden Scissors", cost = 50, kind = "swing", damage = 3, cooldown = 0.4, radius = 6, targets = 2, color = Color3.fromRGB(255, 80, 80) },
-	{ id = "Sickle", name = "Sickle", cost = 600, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
-	{ id = "PushMower", name = "Push Mower", cost = 2500, kind = "auto", damage = 38, radius = 6, color = Color3.fromRGB(255, 140, 30) },
-	{ id = "WeedWhacker", name = "Weed Whacker", cost = 14000, kind = "auto", damage = 220, radius = 9, color = Color3.fromRGB(60, 200, 80) },
+	{ id = "Sickle", name = "Sickle", cost = 450, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
+	{ id = "PushMower", name = "Push Mower", cost = 1900, kind = "auto", damage = 38, radius = 6, color = Color3.fromRGB(255, 140, 30) },
+	{ id = "WeedWhacker", name = "Weed Whacker", cost = 10000, kind = "auto", damage = 220, radius = 9, color = Color3.fromRGB(60, 200, 80) },
 	{ id = "MegaScythe", name = "Mega Scythe", cost = 300000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
 	{ id = "LaserMower", name = "Laser Mower", cost = 1600000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
 }
@@ -254,21 +257,21 @@ Config.ZONES = {
 		boss = { name = "Dandelion King", hp = 150, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
 	},
 	{
-		name = "Flower Meadow", grassName = "Meadow Grass", style = "meadow", model = "tuft_golf", hp = 9, value = 12, drops = 1, height = 2.2, -- (29 Oct) was hp 12, value 12; (29 Oct, balance 2) hp 6 -> 9
+		name = "Flower Meadow", grassName = "Meadow Grass", style = "meadow", model = "tuft_golf", hp = 26, value = 22, drops = 1, height = 2.2, -- (29 Oct) was hp 12, value 12; (29 Oct, balance 2) hp 6 -> 9; (5 Nov, balance 3: 3 Sickle hits) hp 9 -> 26, value 12 -> 22
 		spacing = 11.5, fill = 1.4, scale = 6.3, tint = Color3.fromRGB(150, 215, 95),
 		grass = { Color3.fromRGB(150, 215, 95), Color3.fromRGB(130, 200, 80) },
 		ground = Color3.fromRGB(120, 160, 70),
 		boss = { name = "Harvest Maw", hp = 900, color = Color3.fromRGB(240, 200, 80), every = 4.2, radius = 11, gems = 15, coins = 500 }, -- (29 Oct) boss moved here to fit the biome; was Bramble Brute
 	},
 	{
-		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 40, value = 45, drops = 1, height = 2.5, -- (29 Oct) was hp 50, value 45; (29 Oct, balance 2) hp 25 -> 40
+		name = "Golf Course", grassName = "Golf Grass", style = "golf", hp = 110, value = 80, drops = 1, height = 2.5, -- (29 Oct) was hp 50, value 45; (29 Oct, balance 2) hp 25 -> 40; (5 Nov, balance 3: 3 Push Mower ticks) hp 40 -> 110, value 45 -> 80
 		spacing = 12.5, fill = 1.4, scale = 7.2,
 		grass = { Color3.fromRGB(70, 200, 90), Color3.fromRGB(55, 180, 75) },
 		ground = Color3.fromRGB(235, 215, 150),
 		boss = { name = "Sakura Snapjaw", hp = 5800, color = Color3.fromRGB(255, 150, 200), every = 4, radius = 11, gems = 20, coins = 1500 }, -- (29 Oct) boss moved here to fit the biome; was Bunker Thornback
 	},
 	{
-		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 180, value = 80, drops = 1, height = 5, -- (29 Oct) was hp 150, value 80; (29 Oct, balance 2) hp 130 -> 180
+		name = "Wheat Farm", grassName = "Wheat", style = "wheat", hp = 560, value = 150, drops = 1, height = 5, -- (29 Oct) was hp 150, value 80; (29 Oct, balance 2) hp 130 -> 180; (5 Nov, balance 3: 3 Weed Whacker ticks) hp 180 -> 560, value 80 -> 150
 		spacing = 11, fill = 1.4, scale = 4.0,
 		grass = { Color3.fromRGB(240, 200, 80), Color3.fromRGB(225, 180, 60) },
 		ground = Color3.fromRGB(140, 95, 55),
@@ -308,9 +311,14 @@ Config.ZONES = {
 -- zone's boss takes about the same time. `product` = bought with Robux, yours in every fight.
 Config.GUNS = {
 	{ id = "Pistol", name = "Pocket Blaster", pct = 0.004, rate = 5, range = 110, color = Color3.fromRGB(60, 60, 70), stats = "SEMI-AUTO - 5 SHOTS/S - 110 STUDS" },
-	{ id = "Rifle", name = "Weed Ripper", product = "GunRifle", pct = 0.005, rate = 9, range = 130, color = Color3.fromRGB(150, 95, 50), stats = "AUTO - 9 SHOTS/S - 130 STUDS" },
-	{ id = "Minigun", name = "Lawn Shredder", product = "GunMinigun", pct = 0.004, rate = 20, range = 120, spin = 0.8, color = Color3.fromRGB(90, 95, 110), stats = "SPINS UP, THEN SHREDS - 20 SHOTS/S" },
+	{ id = "Rifle", name = "Weed Ripper", product = "GunRifle", pct = 0.0035, rate = 9, range = 130, color = Color3.fromRGB(150, 95, 50), stats = "AUTO - 9 SHOTS/S - 130 STUDS" },
+	{ id = "Minigun", name = "Lawn Shredder", product = "GunMinigun", pct = 0.0021, rate = 20, range = 120, spin = 0.8, color = Color3.fromRGB(90, 95, 110), stats = "SPINS UP, THEN SHREDS - 20 SHOTS/S" },
 }
+-- (5 Nov, balance 3, owner: "power counts + smaller gap") the Robux guns were 2.25x and 4x the free one's 2% of the
+-- boss a second; now ~1.6x (Rifle 3.15%/s) and ~2x (Minigun 4.2%/s once spun up; was pct 0.005 and 0.004). And your
+-- power counts: a shot does x (1 + GUN_POWER.per x (power - 1)), at most x (1 + GUN_POWER.max) (+50%: a top free
+-- build), so a stronger player beats a boss faster (server/Guns).
+Config.GUN_POWER = { per = 0.12, max = 0.5 }
 function Config.gun(id: string)
 	for _, g in Config.GUNS do
 		if g.id == id then
@@ -983,6 +991,9 @@ Config.workOutClassOdds()
 -- Boost keys match Stats: power, sell, speed, luck (all +fractions). `look` tells client/PetFollow how to build it.
 -------------------------------------------------------------------------------------------------------------
 Config.PET_EQUIP = 3
+-- (5 Nov, balance 3, owner: "cap pet power") the most power your equipped pets add between them (+150%: e.g. 3
+-- Golden Gnomes; 3 Rainbow Butterflies were +300%, more than twice the best class). Their other stats aren't capped.
+Config.PET_POWER_CAP = 1.5
 Config.PET_MAX = 60 -- inventory size
 Config.PETS = {
 	{ id = "Bee", name = "Bumble Bee", rarity = "Common", power = 0.05, look = { kind = "bee", color = Color3.fromRGB(255, 200, 40), accent = Color3.fromRGB(40, 35, 30) } },

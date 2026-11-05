@@ -19,9 +19,9 @@ import math, copy, sys
 TICK = 0.25
 ZONES = [  # name, clumps (measured in Studio), hp, value, drops, spacing, sell-trip distance (studs, one way, avg)
     dict(name='Backyard', fill=1.35, n=96, hp=2, value=3, drops=1, spacing=11, trip=83, boss=150, bcoins=150, bgems=10),
-    dict(name='Meadow', fill=1.35, n=106, hp=9, value=12, drops=1, spacing=11.5, trip=152, boss=900, bcoins=500, bgems=15),
-    dict(name='Golf', fill=1.35, n=109, hp=40, value=45, drops=1, spacing=12.5, trip=122, boss=5800, bcoins=1500, bgems=20),
-    dict(name='Wheat', fill=1.35, n=126, hp=180, value=80, drops=1, spacing=11, trip=120, boss=44000, bcoins=12000, bgems=35),
+    dict(name='Meadow', fill=1.35, n=106, hp=26, value=22, drops=1, spacing=11.5, trip=152, boss=900, bcoins=500, bgems=15),
+    dict(name='Golf', fill=1.35, n=109, hp=110, value=80, drops=1, spacing=12.5, trip=122, boss=5800, bcoins=1500, bgems=20),
+    dict(name='Wheat', fill=1.35, n=126, hp=560, value=150, drops=1, spacing=11, trip=120, boss=44000, bcoins=12000, bgems=35),
     dict(name='Blossom', fill=1.35, n=82, hp=1000, value=300, drops=2, spacing=13.5, trip=109, boss=61000, bcoins=40000, bgems=45),
     dict(name='Swamp', fill=1.35, n=74, hp=7000, value=1100, drops=2, spacing=12, trip=140, boss=400000, bcoins=150000, bgems=55),
     dict(name='Prairie', fill=1.35, n=111, hp=30000, value=2400, drops=2, spacing=11.5, trip=163, boss=1600000, bcoins=500000, bgems=65),
@@ -30,9 +30,9 @@ ZONES = [  # name, clumps (measured in Studio), hp, value, drops, spacing, sell-
 TOOLS = [
     dict(id='Hands', cost=0, kind='swing', dmg=1, cd=0.45, r=5, t=1),
     dict(id='Scissors', cost=50, kind='swing', dmg=3, cd=0.4, r=6, t=2),
-    dict(id='Sickle', cost=600, kind='swing', dmg=12, cd=0.45, r=8, t=4),
-    dict(id='PushMower', cost=2500, kind='auto', dmg=38, r=6),
-    dict(id='WeedWhacker', cost=14000, kind='auto', dmg=220, r=9),
+    dict(id='Sickle', cost=450, kind='swing', dmg=12, cd=0.45, r=8, t=4),
+    dict(id='PushMower', cost=1900, kind='auto', dmg=38, r=6),
+    dict(id='WeedWhacker', cost=10000, kind='auto', dmg=220, r=9),
     dict(id='MegaScythe', cost=300000, kind='swing', dmg=2500, cd=0.5, r=13, t=12),
     dict(id='LaserMower', cost=1600000, kind='auto', dmg=4000, r=11),
 ]

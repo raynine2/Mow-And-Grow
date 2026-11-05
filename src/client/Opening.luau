@@ -993,7 +993,7 @@ local function loadingRing(d: any, from: number, done: number)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "Adapt"
 	bb.Size = UDim2.fromScale(14 * d.scale, 14 * d.scale)
-	bb.StudsOffset = Vector3.new(0, 20 * d.scale, 0) -- (over its head, the words between the two)
+	bb.StudsOffset = Vector3.new(0, 22.5 * d.scale, 0) -- (over its head and horns, the words between the two)
 	bb.LightInfluence = 0
 	bb.Adornee = head
 	bb.Parent = head
@@ -1307,9 +1307,10 @@ local function shed(): boolean
 		sfx("slam", 1.0, 0.7)
 		Film.shake(0.7, 1.4)
 		fx("Rocks", at(SHED, 1), { scale = 1.6 })
-		-- (the dust a beat later and smaller: at once and big it hid the bricks bursting out)
+		-- (the dust a beat later, small and behind the shed: the pack's dust cloud is a solid mesh that, big and in
+		-- front, filled the frame like a dark rock)
 		task.delay(0.18, function()
-			fx("Dust", at(SHED + Vector3.new(-3, 0, 0), 1.5), { scale = 1.9 })
+			fx("Dust", at(SHED + Vector3.new(-7, 0, -4), 1), { scale = 0.9 })
 		end)
 	end)
 	local stopLines = AnimeFx.lines(WHITE, 0.55)
@@ -1465,13 +1466,15 @@ local function stance(): boolean
 		along = if along.Magnitude > 0.1 then along.Unit else R.root.LookVector
 		local side = along:Cross(UP)
 		side = if side.Magnitude > 0.1 then side.Unit else R.root.RightVector
-		local target = piv:Lerp(mid, 0.45)
+		local target = piv:Lerp(mid, 0.3)
 		local root = R.root.Position
 		if (target + side * 3 - root).Magnitude < (target - side * 3 - root).Magnitude then
 			side = -side
 		end
-		local cp = target + side * 3.4 + UP * 0.9 - along * 0.8
-		return look(cp, target, -6), mm(50), target
+		-- (tested in Studio: the open blades white-hot in his hands, his arm on the left; closer, the glow was all
+		-- there was)
+		local cp = target + side * 7 + UP * 2.0 - along * 3.5
+		return look(cp, target + UP * 0.6, -6), mm(39), target
 	end, { hand = 0.15 }) then
 		return false
 	end
@@ -1540,6 +1543,13 @@ local function slide(): boolean
 	sfx("rustle", 1.4, 0.8)
 	sfx("brush", 1.2, 0.9)
 	D.split(WAIST_Y / SCALE)
+	-- the cut face: a glowing slab left on its legs where it was cut, seen as the top slides off (in the dark, without
+	-- it the slide read as the whole thing just leaning)
+	local cutFace = neon(Vector3.new(19, 0.3, 15), D.frame("body") * CFrame.new(0, WAIST_Y, 1.3), Color3.fromRGB(255, 150, 226), 0.05)
+	burst(cutFace.Position + Vector3.new(0, 3, 0), PINK, 5, 44, 1.6)
+	task.delay(2.6, function()
+		fadeOut(cutFace, 0.5)
+	end)
 	local P = demonPose[D]
 	local slideFrom = now()
 	local pivot = at(DEMON_AT, WAIST_Y)
@@ -1947,6 +1957,8 @@ local function breakUp(): boolean
 	end)
 	after(T.shatter, function()
 		shatter(D2)
+		-- (light from where it burst, over everything round it: dark, the shards read as specks)
+		burst(at(BIG_AT, 18), Color3.fromRGB(255, 120, 220), 9, 140, 1.4)
 		sfx("burst", 1.4, 0.6)
 		sfx("boom", 1.2, 0.55)
 		FilmAudio.glitch(1)

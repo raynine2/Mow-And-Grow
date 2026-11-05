@@ -338,11 +338,25 @@ function Puppet.new(source: Model, opts: { name: string?, parent: Instance? }?):
 					placed[p1] = true
 				end
 			end
+		elseif d:IsA("RigidConstraint") then
+			-- (an accessory on a character in the world: AccessoryRigidConstraint, its two attachments held together)
+			local a0, a1 = d.Attachment0, d.Attachment1
+			local p0 = a0 and a0.Parent
+			local p1 = a1 and a1.Parent
+			if a0 and a1 and p0 and p1 and p0:IsA("BasePart") and p1:IsA("BasePart") then
+				if placed[p1] and not placed[p0] then
+					table.insert(stuck, { part = p0, base = p1, rel = a1.CFrame * a0.CFrame:Inverse() })
+					placed[p0] = true
+				elseif placed[p0] and not placed[p1] then
+					table.insert(stuck, { part = p1, base = p0, rel = a0.CFrame * a1.CFrame:Inverse() })
+					placed[p1] = true
+				end
+			end
 		end
 	end
 	-- take the joints out, anchor everything
 	for _, d in m:GetDescendants() do
-		if d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("AnimationConstraint") or d:IsA("BallSocketConstraint") or d:IsA("NoCollisionConstraint") then
+		if d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("AnimationConstraint") or d:IsA("RigidConstraint") or d:IsA("BallSocketConstraint") or d:IsA("NoCollisionConstraint") then
 			d:Destroy()
 		end
 	end

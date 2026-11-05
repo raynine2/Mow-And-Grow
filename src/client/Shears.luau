@@ -1,29 +1,36 @@
--- THE GOLDEN SHEARS (Films v2, 5 Nov 2026): Rayan's weapon, a pair of giant gold hedge shears built from parts in the
--- game's blocky style, for the films only (this client). Two halves cross at a pivot bolt; each half is a long gold
--- shaft with a black grip at the hand end and a broad blade beyond the pivot, a white-hot edge on the side that cuts.
+-- THE GOLDEN SHEARS (Films v2, 5 Nov 2026): Rayan's weapon, a pair of giant gold scissors, for the films only (this
+-- client). (Round 2, owner: "the sciccors i dont like ... make some better model", "voxel voor de schaar": they're voxels
+-- now, in the game's voxel style, drawn in tools/blender/voxel/shears.py -> client/ShearsShape: a broad gold blade
+-- with a white-hot edge and a dark fuller, a round pivot plate with a green gem, a dark wrapped grip, a big gold finger
+-- ring.) Two halves cross at the pivot; the second is the first turned 180 degrees about the blade, its blade against
+-- the first one's.
 --   Shears.new(parent?) -> Shears
 --   sh:grip2(rh, lh, fwd)            held in two hands (wrist points, world): the handles run from the hands to the
 --                                    pivot, so spreading the hands opens the blades, bringing them together shuts them
 --   sh:hold(at, dir, up, open?)      held in one hand at `at` (world), the shears pointing along `dir`, open degrees
 --   sh:place(pivot, open)            put the pivot frame (LookVector = the blades' way, UpVector = the bolt's axis)
 --   sh:trail(on) / sh:glow(k) / sh:tips() -> (Vector3, Vector3) / sh:show(on) / sh:destroy()
+local Shape = require(script.Parent.ShearsShape)
+
 local Shears = {}
 
-local GOLD = Color3.fromRGB(255, 206, 84)
-local GOLD_DARK = Color3.fromRGB(214, 150, 44)
-local EDGE = Color3.fromRGB(255, 246, 214)
-local GRIP = Color3.fromRGB(28, 22, 30)
-local HANDLE = 2.0 -- hand to pivot
-local BLADE = 4.6 -- pivot to tip
-local STACK = 0.08 -- each half sits this far off the middle, along the bolt
+local EDGE = Color3.fromRGB(255, 248, 220)
+local GOLD = Color3.fromRGB(255, 196, 64)
+local VOXEL = Shape.VOXEL
+local HANDLE = Shape.HANDLE -- the pivot to the ring's middle (the hand)
+local BLADE = Shape.BLADE -- the pivot to the tip
+local TIP_X = Shape.TIP_X
+local STACK = 0 -- (each half's blade lies on its own side of the middle plane already)
 Shears.HANDLE = HANDLE
 Shears.BLADE = BLADE
 
-local function part(model: Model, size: Vector3, color: Color3, material: Enum.Material, kind: string?): BasePart
-	local p: BasePart = if kind == "wedge" then Instance.new("WedgePart") elseif kind == "cyl" then Instance.new("Part") else Instance.new("Part")
-	if kind == "cyl" then
-		(p :: Part).Shape = Enum.PartType.Cylinder
-	end
+local COLOURS: { [string]: { color: Color3, neon: boolean } } = {}
+for name, e in Shape.PALETTE do
+	COLOURS[name] = { color = Color3.fromRGB(e[1], e[2], e[3]), neon = e[4] }
+end
+
+local function part(model: Model, size: Vector3, color: Color3, neon: boolean): Part
+	local p = Instance.new("Part")
 	p.Anchored = true
 	p.CanCollide = false
 	p.CanQuery = false
@@ -31,45 +38,46 @@ local function part(model: Model, size: Vector3, color: Color3, material: Enum.M
 	p.Massless = true
 	p.Size = size
 	p.Color = color
-	p.Material = material
-	if material == Enum.Material.Metal and (color == GOLD or color == GOLD_DARK) then
-		p.Material = Enum.Material.Foil
-		p.Reflectance = 0.18
-	end
+	p.Material = if neon then Enum.Material.Neon else Enum.Material.SmoothPlastic
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.CastShadow = not neon
 	p.Parent = model
 	return p
 end
 
--- One half, in its own frame: the pivot at the origin, the blade toward -Z, the handle toward +Z, the bolt along Y,
--- the cutting edge on the +X side (`edgeSide` -1 puts it on -X, for the other half).
-local function half(model: Model, edgeSide: number): ({ BasePart }, { CFrame }, BasePart)
-	local parts, rels = {}, {}
-	local function add(p: BasePart, rel: CFrame)
+-- an invisible helper riding on a half (the trail's attachments at the tip, the bolt's light)
+local function helper(model: Model, name: string): Part
+	local p = part(model, Vector3.one * 0.1, GOLD, false)
+	p.Name = name
+	p.Transparency = 1
+	p.CastShadow = false
+	return p
+end
+
+-- One half, in its own frame (the pivot at the origin, the blade toward -Z, the ring toward +Z, the bolt along Y, the
+-- cutting edge on +X); `turned` = the other half (turned 180 degrees about Z: its edge on -X, its layers below).
+local function half(model: Model, turned: boolean): ({ BasePart }, { CFrame }, { BasePart }, BasePart)
+	local parts, rels, edges = {}, {}, {}
+	local turn = if turned then CFrame.Angles(0, 0, math.pi) else CFrame.identity
+	local shift = Shape.SHIFT
+	for _, b in Shape.BOXES do
+		local c = COLOURS[b[7]] or COLOURS.gold
+		local size = Vector3.new(b[4], b[5], b[6]) * VOXEL
+		local centre = (Vector3.new(b[1], b[2], b[3]) + Vector3.new(b[4], b[5], b[6]) / 2 + shift) * VOXEL
+		local p = part(model, size, c.color, c.neon)
+		p.Name = b[7]
 		table.insert(parts, p)
-		table.insert(rels, rel)
+		table.insert(rels, turn * CFrame.new(centre))
+		if b[7] == "edge" then
+			table.insert(edges, p)
+		end
 	end
-	local w = 0.66 -- blade width at the root
-	local t = 0.13 -- blade thickness (along the bolt)
-	local body = BLADE - 1.5
-	-- the blade's body, a little narrower toward the tip side (two steps), then the point
-	add(part(model, Vector3.new(w, t, body * 0.55), GOLD, Enum.Material.Metal), CFrame.new(0, 0, -(0.25 + body * 0.275)))
-	add(part(model, Vector3.new(w * 0.86, t, body * 0.45), GOLD, Enum.Material.Metal), CFrame.new(-edgeSide * w * 0.07, 0, -(0.25 + body * 0.55 + body * 0.225)))
-	-- the point: a wedge laid flat (its triangle in the blade's plane), the long side on the cutting edge
-	local tip = part(model, Vector3.new(t, w * 0.86, 1.5), GOLD, Enum.Material.Metal, "wedge")
-	add(tip, CFrame.new(-edgeSide * w * 0.07, 0, -(0.25 + body + 0.75)) * CFrame.Angles(0, 0, math.rad(90 * edgeSide)) * CFrame.Angles(0, math.pi, 0))
-	-- the back of the blade, a darker spine
-	add(part(model, Vector3.new(0.12, t + 0.06, body), GOLD_DARK, Enum.Material.Metal), CFrame.new(-edgeSide * (w / 2 - 0.05), 0, -(0.25 + body / 2)))
-	-- the cutting edge, white-hot
-	local edge = part(model, Vector3.new(0.07, t + 0.02, BLADE - 0.5), EDGE, Enum.Material.Neon)
-	add(edge, CFrame.new(edgeSide * (w / 2 - 0.02), 0, -(0.25 + (BLADE - 0.5) / 2)) * CFrame.Angles(0, math.rad(-edgeSide * 3.2), 0))
-	-- the shaft to the hand, a gold collar, the black grip, a gold cap
-	add(part(model, Vector3.new(0.28, 0.28, HANDLE - 1.1), GOLD, Enum.Material.Metal), CFrame.new(0, 0, (HANDLE - 1.1) / 2 + 0.1))
-	add(part(model, Vector3.new(0.42, 0.42, 0.22), GOLD, Enum.Material.Metal), CFrame.new(0, 0, HANDLE - 1.0))
-	add(part(model, Vector3.new(0.34, 0.34, 0.95), GRIP, Enum.Material.Fabric), CFrame.new(0, 0, HANDLE - 0.45))
-	add(part(model, Vector3.new(0.44, 0.44, 0.16), GOLD, Enum.Material.Metal), CFrame.new(0, 0, HANDLE + 0.06))
-	return parts, rels, edge
+	-- the tip, for the trail (a0 at the point, a1 back along the blade)
+	local tip = helper(model, "Tip")
+	table.insert(parts, tip)
+	table.insert(rels, turn * CFrame.new(TIP_X, VOXEL / 2, -BLADE))
+	return parts, rels, edges, tip
 end
 
 export type Shears = any
@@ -77,15 +85,12 @@ export type Shears = any
 function Shears.new(parent: Instance?): Shears
 	local model = Instance.new("Model")
 	model.Name = "GoldenShears"
-	local pa, ra, edgeA = half(model, 1)
-	local pb, rb, edgeB = half(model, -1)
-	-- the bolt (on half A) with a gem
-	local bolt = part(model, Vector3.new(0.5, 0.86, 0.86), GOLD_DARK, Enum.Material.Metal, "cyl")
+	local pa, ra, edgesA, tipA = half(model, false)
+	local pb, rb, edgesB, tipB = half(model, true)
+	-- the bolt's light (over the gem)
+	local bolt = helper(model, "Bolt")
 	table.insert(pa, bolt)
-	table.insert(ra, CFrame.new(0, -STACK, 0) * CFrame.Angles(0, 0, math.rad(90)))
-	local gem = part(model, Vector3.new(0.6, 0.36, 0.36), EDGE, Enum.Material.Neon, "cyl")
-	table.insert(pa, gem)
-	table.insert(ra, CFrame.new(0, -STACK, 0) * CFrame.Angles(0, 0, math.rad(90)))
+	table.insert(ra, CFrame.new(0, VOXEL * 3, 0))
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 220, 140)
 	light.Range = 9
@@ -94,13 +99,12 @@ function Shears.new(parent: Instance?): Shears
 	light.Parent = bolt
 	-- trails off the tips
 	local trails = {}
-	for _, edge in { edgeA, edgeB } do
+	for _, tip in { tipA, tipB } do
 		local a0 = Instance.new("Attachment")
-		a0.Position = Vector3.new(0, 0, -edge.Size.Z / 2)
-		a0.Parent = edge
+		a0.Parent = tip
 		local a1 = Instance.new("Attachment")
-		a1.Position = Vector3.new(0, 0, -edge.Size.Z / 2 + 2.2)
-		a1.Parent = edge
+		a1.Position = Vector3.new(0, 0, 2.2)
+		a1.Parent = tip
 		local tr = Instance.new("Trail")
 		tr.Attachment0 = a0
 		tr.Attachment1 = a1
@@ -113,7 +117,7 @@ function Shears.new(parent: Instance?): Shears
 		tr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
 		tr.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.2) })
 		tr.Enabled = false
-		tr.Parent = edge
+		tr.Parent = tip
 		table.insert(trails, tr)
 	end
 	local parts: { BasePart } = {}
@@ -129,6 +133,13 @@ function Shears.new(parent: Instance?): Shears
 		table.insert(rels, rb[i])
 		table.insert(side, -1)
 	end
+	local edges = {}
+	for _, e in edgesA do
+		table.insert(edges, e)
+	end
+	for _, e in edgesB do
+		table.insert(edges, e)
+	end
 	model.Parent = parent or workspace
 	local self: any = {
 		model = model,
@@ -136,7 +147,7 @@ function Shears.new(parent: Instance?): Shears
 		rels = rels,
 		side = side,
 		cfs = table.create(#parts, CFrame.identity),
-		edges = { edgeA, edgeB },
+		edges = edges,
 		light = light,
 		trails = trails,
 		pivot = CFrame.identity,
@@ -199,15 +210,14 @@ function Shears.glow(self: any, k: number)
 	self.light.Range = 9 + k * 10
 	for _, e in self.edges do
 		e.Color = EDGE:Lerp(Color3.new(1, 1, 1), k)
-		e.Size = Vector3.new(0.07 + k * 0.08, e.Size.Y, e.Size.Z)
 	end
 end
 
 -- Where the two tips are (world).
 function Shears.tips(self: any): (Vector3, Vector3)
 	local half = math.rad(self.open / 2)
-	local a = self.pivot * CFrame.Angles(0, half, 0) * CFrame.new(0, 0, -BLADE)
-	local b = self.pivot * CFrame.Angles(0, -half, 0) * CFrame.new(0, 0, -BLADE)
+	local a = self.pivot * CFrame.Angles(0, half, 0) * CFrame.new(TIP_X, 0, -BLADE)
+	local b = self.pivot * CFrame.Angles(0, -half, 0) * CFrame.new(-TIP_X, 0, -BLADE)
 	return a.Position, b.Position
 end
 

@@ -125,7 +125,11 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	set.fissure = W(0, 0, -52)
 
 	-- the ground: one big field, darker and lighter patches over it, the path
-	block(folder, Vector3.new(1400, 4, 1400), W(0, -2, -100), Color3.fromRGB(58, 92, 50), Enum.Material.Grass, "Ground")
+	for gx = -1, 1 do
+		for gz = -1, 1 do
+			block(folder, Vector3.new(2040, 4, 2040), W(gx * 2040, -2, -100 + gz * 2040), Color3.fromRGB(58, 92, 50), Enum.Material.Grass, "Ground")
+		end
+	end
 	for _ = 1, (if light then 10 else 26) do
 		local sx, sz = rng:NextNumber(30, 90), rng:NextNumber(30, 90)
 		local p = Vector3.new(rng:NextNumber(-220, 220), 0, rng:NextNumber(-260, 160))
@@ -171,7 +175,7 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	end
 	local pinkLight = Instance.new("PointLight")
 	pinkLight.Color = PINK
-	pinkLight.Range = 40
+	pinkLight.Range = 26
 	pinkLight.Brightness = 0
 	pinkLight.Shadows = false
 	pinkLight.Parent = set.glow[1] or folder
@@ -254,7 +258,16 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	for i = 1, hills do
 		local a = (i / hills) * math.pi * 2
 		local r = rng:NextNumber(420, 520)
-		prop("mountain", W(math.cos(a) * r, -18, math.sin(a) * r - 60) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), rng:NextNumber(3.2, 5.0), folder)
+		local m = prop("mountain", W(math.cos(a) * r, -26, math.sin(a) * r - 60) * CFrame.Angles(0, rng:NextNumber(0, 6), 0), rng:NextNumber(1.6, 2.4), folder)
+		if m then
+			-- (night hills: dark shapes against the sky, not lit blue)
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then
+					d.Color = d.Color:Lerp(Color3.fromRGB(16, 18, 34), 0.78)
+					d.Material = Enum.Material.SmoothPlastic
+				end
+			end
+		end
 	end
 	prop("forge_windmill", W(150, 0, -230) * CFrame.Angles(0, math.rad(200), 0), 58, folder)
 	prop("forge_barn", W(185, 0, -205) * CFrame.Angles(0, math.rad(220), 0), 34, folder)
@@ -349,12 +362,12 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	end
 
 	-- (after the reference's silhouette against a huge moon) a big moon low in the west, for Rayan's card
-	local moonDir = Vector3.new(-1, 0.38, 0.25).Unit
-	local moonAt = at.Position + at:VectorToWorldSpace(moonDir) * 420 + Vector3.new(0, 20, 0)
-	local moon = block(folder, Vector3.new(84, 84, 84), CFrame.new(moonAt), Color3.fromRGB(226, 232, 255), Enum.Material.Neon, "Moon")
+	local moonDir = Vector3.new(-0.97, 0.105, 0.22).Unit
+	local moonAt = at.Position + at:VectorToWorldSpace(moonDir) * 360
+	local moon = block(folder, Vector3.new(72, 72, 72), CFrame.new(moonAt), Color3.fromRGB(226, 232, 255), Enum.Material.Neon, "Moon")
 	moon.Shape = Enum.PartType.Ball
 	moon.CastShadow = false
-	local halo = block(folder, Vector3.new(150, 150, 150), CFrame.new(moonAt + (at.Position - moonAt).Unit * 30), Color3.fromRGB(150, 140, 255), Enum.Material.Neon, "MoonHalo")
+	local halo = block(folder, Vector3.new(124, 124, 124), CFrame.new(moonAt + (at.Position - moonAt).Unit * 30), Color3.fromRGB(150, 140, 255), Enum.Material.Neon, "MoonHalo")
 	halo.Shape = Enum.PartType.Ball
 	halo.Transparency = 0.86
 	halo.CastShadow = false

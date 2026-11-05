@@ -163,11 +163,16 @@ local function waitUntil(t: number): boolean
 end
 
 -- cut to a shot that runs until film time `untilT` (k 0..1 over it), and wait for it
+local lastFocus: Vector3? = nil
 local function shot(untilT: number, fn: (k: number, t: number) -> (CFrame, number, Vector3?), opts: any?): boolean
 	if not playing then
 		return false
 	end
-	Film.cut(math.max(untilT - now(), 0.05), fn, opts)
+	Film.cut(math.max(untilT - now(), 0.05), function(k: number, t: number)
+		local cf, fov, focus = fn(k, t)
+		lastFocus = focus
+		return cf, fov, focus
+	end, opts)
 	return waitUntil(untilT)
 end
 
@@ -480,10 +485,23 @@ local function clearGrass()
 		return
 	end
 	local p = cam.CFrame.Position
+	local f = lastFocus
+	local seg = if f then f - p else nil
+	local segLen = if seg then seg.Magnitude else 0
+	local dir = if seg and segLen > 0.01 then seg / segLen else nil
 	for _, t in S.tufts do
 		local part = t.part
 		if part and part.Parent then
-			local hide = (t.at.Position - p).Magnitude < clearR + 2.4 * t.scale
+			local q = t.at.Position
+			local hide = (q - p).Magnitude < clearR + 2.4 * t.scale
+			if not hide and dir then
+				-- (in the way between the lens and the subject, short of the subject itself)
+				local along = (q - p):Dot(dir)
+				if along > 0 and along < segLen - 2 then
+					local off = (q - p) - dir * along
+					hide = Vector3.new(off.X, math.max(0, math.abs(off.Y) - 2.5 * t.scale), off.Z).Magnitude < 1.2 + 2.0 * t.scale
+				end
+			end
 			if hide ~= (hiddenTufts[part] == true) then
 				hiddenTufts[part] = if hide then true else nil
 				part.LocalTransparencyModifier = if hide then 1 else 0
@@ -559,7 +577,7 @@ local function night()
 	}, 0)
 	Film.grade({ Brightness = 0, Contrast = 0.18, Saturation = 0, TintColor = Color3.fromRGB(222, 218, 255) }, 0)
 	Film.vignette(0.5, 0)
-	Film.glow(0.7, 22, 0)
+	Film.glow(0.45, 22, 0)
 end
 
 local function actI(): boolean
@@ -602,12 +620,22 @@ local function actI(): boolean
 				TweenService:Create(g, TweenInfo.new(0.35), { Transparency = 0 }):Play()
 				local pl = g:FindFirstChildOfClass("PointLight")
 				if pl then
-					TweenService:Create(pl, TweenInfo.new(0.6), { Brightness = 2.5 }):Play()
+					TweenService:Create(pl, TweenInfo.new(0.6), { Brightness = 1.2 }):Play()
 				end
 			end
 		end)
 	end
-	TweenService:Create(S.pinkLight, TweenInfo.new(1), { Brightness = 3 }):Play()
+	TweenService:Create(S.pinkLight, TweenInfo.new(1), { Brightness = 1.6 }):Play()
+	-- (once it's up, the cracks' light dies down: it mustn't paint the whole film pink)
+	after(T.rise + 1.3, function()
+		for _, g in S.glow do
+			local pl = g:FindFirstChildOfClass("PointLight")
+			if pl then
+				TweenService:Create(pl, TweenInfo.new(1.2), { Brightness = 0.3 }):Play()
+			end
+		end
+		TweenService:Create(S.pinkLight, TweenInfo.new(1.2), { Brightness = 0.5 }):Play()
+	end)
 	sfx("rumble", 1.2)
 	sfx("demonSwell", 0.9)
 	Film.shake(0.25, 0.3)
@@ -626,6 +654,10 @@ local function actI(): boolean
 	D.state.rise = 0.05
 	tracks.demonRise = function()
 		local tt = now()
+		if not D or tt > T.roar + 2 then
+			tracks.demonRise = nil
+			return
+		end
 		D.state.rise = 0.05 + ease.out(math.clamp((tt - T.rise) / 1.15, 0, 1)) * 0.95
 		D.state.eyes = ease.out(math.clamp((tt - T.eyes) / 0.18, 0, 1))
 		D.state.roar = math.clamp((tt - T.roar) / 0.25, 0, 1) * (1 - math.clamp((tt - T.roar - 1.1) / 0.6, 0, 1) * 0.8)
@@ -653,8 +685,9 @@ local function actI(): boolean
 	local stopLines = AnimeFx.lines(WHITE, 0.45)
 	if not shot(T.feet, function(k)
 		local e = D.eyes()
-		local p = e + Vector3.new(-5 + k * 0.8, -3.5, 15 - k * 2)
-		return look(p, e + Vector3.new(0, -2.5, 0), 12), mm(32), e
+		local fwd = D.head().LookVector
+		local p = e + fwd * (30 - k * 3) + Vector3.new(-4, 3, 0)
+		return look(p, e + Vector3.new(0, -3.5, 0), 12), mm(48), e
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -690,6 +723,7 @@ local function walkTrack()
 end
 
 local function actII(): boolean
+	R:show(true)
 	walkTrack()
 	sfx("bladeDraw", 0.8, 0.7)
 	-- 6. [BL, a low tracking shot] in front of him at boot height, backing away as he comes: his boots, the shears
@@ -699,10 +733,10 @@ local function actII(): boolean
 	if not shot(T.walk, function(_k)
 		local root = R.root
 		local g = root.Position.Y + R.ground
-		local p = root.Position + root.LookVector * 4.4 + root.RightVector * 0.9
-		p = Vector3.new(p.X, g + 0.45, p.Z)
-		local target = root.Position + Vector3.new(0, -1.3, 0)
-		return look(p, target, -2), mm(26), target
+		local p = root.Position + root.LookVector * 6.5 + root.RightVector * 1.3
+		p = Vector3.new(p.X, g + 0.35, p.Z)
+		local target = Vector3.new(root.Position.X, g + 1.1, root.Position.Z) - root.LookVector * 1.2
+		return look(p, target, -2), mm(32), target
 	end, { hand = 0.5 }) then
 		return false
 	end
@@ -729,11 +763,11 @@ local function actII(): boolean
 	Film.punch(3)
 	local moonPos = S.moon.Position
 	if not shot(T.clawUp, function(k)
-		local chest = chestOf(R).Position + Vector3.new(0, 0.6, 0)
+		local chest = chestOf(R).Position + Vector3.new(0, 0.4, 0)
 		local dir = (moonPos - chest).Unit
-		local p = chest - dir * (7.5 - k * 0.6) + Vector3.new(0, -0.4, 0)
-		return look(p, chest:Lerp(moonPos, 0.002)), mm(40), chest
-	end, { hand = 0.2 }) then
+		local p = chest - dir * (30 - k * 2)
+		return look(p, chest), mm(85), chest
+	end, { hand = 0.15 }) then
 		return false
 	end
 	return true
@@ -771,8 +805,9 @@ local function exchange(): boolean
 	end)
 	if not shot(T.snip1, function(k)
 		local root = R.root
-		local p = root.Position - root.LookVector * 5 + root.RightVector * 2.2 + Vector3.new(0, -2.2, 0)
-		return look(p, root.Position + root.LookVector * 6 + Vector3.new(0, 12 - k * 4, 0), 6), mm(20), root.Position
+		local claw = D.frame("foreR").Position
+		local p = root.Position - root.LookVector * 6.5 + root.RightVector * 3.2 + Vector3.new(0, -2.4, 0)
+		return look(p, root.Position:Lerp(claw, 0.55) + Vector3.new(0, 2, 0), 6), mm(20), root.Position
 	end, { hand = 0.6 }) then
 		return false
 	end
@@ -1969,6 +2004,8 @@ function Opening.play()
 	R.root = W(0, 3, 30)
 	stand(R, walkFrom, DEMON_AT)
 	R:pose("drag", 0)
+	R:show(false)
+	shearsMode = "hidden"
 	if H then
 		H:show(false)
 	end

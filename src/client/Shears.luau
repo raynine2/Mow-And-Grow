@@ -9,8 +9,8 @@
 --   sh:trail(on) / sh:glow(k) / sh:tips() -> (Vector3, Vector3) / sh:show(on) / sh:destroy()
 local Shears = {}
 
-local GOLD = Color3.fromRGB(255, 194, 62)
-local GOLD_DARK = Color3.fromRGB(196, 132, 34)
+local GOLD = Color3.fromRGB(255, 206, 84)
+local GOLD_DARK = Color3.fromRGB(214, 150, 44)
 local EDGE = Color3.fromRGB(255, 246, 214)
 local GRIP = Color3.fromRGB(28, 22, 30)
 local HANDLE = 2.0 -- hand to pivot
@@ -32,6 +32,10 @@ local function part(model: Model, size: Vector3, color: Color3, material: Enum.M
 	p.Size = size
 	p.Color = color
 	p.Material = material
+	if material == Enum.Material.Metal and (color == GOLD or color == GOLD_DARK) then
+		p.Material = Enum.Material.Foil
+		p.Reflectance = 0.18
+	end
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
 	p.Parent = model
@@ -83,9 +87,9 @@ function Shears.new(parent: Instance?): Shears
 	table.insert(pa, gem)
 	table.insert(ra, CFrame.new(0, -STACK, 0) * CFrame.Angles(0, 0, math.rad(90)))
 	local light = Instance.new("PointLight")
-	light.Color = GOLD
-	light.Range = 7
-	light.Brightness = 0.6
+	light.Color = Color3.fromRGB(255, 220, 140)
+	light.Range = 9
+	light.Brightness = 1.4
 	light.Shadows = false
 	light.Parent = bolt
 	-- trails off the tips
@@ -191,8 +195,8 @@ end
 
 -- The edges' glow and the bolt's light: 0 normal, 1 blazing (the ultimate).
 function Shears.glow(self: any, k: number)
-	self.light.Brightness = 0.6 + k * 4
-	self.light.Range = 7 + k * 10
+	self.light.Brightness = 1.4 + k * 4
+	self.light.Range = 9 + k * 10
 	for _, e in self.edges do
 		e.Color = EDGE:Lerp(Color3.new(1, 1, 1), k)
 		e.Size = Vector3.new(0.07 + k * 0.08, e.Size.Y, e.Size.Z)

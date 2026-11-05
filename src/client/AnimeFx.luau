@@ -128,6 +128,9 @@ function AnimeFx.sub(text: string, life: number?)
 	band.Parent = root
 	local rich = string.gsub(text, "%*(.-)%*", '<font color="#FF3048">%1</font>')
 	local t = label(root, "[" .. rich .. "]", Enum.Font.Merriweather, WHITE, Z_TEXT + 1)
+	pcall(function()
+		t.FontFace = Font.new("rbxasset://fonts/families/Merriweather.json", Enum.FontWeight.Bold)
+	end)
 	t.RichText = true
 	t.AnchorPoint = Vector2.new(0.5, 0.5)
 	t.Position = UDim2.fromScale(0.5, 0.5)

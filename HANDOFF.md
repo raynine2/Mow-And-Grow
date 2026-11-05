@@ -175,40 +175,22 @@ and was playtested there with no script errors.
 
 ## Not done yet / open items
 
-**Films v2, paused 5 Nov 03:47 (owner: "Pause", "Save it").** Nothing of Films v2 is in the Studio place yet: the
-tests hot-loaded it into Play sessions only, so saving the place is safe (its Edit side was checked at 03:50: no
-test leftovers, `ForceMode = "Lobby"`). Everything is on the branch at `f0c45fa` or later. To check a shot in Studio:
-workspace attribute `FilmHoldAt = <film seconds>` holds the picture there; `Opening.tryCam(from, to, fov)` (set
-coordinates, Studio only) tries another lens while held; `Opening.cast()` gives the set and actors to measure from.
-Seen on screen in pass 2, still to do (shot numbers as in `client/Opening`'s comments):
-- 6, the boots: make it the side tracking shot that tested well: lens at root + right·9.5 + look·1.3 at ground + 1.1,
-  aimed at root − look·2.6 at ground + 1.2, `mm(35)` (the gold shears drag big across the frame).
-- 8, the name card: the moon is now east; the oak at set (44, 0, −22) stands in front of it: move it, and keep the
-  far ring's trees out of a ±12° corridor round the line from R1 to the moon.
-- 10 (cut 1): too close on his arms; make it higher and further, like cut 3. Cuts 2 and 3 read well.
-- 13, the arm falls: lens at R2 + (8, 6, 7) aimed at R2 + (−6, 2, −5.5), `mm(26)` (tested). The fissure's rim rocks
-  (`FilmSet` `set.rim`, they move) must join `set.props` so they're hidden too (one stood in the old lens).
-- 14, his eye: now aimed along the head's own look (works), but strands of his hair cross the eye: move the lens a
-  little to his right and under the fringe.
-- 15, the reset: too dark to read; a wide low lens from the south-west with the loading ring over its head (the ring
-  now sits 16·scale over the head root instead of 30).
-- 16, the clang: the lens was inside the demon's arm. Re-frame from behind him, west of the elbow (the demon's
-  blocks right at a lens are now hidden, `Demon.nearClip`, but the shot still needs a real framing).
-- 18 shed, 22 stance, 26 after, 27a stubs, 28 regrow, 29 bigger, 30a, 31 slam, 33 streak, 34 hero, 38 shatter,
-  41b: all were blocked by the hay/crates that stood at R3 and P1. `f0c45fa` moved those props out and hides any
-  prop between a lens and its subject: look at each again.
-- 19, down in the wreck (from above): his head is cut off; aim at his chest/head.
-- 20, he gets up: the tung tung figure on his chest hides his face from straight in front: a 3/4 angle.
-- 24, the glint: the lens looks at the ground; frame the shears from their live tips every frame.
-- 35, the player's eyes: showed the mouth (the head tips up to look at the demon); now aimed along the head: check.
-- 36 wind-up and 37 THE PUNCH: unreadable (the lens in the demon's fists / his own arm). The climax: most care.
-- 39 pillars: now neon beams behind the hills: check. 40 the last eye: the player's shoulder fills the frame.
-  41a: Rayan's hair fills the frame: pull back.
-- Good as they are: 1 valley, 4 rise, 5 roar, 7 over the shoulder, 9 claw, 11–12 cuts, 17 backhand, 21 "Fine",
-  23 the ring from above, 42 title.
-Then: pass 3 over every shot; then the finale (`client/Finale`, ~60 s: Rayan's realm, the player's dark copy; not
-started); then copy everything into Studio (Edit, from GitHub by commit, checksums, old copies to
-`ServerStorage.MowALawnBackups`), and the owner saves.
+**Films v2, the opening: review pass 3 done (5 Nov ~09:40).** Every shot was held in Studio in a 16:9 window,
+looked at and reframed until it read (tested lenses, noted in each shot's comment), then the whole film ran in real
+time: 50.5 s, no warnings or errors, `FilmPlaying` cleared after. A contact sheet of it went to the owner. Found and
+fixed on the way: the weather layer round the camera (`client/PackAmbience`) never stopped during films (it waits for
+the workspace attribute `FilmPlaying`, which nothing set: `Film.start/stop` set it now); the shed's bricks hung in
+the air (they fall and lie now, lift in the stance and drop at the cut); the grass was never really mown (world vs set
+positions); the demon was cut at its ankles (now its waist, with a glowing cut face). Still weak, if there's time:
+the slide (27a) and the stance (22) are dark; the reset's ADAPTING text is half behind a horn at some frames.
+Nothing of Films v2 is in the Studio place yet: tests hot-load it into Play sessions only (fetched from GitHub by
+commit through a temporary server script, `FilmFetcherDev`, that lives only in the Play session). To check a shot:
+workspace attribute `FilmHoldAt = <film seconds>` holds the picture; `Opening.tryCam(from, to, fov)` (set coordinates,
+Studio only) tries another lens while held; `Opening.cast()` gives the set and actors to measure from. While held, a
+pose blend begun just before the hold doesn't finish (the film's clock is stopped): finish it by hand to judge a frame.
+Next: the finale (`client/Finale`, ~60 s: Rayan's realm, the player's dark copy; not started); then copy everything
+into Studio (Edit, from GitHub by commit, checksums, old copies to `ServerStorage.MowALawnBackups`), and the owner
+saves.
 
 **4 Nov, open (slop the vault flags that needs a decision, not a quick fix):** (a) the spawn's first view is the
 holographic mower padlocks with "COMING SOON / next update" (the owner asked for those locks on 30 Oct) and a big empty

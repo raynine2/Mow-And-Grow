@@ -388,6 +388,13 @@ function Moments.questClaim(d: any)
 	local green = UI.colors.green
 	local c = card(440, 150, 2.6, 0.3)
 	rays(c, green, 380)
+	-- (5 Nov) on a dark plate: it pops over the open QUESTS window, and bare text over the window's rows was a jumble
+	local plate = UI.frame({ size = UDim2.new(1, -20, 1, -6), pos = UDim2.fromOffset(10, 3), color = Color3.fromRGB(28, 20, 56), parent = c, radius = 22, outline = 4, name = "Plate" })
+	plate.ZIndex = 56
+	local stroke = plate:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		stroke.Color = green
+	end
 	local title = UI.text(c, if d.period == "weekly" then "WEEKLY QUEST DONE!" else "QUEST DONE!", UDim2.new(1, 0, 0, 50), { pos = UDim2.fromOffset(0, 0), stroke = 4 })
 	title.ZIndex = 58
 	UI.gradient(title, green)

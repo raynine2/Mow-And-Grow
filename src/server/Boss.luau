@@ -1531,6 +1531,12 @@ function Boss.waiting(z: number): boolean
 	return ready[z] == true and not beaten[z] and (current == nil or current.z ~= z)
 end
 
+-- (6 Nov) where area z's summon pad is (nil without an arena): the guide arrow points there while its boss waits
+function Boss.padPos(z: number): Vector3?
+	local arena = BossArena.get(z)
+	return arena and arena.padPos
+end
+
 -- Area z is mowed: its boss wakes and the summon pad lights up (once per run).
 function Boss.ready(z: number)
 	if beaten[z] or ready[z] then

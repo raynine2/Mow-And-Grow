@@ -64,8 +64,10 @@ function Stats.compute(player: Player, data)
 		* (if hasPass(player, "DoubleCoins") then 2 else 1)
 		* (if vip then 1.15 else 1)
 	s.luck = 1 + (class.luck or 0) + pet.luck + data.perks.luck * Config.perk("luck").per
-	s.bundle = data.perks.bundle * Config.perk("bundle").per -- chance of a double bundle
-		+ (if hasPass(player, "DoubleClippings") then 1 else 0) -- 2x Clippings: always double
+	s.bundle = data.perks.bundle * Config.perk("bundle").per -- chance of one more bundle (Bigger Bundle)
+	-- (6 Nov) 2x Clippings doubles every clump's drops (it added one, so a 2- or 4-drop clump got x1.5 / x1.25, and the
+	-- Bigger Bundle perk did nothing for pass owners); the perk rolls on top
+	s.bundleMult = if hasPass(player, "DoubleClippings") then 2 else 1
 	s.gems = (1 + data.perks.gem * Config.perk("gem").per + starGems) * (if hasPass(player, "DoubleGems") then 2 else 1)
 	if run then
 		-- (29 Oct, owner: "party bonus") more coins from grass for every other player in the run

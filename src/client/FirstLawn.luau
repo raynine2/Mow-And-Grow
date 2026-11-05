@@ -55,7 +55,7 @@ local function showCountdown(seconds: number)
 	task.spawn(function()
 		local left = seconds
 		while card == f and left > 0 do
-			sub.Text = ("Grab a mower and mow it! Taking you there in %d..."):format(left)
+			sub.Text = ("We lend you a push mower: mow it all! Taking you there in %d..."):format(left) -- (6 Nov: "grab a mower" while every ride-on is locked)
 			task.wait(1)
 			left -= 1
 		end

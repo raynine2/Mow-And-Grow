@@ -72,6 +72,7 @@ local function worldState()
 		-- (29 Oct, the bug sweep) the area is mowed and its boss waits on the summon pad (the HUD's card said "Mow it
 		-- all to open ..." over a mowed area)
 		bossWaiting = Boss.waiting(zone),
+		bossPad = if Boss.waiting(zone) then Boss.padPos(zone) else nil, -- (6 Nov) client/Guide points the arrow there
 		sellPos = info and info.sellPos,
 		sellSpots = spots, -- every shredder's pad (the hub's and the drop-off)
 		left = left, -- clumps still standing in the whole map
@@ -350,7 +351,7 @@ local function onCut(player: Player, patch): boolean
 	-- tree into logs); Bigger Bundle sometimes adds one
 	local land = patch.landPos or pos
 	local wait = Field.FALL_TIME
-	local count = Config.ZONES[patch.z].drops or 1
+	local count = (Config.ZONES[patch.z].drops or 1) * (stats.bundleMult or 1)
 	if stats.bundle > 0 and rng:NextNumber() < stats.bundle then
 		count += 1
 	end
@@ -625,7 +626,7 @@ end
 
 local function buyUpgrade(player: Player, data, id: string)
 	local u = Config.upgrade(id)
-	if not u then
+	if not u or (u.section == "Mower" and Config.MOWERS_LOCKED) then -- (6 Nov) mower upgrades wait for the mowers
 		return
 	end
 	local level = data.run.upgrades[id] or 0
@@ -748,6 +749,7 @@ local function toCamp(char: Model)
 end
 
 local function setupPlayer(player: Player, data)
+	local fresh = data.run == nil
 	if not data.run then
 		data.run = PlayerData.newRun()
 		data.run.difficulty = Run.difficulty
@@ -767,6 +769,13 @@ local function setupPlayer(player: Player, data)
 	if data.run.zone < zone then
 		data.run.zone = zone
 		data.run.skipped = true
+		-- (6 Nov) a brand-new run joining a party in a later area catches up on tool and bag (Config.CATCHUP)
+		local up = fresh and Config.CATCHUP and Config.CATCHUP[zone]
+		if up then
+			data.run.tool = math.max(data.run.tool or 1, up.tool or 1)
+			data.run.bag = math.max(data.run.bag or 0, up.bag or 0)
+			data.run.loaner = nil
+		end
 	end
 	-- runs start in first person like the Chop A Forest trailer, but aren't locked there: the client
 	-- (CameraView) lets you press V or scroll out to free the mouse, and Shift toggles shift lock
@@ -831,7 +840,10 @@ local function waitForHost(): number
 				local hd = PlayerData.get(host)
 				-- (owner, 29 Oct) the difficulty the party picked (sent with the teleport; a loaded run keeps its own;
 				-- the Workspace attribute "Difficulty" picks one in Studio)
-				local pick = (type(tpData) == "table" and tpData.difficulty) or (hd and hd.run and hd.run.difficulty) or workspace:GetAttribute("Difficulty")
+				-- (6 Nov) a saved run keeps the difficulty it was played on: picking Expert for a run you'd taken to its last
+				-- area on Medium gave 3 Rebirth Stars for one boss
+				local saved = hd and hd.run and hd.run.difficulty
+				local pick = (if type(saved) == "string" and Config.DIFFICULTY[saved] then saved else nil) or (type(tpData) == "table" and tpData.difficulty) or workspace:GetAttribute("Difficulty")
 				Run.setDifficulty(if type(pick) == "string" and Config.DIFFICULTY[pick] then pick else "Normal")
 				-- Peaceful Mode (picked in the Create Party window, sent with the teleport) decides for the whole party
 				Night.peaceful = (type(tpData) == "table" and tpData.peaceful == true) or (hd ~= nil and hd.peaceful == true)
@@ -936,6 +948,7 @@ function Run.start()
 		data.run.coins += coins
 		data.stats.cut += 1
 		data.stats.coinsEarned = (data.stats.coinsEarned or 0) + coins
+		Quests.event(player, "cut", 1) -- (6 Nov) the auto-finished clumps count for "Cut N grass" too
 		local f = finished[player]
 		if not f then
 			f = { n = 0, coins = 0 }

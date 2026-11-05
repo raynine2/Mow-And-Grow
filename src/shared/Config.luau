@@ -57,7 +57,7 @@ Config.UPGRADES = {
 	-- (5 Nov, the "would an 8-year-old still have fun with every reward taken away?" pass) the Hold upgrade is gone:
 	-- holding the button keeps cutting from the first swing (a kid holds it down, and nothing happening felt broken).
 	-- Was { id = "hold", name = "Hold", base = 20, max = 1 }, Chop A Forest's first purchase; a saved run's level is ignored.
-	{ id = "swing", section = "Hands", name = "Swing Speed", desc = "-6% time between swings", per = 0.06, base = 30, growth = 2.6, max = 10 },
+	{ id = "swing", section = "Hands", name = "Swing Speed", desc = "-6% time between swings (hand tools)", per = 0.06, base = 30, growth = 2.6, max = 10 },
 	{ id = "grasp", section = "Hands", name = "Grasp", desc = "+1.5 studs pickup reach", per = 1.5, base = 60, growth = 2.5, max = 10 },
 	{ id = "power", section = "Mower", name = "Mower Blades", desc = "+20% ride-on mower cutting power", per = 0.20, base = 100, growth = 3.2, max = 10 }, -- (30 Oct) was the "Tool" section's Power: the tools' power is in their skill trees now (shared/SkillTrees); the id stays, so a saved run's levels keep powering its mowers
 	{ id = "speed", section = "Gear", name = "Walk Speed", desc = "+6% walk speed", per = 0.06, base = 250, growth = 3.0, max = 10 },
@@ -69,6 +69,18 @@ Config.UPGRADES = {
 	{ id = "fuelsaver", section = "Mower", name = "Fuel Saver", desc = "-10% fuel burned", per = 0.10, base = 400, growth = 2.6, max = 5 },
 }
 Config.LEGACY_CARRY_PER = 3
+-- (6 Nov) CATCH-UP: a friend whose brand-new run starts in a later area (they joined a party mid-way) gets the tool and
+-- bag a player would have by then (tool = index into Config.TOOLS, bag = into Config.BAGS), so they can cut straight
+-- away: they arrived with Bare Hands against grass that takes hundreds of hits. Indexed by the area they start in.
+Config.CATCHUP = {
+	[2] = { tool = 3, bag = 1 }, -- Sickle, Satchel
+	[3] = { tool = 4, bag = 2 }, -- Push Mower, Backpack
+	[4] = { tool = 5, bag = 2 }, -- Weed Whacker
+	[5] = { tool = 5, bag = 3 }, -- Expedition Pack
+	[6] = { tool = 6, bag = 3 }, -- Mega Scythe
+	[7] = { tool = 6, bag = 3 },
+	[8] = { tool = 7, bag = 3 }, -- Laser Mower
+}
 
 -------------------------------------------------------------------------------------------------------------
 -- Loot: a cut patch drops its bundle on the ground (and sometimes a free gem). Only you can pick up yours: walk
@@ -933,7 +945,7 @@ Config.QUESTS = {
 	{ title = "Cut 60 grass", hint = "Keep mowing the Backyard Lawn", event = "cut", goal = 60, reward = 150 },
 	{ title = "Mow the whole Backyard Lawn", hint = "Every last patch!", event = "zone", goal = 1, reward = 250 },
 	{ title = "Get a ride-on mower", hint = "Buy one at the Garage", event = "mower", goal = 1, reward = 200 },
-	{ title = "Mow the whole Flower Meadow", hint = "Its gate opens when you beat the lawn's boss", event = "zone", goal = 1, reward = 300 },
+	{ title = "Mow the whole Flower Meadow", hint = "Its gate opens when you beat the lawn's boss", event = "zone", goal = 2, reward = 300 }, -- (6 Nov: zone quests count the run's areas cleared: this is the 2nd, server/Quests)
 }
 
 -------------------------------------------------------------------------------------------------------------
@@ -1002,11 +1014,11 @@ Config.CLASSES = {
 -- Each class's own gimmick (owner, 27 Oct: unique, not only stats). server/ClassPerks runs them; the class cards show
 -- these words.
 Config.CLASS_GIMMICK = {
-	WeedPuller = { name = "Root Rip", text = "Every 6th swing hits 8x as hard: it rips clumps out by the root." },
+	WeedPuller = { name = "Root Rip", text = "Every 6th hand-tool swing hits 8x as hard: it rips clumps out by the root." },
 	Gardener = { name = "Green Thumb", text = "Bundles fly to you from much further away." },
 	Groundskeeper = { name = "Tidy Up", text = "When a clump falls, the 2 nearest clumps take a free hit." },
 	LawnBaron = { name = "Courier", text = "A full bag sells itself for 60%, wherever you are (every 60 s)." },
-	HedgeReaper = { name = "Reap Wave", text = "Every 8th swing sends a wave that hits every clump around you." },
+	HedgeReaper = { name = "Reap Wave", text = "Every 8th hand-tool swing sends a wave that hits every clump around you." },
 	MowerSpecialist = { name = "Turbo Deck", text = "Ride-on mowers cut 25% wider, drive 15% faster, burn 40% less fuel." },
 	GrassTitan = { name = "Titan Stomp", text = "Land from a jump to stomp: clumps around you take 2 hits (4 s cooldown)." },
 	UltimateGardener = { name = "Midas Touch", text = "Every 20th clump you uncover is a mutation (Golden or better)." },
@@ -2010,7 +2022,8 @@ if Config.MOWERS_LOCKED then
 	Config.workOutClassOdds()
 	for i, q in Config.QUESTS do
 		if q.event == "mower" then
-			Config.QUESTS[i] = { title = "Beat the Backyard boss", hint = "Clear the lawn, then stand on the glowing pad in its arena", event = "boss", goal = 1, reward = q.reward }
+			-- (6 Nov) named after the boss itself (this runs after the generated world renamed the areas: "Backyard" was gone)
+			Config.QUESTS[i] = { title = "Beat the " .. Config.ZONES[1].boss.name, hint = "Stand on the glowing boss pad to call it out", event = "boss", goal = 1, reward = q.reward }
 		end
 	end
 end

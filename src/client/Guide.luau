@@ -114,6 +114,10 @@ local function pickTarget(): Vector3?
 	if w.boss then
 		return nil
 	end
+	-- (6 Nov) the area is mowed and its boss waits: the arrow shows the summon pad (it pointed nowhere)
+	if w.bossWaiting and typeof(w.bossPad) == "Vector3" then
+		return Vector3.new(w.bossPad.X, 0, w.bossPad.Z)
+	end
 	local ni = Config.nextToolIndex(run, d.tools)
 	local nextTool = ni and Config.TOOLS[ni]
 	if nextTool and run.coins >= nextTool.cost and run.carry == 0 then

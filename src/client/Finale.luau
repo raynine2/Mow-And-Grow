@@ -404,7 +404,9 @@ clearView = function(cf: CFrame, focus: Vector3?, extra: { Vector3 }?)
 	end
 	if G and G.tuftParts and (p - G.at.Position).Magnitude < 600 then
 		for _, rec in G.tuftParts do
-			hideIf(rec.parts, blocks(rec.at, rec.r, p))
+			-- (x1.25: inTheWay keeps 0.8 of the radius clear, made for the props' loose boxes; a tuft's blades reach its full
+			-- half width, and one 1.6 studs off the line still hid the copy's legs)
+			hideIf(rec.parts, blocks(rec.at, rec.r * 1.25, p))
 		end
 	end
 end

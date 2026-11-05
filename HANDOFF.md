@@ -309,6 +309,18 @@ shows the empty world for a moment (live servers teleport instead).
 
 ## Studio vs. git: please read
 
+**State on 5 Nov, ~10:50: Studio = git for 345 of the 356 scripts** (every script under the three Rojo folders and
+ReplicatedFirst, compared by checksum). **Only in Studio** (another session's hatch work, 5 Nov; don't overwrite, and
+**don't sync with Rojo**: it would put git's old `HatchFx` over it): `client/HatchFx` (95958 1626422871, git has an
+older 54 KB one) and `client/HatchSpace` (32541 1812925016, not in git). Studio's `Config` was git's `2eb29f7` plus
+three lines (`Config.HATCH_SCENE`); those lines are now in git too (`ce45936`). **In git, not in Studio yet: Films v2**
+(new `AnimeFx`, `FilmSet`, `Finale`, `Opening`, `Puppet`, `Shears`, `server/FilmCast`; changed `Demon`, `Ending`, `Film`,
+`FilmSheet`, `Intro`, `Life`, `PackFx`, `server/Main`, `Config`; each Studio copy is an older git version, so nothing
+of Studio's is lost). The installer is ready: `tools/studio-patches/2026-11-05-films-v2/install.luau` (checks every
+checksum before and after, old copies to `ServerStorage.MowALawnBackups.pre_films_v2_5nov`). It's blocked: this
+Studio's Assistant refuses HTTP to `raw.githubusercontent.com` ("not in the Assistant HTTP allowlist"); the owner has
+to allow that domain in Studio's MCP permissions, then run it and Ctrl+S.
+
 **State on 4 Nov, ~04:40: Studio = git** for `server/HubSquare`, `server/RunWorld`, `server/CampGround` (`c0d4a9d`). **Ctrl+S.**
 
 **State on 4 Nov, ~04:15: Studio = git** for `server/HubSquare`, `server/RunWorld` and the new `server/CampGround`

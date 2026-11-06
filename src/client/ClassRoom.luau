@@ -612,10 +612,9 @@ local function voxelPlatform(m: Instance, rng: Random)
 		end
 	end
 	-- the summoning circle: a thin sheet just above the grass with the crop circle's rings and the rune circle
-	local top = part(m, Vector3.new(R * 2.1, 0.05, R * 2.1), CFrame.new(0, TURF_TOP + 0.04, 0), Color3.new(1, 1, 1), Enum.Material.Glass)
+	local top = part(m, Vector3.new(R * 2.1, 0.05, R * 2.1), CFrame.new(0, TURF_TOP + 0.04, 0), Color3.new(1, 1, 1)) -- (not Glass: checked in Studio, an invisible Glass sheet still drew as a dark square)
 	top.Transparency = 1
 	cropCircle(top)
-	-- (the rune circle texture went: it has a black square behind it, a dark sheet under the platform)
 end
 
 -- the vortex behind the saucer: the world 2 glitch hole (client/GlitchHole), big, high, straight behind

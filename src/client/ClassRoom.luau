@@ -829,6 +829,11 @@ local GLIDE = 3 -- seconds a move between framings takes (Sine InOut)
 local camFrom, camTo = 1, 1
 local camMoveStart, camNext = 0, 0
 
+local kickT, kickAmp = -10, 1
+local function kickCamera(amp: number)
+	kickT, kickAmp = os.clock(), amp
+end
+
 local function shotCF(s): (CFrame, number)
 	return ORIGIN * CFrame.lookAt(s.pos, s.look), s.fov
 end
@@ -854,8 +859,12 @@ local function updateCamera(t: number)
 	local shake = CFrame.Angles(math.noise(t * 0.35, 0.5) * 0.01, math.noise(0.5, t * 0.35) * 0.012, math.noise(t * 0.3, 7.7) * 0.008)
 	local cam = workspace.CurrentCamera
 	cam.CameraType = Enum.CameraType.Scriptable
-	cam.FieldOfView = fa + (fb - fa) * k
-	cam.CFrame = cf * drift * shake
+	-- (6 Nov, "more umph") the arrival and every pick punch the lens: the FOV snaps in and eases back, a short shake
+	local kick = math.clamp(1 - (os.clock() - kickT) / 0.45, 0, 1)
+	kick = kick * kick
+	local jolt = CFrame.new((math.noise(os.clock() * 30, 1) * 0.35) * kick * kickAmp, (math.noise(2, os.clock() * 30) * 0.35) * kick * kickAmp, 0)
+	cam.FieldOfView = fa + (fb - fa) * k - kick * 7 * kickAmp
+	cam.CFrame = cf * drift * shake * jolt
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -924,18 +933,89 @@ end
 -------------------------------------------------------------------------------------------------------------
 local flashT = -10
 local beamSeqs: { NumberSequence } = {}
+-- (6 Nov, owner: "make it with more umph") THE ARRIVAL: every time the screen opens the saucer swoops in from far
+-- off to the right and brakes over the island (0.85 s, Back out, with a whoosh); then the beam SLAMS down: a white
+-- flash in the belly, a shockwave ring racing across the lawn, a lens punch and a thud. A pick does the same flash in
+-- its rarity colour, and the bulbs blink in that colour.
+local ARRIVE = 0.85
+local arriveT = -10
+local landed = true
+local pickColor: Color3? = nil
+local pickT = -10
+local SWOOP_FROM = Vector3.new(46, 22, 70)
+
+local function shockwave(color: Color3, big: boolean)
+	local m = room
+	if not m then
+		return
+	end
+	local y = ISLAND_DROP + ISLAND_PLATE_Y + 0.12
+	for i, r in { (if big then 30 else 20), (if big then 18 else 12) } do
+		local ring = part(m, Vector3.new(0.12, 1, 1), CFrame.new(0, y + i * 0.03, 0) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
+		ring.Transparency = 0.15
+		TweenService:Create(ring, TweenInfo.new(0.55 + i * 0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Size = Vector3.new(0.12, r, r), Transparency = 1 }):Play()
+		task.delay(0.9, function()
+			ring:Destroy()
+		end)
+	end
+	-- a column of light up the beam
+	local col = part(m, Vector3.new(14, 3.6, 3.6), CFrame.new(0, y + 7, 0) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
+	col.Transparency = 0.35
+	TweenService:Create(col, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(14, 0.2, 0.2), Transparency = 1 }):Play()
+	task.delay(0.6, function()
+		col:Destroy()
+	end)
+end
+
+local function landBeam(color: Color3, big: boolean)
+	flashT = os.clock()
+	shockwave(color, big)
+	kickCamera(if big then 1.2 else 0.7)
+	pcall(function()
+		local Sound = require(script.Parent.Sound) :: any
+		Sound.play("slam", 0.05, if big then 0.55 else 0.4)
+		if big then
+			Sound.play("reveal", 0, 0.35)
+		end
+	end)
+end
+
 local function updateAbduction(t: number)
-	local ufo = ORIGIN * CFrame.new(UFO_AT + Vector3.new(0, math.sin(t * 1.3) * 0.35, 0)) * CFrame.Angles(math.rad(3) * math.sin(t * 0.9), 0, math.rad(3) * math.sin(t * 0.7 + 1))
+	-- the swoop in: from far off to the right, braking over the island with a little overshoot, banking as it comes
+	local a = math.clamp((os.clock() - arriveT) / ARRIVE, 0, 1)
+	local e = TweenService:GetValue(a, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local swoop = SWOOP_FROM * (1 - e)
+	local bank = CFrame.Angles(0, 0, math.rad(-28) * (1 - e))
+	local ufo = ORIGIN * CFrame.new(UFO_AT + swoop + Vector3.new(0, math.sin(t * 1.3) * 0.35, 0)) * bank * CFrame.Angles(math.rad(3) * math.sin(t * 0.9), math.sin(t * 0.45) * 0.35, math.rad(3) * math.sin(t * 0.7 + 1))
 	for _, u in ufoParts do
 		u.part.CFrame = ufo * u.off
 	end
+	if not landed and a >= 1 then
+		landed = true
+		landBeam(BEAM, true)
+	end
 	local n = #ufoLights
+	local pk = math.clamp(1 - (os.clock() - pickT) / 1.2, 0, 1)
 	for i, b in ufoLights do
-		b.Transparency = if (t * 7 - i) % n < 3 then 0 else 0.6
+		b.Transparency = if (t * 9 - i) % n < 4 then 0 else 0.55
+		if pickColor then
+			-- a pick: all bulbs blink in its colour, then back to their own
+			local base = b:GetAttribute("Base")
+			if base == nil then
+				b:SetAttribute("Base", b.Color)
+				base = b.Color
+			end
+			b.Color = (base :: Color3):Lerp(pickColor, pk)
+			if pk > 0 then
+				b.Transparency = if math.floor(os.clock() * 14) % 2 == 0 then 0 else 0.4
+			end
+		end
 	end
 	local f = math.clamp(1 - (os.clock() - flashT) / 0.9, 0, 1)
 	f = f * f
-	local shift = 0.04 * math.sin(t * 2.2) - f * 0.4
+	-- (no beam until the saucer has arrived)
+	local off = if landed then 0 else 1
+	local shift = 0.04 * math.sin(t * 2.2) - f * 0.4 + off
 	for i, b in beams do
 		local base = beamSeqs[i]
 		if not base then
@@ -994,9 +1074,12 @@ function ClassRoom.setClass(classId: string?)
 	classAura = classId
 	wearClassAura()
 	if changed and shown and classId then
-		flashT = os.clock()
 		local color = if auraLight then auraLight.Color else BEAM
-		MenuFX.burst((ORIGIN * CFrame.new(FLOAT)).Position, color, { size = 0.55 })
+		MenuFX.burst((ORIGIN * CFrame.new(FLOAT)).Position, color, { size = 0.7 })
+		if landed then
+			pickColor, pickT = color, os.clock()
+			landBeam(color, false)
+		end
 	end
 end
 
@@ -1009,6 +1092,11 @@ function ClassRoom.show(color: Color3?)
 	spaceLighting()
 	shown = true
 	wearClassAura()
+	arriveT, landed = os.clock(), false
+	pcall(function()
+		local Sound = require(script.Parent.Sound) :: any
+		Sound.play("bhPull", 0.05, 0.5)
+	end)
 	local t0 = os.clock()
 	camFrom, camTo, camMoveStart, camNext = 1, 1, 0, 9 + math.random() * 3
 	RunService:BindToRenderStep("ClassRoomCamera", Enum.RenderPriority.Camera.Value + 2, function()

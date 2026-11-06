@@ -428,10 +428,16 @@ end
 -- modelled one now: ReplicatedStorage.MowALawnModels.ufo_saucer (made in Studio: a silver hull, a glass dome, a ring of
 -- coloured bulbs, a glowing belly), fitted to the old saucer's size and hung in the same spot. The blocky one below is
 -- only built when that model isn't in the place.
-local UFO_WIDTH = 11.5
+-- (6 Nov, owner: "the ufo hasn't changed in classes screen"): server/Models rebuilds ReplicatedStorage.MowALawnModels
+-- when a server starts, so the saucer kept there was gone in every real game and the blocky one below showed. It is
+-- kept in ReplicatedStorage.ClassRoomModels now (that folder is only the class room's).
+local UFO_WIDTH = 10
 local function modelSaucer(m: Instance): boolean
-	local folder = ReplicatedStorage:FindFirstChild("MowALawnModels")
-	local tpl = folder and folder:FindFirstChild("ufo_saucer")
+	local tpl: Instance? = nil
+	for _, name in { "ClassRoomModels", "MowALawnModels" } do
+		local folder = ReplicatedStorage:FindFirstChild(name)
+		tpl = tpl or (folder and folder:FindFirstChild("ufo_saucer"))
+	end
 	if not (tpl and tpl:IsA("Model")) then
 		return false
 	end
@@ -455,6 +461,13 @@ local function modelSaucer(m: Instance): boolean
 	end
 	copy.Name = "Ufo"
 	copy.Parent = m
+	-- the modelled hull is cartoon-painted plastic: a little sheen (its own painted bulbs stay as painted)
+	for _, d in copy:GetDescendants() do
+		if d:IsA("MeshPart") then
+			d.Material = Enum.Material.SmoothPlastic
+			d.Reflectance = if d.Name == "hull" then 0.08 else 0
+		end
+	end
 	return true
 end
 
@@ -489,6 +502,13 @@ local function saucer(m: Instance)
 			local b = add(Vector3.new(0.6, 0.6, 0.6), CFrame.new(math.cos(a) * 5.75, 0, math.sin(a) * 5.75), bulbColors[k % 3 + 1], Enum.Material.Neon, Enum.PartType.Ball)
 			table.insert(ufoLights, b)
 		end
+	end
+	if modelled then
+		-- the glowing belly the beam pours out of, and a glow round the hull so it reads against the night
+		local glow = add(Vector3.new(0.2, 4.2, 4.2), CFrame.new(0, -1.3, 0) * UPRIGHT, BEAM, Enum.Material.Neon, Enum.PartType.Cylinder, 0.05)
+		light(glow, BEAM, 10, 1.4)
+		local hullLight = add(Vector3.one, CFrame.new(0, 2.5, -3), Color3.new(1, 1, 1), nil, nil, 1)
+		light(hullLight, rgb(255, 225, 250), 9, 0.9)
 	end
 	-- light: the beam's spot pours down over the avatar and the patch
 	local belly = ufoParts[1] and ufoParts[1].part
@@ -618,22 +638,25 @@ local function build()
 		p.Transparency = 1
 		light(p, color, range, brightness)
 	end
-	lamp(Vector3.new(0, 9, -9), rgb(255, 240, 250), 20, 0.7)
-	do
-		local p = part(m, Vector3.one, CFrame.lookAt(Vector3.new(1.5, 6.5, -7), FLOAT), Color3.new(1, 1, 1))
+	-- (6 Nov) a proper three-point set: a warm key high on the camera's left, a soft cool fill low on its right, and
+	-- two strong rims behind (violet left, cyan right) that cut the avatar out of the night; a warm bounce from below
+	local function spotAt(pos: Vector3, color: Color3, range: number, brightness: number, angle: number)
+		local p = part(m, Vector3.one, CFrame.lookAt(pos, FLOAT), Color3.new(1, 1, 1))
 		p.Transparency = 1
 		local spot = Instance.new("SpotLight")
 		spot.Face = Enum.NormalId.Front
-		spot.Angle = 70
-		spot.Range = 16
-		spot.Brightness = 0.55
-		spot.Color = rgb(255, 244, 236)
+		spot.Angle = angle
+		spot.Range = range
+		spot.Brightness = brightness
+		spot.Color = color
 		spot.Shadows = false
 		spot.Parent = p
 	end
-	lamp(Vector3.new(-6, 8, 5), rgb(160, 90, 255), 12, 1.6)
-	lamp(Vector3.new(6, 6, 5), rgb(60, 210, 255), 12, 1.35)
-	lamp(Vector3.new(4, -2, -2), rgb(255, 150, 90), 9, 0.6)
+	spotAt(Vector3.new(-5, 9, -9), rgb(255, 236, 214), 22, 1.6, 45) -- key
+	spotAt(Vector3.new(6, 3.5, -8), rgb(170, 200, 255), 18, 0.45, 60) -- fill
+	spotAt(Vector3.new(-5, 7, 6), rgb(170, 100, 255), 14, 2.4, 50) -- rim, violet
+	spotAt(Vector3.new(5, 6, 6), rgb(70, 215, 255), 14, 2.1, 50) -- rim, cyan
+	lamp(Vector3.new(3, -1.5, -3), rgb(255, 160, 100), 8, 0.5) -- bounce
 
 	room = m
 	return m
@@ -827,16 +850,21 @@ local function spaceLighting()
 	-- the key / rim / beam lights shape the avatar, a little environment light so the metal saucer and the avatar's
 	-- shiny bits pick up the sky, and a soft bloom that only catches the neon: bulbs, the beam's belly, the circle)
 	setLit(Lighting, {
-		ClockTime = 0, Brightness = 0, Ambient = rgb(84, 74, 128), OutdoorAmbient = rgb(70, 62, 120), ExposureCompensation = 0,
-		EnvironmentDiffuseScale = 0.35, EnvironmentSpecularScale = 0.6, FogEnd = 100000, FogStart = 99999,
+		-- (6 Nov, owner: "the overall lighting of the classes screen is kinda bad and sloppy": a high violet fill made
+		-- everything one flat blue-purple; now a darker, cooler fill so the key, the rims and the beam do the shaping)
+		ClockTime = 0, Brightness = 0, Ambient = rgb(46, 42, 72), OutdoorAmbient = rgb(40, 38, 66), ExposureCompensation = 0.15,
+		EnvironmentDiffuseScale = 0.5, EnvironmentSpecularScale = 0.8, FogEnd = 100000, FogStart = 99999,
 	})
 	for _, c in Lighting:GetChildren() do
 		if c:IsA("Atmosphere") then
 			setLit(c, { Density = 0, Haze = 0, Glare = 0 })
 		elseif c:IsA("SunRaysEffect") then
 			setLit(c, { Enabled = false })
+		elseif c:IsA("ColorCorrectionEffect") and c.Name ~= "ClassRoomGrade" then
+			-- (the world's own grades stacked on the room's and tinted everything a washed blue)
+			setLit(c, { Enabled = false })
 		elseif c:IsA("BloomEffect") then
-			setLit(c, { Intensity = 0.3, Size = 24, Threshold = 0.97 }) -- (owner, 28 Oct: skin glowed white; keep bloom off skin) -- soft: 1.1 blew white clothes out into neon
+			setLit(c, { Intensity = 0.45, Size = 28, Threshold = 0.95 }) -- (owner, 28 Oct: skin glowed white; keep bloom off skin) -- soft: 1.1 blew white clothes out into neon
 		elseif c:IsA("Sky") then
 			setLit(c, { StarCount = 3000, CelestialBodiesShown = false })
 		end
@@ -971,7 +999,7 @@ function ClassRoom.show(color: Color3?)
 	end)
 	task.delay(0.65, function()
 		if token == openToken and shown then
-			TweenService:Create(g, TweenInfo.new(0.06), { TintColor = rgb(235, 228, 255), Saturation = 0.2, Contrast = 0.12, Brightness = 0.02 }):Play()
+			TweenService:Create(g, TweenInfo.new(0.06), { TintColor = rgb(246, 242, 255), Saturation = 0.1, Contrast = 0.16, Brightness = 0 }):Play()
 		end
 	end)
 	if not blur then -- the far star-box softens; the avatar stays sharp

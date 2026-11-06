@@ -1433,7 +1433,10 @@ task.spawn(function()
 			-- (29 Oct, the bug sweep) not over a new player's "YOUR FIRST LAWN IS READY!" card (client/FirstLawn): the
 			-- banner waits until that card is gone
 			local cardUp = require(script.Parent.UI).gui:FindFirstChild("FirstLawn") ~= nil
-			if shownFor ~= window and left > 20 and not cardUp then
+			-- (6 Nov, owner: "FIX UI") only in the lobby: the classes stand it points to isn't in a run, and there it
+			-- dropped in over the run's HUD while the area card was still loading
+			local inRun = require(script.Parent.State).mode == "Run"
+			if shownFor ~= window and left > 20 and not cardUp and not inRun then
 				shownFor = window
 				showBanner(c, left)
 			end

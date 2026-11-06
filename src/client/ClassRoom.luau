@@ -615,19 +615,7 @@ local function voxelPlatform(m: Instance, rng: Random)
 	local top = part(m, Vector3.new(R * 2.1, 0.05, R * 2.1), CFrame.new(0, TURF_TOP + 0.04, 0), Color3.new(1, 1, 1), Enum.Material.Glass)
 	top.Transparency = 1
 	cropCircle(top)
-	if rune then
-		local i = Instance.new("ImageLabel")
-		i.BackgroundTransparency = 1
-		i.Image = Tex.RuneCircle
-		i.ImageColor3 = CIRCLE
-		i.ImageTransparency = 0.1
-		i.Size = UDim2.fromScale(0.98, 0.98)
-		i.Position = UDim2.fromScale(0.5, 0.5)
-		i.AnchorPoint = Vector2.new(0.5, 0.5)
-		i:SetAttribute("Rest", 0.1)
-		i.Parent = rune
-		table.insert(circleArt, i)
-	end
+	-- (the rune circle texture went: it has a black square behind it, a dark sheet under the platform)
 end
 
 -- the vortex behind the saucer: the world 2 glitch hole (client/GlitchHole), big, high, straight behind

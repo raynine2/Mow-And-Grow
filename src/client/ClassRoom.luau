@@ -981,6 +981,7 @@ local beamSeqs: { NumberSequence } = {}
 -- its rarity colour, and the bulbs blink in that colour.
 local ARRIVE = 0.85
 local nextBolt = 0
+local boltCount = 0
 local arriveT = -10
 local landed = true
 local pickColor: Color3? = nil
@@ -1013,14 +1014,29 @@ end
 
 local LightningMod: any = nil
 local AnimeFxMod: any = nil
-local function bolt(a: Vector3, b: Vector3, color: Color3, width: number?)
+-- (6 Nov, owner: "the lightning ... just stands still and doesn't move") a bolt now crackles: its shape jumps
+-- every ~60 ms for half a second instead of 3 times in 0.3 s
+local function bolt(a: Vector3, b: Vector3, color: Color3, width: number?, life: number?)
 	if LightningMod == nil then
 		local ok, res = pcall(require, ReplicatedStorage:WaitForChild("VFXLib"):WaitForChild("Lightning"))
 		LightningMod = if ok then res else false
 	end
 	if LightningMod then
-		pcall(LightningMod.Strike, ORIGIN * a, ORIGIN * b, { Color = color, Width = width or 0.4, Duration = 0.3, Flickers = 3, Branches = 2, Jag = 0.35 })
+		local d = life or 0.5
+		pcall(LightningMod.Strike, ORIGIN * a, ORIGIN * b, { Color = color, Width = width or 0.4, Duration = d, Flickers = math.max(3, math.floor(d / 0.06)), Branches = 2, Jag = 0.35 })
 	end
+end
+-- a bolt that shoots out of the vortex and crawls to the saucer in three fast jumps, then strikes it again
+local function crawlBolt(from: Vector3, to: Vector3, color: Color3)
+	task.spawn(function()
+		for k = 1, 3 do
+			local tip = from:Lerp(to, k / 3) + (if k < 3 then Vector3.new(math.random(-3, 3), math.random(-2, 2), 0) else Vector3.zero)
+			bolt(from, tip, color, 0.45, if k < 3 then 0.08 else 0.45)
+			task.wait(0.05)
+		end
+		task.wait(0.18)
+		bolt(from, to + Vector3.new(math.random(-1, 1), 0, 0), color, 0.35, 0.3)
+	end)
 end
 local function anime(): any
 	if AnimeFxMod == nil then
@@ -1096,10 +1112,21 @@ local function updateAbduction(t: number)
 	end
 	-- now and then the vortex throws a bolt across the sky, or onto the saucer
 	if landed and os.clock() > nextBolt then
-		-- (only from the vortex onto the saucer, every 3.5-6 s: bolts all over the sky made it messy)
-		nextBolt = os.clock() + 3.5 + math.random() * 2.5
-		local from = VORTEX_AT + Vector3.new(math.random(-6, 6), math.random(-4, 4), -6)
-		bolt(from, UFO_AT + Vector3.new(math.random(-1, 1), 1.6, 1), rgb(255, 80, 210), 0.45)
+		-- (only from the vortex onto the saucer: bolts all over the sky made it messy. 6 Nov: more often, and between
+		-- them little arcs crackle round the vortex's mouth so it never stands still)
+		nextBolt = os.clock() + 0.5 + math.random() * 0.6
+		boltCount += 1
+		if boltCount % 3 == 0 then
+			local from = VORTEX_AT + Vector3.new(math.random(-6, 6), math.random(-4, 4), -6)
+			crawlBolt(from, UFO_AT + Vector3.new(math.random(-1, 1), 1.6, 1), rgb(255, 80, 210))
+		else
+			local ang = math.random() * math.pi * 2
+			local c = VORTEX_AT + Vector3.new(0, 0, -8)
+			local p1 = c + Vector3.new(math.cos(ang) * 13, math.sin(ang) * 13, 0)
+			local ang2 = ang + (math.random() - 0.5) * 1.6
+			local p2 = c + Vector3.new(math.cos(ang2) * 11, math.sin(ang2) * 11, 0)
+			bolt(p1, p2, if math.random() < 0.5 then rgb(255, 80, 210) else rgb(130, 220, 255), 0.3, 0.35)
+		end
 	end
 	if not landed and a >= 1 then
 		landed = true

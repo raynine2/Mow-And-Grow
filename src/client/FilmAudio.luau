@@ -27,6 +27,15 @@ local FilmAudio = {}
 type Def = { id: string, volume: number?, len: number?, pitch: number? }
 
 local function def(key: string): Def?
+	-- (6 Nov) the Films v2 swap a key for its ForgeGUI anime sound (Config.FILMS_V2.sfx) once that one is uploaded
+	local v2 = (Config :: any).FILMS_V2
+	local to = v2 and v2.on and v2.sfx and v2.sfx[key]
+	if to then
+		local n = (Config.FILM_SOUNDS :: any)[to]
+		if n and n.id and n.id ~= "" then
+			return n
+		end
+	end
 	local d = (Config.FILM_SOUNDS :: any)[key] or (Config.SOUNDS :: any)[key]
 	if d and d.id and d.id ~= "" then
 		return d

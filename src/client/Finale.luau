@@ -129,6 +129,23 @@ local function setFree(t: number)
 end
 
 local PIECES = { { at = M1_AT, from = 0 }, { at = M2_AT, from = T.attack }, { at = M3_AT, from = T.m3 } }
+-- (6 Nov, owner: music "inspired by devil may cry") the ForgeGUI score: one cue per piece (Config.FILMS_V2.cues), once
+-- all three are uploaded; `at` is then the cue's own second the piece starts from
+do
+	local cues = Config.FILMS_V2.cues or {}
+	local list = { cues.finale1, cues.finale2, cues.finale3 }
+	local ok = true
+	for _, c in list do
+		local d = c and Config.FILM_SOUNDS[c.key]
+		ok = ok and d ~= nil and d.id ~= nil and d.id ~= ""
+	end
+	if ok then
+		for i, c in list do
+			PIECES[i].at = c.at or 0
+			PIECES[i].key = c.key
+		end
+	end
+end
 
 local function now(): number
 	if held then
@@ -166,7 +183,7 @@ Finale.now = now
 
 -- start piece `i` of the track (the clock follows it)
 local function playPiece(i: number, volume: number?)
-	local cue = FilmAudio.music(Config.FILMS_V2.music, { fade = 0, at = PIECES[i].at, loop = false, volume = volume or 1 })
+	local cue = FilmAudio.music(PIECES[i].key or Config.FILMS_V2.music, { fade = 0, at = PIECES[i].at, loop = false, volume = volume or 1 })
 	music[i] = cue
 	lastPos, lastAdvance = -1, os.clock()
 	clockMode = "m" .. i
@@ -771,7 +788,7 @@ end
 -- preparing (under the black cover)
 -------------------------------------------------------------------------------------------------------------
 local SOUNDS = {
-	"animeCharge", "ambBirds", "ambWind", "eerie", "drone", "stepGrass", "stepThud", "bossThud", "bladeDraw", "bladeSlash",
+	"animeCharge", "dmcFin1", "dmcFin2", "dmcFin3", "ambBirds", "ambWind", "eerie", "drone", "stepGrass", "stepThud", "bossThud", "bladeDraw", "bladeSlash",
 	"bladeClang", "bladeHit", "swingBlade", "whoosh", "lunge", "punch", "hit", "slam", "boom", "bigHit", "burst", "swell",
 	"sting", "suck", "servo", "zapCharge", "zapStrike", "bhHum", "bhWarp", "bhPull", "eggCrack", "chip", "heartbeat",
 	"rumble", "titleHit", "riseDark", "growl",

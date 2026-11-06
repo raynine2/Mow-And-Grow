@@ -2349,6 +2349,14 @@ function Ending.play(d: any)
 			end)
 		end)
 	end
+	local vox = ReplicatedStorage:FindFirstChild("VoxelBosses") -- (6 Nov) the voxel bosses
+	if vox then
+		task.spawn(function()
+			pcall(function()
+				ContentProvider:PreloadAsync(vox:GetChildren())
+			end)
+		end)
+	end
 	streamIn(spots)
 	-- the scenery round the camp and the arenas, as boxes (the cameras keep out of it), and the shots' plans
 	local places = { { at = P.camp, r = 260 }, { at = P.arena, r = 150 } }

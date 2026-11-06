@@ -605,8 +605,19 @@ function FilmSet.realm(at: CFrame, opts: any?): any
 	table.insert(set.panels, { part = cap, cf = cap.CFrame, dir = Vector3.yAxis })
 	-- the eight guardians in a ring round the middle, facing in (BossModels, statues)
 	local bm = ReplicatedStorage:FindFirstChild("BossModels")
+	-- (6 Nov) the voxel bosses (Config.VOXEL_BOSSES): their base forms
+	local vox = ReplicatedStorage:FindFirstChild("VoxelBosses")
+	local okC, Cfg = pcall(require, ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
+	if vox and okC and Cfg.VOXEL_BOSSES ~= false then
+		bm = vox
+	end
 	if bm then
-		local list = bm:GetChildren()
+		local list = {}
+		for _, c in bm:GetChildren() do
+			if c:IsA("Model") and not c.Name:find("_enraged$") then
+				table.insert(list, c)
+			end
+		end
 		table.sort(list, function(a, b)
 			return a.Name < b.Name
 		end)

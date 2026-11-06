@@ -56,6 +56,20 @@ local T = {
 	free = 44.2, title = 45.92, out = 49.0,
 }
 local RESUME_AT = 131.0 -- (the track's position the second part starts from: its drop at 132.08 = T.punch)
+-- (6 Nov, owner: music "inspired by devil may cry") the ForgeGUI score in two cues (Config.FILMS_V2.cues), once
+-- uploaded: the first from film 0 (film time = its time - MUSIC1_AT), the second from T.resume (its RESUME_AT)
+local MUSIC1, MUSIC1_AT, MUSIC2 = Config.FILMS_V2.music, 0, Config.FILMS_V2.music
+do
+	local cues = Config.FILMS_V2.cues or {}
+	local function ready(c)
+		local d = c and Config.FILM_SOUNDS[c.key]
+		return d ~= nil and d.id ~= nil and d.id ~= ""
+	end
+	if ready(cues.opening1) and ready(cues.opening2) then
+		MUSIC1, MUSIC1_AT = cues.opening1.key, cues.opening1.at or 0
+		MUSIC2, RESUME_AT = cues.opening2.key, cues.opening2.at or 0
+	end
+end
 Opening.T = T
 
 -- the places (the set's own frame, client/FilmSet: +X east, -Z north, the ground at 0)
@@ -129,7 +143,7 @@ local function now(): number
 	end
 	local t: number
 	if clockMode == "music1" and music and music.sound and music.sound.Parent and music.sound.IsPlaying then
-		t = music.sound.TimePosition
+		t = music.sound.TimePosition - MUSIC1_AT
 	elseif clockMode == "music2" and music2 and music2.sound and music2.sound.Parent and music2.sound.IsPlaying and music2.sound.TimePosition >= RESUME_AT - 0.02 then
 		t = T.resume + (music2.sound.TimePosition - RESUME_AT)
 	else
@@ -425,7 +439,7 @@ end
 -- preparing (under the black cover)
 -------------------------------------------------------------------------------------------------------------
 local SOUNDS = {
-	"animeCharge", "rumble", "riseDark", "demonSwell", "growl", "growl2", "roar", "impact", "slam", "boom", "bigHit",
+	"animeCharge", "dmcOpen1", "dmcOpen2", "rumble", "riseDark", "demonSwell", "growl", "growl2", "roar", "impact", "slam", "boom", "bigHit",
 	"titleHit", "swipe", "crate", "crate2", "thud", "whomp", "synthWhomp", "heartbeat", "sting", "suck", "swell",
 	"servo", "whoosh", "hit", "punch", "burst", "slice", "bladeSlash", "bladeDraw", "bladeHit", "bladeClang",
 	"stepGrass", "stepThud", "eggCrack", "ambWind", "eerie", "zapCharge", "zapStrike", "lunge", "chip",
@@ -2312,7 +2326,7 @@ end
 
 local function punch(): boolean
 	-- 35. [SR 9.7, the eye] the music back on its pickup: the player's eyes
-	music2 = FilmAudio.music(Config.FILMS_V2.music, { fade = 0, at = RESUME_AT, loop = false, volume = 1.05 })
+	music2 = FilmAudio.music(MUSIC2, { fade = 0, at = RESUME_AT, loop = false, volume = 1.05 })
 	clockMode = "music2"
 	lastAdvance = os.clock()
 	tracks.throwBack = nil
@@ -2810,7 +2824,7 @@ function Opening.play()
 		H:show(false)
 	end
 	-- the music from its first bar, the clock on it
-	music = FilmAudio.music(Config.FILMS_V2.music, { fade = 0, loop = false })
+	music = FilmAudio.music(MUSIC1, { fade = 0, at = MUSIC1_AT, loop = false })
 	lastNow, lastPos, lastAdvance = 0, -1, os.clock()
 	setFree(0)
 	clockMode = "music1"

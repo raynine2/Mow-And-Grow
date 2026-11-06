@@ -1640,6 +1640,11 @@ local function film()
 					table.insert(list, m)
 				end
 			end
+			-- (6 Nov) the voxel bosses (Config.VOXEL_BOSSES) are what the films show now
+			local vox = ReplicatedStorage:FindFirstChild("VoxelBosses")
+			if vox then
+				table.insert(list, vox)
+			end
 			local loaded = false
 			task.spawn(function()
 				pcall(ContentProvider.PreloadAsync, ContentProvider, list)
@@ -1760,10 +1765,23 @@ local function play()
 				ContentProvider:PreloadAsync({ king })
 			end)
 		end
+		-- (6 Nov) the voxel King (Config.VOXEL_BOSSES), base and enraged
+		local vox = ReplicatedStorage:FindFirstChild("VoxelBosses")
+		if vox then
+			pcall(function()
+				ContentProvider:PreloadAsync({ vox:FindFirstChild("dandelion_king"), vox:FindFirstChild("dandelion_king_enraged") })
+			end)
+		end
 		kingReady = true
 		if models then
 			pcall(function()
 				ContentProvider:PreloadAsync(models:GetChildren())
+			end)
+		end
+		local vox = ReplicatedStorage:FindFirstChild("VoxelBosses") -- (6 Nov)
+		if vox then
+			pcall(function()
+				ContentProvider:PreloadAsync(vox:GetChildren())
 			end)
 		end
 	end)

@@ -139,6 +139,51 @@ end
 function FilmPanels.boss(z: number, rage: boolean?, height: number?): Still?
 	local moves = BossMoves.get(z)
 	local rig = moves and BossRig.load(moves.rig)
+	-- (6 Nov) a voxel boss (Config.VOXEL_BOSSES): its base or enraged voxel model, as it is in its fight
+	local voxel = rig and (rig :: any).voxel
+	if voxel then
+		local vb = ReplicatedStorage:FindFirstChild("VoxelBosses")
+		local t = vb and (rage and vb:FindFirstChild(voxel .. "_enraged") or vb:FindFirstChild(voxel))
+		if not t then
+			return nil
+		end
+		local h = height or 10
+		local scale = h / math.max(rig.bounds[2][2] or 8, 0.1)
+		local model = t:Clone() :: Model
+		local f = model:FindFirstChild("VB_Atts")
+		if f then
+			f:Destroy()
+		end
+		model:PivotTo(CFrame.new())
+		model:ScaleTo(model:GetScale() * scale * ((rig :: any).unit or 1))
+		for _, d in model:GetDescendants() do
+			if d:IsA("BasePart") then
+				d.Anchored = true
+				d.CanCollide = false
+				d.CanQuery = false
+				d.CanTouch = false
+			end
+		end
+		local eyes: { Vector3 } = {}
+		local head: Vector3? = nil
+		for _, a in (if rage and (rig :: any).attsRage then (rig :: any).attsRage else rig.atts) do
+			local p = Vector3.new(a.p[1], a.p[2], a.p[3]) * scale
+			if a.n == "att_eye" or string.sub(a.n, 1, 8) == "att_eye_" then
+				table.insert(eyes, p)
+			elseif a.n == "att_head_center" then
+				head = p
+			end
+		end
+		local face = head
+		if not face and #eyes > 0 then
+			local sum = Vector3.zero
+			for _, e in eyes do
+				sum += e
+			end
+			face = sum / #eyes
+		end
+		return { model = model, face = face or Vector3.new(0, h * 0.8, 0), eyes = eyes, height = h }
+	end
 	local models = ReplicatedStorage:FindFirstChild("BossModels")
 	local template = models and moves and models:FindFirstChild(moves.rig)
 	if not rig or not template then

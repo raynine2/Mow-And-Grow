@@ -36,6 +36,7 @@ local Film = require(script.Parent.Film)
 local FilmAudio = require(script.Parent.FilmAudio)
 local IntroUi = require(script.Parent.IntroUi)
 local AnimeFx = require(script.Parent.AnimeFx)
+local CelFx = require(script.Parent.CelFx) -- (6 Nov) cel-shaded world effects
 local Puppet = require(script.Parent.Puppet)
 local Shears = require(script.Parent.Shears)
 local FilmSet = require(script.Parent.FilmSet)
@@ -1274,13 +1275,28 @@ local function flee(): boolean
 	R:look(nil)
 	H:look(gv(TEAR, 20), 0.8)
 	-- 15. [BL, a tracking shot] skimming low over the gold with it toward the guardians' ring
-	if not shot(T.rip, function(_k)
+	-- (6 Nov, review: "21.7 -> 32 s = 10.3 s with 4 shots and no faces": the chase cut to 1.4 s, then their faces as
+	-- it goes)
+	if not shot(T.flee + 1.4, function(_k)
 		local s = if shard then shard:GetPivot().Position else to
 		local p = s + Vector3.new(7, 1.6, 5)
 		return look(p, s, -4), mm(30), s
 	end, { hand = 0.4 }) then
 		return false
 	end
+	-- 15b. their faces, turning to follow it: the player in front, Rayan behind, the gold light on them
+	R:look(gv(TEAR, 14), 0.9)
+	if not shot(T.rip, function(k)
+		local hp = headOf(H)
+		local toTear = flat(gv(TEAR) - H.root.Position).Unit
+		local side = toTear:Cross(UP)
+		local p = hp + toTear * (4.4 - k * 0.5) + side * 1.6 + Vector3.new(0, -0.5, 0)
+		key(hp + toTear * 2 + Vector3.new(0, 1, 0), Color3.fromRGB(255, 220, 160), 1.4, 8)
+		return look(p, hp + Vector3.new(0, -0.2, 0) - side * 0.6, 3), mm(40), hp
+	end, { hand = 0.2 }) then
+		return false
+	end
+	key(nil)
 	-- 16. [TSB, the black hole with a white ring] it hits the air and rips it: a tear opens, top to bottom
 	tracks.shard = nil
 	if shard then
@@ -1312,14 +1328,19 @@ local function flee(): boolean
 	-- 17. over their shoulders: the two of them and the tear; the music sinks away
 	music[1].fade(0, 2.6)
 	FilmAudio.amb("bhHum", 0.6, 2)
+	-- (6 Nov, review: no faces for 10 s) from in front of them, the tear's pink light on their faces as they stare
+	-- past the lens into it, the gold behind them; a slow push in
 	if not shot(T.quiet, function(k)
 		local mid = (R.root.Position + H.root.Position) / 2
-		local back = -flat(gv(TEAR) - mid).Unit
-		local p = mid + back * (6.6 + k * 0.6) + Vector3.new(0, 1.1, 0)
-		return look(p, gv(TEAR, TEAR_H * 0.35), 0), mm(30), gv(TEAR, 12)
+		local toTear = flat(gv(TEAR) - mid).Unit
+		local face = mid + Vector3.new(0, 4.6, 0)
+		local p = face + toTear * (8.5 - k * 1.6) + toTear:Cross(UP) * 0.8 + Vector3.new(0, -0.9, 0)
+		key(face + toTear * 3, Color3.fromRGB(255, 120, 220), 1.6, 12)
+		return look(p, face, 0), mm(34), face
 	end, { hand = 0.25 }) then
 		return false
 	end
+	key(nil)
 	return true
 end
 
@@ -1435,14 +1456,15 @@ local function you(): boolean
 		return false
 	end
 	key(nil)
-	-- 23. its feet again, from beside them
-	if not shot(T.face, function(_k)
+	-- 23. (6 Nov, review: "a third feet shot ... the walk-in reuses the same idea three times") the whole of it now,
+	-- from low in front, walking straight at the lens, the tear burning behind it: a backlit silhouette
+	if not shot(T.face, function(k)
 		local root = C.root
 		local g = groundOf(C)
-		local p = root.Position + root.RightVector * 6.0 + root.LookVector * 1.0
-		p = Vector3.new(p.X, g + 2.0, p.Z)
-		return look(p, Vector3.new(root.Position.X, g + 0.6, root.Position.Z) - root.LookVector * 0.5, 2), mm(28), root.Position
-	end, { hand = 0.2 }) then
+		local p = root.Position + root.LookVector * (9.5 - k * 1.2) + root.RightVector * 0.8
+		p = Vector3.new(p.X, g + 1.2, p.Z)
+		return look(p, root.Position + Vector3.new(0, 2.6, 0), -3), mm(30), root.Position
+	end, { hand = 0.25 }) then
 		return false
 	end
 	-- 24. [SR 9.7, the extreme close-up] its face: the player's own, ink-black, magenta eyes; still walking in
@@ -1626,6 +1648,12 @@ local function lesson(): boolean
 	Film.shake(0.9, 1.4)
 	local caughtAt = C:grip("Right").Position
 	fx("Sparks", caughtAt, { scale = 1.6, color = HOT })
+	-- (6 Nov) the blades stopped dead in a bare hand: sparks fly, a flash, a ring of force off the hand, the gold
+	-- ground cracked under them
+	CelFx.sparks(caughtAt, { color = Color3.fromRGB(255, 220, 120), size = 1.5, count = 34 })
+	CelFx.flare(caughtAt, { color = HOT, size = 1.6 })
+	CelFx.ring(caughtAt, { color = WHITE, rim = Color3.fromRGB(40, 0, 30), size = 0.9, radius = 14, life = 0.35, normal = flat(R.root.Position - C.root.Position).Unit })
+	CelFx.cracks(Vector3.new(caughtAt.X, groundOf(C) + 0.05, caughtAt.Z), { color = Color3.fromRGB(255, 60, 180), size = 1.1 })
 	-- (the hit bursts as the strobe's impact frames end: under them it was never seen)
 	after(T.catch + 0.24, function()
 		AnimeFx.hit(caughtAt, HOT, 6, true)
@@ -1641,8 +1669,10 @@ local function lesson(): boolean
 		local rg = R:grip("Right").Position
 		local side = flat(rg - hand).Unit:Cross(UP)
 		local mid = hand:Lerp(rg, 0.4)
-		local p = mid + side * (8 - k * 0.6) + Vector3.new(0, -0.8, 0)
-		return look(p, mid + Vector3.new(0, 0.3, 0), 6), mm(28), mid
+		-- (6 Nov, review: "both fighters are half out of frame at the moment of contact") further back and wider: the
+		-- copy and Rayan whole, the blades between them
+		local p = mid + side * (12.5 - k * 0.8) + Vector3.new(0, -0.6, 0)
+		return look(p, mid + Vector3.new(0, -0.3, 0), 6), mm(24), mid
 	end, { hand = 0.2 }) then
 		return false
 	end
@@ -1693,6 +1723,8 @@ local function lesson(): boolean
 			R:pose("down", 0.1)
 			sfx("stepThud", 1.4, 0.6)
 			fx("Dust", flyTo, { scale = 1.6 })
+			CelFx.dust(flyTo, { size = 1.1, color = Color3.fromRGB(240, 200, 110) })
+			CelFx.ring(flyTo + Vector3.new(0, 0.2, 0), { color = Color3.fromRGB(255, 236, 170), size = 0.9, radius = 10 })
 		end
 	end
 	-- (tested in Studio: centred nearer it, Rayan flew out of the frame before the shot was half over; now the whole
@@ -1759,6 +1791,12 @@ local function snip(): boolean
 		pnl.part.Transparency = 0.25
 	end
 	burst(gv(Vector3.new(0, 40, 0)), WHITE, 6, 200, 1)
+	do
+		local tip = SH.pivot.Position
+		CelFx.flare(tip, { color = HOT, size = 2.4, life = 0.4 })
+		CelFx.sparks(tip, { color = HOT, size = 1.8, count = 40 })
+		CelFx.ring(tip, { color = WHITE, rim = Color3.fromRGB(40, 0, 30), size = 1.6, radius = 30, life = 0.6, normal = C.root.LookVector })
+	end
 	-- (from behind it, past its raised shears, up at the sky going white over the realm: tested in Studio, the lens
 	-- looked the other way, at the sky beyond the tear, and it wasn't in the shot at all)
 	if not shot(T.fall, function(k)
@@ -1845,7 +1883,8 @@ local function ending(): boolean
 	playPiece(3, 1.1)
 	after(T.card, function()
 		AnimeFx.cover(BLACK, 1, 0.05, "black")
-		AnimeFx.card("YOU", "the last glitch", PINK, 2.2, "影")
+		-- (6 Nov, review: "the final boss reveal is the same small lower-third as Rayan's name card") big and centred
+		AnimeFx.technique("YOU", "the last glitch", PINK, 2.2, "影")
 		Film.shake(0.6, 1.4)
 		sfx("titleHit", 1, 0.8)
 	end)
@@ -2046,6 +2085,7 @@ function Finale.stop()
 	clockMode = "free"
 	key(nil)
 	pcall(AnimeFx.clear)
+	pcall(CelFx.clear)
 	for _, pup in { R, H, C } do
 		if pup then
 			pcall(function()

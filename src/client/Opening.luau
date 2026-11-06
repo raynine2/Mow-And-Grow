@@ -29,6 +29,7 @@ local Film = require(script.Parent.Film)
 local FilmAudio = require(script.Parent.FilmAudio)
 local IntroUi = require(script.Parent.IntroUi)
 local AnimeFx = require(script.Parent.AnimeFx)
+local CelFx = require(script.Parent.CelFx) -- (6 Nov) cel-shaded world effects: rings, cracks, debris, sparks, dust
 local Puppet = require(script.Parent.Puppet)
 local Shears = require(script.Parent.Shears)
 local FilmSet = require(script.Parent.FilmSet)
@@ -447,7 +448,9 @@ local SOUNDS = {
 
 -- (round 2, owner: "u cant really tell whats going on": in the night the demon was a black blob of blocks) calm (no
 -- glitch jumps of its own), its hide lifted toward violet, and its whole silhouette outlined in pink
-local DEMON_LOOK = { yieldEvery = 400, calm = true, lift = 0.32, outline = Color3.fromRGB(255, 90, 200) }
+-- (6 Nov, review: "an unreadable purple voxel blob ... the demon, its glow and the sky have the same value") near-black
+-- now, its trim dimmed so only the eyes, core, grin and throat burn pink, and a cold moonlit rim round its silhouette
+local DEMON_LOOK = { yieldEvery = 400, calm = true, lift = 0.1, dim = 0.62, outline = Color3.fromRGB(150, 176, 255), outlineAlpha = 0.25, fillAlpha = 1 }
 
 -- Build everything (yields; a few seconds at most). Returns false if it couldn't.
 function Opening.prepare(): boolean
@@ -619,17 +622,19 @@ end
 -------------------------------------------------------------------------------------------------------------
 local function night()
 	-- (round 2: a brighter night: the fight was played out in the dark, the owner saw only flashes)
+	-- (6 Nov, review: "pink is everywhere at once ... nothing is an accent") a cold blue-grey moonlit night; pink is
+	-- left to the demon's eyes and core, the cracks and the glitch
 	Film.light({
 		ClockTime = 0.4,
 		Brightness = 2.8,
-		ExposureCompensation = 0.65,
-		Ambient = Color3.fromRGB(70, 62, 108),
-		OutdoorAmbient = Color3.fromRGB(118, 120, 182),
-		ColorShift_Top = Color3.fromRGB(160, 176, 255),
-		ColorShift_Bottom = Color3.fromRGB(60, 30, 80),
-		atmosphere = { Density = 0.34, Offset = 0.12, Haze = 1.4, Glare = 0, Color = Color3.fromRGB(86, 66, 132), Decay = Color3.fromRGB(122, 70, 150) },
+		ExposureCompensation = 0.6,
+		Ambient = Color3.fromRGB(56, 64, 86),
+		OutdoorAmbient = Color3.fromRGB(106, 122, 152),
+		ColorShift_Top = Color3.fromRGB(176, 196, 255),
+		ColorShift_Bottom = Color3.fromRGB(28, 32, 46),
+		atmosphere = { Density = 0.32, Offset = 0.12, Haze = 1.3, Glare = 0, Color = Color3.fromRGB(58, 70, 96), Decay = Color3.fromRGB(84, 96, 128) },
 	}, 0)
-	Film.grade({ Brightness = 0, Contrast = 0.18, Saturation = 0, TintColor = Color3.fromRGB(222, 218, 255) }, 0)
+	Film.grade({ Brightness = 0, Contrast = 0.2, Saturation = -0.12, TintColor = Color3.fromRGB(214, 226, 248) }, 0)
 	Film.vignette(0.5, 0)
 	Film.glow(0.45, 22, 0)
 end
@@ -922,6 +927,7 @@ local function actI(): boolean
 		fx("GroundSlam", spot, { scale = 1.8 })
 		fx("Dust", spot, { scale = 2.4 })
 		AnimeFx.hit(spot + Vector3.new(0, 2, 0), PINK, 10, true)
+		CelFx.impact(spot + Vector3.new(0, 1, 0), { color = PINK, size = 1.6, floorY = spot.Y - 0.3, dustColor = Color3.fromRGB(70, 66, 84), debrisColors = { Color3.fromRGB(40, 36, 46), Color3.fromRGB(46, 70, 44), Color3.fromRGB(70, 64, 60) } })
 		pcall(function()
 			AnimeFx.impact(armParts(D, "R"), "neg", { hold = 0.08, at = spot })
 		end)
@@ -1128,6 +1134,7 @@ local function exchange(): boolean
 		fx("GroundSlam", at(R1, 0.3), { scale = 1.6 })
 		fx("Dust", at(R1, 0.5), { scale = 2.2 })
 		AnimeFx.hit(at(R1, 2), PINK, 9, true)
+		CelFx.impact(at(R1, 1), { color = PINK, size = 1.4, floorY = at(R1, 0).Y, dustColor = Color3.fromRGB(80, 76, 92) })
 		armPath()
 		-- the streak: from where he stood up onto the arm
 		local a, b = at(R1, 1.5), run[1]
@@ -1274,7 +1281,15 @@ local function armFalls(): boolean
 		sfx("slam", 1.0, 0.8)
 		Film.shake(0.45, 2)
 		fx("Dust", land, { scale = 2.4 })
+		-- (6 Nov, review: "you cannot tell the arm fell off") the arm's crash reads: ring, cracks, rocks, dust
+		CelFx.ring(land + UP * 0.2, { color = WHITE, size = 1.3, radius = 18 })
+		CelFx.cracks(land + UP * 0.05, { color = PINK, size = 1.2 })
+		CelFx.debris(land, { size = 1.3 })
+		CelFx.dust(land, { size = 1.5, color = Color3.fromRGB(86, 82, 98) })
 	end)
+	-- (the cut itself: a white flash and pink sparks where the arm comes off)
+	CelFx.flare(pivot, { color = WHITE, size = 1.8, life = 0.35 })
+	CelFx.sparks(pivot, { color = PINK, size = 1.3 })
 	sfx("burst", 1.0, 0.7)
 	sfx("roar", 1.2, 1.15)
 	D.glitchNow(0.15)
@@ -1310,8 +1325,10 @@ local function armFalls(): boolean
 	-- the arm and the demon's dark bulk behind him)
 	if not shot(T.eye, function(k)
 		local base = at(R2, 0)
-		local p = base + Vector3.new(8 + k * 0.6, 6 + k * 0.4, 7 + k * 0.6)
-		return look(p, base + Vector3.new(-6, 2, -5.5), -3), mm(26), at(R2, 2)
+		-- (6 Nov, review: at 12.27 "the whole frame is flat purple voxel blocks ... you cannot tell the arm fell off":
+		-- wider and higher, the man small in the front corner, the arm landing beside him, the demon's stump behind)
+		local p = base + Vector3.new(15 + k * 1.2, 9 + k * 0.6, 14 + k * 1.2)
+		return look(p, base + Vector3.new(-6, 3, -7), -4), mm(19), at(R2, 2)
 	end, { hand = 0.5 }) then
 		return false
 	end
@@ -1347,7 +1364,7 @@ local function loadingRing(d: any, from: number, done: number)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "Adapt"
 	bb.Size = UDim2.fromScale(14 * d.scale, 14 * d.scale)
-	bb.StudsOffset = Vector3.new(0, 22.5 * d.scale, 0) -- (over its head and horns, the words between the two)
+	bb.StudsOffset = Vector3.new(0, 18.5 * d.scale, 0) -- (over its head and horns; 6 Nov: lower, the top bar cut it at 22.5)
 	bb.LightInfluence = 0
 	bb.Adornee = head
 	bb.Parent = head
@@ -1502,6 +1519,9 @@ local function clang(): boolean
 	fx("Sparks", hit, { scale = 1.6, color = GOLD })
 	fx("Hit", hit, { scale = 1.0 })
 	AnimeFx.hit(hit, GOLD, 6, true)
+	CelFx.sparks(hit, { color = GOLD, size = 1.4, count = 30 })
+	CelFx.flare(hit, { color = GOLD, size = 1.4 })
+	CelFx.ring(hit, { color = WHITE, size = 0.7, radius = 9, normal = (workspace.CurrentCamera :: Camera).CFrame.LookVector, life = 0.3 })
 	task.delay(0.03, function()
 		AnimeFx.impact({ R.model, SH.model, table.unpack(armParts(D, "R")) }, "neg", { hold = 0.1, at = hit })
 	end)
@@ -1684,6 +1704,8 @@ local function shed(): boolean
 		sfx("slam", 1.0, 0.7)
 		Film.shake(0.7, 1.4)
 		Film.flash(Color3.fromRGB(255, 226, 190), 0.45, 0.14)
+		CelFx.debris(hitAt, { size = 1.1, count = 18, speed = 38, up = 0.6, colors = { Color3.fromRGB(150, 98, 60), Color3.fromRGB(120, 76, 46), Color3.fromRGB(196, 150, 96) } })
+		CelFx.dust(at(SHED + Vector3.new(4, 0, 0), 0), { size = 1.2, color = Color3.fromRGB(170, 150, 120) })
 		-- (the dust a beat later, small and behind the shed: the pack's dust cloud is a solid mesh that, big and in
 		-- front, filled the frame like a dark rock)
 		task.delay(0.18, function()
@@ -1736,17 +1758,23 @@ local function getsUp(): boolean
 	R:look(nil)
 	R:pose("kneel", 0.35)
 	sfx("crate2", 0.6, 1.2)
-	after(T.up + 0.65, function()
-		stand(R, SHED + Vector3.new(2, 0, 1), R3 + Vector3.new(6, 0, -10))
-		R:pose("stand", 0.5)
-	end)
-	after(T.up + 1.35, function()
-		R:pose("crackL", 0.07, "snap")
-		sfx("eggCrack", 0.8, 0.75)
-	end)
-	after(T.up + 1.8, function()
-		R:pose("crackR", 0.07, "snap")
-		sfx("eggCrack", 0.9, 0.65)
+	-- (6 Nov, owner: "make the animations more fluid") the get-up in steps: a hand on the knee, the push, up with a
+	-- little overshoot, the shoulders rolled back, the neck cracked one way, a beat, the other way, the shears back up
+	after(T.up + 0.4, function()
+		R:seq({
+			{ pose = "pushUp", time = 0.22, ease = "inOut", hold = 0.05 },
+			{ pose = "stand", time = 0.28, ease = "out", fn = function()
+				stand(R, SHED + Vector3.new(2, 0, 1), R3 + Vector3.new(6, 0, -10))
+			end },
+			{ pose = "roll", time = 0.3, ease = "inOut", hold = 0.12 },
+			{ pose = "crackL", time = 0.06, ease = "snap", hold = 0.3, fn = function()
+				sfx("eggCrack", 0.8, 0.75)
+			end },
+			{ pose = "crackR", time = 0.06, ease = "snap", hold = 0.25, fn = function()
+				sfx("eggCrack", 0.9, 0.65)
+			end },
+			{ pose = "stand", time = 0.3, ease = "inOut" },
+		})
 	end)
 	clearR = 4
 	if not shot(T.fine, function(k)
@@ -2158,6 +2186,8 @@ local function regrow(): boolean
 	D2.state.rise = 0
 	D2.update(0)
 	fx("Crater", at(BIG_AT, 0.2), { scale = 2.2, color = PINK })
+	CelFx.cracks(at(BIG_AT, 0.05), { color = PINK, size = 2.2, spokes = 11, life = 3 })
+	CelFx.debris(at(BIG_AT, 0), { size = 2, count = 22, speed = 44 })
 	fx("CorruptOrb", at(BIG_AT, 6), { scale = 2 })
 	tracks.d2rise = function()
 		local tt = now()
@@ -2287,6 +2317,9 @@ local function streak(): boolean
 		fx("Crater", land, { scale = 2.0, color = GOLD })
 		fx("GroundRing", land, { scale = 3.0, color = GOLD })
 		fx("Dust", land + Vector3.new(0, 1, 0), { scale = 3 })
+		-- (6 Nov) the hero lands like a meteor: a gold shockwave, the ground split, rocks thrown up, a pillar of light
+		CelFx.impact(land + UP * 1, { color = GOLD, size = 1.8, floorY = land.Y, dustColor = Color3.fromRGB(150, 140, 120) })
+		CelFx.pillar(land, { color = GOLD, size = 1.2, height = 90, life = 0.9 })
 	end)
 	if H then
 		H:show(true)
@@ -2344,7 +2377,11 @@ local function punch(): boolean
 	end
 	-- 36. [SR 16.0, the small figure and the big thing] up out of the crouch, the fist goes back, gold gathers on it,
 	-- and the giant fists come down at him: from low at his side, wide (close in, the blocky arms read as nothing)
-	H:pose("windup", 0.25, "out")
+	-- (6 Nov) anticipation: down into a deeper wind-up first, then settling into the cocked fist
+	H:seq({
+		{ pose = "windupDeep", time = 0.18, ease = "inOut", hold = 0.06 },
+		{ pose = "windup", time = 0.2, ease = "inOut" },
+	})
 	sfx("zapCharge", 1.2, 1.1)
 	local gold = fx("GoldBurst", H:grip("Right").Position, { scale = 0.6 })
 	local stopLines = AnimeFx.lines(GOLD, 0.6)
@@ -2362,10 +2399,13 @@ local function punch(): boolean
 		-- (round 2: closer, him big on the left, the fists coming down ahead of him: wide, the two of them were specks
 		-- under a mass of blocks)
 		-- (low behind the two of them, tested in Studio: them small at the bottom, the giant and its fists over them)
-		local cp = root.Position + root.RightVector * tune("WindCamSide", 1) - root.LookVector * (tune("WindCamBack", 12.5) - k * 1.5)
-		cp = Vector3.new(cp.X, at(P1, 0).Y + tune("WindCamUp", 2.2), cp.Z)
+		-- (6 Nov, review: "Player h44% vs Rayan h86%: the player's big moment is framed around Rayan") low at the
+		-- player's side and a little ahead, close: them big on the left, the fist cocked by the lens, the giant's fists
+		-- coming down in the top right; Rayan small behind them
+		local cp = root.Position + root.RightVector * tune("WindCamSide", 5.2) + root.LookVector * (tune("WindCamFwd", 2.6) + k * 0.4)
+		cp = Vector3.new(cp.X, at(P1, 0).Y + tune("WindCamUp", 1.1), cp.Z)
 		key(h + root.LookVector * 2.5, GOLD, 1.8, 8)
-		return look(cp, root.Position + root.LookVector * 4 + Vector3.new(0, tune("WindAimUp", 3.2) + k * 1.5, 0), 2), tune("WindFov", 64), h
+		return look(cp, root.Position + root.LookVector * 3 + Vector3.new(0, tune("WindAimUp", 3.6) + k * 1.2, 0), 6), tune("WindFov", 58), h
 	end, { hand = 0.4 }) then
 		return false
 	end
@@ -2377,7 +2417,17 @@ local function punch(): boolean
 	end
 	-- 37. [SR 18.95, the fist big in front] THE PUNCH: on the drop
 	tracks.slam2 = nil
-	H:pose("punch", 0.05, "snap")
+	-- (the hit snapped in, then carried through: the body keeps turning after the fist lands)
+	H:seq({
+		{ pose = "punch", time = 0.05, ease = "snap", hold = 0.07 },
+		{ pose = "punchFollow", time = 0.16, ease = "out" },
+	})
+	H:smear({ "RightHand", "RightLowerArm" }, true, Color3.fromRGB(255, 70, 80))
+	task.delay(0.25, function()
+		if H then
+			H:smear({ "RightHand", "RightLowerArm" }, false)
+		end
+	end)
 	-- (6 Nov, owner: "use this audio when the player helps brrbrr") the black-flash hit; no sound: the old punch
 	if not FilmAudio.sfx("blackFlash", { volume = 2.5 }) then
 		sfx("punch", 1.6, 0.6)
@@ -2394,6 +2444,10 @@ local function punch(): boolean
 	Film.punch(6)
 	Film.freeze(0.1)
 	local fist = H:grip("Right").Position
+	-- (6 Nov) the fist's own shockwave in the air, red with a black rim, and red sparks
+	CelFx.ring(fist, { color = Color3.fromRGB(255, 40, 60), rim = Color3.fromRGB(10, 0, 4), size = 1.4, radius = 22, life = 0.5, normal = H.root.LookVector })
+	CelFx.ring(fist, { color = WHITE, rim = Color3.fromRGB(10, 0, 4), size = 0.8, radius = 12, life = 0.3, normal = H.root.LookVector })
+	CelFx.sparks(fist, { color = Color3.fromRGB(255, 40, 60), size = 1.6, count = 34, spread = 0.7, normal = H.root.LookVector })
 	AnimeFx.cover(Color3.fromRGB(30, 0, 6), 0.3, 0, "blackFlash")
 	task.delay(0.14, function()
 		AnimeFx.cover(Color3.fromRGB(30, 0, 6), 1, 0.4, "blackFlash")
@@ -2433,9 +2487,11 @@ local function punch(): boolean
 		local f = H:grip("Right").Position
 		-- (round 2: from the side, the whole of him, the arm straight into the fist; right at the fist it was a wall of
 		-- his own shoulder and hair)
-		local cp = root.Position + root.RightVector * tune("PunchCamSide", 17) - root.LookVector * (3 - k) + Vector3.new(0, tune("PunchCamUp", 2.5), 0)
+		-- (6 Nov, review: "Player h37%: the player isn't big in their own punch shot") close and low at 3/4 in front,
+		-- a wide lens: the fist huge toward the frame's corner, the arm straight back into them, their face behind it
+		local cp = root.Position + root.RightVector * tune("PunchCamSide", 4.4) + root.LookVector * tune("PunchCamFwd", 3.4) + Vector3.new(0, tune("PunchCamUp", 1.0) - k * 0.3, 0)
 		key(f + root.LookVector * 1.2, GOLD, 3, 8)
-		return look(cp, root.Position + root.LookVector * 5 + Vector3.new(0, 4 + k * 0.8, 0), -6), mm(tune("PunchMM", 20)), f
+		return look(cp, root.Position + root.LookVector * 2.4 + Vector3.new(0, 3.2 + k * 0.4, 0), -8), mm(tune("PunchMM", 21)), f
 	end, { hand = 0.3 }) then
 		return false
 	end
@@ -2660,7 +2716,10 @@ local function rookie(): boolean
 	if not shot(T.title, function(k)
 		local mid = (R.root.Position + H.root.Position) / 2
 		local face = H.root.LookVector
-		local cp = mid - face * (8.5 + k * 0.8) + H.root.RightVector * 0.6 + Vector3.new(0, -2.0, 0)
+		-- (6 Nov, review: "the closing two-shot again favours Rayan (h100%) over the player (h63%)") the lens behind the
+		-- player's shoulder now: the hero near and big, Rayan beside them a step further off
+		local hp = H.root.Position
+		local cp = hp - face * (6.8 + k * 0.8) + H.root.RightVector * 2.0 + Vector3.new(0, -1.6, 0)
 		return look(cp, mid + face * 40 + Vector3.new(0, 12, 0), 2), mm(24), mid
 	end, { hand = 0.3 }) then
 		return false
@@ -2679,10 +2738,12 @@ local function title(): boolean
 		end
 	end)
 	if not shot(T.out, function(k)
+		-- (6 Nov, review: behind the logo "only the shears ... neither person is in frame") the two of them from low in
+		-- front, the night and the pink pillars behind them, the logo low over their feet
 		local mid = (R.root.Position + H.root.Position) / 2
-		local back = -H.root.LookVector
-		local p = mid + back * (9 + k * 4) + Vector3.new(0, 3 + k * 5, 0)
-		return look(p, mid - back * 60 + Vector3.new(0, 24, 0)), mm(26), mid
+		local face = H.root.LookVector
+		local p = mid + face * (11 + k * 2.5) + Vector3.new(0, 0.6 + k * 0.6, 0)
+		return look(p, mid + Vector3.new(0, 3.4, 0), 0), mm(28), mid
 	end, { hand = 0.25 }) then
 		return false
 	end
@@ -2878,6 +2939,9 @@ function Opening.stop()
 		end
 	end)
 	playing = false
+	held = nil -- (6 Nov: a film stopped while held started the next one frozen)
+	rate = 1
+	pcall(CelFx.clear)
 	prepared = false
 	for _, c in conns do
 		c:Disconnect()

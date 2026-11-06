@@ -226,27 +226,39 @@ end
 local RECT_BLADE = { 92, 2, 72, 251 } -- (the blade texture's shape: a long wedge, its point up)
 local RECT_SLASH = { 34, 72, 444, 216 } -- (the crescent)
 
--- a wedge across the screen through (x, y) (scale), pointing along `angle` degrees, `thick` and `len` scale of the
--- picture's height / width
-local function wedge(g: Instance, x: number, y: number, angle: number, thick: number, len: number, color: Color3, z: number): ImageLabel
+-- (6 Nov, review: "the smear wedges are grey gradient tubes, they look like chrome pipes") the wedges are flat now: a
+-- pure, hard-edged triangle of colour, made of two half-frames each cut along its diagonal by a hard UIGradient step
+-- (a UIGradient's angle works in the frame's own 0..1 space, so 45 degrees runs corner to corner whatever its shape).
+-- Wide at one end, a needle point at the other, like the reference's slash frames.
+local CUT_TOP = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.499, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 0) })
+local CUT_BOTTOM = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(0.501, 1), NumberSequenceKeypoint.new(1, 1) })
+local function wedge(g: Instance, x: number, y: number, angle: number, thick: number, len: number, color: Color3, z: number): Frame
 	local abs = (g :: any).AbsoluteSize :: Vector2
-	local im = Instance.new("ImageLabel")
-	im.Name = "Wedge"
-	im.BackgroundTransparency = 1
-	im.Image = FxIds.blade
-	im.ImageRectOffset = Vector2.new(RECT_BLADE[1], RECT_BLADE[2])
-	im.ImageRectSize = Vector2.new(RECT_BLADE[3], RECT_BLADE[4])
-	im.ScaleType = Enum.ScaleType.Stretch
-	im.ImageColor3 = color
-	im.AnchorPoint = Vector2.new(0.5, 0.5)
-	im.Position = UDim2.fromScale(x, y)
-	im.Size = UDim2.fromOffset(math.max(abs.Y * thick, 2), abs.X * len)
-	im.Rotation = angle + 90
-	im.ZIndex = z
-	im.Parent = g
-	return im
+	local f = Instance.new("Frame")
+	f.Name = "Wedge"
+	f.BackgroundTransparency = 1
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.fromScale(x, y)
+	-- (long along X, `thick` across; the point is at the +X end)
+	f.Size = UDim2.fromOffset(abs.X * len, math.max(abs.Y * thick, 2))
+	f.Rotation = angle
+	f.ZIndex = z
+	for i, cut in { CUT_TOP, CUT_BOTTOM } do
+		local h = Instance.new("Frame")
+		h.BorderSizePixel = 0
+		h.BackgroundColor3 = color
+		h.Size = UDim2.fromScale(1, 0.5)
+		h.Position = UDim2.fromScale(0, if i == 1 then 0 else 0.5)
+		h.ZIndex = z
+		local gr = Instance.new("UIGradient")
+		gr.Transparency = cut
+		gr.Rotation = if i == 1 then 135 else 45
+		gr.Parent = h
+		h.Parent = f
+	end
+	f.Parent = g
+	return f
 end
-
 -- A slash across the screen: a long hard white wedge at `angle` degrees through (0.5, opts.y), a thin sliver along
 -- it, for a couple of frames, gone without a fade (opts: y, x, life, width, color)
 function AnimeFx.slash(angle: number, opts: any?)
@@ -272,7 +284,7 @@ function AnimeFx.slash(angle: number, opts: any?)
 	wedge(root, x - math.cos(r) * off * 0.9, y - math.sin(r) * off * 1.4, angle, w * 0.08, 0.8, c, Z_PICTURE)
 	-- (it shoots across: from short to full length in a frame)
 	local full = main.Size
-	main.Size = UDim2.fromOffset(full.X.Offset, full.Y.Offset * 0.55)
+	main.Size = UDim2.fromOffset(full.X.Offset * 0.55, full.Y.Offset)
 	tween(main, 0.03, { Size = full }, Enum.EasingStyle.Linear)
 	keep(root, life)
 end
@@ -793,9 +805,9 @@ function AnimeFx.logo(): Frame?
 	glow.ImageColor3 = Color3.fromRGB(255, 214, 120)
 	glow.ImageTransparency = 1
 	glow.AnchorPoint = Vector2.new(0.5, 0.5)
-	glow.Position = UDim2.fromScale(0.5, 0.47)
+	glow.Position = UDim2.fromScale(0.5, 0.6)
 	glow.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	glow.Size = UDim2.fromScale(1.5, 1.1)
+	glow.Size = UDim2.fromScale(0.85, 0.6)
 	glow.ZIndex = Z_TEXT
 	glow.Parent = root
 	local logo: GuiObject
@@ -816,11 +828,14 @@ function AnimeFx.logo(): Frame?
 	logo.AnchorPoint = Vector2.new(0.5, 0.5)
 	logo.Position = UDim2.fromScale(0.5, 0.47)
 	logo.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	logo.Size = UDim2.fromScale(1.15 * 2.2, 0.76 * 2.2)
+	-- (6 Nov, review: "the logo fills the whole frame and sticks out past the top letterbox bar ... it hides the two of
+	-- them") smaller, low in the frame, so the shot behind it stays the picture
+	logo.Position = UDim2.fromScale(0.5, 0.6)
+	logo.Size = UDim2.fromScale(0.62 * 2.2, 0.41 * 2.2)
 	logo.ZIndex = Z_TEXT + 1
 	logo.Parent = root
 	-- the slam (0.12 s), a flash, a ring
-	tween(logo, 0.12, { Size = UDim2.fromScale(1.15, 0.76) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	tween(logo, 0.12, { Size = UDim2.fromScale(0.62, 0.41) }, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 	if logo:IsA("ImageLabel") then
 		tween(logo, 0.08, { ImageTransparency = 0 })
 	elseif logo:IsA("TextLabel") then

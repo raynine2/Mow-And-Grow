@@ -371,7 +371,7 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 			local mid = (p + q) / 2
 			local cf = W(0, 0, 0) * CFrame.new(mid) * CFrame.Angles(0, 0, math.atan2(d.Y, d.X))
 			local core = block(sky, Vector3.new(seg + width, width, 1), cf, HOT, Enum.Material.Neon, "Crack")
-			local halo = block(sky, Vector3.new(seg + width * 3, width * 3.6, 0.6), cf * CFrame.new(0, 0, -2), PINK, Enum.Material.Neon, "Halo")
+			local halo = block(sky, Vector3.new(seg + width * 2.2, width * 2.6, 0.6), cf * CFrame.new(0, 0, -2), PINK, Enum.Material.Neon, "Halo")
 			halo.Transparency = 0.55
 			core.Transparency = 1
 			halo.Transparency = 1
@@ -385,7 +385,8 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	-- (in a plane 640 north of the set, facing it; x across, y up)
 	local skyPlane = Vector3.new(0, 0, -640)
 	for i, c in { { -60, 380, 0.3, -1 }, { 40, 420, -0.2, -1 }, { 170, 360, 0.8, -0.6 }, { -200, 340, -0.9, -0.5 } } do
-		crack(Vector3.new(c[1], c[2], 0), Vector3.new(c[3], c[4], 0), 300 + i * 40, 5, 2)
+		-- (6 Nov, review: "a nest of ~40 thick neon tubes") thinner, fewer branches: a tear, not a tangle
+		crack(Vector3.new(c[1], c[2], 0), Vector3.new(c[3], c[4], 0), 300 + i * 40, 3.2, 1)
 	end
 	for _, c in cracks do
 		c.core.CFrame = W(0, 0, 0) * CFrame.new(skyPlane) * (W(0, 0, 0):ToObjectSpace(c.core.CFrame))
@@ -458,7 +459,7 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 			local flick = 0.5 + 0.5 * math.noise(now * 6, i * 0.7)
 			local h = hot[i] or 0
 			c.core.Transparency = math.max(0, 0.05 + (1 - flick) * 0.3 - h)
-			c.halo.Transparency = 0.62 + (1 - flick) * 0.25 - h * 0.45
+			c.halo.Transparency = 0.74 + (1 - flick) * 0.2 - h * 0.5
 			c.core.Color = HOT:Lerp(Color3.new(1, 1, 1), h)
 		end
 	end)

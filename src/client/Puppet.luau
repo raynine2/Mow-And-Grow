@@ -178,6 +178,37 @@ P.punch = {
 	lf = v(-0.1, 0, -1.25), rf = v(0.15, 0, 0.85),
 	hip = v(0, -0.7, -0.5),
 }
+-- (6 Nov, owner: "make the animations more fluid") in-betweens, so a move is never one blend between two held poses:
+-- half up off one knee, a hand pushing off it
+P.pushUp = {
+	Waist = v(26, 0, 0), Neck = v(-16, 0, 0),
+	RightShoulder = v(24, 0, 16), RightElbow = v(34, 0, 0),
+	lh = v(-0.45, -1.15, -0.75), lpole = v(-1, 0, 1),
+	LeftHip = v(62, 0, -6), LeftKnee = v(-56, 0, 0), RightHip = v(14, 0, 8), RightKnee = v(-48, 0, 0),
+	hip = v(0, -0.8, 0),
+}
+-- rolling the shoulders back, chin up (before the neck crack)
+P.roll = {
+	Waist = v(-8, 0, 0), Neck = v(-16, 0, 6),
+	LeftShoulder = v(-8, 0, -14), RightShoulder = v(-8, 0, 14), LeftElbow = v(16, 0, 0), RightElbow = v(16, 0, 0),
+	LeftHip = v(0, -5, -4), RightHip = v(0, 5, 4),
+}
+-- the punch carried through: the body twisted further, the weight thrown onto the front foot
+P.punchFollow = {
+	Waist = v(18, 50, 0), Neck = v(-14, -44, 0),
+	rh = v(2.1, 0.45, -2.0), rpole = v(1, -1, 0),
+	lh = v(-0.9, -0.35, 0.75), lpole = v(-1, -0.3, 1),
+	lf = v(-0.1, 0, -1.4), rf = v(0.2, 0, 1.0),
+	hip = v(0, -0.85, -0.75),
+}
+-- a deeper wind-up: lower, the fist further back, the eyes on the target
+P.windupDeep = {
+	Waist = v(14, -62, 0), Neck = v(-14, 56, 0),
+	rh = v(1.05, 0.15, 1.25), rpole = v(1, -0.4, 1),
+	lh = v(-1.35, 0.55, -1.05), lpole = v(-1, -1, 0),
+	lf = v(-0.05, 0, -1.05), rf = v(0.15, 0, 0.85),
+	hip = v(0, -1.1, 0.2),
+}
 -- looking up at something (hands loose)
 P.lookUp = {
 	Waist = v(-10, 0, 0), Neck = v(-30, 0, 0),

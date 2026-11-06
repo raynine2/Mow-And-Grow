@@ -126,6 +126,12 @@ export type Options = {
 	calm: boolean?, -- no glitch jumps of its own (only glitchNow), the pixels and fragments flicker less
 	lift: number?, -- its dark hide lifted this far (0..1) toward a lit violet, so its shape shows against the night
 	outline: Color3?, -- a bright outline round its whole silhouette (a Highlight; api.highlight)
+	-- (6 Nov, review of the films: "the demon is an unreadable purple blob ... pink is everywhere at once") its trim
+	-- (the untagged neon: rims, runes, cracks, the cyan) dimmed this far toward its dark hide (0..1), so only its eyes,
+	-- core, grin and throat burn; and the outline's own see-through-ness and fill
+	dim: number?,
+	outlineAlpha: number?,
+	fillAlpha: number?,
 }
 
 local function newPart(model: Model, size: Vector3, colour: Color3, neon: boolean, shadow: boolean): Part
@@ -151,6 +157,7 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 	local yieldEvery = opts and opts.yieldEvery
 	local calm = opts ~= nil and opts.calm == true
 	local liftBy = if opts and opts.lift then math.clamp(opts.lift, 0, 1) else 0
+	local dimBy = if opts and opts.dim then math.clamp(opts.dim, 0, 1) else 0
 	local groups = level(if lite then "LITE" else "FULL")
 	local model = Instance.new("Model")
 	model.Name = "GlitchDemon"
@@ -204,6 +211,9 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 			local rel = CFrame.new(b.at * scale)
 			if liftBy > 0 and not neon then
 				colour = colour:Lerp(LIT_VIOLET, liftBy)
+			end
+			if dimBy > 0 and neon and tag == nil then
+				colour = colour:Lerp(OBSIDIAN, dimBy)
 			end
 			local p = newPart(model, b.size * scale, colour, neon, b.ghost)
 			if root then
@@ -270,9 +280,9 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		h.Adornee = model
 		h.DepthMode = Enum.HighlightDepthMode.Occluded
 		h.OutlineColor = opts.outline
-		h.OutlineTransparency = 0
+		h.OutlineTransparency = opts.outlineAlpha or 0
 		h.FillColor = opts.outline
-		h.FillTransparency = 0.94
+		h.FillTransparency = opts.fillAlpha or 0.94
 		h.Parent = model
 		highlight = h
 	end
@@ -314,10 +324,14 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 		local root = base * CFrame.new(0, -(1 - state.rise) * height * 1.05 + breathe * 0.25 * scale, 0) * jitter
 		rootY = root.Position.Y
 		-- (+X pitch tips the face, which looks down -Z, upward: chest out and head back when it roars)
-		local body = root * CFrame.Angles(math.rad(roar * 5 + breathe * 0.6 - hunch * 18), 0, 0)
+		-- (6 Nov, review: "the roar is a static T-pose: no head thrown back, no hunch, no lean") it roars like a beast
+		-- now: the body lunges forward and trembles, the head is flung back against it, the arms come forward with the
+		-- claws spread and raised, not out to the sides
+		local tremble = roar * math.sin(t * 46) * 1.4
+		local body = root * CFrame.Angles(math.rad(-roar * 14 + tremble + breathe * 0.6 - hunch * 18), 0, math.rad(tremble * 0.5))
 		frames[groupIndex.body] = body
 		frames[groupIndex.frags] = body
-		local head = body * CFrame.new(pivots.head * scale) * CFrame.Angles(math.rad(roar * 20 + math.sin(t * 0.9) * 2.5 - hunch * 14), math.rad(math.sin(t * 0.55) * 6 * (1 - roar)), math.rad(math.sin(t * 0.7) * 2))
+		local head = body * CFrame.new(pivots.head * scale) * CFrame.Angles(math.rad(roar * 38 + math.sin(t * 0.9) * 2.5 - hunch * 14), math.rad(math.sin(t * 0.55) * 6 * (1 - roar)), math.rad(math.sin(t * 0.7) * 2))
 		if jumpHead and os.clock() < glitchUntil then
 			head *= CFrame.new(scale * (math.random() - 0.5) * 3, 0, 0)
 		end
@@ -332,9 +346,9 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 			local swing = math.sin(t * 1.1 + side) * 4
 			-- arms hang from the shoulders, a little out, forearms reaching forward (+pitch) to the ground; roaring
 			-- flings the arms out (roll away from the body) and the forearms up, claws to the sky
-			local upper = body * CFrame.new(pivots[arm] * scale) * CFrame.Angles(math.rad(8 + roar * 27 + swing), 0, math.rad(side * (roar * 56 + 12)))
+			local upper = body * CFrame.new(pivots[arm] * scale) * CFrame.Angles(math.rad(8 + roar * 52 + swing), math.rad(side * roar * 10), math.rad(side * (roar * 26 + 12)))
 			frames[groupIndex[arm]] = upper
-			frames[groupIndex[fore]] = upper * CFrame.new(pivots[fore] * scale) * CFrame.Angles(math.rad(34 * (1 - roar) + 6 + swing * 0.6), 0, math.rad(side * roar * 58))
+			frames[groupIndex[fore]] = upper * CFrame.new(pivots[fore] * scale) * CFrame.Angles(math.rad(34 * (1 - roar) + 6 + roar * 26 + swing * 0.6), 0, math.rad(side * roar * 18))
 			frames[groupIndex[wing]] = body * CFrame.new(pivots[wing] * scale) * CFrame.Angles(math.rad(10), 0, math.rad(side * (roar * 22 + math.sin(t * 1.8) * 3)))
 		end
 	end

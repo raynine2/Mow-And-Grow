@@ -64,7 +64,7 @@ local savedLighting: { [Instance]: { [string]: any } } = {}
 local UFO_AT = Vector3.new(8.2, 4.9, 3) -- the saucer: left of the avatar, in the free space under the VS panel (first
 -- tried up beside the title: the VS panel and the title covered it there) (6 Nov, owner: "u can't really see the ufo ... why is everything in the middle": straight
 -- behind, the title and the avatar covered it); it leans toward the avatar and its beam slants down onto it
-local UFO_TILT = CFrame.Angles(math.rad(-14), 0, math.rad(-24)) -- leaning toward the avatar, its top a little to us
+local UFO_TILT = CFrame.Angles(math.rad(-8), 0, math.rad(-14)) -- leaning toward the avatar, its top a little to us
 local VORTEX_AT = Vector3.new(66, 2, 130) -- far behind the saucer (on screen just behind it): its halo
 local ufoParts: { { part: BasePart, off: CFrame } } = {} -- every saucer part and where it sits on the saucer
 local ufoLights: { BasePart } = {} -- the rim bulbs (they chase round)
@@ -569,10 +569,10 @@ local function lightBeam(m: Instance)
 		return b
 	end
 	-- (6 Nov, "even more hype": the soft cone read as a grey sheet; now every layer glows, a spiral twists up it)
-	beam(2.4, 11, nil, seq(0, 0.8, 0.6, 0.86, 1, 0.94), 1) -- the soft cone
+	beam(2.4, 11, nil, seq(0, 0.6, 0.6, 0.78, 1, 0.9), 1) -- the soft cone
 	beam(2.0, 9.5, Tex.EnergyNoise, seq(0, 0.7, 0.5, 0.8, 1, 0.9), 1, -0.6) -- energy drifting up it
 	beam(1.7, 8, Tex.VS_Spiral or Tex.EnergyNoise, seq(0, 0.55, 0.5, 0.7, 1, 0.9), 1, -1.1) -- the spiral
-	beam(0.8, 3, nil, seq(0, 0.35, 0.7, 0.6, 1, 0.85), 1) -- the hot core
+	beam(0.8, 3, nil, seq(0, 0.15, 0.7, 0.45, 1, 0.8), 1) -- the hot core
 	-- rings of light sliding up the beam
 	local rings = part(m, Vector3.new(2, 0.1, 2), CFrame.new(0, TURF_TOP + 0.3, 0.6), Color3.new(1, 1, 1))
 	rings.Transparency = 1

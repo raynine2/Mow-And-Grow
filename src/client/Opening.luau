@@ -2008,11 +2008,11 @@ local function snip(): boolean
 		end
 	end
 	-- (6 Nov, owner's pick) the dismantle slash; no sound: the old blade slash
-	if not FilmAudio.sfx("dismantle", { volume = 1.3 }) then
+	if not FilmAudio.sfx("dismantle", { volume = 2 }) then
 		sfx("bladeSlash", 1.5, 0.7)
 	end
-	sfx("boom", 1.0, 0.8)
-	sfx("bigHit", 0.9, 0.7)
+	sfx("boom", 0.5, 0.8) -- (6 Nov: halved so the dismantle is heard)
+	sfx("bigHit", 0.45, 0.7)
 	Film.shake(0.6, 2)
 	tracks.glow = nil
 	SH:glow(0.3)
@@ -2365,11 +2365,11 @@ local function punch(): boolean
 	tracks.slam2 = nil
 	H:pose("punch", 0.05, "snap")
 	-- (6 Nov, owner: "use this audio when the player helps brrbrr") the black-flash hit; no sound: the old punch
-	if not FilmAudio.sfx("blackFlash", { volume = 1.2 }) then
+	if not FilmAudio.sfx("blackFlash", { volume = 2 }) then
 		sfx("punch", 1.6, 0.6)
 	end
-	sfx("bigHit", 1.2, 0.75)
-	sfx("boom", 1.2, 0.7)
+	sfx("bigHit", 0.6, 0.75) -- (6 Nov: halved so the black flash is heard: "i dont hear it")
+	sfx("boom", 0.5, 0.7)
 	Film.shake(1, 0.9)
 	local fist = H:grip("Right").Position
 	fx("RingBurst", fist, { scale = 2.4, color = GOLD })

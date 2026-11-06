@@ -1712,11 +1712,11 @@ local function snip(): boolean
 	tracks.copyOpen = nil
 	shearsOpen = 0
 	-- (6 Nov, owner's pick) the dismantle slash; no sound: the old blade slash
-	if not FilmAudio.sfx("dismantle", { volume = 1.3 }) then
+	if not FilmAudio.sfx("dismantle", { volume = 2 }) then
 		sfx("bladeSlash", 1.5, 0.6)
 	end
-	sfx("boom", 1.3, 0.6)
-	sfx("bigHit", 1.2, 0.6)
+	sfx("boom", 0.6, 0.6) -- (6 Nov: halved so the dismantle is heard)
+	sfx("bigHit", 0.6, 0.6)
 	sfx("eggCrack", 1.4, 0.4)
 	AnimeFx.smear(8, -1, HOT)
 	AnimeFx.slash(-12, { y = 0.45, life = 0.18, width = 0.03, color = HOT })

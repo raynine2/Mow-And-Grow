@@ -665,7 +665,9 @@ end
 -- (round 2) the tall grass where the fight happens is trampled flat: from the low angles it hid the hits, the hand on
 -- the ground, the landings (the pool's own grass goes into the black as it spreads)
 local function clearArena()
-	local spots = { { DEMON_AT, 31 }, { R1, 9 }, { R2, 9 }, { R3, 9 }, { P1, 10 }, { SHED + Vector3.new(8, 0, 0), 8 } }
+	-- (6 Nov, review: "Rayan's legs hidden behind a big grass clump" in the walk-in: his path is trampled too)
+	local spots = { { DEMON_AT, 31 }, { R1, 9 }, { R2, 9 }, { R3, 9 }, { P1, 10 }, { SHED + Vector3.new(8, 0, 0), 8 },
+		{ Vector3.new(-1.5, 0, -17), 10 }, { Vector3.new(-3.2, 0, -23.5), 10 } }
 	for _, t in S.tufts do
 		local q = t.at.Position
 		local here = Vector3.new(q.X, 0, q.Z) - Vector3.new(S.at.Position.X, 0, S.at.Position.Z)
@@ -1345,8 +1347,10 @@ local function armFalls(): boolean
 		-- (his right eye: a bandage covers the left; seen through the strands of his fringe, tested in Studio)
 		local hc = headCf(R)
 		local e = eyesOf(R, 0.26, 0)
-		local p = e + hc.LookVector * (2.0 - k * 0.25) + hc.RightVector * 0.3 - hc.UpVector * 0.12
-		return CFrame.lookAt(p, e, hc.UpVector), mm(85), e
+		-- (6 Nov, seen in Studio: at 10x his face decal was a blurry sleepy eye filling the frame) a 3/4 close-up of his
+		-- head instead, the pink flicker across it
+		local p = e + hc.LookVector * (3.8 - k * 0.4) + hc.RightVector * 1.5 - hc.UpVector * 0.25
+		return CFrame.lookAt(p, e - hc.UpVector * 0.25, hc.UpVector), mm(48), e
 	end, { hand = 0.12 }) then
 		return false
 	end
@@ -1364,7 +1368,8 @@ local function loadingRing(d: any, from: number, done: number)
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "Adapt"
 	bb.Size = UDim2.fromScale(14 * d.scale, 14 * d.scale)
-	bb.StudsOffset = Vector3.new(0, 18.5 * d.scale, 0) -- (over its head and horns; 6 Nov: lower, the top bar cut it at 22.5)
+	bb.StudsOffset = Vector3.new(0, 21 * d.scale, 0) -- (over its head and horns; 6 Nov: a little lower, the top bar cut it at 22.5)
+	bb.AlwaysOnTop = true -- (6 Nov, seen in Studio: its head and horns hid the dots and the words)
 	bb.LightInfluence = 0
 	bb.Adornee = head
 	bb.Parent = head
@@ -2445,8 +2450,11 @@ local function punch(): boolean
 	Film.freeze(0.1)
 	local fist = H:grip("Right").Position
 	-- (6 Nov) the fist's own shockwave in the air, red with a black rim, and red sparks
-	CelFx.ring(fist, { color = Color3.fromRGB(255, 40, 60), rim = Color3.fromRGB(10, 0, 4), size = 1.4, radius = 22, life = 0.5, normal = H.root.LookVector })
-	CelFx.ring(fist, { color = WHITE, rim = Color3.fromRGB(10, 0, 4), size = 0.8, radius = 12, life = 0.3, normal = H.root.LookVector })
+	-- (seen in Studio: at radius 22 round the fist it swallowed the lens, half the frame one red disc) smaller rings,
+	-- a little ahead of the fist, thin
+	local ahead = fist + H.root.LookVector * 2.5
+	CelFx.ring(ahead, { color = Color3.fromRGB(255, 40, 60), rim = Color3.fromRGB(10, 0, 4), size = 0.55, radius = 10, life = 0.42, normal = H.root.LookVector })
+	CelFx.ring(ahead + H.root.LookVector * 1.5, { color = WHITE, rim = Color3.fromRGB(10, 0, 4), size = 0.35, radius = 6, life = 0.28, normal = H.root.LookVector })
 	CelFx.sparks(fist, { color = Color3.fromRGB(255, 40, 60), size = 1.6, count = 34, spread = 0.7, normal = H.root.LookVector })
 	AnimeFx.cover(Color3.fromRGB(30, 0, 6), 0.3, 0, "blackFlash")
 	task.delay(0.14, function()

@@ -851,7 +851,7 @@ function AnimeFx.logo(): Frame?
 		local ring = Instance.new("Frame")
 		ring.BackgroundTransparency = 1
 		ring.AnchorPoint = Vector2.new(0.5, 0.5)
-		ring.Position = UDim2.fromScale(0.5, 0.47)
+		ring.Position = UDim2.fromScale(0.5, 0.6)
 		ring.SizeConstraint = Enum.SizeConstraint.RelativeYY
 		ring.Size = UDim2.fromScale(0.3, 0.3)
 		ring.ZIndex = Z_TEXT
@@ -863,7 +863,7 @@ function AnimeFx.logo(): Frame?
 		tween(ring, 0.5, { Size = UDim2.fromScale(2.2, 2.2) }, Enum.EasingStyle.Quart)
 		tween(st, 0.5, { Transparency = 1, Thickness = 1 })
 		-- a slow push in while it holds
-		tween(logo, 3.5, { Size = UDim2.fromScale(1.15 * 1.06, 0.76 * 1.06) }, Enum.EasingStyle.Sine)
+		tween(logo, 3.5, { Size = UDim2.fromScale(0.62 * 1.06, 0.41 * 1.06) }, Enum.EasingStyle.Sine)
 	end)
 	table.insert(live, root)
 	return root

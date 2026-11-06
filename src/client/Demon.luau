@@ -221,7 +221,7 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 				colour = colour:Lerp(OBSIDIAN, dimBy)
 			end
 			-- (its grin and throat glowed as one huge magenta mouth that out-shone its eyes: they smoulder now)
-			if dimBy > 0 and neon and (tag == "grin" or tag == "throat") then
+			if dimBy > 0 and neon and (tag == "grin" or tag == "throat" or tag == "pix" or tag == "frag") then
 				colour = colour:Lerp(OBSIDIAN, dimBy * 0.55)
 			end
 			local p = newPart(model, b.size * scale, colour, neon, b.ghost)

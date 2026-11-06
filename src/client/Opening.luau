@@ -1866,31 +1866,64 @@ local function stance(): boolean
 	end
 	sfx("suck", 1.1, 0.6)
 	sfx("swell", 0.9, 0.8)
-	-- it closes: the impact frame, the hum, the storm of cuts
+	-- it closes: the impact frame, the shock ring, the energy
 	after(ringFrom + SPREAD, function()
 		sfx("titleHit", 1.0, 0.75)
 		sfx("bladeClang", 0.8, 1.6)
 		Film.shake(0.25, 3)
 		AnimeFx.impact({ R.model, SH.model }, "neg", { hold = 0.09, at = at(R3, 2) })
-		local rng = Random.new(23)
-		for i = 1, 26 do
-			task.delay(0.05 + i * 0.011, function()
-				if not floor.Parent then
-					return
-				end
-				local a = rng:NextNumber(0, math.pi * 2)
-				local r0 = rng:NextNumber(4, RING * 0.55)
-				local p = centre + Vector3.new(math.cos(a) * r0, 0.08, math.sin(a) * r0)
-				local dir = Vector3.new(math.cos(a + rng:NextNumber(0.9, 2.2)), 0, math.sin(a + rng:NextNumber(0.9, 2.2))).Unit
-				local len = rng:NextNumber(14, 40)
-				local cut = neon(Vector3.new(0.5, 0.08, len), CFrame.lookAt(p, p + dir), WHITE, 0)
-				table.insert(ring, cut)
-				TweenService:Create(cut, TweenInfo.new(0.45, Enum.EasingStyle.Quad), { Color = GOLD, Transparency = 0.3 }):Play()
-				if i % 6 == 0 then
-					sfx("swipe", 0.35, rng:NextNumber(1.4, 1.9))
-				end
-			end)
+		-- (6 Nov, owner: "why yellow ugly lines on the floor": no lines; a white shock ring runs out past the edge and
+		-- fades, a thin second ring inside it, and gold-pink energy starts rising off the black floor)
+		local shock = {}
+		local inner = {}
+		for i = 1, n do
+			shock[i] = neon(Vector3.new(0.9, 0.2, 1), CFrame.new(centre), WHITE, 1)
+			inner[i] = neon(Vector3.new(0.25, 0.14, 1), CFrame.new(centre), GOLD, 1)
+			table.insert(ring, shock[i])
+			table.insert(ring, inner[i])
 		end
+		local function place(segs: { BasePart }, r: number, alpha: number, width: number)
+			local len = r * 2 * math.pi / n + 0.12
+			for i, seg in segs do
+				local a = (i / n) * math.pi * 2
+				local p = centre + Vector3.new(math.cos(a) * r, 0.08, math.sin(a) * r)
+				seg.Size = Vector3.new(width, seg.Size.Y, len)
+				seg.CFrame = CFrame.lookAt(p, p + Vector3.new(-math.sin(a), 0, math.cos(a)))
+				seg.Transparency = alpha
+			end
+		end
+		local from = now()
+		tracks.shock = function()
+			local k = math.clamp((now() - from) / 0.4, 0, 1)
+			local e = 1 - (1 - k) ^ 3
+			place(shock, RING * (1 + 0.45 * e), if k >= 1 then 1 else 0.05 + 0.95 * k, 0.9 * (1 - k) + 0.2)
+			local ki = math.clamp((now() - from) / 0.3, 0, 1)
+			place(inner, RING * 0.9, 1 - 0.55 * ki, 0.25)
+			if k >= 1 then
+				for _, seg in shock do
+					seg.Transparency = 1
+				end
+			end
+		end
+		-- the energy off the floor: a flat invisible plate the size of the domain with a disc-shaped emitter
+		local plate = neon(Vector3.new(RING * 2, 0.1, RING * 2), CFrame.new(centre + Vector3.new(0, 0.2, 0)), GOLD, 1)
+		table.insert(ring, plate)
+		local em = Instance.new("ParticleEmitter")
+		em.Shape = Enum.ParticleEmitterShape.Disc
+		em.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		em.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		em.Color = ColorSequence.new(Color3.fromRGB(255, 220, 120), Color3.fromRGB(255, 90, 200))
+		em.LightEmission = 1
+		em.LightInfluence = 0
+		em.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.4, 1.1), NumberSequenceKeypoint.new(1, 0) })
+		em.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.15), NumberSequenceKeypoint.new(1, 1) })
+		em.Lifetime = NumberRange.new(0.8, 1.5)
+		em.Speed = NumberRange.new(5, 12)
+		em.EmissionDirection = Enum.NormalId.Top
+		em.SpreadAngle = Vector2.new(8, 8)
+		em.Acceleration = Vector3.new(0, 4, 0)
+		em.Rate = 180
+		em.Parent = plate
 	end)
 	if not shot(T.glint, function(k)
 		local c = at(R3 + Vector3.new(10, 0, -16))
@@ -1933,6 +1966,7 @@ local function stance(): boolean
 		end)
 	end
 	tracks.ring = nil
+	tracks.shock = nil
 	S.ring = ring
 	return true
 end

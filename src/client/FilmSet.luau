@@ -6,6 +6,7 @@
 -- Each returns its pieces (for the films to move) and destroy(). Phones and Potato Mode get fewer tufts and trees.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local Device = require(script.Parent.Device)
 local Potato = require(script.Parent.Potato)
@@ -393,13 +394,86 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	sky.Parent = folder
 	set.cracks = cracks
 	-- how much of the sky has cracked (0..1, in the order they were drawn) and a flicker
+	-- (6 Nov, owner: "the lightning is still bad in intro its standing still") the cracks live on by themselves once
+	-- they're out: every frame they flicker, a white-hot pulse runs down a crack every ~0.4 s, and real bolts fork out
+	-- of the cracks across the sky with a flash of their halo. crackSky only sets how much of the sky is cracked.
+	local crackK = 0
+	local pulses: { { at: number, from: number, len: number } } = {}
+	local nextPulse, nextBolt = 0, 0
+	local Bolt: any = nil
+	local function bolt(a: Vector3, b: Vector3, width: number)
+		if Bolt == nil then
+			local ok, res = pcall(function()
+				return require(ReplicatedStorage:WaitForChild("VFXLib", 2):WaitForChild("Lightning", 2))
+			end)
+			Bolt = if ok then res else false
+		end
+		if Bolt then
+			pcall(Bolt.Strike, a, b, { Color = PINK, CoreColor = HOT, Width = width, Duration = 0.45, Flickers = 7, Branches = 2, Jag = 0.32 })
+		end
+	end
+	local function lit(): number
+		return math.floor(#cracks * crackK)
+	end
+	local storm = RunService.Heartbeat:Connect(function()
+		if not sky.Parent or not sky:IsDescendantOf(workspace) then
+			return
+		end
+		local n = lit()
+		if n <= 0 then
+			return
+		end
+		local now = os.clock()
+		if now >= nextPulse then
+			nextPulse = now + 0.25 + math.random() * 0.35
+			table.insert(pulses, { at = now, from = math.random(1, n), len = math.random(4, 9) })
+		end
+		if now >= nextBolt and not light then
+			nextBolt = now + 0.6 + math.random() * 1.0
+			local c = cracks[math.random(1, n)]
+			local p = c.core.Position
+			local cf = c.core.CFrame
+			local dir = (cf.RightVector * (math.random() - 0.5) * 2 + cf.UpVector * -(0.4 + math.random())).Unit
+			bolt(p, p + dir * (80 + math.random() * 140), 3 + math.random() * 3)
+			table.insert(pulses, { at = now, from = math.max(1, (table.find(cracks, c) or 1) - 3), len = 7 })
+		end
+		local hot: { [number]: number } = {}
+		for i = #pulses, 1, -1 do
+			local pu = pulses[i]
+			local age = (now - pu.at) / 0.3
+			if age > 1 then
+				table.remove(pulses, i)
+			else
+				local head = pu.from + age * pu.len
+				for j = pu.from, math.min(n, pu.from + pu.len) do
+					local d = math.abs(j - head)
+					if d < 2 then
+						hot[j] = math.max(hot[j] or 0, 1 - d / 2)
+					end
+				end
+			end
+		end
+		for i = 1, n do
+			local c = cracks[i]
+			local flick = 0.5 + 0.5 * math.noise(now * 6, i * 0.7)
+			local h = hot[i] or 0
+			c.core.Transparency = math.max(0, 0.05 + (1 - flick) * 0.3 - h)
+			c.halo.Transparency = 0.62 + (1 - flick) * 0.25 - h * 0.45
+			c.core.Color = HOT:Lerp(Color3.new(1, 1, 1), h)
+		end
+	end)
+	sky.Destroying:Connect(function()
+		storm:Disconnect()
+	end)
 	function set.crackSky(k: number, t: number)
+		crackK = k
 		local n = #cracks
+		local _ = t
 		for i, c in cracks do
-			local on = (i / n) <= k
-			local flick = if on then (0.5 + 0.5 * math.noise(t * 3, i * 0.7)) else 0
-			c.core.Transparency = if on then 0.05 + (1 - flick) * 0.25 else 1
-			c.halo.Transparency = if on then 0.62 + (1 - flick) * 0.25 else 1
+			if i > math.floor(n * k) then -- (the lit ones are the storm's, every frame)
+				c.core.Transparency = 1
+				c.halo.Transparency = 1
+			end
 		end
 	end
 

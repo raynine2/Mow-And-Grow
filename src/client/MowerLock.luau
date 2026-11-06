@@ -62,6 +62,7 @@ type Lock = {
 	keyhole: { BasePart },
 	light: PointLight,
 	burst: ParticleEmitter,
+	icon: ImageLabel?,
 	model: Model,
 	centre: Vector3,
 	s: number,
@@ -186,8 +187,8 @@ local function emitter(parent: Instance, props: { [string]: any }): ParticleEmit
 end
 
 local function body(lock: Model, root: BasePart, s: number): (BasePart, PointLight)
-	piece(lock, root, BODY * s, CFrame.new(), CYAN, Enum.Material.ForceField, 0)
-	local core = piece(lock, root, Vector3.new(BODY.X * 0.84, BODY.Y * 0.8, BODY.Z * 0.4) * s, CFrame.new(), DEEP, Enum.Material.Neon, 0.78)
+	-- (6 Nov: the ForceField box is gone with the wireframe; the core is a speck that only carries the light and motes)
+	local core = piece(lock, root, Vector3.new(0.05, 0.05, 0.05), CFrame.new(), DEEP, Enum.Material.Neon, 1)
 	local light = Instance.new("PointLight")
 	light.Color = CYAN
 	light.Brightness = 1.8
@@ -319,6 +320,38 @@ local function ground(at: Vector3): Vector3
 	return if hit then hit.Position else at - Vector3.new(0, 3, 0)
 end
 
+local IconIds = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("IconIds")) :: any
+local function lockIcon(root: BasePart, s: number): ImageLabel
+	local g = Instance.new("BillboardGui")
+	g.Name = "LockIcon"
+	g.Size = UDim2.new(6.4 * s, 0, 6.4 * s, 0)
+	g.LightInfluence = 0
+	g.MaxDistance = SHOW
+	g.Adornee = root
+	g.Parent = root
+	local glow = Instance.new("ImageLabel")
+	glow.Name = "Glow"
+	glow.BackgroundTransparency = 1
+	glow.Image = TEX.glow
+	glow.ImageColor3 = CYAN
+	glow.ImageTransparency = 0.35
+	glow.Size = UDim2.fromScale(1.5, 1.5)
+	glow.Position = UDim2.fromScale(0.5, 0.5)
+	glow.AnchorPoint = Vector2.new(0.5, 0.5)
+	glow.Parent = g
+	local img = Instance.new("ImageLabel")
+	img.Name = "Lock"
+	img.BackgroundTransparency = 1
+	img.Image = IconIds.lock or ""
+	img.ScaleType = Enum.ScaleType.Fit
+	img.Size = UDim2.fromScale(0.8, 0.8)
+	img.Position = UDim2.fromScale(0.5, 0.5)
+	img.AnchorPoint = Vector2.new(0.5, 0.5)
+	img.ZIndex = 2
+	img.Parent = g
+	return img
+end
+
 local function build(centre: Vector3, floor: Vector3, ringRadius: number, s: number): Lock
 	local lock = Instance.new("Model")
 	lock.Name = "MowerLock"
@@ -328,12 +361,14 @@ local function build(centre: Vector3, floor: Vector3, ringRadius: number, s: num
 	root.CFrame = CFrame.new(centre)
 	lock.PrimaryPart = root
 	local core, light = body(lock, root, s)
-	wireframe(lock, root, s)
-	shackle(lock, root, s)
-	local holes = keyhole(lock, root, s)
+	-- (6 Nov, owner: "i dont like the low res icon") the blocky neon wireframe padlock is gone: the game's own lock
+	-- icon (the hi-res Blender render, IconIds.lock) on a soft cyan glow, facing the camera; the projector, the motes,
+	-- the bob, the glitch and the red refusal stay
+	local icon = lockIcon(root, s)
+	local holes = {}
 	local burst = projector(lock, root, floor, ringRadius, s)
-	-- the scan line: sweeps up through the lock (moved each frame, not welded)
-	local scan = part(lock, Vector3.new(BODY.X * 1.18, 0.06, BODY.Z * 1.5) * s, PALE, Enum.Material.Neon, 0.25)
+	-- the scan line: no longer drawn (kept tiny and hidden so the frame loop is unchanged)
+	local scan = part(lock, Vector3.new(0.05, 0.05, 0.05), PALE, Enum.Material.Neon, 1)
 	scan.Anchored = true
 	sign(lock, centre, s)
 	lock.Parent = folder
@@ -344,6 +379,7 @@ local function build(centre: Vector3, floor: Vector3, ringRadius: number, s: num
 		keyhole = holes,
 		light = light,
 		burst = burst,
+		icon = icon,
 		model = lock,
 		centre = centre,
 		s = s,
@@ -617,6 +653,12 @@ local function animate(l: Lock, now: number, me: Vector3?)
 	l.light.Brightness = if denying then 4 else 1.8 + 0.4 * math.sin(t * 3)
 	for _, h in l.keyhole do
 		h.Color = if denying then DENY else PALE
+	end
+	local ic = l.icon
+	if ic then
+		ic.ImageColor3 = if denying then DENY else Color3.new(1, 1, 1)
+		ic.ImageTransparency = if glitching then 0.5 else 0
+		ic.Rotation = if glitching then (math.random() - 0.5) * 8 else math.sin(t * 1.1) * 3
 	end
 	-- walk up to it: it refuses (once each time you come close)
 	if me then

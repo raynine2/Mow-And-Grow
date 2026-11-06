@@ -449,6 +449,7 @@ end
 local UFO_CELL = 0.4
 local UFO_SCALE = 0.62 -- (small enough to sit beside the title, not under it)
 local spinRing: { { part: BasePart, a: number, r: number, y: number } } = {}
+local beamTop: BasePart? = nil
 local function saucer(m: Instance)
 	local S = UFO_SCALE
 	local function add(size: Vector3, off: CFrame, color: Color3, material: Enum.Material?, shape: Enum.PartType?, tr: number?): Part
@@ -538,6 +539,7 @@ local function lightBeam(m: Instance)
 	local top = part(m, Vector3.one, CFrame.new(UFO_AT + Vector3.new(-0.25, -0.85, 0)), Color3.new(1, 1, 1))
 	top.Transparency = 1
 	top.Name = "BeamTop"
+	beamTop = top
 	local bottom = part(m, Vector3.one, CFrame.new(0, TURF_TOP + 0.1, 0.6), Color3.new(1, 1, 1))
 	bottom.Transparency = 1
 	bottom.Name = "BeamBottom"
@@ -1076,9 +1078,17 @@ local function updateAbduction(t: number)
 	local e = TweenService:GetValue(a, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	local swoop = SWOOP_FROM * (1 - e)
 	local bank = CFrame.Angles(0, 0, math.rad(-28) * (1 - e))
-	local ufo = ORIGIN * CFrame.new(UFO_AT + swoop + Vector3.new(0, math.sin(t * 1.3) * 0.35, 0)) * bank * UFO_TILT * CFrame.Angles(math.rad(3) * math.sin(t * 0.9), math.sin(t * 0.45) * 0.35, math.rad(3) * math.sin(t * 0.7 + 1))
+	-- (6 Nov, owner: "make it move") it flies a slow figure eight round its spot, bobs, rocks, and spins on its axis;
+	-- the beam's top rides with its belly
+	local fly = Vector3.new(math.sin(t * 0.55) * 1.6, math.sin(t * 1.1) * 0.7 + math.sin(t * 1.9) * 0.15, math.cos(t * 0.55) * 0.9)
+	local lean = CFrame.Angles(math.rad(6) * math.cos(t * 0.55), 0, math.rad(-7) * math.cos(t * 0.55)) -- (it banks into its turns)
+	local tilted = ORIGIN * CFrame.new(UFO_AT + swoop + fly) * bank * UFO_TILT * lean
+	local ufo = tilted * CFrame.Angles(0, t * 0.9, 0)
 	for _, u in ufoParts do
 		u.part.CFrame = ufo * u.off
+	end
+	if beamTop then
+		beamTop.CFrame = tilted * CFrame.new(0, -0.85, 0)
 	end
 	for _, sr in spinRing do
 		local ang = sr.a + t * 2.4

@@ -1711,7 +1711,10 @@ local function snip(): boolean
 	-- 32. [SR 18.25, the white smear; the drop] ONE SNIP, its own: the realm's sky cracks white
 	tracks.copyOpen = nil
 	shearsOpen = 0
-	sfx("bladeSlash", 1.5, 0.6)
+	-- (6 Nov, owner's pick) the dismantle slash; no sound: the old blade slash
+	if not FilmAudio.sfx("dismantle", { volume = 1.3 }) then
+		sfx("bladeSlash", 1.5, 0.6)
+	end
 	sfx("boom", 1.3, 0.6)
 	sfx("bigHit", 1.2, 0.6)
 	sfx("eggCrack", 1.4, 0.4)

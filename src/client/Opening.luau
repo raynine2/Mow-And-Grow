@@ -2007,7 +2007,10 @@ local function snip(): boolean
 			end)
 		end
 	end
-	sfx("bladeSlash", 1.5, 0.7)
+	-- (6 Nov, owner's pick) the dismantle slash; no sound: the old blade slash
+	if not FilmAudio.sfx("dismantle", { volume = 1.3 }) then
+		sfx("bladeSlash", 1.5, 0.7)
+	end
 	sfx("boom", 1.0, 0.8)
 	sfx("bigHit", 0.9, 0.7)
 	Film.shake(0.6, 2)
@@ -2361,7 +2364,10 @@ local function punch(): boolean
 	-- 37. [SR 18.95, the fist big in front] THE PUNCH: on the drop
 	tracks.slam2 = nil
 	H:pose("punch", 0.05, "snap")
-	sfx("punch", 1.6, 0.6)
+	-- (6 Nov, owner: "use this audio when the player helps brrbrr") the black-flash hit; no sound: the old punch
+	if not FilmAudio.sfx("blackFlash", { volume = 1.2 }) then
+		sfx("punch", 1.6, 0.6)
+	end
 	sfx("bigHit", 1.2, 0.75)
 	sfx("boom", 1.2, 0.7)
 	Film.shake(1, 0.9)

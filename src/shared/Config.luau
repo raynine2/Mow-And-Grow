@@ -1594,6 +1594,7 @@ Config.SOUNDS = {
 	cut = { id = "rbxassetid://91464542260761", volume = 0.31, gap = 0.06 }, -- ForgeGUI 29 Oct. old: rbxassetid://12222200, volume 0.35, pitch 1.1 (swoosh.wav)
 	chip = { id = "rbxassetid://82710812255352", volume = 0.43, gap = 0.08 }, -- ForgeGUI 29 Oct. old: rbxassetid://12222140, volume 0.2, pitch 1.2 (snap.wav)
 	reveal = { id = "rbxassetid://85104851091777", volume = 0.86 },
+	sprintWhoosh = { id = "rbxassetid://79833203443837", volume = 0.35, gap = 0.4 }, -- (6 Nov, owner's pick, Creator Store by Axellatic) as you start to sprint
 	-- (4 Nov, hatch v3) the hatch garden's suspense loop and the Legendary+ charge riser (APM Music, licensed for
 	-- every Roblox experience: "Turn Of Night (Instrumental 15 Sec)" and "Savage Riser"). Swap the ids to retune.
 	hatchMusic = { id = "rbxassetid://73114345407187", volume = 0.35 },
@@ -1785,6 +1786,10 @@ Config.FILM_SOUNDS = {
 	jjkDomain = { id = "rbxassetid://76406626570316", volume = 0.6, len = 4.5 }, -- the domain clap and swell
 	jjkSuck = { id = "rbxassetid://134110276533510", volume = 0.5, len = 2 }, -- reverse suck-in
 	jjkRise = { id = "rbxassetid://102917444515997", volume = 0.5, len = 3.2 }, -- dark riser
+	hardPunch = { id = "rbxassetid://96359585058783", volume = 0.75, len = 1.9 }, -- (6 Nov, owner's pick, Creator Store by Axellatic: "victim impact punch hit") every punch in the films
+	speedWhoosh = { id = "rbxassetid://79833203443837", volume = 0.6, len = 1.3 }, -- (6 Nov, owner's pick, Axellatic: "speed woosh ... dash") the films' dashes and whooshes
+	dismantle = { id = "rbxassetid://110594287267319", volume = 0.8, len = 3.1 }, -- (6 Nov, owner's pick, Axellatic: "dismantle sword shing slash ... explode") the ONE SNIP in the opening and the finale
+	blackFlash = { id = "rbxassetid://117553496202379", volume = 0.8, len = 2.8 }, -- (6 Nov, owner's pick from the Creator Store, in his inventory: "Black Flash jjk hit sfx" by Axellatic) the player's punch in the opening
 	jjkImpact = { id = "rbxassetid://106890226603645", volume = 0.55, len = 1.5 }, -- body hit
 }
 
@@ -1805,9 +1810,9 @@ Config.FILMS_V2 = {
 	-- (6 Nov) the films' effects swapped for the ForgeGUI anime set (only in the opening and the finale; the game keeps
 	-- its own); a key whose new id is still empty plays the old sound
 	sfx = {
-		punch = "jjkPunch", slam = "jjkSlam", boom = "jjkBoom", bigHit = "jjkBigHit", titleHit = "jjkTitle",
+		punch = "hardPunch", slam = "jjkSlam", boom = "jjkBoom", bigHit = "jjkBigHit", titleHit = "jjkTitle",
 		bladeSlash = "jjkSlash", slice = "jjkSlash", bladeDraw = "jjkDraw", bladeClang = "jjkClang", bladeHit = "jjkClang",
-		whoosh = "jjkWhoosh", swingBlade = "jjkWhoosh", lunge = "jjkWhoosh", zapCharge = "jjkCharge", zapStrike = "jjkStrike",
+		whoosh = "speedWhoosh", swingBlade = "jjkWhoosh", lunge = "speedWhoosh", zapCharge = "jjkCharge", zapStrike = "jjkStrike",
 		swell = "jjkDomain", demonSwell = "jjkDomain", suck = "jjkSuck", riseDark = "jjkRise", impact = "jjkImpact", hit = "jjkImpact",
 	},
 	on = true,

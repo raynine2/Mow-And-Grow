@@ -53,7 +53,8 @@ local drifters: { { part: BasePart, img: ImageLabel?, vel: Vector3, spin: Vector
 local nebulae: { GuiObject } = {}
 local savedLighting: { [Instance]: { [string]: any } } = {}
 -- the abduction scene's moving bits
-local UFO_AT = Vector3.new(0, 13.2, 6) -- the saucer's centre (above and a little behind the avatar)
+local UFO_AT = Vector3.new(0, 9.6, 14) -- the saucer's centre: far behind and above the avatar (6 Nov: right over its head the
+-- CLASSES title covered it; this far back it shows between the title and the head, and the beam comes down toward us)
 local ufoParts: { { part: BasePart, off: CFrame } } = {} -- every saucer part and where it sits on the saucer
 local ufoLights: { BasePart } = {} -- the rim bulbs (they chase round)
 local beams: { Beam } = {}
@@ -431,7 +432,7 @@ end
 -- (6 Nov, owner: "the ufo hasn't changed in classes screen"): server/Models rebuilds ReplicatedStorage.MowALawnModels
 -- when a server starts, so the saucer kept there was gone in every real game and the blocky one below showed. It is
 -- kept in ReplicatedStorage.ClassRoomModels now (that folder is only the class room's).
-local UFO_WIDTH = 10
+local UFO_WIDTH = 14
 local function modelSaucer(m: Instance): boolean
 	local tpl: Instance? = nil
 	for _, name in { "ClassRoomModels", "MowALawnModels" } do
@@ -515,7 +516,7 @@ local function saucer(m: Instance)
 	local spot = Instance.new("SpotLight")
 	spot.Face = Enum.NormalId.Bottom
 	spot.Angle = 50
-	spot.Range = 22
+	spot.Range = 30
 	spot.Brightness = 0.8 -- (owner, 28 Oct: 1.6 blew the avatar's skin out white)
 	spot.Color = BEAM
 	spot.Shadows = false

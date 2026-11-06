@@ -13,7 +13,7 @@ local Skin = {}
 
 -- Source size, the 9-slice centre and the flat face inside the frame (left, top, right, bottom insets), all in the
 -- PNG's own pixels. Measured on the exported art (tools: scratchpad measure script, 22 Oct 2026).
-type FrameDef = { w: number, h: number, slice: Rect, face: { number }, fallback: Color3, radius: number, rect: Vector2?, tile: boolean? }
+type FrameDef = { w: number, h: number, slice: Rect, face: { number }, fallback: Color3, radius: number, rect: Vector2?, tile: boolean?, fill: { inset: number, radius: number }? }
 Skin.FRAMES = {
 	ui_plate = { w = 1024, h = 307, slice = Rect.new(160, 70, 864, 237), face = { 63, 64, 64, 59 }, fallback = Color3.fromRGB(240, 170, 60), radius = 999 },
 	ui_bar = { w = 1024, h = 165, slice = Rect.new(90, 60, 934, 105), face = { 47, 52, 49, 44 }, fallback = Color3.fromRGB(60, 34, 14), radius = 999 },
@@ -56,8 +56,9 @@ Skin.FRAMES = {
 	-- trimmed, assets/icons/gg_*.png): a night sky with a nebula inside a rim of grass and clovers. The 9-slice centres
 	-- keep the corner clovers, stars and ribbon tails whole; the faces are the flat insides.
 	-- (7 Nov, owner: "look how the ui is streched and i dont like it": in a tall window the 9-slice pulled the side
-	-- rims' clovers out to 2.5x their height) tile = its edges are repeated, not stretched (Skin.frame)
-	gg_panel = { w = 1024, h = 554, slice = Rect.new(140, 140, 884, 414), face = { 62, 62, 62, 60 }, fallback = Color3.fromRGB(40, 24, 90), radius = 24, tile = true },
+	-- rims' clovers out to 2.5x their height) tile = its edges are repeated, not stretched (Skin.frame); fill = the night sky
+	-- inside, from `inset` px in with corners of `radius`, measured on the PNG so it covers no part of the rim
+	gg_panel = { w = 1024, h = 554, slice = Rect.new(140, 140, 884, 414), face = { 62, 62, 62, 60 }, fallback = Color3.fromRGB(40, 24, 90), radius = 24, tile = true, fill = { inset = 63, radius = 66 } },
 	gg_card = { w = 494, h = 512, slice = Rect.new(100, 110, 394, 402), face = { 36, 36, 36, 36 }, fallback = Color3.fromRGB(58, 34, 112), radius = 18 },
 	gg_button = { w = 768, h = 239, slice = Rect.new(120, 100, 648, 140), face = { 28, 16, 28, 40 }, fallback = Color3.fromRGB(240, 240, 240), radius = 12 },
 	gg_plate = { w = 768, h = 200, slice = Rect.new(100, 90, 600, 120), face = { 30, 30, 130, 30 }, fallback = Color3.fromRGB(36, 22, 74), radius = 999 },
@@ -103,7 +104,8 @@ Skin.themed = themed
 
 -- (7 Nov) A 9-slice that repeats its edges instead of stretching them: four corners drawn whole, the four rims
 -- tiled a whole number of times along their length (each copy squeezed or grown a little to fit exactly, never more
--- than a third), the middle stretched. Built of ImageLabels cropped from the one picture; re-tiles when resized.
+-- than a third), the middle stretched (or, with def.fill, the inside drawn whole). Built of ImageLabels cropped from
+-- the one picture; re-tiles when resized.
 local function tiledFrame(id: string, def: any, k: number, tint: Color3?): ImageLabel
 	local holder = Instance.new("ImageLabel")
 	holder.BackgroundTransparency = 1
@@ -130,10 +132,11 @@ local function tiledFrame(id: string, def: any, k: number, tint: Color3?): Image
 	end
 	-- the middle first, under the rims: exactly the slice's centre, from where the rims end (seen in Studio: cut from
 	-- halfway into the rims, it was scaled differently from them and a ghost of their inner edge showed inside). It
-	-- reaches O px under the rims and they reach 1 px under the corners: seen in Studio, edges that only met at a
+	-- reaches 3 px under the rims and they reach 1 px under the corners: seen in Studio, edges that only met at a
 	-- fractional pixel left hairline gaps on the right and bottom seams, showing whatever was behind the window
-	local O = 3
-	piece("Middle", Vector2.new(L, T), Vector2.new(midW, midH), UDim2.fromOffset(L * k - O, T * k - O), UDim2.new(1, -(L + R) * k + 2 * O, 1, -(T + B) * k + 2 * O))
+	if not def.fill then
+		piece("Middle", Vector2.new(L, T), Vector2.new(midW, midH), UDim2.fromOffset(L * k - 3, T * k - 3), UDim2.new(1, -(L + R) * k + 6, 1, -(T + B) * k + 6))
+	end
 	local top = piece("Top", Vector2.new(L, 0), Vector2.new(midW, T), UDim2.fromOffset(L * k - 1, 0), UDim2.new(1, -(L + R) * k + 2, 0, T * k))
 	local bottom = piece("Bottom", Vector2.new(L, sl.Max.Y), Vector2.new(midW, B), UDim2.new(0, L * k - 1, 1, -B * k), UDim2.new(1, -(L + R) * k + 2, 0, B * k))
 	local left = piece("Left", Vector2.new(0, T), Vector2.new(L, midH), UDim2.fromOffset(0, T * k - 1), UDim2.new(0, L * k, 1, -(T + B) * k + 2))
@@ -142,6 +145,17 @@ local function tiledFrame(id: string, def: any, k: number, tint: Color3?): Image
 	piece("TR", Vector2.new(sl.Max.X, 0), Vector2.new(R, T), UDim2.new(1, -R * k, 0, 0), UDim2.fromOffset(R * k, T * k))
 	piece("BL", Vector2.new(0, sl.Max.Y), Vector2.new(L, B), UDim2.new(0, 0, 1, -B * k), UDim2.fromOffset(L * k, B * k))
 	piece("BR", Vector2.new(sl.Max.X, sl.Max.Y), Vector2.new(R, B), UDim2.new(1, -R * k, 1, -B * k), UDim2.fromOffset(R * k, B * k))
+	-- the inside, over the rims' inner edges: the slice's centre cropped to the window's shape instead of stretched (seen
+	-- in Studio: in a tall window a stretched middle smeared the nebula into streaks, and one cropped only in the middle
+	-- left a hard edge where it met the rims' own strip of sky)
+	local f = def.fill
+	if f then
+		local inside = piece("Inside", Vector2.new(L, T), Vector2.new(midW, midH), UDim2.fromOffset(f.inset * k, f.inset * k), UDim2.new(1, -2 * f.inset * k, 1, -2 * f.inset * k))
+		inside.ScaleType = Enum.ScaleType.Crop
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, f.radius * k)
+		corner.Parent = inside
+	end
 	-- each rim: how many whole copies of its strip fit along it at its own thickness
 	local function tile(im: ImageLabel, along: string, native: number, thick: number)
 		im.ScaleType = Enum.ScaleType.Tile

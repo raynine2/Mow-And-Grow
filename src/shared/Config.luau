@@ -1772,10 +1772,8 @@ Config.FILM_SOUNDS = {
 	dmcFin2 = { id = "rbxassetid://113947469355000", volume = 0.6, len = 14 }, -- finale M2: hit at 1.5 s (the catch), drop at 6 s (the snip)
 	dmcFin3 = { id = "rbxassetid://131843848861530", volume = 0.6, len = 8 }, -- finale M3: the last hit at 0.5 s (the card), ringing out
 	jjkPunch = { id = "rbxassetid://127255015262157", volume = 0.7, len = 2.5 }, -- super-punch crack and warp
-	jjkSlam = { id = "", -- (6 Nov: rbxassetid://99604145641381 does not load in this place; empty = the old sound)
-		volume = 0.6, len = 2.5 }, -- giant fist into the ground
-	jjkBoom = { id = "", -- (6 Nov: rbxassetid://75441164335855 does not load in this place; empty = the old sound)
-		volume = 0.6, len = 3 }, -- energy explosion
+	jjkSlam = { id = "rbxassetid://84561704401113", volume = 0.6, len = 2.5 }, -- giant fist into the ground (6 Nov: remixed from jjkBigHit + jjkImpact on the owner's account; the first id was a teammate's upload that can't load here)
+	jjkBoom = { id = "rbxassetid://96251487875296", volume = 0.6, len = 3 }, -- energy explosion (6 Nov: remixed from jjkStrike + jjkBigHit + jjkDomain, same reason)
 	jjkBigHit = { id = "rbxassetid://120002235136878", volume = 0.6, len = 3 }, -- trailer hit
 	jjkTitle = { id = "rbxassetid://76143747558045", volume = 0.65, len = 3.5 }, -- title slam: taiko, guitar stab, choir
 	jjkSlash = { id = "rbxassetid://101427441632286", volume = 0.55, len = 1.3 }, -- three invisible cuts

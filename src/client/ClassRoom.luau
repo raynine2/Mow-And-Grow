@@ -61,11 +61,11 @@ local drifters: { { part: BasePart, img: ImageLabel?, vel: Vector3, spin: Vector
 local nebulae: { GuiObject } = {}
 local savedLighting: { [Instance]: { [string]: any } } = {}
 -- the abduction scene's moving bits
-local UFO_AT = Vector3.new(6.5, 8.4, 4.5) -- the saucer: up to the left of the avatar, in the free space between the
--- VS panel and the title (6 Nov, owner: "u can't really see the ufo ... why is everything in the middle": straight
+local UFO_AT = Vector3.new(8.2, 4.9, 3) -- the saucer: left of the avatar, in the free space under the VS panel (first
+-- tried up beside the title: the VS panel and the title covered it there) (6 Nov, owner: "u can't really see the ufo ... why is everything in the middle": straight
 -- behind, the title and the avatar covered it); it leans toward the avatar and its beam slants down onto it
-local UFO_TILT = CFrame.Angles(0, 0, math.rad(-16))
-local VORTEX_AT = Vector3.new(48, 28, 130) -- far behind the saucer (on screen just behind it): its halo
+local UFO_TILT = CFrame.Angles(math.rad(-14), 0, math.rad(-24)) -- leaning toward the avatar, its top a little to us
+local VORTEX_AT = Vector3.new(66, 2, 130) -- far behind the saucer (on screen just behind it): its halo
 local ufoParts: { { part: BasePart, off: CFrame } } = {} -- every saucer part and where it sits on the saucer
 local ufoLights: { BasePart } = {} -- the rim bulbs (they chase round)
 local beams: { Beam } = {}
@@ -447,7 +447,7 @@ end
 -- chasing rim lights, a spinning ring of lights under the belly, a gold collar and a stepped glass dome with its
 -- little alien. Neon only for lights, no shadows.
 local UFO_CELL = 0.4
-local UFO_SCALE = 0.7 -- (small enough to sit beside the title, not under it)
+local UFO_SCALE = 0.62 -- (small enough to sit beside the title, not under it)
 local spinRing: { { part: BasePart, a: number, r: number, y: number } } = {}
 local function saucer(m: Instance)
 	local S = UFO_SCALE
@@ -996,7 +996,7 @@ local arriveT = -10
 local landed = true
 local pickColor: Color3? = nil
 local pickT = -10
-local SWOOP_FROM = Vector3.new(40, 14, 60)
+local SWOOP_FROM = Vector3.new(36, 10, 50)
 
 local function shockwave(color: Color3, big: boolean)
 	local m = room

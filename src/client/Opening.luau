@@ -450,7 +450,7 @@ local SOUNDS = {
 -- glitch jumps of its own), its hide lifted toward violet, and its whole silhouette outlined in pink
 -- (6 Nov, review: "an unreadable purple voxel blob ... the demon, its glow and the sky have the same value") near-black
 -- now, its trim dimmed so only the eyes, core, grin and throat burn pink, and a cold moonlit rim round its silhouette
-local DEMON_LOOK = { yieldEvery = 400, calm = true, lift = 0.1, dim = 0.62, outline = Color3.fromRGB(150, 176, 255), outlineAlpha = 0.25, fillAlpha = 1 }
+local DEMON_LOOK = { yieldEvery = 400, calm = true, lift = 0, shade = 0.55, dim = 0.7, outline = Color3.fromRGB(150, 176, 255), outlineAlpha = 0.2, fillAlpha = 1 }
 
 -- Build everything (yields; a few seconds at most). Returns false if it couldn't.
 function Opening.prepare(): boolean

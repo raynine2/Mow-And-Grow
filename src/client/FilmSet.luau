@@ -384,7 +384,7 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 	end
 	-- (in a plane 640 north of the set, facing it; x across, y up)
 	local skyPlane = Vector3.new(0, 0, -640)
-	for i, c in { { -60, 380, 0.3, -1 }, { 40, 420, -0.2, -1 }, { 170, 360, 0.8, -0.6 }, { -200, 340, -0.9, -0.5 } } do
+	for i, c in { { -60, 380, 0.3, -1 }, { 170, 360, 0.8, -0.6 } } do
 		-- (6 Nov, review: "a nest of ~40 thick neon tubes") thinner, fewer branches: a tear, not a tangle
 		crack(Vector3.new(c[1], c[2], 0), Vector3.new(c[3], c[4], 0), 300 + i * 40, 3.2, 1)
 	end
@@ -430,7 +430,7 @@ function FilmSet.meadow(at: CFrame, opts: MeadowOpts?): any
 			table.insert(pulses, { at = now, from = math.random(1, n), len = math.random(4, 9) })
 		end
 		if now >= nextBolt and not light then
-			nextBolt = now + 0.6 + math.random() * 1.0
+			nextBolt = now + 1.4 + math.random() * 1.6
 			local c = cracks[math.random(1, n)]
 			local p = c.core.Position
 			local cf = c.core.CFrame

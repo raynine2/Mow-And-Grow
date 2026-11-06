@@ -130,6 +130,7 @@ export type Options = {
 	-- (the untagged neon: rims, runes, cracks, the cyan) dimmed this far toward its dark hide (0..1), so only its eyes,
 	-- core, grin and throat burn; and the outline's own see-through-ness and fill
 	dim: number?,
+	shade: number?, -- its hide (the plain colours) darkened this far toward obsidian (0..1)
 	outlineAlpha: number?,
 	fillAlpha: number?,
 }
@@ -158,6 +159,7 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 	local calm = opts ~= nil and opts.calm == true
 	local liftBy = if opts and opts.lift then math.clamp(opts.lift, 0, 1) else 0
 	local dimBy = if opts and opts.dim then math.clamp(opts.dim, 0, 1) else 0
+	local shadeBy = if opts and opts.shade then math.clamp(opts.shade, 0, 1) else 0
 	local groups = level(if lite then "LITE" else "FULL")
 	local model = Instance.new("Model")
 	model.Name = "GlitchDemon"
@@ -212,8 +214,15 @@ function Demon.new(base: CFrame, scale: number, parent: Instance?, opts: Options
 			if liftBy > 0 and not neon then
 				colour = colour:Lerp(LIT_VIOLET, liftBy)
 			end
+			if shadeBy > 0 and not neon then
+				colour = colour:Lerp(OBSIDIAN, shadeBy)
+			end
 			if dimBy > 0 and neon and tag == nil then
 				colour = colour:Lerp(OBSIDIAN, dimBy)
+			end
+			-- (its grin and throat glowed as one huge magenta mouth that out-shone its eyes: they smoulder now)
+			if dimBy > 0 and neon and (tag == "grin" or tag == "throat") then
+				colour = colour:Lerp(OBSIDIAN, dimBy * 0.55)
 			end
 			local p = newPart(model, b.size * scale, colour, neon, b.ghost)
 			if root then

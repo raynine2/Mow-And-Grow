@@ -311,8 +311,9 @@ function CelFx.dust(at: Vector3, opts: any?)
 		local a = (i / count) * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
 		local dir = Vector3.new(math.cos(a), 0, math.sin(a))
 		local s = rng:NextNumber(2, 3.6) * size
-		local p = part(Vector3.one * s, CFrame.new(at), if i % 3 == 0 then shade else color, Enum.Material.SmoothPlastic, 0)
+		local p = part(Vector3.one * s, CFrame.new(at), if i % 3 == 0 then shade else color, Enum.Material.SmoothPlastic, 0.35)
 		p.Shape = Enum.PartType.Ball
+		p.CastShadow = false
 		table.insert(parts, p)
 		table.insert(puffs, { p = p, dir = dir, s = s, out = radius * rng:NextNumber(0.7, 1.2), rise = rng:NextNumber(0.5, 2.2) * size })
 	end
@@ -321,9 +322,10 @@ function CelFx.dust(at: Vector3, opts: any?)
 		local e = outExpo(math.min(1, k * 2.2))
 		for _, f in puffs do
 			local grow = f.s * (0.35 + 0.9 * outQuad(math.min(1, k * 1.8))) * (1 - 0.4 * k)
-			f.p.Size = Vector3.one * grow
-			f.p.CFrame = CFrame.new(at + f.dir * f.out * e + UP * (grow * 0.35 + f.rise * k))
-			f.p.Transparency = math.clamp((k - 0.35) / 0.65, 0, 1)
+			-- (6 Nov, seen in Studio: round puffs read as balloons) low, flattened rolls of dust, see-through
+			f.p.Size = Vector3.new(grow * 1.4, grow * 0.55, grow * 1.4)
+			f.p.CFrame = CFrame.new(at + f.dir * f.out * e + UP * (grow * 0.2 + f.rise * k * 0.5))
+			f.p.Transparency = 0.35 + 0.65 * math.clamp((k - 0.2) / 0.8, 0, 1)
 		end
 		return k < 1
 	end, parts)
@@ -456,7 +458,9 @@ function CelFx.impact(at: Vector3, opts: any?)
 		CelFx.ring(g + UP * 0.1, { color = o.color, rim = o.rim, size = size, radius = 16 })
 		CelFx.cracks(g + UP * 0.05, { color = o.crackColor or o.color, size = size })
 		CelFx.debris(g, { size = size, colors = o.debrisColors })
-		CelFx.dust(g, { size = size, color = o.dustColor })
+		if o.dust then
+			CelFx.dust(g, { size = size, color = o.dustColor })
+		end
 	else
 		CelFx.ring(at, { color = o.color, rim = o.rim, size = size * 0.7, radius = 10, normal = o.normal or (workspace.CurrentCamera and workspace.CurrentCamera.CFrame.LookVector) })
 	end

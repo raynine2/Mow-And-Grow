@@ -111,6 +111,25 @@ local function build()
 		end, { name = b[2] })
 		btn.LayoutOrder = i
 	end
+	-- (6 Nov, owner: "dev panel doesnt work ... je kan niet naar boven scrollen") the grid was centred in its scrolling
+	-- list, and the list is taller than the window, so the top four rows sat above the top edge where no scroll could
+	-- reach (INFINITE CASH .. SPAWN BOSS). Pinned to the top, a thicker bar to drag, and back at the top on every open.
+	local list = w.list :: any
+	local grid = list:FindFirstChildWhichIsA("UIGridLayout")
+	if grid then
+		grid.VerticalAlignment = Enum.VerticalAlignment.Top
+	end
+	pcall(function()
+		list.ScrollBarThickness = 14
+	end)
+	local win = list:FindFirstAncestor("DevWindow")
+	if win and win:IsA("GuiObject") then
+		win:GetPropertyChangedSignal("Visible"):Connect(function()
+			if win.Visible then
+				list.CanvasPosition = Vector2.zero
+			end
+		end)
+	end
 
 	-- (31 Oct, owner: hide the DEV button for players) The red button only in Studio tests; in a live game the owner
 	-- and Config.ADMINS open the panel with F2 or by typing /dev in the chat, so it's never on screen for anyone.

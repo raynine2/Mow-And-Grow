@@ -959,9 +959,10 @@ local function shockwave(color: Color3, big: boolean)
 		end)
 	end
 	-- a column of light up the beam
-	local col = part(m, Vector3.new(14, 3.6, 3.6), CFrame.new(0, y + 7, 0) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
-	col.Transparency = 0.35
-	TweenService:Create(col, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(14, 0.2, 0.2), Transparency = 1 }):Play()
+	-- (checked in Studio: 3.6 wide at 0.35 it washed the avatar out to pure white; thin and quick, it reads as a flash)
+	local col = part(m, Vector3.new(14, 1.6, 1.6), CFrame.new(0, y + 7, 0) * CFrame.Angles(0, 0, math.rad(90)), color, Enum.Material.Neon, Enum.PartType.Cylinder)
+	col.Transparency = 0.55
+	TweenService:Create(col, TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = Vector3.new(14, 0.1, 0.1), Transparency = 1 }):Play()
 	task.delay(0.6, function()
 		col:Destroy()
 	end)

@@ -1915,14 +1915,14 @@ local function stance(): boolean
 		em.Color = ColorSequence.new(Color3.fromRGB(255, 220, 120), Color3.fromRGB(255, 90, 200))
 		em.LightEmission = 1
 		em.LightInfluence = 0
-		em.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.4, 1.1), NumberSequenceKeypoint.new(1, 0) })
+		em.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.2), NumberSequenceKeypoint.new(0.4, 2.6), NumberSequenceKeypoint.new(1, 0) }) -- (seen from 150 up: smaller ones were specks)
 		em.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.15), NumberSequenceKeypoint.new(1, 1) })
 		em.Lifetime = NumberRange.new(0.8, 1.5)
 		em.Speed = NumberRange.new(5, 12)
 		em.EmissionDirection = Enum.NormalId.Top
 		em.SpreadAngle = Vector2.new(8, 8)
 		em.Acceleration = Vector3.new(0, 4, 0)
-		em.Rate = 180
+		em.Rate = 240
 		em.Parent = plate
 	end)
 	if not shot(T.glint, function(k)

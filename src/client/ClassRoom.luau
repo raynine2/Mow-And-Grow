@@ -555,6 +555,10 @@ local function lightBeam(m: Instance)
 			b.TextureMode = Enum.TextureMode.Wrap
 			b.TextureLength = 6
 			b.TextureSpeed = speed or 0.4
+		else
+			-- (checked in Studio: a beam with no texture has hard straight sides, a flat sheet; the glow softens them)
+			b.Texture = Tex.Glow
+			b.TextureMode = Enum.TextureMode.Stretch
 		end
 		b.Parent = top
 		table.insert(beams, b)

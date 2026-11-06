@@ -2365,29 +2365,49 @@ local function punch(): boolean
 	tracks.slam2 = nil
 	H:pose("punch", 0.05, "snap")
 	-- (6 Nov, owner: "use this audio when the player helps brrbrr") the black-flash hit; no sound: the old punch
-	if not FilmAudio.sfx("blackFlash", { volume = 2 }) then
+	if not FilmAudio.sfx("blackFlash", { volume = 2.5 }) then
 		sfx("punch", 1.6, 0.6)
 	end
-	sfx("bigHit", 0.6, 0.75) -- (6 Nov: halved so the black flash is heard: "i dont hear it")
-	sfx("boom", 0.5, 0.7)
+	-- (6 Nov, owner: "i dont like the impact frames and the fx when the player helps brrbrr and i still dont hear the
+	-- black flash") a black flash instead: the music drops out so the hit stands alone, a beat of hit-stop, the picture
+	-- dips to dark red and red-black sparks crackle off the fist. No strobe, no gold rings, no boom over it.
+	FilmAudio.duck(1, 0.03)
+	task.delay(1.1, function()
+		FilmAudio.duck(0, 0.5)
+	end)
+	sfx("bigHit", 0.3, 0.6)
 	Film.shake(1, 0.9)
+	Film.punch(6)
+	Film.freeze(0.1)
 	local fist = H:grip("Right").Position
-	fx("RingBurst", fist, { scale = 2.4, color = GOLD })
-	fx("Shock", fist, { scale = 2.6, color = GOLD })
-	-- (the hit bursts as the strobe's impact frames end: under them it was never seen)
-	after(T.punch + 0.27, function()
-		AnimeFx.hit(fist, GOLD, 12, true)
+	AnimeFx.cover(Color3.fromRGB(30, 0, 6), 0.3, 0, "blackFlash")
+	task.delay(0.14, function()
+		AnimeFx.cover(Color3.fromRGB(30, 0, 6), 1, 0.4, "blackFlash")
 	end)
-	task.defer(function()
-		local subjects = { H.model, R.model, SH.model }
-		for _, p in armParts(D2, "R") do
-			table.insert(subjects, p)
+	do
+		local ok, L = pcall(function()
+			return require(ReplicatedStorage:WaitForChild("VFXLib", 2):WaitForChild("Lightning", 2)) :: any
+		end)
+		if ok and L then
+			local rng = Random.new()
+			for wave = 0, 4 do
+				task.delay(wave * 0.08, function()
+					for _ = 1, 4 do
+						local dir = rng:NextUnitVector()
+						pcall(L.Strike, fist, fist + dir * rng:NextNumber(4, 10), {
+							Color = Color3.fromRGB(255, 24, 40),
+							CoreColor = Color3.fromRGB(70, 0, 10),
+							Width = 0.35 - wave * 0.05,
+							Duration = 0.2,
+							Flickers = 3,
+							Branches = 1,
+							Jag = 0.45,
+						})
+					end
+				end)
+			end
 		end
-		for _, p in armParts(D2, "L") do
-			table.insert(subjects, p)
-		end
-		AnimeFx.impact(subjects, "strobe", { states = { "gold", "ink", "neg", "gold", "ink" }, per = 0.055, at = fist })
-	end)
+	end
 	-- the fists burst
 	P.armR = { pitch = -50, yaw = 14 }
 	P.armL = { pitch = -50, yaw = 14 }

@@ -13,6 +13,19 @@
 --   pup:update(dt)                           place everything (every frame, with the film's dt)
 --   pup:part(name) / pup:grip(side) -> CFrame  a body part, a hand's grip point (for props)
 --   pup:show(on) / pup:ghost(color, alpha, life) / pup:destroy()
+--   pup:clip(anim, opts?) -> length          (6 Nov) play a real keyframed animation (a KeyframeSequence: one in
+--                                            ReplicatedStorage.FilmAnims / MowALawnAnims by name, or the instance, e.g.
+--                                            saved from the Eclipse / Moon animator) on top of the pose, its curves and
+--                                            easing sampled every frame. opts: speed, weight, fadeIn, fadeOut, from, to
+--                                            (seconds in it), loop, mirror (left <-> right), hold (stay on its last frame)
+--   pup:clipStop(fade?) / pup:clipTime() -> seconds into it, or nil
+--   pup:seq(steps)                           (6 Nov) a run of poses on the film's clock, each { pose, time, ease, hold,
+--                                            fn } (fn runs as that pose starts): anticipation -> strike -> follow-through
+--                                            -> settle without the film having to time each one. pup:seq(nil) stops it.
+--   pup:strike(windup, hit, settle, opts?)   the anime hit in one call: a wind-up (opts.wind s), a held beat, the hit
+--                                            snapped in (opts.snap s; opts.onHit runs on contact, smears on
+--                                            opts.limbs), a follow-through and the settle
+--   pup:smear(limbs, on, color?, width?)     motion smears (Trails) on hands / feet ("RightHand", "LeftFoot" ...)
 local TweenService = game:GetService("TweenService")
 
 local Puppet = {}
@@ -400,6 +413,9 @@ function Puppet.new(source: Model, opts: { name: string?, parent: Instance? }?):
 	self.springV = {} :: { [string]: Vector3 }
 	self.hipX, self.hipV = ZERO, ZERO
 	self.springReset = true
+	-- (6 Nov) a keyframed clip on top (pup:clip)
+	self.clipW, self.clipWTo, self.clipFade = 0, 0, 0.08
+	self.clipNow = {} :: { [string]: CFrame }
 	for _, name in ORDER do
 		self.angles[name] = ZERO
 		self.from[name] = ZERO
@@ -682,6 +698,296 @@ local function spring(x: Vector3, v: Vector3, target: Vector3, f: number, dt: nu
 	return x, v
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- (6 Nov, owner: "make the animations more fluid") keyframed clips. A KeyframeSequence's Poses are exactly a Motor6D's
+-- Transform (Part1 = Part0 * C0 * Transform * C1:Inverse()), and so is this puppet's T, so a clip from any animator
+-- plays as it was made: every pose's own easing between its keys, sampled each frame on the film's clock.
+-------------------------------------------------------------------------------------------------------------
+type ClipKey = { t: number, cf: CFrame, style: Enum.PoseEasingStyle, dir: Enum.PoseEasingDirection }
+type Clip = { tracks: { [string]: { ClipKey } }, len: number }
+local baked: { [Instance]: Clip } = {}
+local function bakeClip(kfs: KeyframeSequence): Clip
+	local c = baked[kfs]
+	if c then
+		return c
+	end
+	local tracks: { [string]: { ClipKey } } = {}
+	local len = 0
+	for _, kf in kfs:GetChildren() do
+		if kf:IsA("Keyframe") then
+			len = math.max(len, kf.Time)
+			for _, pz in kf:GetDescendants() do
+				if pz:IsA("Pose") and pz.Weight > 0 then
+					local tr = tracks[pz.Name]
+					if not tr then
+						tr = {}
+						tracks[pz.Name] = tr
+					end
+					table.insert(tr, { t = kf.Time, cf = pz.CFrame, style = pz.EasingStyle, dir = pz.EasingDirection })
+				end
+			end
+		end
+	end
+	for _, tr in tracks do
+		table.sort(tr, function(a, b)
+			return a.t < b.t
+		end)
+	end
+	c = { tracks = tracks, len = len }
+	baked[kfs] = c
+	return c
+end
+local function clipEase(k: number, style: Enum.PoseEasingStyle, dir: Enum.PoseEasingDirection): number
+	if style == Enum.PoseEasingStyle.Constant then
+		return 0
+	elseif style == Enum.PoseEasingStyle.Linear then
+		return k
+	end
+	local es = Enum.EasingStyle.Cubic
+	if style == Enum.PoseEasingStyle.Elastic then
+		es = Enum.EasingStyle.Elastic
+	elseif style == Enum.PoseEasingStyle.Bounce then
+		es = Enum.EasingStyle.Bounce
+	end
+	local ed = if dir == Enum.PoseEasingDirection.In then Enum.EasingDirection.In
+		elseif dir == Enum.PoseEasingDirection.Out then Enum.EasingDirection.Out
+		else Enum.EasingDirection.InOut
+	-- (the old Cubic ran its In / Out the wrong way round; CubicV2 is the fixed one)
+	if style == Enum.PoseEasingStyle.Cubic and ed ~= Enum.EasingDirection.InOut then
+		ed = if ed == Enum.EasingDirection.In then Enum.EasingDirection.Out else Enum.EasingDirection.In
+	end
+	return TweenService:GetValue(k, es, ed)
+end
+local function sampleTrack(tr: { ClipKey }, t: number): CFrame
+	local n = #tr
+	if t <= tr[1].t or n == 1 then
+		return tr[1].cf
+	end
+	if t >= tr[n].t then
+		return tr[n].cf
+	end
+	local lo, hi = 1, n
+	while hi - lo > 1 do
+		local mid = (lo + hi) // 2
+		if tr[mid].t <= t then
+			lo = mid
+		else
+			hi = mid
+		end
+	end
+	local a, b = tr[lo], tr[hi]
+	local k = (t - a.t) / math.max(b.t - a.t, 1e-4)
+	return a.cf:Lerp(b.cf, clipEase(k, a.style, a.dir))
+end
+local MIRROR = CFrame.new(0, 0, 0, -1, 0, 0, 0, 1, 0, 0, 0, 1)
+local function mirrorName(n: string): string
+	if string.sub(n, 1, 4) == "Left" then
+		return "Right" .. string.sub(n, 5)
+	elseif string.sub(n, 1, 5) == "Right" then
+		return "Left" .. string.sub(n, 6)
+	end
+	return n
+end
+local function findClip(anim: any): KeyframeSequence?
+	if typeof(anim) == "Instance" and anim:IsA("KeyframeSequence") then
+		return anim
+	end
+	if type(anim) ~= "string" then
+		return nil
+	end
+	local RS = game:GetService("ReplicatedStorage")
+	for _, folder in { "FilmAnims", "MowALawnAnims" } do
+		local f = RS:FindFirstChild(folder)
+		local k = f and f:FindFirstChild(anim, true)
+		if k and k:IsA("KeyframeSequence") then
+			return k
+		end
+	end
+	return nil
+end
+Puppet.findClip = findClip
+
+-- Play a keyframed clip over the pose (see the header). Returns its length in seconds (at speed 1), 0 if not found.
+function Puppet.clip(self: any, anim: any, opts: any?): number
+	local kfs = findClip(anim)
+	if not kfs then
+		warn("[Puppet] no clip " .. tostring(anim))
+		return 0
+	end
+	local o = opts or {}
+	local c = bakeClip(kfs)
+	self.clipData = c
+	self.clipT = o.from or 0
+	self.clipFrom = o.from or 0
+	self.clipTo = math.min(o.to or c.len, c.len)
+	self.clipSpeed = o.speed or 1
+	self.clipLoop = o.loop == true
+	self.clipHold = o.hold == true
+	self.clipMirror = o.mirror == true
+	self.clipFade = o.fadeIn or 0.08
+	self.clipFadeOut = o.fadeOut or 0.12
+	self.clipWTo = o.weight or 1
+	if (o.fadeIn or 0.08) <= 0 then
+		self.clipW = self.clipWTo
+	end
+	return self.clipTo - self.clipFrom
+end
+function Puppet.clipStop(self: any, fade: number?)
+	self.clipWTo = 0
+	self.clipFade = fade or 0.12
+	if (fade or 0.12) <= 0 then
+		self.clipW = 0
+		self.clipData = nil
+	end
+end
+function Puppet.clipTime(self: any): number?
+	return if self.clipData then self.clipT else nil
+end
+-- advance the clip and fill clipNow (joint child name -> Transform) for this frame
+local function stepClip(self: any, dt: number)
+	local c = self.clipData
+	if not c then
+		self.clipW = 0
+		return
+	end
+	local fade = math.max(self.clipFade, 1e-3)
+	local goal = self.clipWTo
+	if self.clipW < goal then
+		self.clipW = math.min(goal, self.clipW + dt / fade)
+	elseif self.clipW > goal then
+		self.clipW = math.max(goal, self.clipW - dt / fade)
+	end
+	self.clipT += dt * self.clipSpeed
+	if self.clipT >= self.clipTo then
+		if self.clipLoop then
+			self.clipT = self.clipFrom + (self.clipT - self.clipTo) % math.max(self.clipTo - self.clipFrom, 1e-3)
+		elseif self.clipHold then
+			self.clipT = self.clipTo
+		elseif self.clipWTo > 0 then
+			-- (the end: fade back to the pose)
+			self.clipT = self.clipTo
+			self.clipWTo = 0
+			self.clipFade = self.clipFadeOut
+		end
+	end
+	if self.clipW <= 0 and self.clipWTo <= 0 then
+		self.clipData = nil
+		return
+	end
+	local now = self.clipNow
+	table.clear(now)
+	for name, tr in c.tracks do
+		local cf = sampleTrack(tr, self.clipT)
+		if self.clipMirror then
+			now[mirrorName(name)] = MIRROR * cf * MIRROR
+		else
+			now[name] = cf
+		end
+	end
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- (6 Nov) choreography: a queue of poses on the puppet's own (film) clock, and motion smears
+-------------------------------------------------------------------------------------------------------------
+function Puppet.seq(self: any, steps: { any }?)
+	self.seqQ = if steps then table.clone(steps) else nil
+	self.seqAt = self.t
+	self.seqI = 0
+end
+local function stepSeq(self: any)
+	local q = self.seqQ
+	if not q then
+		return
+	end
+	while self.seqI < #q and self.t >= self.seqAt do
+		self.seqI += 1
+		local st = q[self.seqI]
+		if st.pose then
+			self:pose(st.pose, st.time or 0.15, st.ease)
+		end
+		if st.fn then
+			task.spawn(st.fn)
+		end
+		self.seqAt = self.t + (st.time or 0.15) + (st.hold or 0)
+	end
+	if self.seqI >= #q and self.t >= self.seqAt then
+		self.seqQ = nil
+	end
+end
+Puppet.stepSeq = stepSeq
+
+-- The anime hit: wind-up, a held beat, the snap, follow-through, settle. opts: wind (0.22), windHold (0.08), snap
+-- (0.05), hitHold (0.1), settleTime (0.4), limbs (smears on the snap, e.g. { "RightHand" }), color, onHit, follow
+-- (a pose between the hit and the settle: the overshoot)
+function Puppet.strike(self: any, windup: any, hit: any, settle: any?, opts: any?)
+	local o = opts or {}
+	local limbs = o.limbs
+	local steps = {
+		{ pose = windup, time = o.wind or 0.22, ease = "inOut", hold = o.windHold or 0.08 },
+		{ pose = hit, time = o.snap or 0.05, ease = "snap", hold = o.hitHold or 0.1, fn = function()
+			if limbs then
+				self:smear(limbs, true, o.color)
+				task.delay(0.22, function()
+					self:smear(limbs, false)
+				end)
+			end
+			task.delay(o.snap or 0.05, function()
+				if o.onHit then
+					o.onHit()
+				end
+			end)
+		end },
+	}
+	if o.follow then
+		table.insert(steps, { pose = o.follow, time = 0.12, ease = "out", hold = 0.05 })
+	end
+	if settle then
+		table.insert(steps, { pose = settle, time = o.settleTime or 0.4, ease = "inOut" })
+	end
+	self:seq(steps)
+	return (o.wind or 0.22) + (o.windHold or 0.08) + (o.snap or 0.05)
+end
+
+-- Motion smears: a Trail from the wrist / ankle out to the hand's / foot's end, short-lived, glowing.
+function Puppet.smear(self: any, limbs: { string }, on: boolean, color: Color3?, width: number?)
+	self.smears = self.smears or {}
+	for _, name in limbs do
+		local part = self.byName[name]
+		if part then
+			local tr = self.smears[name]
+			if not tr then
+				local half = part.Size.Y * 0.5
+				local a0 = Instance.new("Attachment")
+				a0.Name = "SmearA"
+				a0.Position = Vector3.new(0, half, 0)
+				a0.Parent = part
+				local a1 = Instance.new("Attachment")
+				a1.Name = "SmearB"
+				a1.Position = Vector3.new(0, -half - (width or 0.5), 0)
+				a1.Parent = part
+				local t = Instance.new("Trail")
+				t.Attachment0 = a0
+				t.Attachment1 = a1
+				t.Lifetime = 0.14
+				t.MinLength = 0.02
+				t.FaceCamera = true
+				t.LightEmission = 0.7
+				t.LightInfluence = 0
+				t.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1) })
+				t.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0.2) })
+				t.Parent = part
+				tr = t
+				self.smears[name] = t
+			end
+			tr.Color = ColorSequence.new(color or Color3.new(1, 1, 1))
+			tr.Enabled = on
+			if on then
+				tr:Clear()
+			end
+		end
+	end
+end
+
 -- The fluid layer on (the default) or off (poses exactly as blended).
 function Puppet.fluid(self: any, on: boolean)
 	self.fluidOn = on
@@ -691,6 +997,7 @@ end
 -- Place everything for this frame; `dt` is the film's (slow motion slows the acting too).
 function Puppet.update(self: any, dt: number)
 	self.t += dt
+	stepSeq(self)
 	-- the blend between poses
 	local k = if self.blendLen <= 0 then 1 else math.clamp((self.t - self.blendT0) / self.blendLen, 0, 1)
 	local e = self.ease(k)
@@ -754,6 +1061,9 @@ function Puppet.update(self: any, dt: number)
 	local world = self.world
 	local root = self.root
 	world[self.hrp] = root
+	stepClip(self, dt)
+	local cw = self.clipW
+	local clipNow = self.clipNow
 	for _, jt in self.joints do
 		local a = final[jt.name] or ZERO
 		local x, y, z = a.X, a.Y, a.Z
@@ -775,6 +1085,12 @@ function Puppet.update(self: any, dt: number)
 		local T = CFrame.Angles(rad(x), rad(y), rad(z))
 		if jt.name == "Root" then
 			T = CFrame.new(hip) * T
+		end
+		if cw > 0 then
+			local ccf = clipNow[jt.child.Name]
+			if ccf then
+				T = if cw >= 0.999 then ccf else T:Lerp(ccf, cw)
+			end
 		end
 		world[jt.child] = world[jt.parent] * jt.c0 * T * jt.c1inv
 	end
@@ -823,7 +1139,8 @@ function Puppet.update(self: any, dt: number)
 			end
 			a.poleNow = a.poleFrom:Lerp(a.poleTo, e)
 			local space = if a.leg then root else chest
-			if a.w > 0.001 then
+			local aw = a.w * (1 - cw)
+			if aw > 0.001 then
 				local start = (world[a.sh.parent] * a.sh.c0).Position
 				local upper, lower = reach(a, start, space * (if a.leg then a.rest + a.cur else a.cur), space:VectorToWorldSpace(a.poleNow))
 				local ea = final[a.wr.name] or ZERO
@@ -835,12 +1152,12 @@ function Puppet.update(self: any, dt: number)
 					tip = lower * a.wr.c0 * CFrame.Angles(rad(ea.X), rad(ea.Y), rad(ea.Z)) * a.wr.c1inv
 				end
 				local ua, la, hp = a.sh.child, a.el.child, a.wr.child
-				if a.w >= 0.999 then
+				if aw >= 0.999 then
 					world[ua], world[la], world[hp] = upper, lower, tip
 				else
-					world[ua] = world[ua]:Lerp(upper, a.w)
-					world[la] = world[la]:Lerp(lower, a.w)
-					world[hp] = world[hp]:Lerp(tip, a.w)
+					world[ua] = world[ua]:Lerp(upper, aw)
+					world[la] = world[la]:Lerp(lower, aw)
+					world[hp] = world[hp]:Lerp(tip, aw)
 				end
 			end
 			a.now = space:PointToObjectSpace((world[a.el.child] * a.wr.c0).Position) - (if a.leg then a.rest else ZERO)

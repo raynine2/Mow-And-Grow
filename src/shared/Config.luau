@@ -1055,6 +1055,10 @@ Config.NO_AURA = {} :: { [string]: boolean } -- (4 Nov, later: the Weed Puller h
 -- (5 Nov, owner: "i dont see it in the game yet") the Sols RNG-style auras (StarterPlayerScripts.SolsAura_<Class>, built
 -- from ServerStorage.MowALawnTools.SolsAuraSrc) take over these classes: client/Auras draws nothing for them.
 Config.SOLS_AURAS = { Groundskeeper = true, LawnBaron = true, HedgeReaper = true, GrassTitan = true, UltimateGardener = true, LawnLegend = true, GoatMan = true } :: { [string]: boolean }
+-- (6 Nov, owner: "replace the classes effects with these") the design hand-off's voxel class effects
+-- (ReplicatedStorage.ClassFX, drawn by StarterPlayerScripts.ClassFXController) replace every other aura for these
+-- classes. Revert: remove a class here (or set the table to false) and its previous aura comes back untouched.
+Config.CLASS_FX_V3 = { WeedPuller = true, Gardener = true, Groundskeeper = true, LawnBaron = true, HedgeReaper = true, GrassTitan = true, UltimateGardener = true, LawnLegend = true, GoatMan = true } :: any
 -- Which class-aura set the 7 Sols classes wear: "soulshroud" = the SoulShroud VFX Pack auras (5 Nov,
 -- StarterPlayerScripts.SoulShroudAuras); "sols" = the 4-5 Nov Sols auras (SolsAura_* scripts). Flip to revert.
 Config.AURA_SET = "soulshroud" :: string
@@ -1758,6 +1762,30 @@ Config.FILM_SOUNDS = {
 	servo = { id = "rbxassetid://89253553273170", volume = 0.1, len = 12 }, -- ForgeGUI 29 Oct. old: rbxassetid://9119008083, volume 0.35, len 12.9 (Servo Short Bursts (sliced into glitches))
 	-- (5 Nov, Films v2) Roblox-licensed music (DistroKid): ForgeGUI was out of credits for an original score
 	animeCharge = { id = "rbxassetid://84037283619823", volume = 0.5, len = 186 }, -- DistroKid: Anime Charge (Cinematic Battle Music); 100 BPM, bars from 0.08 s
+	-- (6 Nov, owner: "make good SFX inspired by jujutsu kaisen and music inspired by devil may cry for intro and outro")
+	-- ForgeGUI, on the owner's account. The score: gothic metal, choir, organ, 100 BPM, in pieces cut to the films' hits
+	-- (Config.FILMS_V2.cues). The films' effects: Config.FILMS_V2.sfx swaps a film's key for one of these. An empty id
+	-- (upload still pending) keeps the old sound.
+	dmcOpen1 = { id = "rbxassetid://98091666860547", volume = 0.55, len = 36 }, -- opening, film 0..36: the big hit at 6 s (the roar)
+	dmcOpen2 = { id = "rbxassetid://92072771182024", volume = 0.6, len = 20 }, -- opening from the player's landing: the drop at 1 s (the punch)
+	dmcFin1 = { id = "rbxassetid://137782166835183", volume = 0.55, len = 32 }, -- finale M1: calm, build, the hit at 15 s (the realm)
+	dmcFin2 = { id = "rbxassetid://113947469355000", volume = 0.6, len = 14 }, -- finale M2: hit at 1.5 s (the catch), drop at 6 s (the snip)
+	dmcFin3 = { id = "rbxassetid://131843848861530", volume = 0.6, len = 8 }, -- finale M3: the last hit at 0.5 s (the card), ringing out
+	jjkPunch = { id = "rbxassetid://127255015262157", volume = 0.7, len = 2.5 }, -- super-punch crack and warp
+	jjkSlam = { id = "rbxassetid://99604145641381", volume = 0.6, len = 2.5 }, -- giant fist into the ground
+	jjkBoom = { id = "rbxassetid://75441164335855", volume = 0.6, len = 3 }, -- energy explosion
+	jjkBigHit = { id = "rbxassetid://120002235136878", volume = 0.6, len = 3 }, -- trailer hit
+	jjkTitle = { id = "rbxassetid://76143747558045", volume = 0.65, len = 3.5 }, -- title slam: taiko, guitar stab, choir
+	jjkSlash = { id = "rbxassetid://101427441632286", volume = 0.55, len = 1.3 }, -- three invisible cuts
+	jjkDraw = { id = "rbxassetid://123952534586977", volume = 0.5, len = 1.6 }, -- the shears drawn
+	jjkClang = { id = "rbxassetid://118605965740153", volume = 0.55, len = 1.6 }, -- blade off the arm
+	jjkWhoosh = { id = "rbxassetid://80890086977554", volume = 0.5, len = 1 }, -- dash whoosh
+	jjkCharge = { id = "rbxassetid://111971614500853", volume = 0.5, len = 3 }, -- energy charging
+	jjkStrike = { id = "rbxassetid://85740306309971", volume = 0.55, len = 1.5 }, -- energy strike
+	jjkDomain = { id = "rbxassetid://76406626570316", volume = 0.6, len = 4.5 }, -- the domain clap and swell
+	jjkSuck = { id = "rbxassetid://134110276533510", volume = 0.5, len = 2 }, -- reverse suck-in
+	jjkRise = { id = "rbxassetid://102917444515997", volume = 0.5, len = 3.2 }, -- dark riser
+	jjkImpact = { id = "rbxassetid://106890226603645", volume = 0.55, len = 1.5 }, -- body hit
 }
 
 -- (5 Nov, owner: the old opening and ending scrapped but kept, "maybe i would like to use this and revert") THE NEW
@@ -1765,6 +1793,23 @@ Config.FILM_SOUNDS = {
 -- punch) and client/Finale (the player's dark copy walks into Rayan's realm). on = false brings back the old ones
 -- (client/Intro, client/Ending) exactly as they were. docs/FilmsV2.md has the story and the shot list.
 Config.FILMS_V2 = {
+	-- (6 Nov) the ForgeGUI score in pieces: key = Config.FILM_SOUNDS key, at = the cue's own second the film's piece
+	-- starts from. A cue whose id is still empty falls back to `music` at its old positions.
+	cues = {
+		opening1 = { key = "dmcOpen1", at = 0 }, -- film 0 = the cue's 0 (its hit at 6 s ~ the roar at 6.18)
+		opening2 = { key = "dmcOpen2", at = 0 }, -- film 36.0 = the cue's 0 (its drop at 1 s ~ the punch at 37.08)
+		finale1 = { key = "dmcFin1", at = 0 }, -- film 0 (hit at 15 s ~ the realm at 15.08)
+		finale2 = { key = "dmcFin2", at = 0 }, -- film 42.0 (hit 1.5 s ~ catch 43.45, drop 6 s ~ snip 48.08)
+		finale3 = { key = "dmcFin3", at = 0 }, -- film 54.0 (hit 0.5 s ~ the card at 54.6)
+	},
+	-- (6 Nov) the films' effects swapped for the ForgeGUI anime set (only in the opening and the finale; the game keeps
+	-- its own); a key whose new id is still empty plays the old sound
+	sfx = {
+		punch = "jjkPunch", slam = "jjkSlam", boom = "jjkBoom", bigHit = "jjkBigHit", titleHit = "jjkTitle",
+		bladeSlash = "jjkSlash", slice = "jjkSlash", bladeDraw = "jjkDraw", bladeClang = "jjkClang", bladeHit = "jjkClang",
+		whoosh = "jjkWhoosh", swingBlade = "jjkWhoosh", lunge = "jjkWhoosh", zapCharge = "jjkCharge", zapStrike = "jjkStrike",
+		swell = "jjkDomain", demonSwell = "jjkDomain", suck = "jjkSuck", riseDark = "jjkRise", impact = "jjkImpact", hit = "jjkImpact",
+	},
 	on = true,
 	-- (5 Nov 13:54, owner: "change my model RAYAN to bbrrbrrbrbrb ... the co owner", and his name on the card)
 	owner = 9924995589, -- bbrrbrrbrbrb, the co-owner: the valley's owner in the films (server/FilmCast builds his avatar)

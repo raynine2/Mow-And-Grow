@@ -223,7 +223,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- round side buttons (right) with key badges
 -------------------------------------------------------------------------------------------------------------
-local SIDE_W, SIDE_H, SIDE_GAP = 70, 74, 6 -- (one button's cell; was 112 x 116 in one column)
+local SIDE_W, SIDE_H, SIDE_GAP = 96, 102, 6 -- (one button's cell; was 112 x 116 in one column; 70 x 74 was "way too small")
 local side = Instance.new("Frame")
 side.Name = "SideButtons"
 side.BackgroundTransparency = 1
@@ -257,17 +257,17 @@ local function roundButton(label: string, icon: string, key: string, window: str
 	body.BackgroundTransparency = 1
 	body.Size = UDim2.fromScale(1, 1)
 	body.Parent = b
-	local badge, face = Skin.frame(body, "ui_badge", Vector2.new(60, 58), { pos = UDim2.fromOffset(5, 0), stretch = false, name = "Badge" })
+	local badge, face = Skin.frame(body, "ui_badge", Vector2.new(84, 82), { pos = UDim2.fromOffset(6, 0), stretch = false, name = "Badge" })
 	local _ = badge
-	local ic = UI.icon(face, icon, 36, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	local ic = UI.icon(face, icon, 50, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 	local _ = ic
-	local tag = UI.frame({ size = UDim2.fromOffset(if #key > 1 then 30 else 20, 18), pos = UDim2.fromOffset(SIDE_W, 0), anchor = Vector2.new(1, 0), color = Color3.fromRGB(58, 34, 16), parent = body, radius = 6, outline = 2, name = "Key" })
+	local tag = UI.frame({ size = UDim2.fromOffset(if #key > 1 then 38 else 26, 23), pos = UDim2.fromOffset(SIDE_W, 0), anchor = Vector2.new(1, 0), color = Color3.fromRGB(58, 34, 16), parent = body, radius = 6, outline = 2, name = "Key" })
 	;(tag:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(28, 16, 8)
 	UI.gradient(tag, Color3.fromRGB(70, 42, 20))
 	UI.text(tag, key, UDim2.new(1, -4, 1, -4), { pos = UDim2.fromOffset(2, 2), stroke = 1 })
 	tag.Visible = not Device.touch and key ~= "" -- (keys mean nothing on a touch screen)
-	UI.text(body, label, UDim2.fromOffset(SIDE_W + 6, 16), { pos = UDim2.new(0.5, 0, 0, 57), anchor = Vector2.new(0.5, 0), stroke = 2 })
-	sideDots[window] = Skin.dot(body, UDim2.fromOffset(10, 9), 16)
+	UI.text(body, label, UDim2.fromOffset(SIDE_W + 8, 21), { pos = UDim2.new(0.5, 0, 0, 79), anchor = Vector2.new(0.5, 0), stroke = 3 })
+	sideDots[window] = Skin.dot(body, UDim2.fromOffset(13, 12), 19)
 	Skin.press(b, body)
 	b.MouseButton1Click:Connect(function()
 		Sound.play("click")
@@ -295,7 +295,7 @@ sideScale.Parent = side
 local function placeSide()
 	if Device.touch then
 		-- (5 Nov: the lobby's column has six buttons since QUESTS, so a little smaller there to stay on the screen)
-		sideScale.Scale = 0.85
+		sideScale.Scale = 0.7
 		side.AnchorPoint = Vector2.new(1, 0)
 		side.Position = UDim2.new(1, -12, 0, if sideMode == "Run" then 240 else 118)
 		return

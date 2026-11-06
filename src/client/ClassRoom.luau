@@ -309,7 +309,7 @@ end
 -------------------------------------------------------------------------------------------------------------
 local TURF_TOP = 0.4 -- the grass surface (the avatar's feet hover ~1.5 studs above it)
 local TURF_R = 6.5
-local CIRCLE = rgb(150, 255, 200) -- the crop circle's glow (alien mint)
+local CIRCLE = rgb(110, 236, 255) -- the summoning circle's glow (6 Nov, "a bit messy": cyan like the beam and the saucer's trim; the mint green was a fourth colour)
 local BEAM = rgb(150, 245, 255)
 local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- a Cylinder part stood on its end
 
@@ -577,7 +577,7 @@ local function lightBeam(m: Instance)
 	emitter(rings, {
 		Texture = Tex.RingThin, Orientation = Enum.ParticleOrientation.VelocityPerpendicular, EmissionDirection = Enum.NormalId.Top,
 		Color = ColorSequence.new(BEAM), LightEmission = 0.4, Size = seq(0, 6, 1, 1.6), Transparency = seq(0, 1, 0.15, 0.55, 1, 1),
-		Lifetime = NumberRange.new(2.4, 2.4), Speed = NumberRange.new(4.6, 4.6), SpreadAngle = Vector2.zero, Rate = Budget.Rate(1.6),
+		Lifetime = NumberRange.new(2.4, 2.4), Speed = NumberRange.new(4.6, 4.6), SpreadAngle = Vector2.zero, Rate = Budget.Rate(0.7),
 	})
 	-- sparks streaming up the beam into the saucer
 	emitter(rings, {
@@ -638,7 +638,7 @@ local function vortex(m: Instance)
 	if not okReq then
 		return
 	end
-	local ok, h = pcall(GlitchHole.new, (ORIGIN * CFrame.new(0, 24, 80)).Position, Vector3.new(0, -0.2, -1).Unit, 15, m)
+	local ok, h = pcall(GlitchHole.new, (ORIGIN * CFrame.new(0, 21, 120)).Position, Vector3.new(0, -0.15, -1).Unit, 11, m)
 	if ok then
 		hole = h
 	end
@@ -655,13 +655,11 @@ local function build()
 
 	-- planets: a big ringed violet giant upper right, a small amber one with a moon out at the far left (owner, 27
 	-- Oct: it used to sit right behind the STOCK / OWNED tabs)
-	planet(m, Vector3.new(-170, 90, 380), 150, SPRITE.giant, rgb(150, 110, 255), true, 0.03)
-	planet(m, Vector3.new(345, 55, 360), 54, SPRITE.amber, rgb(255, 160, 90), false, 0.06)
-	planet(m, Vector3.new(392, 92, 330), 14, SPRITE.moon, rgb(200, 210, 255), false, 0.1)
+	-- (6 Nov, owner: "it's a bit messy": the planets and the moon went; the vortex is the one big thing in the sky)
 
 	-- asteroids drifting through, near and far
-	for _ = 1, 16 do
-		local far = rng:NextNumber() < 0.6
+	for _ = 1, 6 do
+		local far = true
 		local pos = Vector3.new(rng:NextNumber(-70, 70), rng:NextNumber(-25, 35), rng:NextNumber(if far then 40 else 12, if far then 140 else 40))
 		if math.abs(pos.X) < 12 and math.abs(pos.Y - 4) < 9 then
 			pos += Vector3.new(if pos.X < 0 then -16 else 16, 0, 0) -- keep the avatar clear
@@ -1097,10 +1095,10 @@ local function updateAbduction(t: number)
 	end
 	-- now and then the vortex throws a bolt across the sky, or onto the saucer
 	if landed and os.clock() > nextBolt then
-		nextBolt = os.clock() + 1.6 + math.random() * 2.6
-		local from = Vector3.new(math.random(-14, 14), 24 + math.random(-8, 8), 78)
-		local to = if math.random() < 0.5 then UFO_AT + Vector3.new(0, 2, 2) else from + Vector3.new(math.random(-30, 30), math.random(-22, -8), math.random(-30, -10))
-		bolt(from, to, if math.random() < 0.5 then rgb(255, 70, 200) else rgb(90, 235, 255), 0.5)
+		-- (only from the vortex onto the saucer, every 3.5-6 s: bolts all over the sky made it messy)
+		nextBolt = os.clock() + 3.5 + math.random() * 2.5
+		local from = Vector3.new(math.random(-6, 6), 21 + math.random(-4, 4), 116)
+		bolt(from, UFO_AT + Vector3.new(math.random(-2, 2), 2.2, 2), rgb(255, 80, 210), 0.45)
 	end
 	if not landed and a >= 1 then
 		landed = true

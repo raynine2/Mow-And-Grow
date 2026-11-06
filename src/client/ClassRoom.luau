@@ -437,15 +437,15 @@ end
 -- modelled one now: ReplicatedStorage.MowALawnModels.ufo_saucer (made in Studio: a silver hull, a glass dome, a ring of
 -- coloured bulbs, a glowing belly), fitted to the old saucer's size and hung in the same spot. The blocky one below is
 -- only built when that model isn't in the place.
--- THE SAUCER, in voxels (6 Nov, owner: "UFO is ugly I want it in voxel style"; the modelled one was a smooth cartoon
--- mesh, the blocky one a stack of plastic discs). Built like the game's other voxel models, after the owner's vault
--- (LihFolk V2: "Voxel Palettes", "Voxel Shading"): every disc is a row of 0.5-stud cells with a stepped round
--- outline and a hair of seam between rows; three tones per material, shadows shifted toward blue-violet and lit
--- steps toward warm white; SmoothPlastic; neon only for the bulbs and the belly, with no shadows. From the bottom:
--- the glowing belly, the dark underside, the violet rim band with its chasing bulbs, the silver hull in two lit
--- steps, a gold collar, a stepped glass dome with a little voxel alien peering down at your avatar.
-local UFO_CELL = 0.5
-local UFO_SCALE = 1.15
+-- THE SAUCER, in voxels, v2 (6 Nov, owner on v1: "it's so bad", a washed-out pink stack; he wants "even more hype").
+-- A gunmetal war-saucer: 0.4-stud cells in a lens profile (every row of a disc its own part, the tone stepping a
+-- hair between neighbours so the cells read), dark underneath and lit on top (the owner's vault: three tones, shadows
+-- toward blue), a hard cyan neon trim line round the widest rim, a ring of magenta windows on the upper slope, 20
+-- chasing rim lights, a spinning ring of lights under the belly, a gold collar and a stepped glass dome with its
+-- little alien. Neon only for lights, no shadows.
+local UFO_CELL = 0.4
+local UFO_SCALE = 1.2
+local spinRing: { { part: BasePart, a: number, r: number, y: number } } = {}
 local function saucer(m: Instance)
 	local S = UFO_SCALE
 	local function add(size: Vector3, off: CFrame, color: Color3, material: Enum.Material?, shape: Enum.PartType?, tr: number?): Part
@@ -455,70 +455,79 @@ local function saucer(m: Instance)
 		table.insert(ufoParts, { part = p, off = off })
 		return p
 	end
-	-- one voxel disc: rows of cells along X, each row as long as the circle is wide there (snapped to the cell)
+	local layer = 0
 	local function disc(r: number, y: number, h: number, color: Color3, material: Enum.Material?, tr: number?)
+		layer += 1
 		local n = math.floor(r / UFO_CELL)
 		for i = -n, n - 1 do
 			local x = (i + 0.5) * UFO_CELL
 			local half = math.floor(math.sqrt(math.max(r * r - x * x, 0)) / UFO_CELL) * UFO_CELL
 			if half > 0 then
-				add(Vector3.new(UFO_CELL - 0.03, h, half * 2) * S, CFrame.new(x * S, y * S, 0), color, material, nil, tr)
+				-- (rows alternate a hair lighter / darker, offset per layer: the voxel grain)
+				local k = if (i + layer) % 2 == 0 then 1.06 else 0.94
+				local c = if material == nil then Color3.new(math.min(color.R * k, 1), math.min(color.G * k, 1), math.min(color.B * k, 1)) else color
+				add(Vector3.new(UFO_CELL - 0.025, h, half * 2) * S, CFrame.new(x * S, y * S, 0), c, material, nil, tr)
 			end
 		end
 	end
-	local NEON = Enum.Material.Neon
-	local GLASS = Enum.Material.Glass
-	-- underside: the belly glow, then the dark hull (shadow tones lean blue-violet)
-	disc(1.75, -1.0, 0.5, BEAM, NEON, 0.05)
-	disc(2.5, -0.75, 0.5, rgb(70, 58, 118))
-	disc(3.75, -0.25, 0.5, rgb(96, 82, 150))
-	disc(5.0, 0.25, 0.5, rgb(124, 108, 182))
-	-- the rim band: violet, its lit top edge a step lighter
-	disc(6.0, 0.75, 0.5, rgb(132, 70, 214))
-	disc(5.75, 1.15, 0.3, rgb(176, 120, 245))
-	-- the hull's top: silver in two lit steps (the lit step toward warm white), a gold collar round the dome
-	disc(5.25, 1.5, 0.5, rgb(196, 192, 228))
-	disc(4.25, 1.9, 0.5, rgb(226, 224, 246))
-	disc(3.0, 2.25, 0.4, rgb(255, 214, 120))
-	-- the glass dome in steps
-	local domeTint = rgb(150, 228, 255)
-	for _, d in { { 2.5, 2.7 }, { 2.25, 3.2 }, { 2.0, 3.7 }, { 1.5, 4.2 }, { 0.75, 4.6 } } do
-		disc(d[1], d[2], 0.5, domeTint, GLASS, 0.55)
+	local NEON, GLASS = Enum.Material.Neon, Enum.Material.Glass
+	local CYAN, MAGENTA = rgb(70, 240, 255), rgb(255, 60, 190)
+	-- the belly: a glowing core, the dark underside stepping out
+	disc(1.6, -1.25, 0.4, CYAN, NEON, 0)
+	disc(2.6, -0.9, 0.4, rgb(30, 32, 50))
+	disc(3.8, -0.5, 0.4, rgb(44, 48, 74))
+	disc(5.0, -0.1, 0.4, rgb(62, 68, 100))
+	-- the widest rim and its neon trim line
+	disc(6.2, 0.3, 0.4, rgb(86, 94, 130))
+	disc(6.35, 0.56, 0.12, CYAN, NEON, 0)
+	-- the top, lit in steps toward a cool white
+	disc(5.8, 0.75, 0.4, rgb(112, 120, 160))
+	disc(4.9, 1.15, 0.4, rgb(150, 158, 196))
+	disc(3.9, 1.55, 0.4, rgb(190, 198, 230))
+	disc(2.9, 1.9, 0.3, rgb(255, 196, 80)) -- the gold collar
+	for _, d in { { 2.6, 2.3 }, { 2.4, 2.7 }, { 2.1, 3.1 }, { 1.6, 3.5 }, { 0.9, 3.85 } } do
+		disc(d[1], d[2], 0.4, rgb(140, 225, 255), GLASS, 0.5)
 	end
-	-- the alien inside, in voxels: a green body and head, two big black eyes, antennae with glowing tips
-	local GREEN, GREEN2 = rgb(126, 224, 104), rgb(92, 186, 82)
-	add(Vector3.new(1.0, 0.9, 0.8) * S, CFrame.new(0, 2.85 * S, 0.1 * S), GREEN2)
-	add(Vector3.new(1.2, 1.0, 1.0) * S, CFrame.new(0, 3.75 * S, 0), GREEN)
-	for _, x in { -0.28, 0.28 } do
-		add(Vector3.new(0.34, 0.42, 0.1) * S, CFrame.new(x * S, 3.8 * S, -0.52 * S), rgb(16, 14, 26))
-		add(Vector3.new(0.1, 0.1, 0.06) * S, CFrame.new((x - 0.07) * S, 3.92 * S, -0.58 * S), Color3.new(1, 1, 1), NEON)
-		add(Vector3.new(0.12, 0.6, 0.12) * S, CFrame.new(x * 1.4 * S, 4.55 * S, 0), GREEN2)
-		add(Vector3.new(0.24, 0.24, 0.24) * S, CFrame.new(x * 1.4 * S, 4.95 * S, 0), rgb(255, 226, 90), NEON)
+	-- the windows on the upper slope
+	for k = 0, 11 do
+		local a = math.rad(k * 30 + 15)
+		add(Vector3.new(0.5, 0.26, 0.12) * S, CFrame.new(math.cos(a) * 4.45 * S, 1.2 * S, math.sin(a) * 4.45 * S) * CFrame.Angles(0, -a + math.pi / 2, 0), MAGENTA, NEON)
 	end
-	-- the bulbs round the rim: neon cells in three colours, chasing round (updateAbduction)
-	local bulbColors = { rgb(255, 225, 80), rgb(255, 110, 200), BEAM }
-	for k = 0, 15 do
-		local a = math.rad(k * 22.5)
-		local b = add(Vector3.new(0.5, 0.42, 0.5) * S, CFrame.new(math.cos(a) * 6.05 * S, 0.75 * S, math.sin(a) * 6.05 * S) * CFrame.Angles(0, -a, 0), bulbColors[k % 3 + 1], NEON)
+	-- the alien
+	local GREEN, GREEN2 = rgb(126, 236, 104), rgb(84, 186, 80)
+	add(Vector3.new(0.9, 0.8, 0.7) * S, CFrame.new(0, 2.45 * S, 0.1 * S), GREEN2)
+	add(Vector3.new(1.1, 0.95, 0.95) * S, CFrame.new(0, 3.25 * S, 0), GREEN)
+	for _, x in { -0.26, 0.26 } do
+		add(Vector3.new(0.32, 0.4, 0.1) * S, CFrame.new(x * S, 3.3 * S, -0.5 * S), rgb(12, 10, 22))
+		add(Vector3.new(0.1, 0.1, 0.06) * S, CFrame.new((x - 0.06) * S, 3.42 * S, -0.56 * S), Color3.new(1, 1, 1), NEON)
+	end
+	-- the rim lights, chasing (updateAbduction)
+	local bulbColors = { CYAN, MAGENTA, Color3.new(1, 1, 1), MAGENTA }
+	for k = 0, 19 do
+		local a = math.rad(k * 18)
+		local b = add(Vector3.new(0.42, 0.36, 0.42) * S, CFrame.new(math.cos(a) * 6.3 * S, 0.3 * S, math.sin(a) * 6.3 * S) * CFrame.Angles(0, -a, 0), bulbColors[k % 4 + 1], NEON)
 		table.insert(ufoLights, b)
 	end
-	-- light: the belly glows on the beam's top, a soft light round the hull, the beam's spot down over the avatar
-	local belly = add(Vector3.one, CFrame.new(0, -1.3 * S, 0), Color3.new(1, 1, 1), nil, nil, 1)
-	light(belly, BEAM, 10, 1.4)
-	local hullLight = add(Vector3.one, CFrame.new(0, 3 * S, -4 * S), Color3.new(1, 1, 1), nil, nil, 1)
-	light(hullLight, rgb(255, 230, 250), 10, 0.9)
+	-- the spinning ring of lights under the belly (moved every frame by updateAbduction)
+	for k = 0, 9 do
+		local a = math.rad(k * 36)
+		local b = add(Vector3.new(0.4, 0.3, 0.4) * S, CFrame.new(math.cos(a) * 3.2 * S, -0.75 * S, math.sin(a) * 3.2 * S), if k % 2 == 0 then CYAN else MAGENTA, NEON)
+		table.insert(spinRing, { part = b, a = a, r = 3.2 * S, y = -0.75 * S })
+	end
+	-- light: the belly over the beam, a cool sheen on the hull, the beam's spot down over the avatar
+	local belly = add(Vector3.one, CFrame.new(0, -1.5 * S, 0), Color3.new(1, 1, 1), nil, nil, 1)
+	light(belly, CYAN, 12, 2)
+	local hullLight = add(Vector3.one, CFrame.new(0, 3.5 * S, -5 * S), Color3.new(1, 1, 1), nil, nil, 1)
+	light(hullLight, rgb(190, 220, 255), 9, 0.7)
 	local spot = Instance.new("SpotLight")
 	spot.Face = Enum.NormalId.Bottom
 	spot.Angle = 50
 	spot.Range = 30
-	spot.Brightness = 0.8 -- (owner, 28 Oct: 1.6 blew the avatar's skin out white)
-	spot.Color = BEAM
+	spot.Brightness = 1.1
+	spot.Color = CYAN
 	spot.Shadows = false
 	spot.Parent = belly
 	beamLight = spot
-	for _, u in ufoParts do
-		u.part.Material = if u.part.Material == Enum.Material.Plastic then Enum.Material.SmoothPlastic else u.part.Material
-	end
 end
 
 -- the light beam: three beams (a wide soft cone, a drifting energy layer, a bright core) from the belly to the patch
@@ -537,7 +546,7 @@ local function lightBeam(m: Instance)
 		b.FaceCamera = true
 		b.Segments = 12
 		b.Width0, b.Width1 = w0, w1
-		b.Color = ColorSequence.new(BEAM, rgb(200, 255, 230))
+		b.Color = ColorSequence.new(rgb(120, 245, 255), Color3.new(1, 1, 1))
 		b.LightEmission = emission
 		b.LightInfluence = 0
 		b.Transparency = tr
@@ -552,9 +561,11 @@ local function lightBeam(m: Instance)
 		table.insert(beamBase, tr.Keypoints[1].Value)
 		return b
 	end
-	beam(4.2, 14.5, nil, seq(0, 0.72, 0.6, 0.8, 1, 0.9), 0.35) -- the soft cone
-	beam(3.6, 12.5, Tex.EnergyNoise, seq(0, 0.8, 0.5, 0.86, 1, 0.94), 0.5, -0.35) -- energy drifting up it
-	beam(1.4, 5, nil, seq(0, 0.6, 0.7, 0.82, 1, 0.95), 0.6) -- the core
+	-- (6 Nov, "even more hype": the soft cone read as a grey sheet; now every layer glows, a spiral twists up it)
+	beam(4.4, 12, nil, seq(0, 0.8, 0.6, 0.86, 1, 0.94), 1) -- the soft cone
+	beam(3.8, 10.5, Tex.EnergyNoise, seq(0, 0.7, 0.5, 0.8, 1, 0.9), 1, -0.6) -- energy drifting up it
+	beam(3.2, 9, Tex.VS_Spiral or Tex.EnergyNoise, seq(0, 0.55, 0.5, 0.7, 1, 0.9), 1, -1.1) -- the spiral
+	beam(1.2, 3.4, nil, seq(0, 0.35, 0.7, 0.6, 1, 0.85), 1) -- the hot core
 	-- rings of light sliding up the beam
 	local rings = part(m, Vector3.new(2, 0.1, 2), CFrame.new(0, TURF_TOP + 0.3, 0.6), Color3.new(1, 1, 1))
 	rings.Transparency = 1
@@ -562,8 +573,71 @@ local function lightBeam(m: Instance)
 	emitter(rings, {
 		Texture = Tex.RingThin, Orientation = Enum.ParticleOrientation.VelocityPerpendicular, EmissionDirection = Enum.NormalId.Top,
 		Color = ColorSequence.new(BEAM), LightEmission = 0.4, Size = seq(0, 6, 1, 1.6), Transparency = seq(0, 1, 0.15, 0.55, 1, 1),
-		Lifetime = NumberRange.new(2.4, 2.4), Speed = NumberRange.new(4.6, 4.6), SpreadAngle = Vector2.zero, Rate = Budget.Rate(0.9),
+		Lifetime = NumberRange.new(2.4, 2.4), Speed = NumberRange.new(4.6, 4.6), SpreadAngle = Vector2.zero, Rate = Budget.Rate(1.6),
 	})
+	-- sparks streaming up the beam into the saucer
+	emitter(rings, {
+		Texture = Tex.Spark, Shape = Enum.ParticleEmitterShape.Disc, EmissionDirection = Enum.NormalId.Top, Orientation = Enum.ParticleOrientation.VelocityParallel,
+		Color = ColorSequence.new(Color3.new(1, 1, 1), rgb(90, 240, 255)), LightEmission = 1, Size = seq(0, 0.35, 1, 0.05),
+		Lifetime = NumberRange.new(1.2, 1.8), Speed = NumberRange.new(5, 9), SpreadAngle = Vector2.new(4, 4), Rate = Budget.Rate(30),
+	})
+end
+
+-- the platform (v2): a voxel chunk of lawn torn out of the valley, floating; a glowing summoning circle on top
+local function voxelPlatform(m: Instance, rng: Random)
+	local CELL = 1
+	local R = 6.2
+	local n = math.floor(R / CELL)
+	for ix = -n, n - 1 do
+		for iz = -n, n - 1 do
+			local x, z = (ix + 0.5) * CELL, (iz + 0.5) * CELL
+			local d = math.sqrt(x * x + z * z)
+			if d <= R + rng:NextNumber(-0.5, 0.3) then
+				local green = if (ix + iz) % 2 == 0 then rgb(96, 186, 72) else rgb(80, 164, 62)
+				part(m, Vector3.new(CELL - 0.06, 0.5, CELL - 0.06), CFrame.new(x, TURF_TOP - 0.25 + rng:NextNumber(-0.04, 0.04), z), green)
+				-- the earth under it, longer toward the middle, stepping down to a stone tip
+				local depth = math.max(1, math.floor((R - d) * 0.9 + rng:NextNumber(0, 1.5)))
+				for k = 1, depth do
+					local c = if k == 1 then rgb(122, 84, 52) elseif k < depth - 1 then rgb(98, 66, 42) else rgb(92, 88, 104)
+					part(m, Vector3.new(CELL, 1, CELL), CFrame.new(x, TURF_TOP - 0.5 - (k - 0.5), z), c)
+				end
+			end
+		end
+	end
+	-- the summoning circle: a thin sheet just above the grass with the crop circle's rings and the rune circle
+	local top = part(m, Vector3.new(R * 2.1, 0.05, R * 2.1), CFrame.new(0, TURF_TOP + 0.04, 0), Color3.new(1, 1, 1), Enum.Material.Glass)
+	top.Transparency = 1
+	cropCircle(top)
+	if rune then
+		local i = Instance.new("ImageLabel")
+		i.BackgroundTransparency = 1
+		i.Image = Tex.RuneCircle
+		i.ImageColor3 = CIRCLE
+		i.ImageTransparency = 0.1
+		i.Size = UDim2.fromScale(0.98, 0.98)
+		i.Position = UDim2.fromScale(0.5, 0.5)
+		i.AnchorPoint = Vector2.new(0.5, 0.5)
+		i:SetAttribute("Rest", 0.1)
+		i.Parent = rune
+		table.insert(circleArt, i)
+	end
+end
+
+-- the vortex behind the saucer: the world 2 glitch hole (client/GlitchHole), big, high, straight behind
+local hole: any = nil
+local function vortex(m: Instance)
+	local mod = script.Parent:FindFirstChild("GlitchHole")
+	if not mod then
+		return
+	end
+	local okReq, GlitchHole = pcall(require, mod)
+	if not okReq then
+		return
+	end
+	local ok, h = pcall(GlitchHole.new, (ORIGIN * CFrame.new(0, 24, 80)).Position, Vector3.new(0, -0.2, -1).Unit, 15, m)
+	if ok then
+		hole = h
+	end
 end
 
 local finishBuild: (m: Model) -> Model
@@ -571,32 +645,6 @@ local function build()
 	local m = Instance.new("Model")
 	m.Name = "ClassRoom"
 	local rng = Random.new(2026)
-	local HatchSpace: any = nil
-	local hsModule = script.Parent:FindFirstChild("HatchSpace")
-	if hsModule then
-		local okReq, res = pcall(require, hsModule)
-		HatchSpace = if okReq then res else nil
-	end
-	if HatchSpace and HatchSpace.build then
-		local okDev, Device = pcall(require, script.Parent:FindFirstChild("Device") :: any)
-		local mobile = okDev and Device and Device.touch or false
-		local okBuild, scene = pcall(HatchSpace.build, m, {
-			origin = ORIGIN * CFrame.new(0, ISLAND_DROP, 0) * CFrame.Angles(0, math.pi, 0),
-			plateY = ISLAND_PLATE_Y,
-			few = if mobile then 0.6 else 1,
-			mobile = mobile,
-		})
-		if okBuild then
-			spaceScene = scene
-		else
-			warn("[ClassRoom] the egg scene didn't build: " .. tostring(scene))
-		end
-	end
-	if spaceScene then
-		saucer(m)
-		lightBeam(m)
-		return finishBuild(m)
-	end
 	for i = 1, #FACES do
 		starWall(m, i, rng)
 	end
@@ -606,8 +654,6 @@ local function build()
 	planet(m, Vector3.new(-170, 90, 380), 150, SPRITE.giant, rgb(150, 110, 255), true, 0.03)
 	planet(m, Vector3.new(345, 55, 360), 54, SPRITE.amber, rgb(255, 160, 90), false, 0.06)
 	planet(m, Vector3.new(392, 92, 330), 14, SPRITE.moon, rgb(200, 210, 255), false, 0.1)
-	-- Earth far below (owner, 27 Oct): its top shows behind the floating lawn patch - where the lawn was taken from
-	planet(m, Vector3.new(30, -120, 360), 150, SPRITE.earth, rgb(110, 190, 255), false, 0)
 
 	-- asteroids drifting through, near and far
 	for _ = 1, 16 do
@@ -629,7 +675,8 @@ local function build()
 	})
 
 	-- the abduction: the lawn patch with its crop circle, the saucer and its light beam
-	turfPatch(m, rng)
+	voxelPlatform(m, rng)
+	vortex(m)
 	saucer(m)
 	lightBeam(m)
 	return finishBuild(m)
@@ -938,6 +985,7 @@ local beamSeqs: { NumberSequence } = {}
 -- flash in the belly, a shockwave ring racing across the lawn, a lens punch and a thud. A pick does the same flash in
 -- its rarity colour, and the bulbs blink in that colour.
 local ARRIVE = 0.85
+local nextBolt = 0
 local arriveT = -10
 local landed = true
 local pickColor: Color3? = nil
@@ -968,10 +1016,58 @@ local function shockwave(color: Color3, big: boolean)
 	end)
 end
 
+local LightningMod: any = nil
+local AnimeFxMod: any = nil
+local function bolt(a: Vector3, b: Vector3, color: Color3, width: number?)
+	if LightningMod == nil then
+		local ok, res = pcall(require, ReplicatedStorage:WaitForChild("VFXLib"):WaitForChild("Lightning"))
+		LightningMod = if ok then res else false
+	end
+	if LightningMod then
+		pcall(LightningMod.Strike, ORIGIN * a, ORIGIN * b, { Color = color, Width = width or 0.4, Duration = 0.3, Flickers = 3, Branches = 2, Jag = 0.35 })
+	end
+end
+local function anime(): any
+	if AnimeFxMod == nil then
+		local mod = script.Parent:FindFirstChild("AnimeFx")
+		local ok, res = pcall(function()
+			return require(mod :: any)
+		end)
+		AnimeFxMod = if ok then res else false
+	end
+	return AnimeFxMod
+end
+-- an anime impact frame of the avatar (black and white for a beat), with speed lines rushing in behind
+local function impactFrame(lines: number)
+	local A = anime()
+	if not A then
+		return
+	end
+	pcall(A.impact, { avatar }, "neg", { hold = 0.09 })
+	if lines > 0 then
+		local ok, stop = pcall(A.lines, Color3.new(1, 1, 1), 0.35)
+		if ok and stop then
+			task.delay(lines, stop)
+		end
+	end
+end
+
 local function landBeam(color: Color3, big: boolean)
 	flashT = os.clock()
 	shockwave(color, big)
 	kickCamera(if big then 1.2 else 0.7)
+	-- lightning down the beam into the circle's edge
+	local belly = UFO_AT + Vector3.new(0, -1.6, 0)
+	for k = 1, (if big then 4 else 2) do
+		local a = math.random() * math.pi * 2
+		bolt(belly, Vector3.new(math.cos(a) * 5, TURF_TOP + 0.1, math.sin(a) * 5), color, if big then 0.5 else 0.35)
+	end
+	if big then
+		impactFrame(0.45)
+		if hole then
+			pcall(hole.glitch, 0.35)
+		end
+	end
 	pcall(function()
 		local Sound = require(script.Parent.Sound) :: any
 		Sound.play("slam", 0.05, if big then 0.55 else 0.4)
@@ -990,6 +1086,17 @@ local function updateAbduction(t: number)
 	local ufo = ORIGIN * CFrame.new(UFO_AT + swoop + Vector3.new(0, math.sin(t * 1.3) * 0.35, 0)) * bank * CFrame.Angles(math.rad(3) * math.sin(t * 0.9), math.sin(t * 0.45) * 0.35, math.rad(3) * math.sin(t * 0.7 + 1))
 	for _, u in ufoParts do
 		u.part.CFrame = ufo * u.off
+	end
+	for _, sr in spinRing do
+		local ang = sr.a + t * 2.4
+		sr.part.CFrame = ufo * CFrame.new(math.cos(ang) * sr.r, sr.y, math.sin(ang) * sr.r)
+	end
+	-- now and then the vortex throws a bolt across the sky, or onto the saucer
+	if landed and os.clock() > nextBolt then
+		nextBolt = os.clock() + 1.6 + math.random() * 2.6
+		local from = Vector3.new(math.random(-14, 14), 24 + math.random(-8, 8), 78)
+		local to = if math.random() < 0.5 then UFO_AT + Vector3.new(0, 2, 2) else from + Vector3.new(math.random(-30, 30), math.random(-22, -8), math.random(-30, -10))
+		bolt(from, to, if math.random() < 0.5 then rgb(255, 70, 200) else rgb(90, 235, 255), 0.5)
 	end
 	if not landed and a >= 1 then
 		landed = true
@@ -1094,6 +1201,10 @@ function ClassRoom.show(color: Color3?)
 	shown = true
 	wearClassAura()
 	arriveT, landed = os.clock(), false
+	nextBolt = os.clock() + 1.5
+	if hole then
+		pcall(hole.open, 0.7)
+	end
 	pcall(function()
 		local Sound = require(script.Parent.Sound) :: any
 		Sound.play("bhPull", 0.05, 0.5)
@@ -1149,6 +1260,9 @@ function ClassRoom.show(color: Color3?)
 				p.CFrame = p.CFrame * CFrame.Angles(s.speed.X * dt, s.speed.Y * dt, s.speed.Z * dt)
 			end
 			updateAbduction(t)
+			if hole then
+				pcall(hole.update, dt)
+			end
 			if spaceScene and spaceScene.update then
 				pcall(spaceScene.update, dt, now)
 			end
@@ -1206,6 +1320,9 @@ function ClassRoom.pulse(color: Color3, big: boolean?)
 		e:Emit(20)
 	end
 	MenuFX.burst((ORIGIN * CFrame.new(FLOAT)).Position, color, { size = 0.8, big = big })
+	-- (a rare card landing: the anime beat, lightning in its colour, the vortex glitches)
+	impactFrame(if big then 0.6 else 0.35)
+	landBeam(color, true)
 	if auraLight then
 		local l = auraLight
 		l.Brightness = 2.5

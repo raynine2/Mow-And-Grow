@@ -223,17 +223,21 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- round side buttons (right) with key badges
 -------------------------------------------------------------------------------------------------------------
+local SIDE_W, SIDE_H, SIDE_GAP = 70, 74, 6 -- (one button's cell; was 112 x 116 in one column)
 local side = Instance.new("Frame")
 side.Name = "SideButtons"
 side.BackgroundTransparency = 1
-side.Size = UDim2.fromOffset(120, 260)
+side.Size = UDim2.fromOffset(SIDE_W * 2 + SIDE_GAP, 260)
 side.Position = UDim2.new(1, -16, 0.5, 30)
 side.AnchorPoint = Vector2.new(1, 0.5)
 side.Parent = root
-local sideLayout = Instance.new("UIListLayout")
-sideLayout.Padding = UDim.new(0, 10)
+-- (6 Nov, owner: "there is way too much ui here") two small columns instead of one tall column of big badges
+local sideLayout = Instance.new("UIGridLayout")
+sideLayout.CellSize = UDim2.fromOffset(SIDE_W, SIDE_H)
+sideLayout.CellPadding = UDim2.fromOffset(SIDE_GAP, SIDE_GAP)
+sideLayout.FillDirectionMaxCells = 2
 sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
-sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 sideLayout.Parent = side
 
 -- A log-slice badge (ui_badge art, leaves and clover drawn in) with the icon bobbing on its face, a light streak
@@ -245,7 +249,7 @@ local function roundButton(label: string, icon: string, key: string, window: str
 	b.Text = ""
 	b.AutoButtonColor = false
 	b.BackgroundTransparency = 1
-	b.Size = UDim2.fromOffset(112, 116)
+	b.Size = UDim2.fromOffset(SIDE_W, SIDE_H)
 	b.LayoutOrder = order
 	b.Parent = side
 	local body = Instance.new("Frame")
@@ -253,18 +257,17 @@ local function roundButton(label: string, icon: string, key: string, window: str
 	body.BackgroundTransparency = 1
 	body.Size = UDim2.fromScale(1, 1)
 	body.Parent = b
-	local badge, face = Skin.frame(body, "ui_badge", Vector2.new(98, 96), { pos = UDim2.fromOffset(7, 0), stretch = false, name = "Badge" })
+	local badge, face = Skin.frame(body, "ui_badge", Vector2.new(60, 58), { pos = UDim2.fromOffset(5, 0), stretch = false, name = "Badge" })
 	local _ = badge
-	Skin.shine(face, 20, 4 + order * 3)
-	local ic = UI.icon(face, icon, 58, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	local ic = UI.icon(face, icon, 36, UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
 	local _ = ic
-	local tag = UI.frame({ size = UDim2.fromOffset(if #key > 1 then 44 else 30, 28), pos = UDim2.fromOffset(110, 2), anchor = Vector2.new(1, 0), color = Color3.fromRGB(58, 34, 16), parent = body, radius = 8, outline = 2.5, name = "Key" })
+	local tag = UI.frame({ size = UDim2.fromOffset(if #key > 1 then 30 else 20, 18), pos = UDim2.fromOffset(SIDE_W, 0), anchor = Vector2.new(1, 0), color = Color3.fromRGB(58, 34, 16), parent = body, radius = 6, outline = 2, name = "Key" })
 	;(tag:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(28, 16, 8)
 	UI.gradient(tag, Color3.fromRGB(70, 42, 20))
-	UI.text(tag, key, UDim2.new(1, -6, 1, -6), { pos = UDim2.fromOffset(3, 3), stroke = 1.5 })
+	UI.text(tag, key, UDim2.new(1, -4, 1, -4), { pos = UDim2.fromOffset(2, 2), stroke = 1 })
 	tag.Visible = not Device.touch and key ~= "" -- (keys mean nothing on a touch screen)
-	UI.text(body, label, UDim2.fromOffset(124, 26), { pos = UDim2.new(0.5, 0, 0, 86), anchor = Vector2.new(0.5, 0), stroke = 3.5 })
-	sideDots[window] = Skin.dot(body, UDim2.fromOffset(16, 14))
+	UI.text(body, label, UDim2.fromOffset(SIDE_W + 6, 16), { pos = UDim2.new(0.5, 0, 0, 57), anchor = Vector2.new(0.5, 0), stroke = 2 })
+	sideDots[window] = Skin.dot(body, UDim2.fromOffset(10, 9), 16)
 	Skin.press(b, body)
 	b.MouseButton1Click:Connect(function()
 		Sound.play("click")
@@ -292,7 +295,7 @@ sideScale.Parent = side
 local function placeSide()
 	if Device.touch then
 		-- (5 Nov: the lobby's column has six buttons since QUESTS, so a little smaller there to stay on the screen)
-		sideScale.Scale = if sideMode == "Run" then 0.8 else 0.7
+		sideScale.Scale = 0.85
 		side.AnchorPoint = Vector2.new(1, 0)
 		side.Position = UDim2.new(1, -12, 0, if sideMode == "Run" then 240 else 118)
 		return
@@ -337,13 +340,13 @@ local function sideButtons(mode: string)
 	if mode == "Run" then
 		roundButton("UPGRADES", "upgrade", "TAB", "Upgrades", 2)
 		roundButton("QUESTS", "quest", "Q", "Quests", 3)
-		side.Size = UDim2.fromOffset(124, 4 * 126) -- (four buttons)
+		side.Size = UDim2.fromOffset(SIDE_W * 2 + SIDE_GAP, 2 * (SIDE_H + SIDE_GAP)) -- (four buttons, 2 x 2)
 	else
 		roundButton("STATS", "clipboard", "TAB", "Stats", 2)
 		roundButton("QUESTS", "quest", "Q", "Quests", 3)
 		roundButton("NEWS", "newspaper", "J", "News", 4)
 		roundButton("INVITE", "invite", "", "Invite", 5, inviteFriends)
-		side.Size = UDim2.fromOffset(124, 6 * 126)
+		side.Size = UDim2.fromOffset(SIDE_W * 2 + SIDE_GAP, 3 * (SIDE_H + SIDE_GAP)) -- (six buttons, 2 x 3)
 	end
 	Hud.setDot("Quests", questsReady)
 	placeSide()

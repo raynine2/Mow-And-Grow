@@ -61,8 +61,11 @@ local drifters: { { part: BasePart, img: ImageLabel?, vel: Vector3, spin: Vector
 local nebulae: { GuiObject } = {}
 local savedLighting: { [Instance]: { [string]: any } } = {}
 -- the abduction scene's moving bits
-local UFO_AT = Vector3.new(0, 9.4, 14) -- the saucer's centre: far behind and above the avatar (6 Nov: right over its head the
--- CLASSES title covered it; this far back it shows between the title and the head, and the beam comes down toward us)
+local UFO_AT = Vector3.new(6.5, 8.4, 4.5) -- the saucer: up to the left of the avatar, in the free space between the
+-- VS panel and the title (6 Nov, owner: "u can't really see the ufo ... why is everything in the middle": straight
+-- behind, the title and the avatar covered it); it leans toward the avatar and its beam slants down onto it
+local UFO_TILT = CFrame.Angles(0, 0, math.rad(-16))
+local VORTEX_AT = Vector3.new(48, 28, 130) -- far behind the saucer (on screen just behind it): its halo
 local ufoParts: { { part: BasePart, off: CFrame } } = {} -- every saucer part and where it sits on the saucer
 local ufoLights: { BasePart } = {} -- the rim bulbs (they chase round)
 local beams: { Beam } = {}
@@ -444,7 +447,7 @@ end
 -- chasing rim lights, a spinning ring of lights under the belly, a gold collar and a stepped glass dome with its
 -- little alien. Neon only for lights, no shadows.
 local UFO_CELL = 0.4
-local UFO_SCALE = 1.2
+local UFO_SCALE = 0.7 -- (small enough to sit beside the title, not under it)
 local spinRing: { { part: BasePart, a: number, r: number, y: number } } = {}
 local function saucer(m: Instance)
 	local S = UFO_SCALE
@@ -532,7 +535,7 @@ end
 
 -- the light beam: three beams (a wide soft cone, a drifting energy layer, a bright core) from the belly to the patch
 local function lightBeam(m: Instance)
-	local top = part(m, Vector3.one, CFrame.new(UFO_AT + Vector3.new(0, -1, 0)), Color3.new(1, 1, 1))
+	local top = part(m, Vector3.one, CFrame.new(UFO_AT + Vector3.new(-0.25, -0.85, 0)), Color3.new(1, 1, 1))
 	top.Transparency = 1
 	top.Name = "BeamTop"
 	local bottom = part(m, Vector3.one, CFrame.new(0, TURF_TOP + 0.1, 0.6), Color3.new(1, 1, 1))
@@ -566,10 +569,10 @@ local function lightBeam(m: Instance)
 		return b
 	end
 	-- (6 Nov, "even more hype": the soft cone read as a grey sheet; now every layer glows, a spiral twists up it)
-	beam(4.4, 12, nil, seq(0, 0.8, 0.6, 0.86, 1, 0.94), 1) -- the soft cone
-	beam(3.8, 10.5, Tex.EnergyNoise, seq(0, 0.7, 0.5, 0.8, 1, 0.9), 1, -0.6) -- energy drifting up it
-	beam(3.2, 9, Tex.VS_Spiral or Tex.EnergyNoise, seq(0, 0.55, 0.5, 0.7, 1, 0.9), 1, -1.1) -- the spiral
-	beam(1.2, 3.4, nil, seq(0, 0.35, 0.7, 0.6, 1, 0.85), 1) -- the hot core
+	beam(2.4, 11, nil, seq(0, 0.8, 0.6, 0.86, 1, 0.94), 1) -- the soft cone
+	beam(2.0, 9.5, Tex.EnergyNoise, seq(0, 0.7, 0.5, 0.8, 1, 0.9), 1, -0.6) -- energy drifting up it
+	beam(1.7, 8, Tex.VS_Spiral or Tex.EnergyNoise, seq(0, 0.55, 0.5, 0.7, 1, 0.9), 1, -1.1) -- the spiral
+	beam(0.8, 3, nil, seq(0, 0.35, 0.7, 0.6, 1, 0.85), 1) -- the hot core
 	-- rings of light sliding up the beam
 	local rings = part(m, Vector3.new(2, 0.1, 2), CFrame.new(0, TURF_TOP + 0.3, 0.6), Color3.new(1, 1, 1))
 	rings.Transparency = 1
@@ -638,7 +641,7 @@ local function vortex(m: Instance)
 	if not okReq then
 		return
 	end
-	local ok, h = pcall(GlitchHole.new, (ORIGIN * CFrame.new(0, 21, 120)).Position, Vector3.new(0, -0.15, -1).Unit, 11, m)
+	local ok, h = pcall(GlitchHole.new, (ORIGIN * CFrame.new(VORTEX_AT)).Position, Vector3.new(-0.3, -0.15, -1).Unit, 15, m)
 	if ok then
 		hole = h
 	end
@@ -870,9 +873,10 @@ end
 local SHOTS = {
 	-- (a little higher than before, so the crop circle on the patch reads, and wide enough to catch the saucer)
 	{ pos = Vector3.new(0, 6.4, -16), look = Vector3.new(0, 4.4, 0), fov = 60 }, -- front (the one the screen opens on)
-	{ pos = Vector3.new(-6.5, 4.4, -13.6), look = Vector3.new(0, 4.8, 0), fov = 58 }, -- three-quarter, low, from the left
-	{ pos = Vector3.new(6.8, 9, -12.8), look = Vector3.new(0, 3.8, 0), fov = 58 }, -- three-quarter, high, from the right
-	{ pos = Vector3.new(1.6, 3.4, -13), look = Vector3.new(0, 6.2, 0), fov = 60 }, -- low hero shot, looking up into the beam
+	-- (6 Nov: the three-quarter and low shots swung the saucer behind the title or out of the frame; the composition
+	-- is set for this view, so the camera only breathes a little around it)
+	{ pos = Vector3.new(-1.2, 6.8, -16.4), look = Vector3.new(0.4, 4.6, 0), fov = 59 },
+	{ pos = Vector3.new(1.0, 6.0, -15.6), look = Vector3.new(0.2, 4.4, 0), fov = 61 },
 }
 local GLIDE = 3 -- seconds a move between framings takes (Sine InOut)
 local camFrom, camTo = 1, 1
@@ -992,7 +996,7 @@ local arriveT = -10
 local landed = true
 local pickColor: Color3? = nil
 local pickT = -10
-local SWOOP_FROM = Vector3.new(46, 22, 70)
+local SWOOP_FROM = Vector3.new(40, 14, 60)
 
 local function shockwave(color: Color3, big: boolean)
 	local m = room
@@ -1059,7 +1063,7 @@ local function landBeam(color: Color3, big: boolean)
 	shockwave(color, big)
 	kickCamera(if big then 1.2 else 0.7)
 	-- lightning down the beam into the circle's edge
-	local belly = UFO_AT + Vector3.new(0, -1.6, 0)
+	local belly = UFO_AT + Vector3.new(-0.25, -1.0, 0)
 	for k = 1, (if big then 4 else 2) do
 		local a = math.random() * math.pi * 2
 		bolt(belly, Vector3.new(math.cos(a) * 5, TURF_TOP + 0.1, math.sin(a) * 5), color, if big then 0.5 else 0.35)
@@ -1085,7 +1089,7 @@ local function updateAbduction(t: number)
 	local e = TweenService:GetValue(a, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	local swoop = SWOOP_FROM * (1 - e)
 	local bank = CFrame.Angles(0, 0, math.rad(-28) * (1 - e))
-	local ufo = ORIGIN * CFrame.new(UFO_AT + swoop + Vector3.new(0, math.sin(t * 1.3) * 0.35, 0)) * bank * CFrame.Angles(math.rad(3) * math.sin(t * 0.9), math.sin(t * 0.45) * 0.35, math.rad(3) * math.sin(t * 0.7 + 1))
+	local ufo = ORIGIN * CFrame.new(UFO_AT + swoop + Vector3.new(0, math.sin(t * 1.3) * 0.35, 0)) * bank * UFO_TILT * CFrame.Angles(math.rad(3) * math.sin(t * 0.9), math.sin(t * 0.45) * 0.35, math.rad(3) * math.sin(t * 0.7 + 1))
 	for _, u in ufoParts do
 		u.part.CFrame = ufo * u.off
 	end
@@ -1097,8 +1101,8 @@ local function updateAbduction(t: number)
 	if landed and os.clock() > nextBolt then
 		-- (only from the vortex onto the saucer, every 3.5-6 s: bolts all over the sky made it messy)
 		nextBolt = os.clock() + 3.5 + math.random() * 2.5
-		local from = Vector3.new(math.random(-6, 6), 21 + math.random(-4, 4), 116)
-		bolt(from, UFO_AT + Vector3.new(math.random(-2, 2), 2.2, 2), rgb(255, 80, 210), 0.45)
+		local from = VORTEX_AT + Vector3.new(math.random(-6, 6), math.random(-4, 4), -6)
+		bolt(from, UFO_AT + Vector3.new(math.random(-1, 1), 1.6, 1), rgb(255, 80, 210), 0.45)
 	end
 	if not landed and a >= 1 then
 		landed = true

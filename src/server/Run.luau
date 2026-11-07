@@ -881,7 +881,10 @@ function Run.start()
 		-- (client/BiomeLight), which is its look (so its nights, and the Weed Crawlers, don't come).
 		require(script.Parent.DayNight).start()
 	end
-	Guns.start(info.world)
+	-- (7 Nov, owner: "verwijder elke gun gewoon") no guns: the server doesn't take shots (Config.GUNS_ON)
+	if Config.GUNS_ON ~= false then
+		Guns.start(info.world)
+	end
 	Night.start(info.world, Night.peaceful) -- the Weed Crawlers come out at night
 	Night.onChanged = pushWorld
 	Night.onKill = function(player: Player, pos: Vector3, z: number)
@@ -1271,6 +1274,9 @@ function Run.devAction(player: Player, data, action: string, _arg: any): string?
 		devMaxAll(player, data)
 		return "Everything maxed"
 	elseif action == "guns" then
+		if Config.GUNS_ON == false then
+			return "The guns are out of the game (Config.GUNS_ON)"
+		end
 		return Guns.devGive(player)
 	elseif action == "boss" then
 		if Boss.alive() then

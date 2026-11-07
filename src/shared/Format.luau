@@ -31,8 +31,17 @@ function Format.short(n: number): string
 	return text .. SUFFIXES[i]
 end
 
--- 1234567 -> "1,234,567"
+-- 1234567 -> "1,234,567"; (7 Nov, owner: "getallen afkorten") from 100,000 up the short form, so a big wallet
+-- reads at a glance: 300,000 -> "300K", 1,600,000 -> "1.6M", 1,000,000,004,400 -> "1T". Smaller numbers (prices,
+-- gems) stay exact. Format.full is the exact one.
 function Format.commas(n: number): string
+	if math.abs(n) >= 100000 then
+		return Format.short(n)
+	end
+	return Format.full(n)
+end
+
+function Format.full(n: number): string
 	local s = tostring(math.floor(n))
 	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
 	if out:sub(1, 1) == "," then

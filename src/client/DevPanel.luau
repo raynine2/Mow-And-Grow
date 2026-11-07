@@ -76,6 +76,14 @@ end
 for _, egg in Config.EGGS do
 	table.insert(BUTTONS, { "GIVE " .. egg.name:upper(), "egg", egg.color, egg.id })
 end
+-- (7 Nov, owner: "verwijder elke gun gewoon") no GIVE GUNS while the guns are out (Config.GUNS_ON)
+if Config.GUNS_ON == false then
+	for i = #BUTTONS, 1, -1 do
+		if BUTTONS[i][2] == "guns" then
+			table.remove(BUTTONS, i)
+		end
+	end
+end
 
 local built = false
 local function build()

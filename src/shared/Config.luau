@@ -503,6 +503,9 @@ Config.GUNS = {
 -- power counts: a shot does x (1 + GUN_POWER.per x (power - 1)), at most x (1 + GUN_POWER.max) (+50%: a top free
 -- build), so a stronger player beats a boss faster (server/Guns).
 Config.GUN_POWER = { per = 0.12, max = 0.5 }
+-- (7 Nov, owner: "verwijder elke gun gewoon") no guns in the game: nothing gives one (the boss crate was already gone,
+-- the DEV panel's GIVE GUNS goes too) and the server doesn't take shots (server/Run). true brings them back.
+Config.GUNS_ON = false
 function Config.gun(id: string)
 	for _, g in Config.GUNS do
 		if g.id == id then

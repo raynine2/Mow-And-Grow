@@ -58,6 +58,7 @@ require(modules:WaitForChild("Intro"))
 require(modules:WaitForChild("Loading"))
 require(modules:WaitForChild("PartyWindow"))
 require(modules:WaitForChild("LobbyFX"))
+require(modules:WaitForChild("LobbySky")) -- (7 Nov) the lobby's sky: a saucer stealing lawn, bosses flying across
 require(modules:WaitForChild("PackAmbience")) -- (4 Nov) the SoulShroud pack's dust / leaves / fog (Config.SOULSHROUD_VFX)
 -- after Windows: the card deal takes over the "Classes" window
 require(modules:WaitForChild("ClassDeal"))

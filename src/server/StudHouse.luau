@@ -8,6 +8,20 @@
 -- StudHouse.build(parent, pivot, look?) -> the Model (pivot: the bottom middle, LookVector = the front).
 local StudHouse = {}
 
+-- (7 Nov, owner, of the stud house: "Moet meer accuraat zijn en donkerder doe dat bij elke het moet niet zo bright
+-- zijn") every stud-built ForgeGUI model is drawn a shade darker than its palette: plastic with studs reads far
+-- brighter in the game's light than the painted meshes did. Config.STUD_FORGE.tone (1 = the palette as written).
+local TONE = (function(): number
+	local ok, cfg = pcall(function()
+		return require(game:GetService("ReplicatedStorage"):WaitForChild("MowALawn"):WaitForChild("Config")) :: any
+	end)
+	local t = ok and type(cfg.STUD_FORGE) == "table" and tonumber(cfg.STUD_FORGE.tone) or nil
+	return math.clamp(t or 0.85, 0.4, 1)
+end)()
+local function toned(c: Color3): Color3
+	return Color3.new(c.R * TONE, c.G * TONE, c.B * TONE)
+end
+
 local C = Color3.fromRGB
 
 export type Look = {
@@ -20,13 +34,13 @@ export type Look = {
 }
 
 StudHouse.LOOKS = {
-	blue = { wall = C(238, 200, 98), wallShade = C(224, 184, 84), roof = C(42, 62, 118), roofDark = C(34, 50, 98), shutter = C(52, 118, 176), door = C(178, 42, 46) },
+	blue = { wall = C(236, 198, 104), wallShade = C(218, 178, 88), roof = C(40, 58, 112), roofDark = C(30, 44, 90), shutter = C(46, 104, 156), door = C(170, 40, 44) },
 	red = { wall = C(238, 226, 206), wallShade = C(222, 208, 186), roof = C(168, 52, 44), roofDark = C(140, 40, 34), shutter = C(70, 118, 74), door = C(64, 96, 150) },
 } :: { [string]: Look }
 
-local TRIM = C(244, 240, 230)
-local STONE = C(152, 140, 122)
-local STONE_DARK = C(126, 114, 100)
+local TRIM = C(236, 230, 214)
+local STONE = C(150, 128, 104)
+local STONE_DARK = C(122, 102, 82)
 local WOOD = C(152, 102, 64)
 local WOOD_DARK = C(124, 82, 52)
 local GLASS = C(58, 86, 124)
@@ -50,7 +64,7 @@ local function brick(name: string, size: Vector3, cf: CFrame, color: Color3, par
 	p.Anchored = true
 	p.Size = size
 	p.CFrame = origin * cf
-	p.Color = color
+	p.Color = toned(color)
 	p.Material = Enum.Material.Plastic
 	p.TopSurface = STUDS
 	p.FrontSurface = STUDS
@@ -180,7 +194,7 @@ local function window(cf: CFrame, w: number, h: number, flowers: boolean, shutte
 		local s = cf * CFrame.new(k * (w / 2 + 0.5 + sw / 2), 0, -0.15)
 		brick("Shutter", Vector3.new(sw, h + 0.6, 0.35), s, look.shutter)
 		for j = -1, 1 do
-			brick("ShutterSlat", Vector3.new(sw - 0.3, 0.2, 0.2), s * CFrame.new(0, j * h / 3.4, -0.25), C(40, 92, 140))
+			brick("ShutterSlat", Vector3.new(sw - 0.3, 0.2, 0.2), s * CFrame.new(0, j * h / 3.4, -0.25), C(36, 84, 128))
 		end
 	end
 	if flowers then
@@ -298,6 +312,17 @@ local function porch()
 	gableX("PorchGable", pc, 2.4, 10.2, 0.9, 1, -10.2, -9.6)
 	-- a white bracket in the gable
 	box("PorchTrim", pc - 0.2, 10.2, -10.35, pc + 0.2, 12, -10.15, TRIM)
+	for k = -1, 1, 2 do
+		box("PorchTrim", pc + k * 0.3 - 0.15 + (if k > 0 then 0 else -0.6), 10.6, -10.35, pc + k * 0.3 + 0.15 + (if k > 0 then 0.6 else 0), 10.9, -10.15, TRIM)
+	end
+	-- a hanging basket of flowers on a chain from the beam
+	box("BasketChain", pc - 0.1, 8.4, -9.55, pc + 0.1, 9.6, -9.35, C(60, 60, 66))
+	box("Basket", pc - 0.7, 7.6, -10.15, pc + 0.7, 8.4, -8.75, WOOD_DARK)
+	box("BasketLeaves", pc - 0.9, 8.1, -10.35, pc + 0.9, 8.8, -8.55, LEAF)
+	for k = -1, 1 do
+		local f = brick("BasketFlower", Vector3.new(0.5, 0.5, 0.5), CFrame.new(pc + k * 0.55, 8.9, -9.9), ROSE[k + 2])
+		f.Shape = Enum.PartType.Ball
+	end
 end
 
 local function door()
@@ -367,7 +392,7 @@ function StudHouse.build(parent: Instance, pivot: CFrame, which: string?): Model
 	-- the windows: one each side of the door, the wing's on both floors, one on each end
 	window(front(-6.3, FOOT + 4.4, MZ0 - 0.2), 2.2, 3.4, true)
 	window(front((WX0 + WX1) / 2, FOOT + 4.4, WZ - 0.2), 3, 3.6, true)
-	window(front((WX0 + WX1) / 2, EAVE + 2.2, WZ - 0.2), 1.8, 2.4, false, false)
+	window(front((WX0 + WX1) / 2, EAVE + 2.4, WZ - 0.2), 2, 2.8, false)
 	window(CFrame.new(-MX - 0.2, FOOT + 5, 0.5) * CFrame.Angles(0, math.rad(90), 0), 2.6, 3.4, false)
 	window(CFrame.new(MX + 0.2, FOOT + 5, 0.5) * CFrame.Angles(0, math.rad(-90), 0), 2.6, 3.4, false)
 	chimney(top)

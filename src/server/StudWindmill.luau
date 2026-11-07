@@ -8,6 +8,20 @@
 -- StudWindmill.build(parent, pivot) -> the Model (pivot: the bottom middle, LookVector = the front).
 local StudWindmill = {}
 
+-- (7 Nov, owner, of the stud house: "Moet meer accuraat zijn en donkerder doe dat bij elke het moet niet zo bright
+-- zijn") every stud-built ForgeGUI model is drawn a shade darker than its palette: plastic with studs reads far
+-- brighter in the game's light than the painted meshes did. Config.STUD_FORGE.tone (1 = the palette as written).
+local TONE = (function(): number
+	local ok, cfg = pcall(function()
+		return require(game:GetService("ReplicatedStorage"):WaitForChild("MowALawn"):WaitForChild("Config")) :: any
+	end)
+	local t = ok and type(cfg.STUD_FORGE) == "table" and tonumber(cfg.STUD_FORGE.tone) or nil
+	return math.clamp(t or 0.85, 0.4, 1)
+end)()
+local function toned(c: Color3): Color3
+	return Color3.new(c.R * TONE, c.G * TONE, c.B * TONE)
+end
+
 local C = Color3.fromRGB
 -- (15:48, owner: "Donkerder, zoals origineel", "Hij is beetje te licht") the mesh's darker tones: grey plaster between
 -- near-black timber, a deep red roof, a dark stone footing
@@ -57,7 +71,7 @@ local function brick(name: string, size: Vector3, cf: CFrame, color: Color3, par
 	p.Anchored = true
 	p.Size = size
 	p.CFrame = origin * cf
-	p.Color = color
+	p.Color = toned(color)
 	p.Material = Enum.Material.Plastic
 	p.TopSurface = STUDS
 	p.FrontSurface = STUDS
@@ -76,7 +90,7 @@ local function wedge(name: string, size: Vector3, cf: CFrame, color: Color3, par
 	p.Anchored = true
 	p.Size = size
 	p.CFrame = origin * cf
-	p.Color = color
+	p.Color = toned(color)
 	p.Material = Enum.Material.Plastic
 	p.TopSurface = STUDS
 	p.FrontSurface = STUDS

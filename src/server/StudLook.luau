@@ -357,6 +357,65 @@ local function studGrass(w: Instance): number
 	return n
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- the lobby's round paving (7 Nov 14:52, owner: "Make the circle stones also like how u did the bricks"). Studs
+-- don't draw on a cylinder, so every flat disc in World.Paving is laid again as a fan of thin wedges (two right
+-- triangles per slice, studs on their faces): the same circle, size, height and colour, with studs. The disc itself
+-- stays, hidden.
+-------------------------------------------------------------------------------------------------------------
+local function studDisc(cyl: Part): number
+	local cf = cyl.CFrame
+	local A, B = cf.UpVector, cf.LookVector -- the disc's plane (its axis, RightVector, points up)
+	local r = cyl.Size.Y / 2
+	local t = cyl.Size.X
+	local slices = math.clamp(math.floor(r * 2.4 + 0.5), 12, 40)
+	local th = math.pi * 2 / slices
+	local h, wid = r * math.cos(th / 2), r * math.sin(th / 2)
+	local c = cf.Position
+	local m = Instance.new("Model")
+	m.Name = "StudRound"
+	for k = 0, slices - 1 do
+		local a = (k + 0.5) * th
+		local out = A * math.cos(a) + B * math.sin(a)
+		local along = -A * math.sin(a) + B * math.cos(a)
+		local mid = c + out * h -- the slice's outer edge's middle
+		for _, side in { 1, -1 } do
+			-- a right triangle: its right angle at `mid`, one leg in to the centre, the other out to the slice's corner
+			local tdir = along * side
+			local yv, zv = -out, -tdir
+			local p = Instance.new("WedgePart")
+			p.Name = "Slice"
+			p.Anchored = true
+			p.CanCollide = cyl.CanCollide
+			p.Size = Vector3.new(t, h, wid)
+			p.CFrame = CFrame.fromMatrix(mid + yv * (h / 2) + tdir * (wid / 2), yv:Cross(zv), yv, zv)
+			p.Color = cyl.Color
+			p.Material = PLASTIC
+			p.LeftSurface, p.RightSurface, p.BottomSurface = STUDS, STUDS, STUDS -- (its two faces and the rim)
+			p.Parent = m
+		end
+	end
+	m.Parent = cyl.Parent
+	cyl.Transparency = 1
+	cyl.CanCollide = false
+	cyl.CastShadow = false
+	return slices * 2
+end
+
+local function studRounds(w: Instance): number
+	local paving = w:FindFirstChild("Paving")
+	if not paving then
+		return 0
+	end
+	local n = 0
+	for _, d in paving:GetDescendants() do
+		if d:IsA("Part") and d.Shape == Enum.PartType.Cylinder and d.Transparency < 0.9 and d.Size.Y >= 4 and math.abs(d.CFrame.RightVector.Y) > 0.95 then
+			n += studDisc(d)
+		end
+	end
+	return n
+end
+
 -- The lobby, the main hub (7 Nov 14:37, owner: "also change the main hub with the things"): every part of its world
 -- `w` (server/Lobby.start, after the saved map is in) and what's added there later, the same way as above; the clouds
 -- and the floating motes stay soft (studs on a cloud make it a block). The grass floor is Terrain: no studs there,
@@ -386,6 +445,13 @@ function StudLook.applyLobby(w: Instance): number
 		if i % 4000 == 0 then
 			task.wait()
 		end
+	end
+	-- (14:52, owner: "the circle stones") the round paving with studs too
+	local okRound, rounds = pcall(studRounds, w)
+	if okRound then
+		print(("[StudLook] the lobby's round paving: %d studded slices"):format(rounds))
+	else
+		warn("[StudLook] the lobby's round paving: " .. tostring(rounds))
 	end
 	-- (14:43, owner: "the grass") the grass floor in studded blocks too
 	local okGrass, grass = pcall(studGrass, w)

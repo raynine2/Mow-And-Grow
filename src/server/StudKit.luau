@@ -108,7 +108,7 @@ end
 -- outward-down the slope is NOT used: give `p0` (the eave line's middle), `r` (unit, along the eave), `inward`
 -- (unit, horizontal, toward the ridge), `rise`, `run`; the rows span r-coordinates a..b. `trim`: a bargeboard on both
 -- ends in that colour.
-function StudKit.slope(self: Kit, p0: Vector3, r: Vector3, inward: Vector3, rise: number, run: number, a: number, b: number, colA: Color3, colB: Color3, trim: Color3?)
+function StudKit.slope(self: Kit, p0: Vector3, r: Vector3, inward: Vector3, rise: number, run: number, a: number, b: number, colA: Color3, colB: Color3, trim: Color3?, th: number?)
 	local L = math.sqrt(rise * rise + run * run)
 	local u = (inward * run + Vector3.new(0, rise, 0)).Unit
 	local n = u:Cross(r)
@@ -122,11 +122,12 @@ function StudKit.slope(self: Kit, p0: Vector3, r: Vector3, inward: Vector3, rise
 	local rows = math.max(2, math.ceil(L / 1.4))
 	local step = L / rows
 	local w = step + 0.35
+	local thick = th or 0.5
 	for k = 0, rows - 1 do
 		local sd = (k + 0.5) * step
-		local pos = p0 + r * ((a + b) / 2) + u * sd + n * 0.25
+		local pos = p0 + r * ((a + b) / 2) + u * sd + n * (thick / 2)
 		local cf = CFrame.fromMatrix(pos, rr, n, u) * CFrame.new(0, 0, w / 2) * CFrame.Angles(math.rad(4), 0, 0) * CFrame.new(0, 0, -w / 2)
-		self:brick("Shingles", Vector3.new(b - a, 0.5, w), cf, if k % 2 == 0 then colA else colB, true)
+		self:brick("Shingles", Vector3.new(b - a, thick, w), cf, if k % 2 == 0 then colA else colB, true)
 	end
 	if trim then
 		for _, e in { a - 0.18, b + 0.18 } do
@@ -184,6 +185,87 @@ function StudKit.glow(self: Kit, name: string, size: Vector3, cf: CFrame, color:
 		l.Parent = p
 	end
 	return p
+end
+
+-- A flat triangle a-b-c (model space) as two wedges, `t` thick, its outer face on the triangle's plane on the side
+-- away from `inside` (a point inside the solid). Smooth (tin roofs, domes, gable fills).
+function StudKit.tri(self: Kit, name: string, a: Vector3, b: Vector3, c: Vector3, color: Color3, inside: Vector3?, t: number?)
+	local ab, ac, bc = b - a, c - a, c - b
+	local abd, acd, bcd = ab:Dot(ab), ac:Dot(ac), bc:Dot(bc)
+	if abd > acd and abd > bcd then
+		c, a = a, c
+	elseif acd > bcd and acd > abd then
+		a, b = b, a
+	end
+	ab, ac, bc = b - a, c - a, c - b
+	if ac:Cross(ab).Magnitude < 1e-6 then
+		return
+	end
+	local right = ac:Cross(ab).Unit
+	local up = bc:Cross(right).Unit
+	local back = bc.Unit
+	local height = math.abs(ab:Dot(up))
+	local th = t or 0.2
+	local shift = Vector3.zero
+	if inside then
+		local n = right
+		if ((a + b + c) / 3 - inside):Dot(n) < 0 then
+			n = -n
+		end
+		shift = -n * (th / 2)
+	end
+	local w1 = self:wedge(name, Vector3.new(th, height, math.abs(ab:Dot(back))), CFrame.fromMatrix((a + b) / 2 + shift, right, up, back), color, true)
+	local w2 = self:wedge(name, Vector3.new(th, height, math.abs(ac:Dot(back))), CFrame.fromMatrix((a + c) / 2 + shift, -right, up, -back), color, true)
+	w1.BackSurface = Enum.SurfaceType.Smooth
+	w2.BackSurface = Enum.SurfaceType.Smooth
+end
+
+-- a flat four-cornered panel a-b-c-d (in order round its edge)
+function StudKit.quad(self: Kit, name: string, a: Vector3, b: Vector3, c: Vector3, d: Vector3, color: Color3, inside: Vector3?, t: number?)
+	self:tri(name, a, b, c, color, inside, t)
+	self:tri(name, a, c, d, color, inside, t)
+end
+
+-- a faceted cone: base ring at `base` (its middle), radius r, apex h above, n facets in alternating colours
+function StudKit.cone(self: Kit, name: string, base: Vector3, r: number, h: number, n: number, cols: { Color3 }, t: number?)
+	local apex = base + Vector3.new(0, h, 0)
+	local inside = base + Vector3.new(0, h * 0.3, 0)
+	for i = 0, n - 1 do
+		local a0, a1 = i / n * math.pi * 2, (i + 1) / n * math.pi * 2
+		local p = base + Vector3.new(math.cos(a0) * r, 0, math.sin(a0) * r)
+		local q = base + Vector3.new(math.cos(a1) * r, 0, math.sin(a1) * r)
+		self:tri(name, p, q, apex, cols[i % #cols + 1], inside, t)
+	end
+end
+
+-- a faceted dome (a half ellipsoid): base ring at `base`, radius r, h tall, n segments round, m rings up
+function StudKit.facetDome(self: Kit, name: string, base: Vector3, r: number, h: number, n: number, m: number, cols: { Color3 }, t: number?)
+	local inside = base + Vector3.new(0, h * 0.2, 0)
+	local function at(i: number, k: number): Vector3
+		local phi = k / m * math.pi / 2
+		local th = i / n * math.pi * 2
+		return base + Vector3.new(math.cos(th) * r * math.cos(phi), h * math.sin(phi), math.sin(th) * r * math.cos(phi))
+	end
+	for i = 0, n - 1 do
+		local col = cols[i % #cols + 1]
+		for k = 0, m - 2 do
+			self:quad(name, at(i, k), at(i + 1, k), at(i + 1, k + 1), at(i, k + 1), col, inside, t)
+		end
+		self:tri(name, at(i, m - 1), at(i + 1, m - 1), base + Vector3.new(0, h, 0), col, inside, t)
+	end
+end
+
+-- a bar from a to b (model space), w wide and t thick; `side` is the direction its t thickness points (a trim board
+-- on a wall: the wall's outward normal)
+function StudKit.beam(self: Kit, name: string, a: Vector3, b: Vector3, w: number, t: number, color: Color3, side: Vector3?, smooth: boolean?): Part
+	local dir = (b - a).Unit
+	local s = side or Vector3.yAxis
+	if math.abs(s.Unit:Dot(dir)) > 0.99 then
+		s = if math.abs(dir.Y) < 0.9 then Vector3.yAxis else Vector3.xAxis
+	end
+	local x = s:Cross(dir).Unit -- across the w side
+	local y = dir:Cross(x).Unit -- along `side`
+	return self:brick(name, Vector3.new(w, t, (b - a).Magnitude), CFrame.fromMatrix((a + b) / 2, x, y), color, smooth)
 end
 
 function StudKit.finish(self: Kit, parent: Instance): Model

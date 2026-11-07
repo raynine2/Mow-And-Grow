@@ -1706,7 +1706,10 @@ local function lesson(): boolean
 	shearsOpen = 0
 	local MOVES = Finisher.POSES
 	local SLAM = T.thrown + 0.35 -- (on the beat: the hits fall every 0.6 s from the catch)
-	C:pose(MOVES.liftL, 0.16, "out")
+	-- (its springs off for the grab and the slam: checked in Studio, with them its arm was still at its chest when the
+	-- slam came)
+	C:fluid(false)
+	C:pose(MOVES.liftL, 0.1, "out")
 	R:pose(MOVES.dangle, 0.08, "snap")
 	R:shake(1)
 	sfx("hardPunch", 0.8, 0.9)
@@ -1721,7 +1724,7 @@ local function lesson(): boolean
 		local grip = C:grip("Left").Position
 		local toC = flat(C.root.Position - grip)
 		toC = if toC.Magnitude > 0.05 then toC.Unit else -flat(C.root.LookVector).Unit
-		local p = grip - UP * 2.0 - toC * 0.35
+		local p = grip - UP * 2.0 - toC * 0.9
 		R.root = CFrame.lookAt(p, p + toC)
 	end
 	after(SLAM - 0.08, function()
@@ -1751,14 +1754,16 @@ local function lesson(): boolean
 		burst(slamAt + UP, HOT, 6, 26, 0.6)
 	end)
 	after(SLAM + 0.4, function()
+		C:fluid(true)
 		C:pose("stand", 0.35, "inOut")
 	end)
 	-- 30a. low beside it: him held up by the collar against the gold sky
 	if not shot(SLAM - 0.03, function(k)
 		local root = C.root
 		local grip = C:grip("Left").Position
-		local p = root.Position - root.RightVector * 5.5 + root.LookVector * 3.2 - UP * 1.6
-		return look(p, grip - UP * (0.9 + k * 0.3), -6), mm(22), grip
+		local p = root.Position - root.RightVector * 6.5 + root.LookVector * 4.5 - UP * 1.8
+		local aim = grip:Lerp(headOf(C), 0.4) - UP * (0.8 + k * 0.3)
+		return look(p, aim, -6), mm(22), grip
 	end, { cut = "smash", hand = 0.35 }) then
 		return false
 	end

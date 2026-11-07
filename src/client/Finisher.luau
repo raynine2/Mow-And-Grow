@@ -153,7 +153,7 @@ P.walkOff = {
 -- holding someone up high in the left hand, the right arm down at its side, feet planted, eyes up on him
 P.liftL = {
 	Waist = v(-8, -10, 0), Neck = v(-24, 6, 0),
-	lh = v(-0.35, 2.0, -0.45), lpole = v(-1, 0, 0.3),
+	lh = v(-0.3, 1.75, -1.0), lpole = v(-1, -0.3, 0.3), -- (forward as well as up: checked in Studio, straight up he hung inside its body)
 	RightShoulder = v(6, 0, 14), RightElbow = v(14, 0, 0),
 	lf = v(-0.15, 0, -0.55), rf = v(0.3, 0, 0.5), hip = v(0, -0.25, 0),
 }

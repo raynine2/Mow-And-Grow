@@ -429,7 +429,8 @@ local function run(plan: any, ctx: any)
 	local function pitch(deg: number): CFrame
 		return CFrame.fromAxisAngle(pitchAxis, math.rad(deg))
 	end
-	local top = 0.5 * math.max(H, depth) -- (as high as it reaches above its middle while it tumbles)
+	-- where you hang over it in the air (checked in Studio: half its size above its middle left you a speck far over it)
+	local hangOff = UP * (H * 0.35 + 3) + F * (depth * 0.1)
 	plan.popAt = Bc
 	plan.height = H
 
@@ -571,7 +572,7 @@ local function run(plan: any, ctx: any)
 			pos = Gg
 		elseif t < TL.hang then
 			local k = clamp01((t - TL.leap) / (TL.hang - TL.leap))
-			local goal = vcentre + UP * (top + 4) + F * (depth * 0.15)
+			local goal = vcentre + hangOff
 			pos = Gg:Lerp(goal, out(k)) + F * (math.sin(k * math.pi) * 3) + UP * (math.sin(k * math.pi) * 2)
 			tilt = -40 * k
 			if os.clock() - lastGhost > 0.05 then
@@ -579,11 +580,11 @@ local function run(plan: any, ctx: any)
 				A:ghost(WHITE, 0.78, 0.16)
 			end
 		elseif t < TL.hammer + 0.06 then
-			pos = vcentre + UP * (top + 4) + F * (depth * 0.15)
+			pos = vcentre + hangOff
 			tilt = -40
 		elseif t < TL.land then
 			local k = clamp01((t - TL.hammer - 0.06) / (TL.land - TL.hammer - 0.06))
-			local from = Capex + UP * (H * 0.06 + top + 4) + F * (depth * 0.15)
+			local from = Capex + UP * (H * 0.06) + hangOff
 			pos = from:Lerp(Amount, inn(k))
 			tilt = -40 * (1 - k)
 		elseif t < TL.hop then
@@ -687,7 +688,7 @@ local function run(plan: any, ctx: any)
 		sfx("jjkSlam", 1.1, 1)
 		sfx("hardPunch", 1, 0.7)
 		Film.shake(0.95, 1.4)
-		local contact = vcentre + UP * (top * 0.7)
+		local contact = vcentre + hangOff * 0.6
 		task.defer(function()
 			AnimeFx.impact({ A.model, victim.model }, "red", { hold = 0.14, at = contact })
 		end)
@@ -824,46 +825,48 @@ local function run(plan: any, ctx: any)
 	end, { hand = 0.3 }) then
 		return finish()
 	end
-	-- 2. close on your face, your fist in its chest
+	-- 2. the reverse angle from its chest: your face, your fist in the foreground (checked in Studio: from your side the
+	-- frame was the back of your head)
 	if not shot(TL.drop, function(k)
 		local head = A.root.Position + UP * 1.5
-		local look = head + D * 0.35 - UP * 0.1
-		local p = head + side * 2.8 + F * 0.9 + UP * 0.15
-		p += (look - p).Unit * (k * 0.5)
-		return cam(p, look, 32, 4, head, view1)
+		local look = head + UP * 0.05
+		local p = G + side * 1.6 + F * 0.2 + UP * 1.0
+		p += (look - p).Unit * (k * 0.3)
+		return cam(p, look, 26, -5, head, view1)
 	end, { cut = "smash", hand = 0.25 }) then
 		return finish()
 	end
-	-- 3. from the ground, up: the throw
+	-- 3. from the ground, up: the throw (checked: from 5 studs its legs filled the frame; now you and it rising)
 	local view3 = Film.view()
 	if not shot(TL.leap, function()
 		local foot = Vector3.new(Gg.X, gy, Gg.Z)
-		local look = (Gg + UP * 0.5):Lerp(vc(), 0.65)
-		return cam(foot + side * 4.2 + F * 3.2 + UP * 0.5, look, 16, -6, Gg, view3)
+		local look = (Gg + UP * 1.0):Lerp(vc(), 0.45)
+		return cam(foot + side * 10 + F * 9 + UP * 0.8, look, 18, -6, Gg, view3)
 	end, { hand = 0.5 }) then
 		return finish()
 	end
 	-- 4. in the air beside you both: the leap, the hang, the hammer coming
 	if not shot(TL.hammer, function()
-		local mid = A.root.Position:Lerp(vc(), 0.5)
-		local push = clamp01((now() - TL.hang) / (TL.hammer - TL.hang)) * 4
-		local p = mid + side * (H * 0.75 + 12 - push) + F * (H * 0.2) + UP * 1.5
-		return cam(p, mid, 24, 3)
+		local mid = A.root.Position:Lerp(vc(), 0.35)
+		local push = clamp01((now() - TL.hang) / (TL.hammer - TL.hang)) * 3
+		local p = mid + side * (H * 0.45 + 9 - push) + F * (H * 0.15) + UP * 1.0
+		return cam(p, mid, 26, 3)
 	end, { hand = 0.3 }) then
 		return finish()
 	end
-	-- 5. wide from the ground: it comes down
+	-- 5. wide from the ground: it comes down (following it more: it hung off the top of the frame)
 	if not shot(TL.land, function()
-		local look = vc():Lerp(Bc + UP * (depth * 0.5), 0.6)
-		return cam(Bc + side * (H * 0.9 + 16) + F * (H * 0.55 + 8) + UP * 2.2, look, 22, 0)
+		local look = vc():Lerp(Bc + UP * (depth * 0.5), 0.35)
+		return cam(Bc + side * (H * 0.8 + 14) + F * (H * 0.5 + 6) + UP * 2.0, look, 22, 0)
 	end, { hand = 0.4 }) then
 		return finish()
 	end
-	-- 6. close beside you on top of it: the pounding
+	-- 6. from above, in front of you on top of it: the pounding, its body under your fists (checked: from beside and
+	-- behind you the frame was your back and the grass)
 	local view6 = Film.view()
 	if not shot(TL.wind, function()
-		local look = Amount + D * 0.7 - UP * 1.0
-		return cam(Amount + side * 4.6 + F * 2.2 + UP * 1.6, look, 30, -3, Amount, view6)
+		local look = Amount - UP * 1.4 + D * 0.4
+		return cam(Amount + D * 4.5 + side * 3.6 + UP * 2.8, look, 28, -4, Amount, view6)
 	end, { cut = "smash", hand = 0.9 }) then
 		return finish()
 	end

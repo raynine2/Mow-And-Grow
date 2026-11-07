@@ -26,9 +26,14 @@ local LEAVE: { [Enum.Material]: boolean } = {
 	[Enum.Material.Foil] = true,
 }
 
--- which area a spot is in: the one whose middle is nearest for its size (nil past every area's edge)
+-- which area a spot is in: the one whose middle is nearest for its size (nil past every area's edge); 0 is the
+-- Spawn Village (Zones.village)
 local function areaAt(p: Vector3): number?
 	local best, bestK = nil, math.huge
+	local v = Zones.village
+	if v and typeof(v.center) == "Vector2" then
+		best, bestK = 0, (Vector2.new(p.X, p.Z) - v.center).Magnitude / (v.radius or 124)
+	end
 	for i, z in Zones.list do
 		local c = z.center
 		local r = z.radius or 200
@@ -56,6 +61,9 @@ local function wanted(): { [number]: boolean }
 				set[a] = true
 			end
 		end
+	end
+	if type(s) == "table" and s.village == true then
+		set[0] = true -- (14:59, owner: "doe dit voor elke area nu") the Spawn Village too
 	end
 	return set
 end
@@ -203,6 +211,8 @@ local function swapNature(w: Instance, areas: { [number]: boolean }): number
 	return n
 end
 
+local studRoundsIn: (Instance, { [number]: boolean }) -> number -- (below: the round stones)
+
 -- The world `w` (the run's copy): every part in the wanted areas now, and what's added there from now on.
 -- Returns how many parts took the look.
 function StudLook.apply(w: Instance): number
@@ -227,6 +237,13 @@ function StudLook.apply(w: Instance): number
 		if i % 4000 == 0 then
 			task.wait()
 		end
+	end
+	-- (14:59) the round stones with studs, as in the lobby
+	local okRound, rounds = pcall(studRoundsIn, w, areas)
+	if okRound then
+		print(("[StudLook] the run's round stones: %d studded slices"):format(rounds))
+	else
+		warn("[StudLook] the run's round stones: " .. tostring(rounds))
 	end
 	w.DescendantAdded:Connect(function(d)
 		if d:IsA("BasePart") then
@@ -402,6 +419,20 @@ local function studDisc(cyl: Part): number
 	return slices * 2
 end
 
+-- a flat round stone: a cylinder lying flat, 4 studs across or more, not glowing, see-through or carrying a picture
+local function isDisc(d: Instance): boolean
+	if not (d:IsA("Part") and d.Shape == Enum.PartType.Cylinder) then
+		return false
+	end
+	local p = d :: Part
+	return p.Transparency < 0.9
+		and p.Size.Y >= 4
+		and math.abs(p.CFrame.RightVector.Y) > 0.95
+		and not LEAVE[p.Material]
+		and p:FindFirstChildWhichIsA("Decal") == nil
+		and p:FindFirstChildWhichIsA("SurfaceGui") == nil
+end
+
 local function studRounds(w: Instance): number
 	local paving = w:FindFirstChild("Paving")
 	if not paving then
@@ -409,8 +440,41 @@ local function studRounds(w: Instance): number
 	end
 	local n = 0
 	for _, d in paving:GetDescendants() do
-		if d:IsA("Part") and d.Shape == Enum.PartType.Cylinder and d.Transparency < 0.9 and d.Size.Y >= 4 and math.abs(d.CFrame.RightVector.Y) > 0.95 then
-			n += studDisc(d)
+		if isDisc(d) then
+			n += studDisc(d :: Part)
+		end
+	end
+	return n
+end
+
+-- (14:59, owner: "doe dit voor elke area nu") the run's round stones in the wanted areas too (plazas, the arenas'
+-- floors); a working piece's (MapUnit: the drop-off pads, shops...) are left as they are, its game code may use them
+local function inUnit(d: Instance, w: Instance): boolean
+	local p = d.Parent
+	while p and p ~= w do
+		if p:GetAttribute("MapUnit") ~= nil then
+			return true
+		end
+		p = p.Parent
+	end
+	return false
+end
+
+studRoundsIn = function(w: Instance, areas: { [number]: boolean }): number
+	local list = {}
+	for _, d in w:GetDescendants() do
+		if isDisc(d) then
+			local a = areaAt((d :: Part).Position)
+			if a and areas[a] and not inUnit(d, w) then
+				table.insert(list, d)
+			end
+		end
+	end
+	local n = 0
+	for i, d in list do
+		n += studDisc(d :: Part)
+		if i % 20 == 0 then
+			task.wait()
 		end
 	end
 	return n

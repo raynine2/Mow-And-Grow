@@ -405,6 +405,16 @@ local function pickBoss(scale: number): Boss?
 	light.Parent = core
 	-- its corruption riding along
 	local orb = aura("CorruptOrb", box, size.Magnitude / 22, glow)
+	-- (7 Nov, owner, of the Dandelion King flying over: "the lines are way too much") without its speed lines (the
+	-- streaks shooting out along their path, in its glow they covered the boss): its glow, dark specks and swirl stay
+	local om = orb.model
+	if om then
+		for _, d in om:GetDescendants() do
+			if d:IsA("ParticleEmitter") and d.Orientation == Enum.ParticleOrientation.VelocityParallel then
+				d:Destroy()
+			end
+		end
+	end
 	if not Pack.on() and not low then
 		local em = Instance.new("ParticleEmitter")
 		em.Texture = "rbxasset://textures/particles/sparkles_main.dds"

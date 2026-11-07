@@ -2064,6 +2064,10 @@ Config.CAMP_LINES = {
 -------------------------------------------------------------------------------------------------------------
 Config.MOWERS_LOCKED = true
 Config.MOWERS_LOCKED_TEXT = "🔒 Ride-on mowers & gas are coming in a future update!"
+-- (7 Nov, owner: "Delete garage for now") no garage while this is on: not in the run's camp (with the gas pump beside
+-- it) and not in the lobby; the maps saved in the place keep theirs, it's only left out when the game builds the world.
+-- false brings it back (the ride-on mowers need it).
+Config.GARAGE_HIDDEN = true
 if Config.MOWERS_LOCKED then
 	local sections = {}
 	for _, s in Config.UPGRADE_SECTIONS do

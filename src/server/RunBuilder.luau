@@ -390,6 +390,13 @@ end
 
 local function garageBay(m: Instance, info)
 	local at = spotAt("garage")
+	-- (7 Nov, owner: "Delete garage for now") Config.GARAGE_HIDDEN: no garage and no gas pump beside it (the baked
+	-- village's copy is dropped too: server/MapStore drops a saved piece the code doesn't make). The mower spawn spot
+	-- stays for server/Mowers (spawning is locked anyway: Config.MOWERS_LOCKED).
+	if Config.GARAGE_HIDDEN then
+		info.garageSpawn = at * CFrame.new(0, 2, 0)
+		return
+	end
 	local pos = at.Position
 	local g = PropKit.folder("Garage", m)
 	if garageShed(g, at) then

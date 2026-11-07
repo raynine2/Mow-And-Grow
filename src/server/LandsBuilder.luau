@@ -610,6 +610,9 @@ local function classes(world: Instance, pos: Vector3?, front: Vector3?, toward: 
 end
 
 local function garage(world: Instance, pos: Vector3?, front: Vector3?)
+	if Config.GARAGE_HIDDEN then
+		return -- (7 Nov, owner: "Delete garage for now"; the saved lobby's garage is dropped too, server/MapStore)
+	end
 	local m = PropKit.folder("Garage", world)
 	local p0 = pos or GARAGE
 	local at = facing(p0, p0 + (front or -Vector3.xAxis)) -- (its open front looks west, across the square)

@@ -429,6 +429,19 @@ local function dressing(world: Instance)
 	end
 	LobbyKit.tag(LobbyKit.spot(g, CFrame.new(top), Vector3.new(1, 1, 1), "FountainFX"), "LobbyFX", { Kind = "fountain", Color = C(170, 225, 255) })
 	LobbyKit.tag(LobbyKit.spot(g, CFrame.new(FOUNTAIN + Vector3.new(0, 3, 0)), Vector3.new(16, 4, 16), "Butterflies"), "LobbyFX", { Kind = "butterflies", Color = C(255, 214, 90) })
+	-- (seen in Studio, turned round at the spawn: the lawn to the lookout was bare) lamps in pairs along its walk,
+	-- flowering bushes and low hedges either side, so the back has its own picture: the walk, then the observatory
+	for _, z in { -64, -78 } do
+		for _, sx in { -1, 1 } do
+			lamp(f, Vector3.new(sx * 5.4, 0, z), Vector3.new(0, 0, z))
+		end
+	end
+	for _, sx in { -1, 1 } do
+		for k, off in { { 14, -70 }, { 22, -80 }, { 11, -86 }, { 26, -66 } } do
+			local p = Vector3.new(sx * off[1], 0, off[2])
+			VM.place(f, if k % 2 == 1 then "Bush_blossom" else "Bush_meadow", p, { scale = if k == 1 then 0.62 else 0.5, yaw = k, collide = true })
+		end
+	end
 	-- the lookout: two benches facing out to the observatory's island, a fence along the rim side
 	local lk = folder(world, "Lookout")
 	for _, sx in { -1, 1 } do

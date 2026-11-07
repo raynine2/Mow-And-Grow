@@ -1724,7 +1724,7 @@ local function lesson(): boolean
 		local grip = C:grip("Left").Position
 		local toC = flat(C.root.Position - grip)
 		toC = if toC.Magnitude > 0.05 then toC.Unit else -flat(C.root.LookVector).Unit
-		local p = grip - UP * 1.5 - toC * 0.9
+		local p = grip - UP * 1.5 - toC * 1.3
 		R.root = CFrame.lookAt(p, p + toC)
 	end
 	after(SLAM - 0.08, function()
@@ -1765,9 +1765,9 @@ local function lesson(): boolean
 		local between = flat(R.root.Position - root.Position)
 		between = if between.Magnitude > 0.05 then between.Unit else flat(root.LookVector).Unit
 		local mid = root.Position:Lerp(R.root.Position, 0.5)
-		local p = mid + between:Cross(UP) * 7 - UP * 1.8 + between * 0.4
-		local aim = grip:Lerp(headOf(C), 0.4) - UP * (0.8 + k * 0.3)
-		return look(p, aim, -6), mm(22), grip
+		local p = mid + between:Cross(UP) * 9.5 - UP * 0.9 + between * 0.4
+		local aim = grip:Lerp(headOf(C), 0.4) - UP * (0.9 + k * 0.3)
+		return look(p, aim, -6), mm(24), grip
 	end, { cut = "smash", hand = 0.35 }) then
 		return false
 	end

@@ -582,7 +582,7 @@ Config.STUD_LOOK = { areas = { 1, 2, 3, 4, 5, 6, 7, 8 }, trees = false, lobby = 
 -- server/Lobby over the mesh, which it hides with the filler Core inside it). false: the ForgeGUI mesh again.
 -- tone: how bright the stud models are drawn, x their palette (owner, of the stud house: "donkerder ... het moet niet zo
 -- bright zijn", for every one)
-Config.STUD_FORGE = { windmill = true, tone = 0.85 }
+Config.STUD_FORGE = { windmill = true, house = true, tone = 0.85 } -- (house: the CLASSES cottage, server/StudHouse)
 -- Roblox badge per boss (0 = none yet: make them on the Creator Hub and put the ids here); the in-game trophy
 -- (PlayerData.bossTrophies) is given either way.
 Config.BOSS_BADGES = { 0, 0, 0, 0, 0, 0, 0, 0 }

@@ -9,23 +9,28 @@
 local StudWindmill = {}
 
 local C = Color3.fromRGB
+-- (15:48, owner: "Donkerder, zoals origineel", "Hij is beetje te licht") the mesh's darker tones: grey plaster between
+-- near-black timber, a deep red roof, a dark stone footing
 local PAL = {
-	stone = C(160, 154, 144),
-	stoneDark = C(128, 122, 114),
-	plaster = C(240, 230, 208),
-	plasterShade = C(228, 216, 192),
-	timber = C(82, 55, 40),
-	timberLight = C(124, 84, 56),
-	plank = C(150, 104, 68),
-	plankDark = C(132, 90, 58),
-	roof = C(178, 56, 44),
-	roofDark = C(150, 44, 36),
-	cap = C(54, 56, 66),
-	trim = C(206, 178, 132),
-	trimDark = C(184, 156, 112),
-	door = C(102, 66, 42),
-	glass = C(44, 58, 80),
-	canvas = C(242, 238, 228),
+	stone = C(112, 108, 104),
+	stoneDark = C(88, 85, 84),
+	plaster = C(204, 197, 184),
+	plasterShade = C(190, 182, 170),
+	timber = C(52, 35, 27),
+	timberLight = C(88, 60, 42),
+	plank = C(112, 76, 50),
+	plankDark = C(96, 64, 42),
+	roof = C(150, 44, 36),
+	roofDark = C(124, 34, 28),
+	cap = C(48, 50, 60),
+	trim = C(170, 152, 122),
+	trimDark = C(150, 134, 106),
+	door = C(84, 54, 36),
+	glass = C(36, 46, 64),
+	canvas = C(220, 214, 202),
+	sack = C(206, 188, 152),
+	sackDark = C(184, 166, 132),
+	shutter = C(70, 48, 34),
 	leaf = C(74, 152, 62),
 	leafDark = C(58, 128, 50),
 	flowerA = C(255, 122, 152),
@@ -211,6 +216,15 @@ local function window(i: number, y: number, w: number, h: number, box: boolean)
 	-- the cross bar
 	brick("WindowBar", Vector3.new(w, 0.3, 0.5), f * CFrame.new(0, 0.2, 0), PAL.timber)
 	brick("WindowBar", Vector3.new(0.3, h, 0.5), f, PAL.timber)
+	-- (15:48, owner: "Meer details") a shutter open on each side, two battens across it
+	local sw = w / 2 + 0.2
+	for k = -1, 1, 2 do
+		local sh = f * CFrame.new(k * (w / 2 + 0.6 + sw / 2), 0.4, -0.25)
+		brick("Shutter", Vector3.new(sw, h + 0.8, 0.4), sh, PAL.shutter)
+		for _, by in { -h / 4, h / 4 + 0.4 } do
+			brick("ShutterBatten", Vector3.new(sw - 0.3, 0.4, 0.3), sh * CFrame.new(0, by, -0.3), PAL.timber)
+		end
+	end
 	if box then
 		local b = f * CFrame.new(0, -h / 2 - 1.2, -0.7)
 		brick("FlowerBox", Vector3.new(w + 1.6, 1.2, 1.4), b, PAL.plank)
@@ -225,6 +239,48 @@ local function window(i: number, y: number, w: number, h: number, box: boolean)
 				brick("Flower", Vector3.new(0.7, 0.7, 0.7), b * CFrame.new(x, 1.45, -0.1), col)
 			end
 		end
+	end
+end
+
+-- (15:48, "Meer details") half-timbering on the four diagonal sides (no windows there): in every panel between the
+-- beams two braces rising from its bottom corners to meet at its top middle, as on the mesh
+local function braces(i: number, y0: number, y1: number)
+	local a = towerA((y0 + y1) / 2)
+	local s = 2 * a * TAN - 1.6 -- (between the corner posts)
+	local h = y1 - y0 - 0.9 -- (between the beams)
+	local f = face(i, a + 0.25, (y0 + y1) / 2)
+	local len = math.sqrt((s / 2) ^ 2 + h ^ 2)
+	local tilt = math.atan2(h, s / 2)
+	for k = -1, 1, 2 do
+		brick("Brace", Vector3.new(len, 0.8, 0.6), f * CFrame.new(k * s / 4, 0, if k < 0 then 0 else -0.04) * CFrame.Angles(0, 0, -k * tilt), PAL.timber)
+	end
+end
+
+-- flour sacks on the footing left of the door, a crate on the right
+local function doorstep()
+	local ledge = LOW_A + 1 -- (the footing's ledge in front of the wall is 2 studs deep)
+	local f = face(0, ledge, DB)
+	local function sack(x: number, y: number, yaw: number, roll: number, col: Color3)
+		local cf = f * CFrame.new(x, y + 1.1, 0) * CFrame.Angles(0, math.rad(yaw), math.rad(roll))
+		brick("Sack", Vector3.new(1.8, 2.2, 1.5), cf, col)
+		brick("SackTie", Vector3.new(0.8, 0.5, 0.8), cf * CFrame.new(0, 1.3, 0), PAL.sackDark)
+		brick("SackTie", Vector3.new(0.4, 0.4, 0.4), cf * CFrame.new(0, 1.7, 0), PAL.timber)
+	end
+	sack(-6.1, 0, 8, 0, PAL.sack)
+	sack(-7.9, 0, -12, 0, PAL.sackDark)
+	sack(-7, 2.1, 20, 14, PAL.sack)
+	local c = f * CFrame.new(6.5, 1.1, 0) * CFrame.Angles(0, math.rad(-6), 0)
+	brick("Crate", Vector3.new(2.2, 2.2, 2.0), c, PAL.plank)
+	for _, e in { 0.95, -0.95 } do
+		brick("CrateEdge", Vector3.new(2.4, 0.3, 2.1), c * CFrame.new(0, e, 0), PAL.timber)
+	end
+	for k = -1, 1, 2 do
+		brick("CrateEdge", Vector3.new(0.3, 2.2, 2.1), c * CFrame.new(k * 0.95, 0, 0), PAL.timber)
+	end
+	-- apples in it
+	for k = 0, 2 do
+		local apple = brick("Apple", Vector3.new(0.7, 0.7, 0.7), c * CFrame.new(-0.55 + k * 0.55, 1.3, (k % 2) * 0.35 - 0.15), Color3.fromRGB(200, 50, 44))
+		apple.Shape = Enum.PartType.Ball
 	end
 end
 
@@ -274,6 +330,14 @@ local function roof()
 		local thick = math.min(a, 3.2)
 		ring("Roof", ROOF_Y + k * 2, 2, a, thick, if k % 2 == 0 then PAL.roof else PAL.roofDark)
 	end
+	-- (15:48, "Meer details") a bracket under the eave on every corner, from the wall up to the roof's edge
+	local r0 = towerA(TOP) / COS
+	local r1 = (ROOF_A - 0.6) / COS
+	for i = 0, 7 do
+		local len = r1 - r0
+		local cf = CFrame.Angles(0, i * EIGHTH + EIGHTH / 2, 0) * CFrame.new(0, ROOF_Y - 2.4, -(r0 + len / 2))
+		wedge("EaveBracket", Vector3.new(0.8, 3.2, len), cf * CFrame.Angles(0, 0, math.pi), PAL.timber)
+	end
 	-- the cap: two dark octagons, a spire and a brass finial
 	local top = ROOF_Y + ROOF_STEPS * 2
 	ring("Cap", top, 1.2, 2.4, 2.4, PAL.cap)
@@ -281,14 +345,19 @@ local function roof()
 	brick("Spire", Vector3.new(0.6, 10, 0.6), CFrame.new(0, top + 2.2 + 5, 0), PAL.cap)
 	local ball = brick("Finial", Vector3.new(1.4, 1.4, 1.4), CFrame.new(0, top + 12.6, 0), PAL.brass)
 	ball.Shape = Enum.PartType.Ball
+	-- a weather vane on the spire: an arrow with a tail fin
+	local vane = CFrame.new(0, top + 9.6, 0) * CFrame.Angles(0, math.rad(30), 0)
+	brick("Vane", Vector3.new(5.2, 0.3, 0.3), vane, PAL.cap)
+	wedge("Vane", Vector3.new(0.3, 0.9, 1.2), vane * CFrame.new(3, 0, 0) * CFrame.Angles(0, math.rad(90), 0) * CFrame.Angles(math.rad(90), 0, 0), PAL.brass)
+	brick("Vane", Vector3.new(1.4, 1.2, 0.15), vane * CFrame.new(-2.4, 0.3, 0), PAL.brass)
 end
 
 -------------------------------------------------------------------------------------------------------------
 -- the sails
 -------------------------------------------------------------------------------------------------------------
-local HUB_Y = 66
+local HUB_Y = 68
 local HUB_Z = -20 -- well in front of the roof, so the lower sails clear the tower by ~3 studs
-local ARM = 33
+local ARM = 30 -- (turning, its lowest tip stays over the balcony rail: 68 - 30 = 38 > 36)
 
 local function sails(): Model
 	local m = Instance.new("Model")
@@ -321,6 +390,18 @@ local function sails(): Model
 		end
 		brick("Lath", Vector3.new(len, 0.4, 0.45), arm * CFrame.new(mid, width / 2 + 0.5, -0.5), PAL.timberLight, m)
 	end
+	-- (15:48, owner: "Wieken laten draaien") every client turns them about the axle (client/SpinSails); they don't
+	-- collide (only the clients move them)
+	for _, p in m:GetDescendants() do
+		if p:IsA("BasePart") then
+			p.CanCollide = false
+			p.CanQuery = false
+			p.CanTouch = false
+		end
+	end
+	m:SetAttribute("SpinHub", origin * hub)
+	m:SetAttribute("SpinSpeed", 0.35)
+	game:GetService("CollectionService"):AddTag(m, "SpinSails")
 	return m
 end
 
@@ -345,6 +426,12 @@ function StudWindmill.build(parent: Instance, pivot: CFrame): Model
 	window(6, 46, 2.8, 3.6, false)
 	window(4, 21, 3.2, 4.2, true)
 	window(4, 46, 2.8, 3.6, false)
+	for _, i in { 1, 3, 5, 7 } do
+		for _, span in { { DOOR_TOP, 24 }, { 24, DECK_Y }, { DECK_Y + 1, 44 }, { 44, TOP - 0.8 } } do
+			braces(i, span[1], span[2])
+		end
+	end
+	doorstep()
 	balcony()
 	roof()
 	sails()

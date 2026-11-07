@@ -149,6 +149,27 @@ P.walkOff = {
 	Waist = v(-3, 0, 0), Neck = v(-6, 0, 0),
 	LeftShoulder = v(2, 0, -8), RightShoulder = v(2, 0, 8), LeftElbow = v(14, 0, 0), RightElbow = v(14, 0, 0),
 }
+-- (the films: client/Finale's copy grabs Rayan by the collar with its free left hand and slams him into the gold)
+-- holding someone up high in the left hand, the right arm down at its side, feet planted, eyes up on him
+P.liftL = {
+	Waist = v(-8, -10, 0), Neck = v(-24, 6, 0),
+	lh = v(-0.35, 2.0, -0.45), lpole = v(-1, 0, 0.3),
+	RightShoulder = v(6, 0, 14), RightElbow = v(14, 0, 0),
+	lf = v(-0.15, 0, -0.55), rf = v(0.3, 0, 0.5), hip = v(0, -0.25, 0),
+}
+-- the slam: the left arm driven down in front, the body folded after it
+P.slamL = {
+	Waist = v(40, 16, 0), Neck = v(-18, -10, 0),
+	lh = v(-0.3, -1.2, -1.2), lpole = v(-1, 0, 0.6),
+	RightShoulder = v(-10, 0, 30), RightElbow = v(20, 0, 0),
+	lf = v(-0.15, 0, -0.85), rf = v(0.3, 0, 0.7), hip = v(0, -1.0, -0.3),
+}
+-- held up by the collar: both hands clawing at the grip, head tipped back, legs kicking
+P.dangle = {
+	Waist = v(-6, 0, 0), Neck = v(-30, 0, 0),
+	rh = v(0.25, 0.75, -0.55), lh = v(-0.25, 0.75, -0.55), rpole = v(1, -1, 0), lpole = v(-1, -1, 0),
+	LeftHip = v(30, 0, -6), LeftKnee = v(-40, 0, 0), RightHip = v(-10, 0, 8), RightKnee = v(-70, 0, 0),
+}
 Finisher.POSES = P
 
 -- the beats, in film seconds (slow motion stretches the hang; the impact frames stop the clock for a moment)

@@ -41,6 +41,7 @@ local Puppet = require(script.Parent.Puppet)
 local Shears = require(script.Parent.Shears)
 local FilmSet = require(script.Parent.FilmSet)
 local PackFx = require(script.Parent.PackFx)
+local Finisher = require(script.Parent.Finisher) -- (7 Nov) the copy's grab-and-slam uses the finisher's moves
 
 local Finale = {}
 local player = Players.LocalPlayer
@@ -1695,47 +1696,80 @@ local function lesson(): boolean
 	end, { hand = 0.15 }) then
 		return false
 	end
-	-- 30. it twists them out of his hands and throws him across the gold; the shears are its now
+	-- 30. (7 Nov, owner, with a TikTok of a Roblox fight animation: "Kan je ook zo animated?" ... "Films en boss
+	-- finish") it twists the shears out of his hands, grabs him by the collar with its free hand, hoists him up and
+	-- SLAMS him into the gold on the beat: a red impact frame, a crater; the shears are its now (it threw him across the
+	-- gold before)
 	tracks.creep = nil
 	darkenShears(1)
 	shearsMode = "copy"
 	shearsOpen = 0
-	C:pose("inspect", 0.12, "snap")
-	R:pose("flung", 0.06, "snap")
+	local MOVES = Finisher.POSES
+	local SLAM = T.thrown + 0.35 -- (on the beat: the hits fall every 0.6 s from the catch)
+	C:pose(MOVES.liftL, 0.16, "out")
+	R:pose(MOVES.dangle, 0.08, "snap")
 	R:shake(1)
-	sfx("punch", 1.3, 0.7)
+	sfx("hardPunch", 0.8, 0.9)
+	sfx("jjkImpact", 0.8, 0.9)
 	sfx("whoosh", 1.2, 0.6)
-	Film.shake(0.8, 1.5)
-	local flyFrom = R.root.Position
-	local back = flat(R.root.Position - C.root.Position).Unit
-	local flyTo = flyFrom + back * 26 + Vector3.new(0, -0.6, 0)
-	tracks.fly = function()
-		local k = math.clamp((now() - T.thrown) / 0.9, 0, 1)
-		local p = flyFrom:Lerp(flyTo, ease.out(k)) + Vector3.new(0, math.sin(k * math.pi) * 3.5, 0)
-		R.root = CFrame.lookAt(p, p - back) * CFrame.Angles(0, 0, math.rad(k * 200))
-		if os.clock() - (R.lastGhost or 0) > 0.06 then
-			R.lastGhost = os.clock()
-			R:ghost(Color3.fromRGB(255, 226, 160), 0.8, 0.18)
-		end
-		if k >= 1 then
-			tracks.fly = nil
-			standW(R, flyTo, flyFrom)
-			R:pose("down", 0.1)
-			sfx("stepThud", 1.4, 0.6)
-			fx("Dust", flyTo, { scale = 1.6 })
-			CelFx.dust(flyTo, { size = 1.1, color = Color3.fromRGB(240, 200, 110) })
-			CelFx.ring(flyTo + Vector3.new(0, 0.2, 0), { color = Color3.fromRGB(255, 236, 170), size = 0.9, radius = 10 })
-		end
+	Film.shake(0.6, 1.8)
+	local cRoot = C.root
+	local slamAt = cRoot.Position + flat(cRoot.LookVector).Unit * 2.6
+	slamAt = Vector3.new(slamAt.X, groundOf(C), slamAt.Z)
+	tracks.held = function()
+		-- (his collar in its left hand: his body hangs under the grip, facing it)
+		local grip = C:grip("Left").Position
+		local toC = flat(C.root.Position - grip)
+		toC = if toC.Magnitude > 0.05 then toC.Unit else -flat(C.root.LookVector).Unit
+		local p = grip - UP * 2.0 - toC * 0.35
+		R.root = CFrame.lookAt(p, p + toC)
 	end
-	-- (tested in Studio: centred nearer it, Rayan flew out of the frame before the shot was half over; now the whole
-	-- flight, from it to where he lands past the player)
+	after(SLAM - 0.08, function()
+		C:pose(MOVES.slamL, 0.07, "snap")
+		C:smear({ "LeftHand" }, true, HOT)
+		task.delay(0.25, function()
+			C:smear({ "LeftHand" }, false)
+		end)
+		sfx("whoosh", 1.3, 0.8)
+	end)
+	after(SLAM, function()
+		tracks.held = nil
+		standW(R, slamAt, C.root.Position)
+		R:pose("down", 0, "snap")
+		R:shake(1)
+		sfx("jjkSlam", 1.1, 1)
+		sfx("hardPunch", 1, 0.7)
+		sfx("rumble", 1, 0.9)
+		Film.shake(1, 1.2)
+		Film.punch(6)
+		task.defer(function()
+			AnimeFx.impact({ C.model, R.model }, "red", { hold = 0.12, at = slamAt + UP })
+		end)
+		CelFx.impact(slamAt + UP * 0.4, { color = HOT, size = 1.3, floorY = slamAt.Y, dust = true, dustColor = Color3.fromRGB(240, 200, 110) })
+		CelFx.ring(slamAt + UP * 0.15, { color = Color3.fromRGB(255, 236, 170), rim = Color3.fromRGB(40, 0, 30), size = 1.2, radius = 16, life = 0.5 })
+		fx("Dust", slamAt, { scale = 1.8 })
+		burst(slamAt + UP, HOT, 6, 26, 0.6)
+	end)
+	after(SLAM + 0.4, function()
+		C:pose("stand", 0.35, "inOut")
+	end)
+	-- 30a. low beside it: him held up by the collar against the gold sky
+	if not shot(SLAM - 0.03, function(k)
+		local root = C.root
+		local grip = C:grip("Left").Position
+		local p = root.Position - root.RightVector * 5.5 + root.LookVector * 3.2 - UP * 1.6
+		return look(p, grip - UP * (0.9 + k * 0.3), -6), mm(22), grip
+	end, { cut = "smash", hand = 0.35 }) then
+		return false
+	end
+	-- 30b. from above: the crater, him in it, it straightening up over him
 	if not shot(T.lift, function(k)
-		local mid = C.root.Position:Lerp(flyTo, 0.5)
-		local side = back:Cross(UP)
-		local p = mid + side * (22 - k * 1.5) + Vector3.new(0, 3.0, 0)
-		return look(p, mid + Vector3.new(0, 1.8, 0), 2), mm(22), mid
-	end, { hand = 0.4, keep = function()
-		return { C.root.Position, R.root.Position, H.root.Position, C.root.Position - UP * 1.8, H.root.Position - UP * 1.8 }
+		local root = C.root
+		local target = slamAt:Lerp(root.Position, 0.3) + UP * 0.5
+		local p = slamAt + UP * (9 - k * 0.8) - root.RightVector * 5 + root.LookVector * 4
+		return look(p, target, 4), mm(26), target
+	end, { cut = "smash", hand = 0.5, keep = function()
+		return { C.root.Position, R.root.Position, slamAt }
 	end }) then
 		return false
 	end

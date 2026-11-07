@@ -526,6 +526,32 @@ function Lobby.start()
 			end
 		end
 	end
+	-- (owner, 7 Nov: "Probeer de forgegui dingen in stud style" ... "Top, zet hem erin") the windmill in studded bricks
+	-- over the ForgeGUI mesh, which goes out of sight with the filler Core inside it (Config.STUD_FORGE.windmill)
+	local okMill, millErr = pcall(function()
+		local sf = Config.STUD_FORGE
+		local mesh = built.world:FindFirstChild("forge_windmill", true)
+		if type(sf) == "table" and sf.windmill == true and mesh then
+			local holder = mesh.Parent :: Instance
+			local core = holder:FindFirstChild("Core")
+			for _, old in { mesh, core } do
+				if old then
+					for _, d in (old :: Instance):GetDescendants() do
+						if d:IsA("BasePart") then
+							d.Transparency = 1
+							d.CanCollide = false
+							d.CanQuery = false
+							d.CastShadow = false
+						end
+					end
+				end
+			end
+			require(script.Parent.StudWindmill).build(holder, mesh:GetPivot())
+		end
+	end)
+	if not okMill then
+		warn("[Lobby] the stud windmill: " .. tostring(millErr))
+	end
 	-- (owner, 7 Nov: "also change the main hub with the things") the studded toy-brick look here too (server/StudLook,
 	-- Config.STUD_LOOK.lobby)
 	local okStud, studErr = pcall(function()

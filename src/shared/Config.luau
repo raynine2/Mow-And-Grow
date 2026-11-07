@@ -577,6 +577,10 @@ Config.BOSS_INTRO_CARD = false
 -- too (owner, 14:37: "also change the main hub with the things"). (14:59, owner: "doe dit voor elke area nu") every
 -- area, and village = true the Spawn Village too
 Config.STUD_LOOK = { areas = { 1, 2, 3, 4, 5, 6, 7, 8 }, trees = false, lobby = true, village = true }
+-- (7 Nov, owner: "Probeer de forgegui dingen in stud style" ... "Top, zet hem erin en doe de rest") ForgeGUI models
+-- rebuilt in studded bricks, each on its own switch: windmill = the lobby's windmill (server/StudWindmill, built by
+-- server/Lobby over the mesh, which it hides with the filler Core inside it). false: the ForgeGUI mesh again.
+Config.STUD_FORGE = { windmill = true }
 -- Roblox badge per boss (0 = none yet: make them on the Creator Hub and put the ids here); the in-game trophy
 -- (PlayerData.bossTrophies) is given either way.
 Config.BOSS_BADGES = { 0, 0, 0, 0, 0, 0, 0, 0 }

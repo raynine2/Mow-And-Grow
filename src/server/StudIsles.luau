@@ -64,13 +64,14 @@ local function xbrace(K: Kit, cf: CFrame, w: number, h: number, col: Color3)
 	K:brick("Brace", Vector3.new(len - 0.3, 0.35, 0.25), cf * CFrame.new(0, 0, -0.03) * CFrame.Angles(0, 0, -a), col, true)
 end
 
--- a hanging lantern: a little cap, glowing glass, a ring
+-- a hanging lantern: a little cap, glowing glass, a ring (warm ones soft, the swamp's green ones neon)
+local LANTERN_NEON = C(150, 255, 150)
 local function lantern(K: Kit, at: Vector3, col: Color3, hangTo: number?)
 	if hangTo and hangTo > at.Y + 0.8 then
 		K:box("LanternChain", at.X - 0.06, at.Y + 0.8, at.Z - 0.06, at.X + 0.06, hangTo, at.Z + 0.06, C(60, 50, 40), true)
 	end
 	K:box("LanternCap", at.X - 0.45, at.Y + 0.55, at.Z - 0.45, at.X + 0.45, at.Y + 0.8, at.Z + 0.45, C(60, 50, 40), true)
-	K:glow("LanternGlass", Vector3.new(0.7, 1.1, 0.7), CFrame.new(at), col, 7)
+	K:glow("LanternGlass", Vector3.new(0.7, 1.1, 0.7), CFrame.new(at), col, 7, col ~= LANTERN_NEON)
 	K:box("LanternBase", at.X - 0.4, at.Y - 0.7, at.Z - 0.4, at.X + 0.4, at.Y - 0.55, at.Z + 0.4, C(60, 50, 40), true)
 end
 
@@ -227,7 +228,7 @@ end
 local POND = { C(70, 122, 70), C(58, 104, 60) }
 local PAD = { C(96, 164, 70), C(80, 146, 60) }
 local MOSS = { C(98, 120, 56), C(84, 104, 48) }
-local LANTERN = C(150, 255, 150)
+local LANTERN = LANTERN_NEON
 
 local function swamp(K: Kit)
 	-- the pond's ground: an uneven mat of studded greens, lily pads on it
@@ -594,8 +595,10 @@ local function ember(K: Kit)
 	local fz = -7.4
 	K:box("FurnaceFace", -4.6, 0.9, fz, 4.6, 10.4, fz + 3, ROCK[2])
 	K:box("FurnaceMouth", -1.8, 0.9, fz - 0.05, 1.8, 5.6, fz + 1.6, C(30, 22, 22))
-	K:glow("Fire", Vector3.new(3, 2.2, 0.4), CFrame.new(0, 2.2, fz + 1.2), LAVA, 16)
-	K:glow("FireGlow", Vector3.new(2.2, 1.2, 0.3), CFrame.new(0, 3.6, fz + 1.3), C(255, 170, 70))
+	-- the fire in the mouth (in front of its dark back)
+	K:glow("Fire", Vector3.new(3, 1.6, 0.3), CFrame.new(0, 1.8, fz - 0.15), LAVA, 16)
+	K:glow("FireGlow", Vector3.new(1.8, 1.2, 0.25), CFrame.new(0, 3, fz - 0.15), C(255, 170, 70))
+	K:glow("FireGlow", Vector3.new(1, 0.8, 0.2), CFrame.new(-0.4, 3.9, fz - 0.15), C(255, 210, 120))
 	-- the arch: stepped stones over the mouth
 	for k, st in { { 2.2, 5.6 }, { 1.7, 6.3 }, { 1, 6.9 } } do
 		K:box("Arch", -st[1] - 0.8, st[2] - 0.7, fz - 0.4, -st[1] + 0.4, st[2], fz + 0.4, ROCK[k % 2 + 1])
@@ -644,13 +647,13 @@ local function ember(K: Kit)
 	end
 	-- the bellows on the left, leather on wood, iron bands, its nozzle
 	local bw = CFrame.new(6.8, 2.8, fz + 2.2) * CFrame.Angles(0, math.rad(-30), math.rad(80))
-	K:rod("Bellows", 3.6, 2.4, bw, C(120, 72, 44))
+	K:rod("Bellows", 3.6, 2.4, bw, C(92, 56, 36))
 	for k = -1, 1, 2 do
 		K:rod("BellowsBand", 3.8, 0.3, bw * CFrame.new(k * 0.9, 0, 0), IRON[2])
 	end
 	K:rod("Nozzle", 0.7, 2.4, CFrame.new(6.2, 1.4, fz + 0.6) * CFrame.Angles(0, math.rad(60), 0), IRON[1])
 	-- a beam leaning on the left of the face
-	K:brick("Beam", Vector3.new(1, 6.5, 1), CFrame.new(5.4, 4.6, fz + 0.6) * CFrame.Angles(0, 0, math.rad(8)), LOG[1])
+	K:brick("Beam", Vector3.new(1, 6.5, 1), CFrame.new(5.4, 4.6, fz + 0.6) * CFrame.Angles(0, 0, math.rad(8)), C(70, 48, 34))
 	K:brick("BeamBand", Vector3.new(1.15, 0.35, 1.15), CFrame.new(5.6, 6.6, fz + 0.6) * CFrame.Angles(0, 0, math.rad(8)), IRON[2], true)
 end
 

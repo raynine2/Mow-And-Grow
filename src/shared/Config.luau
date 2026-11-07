@@ -564,6 +564,10 @@ Config.BOSS_NOHIT_GEMS = 1
 -- into the sky, hammer it back down, pound it and walk off as it bursts. deathTime: how long the server waits before
 -- the rewards (shared/BossMoves.DEATH_TIME; the old death took 3.2 s). on = false: the old death.
 Config.FINISHER = { on = true, deathTime = 7.4 }
+-- (7 Nov, owner, with a TikTok of another Roblox game: "ik bedoel meer de style van de texturen", "Eerst 1 gebied als
+-- test") the classic studded toy-brick look (server/StudLook: plain plastic, studs on top and sides) in these areas
+-- of the run's world; {} or nil: the old look everywhere
+Config.STUD_LOOK = { areas = { 1 } }
 -- Roblox badge per boss (0 = none yet: make them on the Creator Hub and put the ids here); the in-game trophy
 -- (PlayerData.bossTrophies) is given either way.
 Config.BOSS_BADGES = { 0, 0, 0, 0, 0, 0, 0, 0 }

@@ -692,6 +692,17 @@ function RunWorld.build()
 	end
 	task.wait()
 	print(("[RunWorld] %d squares of rim built up round the isles' void (holes in the map)"):format(sealRim(w)))
+	-- (7 Nov, owner, with a TikTok of another game: "ik bedoel meer de style van de texturen", "Eerst 1 gebied als
+	-- test") the classic studded toy-brick look in the areas in Config.STUD_LOOK (server/StudLook), now and on
+	-- whatever is added there later
+	local okStud, nStud = pcall(function()
+		return require(script.Parent.StudLook).apply(w)
+	end)
+	if okStud then
+		print(("[RunWorld] the stud look: %d parts"):format(nStud))
+	else
+		warn("[RunWorld] stud look: " .. tostring(nStud))
+	end
 	local pads = w:FindFirstChild("Pads")
 	for _, pad in (if pads then pads:GetChildren() else {}) do
 		if pad:IsA("BasePart") and pad:GetAttribute("Sell") then

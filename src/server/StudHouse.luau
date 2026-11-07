@@ -20,7 +20,7 @@ export type Look = {
 }
 
 StudHouse.LOOKS = {
-	blue = { wall = C(238, 200, 98), wallShade = C(224, 184, 84), roof = C(58, 84, 152), roofDark = C(46, 68, 128), shutter = C(52, 118, 176), door = C(178, 42, 46) },
+	blue = { wall = C(238, 200, 98), wallShade = C(224, 184, 84), roof = C(42, 62, 118), roofDark = C(34, 50, 98), shutter = C(52, 118, 176), door = C(178, 42, 46) },
 	red = { wall = C(238, 226, 206), wallShade = C(222, 208, 186), roof = C(168, 52, 44), roofDark = C(140, 40, 34), shutter = C(70, 118, 74), door = C(64, 96, 150) },
 } :: { [string]: Look }
 
@@ -116,33 +116,48 @@ end
 
 -- a stepped tiled roof: layers `stepH` tall, each `inset` narrower each side; ridge along X (spanning z c-half..c+half,
 -- x from a to b) or along Z. Each layer is a strip on either side (the roof is a shell over the walls) and a ridge cap.
-local function roofX(name: string, c: number, half: number, a: number, b: number, y0: number, stepH: number, inset: number)
+local function roofX(name: string, c: number, half: number, a: number, b: number, y0: number, stepH: number, inset: number, frontB: number?, trimEnds: boolean?)
+	-- (frontB: the front slope stops there instead of at b, where a wing's roof takes over)
 	local k = 0
 	local hw = half
+	local function strip(x0: number, x1: number, z0: number, z1: number, col: Color3)
+		box(name, x0, y0 + k * stepH, z0, x1, y0 + (k + 1) * stepH, z1, col)
+		if trimEnds then
+			-- white bargeboards: the strip's ends faced in trim
+			box("Barge", x0 - 0.3, y0 + k * stepH, z0, x0, y0 + (k + 1) * stepH, z1, TRIM)
+			box("Barge", x1, y0 + k * stepH, z0, x1 + 0.3, y0 + (k + 1) * stepH, z1, TRIM)
+		end
+	end
 	while hw > inset * 1.2 do
 		local col = if k % 2 == 0 then look.roof else look.roofDark
 		local w = inset + 0.8
-		box(name, a, y0 + k * stepH, c - hw, b, y0 + (k + 1) * stepH, c - hw + w, col)
-		box(name, a, y0 + k * stepH, c + hw - w, b, y0 + (k + 1) * stepH, c + hw, col)
+		strip(a, frontB or b, c - hw, c - hw + w, col)
+		strip(a, b, c + hw - w, c + hw, col)
 		hw -= inset
 		k += 1
 	end
-	box(name, a, y0 + k * stepH, c - hw, b, y0 + (k + 1) * stepH, c + hw, if k % 2 == 0 then look.roof else look.roofDark)
+	strip(a, b, c - hw, c + hw, if k % 2 == 0 then look.roof else look.roofDark)
 	return y0 + (k + 1) * stepH
 end
 
-local function roofZ(name: string, c: number, half: number, a: number, b: number, y0: number, stepH: number, inset: number)
+local function roofZ(name: string, c: number, half: number, a: number, b: number, y0: number, stepH: number, inset: number, trimFront: boolean?)
 	local k = 0
 	local hw = half
+	local function strip(x0: number, x1: number, col: Color3)
+		box(name, x0, y0 + k * stepH, a, x1, y0 + (k + 1) * stepH, b, col)
+		if trimFront then
+			box("Barge", x0, y0 + k * stepH, a - 0.3, x1, y0 + (k + 1) * stepH, a, TRIM)
+		end
+	end
 	while hw > inset * 1.2 do
 		local col = if k % 2 == 0 then look.roof else look.roofDark
 		local w = inset + 0.8
-		box(name, c - hw, y0 + k * stepH, a, c - hw + w, y0 + (k + 1) * stepH, b, col)
-		box(name, c + hw - w, y0 + k * stepH, a, c + hw, y0 + (k + 1) * stepH, b, col)
+		strip(c - hw, c - hw + w, col)
+		strip(c + hw - w, c + hw, col)
 		hw -= inset
 		k += 1
 	end
-	box(name, c - hw, y0 + k * stepH, a, c + hw, y0 + (k + 1) * stepH, b, if k % 2 == 0 then look.roof else look.roofDark)
+	strip(c - hw, c + hw, if k % 2 == 0 then look.roof else look.roofDark)
 	return y0 + (k + 1) * stepH
 end
 
@@ -241,13 +256,13 @@ end
 
 local function roofs()
 	-- the main roof: ridge along X, eaves overhanging front and back
-	local mainTop = roofX("Roof", (MZ0 + MZ1) / 2, (MZ1 - MZ0) / 2 + 1.4, -MX - 1.4, MX + 1.4, EAVE, 1.05, 1)
+	local mainTop = roofX("Roof", (MZ0 + MZ1) / 2, (MZ1 - MZ0) / 2 + 1.4, -MX - 1.2, MX + 1, EAVE, 1.05, 1, WX0 + 0.2, true)
 	-- its gable ends: stepped wall triangles under it at both ends
 	gableZ("Gable", (MZ0 + MZ1) / 2, (MZ1 - MZ0) / 2 - 0.4, EAVE, 1.05, 1, -MX, -MX + 1.2)
 	gableZ("Gable", (MZ0 + MZ1) / 2, (MZ1 - MZ0) / 2 - 0.4, EAVE, 1.05, 1, MX - 1.2, MX)
 	-- the wing's steeper roof, ridge along Z, running back into the main roof
 	local wc = (WX0 + WX1) / 2
-	roofZ("Roof", wc, (WX1 - WX0) / 2 + 1, WZ - 1.2, (MZ0 + MZ1) / 2, EAVE, 1.6, 1)
+	roofZ("Roof", wc, (WX1 - WX0) / 2 + 1, WZ - 1.2, (MZ0 + MZ1) / 2, EAVE, 1.6, 1, true)
 	gableX("Gable", wc, (WX1 - WX0) / 2 - 0.4, EAVE, 1.6, 1, WZ, WZ + 1.2)
 	-- the gable's white bargeboards: a stepped trim line just inside the roof's front edge
 	return mainTop
@@ -260,7 +275,7 @@ local function dormer()
 	clap("Dormer", x0, zf, x1, zf + 4, y0, y0 + 3.6)
 	box("Corner", x0 - 0.3, y0, zf - 0.3, x0 + 0.3, y0 + 3.6, zf + 0.3, TRIM)
 	box("Corner", x1 - 0.3, y0, zf - 0.3, x1 + 0.3, y0 + 3.6, zf + 0.3, TRIM)
-	roofZ("DormerRoof", (x0 + x1) / 2, (x1 - x0) / 2 + 0.8, zf - 0.8, zf + 4.5, y0 + 3.6, 1, 1)
+	roofZ("DormerRoof", (x0 + x1) / 2, (x1 - x0) / 2 + 0.8, zf - 0.8, zf + 4.5, y0 + 3.6, 1, 1, true)
 	gableX("DormerGable", (x0 + x1) / 2, (x1 - x0) / 2 - 0.4, y0 + 3.6, 1, 1, zf, zf + 0.8)
 	-- its window (no shutters: too narrow)
 	local cf = front((x0 + x1) / 2, y0 + 1.8, zf - 0.2)
@@ -279,7 +294,7 @@ local function porch()
 	end
 	box("PorchBeam", DOOR_X - 3.1, 9.6, -10.1, DOOR_X + 2.3, 10.2, -8.8, TRIM)
 	local pc = DOOR_X - 0.4
-	roofZ("PorchRoof", pc, 3.4, -10.9, MZ0 + 0.3, 10.2, 0.9, 1)
+	roofZ("PorchRoof", pc, 3.4, -10.9, MZ0 + 0.3, 10.2, 0.9, 1, true)
 	gableX("PorchGable", pc, 2.4, 10.2, 0.9, 1, -10.2, -9.6)
 	-- a white bracket in the gable
 	box("PorchTrim", pc - 0.2, 10.2, -10.35, pc + 0.2, 12, -10.15, TRIM)

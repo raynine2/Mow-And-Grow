@@ -244,6 +244,48 @@ function StudLook.apply(w: Instance): number
 	return n
 end
 
+-- The lobby, the main hub (7 Nov 14:37, owner: "also change the main hub with the things"): every part of its world
+-- `w` (server/Lobby.start, after the saved map is in) and what's added there later, the same way as above; the clouds
+-- and the floating motes stay soft (studs on a cloud make it a block). The grass floor is Terrain: no studs there,
+-- as in the run. On with Config.STUD_LOOK.lobby = true. Returns how many parts took the look.
+local LOBBY_SKIP: { [string]: boolean } = { Clouds = true, Motes = true }
+
+function StudLook.applyLobby(w: Instance): number
+	local s = Config.STUD_LOOK
+	if type(s) ~= "table" or s.lobby ~= true then
+		return 0
+	end
+	local function skip(d: Instance): boolean
+		local p = d.Parent
+		while p and p ~= w do
+			if LOBBY_SKIP[p.Name] then
+				return true
+			end
+			p = p.Parent
+		end
+		return false
+	end
+	local n = 0
+	for i, d in w:GetDescendants() do
+		if d:IsA("BasePart") and not skip(d) and dress(d) then
+			n += 1
+		end
+		if i % 4000 == 0 then
+			task.wait()
+		end
+	end
+	w.DescendantAdded:Connect(function(d)
+		if d:IsA("BasePart") then
+			task.defer(function()
+				if d.Parent and not skip(d) then
+					dress(d)
+				end
+			end)
+		end
+	end)
+	return n
+end
+
 StudLook.areaAt = areaAt
 
 return StudLook

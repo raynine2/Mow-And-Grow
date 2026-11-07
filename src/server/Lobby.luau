@@ -518,6 +518,17 @@ function Lobby.start()
 	pcall(function()
 		require(script.Parent.WalkPlates).cover(workspace)
 	end)
+	-- (owner, 7 Nov: "also change the main hub with the things") the studded toy-brick look here too (server/StudLook,
+	-- Config.STUD_LOOK.lobby)
+	local okStud, studErr = pcall(function()
+		local n = require(script.Parent.StudLook).applyLobby(built.world)
+		if n > 0 then
+			print(("[Lobby] the stud look: %d parts"):format(n))
+		end
+	end)
+	if not okStud then
+		warn("[Lobby] the stud look: " .. tostring(studErr))
+	end
 	require(script.Parent.LobbyBoards).start() -- the all-time leaderboards
 	for i, def in built.pads do
 		table.insert(pads, {

@@ -470,7 +470,7 @@ local function frost(K: Kit)
 		K:box("SnowMat", r[1], 0, r[2], r[3], 0.8, r[4], SNOW[i % 2 + 1])
 	end
 	-- the chalet: stone footing, dark timber frame, plaster between
-	local x0, x1, z0, z1, B, TOP = -4.6, 5.4, -4, 7, 0.8, 7.4
+	local x0, x1, z0, z1, B, TOP = -5.4, 6.2, -4, 8, 0.8, 8.4
 	local cx = (x0 + x1) / 2
 	K:box("Footing", x0 - 0.3, B, z0 - 0.3, x1 + 0.3, B + 1.2, z1 + 0.3, STONE[2])
 	K:box("Walls", x0, B + 1.2, z0, x1, TOP, z1, PLASTER)
@@ -480,7 +480,7 @@ local function frost(K: Kit)
 	K:box("Timber", x0 - 0.3, TOP - 0.6, z0 - 0.35, x1 + 0.3, TOP, z0 + 0.1, TIMBER[2])
 	K:box("Timber", x0 - 0.3, B + 3.6, z0 - 0.3, x1 + 0.3, B + 4.1, z0 + 0.1, TIMBER[2])
 	-- the steep roof, snow on it, its gable: plaster crossed by timber, the big glowing window, the blue gems
-	local RIDGE = TOP + 9.6
+	local RIDGE = TOP + 11
 	local half = (x1 - x0) / 2
 	K:prism("Gable", CFrame.new(cx, TOP, (z0 + z1) / 2) * CFrame.Angles(0, math.pi / 2, 0), z1 - z0, x1 - x0, RIDGE - TOP, PLASTER)
 	local pitch = (RIDGE - TOP) / half
@@ -492,14 +492,14 @@ local function frost(K: Kit)
 	K:box("Timber", cx - 0.3, TOP, z0 - 0.35, cx + 0.3, RIDGE - 1.2, z0 - 0.05, TIMBER[1])
 	for s = -1, 1, 2 do
 		local a = Vector3.new(cx + s * (half - 0.8), TOP + 0.3, z0 - 0.2)
-		local b = Vector3.new(cx + s * 0.4, TOP + 6, z0 - 0.2)
+		local b = Vector3.new(cx + s * 0.4, TOP + 7, z0 - 0.2)
 		local mid = (a + b) / 2
 		local d = b - a
 		K:brick("Timber", Vector3.new(d.Magnitude, 0.5, 0.3), CFrame.new(mid) * CFrame.Angles(0, 0, math.atan2(d.Y, d.X)), TIMBER[1], true)
 	end
 	-- the big window in the gable, glowing warm, in a timber frame with mullions
-	local wcf = CFrame.new(cx, TOP + 2.8, z0 - 0.25)
-	K:glow("WindowGlow", Vector3.new(3, 3.4, 0.2), wcf, AMBER, 12)
+	local wcf = CFrame.new(cx, TOP + 3.2, z0 - 0.25)
+	K:glow("WindowGlow", Vector3.new(3, 3.4, 0.2), wcf, C(240, 168, 82), 12, true)
 	for k = -1, 1, 2 do
 		K:brick("WindowFrame", Vector3.new(0.4, 3.8, 0.4), wcf * CFrame.new(k * 1.7, 0, -0.15), TIMBER[1])
 	end
@@ -508,7 +508,7 @@ local function frost(K: Kit)
 	K:brick("Mullion", Vector3.new(0.25, 3.4, 0.3), wcf * CFrame.new(0, 0, -0.15), TIMBER[2], true)
 	K:brick("Mullion", Vector3.new(3, 0.25, 0.3), wcf * CFrame.new(0, 0.3, -0.15), TIMBER[2], true)
 	-- the blue gems: one over the window, one at the peak
-	for _, gy in { TOP + 5.4, RIDGE - 1.8 } do
+	for _, gy in { TOP + 5.8, RIDGE - 2 } do
 		K:glow("Gem", Vector3.new(0.9, 0.9, 0.3), CFrame.new(cx, gy, z0 - 0.4) * CFrame.Angles(0, 0, math.rad(45)), GEM, 6)
 		K:brick("GemSetting", Vector3.new(1.3, 1.3, 0.2), CFrame.new(cx, gy, z0 - 0.28) * CFrame.Angles(0, 0, math.rad(45)), TIMBER[1], true)
 	end
@@ -540,12 +540,13 @@ local function frost(K: Kit)
 	K:box("ChimneySnow", x1 - 2.8, RIDGE + 1.8, 2.8, x1 - 0.8, RIDGE + 2.1, 4.8, SNOW[1], true)
 	lantern(K, Vector3.new(cx - 2.2, B + 3.6, pz - 0.6), AMBER, B + 4.6)
 	-- the ice crystals on the left front, skis leaning on them
-	local ic = CFrame.new(x1 + 2.4, B, -2)
-	crystal(K, ic * CFrame.Angles(math.rad(-6), 0, math.rad(-4)), 1.8, 11, ICE, ICE_HI)
-	crystal(K, ic * CFrame.new(1.4, 0, 0.6) * CFrame.Angles(math.rad(4), 0, math.rad(-14)), 1.3, 8, ICE, ICE_HI)
-	crystal(K, ic * CFrame.new(-1, 0, 0.9) * CFrame.Angles(math.rad(-4), 0, math.rad(12)), 1.2, 7, ICE, ICE_HI)
-	crystal(K, ic * CFrame.new(0.6, 0, -1.2) * CFrame.Angles(math.rad(-16), 0, math.rad(-8)), 1, 5, ICE, ICE_HI)
-	crystal(K, ic * CFrame.new(-0.3, 0, 2) * CFrame.Angles(math.rad(10), 0, math.rad(4)), 1.1, 9, ICE, ICE_HI)
+	local ic = CFrame.new(x1 + 2.8, B, -1)
+	crystal(K, ic * CFrame.Angles(math.rad(-6), 0, math.rad(-4)), 2.6, 15, ICE, ICE_HI)
+	crystal(K, ic * CFrame.new(1.9, 0, 0.6) * CFrame.Angles(math.rad(4), 0, math.rad(-14)), 2, 11, ICE, ICE_HI)
+	crystal(K, ic * CFrame.new(-1.5, 0, 1.2) * CFrame.Angles(math.rad(-4), 0, math.rad(12)), 1.9, 10, ICE, ICE_HI)
+	crystal(K, ic * CFrame.new(0.9, 0, -1.6) * CFrame.Angles(math.rad(-16), 0, math.rad(-8)), 1.5, 7, ICE, ICE_HI)
+	crystal(K, ic * CFrame.new(-0.4, 0, 2.6) * CFrame.Angles(math.rad(10), 0, math.rad(4)), 1.7, 12.5, ICE, ICE_HI)
+	crystal(K, ic * CFrame.new(2.2, 0, -0.9) * CFrame.Angles(math.rad(-8), 0, math.rad(-24)), 1.2, 6, ICE, ICE_HI)
 	for k = 0, 1 do
 		local ski = CFrame.new(x1 + 1 + k * 0.8, B + 2.4, -4.4) * CFrame.Angles(math.rad(-14), 0, math.rad(-6 + k * 4))
 		K:brick("Ski", Vector3.new(0.5, 4.8, 0.2), ski, C(60, 120, 200), true)
@@ -553,8 +554,8 @@ local function frost(K: Kit)
 	end
 	K:box("SnowPile", x1 + 0.4, B, -5.2, x1 + 2.6, B + 0.8, -3.8, SNOW[1])
 	-- snowy pines on the right front
-	snowPine(K, Vector3.new(x0 - 2.4, B, -2.6), 1.6)
-	snowPine(K, Vector3.new(x0 - 3.6, B, 0.4), 1.1)
+	snowPine(K, Vector3.new(x0 - 2.6, B, -2.6), 2)
+	snowPine(K, Vector3.new(x0 - 3.4, B, 1.4), 1.4)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -714,7 +715,7 @@ local function blossom(K: Kit)
 		K:wedge("RoofTip", Vector3.new(0.8, 0.9, 1.2), CFrame.lookAt(tip, tip + Vector3.new(math.sin(a), 0, -math.cos(a))) * CFrame.Angles(0, math.pi, 0), PINK[2], true)
 		K:ball("RoofTipBall", 0.4, tip + Vector3.new(math.sin(a) * 0.5, 0.6, -math.cos(a) * 0.5), C(222, 186, 110))
 	end
-	K:cyl("RoofBand", R * 1.3, 0.8, c + Vector3.new(0, y0 + 3, 0), CREAM[1])
+	K:cyl("RoofBand", R * 1.05, 0.6, c + Vector3.new(0, y0 + 3.1, 0), CREAM[1])
 	K:dome("RoofTop", c, 8, R * 0.85, 0.5, y0 + 3.4, y0 + 5.6, 4, PINK, false)
 	K:cyl("FinialBase", 0.7, 0.6, c + Vector3.new(0, y0 + 5.9, 0), C(222, 186, 110))
 	K:ball("Finial", 0.9, c + Vector3.new(0, y0 + 6.6, 0), C(222, 186, 110))
@@ -755,12 +756,15 @@ local BLUE = { C(44, 64, 158), C(34, 52, 130) }
 local GOLDEN = { C(226, 178, 64), C(204, 156, 48) }
 local SKYGEM = C(110, 180, 255)
 
--- a five-point star (two thin boxes crossed twice, a ball) facing out along `cf`'s -Z
+-- a four-point gold sparkle (as the mesh's stars) facing out along `cf`'s -Z: four triangular points round a diamond
 local function star(K: Kit, cf: CFrame, s: number)
-	for k = 0, 4 do
-		K:wedge("Star", Vector3.new(0.25 * s, 1.1 * s, 0.6 * s), cf * CFrame.Angles(0, 0, k * math.pi * 2 / 5) * CFrame.new(0, 0.55 * s, 0) * CFrame.Angles(-math.pi / 2, 0, 0) * CFrame.Angles(0, math.pi / 2, 0), GOLDEN[1], true)
+	local w, h, t = 0.7 * s, 1.1 * s, 0.3 * s
+	for k = 0, 3 do
+		local p = cf * CFrame.Angles(0, 0, k * math.pi / 2)
+		K:wedge("StarPoint", Vector3.new(t, h, w / 2), p * CFrame.new(-w / 4, h / 2, 0) * CFrame.Angles(0, math.pi / 2, 0), GOLDEN[1], true)
+		K:wedge("StarPoint", Vector3.new(t, h, w / 2), p * CFrame.new(w / 4, h / 2, 0) * CFrame.Angles(0, -math.pi / 2, 0), GOLDEN[1], true)
 	end
-	K:ball("StarHeart", 0.6 * s, cf, GOLDEN[2])
+	K:brick("StarHeart", Vector3.new(w * 0.95, w * 0.95, t * 1.3), cf * CFrame.Angles(0, 0, math.rad(45)), GOLDEN[2], true)
 end
 
 local function starlight(K: Kit)

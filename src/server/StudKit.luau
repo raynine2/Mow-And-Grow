@@ -149,22 +149,33 @@ function StudKit.ring(self: Kit, name: string, c: Vector3, sides: number, a: num
 	end
 end
 
--- A stepped dome or cone: rings from radius r0 at y0 shrinking to r1 at y1 in `n` steps.
+-- A stepped dome or cone: rings from radius r0 at y0 shrinking to r1 at y1 in `n` steps, each ring's inside filled
+-- by a disc just under its own size (one big core cylinder poked out of the narrow top)
 function StudKit.dome(self: Kit, name: string, c: Vector3, sides: number, r0: number, r1: number, y0: number, y1: number, n: number, cols: { Color3 }, round: boolean?)
 	local h = (y1 - y0) / n
 	for k = 0, n - 1 do
 		local f = k / n
 		local r = if round then r1 + (r0 - r1) * math.cos(f * math.pi / 2) else r0 + (r1 - r0) * f
-		self:ring(name, c, sides, r, y0 + k * h, h, math.min(r, 2.2), { cols[k % #cols + 1] })
+		local t = math.min(r, 2.2)
+		local col = cols[k % #cols + 1]
+		self:ring(name, c, sides, r, y0 + k * h, h, t, { col })
+		local inner = (r - t) * 2 + 0.3
+		if inner > 0.4 then
+			self:cyl(name .. "Core", inner, h, c + Vector3.new(0, y0 + k * h + h / 2, 0), col)
+		end
 	end
-	self:cyl(name .. "Core", math.max(0.4, r0 * 1.4), (y1 - y0) * 0.9, CFrame.new(c + Vector3.new(0, (y0 + y1) / 2 - (y1 - y0) * 0.05, 0)), cols[1])
 end
 
--- a glowing bit (a lantern's glass, lava, a crystal): Neon, no studs, a light if `range`
-function StudKit.glow(self: Kit, name: string, size: Vector3, cf: CFrame, color: Color3, range: number?): Part
+-- a glowing bit (a lantern's glass, lava, a crystal): Neon, no studs, a light if `range`; `soft`: warm smooth plastic
+-- lit by its light instead of Neon (a window: Neon read as a blinding yellow block)
+function StudKit.glow(self: Kit, name: string, size: Vector3, cf: CFrame, color: Color3, range: number?, soft: boolean?): Part
 	local p = self:brick(name, size, cf, color, true)
-	p.Material = Enum.Material.Neon
-	p.Color = color -- (glows at its own colour, not shaded)
+	if soft then
+		p.Material = Enum.Material.SmoothPlastic
+	else
+		p.Material = Enum.Material.Neon
+		p.Color = color -- (glows at its own colour, not shaded)
+	end
 	if range then
 		local l = Instance.new("PointLight")
 		l.Color = color

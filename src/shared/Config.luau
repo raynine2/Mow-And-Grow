@@ -2069,6 +2069,9 @@ Config.MOWERS_LOCKED_TEXT = "🔒 Ride-on mowers & gas are coming in a future up
 -- it) and not in the lobby; the maps saved in the place keep theirs, it's only left out when the game builds the world.
 -- false brings it back (the ride-on mowers need it).
 Config.GARAGE_HIDDEN = true
+-- (7 Nov, owner: "delete the lanterns") the lobby's lantern posts are taken out when it loads (server/Lobby.start); the
+-- saved map keeps them. true brings them back.
+Config.LOBBY_LANTERNS = false
 if Config.MOWERS_LOCKED then
 	local sections = {}
 	for _, s in Config.UPGRADE_SECTIONS do

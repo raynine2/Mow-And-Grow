@@ -257,25 +257,45 @@ local CELL = 4 -- a Terrain cell
 local REACH = 200 -- how far from the middle to look (the island's grass is within about 130)
 local DEPTH = 8 -- how deep a column goes (its studded sides show as steps at the rim)
 local STRIPE = 8 -- studs per mowed stripe
+-- what gets covered: the island's top is Grass and LeafyGrass, with Ground / Mud worn spots; all one lawn in studs
+-- (the dirt left showing between the blocks read as holes)
+local COVER: { [Enum.Material]: boolean } = {
+	[Enum.Material.Grass] = true,
+	[Enum.Material.LeafyGrass] = true,
+	[Enum.Material.Ground] = true,
+	[Enum.Material.Mud] = true,
+}
 
 local function studGrass(w: Instance): number
 	local terrain = workspace.Terrain
 	local rp = RaycastParams.new()
 	rp.FilterType = Enum.RaycastFilterType.Include
 	rp.FilterDescendantsInstances = { terrain }
-	-- 1) every cell whose top is grass, and how high
-	local tops: { [number]: { [number]: number } } = {} -- [z][x] = the column's top
-	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+	-- 1) every cell of the island's top, and how high: the grass sets the island's box, the worn spots and the other
+	-- grass count inside it (the side isles' grounds stay as they are)
+	local found = {}
+	local gx0, gx1, gz0, gz1 = math.huge, -math.huge, math.huge, -math.huge
 	for x = -REACH, REACH - CELL, CELL do
 		for z = -REACH, REACH - CELL, CELL do
 			local hit = workspace:Raycast(Vector3.new(x + CELL / 2, 150, z + CELL / 2), Vector3.new(0, -300, 0), rp)
-			if hit and hit.Material == Enum.Material.Grass and hit.Position.Y > -40 then
-				local row = tops[z] or {}
-				tops[z] = row
-				row[x] = math.floor(hit.Position.Y * 2 + 0.5) / 2 - 0.1
-				minX, maxX = math.min(minX, x), math.max(maxX, x)
-				minZ, maxZ = math.min(minZ, z), math.max(maxZ, z)
+			if hit and COVER[hit.Material] and hit.Position.Y > -40 and hit.Position.Y < 6 then
+				table.insert(found, { x = x, z = z, y = hit.Position.Y })
+				if hit.Material == Enum.Material.Grass then
+					gx0, gx1 = math.min(gx0, x), math.max(gx1, x)
+					gz0, gz1 = math.min(gz0, z), math.max(gz1, z)
+				end
 			end
+		end
+	end
+	local tops: { [number]: { [number]: number } } = {} -- [z][x] = the column's top
+	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+	for _, c in found do
+		if c.x >= gx0 - 8 and c.x <= gx1 + 8 and c.z >= gz0 - 8 and c.z <= gz1 + 8 then
+			local row = tops[c.z] or {}
+			tops[c.z] = row
+			row[c.x] = math.floor(c.y * 2 + 0.5) / 2 - 0.1
+			minX, maxX = math.min(minX, c.x), math.max(maxX, c.x)
+			minZ, maxZ = math.min(minZ, c.z), math.max(maxZ, c.z)
 		end
 	end
 	if minX > maxX then

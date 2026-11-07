@@ -518,6 +518,14 @@ function Lobby.start()
 	pcall(function()
 		require(script.Parent.WalkPlates).cover(workspace)
 	end)
+	-- (owner, 7 Nov: "delete the lanterns") the lantern posts along the paths go (Config.LOBBY_LANTERNS)
+	if Config.LOBBY_LANTERNS == false then
+		for _, d in built.world:GetDescendants() do
+			if d:IsA("Model") and d.Name == "lantern_post" and d.Parent then
+				d:Destroy()
+			end
+		end
+	end
 	-- (owner, 7 Nov: "also change the main hub with the things") the studded toy-brick look here too (server/StudLook,
 	-- Config.STUD_LOOK.lobby)
 	local okStud, studErr = pcall(function()

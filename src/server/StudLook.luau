@@ -244,6 +244,99 @@ function StudLook.apply(w: Instance): number
 	return n
 end
 
+-------------------------------------------------------------------------------------------------------------
+-- the lobby's grass floor (7 Nov 14:43, owner: "the grass"). It's Terrain, and Terrain takes no studs, so the grass
+-- on the island's top is laid again in studded blocks: a 4 x 4 column on every Terrain cell whose top is grass, its
+-- top where the grass was (in half-stud steps, a tenth lower so the paving's beds lying on it stay on top), in mowed
+-- stripes; the Terrain in those columns is lowered out of sight under them (its grass blades would poke through).
+-- At runtime only: the saved map keeps its Terrain.
+-------------------------------------------------------------------------------------------------------------
+local GRASS_A = C(100, 182, 56) -- the lobby's Terrain grass (server/Ground)
+local GRASS_B = C(88, 166, 48) -- the darker stripe
+local CELL = 4 -- a Terrain cell
+local REACH = 200 -- how far from the middle to look (the island's grass is within about 130)
+local DEPTH = 8 -- how deep a column goes (its studded sides show as steps at the rim)
+local STRIPE = 8 -- studs per mowed stripe
+
+local function studGrass(w: Instance): number
+	local terrain = workspace.Terrain
+	local rp = RaycastParams.new()
+	rp.FilterType = Enum.RaycastFilterType.Include
+	rp.FilterDescendantsInstances = { terrain }
+	-- 1) every cell whose top is grass, and how high
+	local tops: { [number]: { [number]: number } } = {} -- [z][x] = the column's top
+	local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+	for x = -REACH, REACH - CELL, CELL do
+		for z = -REACH, REACH - CELL, CELL do
+			local hit = workspace:Raycast(Vector3.new(x + CELL / 2, 150, z + CELL / 2), Vector3.new(0, -300, 0), rp)
+			if hit and hit.Material == Enum.Material.Grass and hit.Position.Y > -40 then
+				local row = tops[z] or {}
+				tops[z] = row
+				row[x] = math.floor(hit.Position.Y * 2 + 0.5) / 2 - 0.1
+				minX, maxX = math.min(minX, x), math.max(maxX, x)
+				minZ, maxZ = math.min(minZ, z), math.max(maxZ, z)
+			end
+		end
+	end
+	if minX > maxX then
+		return 0
+	end
+	-- 2) the blocks: a row's neighbours at the same height are one long block
+	local folder = Instance.new("Folder")
+	folder.Name = "StudGrass"
+	local n = 0
+	for z, row in tops do
+		local xs = {}
+		for x in row do
+			table.insert(xs, x)
+		end
+		table.sort(xs)
+		local i = 1
+		while i <= #xs do
+			local x0, top = xs[i], row[xs[i]]
+			local j = i
+			while j < #xs and xs[j + 1] == xs[j] + CELL and row[xs[j + 1]] == top do
+				j += 1
+			end
+			local len = (j - i + 1) * CELL
+			local p = Instance.new("Part")
+			p.Name = "Grass"
+			p.Anchored = true
+			p.Size = Vector3.new(len, DEPTH, CELL)
+			p.CFrame = CFrame.new(x0 + len / 2, top - DEPTH / 2, z + CELL / 2)
+			p.Color = if (z // STRIPE) % 2 == 0 then GRASS_A else GRASS_B
+			p.Parent = folder
+			dress(p)
+			n += 1
+			i = j + 1
+		end
+	end
+	folder.Parent = w
+	-- 3) the Terrain in those columns goes down out of sight (it draws its surface ~2 studs over its fill's top)
+	local lo, hi = -64, 24
+	local region = Region3.new(Vector3.new(minX, lo, minZ), Vector3.new(maxX + CELL, hi, maxZ + CELL))
+	local mats, occ = terrain:ReadVoxels(region, CELL)
+	local size = mats.Size
+	for xi = 1, size.X do
+		local x = minX + (xi - 1) * CELL
+		for zi = 1, size.Z do
+			local z = minZ + (zi - 1) * CELL
+			local top = tops[z] and tops[z][x]
+			if top then
+				local from = math.floor((top - 2) / CELL) * CELL
+				for yi = 1, size.Y do
+					if lo + (yi - 1) * CELL >= from then
+						mats[xi][yi][zi] = Enum.Material.Air
+						occ[xi][yi][zi] = 0
+					end
+				end
+			end
+		end
+	end
+	terrain:WriteVoxels(region, CELL, mats, occ)
+	return n
+end
+
 -- The lobby, the main hub (7 Nov 14:37, owner: "also change the main hub with the things"): every part of its world
 -- `w` (server/Lobby.start, after the saved map is in) and what's added there later, the same way as above; the clouds
 -- and the floating motes stay soft (studs on a cloud make it a block). The grass floor is Terrain: no studs there,
@@ -273,6 +366,13 @@ function StudLook.applyLobby(w: Instance): number
 		if i % 4000 == 0 then
 			task.wait()
 		end
+	end
+	-- (14:43, owner: "the grass") the grass floor in studded blocks too
+	local okGrass, grass = pcall(studGrass, w)
+	if okGrass then
+		print(("[StudLook] the lobby's grass: %d studded blocks"):format(grass))
+	else
+		warn("[StudLook] the lobby's grass: " .. tostring(grass))
 	end
 	w.DescendantAdded:Connect(function(d)
 		if d:IsA("BasePart") then

@@ -113,45 +113,50 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the tower
 -------------------------------------------------------------------------------------------------------------
-local FOOT_A = 15 -- the stone footing
-local LOW_A = 13 -- the tower's apothem at the bottom, kept for the first 12 studs (the door's courses)
-local DOOR_W, DOOR_H = 6, 10
+-- (sizes from the mesh: its filler Core, a stack of rings inside it, is 21 across at the foot and 19 at the tower's
+-- bottom, 17 under the balcony)
+local FOOT_A = 20.5 -- the stone footing
+local DB = 3 -- the footing's top: the tower and the door stand on it
+local LOW_A = 17.5 -- the tower's apothem at the bottom, kept up to the door's top
+local DOOR_TOP = 15
+local TOP = 60 -- the tower's top, where the roof sits
+local DOOR_W, DOOR_H = 7, 11
 
--- the tower's apothem at height y (straight to 14, then narrowing to 10 at 60)
+-- the tower's apothem at height y (straight to the door's top, then narrowing to 13.5 at the top)
 local function towerA(y: number): number
-	if y <= 14 then
+	if y <= DOOR_TOP then
 		return LOW_A
 	end
-	return LOW_A - (y - 14) / (60 - 14) * 3
+	return LOW_A - (y - DOOR_TOP) / (TOP - DOOR_TOP) * 4
 end
 
 local function footing()
 	-- two stone courses, each side its own stone in two tones, the upper one stepped in
-	ring("Footing", 0, 1.2, FOOT_A, 4, { PAL.stone, PAL.stoneDark })
-	ring("Footing", 1.2, 0.8, FOOT_A - 0.8, 3, { PAL.stoneDark, PAL.stone })
+	ring("Footing", 0, 1.5, FOOT_A, 4, { PAL.stone, PAL.stoneDark })
+	ring("Footing", 1.5, DB - 1.5, FOOT_A - 1, 3.5, { PAL.stoneDark, PAL.stone })
 	-- the floor inside (covered, keeps the middle solid)
-	brick("Core", Vector3.new(15, 2, 15), CFrame.new(0, 1, 0), PAL.stoneDark)
+	brick("Core", Vector3.new(22, DB, 22), CFrame.new(0, DB / 2, 0), PAL.stoneDark)
 	-- a step up to the door
-	brick("Step", Vector3.new(DOOR_W + 3, 0.8, 3), face(0, FOOT_A + 1.5, 0.4), PAL.stone)
+	brick("Step", Vector3.new(DOOR_W + 4, 1.5, 2.5), face(0, FOOT_A + 1.25, 0.75), PAL.stone)
 end
 
 local function walls()
-	local y = 2
-	while y < 60 do
-		local h = math.min(4, 60 - y)
+	local y = DB
+	while y < TOP do
+		local h = math.min(4, TOP - y)
 		local a = towerA(y + h / 2)
 		-- the front side's lowest three courses are the door's: built round the door below
-		local skip = if y < 14 then { [0] = true } else nil
-		ring("Wall", y, h, a, 2, if (math.floor((y - 2) / 4)) % 2 == 0 then PAL.plaster else PAL.plasterShade, skip)
+		local skip = if y < DOOR_TOP then { [0] = true } else nil
+		ring("Wall", y, h, a, 2.5, if (math.floor((y - DB) / 4)) % 2 == 0 then PAL.plaster else PAL.plasterShade, skip)
 		posts("Post", y, h, a, 1.4, PAL.timber)
 		y += h
 	end
 	-- the timber beams round the tower: the sill, two belts and the top plate
-	for _, by in { 2, 14, 26, 46, 59.2 } do
+	for _, by in { DB, DOOR_TOP, 25, 47, TOP - 0.8 } do
 		ring("Beam", by - 0.4, 0.8, towerA(by) + 0.35, 1, PAL.timber)
 	end
 	-- the inside, so nothing shows through a gap
-	brick("Core", Vector3.new(11, 58, 11), CFrame.new(0, 31, 0), PAL.plasterShade) -- (inside the narrowest course)
+	brick("Core", Vector3.new(15, TOP - DB, 15), CFrame.new(0, (DB + TOP) / 2, 0), PAL.plasterShade) -- (inside the narrowest course)
 end
 
 -- the arched door in the front side: jambs, the wall over it, a stone surround with a stepped arch and a keystone,
@@ -161,29 +166,30 @@ local function door()
 	local s = 2 * a * TAN
 	local side = (s - DOOR_W) / 2
 	for k = -1, 1, 2 do
-		brick("Wall", Vector3.new(side, 12, 2), face(0, a - 1, 8) * CFrame.new(k * (DOOR_W / 2 + side / 2), 0, 0), PAL.plaster)
+		brick("Wall", Vector3.new(side, DOOR_TOP - DB, 2.5), face(0, a - 1.25, (DB + DOOR_TOP) / 2) * CFrame.new(k * (DOOR_W / 2 + side / 2), 0, 0), PAL.plaster)
 	end
-	brick("Wall", Vector3.new(DOOR_W, 2, 2), face(0, a - 1, 2 + DOOR_H + 1), PAL.plaster)
+	brick("Wall", Vector3.new(DOOR_W, DOOR_TOP - DB - DOOR_H, 2.5), face(0, a - 1.25, (DB + DOOR_H + DOOR_TOP) / 2), PAL.plaster)
 	-- the stone surround (proud of the wall)
 	local out = 0.5
 	for k = -1, 1, 2 do
-		brick("Arch", Vector3.new(1.2, DOOR_H - 2, 1.4), face(0, a + out, 2 + (DOOR_H - 2) / 2) * CFrame.new(k * (DOOR_W / 2 + 0.6), 0, 0.2), PAL.trim)
+		brick("Arch", Vector3.new(1.2, DOOR_H - 2, 1.4), face(0, a + out, DB + (DOOR_H - 2) / 2) * CFrame.new(k * (DOOR_W / 2 + 0.6), 0, 0.2), PAL.trim)
 		-- the arch's shoulders, stepping in
-		brick("Arch", Vector3.new(1.6, 1, 1.4), face(0, a + out, 2 + DOOR_H - 1.5) * CFrame.new(k * (DOOR_W / 2 + 0.2), 0, 0.2), PAL.trimDark)
-		brick("Arch", Vector3.new(1.8, 1, 1.4), face(0, a + out, 2 + DOOR_H - 0.5) * CFrame.new(k * (DOOR_W / 2 - 0.6), 0, 0.2), PAL.trim)
-		brick("Arch", Vector3.new(1.6, 1, 1.4), face(0, a + out, 2 + DOOR_H + 0.5) * CFrame.new(k * (DOOR_W / 2 - 1.8), 0, 0.2), PAL.trimDark)
+		brick("Arch", Vector3.new(1.6, 1, 1.4), face(0, a + out, DB + DOOR_H - 1.5) * CFrame.new(k * (DOOR_W / 2 + 0.2), 0, 0.2), PAL.trimDark)
+		brick("Arch", Vector3.new(1.8, 1, 1.4), face(0, a + out, DB + DOOR_H - 0.5) * CFrame.new(k * (DOOR_W / 2 - 0.6), 0, 0.2), PAL.trim)
+		brick("Arch", Vector3.new(1.6, 1, 1.4), face(0, a + out, DB + DOOR_H + 0.5) * CFrame.new(k * (DOOR_W / 2 - 1.8), 0, 0.2), PAL.trimDark)
 	end
-	brick("Keystone", Vector3.new(2, 1.6, 1.6), face(0, a + out, 2 + DOOR_H + 1.1) * CFrame.new(0, 0, 0.1), PAL.trim)
+	brick("Keystone", Vector3.new(2, 1.6, 1.6), face(0, a + out, DB + DOOR_H + 1.1) * CFrame.new(0, 0, 0.1), PAL.trim)
 	-- the door, set back, in four planks
+	local plank = DOOR_W / 4
 	for k = 0, 3 do
-		local x = -DOOR_W / 2 + 0.75 + k * 1.5
+		local x = -DOOR_W / 2 + plank / 2 + k * plank
 		local tall = DOOR_H - (if k == 0 or k == 3 then 1.4 else 0.6)
-		brick("Door", Vector3.new(1.45, tall, 0.6), face(0, a - 1.2, 2 + tall / 2) * CFrame.new(x, 0, 0), if k % 2 == 0 then PAL.door else PAL.timberLight)
+		brick("Door", Vector3.new(plank - 0.05, tall, 0.6), face(0, a - 1.2, DB + tall / 2) * CFrame.new(x, 0, 0), if k % 2 == 0 then PAL.door else PAL.timberLight)
 	end
-	for _, by in { 4.2, 8.6 } do
+	for _, by in { DB + 2.2, DB + 7 } do
 		brick("DoorBand", Vector3.new(DOOR_W - 0.4, 0.4, 0.3), face(0, a - 0.85, by), PAL.cap)
 	end
-	brick("DoorRing", Vector3.new(0.6, 0.6, 0.4), face(0, a - 0.7, 6.4) * CFrame.new(1.6, 0, 0), PAL.brass)
+	brick("DoorRing", Vector3.new(0.6, 0.6, 0.4), face(0, a - 0.7, DB + 4.6) * CFrame.new(1.9, 0, 0), PAL.brass)
 end
 
 -- a small arched window on side i at height y (w wide, h tall): a timber frame, dark glass with a cross bar, an arched
@@ -226,7 +232,7 @@ end
 -- the balcony
 -------------------------------------------------------------------------------------------------------------
 local DECK_Y = 34
-local DECK_A = 18.5
+local DECK_A = 23
 
 local function balcony()
 	local inner = towerA(DECK_Y)
@@ -256,32 +262,33 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the roof
 -------------------------------------------------------------------------------------------------------------
-local ROOF_Y = 60
-local ROOF_STEPS = 13
+local ROOF_Y = TOP
+local ROOF_STEPS = 15
+local ROOF_A = 18
 
 local function roof()
 	-- the eave beam, then the cone in rows of tiles, each row a little in from the one under it
-	ring("Eave", ROOF_Y - 0.6, 0.8, 14.2, 2, PAL.timber)
+	ring("Eave", ROOF_Y - 0.6, 0.8, ROOF_A + 0.2, 2, PAL.timber)
 	for k = 0, ROOF_STEPS - 1 do
-		local a = 14 - k * (12.6 / (ROOF_STEPS - 1))
+		local a = ROOF_A - k * ((ROOF_A - 1.6) / (ROOF_STEPS - 1))
 		local thick = math.min(a, 3.2)
 		ring("Roof", ROOF_Y + k * 2, 2, a, thick, if k % 2 == 0 then PAL.roof else PAL.roofDark)
 	end
 	-- the cap: two dark octagons, a spire and a brass finial
 	local top = ROOF_Y + ROOF_STEPS * 2
-	ring("Cap", top, 1.2, 2.2, 2.2, PAL.cap)
-	ring("Cap", top + 1.2, 1, 1.4, 1.4, PAL.cap)
-	brick("Spire", Vector3.new(0.6, 7, 0.6), CFrame.new(0, top + 2.2 + 3.5, 0), PAL.cap)
-	local ball = brick("Finial", Vector3.new(1.4, 1.4, 1.4), CFrame.new(0, top + 9.6, 0), PAL.brass)
+	ring("Cap", top, 1.2, 2.4, 2.4, PAL.cap)
+	ring("Cap", top + 1.2, 1, 1.5, 1.5, PAL.cap)
+	brick("Spire", Vector3.new(0.6, 9, 0.6), CFrame.new(0, top + 2.2 + 4.5, 0), PAL.cap)
+	local ball = brick("Finial", Vector3.new(1.4, 1.4, 1.4), CFrame.new(0, top + 11.6, 0), PAL.brass)
 	ball.Shape = Enum.PartType.Ball
 end
 
 -------------------------------------------------------------------------------------------------------------
 -- the sails
 -------------------------------------------------------------------------------------------------------------
-local HUB_Y = 67
-local HUB_Z = -12.6 -- in front of the roof
-local ARM = 34
+local HUB_Y = 68
+local HUB_Z = -15.4 -- in front of the roof
+local ARM = 33
 
 local function sails(): Model
 	local m = Instance.new("Model")
@@ -301,7 +308,7 @@ local function sails(): Model
 		brick("Spar", Vector3.new(ARM, 1, 0.9), arm * CFrame.new(ARM / 2, 0, -0.3), PAL.timber, m)
 		-- the sail on one side of the spar: canvas behind a lattice of laths, an outer rail
 		local from, to = 6, ARM - 0.5
-		local width = 5.6
+		local width = 6.2
 		local len = to - from
 		local mid = (from + to) / 2
 		brick("Canvas", Vector3.new(len, width, 0.3), arm * CFrame.new(mid, width / 2 + 0.5, 0.1), PAL.canvas, m)
@@ -327,15 +334,16 @@ function StudWindmill.build(parent: Instance, pivot: CFrame): Model
 	door()
 	-- the windows: two small ones flanking the door, one over the door's beam, the big one over the balcony with
 	-- flowers, and one on each side up high
-	window(1, 9, 2.4, 3.2, true)
-	window(7, 9, 2.4, 3.2, true)
-	window(0, 20, 2.6, 3.4, false)
-	window(0, 41, 3.4, 4.4, true)
-	window(2, 30, 2.4, 3.4, false)
-	window(6, 30, 2.4, 3.4, false)
-	window(2, 50, 2.2, 3, false)
-	window(6, 50, 2.2, 3, false)
-	window(4, 22, 2.6, 3.4, true)
+	window(1, 10, 3, 4, true)
+	window(7, 10, 3, 4, true)
+	window(0, 21, 3.2, 4.2, false)
+	window(0, 43, 4.2, 5.2, true)
+	window(2, 21, 3, 4, false)
+	window(6, 21, 3, 4, false)
+	window(2, 50, 2.8, 3.6, false)
+	window(6, 50, 2.8, 3.6, false)
+	window(4, 21, 3.2, 4.2, true)
+	window(4, 50, 2.8, 3.6, false)
 	balcony()
 	roof()
 	sails()

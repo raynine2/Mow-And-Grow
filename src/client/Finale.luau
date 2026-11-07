@@ -1724,7 +1724,7 @@ local function lesson(): boolean
 		local grip = C:grip("Left").Position
 		local toC = flat(C.root.Position - grip)
 		toC = if toC.Magnitude > 0.05 then toC.Unit else -flat(C.root.LookVector).Unit
-		local p = grip - UP * 2.0 - toC * 0.9
+		local p = grip - UP * 1.5 - toC * 0.9
 		R.root = CFrame.lookAt(p, p + toC)
 	end
 	after(SLAM - 0.08, function()

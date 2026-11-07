@@ -153,9 +153,11 @@ P.walkOff = {
 -- holding someone up high in the left hand, the right arm down at its side, feet planted, eyes up on him
 P.liftL = {
 	Waist = v(-8, -10, 0), Neck = v(-24, 6, 0),
-	lh = v(-0.3, 1.75, -1.0), lpole = v(-1, -0.3, 0.3), -- (forward as well as up: checked in Studio, straight up he hung inside its body)
+	-- (forward as well as up, at full stretch: checked in Studio, straight up he hung inside its body, and lower his feet
+	-- never left the ground)
+	lh = v(-0.25, 2.0, -0.75), lpole = v(-1, -0.3, 0.3),
 	RightShoulder = v(6, 0, 14), RightElbow = v(14, 0, 0),
-	lf = v(-0.15, 0, -0.55), rf = v(0.3, 0, 0.5), hip = v(0, -0.25, 0),
+	lf = v(-0.15, 0, -0.55), rf = v(0.3, 0, 0.5), hip = v(0, 0.1, 0),
 }
 -- the slam: the left arm driven down in front, the body folded after it
 P.slamL = {

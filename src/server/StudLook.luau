@@ -211,7 +211,10 @@ local function swapNature(w: Instance, areas: { [number]: boolean }): number
 	return n
 end
 
-local studRoundsIn: (Instance, { [number]: boolean }) -> number -- (below: the round stones)
+-- (below: the round stones)
+local studRoundsIn: (Instance, { [number]: boolean }) -> number
+local isDisc: (Instance) -> boolean
+local studDisc: (Part) -> number
 
 -- The world `w` (the run's copy): every part in the wanted areas now, and what's added there from now on.
 -- Returns how many parts took the look.
@@ -253,6 +256,10 @@ function StudLook.apply(w: Instance): number
 					local a = areaAt(d.Position)
 					if a and areas[a] then
 						dress(d)
+						-- (14:59) a round stone made later (the boss arenas' floors are built after the world)
+						if isDisc(d) then
+							studDisc(d :: Part)
+						end
 					end
 				end
 			end)
@@ -380,7 +387,7 @@ end
 -- triangles per slice, studs on their faces): the same circle, size, height and colour, with studs. The disc itself
 -- stays, hidden.
 -------------------------------------------------------------------------------------------------------------
-local function studDisc(cyl: Part): number
+studDisc = function(cyl: Part): number
 	local cf = cyl.CFrame
 	local A, B = cf.UpVector, cf.LookVector -- the disc's plane (its axis, RightVector, points up)
 	local r = cyl.Size.Y / 2
@@ -407,6 +414,10 @@ local function studDisc(cyl: Part): number
 			p.Size = Vector3.new(t, h, wid)
 			p.CFrame = CFrame.fromMatrix(mid + yv * (h / 2) + tdir * (wid / 2), yv:Cross(zv), yv, zv)
 			p.Color = cyl.Color
+			p.Transparency = cyl.Transparency -- (an arena's faint ring line)
+			p.CastShadow = cyl.CastShadow
+			p.CanQuery = cyl.CanQuery
+			p.CanTouch = cyl.CanTouch
 			p.Material = PLASTIC
 			p.LeftSurface, p.RightSurface, p.BottomSurface = STUDS, STUDS, STUDS -- (its two faces and the rim)
 			p.Parent = m
@@ -420,13 +431,14 @@ local function studDisc(cyl: Part): number
 end
 
 -- a flat round stone: a cylinder lying flat, 4 studs across or more, not glowing, see-through or carrying a picture
-local function isDisc(d: Instance): boolean
+isDisc = function(d: Instance): boolean
 	if not (d:IsA("Part") and d.Shape == Enum.PartType.Cylinder) then
 		return false
 	end
 	local p = d :: Part
 	return p.Transparency < 0.9
 		and p.Size.Y >= 4
+		and p.Size.X <= 6 -- (a tall column, like an arena's skirt down to the ground, stays round)
 		and math.abs(p.CFrame.RightVector.Y) > 0.95
 		and not LEAVE[p.Material]
 		and p:FindFirstChildWhichIsA("Decal") == nil

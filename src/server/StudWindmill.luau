@@ -355,17 +355,20 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the sails
 -------------------------------------------------------------------------------------------------------------
-local HUB_Y = 68
+local HUB_Y = 70
 local HUB_Z = -20 -- well in front of the roof, so the lower sails clear the tower by ~3 studs
-local ARM = 30 -- (turning, its lowest tip stays over the balcony rail: 68 - 30 = 38 > 36)
+local ARM = 30 -- (turning, its lowest tip stays clear over the balcony rail: 70 - 30 = 40 > 36)
 
 local function sails(): Model
 	local m = Instance.new("Model")
 	m.Name = "Sails"
 	m.Parent = model
 	-- the axle out of the roof and the hub on it
-	brick("Axle", Vector3.new(1.8, 1.8, 8), CFrame.new(0, HUB_Y, HUB_Z + 4), PAL.cap, m)
-	brick("AxleCollar", Vector3.new(2.6, 2.6, 0.8), CFrame.new(0, HUB_Y, HUB_Z + 4.6), PAL.timber, m) -- (where it leaves the roof)
+	-- (the roof's front at the hub's height: the axle runs from there, a collar where it leaves the tiles)
+	local roofFront = ROOF_A - ((HUB_Y - ROOF_Y) / 2) * ((ROOF_A - 1.6) / (ROOF_STEPS - 1))
+	local axleLen = roofFront + HUB_Z + 1.5
+	brick("Axle", Vector3.new(1.8, 1.8, -axleLen + 3), CFrame.new(0, HUB_Y, (HUB_Z - roofFront + 1.5) / 2), PAL.cap, m)
+	brick("AxleCollar", Vector3.new(2.6, 2.6, 0.8), CFrame.new(0, HUB_Y, -(roofFront + 0.3)), PAL.timber, m)
 	local hub = CFrame.new(0, HUB_Y, HUB_Z - 0.6)
 	for k = 0, 1 do
 		brick("Hub", Vector3.new(4.4, 4.4, 1.6), hub * CFrame.Angles(0, 0, k * EIGHTH), PAL.cap, m)

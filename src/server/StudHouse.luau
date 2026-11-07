@@ -38,7 +38,7 @@ StudHouse.LOOKS = {
 	red = { wall = C(238, 226, 206), wallShade = C(222, 208, 186), roof = C(168, 52, 44), roofDark = C(140, 40, 34), shutter = C(70, 118, 74), door = C(64, 96, 150) },
 } :: { [string]: Look }
 
-local TRIM = C(236, 230, 214)
+local TRIM = C(222, 214, 196) -- (warm off-white: the mesh's trim, not paper white)
 local STONE = C(150, 128, 104)
 local STONE_DARK = C(122, 102, 82)
 local WOOD = C(152, 102, 64)
@@ -137,9 +137,11 @@ local function roofX(name: string, c: number, half: number, a: number, b: number
 	local function strip(x0: number, x1: number, z0: number, z1: number, col: Color3)
 		box(name, x0, y0 + k * stepH, z0, x1, y0 + (k + 1) * stepH, z1, col)
 		if trimEnds then
-			-- white bargeboards: the strip's ends faced in trim
-			box("Barge", x0 - 0.3, y0 + k * stepH, z0, x0, y0 + (k + 1) * stepH, z1, TRIM)
-			box("Barge", x1, y0 + k * stepH, z0, x1 + 0.3, y0 + (k + 1) * stepH, z1, TRIM)
+			-- the bargeboards: a one-stud stepped line on the strip's outer edge (the mesh's thin white trim)
+			local outer = if z0 < c then z0 else z1 - inset
+			local zz0, zz1 = if hw <= inset * 1.2 then z0 else outer, if hw <= inset * 1.2 then z1 else outer + inset
+			box("Barge", x0 - 0.25, y0 + k * stepH, zz0, x0, y0 + (k + 1) * stepH, zz1, TRIM)
+			box("Barge", x1, y0 + k * stepH, zz0, x1 + 0.25, y0 + (k + 1) * stepH, zz1, TRIM)
 		end
 	end
 	while hw > inset * 1.2 do
@@ -160,7 +162,9 @@ local function roofZ(name: string, c: number, half: number, a: number, b: number
 	local function strip(x0: number, x1: number, col: Color3)
 		box(name, x0, y0 + k * stepH, a, x1, y0 + (k + 1) * stepH, b, col)
 		if trimFront then
-			box("Barge", x0, y0 + k * stepH, a - 0.3, x1, y0 + (k + 1) * stepH, a, TRIM)
+			local ridge = hw <= inset * 1.2
+			local outer = if x0 < c then x0 else x1 - inset
+			box("Barge", if ridge then x0 else outer, y0 + k * stepH, a - 0.25, if ridge then x1 else outer + inset, y0 + (k + 1) * stepH, a, TRIM)
 		end
 	end
 	while hw > inset * 1.2 do
@@ -260,7 +264,7 @@ local function walls()
 	box("Core", -MX + t, FOOT, MZ0 + t, MX - t, EAVE + 2, MZ1 - t, look.wallShade)
 	-- white corner boards and the band under the eaves
 	for _, c in { { -MX, MZ0 }, { -MX, MZ1 }, { MX, MZ1 }, { WX0, WZ }, { WX1, WZ } } do
-		box("Corner", c[1] - 0.45, FOOT, c[2] - 0.45, c[1] + 0.45, EAVE, c[2] + 0.45, TRIM)
+		box("Corner", c[1] - 0.35, FOOT, c[2] - 0.35, c[1] + 0.35, EAVE, c[2] + 0.35, TRIM)
 	end
 	box("Band", -MX - 0.3, EAVE - 0.6, MZ0 - 0.3, WX0, EAVE, MZ0 + 0.2, TRIM)
 	box("Band", WX0 - 0.3, EAVE - 0.6, WZ - 0.3, WX1 + 0.3, EAVE, WZ + 0.2, TRIM)
@@ -316,11 +320,12 @@ local function porch()
 		box("PorchTrim", pc + k * 0.3 - 0.15 + (if k > 0 then 0 else -0.6), 10.6, -10.35, pc + k * 0.3 + 0.15 + (if k > 0 then 0.6 else 0), 10.9, -10.15, TRIM)
 	end
 	-- a hanging basket of flowers on a chain from the beam
-	box("BasketChain", pc - 0.1, 8.4, -9.55, pc + 0.1, 9.6, -9.35, C(60, 60, 66))
-	box("Basket", pc - 0.7, 7.6, -10.15, pc + 0.7, 8.4, -8.75, WOOD_DARK)
-	box("BasketLeaves", pc - 0.9, 8.1, -10.35, pc + 0.9, 8.8, -8.55, LEAF)
+	local bx = DOOR_X - 2.1 -- (beside the door, inside the left post, as on the mesh)
+	box("BasketChain", bx - 0.1, 8.4, -9.55, bx + 0.1, 9.6, -9.35, C(60, 60, 66))
+	box("Basket", bx - 0.6, 7.6, -10.1, bx + 0.6, 8.4, -8.8, WOOD_DARK)
+	box("BasketLeaves", bx - 0.8, 8.1, -10.3, bx + 0.8, 8.8, -8.6, LEAF)
 	for k = -1, 1 do
-		local f = brick("BasketFlower", Vector3.new(0.5, 0.5, 0.5), CFrame.new(pc + k * 0.55, 8.9, -9.9), ROSE[k + 2])
+		local f = brick("BasketFlower", Vector3.new(0.5, 0.5, 0.5), CFrame.new(bx + k * 0.5, 8.9, -9.85), ROSE[k + 2])
 		f.Shape = Enum.PartType.Ball
 	end
 end

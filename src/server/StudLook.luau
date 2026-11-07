@@ -210,8 +210,12 @@ function StudLook.apply(w: Instance): number
 	if next(areas) == nil then
 		return 0
 	end
-	local nNature = swapNature(w, areas)
-	print(("[StudLook] %d voxel trees, bushes and rocks rebuilt in studded blocks"):format(nNature))
+	-- (7 Nov 14:05, owner: "Revert alle bomen terug": the voxel trees, bushes and rocks stay; the block versions only
+	-- with Config.STUD_LOOK.trees = true)
+	if Config.STUD_LOOK.trees == true then
+		local nNature = swapNature(w, areas)
+		print(("[StudLook] %d voxel trees, bushes and rocks rebuilt in studded blocks"):format(nNature))
+	end
 	local n = 0
 	for i, d in w:GetDescendants() do
 		if d:IsA("BasePart") then

@@ -566,8 +566,9 @@ Config.BOSS_NOHIT_GEMS = 1
 Config.FINISHER = { on = true, deathTime = 7.4 }
 -- (7 Nov, owner, with a TikTok of another Roblox game: "ik bedoel meer de style van de texturen", "Eerst 1 gebied als
 -- test") the classic studded toy-brick look (server/StudLook: plain plastic, studs on top and sides) in these areas
--- of the run's world; {} or nil: the old look everywhere
-Config.STUD_LOOK = { areas = { 1 } }
+-- of the run's world; {} or nil: the old look everywhere. trees = true also rebuilds the voxel trees, bushes and rocks
+-- there in chunky studded blocks (owner, 14:05: "Revert alle bomen terug": off)
+Config.STUD_LOOK = { areas = { 1 }, trees = false }
 -- Roblox badge per boss (0 = none yet: make them on the Creator Hub and put the ids here); the in-game trophy
 -- (PlayerData.bossTrophies) is given either way.
 Config.BOSS_BADGES = { 0, 0, 0, 0, 0, 0, 0, 0 }

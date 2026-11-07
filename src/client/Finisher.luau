@@ -847,9 +847,9 @@ local function run(plan: any, ctx: any)
 	end
 	-- 4. in the air beside you both: the leap, the hang, the hammer coming
 	if not shot(TL.hammer, function()
-		local mid = A.root.Position:Lerp(vc(), 0.35)
+		local mid = A.root.Position:Lerp(vc(), 0.25)
 		local push = clamp01((now() - TL.hang) / (TL.hammer - TL.hang)) * 3
-		local p = mid + side * (H * 0.45 + 9 - push) + F * (H * 0.15) + UP * 1.0
+		local p = mid + side * (H * 0.5 + 11 - push) + F * (H * 0.15) + UP * 0.5
 		return cam(p, mid, 26, 3)
 	end, { hand = 0.3 }) then
 		return finish()
@@ -865,8 +865,8 @@ local function run(plan: any, ctx: any)
 	-- behind you the frame was your back and the grass)
 	local view6 = Film.view()
 	if not shot(TL.wind, function()
-		local look = Amount - UP * 1.4 + D * 0.4
-		return cam(Amount + D * 4.5 + side * 3.6 + UP * 2.8, look, 28, -4, Amount, view6)
+		local look = Amount - UP * 1.2 + D * 0.4
+		return cam(Amount + D * 5.6 + side * 4.4 + UP * 3.2, look, 30, -4, Amount, view6)
 	end, { cut = "smash", hand = 0.9 }) then
 		return finish()
 	end

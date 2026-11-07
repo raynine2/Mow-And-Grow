@@ -1,16 +1,20 @@
 --!strict
 -- STUD HOUSE (7 Nov 2026; owner: "Probeer de forgegui dingen in stud style maar ... maak het super hoog kwaliteit", then
--- of the windmill "Top, zet hem erin en doe de rest"). The ForgeGUI cottages (forge_house_blue: the lobby's CLASSES
--- house; forge_house_red) built again from studded bricks: a stone footing, clapboard walls in two tones with white
--- corner boards, a stepped tiled roof with a front cross-gable on the left and a dormer on the right, a porch with
--- white posts and its own little gable over the door, shuttered windows with flower boxes, a chimney, a climbing rose
--- and potted plants. Same footprint and height as the mesh (19 wide, 21 deep with the porch, 23 tall), front to -Z.
--- StudHouse.build(parent, pivot, look?) -> the Model (pivot: the bottom middle, LookVector = the front).
+-- of the first try "Moet meer accuraat zijn en donkerder", "Ik vind de huis niet echt mooi het is niet echt accuraat").
+-- The ForgeGUI cottage (forge_house_blue: the lobby's CLASSES house; forge_house_red in the run) rebuilt from studded
+-- bricks to the mesh's own shape, measured from straight-on pictures of it:
+--   * an L: a tall gable wing on the left running front to back (its ridge front-back), the main block on the right
+--     with its ridge left-right, both ridges at 21.4; walls to 12.2 on a stone footing to 2.6; a white belt at 9.6
+--   * the roofs smooth like toy roof tiles: rows of navy shingles lying on the slopes (each row's lower edge proud),
+--     the valleys where the roofs meet worked out row by row, white bargeboards up every gable edge, ridge caps
+--   * a gable dormer on the main roof's front, a stone chimney behind it
+--   * a porch in the middle with white columns on stone piers, its own little gable with a white truss, wooden steps
+--   * the door, red with four panes; windows with blue shutters, white headers and flower boxes; the gable window
+--   * roses climbing the right front corner and round onto the side, terracotta pots by the steps
+-- Front to -Z. StudHouse.build(parent, pivot, look?) -> the Model (pivot: the bottom middle, LookVector = the front).
 local StudHouse = {}
 
--- (7 Nov, owner, of the stud house: "Moet meer accuraat zijn en donkerder doe dat bij elke het moet niet zo bright
--- zijn") every stud-built ForgeGUI model is drawn a shade darker than its palette: plastic with studs reads far
--- brighter in the game's light than the painted meshes did. Config.STUD_FORGE.tone (1 = the palette as written).
+-- (owner: "donkerder ... het moet niet zo bright zijn", for every stud model) every colour x Config.STUD_FORGE.tone
 local TONE = (function(): number
 	local ok, cfg = pcall(function()
 		return require(game:GetService("ReplicatedStorage"):WaitForChild("MowALawn"):WaitForChild("Config")) :: any
@@ -30,35 +34,59 @@ export type Look = {
 	roof: Color3,
 	roofDark: Color3,
 	shutter: Color3,
+	slat: Color3,
 	door: Color3,
+	doorPanel: Color3,
 }
 
 StudHouse.LOOKS = {
-	blue = { wall = C(236, 198, 104), wallShade = C(218, 178, 88), roof = C(40, 58, 112), roofDark = C(30, 44, 90), shutter = C(46, 104, 156), door = C(170, 40, 44) },
-	red = { wall = C(238, 226, 206), wallShade = C(222, 208, 186), roof = C(168, 52, 44), roofDark = C(140, 40, 34), shutter = C(70, 118, 74), door = C(64, 96, 150) },
+	blue = {
+		wall = C(240, 206, 112),
+		wallShade = C(228, 192, 98),
+		roof = C(48, 70, 140),
+		roofDark = C(38, 56, 118),
+		shutter = C(52, 116, 170),
+		slat = C(40, 96, 146),
+		door = C(170, 36, 40),
+		doorPanel = C(146, 28, 32),
+	},
+	red = {
+		wall = C(238, 228, 208),
+		wallShade = C(224, 212, 190),
+		roof = C(160, 50, 42),
+		roofDark = C(134, 40, 34),
+		shutter = C(70, 122, 78),
+		slat = C(56, 102, 64),
+		door = C(56, 92, 146),
+		doorPanel = C(44, 76, 124),
+	},
 } :: { [string]: Look }
 
-local TRIM = C(222, 214, 196) -- (warm off-white: the mesh's trim, not paper white)
-local STONE = C(150, 128, 104)
-local STONE_DARK = C(122, 102, 82)
-local WOOD = C(152, 102, 64)
-local WOOD_DARK = C(124, 82, 52)
-local GLASS = C(58, 86, 124)
+local TRIM = C(236, 230, 214)
+local GLASS = C(44, 96, 170)
+local STONE = { C(142, 128, 112), C(120, 108, 96), C(156, 142, 124), C(108, 98, 88) }
+local CHIMNEY = { C(136, 120, 106), C(114, 100, 88) }
+local CAP = C(172, 162, 150)
+local WOOD = C(150, 96, 58)
+local WOOD_DARK = C(122, 76, 46)
 local BRASS = C(212, 170, 76)
-local LEAF = C(70, 146, 58)
-local LEAF_DARK = C(52, 120, 46)
-local POT = C(186, 96, 60)
-local ROSE = { C(232, 64, 84), C(255, 120, 150), C(214, 40, 64) }
+local LEAF = { C(66, 136, 56), C(52, 114, 46), C(80, 150, 64) }
+local ROSE = { C(232, 76, 100), C(214, 54, 80), C(246, 120, 140) }
+local CREAM = C(246, 238, 210)
+local POT = C(188, 98, 58)
+local POT_RIM = C(168, 84, 50)
 
 local STUDS = Enum.SurfaceType.Studs
 local INLET = Enum.SurfaceType.Inlet
+local SMOOTH = Enum.SurfaceType.Smooth
 
 local model: Model = nil :: any
 local origin = CFrame.identity
 local look: Look = StudHouse.LOOKS.blue
 local count = 0
 
-local function brick(name: string, size: Vector3, cf: CFrame, color: Color3, parent: Instance?): Part
+-- one brick, `cf` in the house's own space; `smooth`: no studs (roof tiles, glass)
+local function brick(name: string, size: Vector3, cf: CFrame, color: Color3, smooth: boolean?): Part
 	local p = Instance.new("Part")
 	p.Name = name
 	p.Anchored = true
@@ -66,318 +94,441 @@ local function brick(name: string, size: Vector3, cf: CFrame, color: Color3, par
 	p.CFrame = origin * cf
 	p.Color = toned(color)
 	p.Material = Enum.Material.Plastic
-	p.TopSurface = STUDS
-	p.FrontSurface = STUDS
-	p.BackSurface = STUDS
-	p.LeftSurface = STUDS
-	p.RightSurface = STUDS
-	p.BottomSurface = INLET
-	p.Parent = parent or model
+	local s = if smooth then SMOOTH else STUDS
+	p.TopSurface = s
+	p.FrontSurface = s
+	p.BackSurface = s
+	p.LeftSurface = s
+	p.RightSurface = s
+	p.BottomSurface = if smooth then SMOOTH else INLET
+	p.Parent = model
 	count += 1
 	return p
 end
 
--- a box from corner (x0, y0, z0) to (x1, y1, z1), in the house's own space
-local function box(name: string, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: Color3): Part
-	return brick(name, Vector3.new(x1 - x0, y1 - y0, z1 - z0), CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), color)
+local function box(name: string, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: Color3, smooth: boolean?): Part
+	return brick(name, Vector3.new(math.abs(x1 - x0), math.abs(y1 - y0), math.abs(z1 - z0)), CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), color, smooth)
+end
+
+local function ball(name: string, d: number, pos: Vector3, color: Color3): Part
+	local p = brick(name, Vector3.one * d, CFrame.new(pos), color, true)
+	p.Shape = Enum.PartType.Ball
+	return p
+end
+
+-- an attic wedge (the solid under a roof slope, its triangle ends the gables, studded): `cf` its middle, `size` as a
+-- WedgePart's (X along the ridge, Y the rise, Z the run, tall at +Z)
+local function wedge(name: string, size: Vector3, cf: CFrame, color: Color3): WedgePart
+	local p = Instance.new("WedgePart")
+	p.Name = name
+	p.Anchored = true
+	p.Size = size
+	p.CFrame = origin * cf
+	p.Color = toned(color)
+	p.Material = Enum.Material.Plastic
+	p.LeftSurface = STUDS
+	p.RightSurface = STUDS
+	p.BackSurface = STUDS
+	p.TopSurface = SMOOTH
+	p.FrontSurface = SMOOTH
+	p.BottomSurface = INLET
+	p.Parent = model
+	count += 1
+	return p
 end
 
 -------------------------------------------------------------------------------------------------------------
--- sizes (the mesh: 19 x 23.3 x 21.3; its filler HouseCore boxes sit inside these walls)
+-- the measurements (studs; the mesh is 19 wide, 23.3 tall)
 -------------------------------------------------------------------------------------------------------------
-local FOOT = 2 -- the stone footing's top
-local EAVE = 13 -- the walls' top
-local MX = 9 -- the main block: x -MX..MX
-local MZ0, MZ1 = -6, 7 -- and z
-local WX0, WX1 = 1.5, 9 -- the cross-gable wing on the left, standing forward (flush with the main block's end)
-local WZ = -8.5 -- its front
-local DOOR_X = -1.4
+local FOOT = 2.6 -- the stone footing's top
+local BELT0, BELT1 = 9.6, 10.2 -- the white belt between the floors
+local WALL = 12.2 -- the walls' top
+local HX, HZ = 9, 6.8 -- the walls: x -HX..HX, z -HZ..HZ
+local RIDGE = 21.4
+local EAVE_Y = 11.8 -- the roofs' lower edges
+-- the main roof: ridge along X at z 0, eaves at z +-MAIN_EAVE
+local MAIN_EAVE = 7.6
+local MAIN_TAN = (RIDGE - EAVE_Y) / MAIN_EAVE
+local MAIN_END = -9.6 -- its right end (0.6 past the wall)
+-- the wing: x WX0..HX, ridge along Z at x WC, eaves at x WC +- WING_EAVE
+local WX0 = -0.8
+local WC = (WX0 + HX) / 2 -- 4.1
+local WING_EAVE = (HX - WX0) / 2 + 0.8
+local WING_TAN = (RIDGE - EAVE_Y) / WING_EAVE
+local WING_ZEND = 7.6
+-- the dormer on the main roof's front
+local DC, DHALF = -4.7, 2.4 -- its middle and half width
+local DFACE = -6.6 -- its front
+local DRIDGE = 19.2
+local D_EAVE, D_RUN = 15.8, 2.9
+-- the porch
+local PC = 0.2 -- its middle (and the door's)
+local PFRONT = -9.9
+local P_EAVE, P_RUN, P_RIDGE = 8.9, 3.6, 11.6
 
--- clapboard: courses one stud tall in two tones, from y0 to y1, on a wall from (x0, z0) to (x1, z1) (axis-aligned,
--- `t` thick, the outer face at the given line)
-local function clap(name: string, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number)
+-- the main roof's height at z, the wing's at x, the dormer's at x
+local function mainY(z: number): number
+	return RIDGE - math.abs(z) * MAIN_TAN
+end
+local function mainZ(y: number): number -- how far from its ridge the main roof is at height y
+	return (RIDGE - y) / MAIN_TAN
+end
+local function wingX(y: number): number -- how far from the wing's ridge its roof is at height y
+	return (RIDGE - y) / WING_TAN
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- the roofs: shingle rows on a slope
+-------------------------------------------------------------------------------------------------------------
+type Slope = {
+	r: Vector3, -- along the ridge
+	p0: Vector3, -- a point on the eave line (its r-coordinate 0)
+	rise: number,
+	run: number, -- the eave's horizontal distance to the ridge (signed through `inward`)
+	inward: Vector3, -- horizontal, from the eave toward the ridge
+	segs: (number) -> { { number } }, -- the r-intervals the row at height y covers
+	ends: { number }?, -- r-coordinates where a bargeboard runs up the slope
+	fascia: { number }?, -- a white fascia along the eave between these r-coordinates
+	color: Color3?,
+}
+
+local ROW_T = 0.5 -- a shingle row's thickness
+local TILT = math.rad(4) -- each row's lower edge lifted
+
+local function frame(s: Slope): (Vector3, Vector3, Vector3, number)
+	local L = math.sqrt(s.rise * s.rise + s.run * s.run)
+	local u = (s.inward * s.run + Vector3.new(0, s.rise, 0)).Unit
+	local n = u:Cross(s.r)
+	if n.Y < 0 then
+		n = -n
+	end
+	local rr = s.r
+	if rr:Cross(n):Dot(u) < 0 then
+		rr = -rr
+	end
+	return u, n, rr, L
+end
+
+local function slope(s: Slope)
+	local u, n, rr, L = frame(s)
+	local rows = math.max(2, math.ceil(L / 1.4))
+	local step = L / rows
+	local w = step + 0.35
+	for k = 0, rows - 1 do
+		local sd = (k + 0.5) * step
+		local y = s.p0.Y + u.Y * sd
+		for _, seg in s.segs(y) do
+			local a, b = seg[1], seg[2]
+			if b - a > 0.3 then
+				local pos = s.p0 + s.r * ((a + b) / 2) + u * sd + n * (ROW_T / 2)
+				local cf = CFrame.fromMatrix(pos, rr, n, u) * CFrame.new(0, 0, w / 2) * CFrame.Angles(TILT, 0, 0) * CFrame.new(0, 0, -w / 2)
+				local col = s.color or (if k % 2 == 0 then look.roof else look.roofDark)
+				brick("Shingles", Vector3.new(b - a, ROW_T, w), cf, col, true)
+			end
+		end
+	end
+	-- white bargeboards up the gable edges, a fascia along the eave
+	for _, e in s.ends or {} do
+		local pos = s.p0 + s.r * e + u * (L / 2) + n * (ROW_T + 0.05)
+		brick("Barge", Vector3.new(0.35, 0.8, L + 0.5), CFrame.fromMatrix(pos, rr, n, u), TRIM, true)
+	end
+	if s.fascia then
+		local a, b = s.fascia[1], s.fascia[2]
+		local pos = s.p0 + s.r * ((a + b) / 2) + u * 0.15 + n * (ROW_T * 0.5)
+		brick("Fascia", Vector3.new(b - a, 0.85, 0.35), CFrame.fromMatrix(pos, rr, n, u), TRIM, true)
+	end
+end
+
+local X = Vector3.xAxis
+local Z = Vector3.zAxis
+
+local function roofs()
+	-- the main roof: its rows run from the right end to the valley with the wing (plus a little, under the wing's)
+	local function mainSegs(y: number): { { number } }
+		return { { MAIN_END, WC - wingX(y) + 0.45 } }
+	end
+	slope({ r = X, p0 = Vector3.new(0, EAVE_Y, -MAIN_EAVE), rise = RIDGE - EAVE_Y, run = MAIN_EAVE, inward = Z, segs = mainSegs, ends = { MAIN_END - 0.18 }, fascia = { MAIN_END, WC - WING_EAVE } })
+	slope({ r = X, p0 = Vector3.new(0, EAVE_Y, MAIN_EAVE), rise = RIDGE - EAVE_Y, run = MAIN_EAVE, inward = -Z, segs = mainSegs, ends = { MAIN_END - 0.18 }, fascia = { MAIN_END, WC - WING_EAVE } })
+	-- the wing: its right slope only where the main roof isn't above it; its left slope the whole length
+	slope({
+		r = Z,
+		p0 = Vector3.new(WC - WING_EAVE, EAVE_Y, 0),
+		rise = RIDGE - EAVE_Y,
+		run = WING_EAVE,
+		inward = X,
+		segs = function(y: number)
+			local zm = mainZ(y)
+			return { { -WING_ZEND, -zm + 0.45 }, { zm - 0.45, WING_ZEND } }
+		end,
+		ends = { -WING_ZEND - 0.18, WING_ZEND + 0.18 },
+	})
+	slope({
+		r = Z,
+		p0 = Vector3.new(WC + WING_EAVE, EAVE_Y, 0),
+		rise = RIDGE - EAVE_Y,
+		run = WING_EAVE,
+		inward = -X,
+		segs = function(_y: number)
+			return { { -WING_ZEND, WING_ZEND } }
+		end,
+		ends = { -WING_ZEND - 0.18, WING_ZEND + 0.18 },
+		fascia = { -WING_ZEND, WING_ZEND },
+	})
+	-- ridge caps
+	box("RidgeCap", MAIN_END - 0.1, RIDGE - 0.05, -0.55, WC, RIDGE + 0.55, 0.55, look.roofDark, true)
+	box("RidgeCap", WC - 0.55, RIDGE - 0.05, -WING_ZEND - 0.1, WC + 0.55, RIDGE + 0.6, WING_ZEND + 0.1, look.roofDark, true)
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- the solid parts: footing, walls, attics
+-------------------------------------------------------------------------------------------------------------
+local rng = Random.new(1107)
+
+-- a row of stones along X (or Z) from a to b, its outer face at `out`, `t` thick, from y0 to y1
+local function stones(alongX: boolean, a: number, b: number, out: number, t: number, y0: number, y1: number, offset: number)
+	local p = a
+	local first = true
+	while p < b - 0.05 do
+		local len = math.min(if first then offset else rng:NextNumber(1.6, 2.8), b - p)
+		first = false
+		local col = STONE[rng:NextInteger(1, #STONE)]
+		if alongX then
+			box("Stone", p, y0, out, p + len - 0.08, y1 - 0.06, out + t, col)
+		else
+			box("Stone", out, y0, p, out + t, y1 - 0.06, p + len - 0.08, col)
+		end
+		p += len
+	end
+end
+
+local function footing()
+	local fx, fz = HX + 0.3, HZ + 0.3
+	for row, ys in { { 0, 1.3 }, { 1.3, FOOT } } do
+		local off = if row == 1 then 1.4 else 2.3
+		stones(true, -fx, fx, -fz, 1.2, ys[1], ys[2], off)
+		stones(true, -fx, fx, fz - 1.2, 1.2, ys[1], ys[2], off + 0.6)
+		stones(false, -fz + 1.2, fz - 1.2, -fx, 1.2, ys[1], ys[2], off + 0.3)
+		stones(false, -fz + 1.2, fz - 1.2, fx - 1.2, 1.2, ys[1], ys[2], off)
+	end
+	box("FootingCore", -fx + 1.2, 0, -fz + 1.2, fx - 1.2, FOOT - 0.06, fz - 1.2, STONE[2])
+end
+
+-- clapboard courses one stud tall in two tones
+local function clap(x0: number, z0: number, x1: number, z1: number, y0: number, y1: number)
 	local y = y0
 	local k = 0
 	while y < y1 - 0.01 do
 		local h = math.min(1, y1 - y)
-		box(name, x0, y, z0, x1, y + h, z1, if k % 2 == 0 then look.wall else look.wallShade)
+		box("Wall", x0, y, z0, x1, y + h, z1, if k % 2 == 0 then look.wall else look.wallShade)
 		y += h
 		k += 1
 	end
 end
 
--- a stepped gable wall (the triangle under a roof's end): courses narrowing by `inset` per `stepH`, centred on c,
--- from half-width `half` at y0, in the plane z0..z1 (along X) or x0..x1 (along Z)
-local function gableX(name: string, c: number, half: number, y0: number, stepH: number, inset: number, z0: number, z1: number)
-	local k = 0
-	local hw = half
-	while hw > 0.4 do
-		box(name, c - hw, y0 + k * stepH, z0, c + hw, y0 + (k + 1) * stepH, z1, if k % 2 == 0 then look.wall else look.wallShade)
-		hw -= inset
-		k += 1
+local function walls()
+	local t = 1
+	clap(-HX, -HZ, HX, -HZ + t, FOOT, WALL) -- the front
+	clap(-HX, HZ - t, HX, HZ, FOOT, WALL) -- the back
+	clap(-HX, -HZ + t, -HX + t, HZ - t, FOOT, WALL) -- the right end
+	clap(HX - t, -HZ + t, HX, HZ - t, FOOT, WALL) -- the left end
+	box("Core", -HX + t, FOOT, -HZ + t, HX - t, WALL, HZ - t, look.wallShade)
+	-- the white belt, corner boards, and the frieze under the main roof's eaves and the wing's left eave
+	box("Belt", -HX - 0.2, BELT0, -HZ - 0.2, HX + 0.2, BELT1, -HZ + 0.1, TRIM)
+	box("Belt", -HX - 0.2, BELT0, HZ - 0.1, HX + 0.2, BELT1, HZ + 0.2, TRIM)
+	box("Belt", -HX - 0.2, BELT0, -HZ + 0.1, -HX + 0.1, BELT1, HZ - 0.1, TRIM)
+	box("Belt", HX - 0.1, BELT0, -HZ + 0.1, HX + 0.2, BELT1, HZ - 0.1, TRIM)
+	for _, c in { { -HX, -HZ }, { HX, -HZ }, { -HX, HZ }, { HX, HZ } } do
+		box("Corner", c[1] - 0.35, FOOT, c[2] - 0.35, c[1] + 0.35, WALL, c[2] + 0.35, TRIM)
 	end
+	box("Frieze", -HX - 0.2, WALL, -HZ - 0.2, WX0, WALL + 0.6, -HZ + 0.5, TRIM)
+	box("Frieze", -HX - 0.2, WALL, HZ - 0.5, WX0, WALL + 0.6, HZ + 0.2, TRIM)
+	box("Frieze", HX - 0.5, WALL, -HZ - 0.2, HX + 0.2, WALL + 0.6, HZ + 0.2, TRIM)
 end
 
-local function gableZ(name: string, c: number, half: number, y0: number, stepH: number, inset: number, x0: number, x1: number)
-	local k = 0
-	local hw = half
-	while hw > 0.4 do
-		box(name, x0, y0 + k * stepH, c - hw, x1, y0 + (k + 1) * stepH, c + hw, if k % 2 == 0 then look.wall else look.wallShade)
-		hw -= inset
-		k += 1
-	end
-end
-
--- a stepped tiled roof: layers `stepH` tall, each `inset` narrower each side; ridge along X (spanning z c-half..c+half,
--- x from a to b) or along Z. Each layer is a strip on either side (the roof is a shell over the walls) and a ridge cap.
-local function roofX(name: string, c: number, half: number, a: number, b: number, y0: number, stepH: number, inset: number, frontB: number?, trimEnds: boolean?)
-	-- (frontB: the front slope stops there instead of at b, where a wing's roof takes over)
-	local k = 0
-	local hw = half
-	local function strip(x0: number, x1: number, z0: number, z1: number, col: Color3)
-		box(name, x0, y0 + k * stepH, z0, x1, y0 + (k + 1) * stepH, z1, col)
-		if trimEnds then
-			-- the bargeboards: a one-stud stepped line on the strip's outer edge (the mesh's thin white trim)
-			local outer = if z0 < c then z0 else z1 - inset
-			local zz0, zz1 = if hw <= inset * 1.2 then z0 else outer, if hw <= inset * 1.2 then z1 else outer + inset
-			box("Barge", x0 - 0.25, y0 + k * stepH, zz0, x0, y0 + (k + 1) * stepH, zz1, TRIM)
-			box("Barge", x1, y0 + k * stepH, zz0, x1 + 0.25, y0 + (k + 1) * stepH, zz1, TRIM)
-		end
-	end
-	while hw > inset * 1.2 do
-		local col = if k % 2 == 0 then look.roof else look.roofDark
-		local w = inset + 0.8
-		strip(a, frontB or b, c - hw, c - hw + w, col)
-		strip(a, b, c + hw - w, c + hw, col)
-		hw -= inset
-		k += 1
-	end
-	strip(a, b, c - hw, c + hw, if k % 2 == 0 then look.roof else look.roofDark)
-	return y0 + (k + 1) * stepH
-end
-
-local function roofZ(name: string, c: number, half: number, a: number, b: number, y0: number, stepH: number, inset: number, trimFront: boolean?)
-	local k = 0
-	local hw = half
-	local function strip(x0: number, x1: number, col: Color3)
-		box(name, x0, y0 + k * stepH, a, x1, y0 + (k + 1) * stepH, b, col)
-		if trimFront then
-			local ridge = hw <= inset * 1.2
-			local outer = if x0 < c then x0 else x1 - inset
-			box("Barge", if ridge then x0 else outer, y0 + k * stepH, a - 0.25, if ridge then x1 else outer + inset, y0 + (k + 1) * stepH, a, TRIM)
-		end
-	end
-	while hw > inset * 1.2 do
-		local col = if k % 2 == 0 then look.roof else look.roofDark
-		local w = inset + 0.8
-		strip(c - hw, c - hw + w, col)
-		strip(c + hw - w, c + hw, col)
-		hw -= inset
-		k += 1
-	end
-	strip(c - hw, c + hw, if k % 2 == 0 then look.roof else look.roofDark)
-	return y0 + (k + 1) * stepH
-end
-
--- a window on a wall facing -Z at its outer face z (or facing +X/-X with `side`): white frame, glass in four panes,
--- shutters with slats, a sill; `flowers` adds a box of flowers under it
-local function window(cf: CFrame, w: number, h: number, flowers: boolean, shutters: boolean?)
-	brick("WindowGlass", Vector3.new(w, h, 0.3), cf * CFrame.new(0, 0, 0.1), GLASS)
-	for k = -1, 1, 2 do
-		brick("WindowFrame", Vector3.new(0.5, h + 1, 0.6), cf * CFrame.new(k * (w / 2 + 0.25), 0, -0.1), TRIM)
-	end
-	brick("WindowFrame", Vector3.new(w + 1, 0.5, 0.6), cf * CFrame.new(0, h / 2 + 0.25, -0.1), TRIM)
-	brick("WindowSill", Vector3.new(w + 1.6, 0.4, 0.9), cf * CFrame.new(0, -h / 2 - 0.2, -0.25), TRIM)
-	brick("WindowBar", Vector3.new(w, 0.25, 0.4), cf, TRIM)
-	brick("WindowBar", Vector3.new(0.25, h, 0.4), cf, TRIM)
-	local sw = w * 0.4
-	for k = -1, 1, 2 do
-		if shutters == false then
-			break
-		end
-		local s = cf * CFrame.new(k * (w / 2 + 0.5 + sw / 2), 0, -0.15)
-		brick("Shutter", Vector3.new(sw, h + 0.6, 0.35), s, look.shutter)
-		for j = -1, 1 do
-			brick("ShutterSlat", Vector3.new(sw - 0.3, 0.2, 0.2), s * CFrame.new(0, j * h / 3.4, -0.25), C(36, 84, 128))
-		end
-	end
-	if flowers then
-		local b = cf * CFrame.new(0, -h / 2 - 1, -0.7)
-		brick("FlowerBox", Vector3.new(w + 1.2, 0.9, 1.1), b, TRIM)
-		local n = math.max(3, math.floor(w + 1.5))
-		for k = 0, n - 1 do
-			local x = -(w + 0.6) / 2 + (k + 0.5) * (w + 0.6) / n
-			brick("Leaves", Vector3.new(0.8, 0.5, 0.8), b * CFrame.new(x, 0.7, 0), if k % 2 == 0 then LEAF else LEAF_DARK)
-			local f = brick("Flower", Vector3.new(0.55, 0.55, 0.55), b * CFrame.new(x + 0.15, 1.15, -0.15), ROSE[k % 3 + 1])
-			f.Shape = Enum.PartType.Ball
-		end
-	end
-end
-
--- a face's frame: on the plane z = z0 looking out to -Z, centred at x, y
-local function front(x: number, y: number, z0: number): CFrame
-	return CFrame.new(x, y, z0)
+local function attics()
+	-- the main block's: a box to the roof plane at the walls, then a wedge each side up to the ridge
+	local yw = mainY(HZ)
+	box("Attic", -HX, WALL, -HZ, WC, yw, HZ, look.wallShade)
+	local len = WC + HX
+	local h = RIDGE - yw
+	wedge("Attic", Vector3.new(len, h, HZ), CFrame.new((WC - HX) / 2, yw + h / 2, -HZ / 2), look.wall)
+	wedge("Attic", Vector3.new(len, h, HZ), CFrame.new((WC - HX) / 2, yw + h / 2, HZ / 2) * CFrame.Angles(0, math.pi, 0), look.wall)
+	-- the wing's: the same along Z (its front and back triangles are the big gables)
+	local half = (HX - WX0) / 2
+	local ywg = RIDGE - half * WING_TAN
+	box("Attic", WX0, WALL, -HZ, HX, ywg, HZ, look.wall)
+	local hg = RIDGE - ywg
+	wedge("Attic", Vector3.new(HZ * 2, hg, half), CFrame.new(WX0 + half / 2, ywg + hg / 2, 0) * CFrame.Angles(0, math.pi / 2, 0), look.wall)
+	wedge("Attic", Vector3.new(HZ * 2, hg, half), CFrame.new(HX - half / 2, ywg + hg / 2, 0) * CFrame.Angles(0, -math.pi / 2, 0), look.wall)
+	-- a white king post at the top of each gable
+	box("KingPost", WC - 0.2, RIDGE - 2.8, -HZ - 0.3, WC + 0.2, RIDGE - 0.3, -HZ, TRIM)
+	box("KingPost", WC - 0.2, RIDGE - 2.8, HZ, WC + 0.2, RIDGE - 0.3, HZ + 0.3, TRIM)
+	box("KingPost", -HX - 0.3, RIDGE - 2.8, -0.2, -HX, RIDGE - 0.3, 0.2, TRIM)
 end
 
 -------------------------------------------------------------------------------------------------------------
-local function footing()
-	-- the main block's and the wing's footing in two-tone stones, the porch's deck
-	local stones = 0
-	for _, r in { { -MX - 0.5, MZ0 - 0.5, MX + 0.5, MZ1 + 0.5 }, { WX0, WZ - 0.5, WX1 + 0.5, MZ0 } } do
-		local x0, z0, x1, z1 = r[1], r[2], r[3], r[4]
-		-- along the front and back in 3-stud stones, the sides in one
-		local x = x0
-		while x < x1 - 0.01 do
-			local w = math.min(3, x1 - x)
-			box("Footing", x, 0, z0, x + w, FOOT, z0 + 1.2, if stones % 2 == 0 then STONE else STONE_DARK)
-			box("Footing", x, 0, z1 - 1.2, x + w, FOOT, z1, if stones % 2 == 1 then STONE else STONE_DARK)
-			x += w
-			stones += 1
-		end
-		box("Footing", x0, 0, z0 + 1.2, x0 + 1.2, FOOT, z1 - 1.2, STONE)
-		box("Footing", x1 - 1.2, 0, z0 + 1.2, x1, FOOT, z1 - 1.2, STONE_DARK)
-		box("FootingCore", x0 + 1.2, 0, z0 + 1.2, x1 - 1.2, FOOT - 0.2, z1 - 1.2, STONE_DARK)
-	end
-	-- the porch: a plank deck in front of the door, steps down to the ground
-	box("Porch", DOOR_X - 3.2, FOOT - 0.6, -10, DOOR_X + 2.4, FOOT, MZ0, WOOD)
-	box("PorchEdge", DOOR_X - 3.2, FOOT - 0.9, -10.3, DOOR_X + 2.4, FOOT - 0.3, -10, WOOD_DARK)
-	box("Step", DOOR_X - 1.6, 0.67, -11.2, DOOR_X + 1.6, 1.33, -10, WOOD)
-	box("Step", DOOR_X - 1.6, 0, -12.4, DOOR_X + 1.6, 0.67, -11.2, WOOD_DARK)
-	-- stone piers under the porch's front
-	for _, x in { DOOR_X - 2.8, DOOR_X + 2 } do
-		box("Pier", x - 0.6, 0, -10.3, x + 0.6, FOOT - 0.6, -9.1, STONE_DARK)
-	end
-end
-
-local function walls()
-	local t = 1.2
-	-- the main block: front (beside the wing), back, the two ends
-	clap("Wall", -MX, MZ0, WX0, MZ0 + t, FOOT, EAVE)
-	clap("Wall", -MX, MZ1 - t, MX, MZ1, FOOT, EAVE)
-	clap("Wall", -MX, MZ0, -MX + t, MZ1, FOOT, EAVE)
-	clap("Wall", MX - t, MZ0, MX, MZ1, FOOT, EAVE)
-	-- the wing: its front and its two short sides
-	clap("Wall", WX0, WZ, WX1, WZ + t, FOOT, EAVE)
-	clap("Wall", WX0, WZ, WX0 + t, MZ0 + t, FOOT, EAVE)
-	clap("Wall", WX1 - t, WZ, WX1, MZ0 + t, FOOT, EAVE)
-	-- the inside, filled (the mesh's HouseCore boxes stand here)
-	box("Core", -MX + t, FOOT, MZ0 + t, MX - t, EAVE + 2, MZ1 - t, look.wallShade)
-	-- white corner boards and the band under the eaves
-	for _, c in { { -MX, MZ0 }, { -MX, MZ1 }, { MX, MZ1 }, { WX0, WZ }, { WX1, WZ } } do
-		box("Corner", c[1] - 0.35, FOOT, c[2] - 0.35, c[1] + 0.35, EAVE, c[2] + 0.35, TRIM)
-	end
-	box("Band", -MX - 0.3, EAVE - 0.6, MZ0 - 0.3, WX0, EAVE, MZ0 + 0.2, TRIM)
-	box("Band", WX0 - 0.3, EAVE - 0.6, WZ - 0.3, WX1 + 0.3, EAVE, WZ + 0.2, TRIM)
-	box("Band", -MX - 0.3, FOOT, MZ0 - 0.35, WX0, FOOT + 0.4, MZ0 + 0.2, TRIM)
-	box("Band", WX0, FOOT, WZ - 0.35, WX1 + 0.3, FOOT + 0.4, WZ + 0.2, TRIM)
-end
-
-local function roofs()
-	-- the main roof: ridge along X, eaves overhanging front and back
-	local mainTop = roofX("Roof", (MZ0 + MZ1) / 2, (MZ1 - MZ0) / 2 + 1.4, -MX - 1.2, MX + 1, EAVE, 1.05, 1, WX0 + 0.2, true)
-	-- its gable ends: stepped wall triangles under it at both ends
-	gableZ("Gable", (MZ0 + MZ1) / 2, (MZ1 - MZ0) / 2 - 0.4, EAVE, 1.05, 1, -MX, -MX + 1.2)
-	gableZ("Gable", (MZ0 + MZ1) / 2, (MZ1 - MZ0) / 2 - 0.4, EAVE, 1.05, 1, MX - 1.2, MX)
-	-- the wing's steeper roof, ridge along Z, running back into the main roof
-	local wc = (WX0 + WX1) / 2
-	roofZ("Roof", wc, (WX1 - WX0) / 2 + 1, WZ - 1.2, (MZ0 + MZ1) / 2, EAVE, 1.6, 1, true)
-	gableX("Gable", wc, (WX1 - WX0) / 2 - 0.4, EAVE, 1.6, 1, WZ, WZ + 1.2)
-	-- the gable's white bargeboards: a stepped trim line just inside the roof's front edge
-	return mainTop
-end
-
-local function dormer()
-	local x0, x1 = -7.6, -3
-	local zf = -5.2 -- (far enough down the slope that its walls stand clear of the tiles)
-	local y0 = 15.2
-	clap("Dormer", x0, zf, x1, zf + 4, y0, y0 + 3.6)
-	box("Corner", x0 - 0.3, y0, zf - 0.3, x0 + 0.3, y0 + 3.6, zf + 0.3, TRIM)
-	box("Corner", x1 - 0.3, y0, zf - 0.3, x1 + 0.3, y0 + 3.6, zf + 0.3, TRIM)
-	roofZ("DormerRoof", (x0 + x1) / 2, (x1 - x0) / 2 + 0.8, zf - 0.8, zf + 4.5, y0 + 3.6, 1, 1, true)
-	gableX("DormerGable", (x0 + x1) / 2, (x1 - x0) / 2 - 0.4, y0 + 3.6, 1, 1, zf, zf + 0.8)
-	-- its window (no shutters: too narrow)
-	local cf = front((x0 + x1) / 2, y0 + 1.8, zf - 0.2)
-	brick("WindowGlass", Vector3.new(2.4, 2.4, 0.3), cf * CFrame.new(0, 0, 0.1), GLASS)
-	brick("WindowFrame", Vector3.new(3.2, 0.4, 0.5), cf * CFrame.new(0, 1.4, 0), TRIM)
-	brick("WindowFrame", Vector3.new(3.2, 0.4, 0.5), cf * CFrame.new(0, -1.4, 0), TRIM)
-	brick("WindowBar", Vector3.new(0.25, 2.4, 0.4), cf, TRIM)
-	brick("WindowBar", Vector3.new(2.4, 0.25, 0.4), cf, TRIM)
-end
-
-local function porch()
-	-- two white posts, a beam, a little gable roof over the door
-	for _, x in { DOOR_X - 2.6, DOOR_X + 1.8 } do
-		box("PorchPost", x - 0.45, FOOT, -9.9, x + 0.45, 9.6, -9, TRIM)
-		box("PorchPostBase", x - 0.6, FOOT, -10.05, x + 0.6, FOOT + 0.8, -8.85, TRIM)
-	end
-	box("PorchBeam", DOOR_X - 3.1, 9.6, -10.1, DOOR_X + 2.3, 10.2, -8.8, TRIM)
-	local pc = DOOR_X - 0.4
-	roofZ("PorchRoof", pc, 3.4, -10.9, MZ0 + 0.3, 10.2, 0.9, 1, true)
-	gableX("PorchGable", pc, 2.4, 10.2, 0.9, 1, -10.2, -9.6)
-	-- a white bracket in the gable
-	box("PorchTrim", pc - 0.2, 10.2, -10.35, pc + 0.2, 12, -10.15, TRIM)
+-- windows and the door (`cf` on a wall's face, its -Z pointing out)
+-------------------------------------------------------------------------------------------------------------
+local function window(cf: CFrame, w: number, h: number, shutters: boolean, flowers: boolean)
+	brick("Glass", Vector3.new(w, h, 0.2), cf * CFrame.new(0, 0, -0.1), GLASS, true)
 	for k = -1, 1, 2 do
-		box("PorchTrim", pc + k * 0.3 - 0.15 + (if k > 0 then 0 else -0.6), 10.6, -10.35, pc + k * 0.3 + 0.15 + (if k > 0 then 0.6 else 0), 10.9, -10.15, TRIM)
+		brick("Frame", Vector3.new(0.45, h + 0.4, 0.45), cf * CFrame.new(k * (w / 2 + 0.22), 0, -0.22), TRIM)
 	end
-	-- a hanging basket of flowers on a chain from the beam
-	local bx = DOOR_X - 2.1 -- (beside the door, inside the left post, as on the mesh)
-	box("BasketChain", bx - 0.1, 8.4, -9.55, bx + 0.1, 9.6, -9.35, C(60, 60, 66))
-	box("Basket", bx - 0.6, 7.6, -10.1, bx + 0.6, 8.4, -8.8, WOOD_DARK)
-	box("BasketLeaves", bx - 0.8, 8.1, -10.3, bx + 0.8, 8.8, -8.6, LEAF)
-	for k = -1, 1 do
-		local f = brick("BasketFlower", Vector3.new(0.5, 0.5, 0.5), CFrame.new(bx + k * 0.5, 8.9, -9.85), ROSE[k + 2])
-		f.Shape = Enum.PartType.Ball
+	brick("Sill", Vector3.new(w + 1, 0.4, 0.8), cf * CFrame.new(0, -h / 2 - 0.2, -0.4), TRIM)
+	brick("Header", Vector3.new(w + 1.3, 0.6, 0.75), cf * CFrame.new(0, h / 2 + 0.3, -0.37), TRIM)
+	brick("HeaderCap", Vector3.new(w + 1.7, 0.25, 0.95), cf * CFrame.new(0, h / 2 + 0.72, -0.47), TRIM, true)
+	brick("Bar", Vector3.new(w, 0.2, 0.3), cf * CFrame.new(0, 0, -0.25), TRIM, true)
+	brick("Bar", Vector3.new(0.2, h, 0.3), cf * CFrame.new(0, 0, -0.25), TRIM, true)
+	if shutters then
+		local sw = w * 0.5 + 0.1
+		for k = -1, 1, 2 do
+			local s = cf * CFrame.new(k * (w / 2 + 0.5 + sw / 2), 0, -0.18)
+			brick("Shutter", Vector3.new(sw, h + 0.3, 0.3), s, look.shutter)
+			for j = -1, 1 do
+				brick("Slat", Vector3.new(sw - 0.3, 0.18, 0.12), s * CFrame.new(0, j * h / 3.3, -0.2), look.slat, true)
+			end
+		end
+	end
+	if flowers then
+		local b = cf * CFrame.new(0, -h / 2 - 0.85, -0.75)
+		brick("FlowerBox", Vector3.new(w + 1.1, 0.9, 1), b, TRIM)
+		local n = math.max(3, math.floor(w + 1.5))
+		for k = 0, n - 1 do
+			local x = -(w + 0.5) / 2 + (k + 0.5) * (w + 0.5) / n
+			brick("Leaves", Vector3.new(0.85, 0.5, 0.75), b * CFrame.new(x, 0.65, 0.05 * ((k % 2) * 2 - 1)), LEAF[k % 2 + 1])
+			local bl = brick("Bloom", Vector3.one * 0.5, b * CFrame.new(x + 0.12, 1.05, -0.12), CREAM, true)
+			bl.Shape = Enum.PartType.Ball
+		end
 	end
 end
 
 local function door()
-	local cf = front(DOOR_X, FOOT + 3.4, MZ0 - 0.15)
-	brick("Door", Vector3.new(3, 6.8, 0.4), cf, look.door)
+	local cf = CFrame.new(PC, FOOT + 2.4, -HZ)
+	brick("Door", Vector3.new(2.4, 4.8, 0.3), cf * CFrame.new(0, 0, -0.15), look.door)
+	for i = 0, 3 do
+		local gx, gy = (i % 2 - 0.5) * 0.95, 1.55 - math.floor(i / 2) * 0.95
+		brick("DoorPane", Vector3.new(0.8, 0.8, 0.15), cf * CFrame.new(gx, gy, -0.35), GLASS, true)
+	end
 	for k = -1, 1, 2 do
-		brick("DoorFrame", Vector3.new(0.5, 7.3, 0.6), cf * CFrame.new(k * 1.75, 0.25, -0.1), TRIM)
+		brick("DoorPanel", Vector3.new(0.85, 1.7, 0.12), cf * CFrame.new(k * 0.5, -1.2, -0.33), look.doorPanel, true)
+		brick("DoorFrame", Vector3.new(0.45, 5.2, 0.5), cf * CFrame.new(k * 1.43, 0.2, -0.25), TRIM)
 	end
-	brick("DoorFrame", Vector3.new(4, 0.6, 0.6), cf * CFrame.new(0, 3.75, -0.1), TRIM)
-	brick("DoorGlass", Vector3.new(1.8, 1.4, 0.3), cf * CFrame.new(0, 1.9, -0.15), GLASS)
-	brick("DoorPanel", Vector3.new(1.8, 2.2, 0.25), cf * CFrame.new(0, -1.4, -0.2), C(150, 32, 36))
-	local knob = brick("DoorKnob", Vector3.new(0.5, 0.5, 0.5), cf * CFrame.new(-1, 0, -0.35), BRASS)
+	brick("DoorFrame", Vector3.new(3.4, 0.5, 0.55), cf * CFrame.new(0, 2.65, -0.27), TRIM)
+	local knob = brick("Knob", Vector3.one * 0.4, cf * CFrame.new(0.8, -0.1, -0.45), BRASS, true)
 	knob.Shape = Enum.PartType.Ball
-	-- a lamp? (owner, 7 Nov: "delete the lanterns") none; a house number plate instead
-	brick("Plate", Vector3.new(0.9, 0.6, 0.2), cf * CFrame.new(0, 4.55, -0.25), BRASS)
 end
 
-local function chimney(top: number)
-	local x, z = -5.2, 3.6
-	for k = 0, math.floor((top + 2.5 - (EAVE + 2)) / 1.2) do
-		local y = EAVE + 2 + k * 1.2
-		box("Chimney", x - 1.3, y, z - 1.3, x + 1.3, y + 1.2, z + 1.3, if k % 2 == 0 then STONE else STONE_DARK)
+-------------------------------------------------------------------------------------------------------------
+-- the dormer, the porch, the chimney
+-------------------------------------------------------------------------------------------------------------
+local function dormer()
+	local x0, x1 = DC - DHALF, DC + DHALF
+	local base = mainY(DFACE) - 2.6 -- (well into the main roof)
+	local tan = (DRIDGE - D_EAVE) / D_RUN
+	local yw = D_EAVE + (D_RUN - DHALF) * tan -- the roof plane at its walls
+	local back = -mainZ(DRIDGE) + 0.6
+	clap(x0, DFACE, x1, back, base, yw)
+	local h = DRIDGE - yw
+	wedge("DormerAttic", Vector3.new(back - DFACE, h, DHALF), CFrame.new(DC - DHALF / 2, yw + h / 2, (DFACE + back) / 2) * CFrame.Angles(0, math.pi / 2, 0), look.wall)
+	wedge("DormerAttic", Vector3.new(back - DFACE, h, DHALF), CFrame.new(DC + DHALF / 2, yw + h / 2, (DFACE + back) / 2) * CFrame.Angles(0, -math.pi / 2, 0), look.wall)
+	for _, x in { x0, x1 } do
+		box("Corner", x - 0.3, mainY(DFACE), DFACE - 0.3, x + 0.3, yw, DFACE + 0.3, TRIM)
 	end
-	local cy = EAVE + 2 + (math.floor((top + 2.5 - (EAVE + 2)) / 1.2) + 1) * 1.2
-	box("ChimneyCap", x - 1.6, cy, z - 1.6, x + 1.6, cy + 0.6, z + 1.6, STONE_DARK)
-	box("ChimneyPot", x - 0.6, cy + 0.6, z - 0.6, x + 0.6, cy + 1.6, z + 0.6, POT)
+	local dsegs = function(y: number)
+		return { { DFACE - 0.6, -mainZ(y) + 0.45 } }
+	end
+	slope({ r = Z, p0 = Vector3.new(DC - D_RUN, D_EAVE, 0), rise = DRIDGE - D_EAVE, run = D_RUN, inward = X, segs = dsegs, ends = { DFACE - 0.78 } })
+	slope({ r = Z, p0 = Vector3.new(DC + D_RUN, D_EAVE, 0), rise = DRIDGE - D_EAVE, run = D_RUN, inward = -X, segs = dsegs, ends = { DFACE - 0.78 } })
+	box("RidgeCap", DC - 0.45, DRIDGE - 0.05, DFACE - 0.7, DC + 0.45, DRIDGE + 0.5, -mainZ(DRIDGE), look.roofDark, true)
+	-- its window: white frame, four panes, no shutters (as on the mesh)
+	window(CFrame.new(DC, mainY(DFACE) + 1.85, DFACE), 2.1, 2.5, false, false)
 end
 
--- a rose climbing the right front corner, pots by the steps
-local function garden()
-	local leaves = {
-		{ -9.4, 0, -7.2, 2.2, 3, 1.8 },
-		{ -9.6, 3, -7, 1.8, 2.6, 1.6 },
-		{ -9.3, 5.6, -6.9, 1.6, 2.4, 1.4 },
-		{ -9.5, 8, -7, 1.4, 2.2, 1.2 },
-		{ -8.2, 9.6, -7.1, 1.6, 1.4, 1.2 },
-		{ -10, 1.5, -5.6, 1.4, 2, 1.4 },
-	}
-	for i, l in leaves do
-		box("Rose", l[1] - l[4] / 2, l[2], l[3] - l[6] / 2, l[1] + l[4] / 2, l[2] + l[5], l[3] + l[6] / 2, if i % 2 == 0 then LEAF else LEAF_DARK)
+local function porch()
+	-- the stone base and deck, the piers, the steps
+	box("PorchBase", PC - 3.2, 0, PFRONT, PC + 3.2, FOOT - 0.4, -HZ, STONE[2])
+	for k = 0, 4 do
+		local z0 = PFRONT + k * (HZ - (-PFRONT)) / -5
+		local z1 = PFRONT + (k + 1) * (HZ - (-PFRONT)) / -5
+		box("Deck", PC - 3.3, FOOT - 0.4, math.min(z0, z1), PC + 3.3, FOOT, math.max(z0, z1), if k % 2 == 0 then WOOD else WOOD_DARK)
+	end
+	for _, x in { PC - 2.4, PC + 2.4 } do
+		box("Pier", x - 0.65, 0, -9.95, x + 0.65, FOOT - 0.4, -8.65, STONE[1])
+		box("ColumnBase", x - 0.55, FOOT, -9.85, x + 0.55, FOOT + 0.5, -8.75, TRIM)
+		box("Column", x - 0.38, FOOT + 0.5, -9.68, x + 0.38, 8.1, -8.92, TRIM)
+		box("ColumnCap", x - 0.5, 8.1, -9.8, x + 0.5, 8.6, -8.8, TRIM)
+	end
+	for i, s in { { 0, 0.87, -12.3 }, { 0.87, 1.73, -11.5 }, { 1.73, FOOT - 0.4, -10.7 } } do
+		box("Step", PC - 1.9, s[1], s[3], PC + 1.9, s[2], PFRONT, if i % 2 == 1 then WOOD else WOOD_DARK)
+	end
+	-- the beam over the columns, the gable over it with a white truss, its roof
+	box("PorchBeam", PC - 2.9, 8.6, -9.8, PC + 2.9, 9.4, -8.8, TRIM)
+	local tan = (P_RIDGE - P_EAVE) / P_RUN
+	local half = 2.9
+	local yb = P_EAVE + (P_RUN - half) * tan
+	local hh = P_RIDGE - yb
+	for k = -1, 1, 2 do
+		wedge("PorchGable", Vector3.new(0.4, hh, half), CFrame.new(PC + k * half / 2, yb + hh / 2, PFRONT + 0.15) * CFrame.Angles(0, -k * math.pi / 2, 0), CREAM)
+	end
+	box("PorchTruss", PC - 0.18, 9.4, PFRONT - 0.15, PC + 0.18, P_RIDGE - 0.4, PFRONT + 0.05, TRIM)
+	box("PorchTruss", PC - 1.3, 10.25, PFRONT - 0.15, PC + 1.3, 10.55, PFRONT + 0.05, TRIM)
+	local psegs = function(_y: number)
+		return { { PFRONT - 0.5, -HZ + 0.2 } }
+	end
+	slope({ r = Z, p0 = Vector3.new(PC - P_RUN, P_EAVE, 0), rise = P_RIDGE - P_EAVE, run = P_RUN, inward = X, segs = psegs, ends = { PFRONT - 0.68 } })
+	slope({ r = Z, p0 = Vector3.new(PC + P_RUN, P_EAVE, 0), rise = P_RIDGE - P_EAVE, run = P_RUN, inward = -X, segs = psegs, ends = { PFRONT - 0.68 } })
+	box("RidgeCap", PC - 0.4, P_RIDGE - 0.05, PFRONT - 0.6, PC + 0.4, P_RIDGE + 0.45, -HZ + 0.2, look.roofDark, true)
+end
+
+local function chimney()
+	local cx, cz = -5.6, 1.2
+	local y = mainY(cz + 1.3) - 1
+	local k = 0
+	while y < 22.4 do
+		local h = math.min(1.2, 22.4 - y)
+		box("Chimney", cx - 1.3, y, cz - 1.3, cx + 1.3, y + h, cz + 1.3, CHIMNEY[k % 2 + 1])
+		y += h
+		k += 1
+	end
+	box("ChimneyCap", cx - 1.6, 22.4, cz - 1.6, cx + 1.6, 23, cz + 1.6, CAP)
+	box("ChimneyTop", cx - 1.1, 23, cz - 1.1, cx + 1.1, 23.4, cz + 1.1, CHIMNEY[2])
+end
+
+-------------------------------------------------------------------------------------------------------------
+-- the roses and the pots
+-------------------------------------------------------------------------------------------------------------
+local function roses()
+	-- up the right front corner
+	local y = 0.3
+	local i = 0
+	while y < 10.4 do
+		local h = rng:NextNumber(1.2, 1.8)
+		local w = rng:NextNumber(1.3, 2)
+		box("Rose", -HX - 0.9, y, -HZ - 0.9 + rng:NextNumber(-0.2, 0.2), -HX - 0.9 + w, y + h, -HZ - 0.15, LEAF[i % 3 + 1])
+		ball("RoseBloom", 0.55, Vector3.new(-HX - 0.4 + rng:NextNumber(0, w - 0.6), y + h * 0.6, -HZ - 1), ROSE[i % 3 + 1])
+		y += h * 0.85
+		i += 1
+	end
+	-- and round onto the right side, lower as it goes back
+	local z = -HZ + 0.4
+	while z < -0.6 do
+		local top = 10.2 - (z + HZ) * 1.2
+		local w = rng:NextNumber(1, 1.5)
+		box("Rose", -HX - 0.8, 0.3, z, -HX - 0.15, math.max(1.5, top), z + w, LEAF[i % 3 + 1])
 		for j = 0, 1 do
-			local f = brick("RoseBloom", Vector3.new(0.6, 0.6, 0.6), CFrame.new(l[1] + (j - 0.5) * l[4] * 0.6, l[2] + l[5] * (0.35 + j * 0.4), l[3] - l[6] / 2 - 0.1), ROSE[(i + j) % 3 + 1])
-			f.Shape = Enum.PartType.Ball
+			ball("RoseBloom", 0.55, Vector3.new(-HX - 0.85, rng:NextNumber(1, math.max(1.6, top - 0.4)), z + w * (0.3 + j * 0.4)), ROSE[(i + j) % 3 + 1])
 		end
+		z += w
+		i += 1
 	end
-	for _, x in { DOOR_X - 3.6, DOOR_X + 2.8 } do
-		box("Pot", x - 0.7, 0, -11.9, x + 0.7, 1.1, -10.5, POT)
-		box("PotRim", x - 0.85, 1.1, -12.05, x + 0.85, 1.4, -10.35, C(166, 82, 50))
-		box("PotPlant", x - 0.9, 1.4, -12.1, x + 0.9, 2.6, -10.3, LEAF)
-		box("PotPlant", x - 0.5, 2.6, -11.7, x + 0.5, 3.3, -10.7, LEAF_DARK)
+end
+
+local function pots()
+	for _, x in { PC + 3.6, PC - 4.1 } do
+		box("Pot", x - 0.6, 0, -11.6, x + 0.6, 1.1, -10.4, POT)
+		box("PotRim", x - 0.75, 1.1, -11.75, x + 0.75, 1.4, -10.25, POT_RIM)
+		ball("Shrub", 1.7, Vector3.new(x, 2.1, -11), LEAF[1])
+		ball("Shrub", 1, Vector3.new(x + 0.3, 2.9, -11.2), LEAF[3])
 	end
 end
 
@@ -388,20 +539,24 @@ function StudHouse.build(parent: Instance, pivot: CFrame, which: string?): Model
 	origin = pivot
 	look = StudHouse.LOOKS[which or "blue"] or StudHouse.LOOKS.blue
 	count = 0
+	rng = Random.new(1107)
 	footing()
 	walls()
-	local top = roofs()
+	attics()
+	roofs()
 	dormer()
 	porch()
 	door()
-	-- the windows: one each side of the door, the wing's on both floors, one on each end
-	window(front(-6.3, FOOT + 4.4, MZ0 - 0.2), 2.2, 3.4, true)
-	window(front((WX0 + WX1) / 2, FOOT + 4.4, WZ - 0.2), 3, 3.6, true)
-	window(front((WX0 + WX1) / 2, EAVE + 2.4, WZ - 0.2), 2, 2.8, false)
-	window(CFrame.new(-MX - 0.2, FOOT + 5, 0.5) * CFrame.Angles(0, math.rad(90), 0), 2.6, 3.4, false)
-	window(CFrame.new(MX + 0.2, FOOT + 5, 0.5) * CFrame.Angles(0, math.rad(-90), 0), 2.6, 3.4, false)
-	chimney(top)
-	garden()
+	-- the windows, where the mesh has them: one under the wing's gable and one right of the door, both with shutters
+	-- and flowers; the gable window with shutters; two at the back
+	window(CFrame.new(6, 6.6, -HZ), 2.4, 3.4, true, true)
+	window(CFrame.new(-5.3, 6.6, -HZ), 2.4, 3.4, true, true)
+	window(CFrame.new(WC, 14.6, -HZ), 2.4, 3.2, true, false)
+	window(CFrame.new(-5, 6.6, HZ) * CFrame.Angles(0, math.pi, 0), 2.4, 3.4, true, false)
+	window(CFrame.new(5, 6.6, HZ) * CFrame.Angles(0, math.pi, 0), 2.4, 3.4, true, false)
+	chimney()
+	roses()
+	pots()
 	model:SetAttribute("Bricks", count)
 	model.WorldPivot = pivot
 	model.Parent = parent

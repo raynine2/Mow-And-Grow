@@ -558,6 +558,7 @@ function StudHouse.build(parent: Instance, pivot: CFrame, which: string?): Model
 	roses()
 	pots()
 	model:SetAttribute("Bricks", count)
+	model:SetAttribute("StudBuilt", true) -- (server/StudLook leaves it as built)
 	model.WorldPivot = pivot
 	model.Parent = parent
 	return model

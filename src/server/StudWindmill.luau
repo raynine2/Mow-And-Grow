@@ -454,6 +454,7 @@ function StudWindmill.build(parent: Instance, pivot: CFrame): Model
 	sails()
 	model:SetAttribute("Bricks", count)
 	model.PrimaryPart = nil
+	model:SetAttribute("StudBuilt", true) -- (server/StudLook leaves it as built)
 	model.WorldPivot = pivot
 	model.Parent = parent
 	return model

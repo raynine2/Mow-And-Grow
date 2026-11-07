@@ -252,7 +252,11 @@ function StudLook.apply(w: Instance): number
 		if d:IsA("BasePart") then
 			-- (a moment later: whoever made it is done setting its material and colour by then)
 			task.defer(function()
-				if d.Parent then
+				local built = d.Parent and d:FindFirstAncestorWhichIsA("Model")
+				while built and built:GetAttribute("StudBuilt") ~= true do
+					built = built.Parent and built.Parent:FindFirstAncestorWhichIsA("Model") or nil
+				end
+				if d.Parent and not built then -- (a model built in studs already keeps its own look)
 					local a = areaAt(d.Position)
 					if a and areas[a] then
 						dress(d)
@@ -554,7 +558,8 @@ function StudLook.applyLobby(w: Instance): number
 	local function skip(d: Instance): boolean
 		local p = d.Parent
 		while p and p ~= w do
-			if LOBBY_SKIP[p.Name] then
+			-- (7 Nov) and a model built in studs already (StudWindmill, StudHouse: its smooth roof tiles stay smooth)
+			if LOBBY_SKIP[p.Name] or p:GetAttribute("StudBuilt") == true then
 				return true
 			end
 			p = p.Parent

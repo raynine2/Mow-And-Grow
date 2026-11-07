@@ -4,6 +4,7 @@
 -- builds, each on its own switch in Config.STUD_FORGE:
 --   windmill  forge_windmill (and the filler "Core" beside it)        -> server/StudWindmill
 --   house     forge_house_blue / forge_house_red (and "HouseCore")    -> server/StudHouse
+--   fountain  forge_fountain (the one by the lobby's spawn)            -> server/StudFountain
 -- The mesh stays in the world, out of sight and out of the way (its pivot is where the build goes). The maps saved in
 -- the place are untouched: this runs on the server's copy (server/Lobby.start).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -53,6 +54,10 @@ function StudForge.apply(world: Instance): number
 				hide(m)
 				hide(holder:FindFirstChild("Core"))
 				require(script.Parent.StudWindmill).build(holder, m:GetPivot())
+				n += 1
+			elseif m.Name == "forge_fountain" and on("fountain") then
+				hide(m)
+				require(script.Parent.StudFountain).build(holder, m:GetPivot())
 				n += 1
 			elseif (m.Name == "forge_house_blue" or m.Name == "forge_house_red") and on("house") then
 				hide(m)

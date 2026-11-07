@@ -907,15 +907,34 @@ function Finisher.boss(d: any, ctx: any?): any?
 	return plan
 end
 
--- Studio: play it on the boss that's out now (DevHook "boss" "fight" first), without killing it
-function Finisher.test(z: number?)
+-- Studio: play it on the boss that's out now (DevHook "boss" "fight" first), without killing it. `len`: seconds the
+-- "server" gives it (a long one to step through it with the IntroTestSpeed attribute).
+function Finisher.test(z: number?, len: number?)
 	local v = BossView.get()
 	if not v then
 		return "no boss shown"
 	end
-	local d = { z = z or 1, at = workspace:GetServerTimeNow(), len = 7.4, cf = v.base }
+	local d = { z = z or 1, at = workspace:GetServerTimeNow(), len = len or 7.4, cf = v.base }
 	local plan = Finisher.boss(d, { z = z or 1 })
 	return if plan then "playing" else "not played"
+end
+-- (Studio only: the test is started from outside the game's scripts by setting the Workspace attribute
+-- FinisherTest = len; while a finisher plays, FinisherClock is its film time)
+if game:GetService("RunService"):IsStudio() then
+	workspace:GetAttributeChangedSignal("FinisherTest"):Connect(function()
+		local len = workspace:GetAttribute("FinisherTest")
+		if type(len) == "number" and len > 0 then
+			workspace:SetAttribute("FinisherTest", nil)
+			workspace:SetAttribute("FinisherResult", Finisher.test(nil, len))
+		end
+	end)
+	game:GetService("RunService").Heartbeat:Connect(function()
+		if Film.playing and Film.owner == STEP then
+			workspace:SetAttribute("FinisherClock", Film.now())
+		elseif workspace:GetAttribute("FinisherClock") ~= nil then
+			workspace:SetAttribute("FinisherClock", nil)
+		end
+	end)
 end
 
 return Finisher

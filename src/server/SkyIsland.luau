@@ -17,12 +17,12 @@
 --   * The turn-around test: behind the spawn a lookout at the rim faces the starlight observatory on a high island
 --     of its own; round the horizon the seven other run areas float as small islands, each with its ForgeGUI landmark.
 -- Lobby space: y = 0 the island's top, +Z north (spawn to windmill), +X to your LEFT as you face the windmill.
--- Every working piece (pads, stations, boards, spawn) is the same as before, so server/Lobby needs nothing new.
+-- Every working piece (pads, stations, boards, spawn) hands server/Lobby the same things as before (server/SkyVoxel).
 local PropKit = require(script.Parent.PropKit)
-local Models = require(script.Parent.Models)
 local VM = require(script.Parent.VoxelModels)
 local Environment = require(script.Parent.Environment)
 local LobbyKit = require(script.Parent.LobbyKit)
+local SV = require(script.Parent.SkyVoxel) -- (7 Nov, owner: the signs and buildings in the trees' voxel look)
 local Layout = require(script.Parent.LobbyLayout)
 local Ground = require(script.Parent.Ground)
 
@@ -66,13 +66,14 @@ local LOBES = {
 }
 -- the run areas round the horizon (angle from north, + to the left), and the observatory behind the spawn
 local ISLES = {
-	{ lm = "lm_wheat", tree = "wheat", a = 38, d = 190, y = 10, r = 22, mat = Enum.Material.Sand },
-	{ lm = "lm_blossom", tree = "blossom", a = -38, d = 190, y = 16, r = 22, mat = Enum.Material.Limestone },
-	{ lm = "lm_pine", tree = "pine", a = 74, d = 205, y = -4, r = 24, mat = Enum.Material.Slate },
-	{ lm = "lm_swamp", tree = "swamp", a = -74, d = 205, y = 2, r = 24, mat = Enum.Material.Mud },
-	{ lm = "lm_frost", tree = "frost", a = 112, d = 210, y = 26, r = 22, mat = Enum.Material.Snow },
-	{ lm = "lm_ember", tree = "ember", a = -112, d = 210, y = 20, r = 22, mat = Enum.Material.CrackedLava },
-	{ lm = "lm_starlight", tree = "isles", a = 180, d = 215, y = 42, r = 26, mat = Enum.Material.Pavement, big = true },
+	-- (7 Nov, owner: everything in the trees' voxel look) each with its area's voxel landmark, `k` its scale
+	{ lm = "Landmark_silo", k = 0.6, tree = "wheat", a = 38, d = 190, y = 10, r = 22, mat = Enum.Material.Sand },
+	{ lm = "Landmark_cherry", k = 0.34, tree = "blossom", a = -38, d = 190, y = 16, r = 22, mat = Enum.Material.Limestone },
+	{ lm = "Landmark_elderpine", k = 0.34, tree = "pine", a = 74, d = 205, y = -4, r = 24, mat = Enum.Material.Slate },
+	{ lm = "Landmark_mushroomhut", k = 0.5, tree = "swamp", a = -74, d = 205, y = 2, r = 24, mat = Enum.Material.Mud },
+	{ lm = "Landmark_icespire", k = 0.44, tree = "frost", a = 112, d = 210, y = 26, r = 22, mat = Enum.Material.Snow },
+	{ lm = "Landmark_volcano", k = 0.46, tree = "ember", a = -112, d = 210, y = 20, r = 22, mat = Enum.Material.CrackedLava },
+	{ lm = "Landmark_floatrock", k = 1.0, lift = 8, tree = "isles", a = 180, d = 215, y = 42, r = 26, mat = Enum.Material.Pavement },
 }
 
 -- where server/LobbyBuilder's stations stand (set at build time: server/LandsBuilder sets its own when it loads)
@@ -393,9 +394,7 @@ end
 -- where the axis meets the curved walk, bushes round the stations' feet (seating the smooth ForgeGUI buildings in
 -- the voxel world), a fountain mirroring the rewards stall, benches and a fence at the lookout.
 local function lamp(parent: Instance, p: Vector3, look: Vector3)
-	if not Models.place("lantern_post", parent, CFrame.lookAt(p, Vector3.new(look.X, p.Y, look.Z)), 0.9, true) then
-		VM.place(parent, "S_lantern_post", p, { collide = true })
-	end
+	SV.lamp(parent, p, look)
 end
 
 local function dressing(world: Instance)
@@ -419,16 +418,8 @@ local function dressing(world: Instance)
 			VM.place(f, if math.abs(off[2]) == 14 then "Bush_meadow" else "Bush_blossom", p, { scale = 0.6, yaw = 0, collide = true })
 		end
 	end
-	-- the fountain, mirroring the rewards stall, with butterflies (client/LobbyFX)
-	local g = folder(world, "FountainGarden")
-	local fm = Models.placeForge("fountain", g, CFrame.lookAt(FOUNTAIN, Vector3.new(SPAWN.X, 0, SPAWN.Z)), { width = 9 }, false)
-	local top = FOUNTAIN + Vector3.new(0, 4, 0)
-	if fm then
-		local box, size = fm:GetBoundingBox()
-		top = Vector3.new(FOUNTAIN.X, box.Position.Y + size.Y / 2 - 0.6, FOUNTAIN.Z)
-	end
-	LobbyKit.tag(LobbyKit.spot(g, CFrame.new(top), Vector3.new(1, 1, 1), "FountainFX"), "LobbyFX", { Kind = "fountain", Color = C(170, 225, 255) })
-	LobbyKit.tag(LobbyKit.spot(g, CFrame.new(FOUNTAIN + Vector3.new(0, 3, 0)), Vector3.new(16, 4, 16), "Butterflies"), "LobbyFX", { Kind = "butterflies", Color = C(255, 214, 90) })
+	-- the fountain, mirroring the rewards stall, with butterflies (client/LobbyFX): blocks, like everything
+	SV.fountain(world, FOUNTAIN)
 	-- (seen in Studio, turned round at the spawn: the lawn to the lookout was bare) lamps in pairs along its walk,
 	-- flowering bushes and low hedges either side, so the back has its own picture: the walk, then the observatory
 	for _, z in { -64, -78 } do
@@ -448,10 +439,14 @@ local function dressing(world: Instance)
 		local p = LOOKOUT + Vector3.new(sx * 3.4, 0, 1.5)
 		VM.place(lk, "Prop_bench", p, { yaw = math.pi, collide = true })
 	end
-	for _, a in { -50, -25, 0, 25, 50 } do
+	local prev: Vector3? = nil
+	for a = -60, 60, 20 do
 		local t = math.rad(a)
 		local p = LOOKOUT + Vector3.new(math.sin(t) * 9, 0, -math.cos(t) * 9)
-		VM.place(lk, "S_fence", p, { yaw = t, collide = true })
+		if prev then
+			SV.fence(lk, prev, p)
+		end
+		prev = p
 	end
 end
 
@@ -602,9 +597,8 @@ local function isles(world: Instance)
 		task.wait()
 		local top = groundY(c.X, c.Z, c.Y + 20)
 		local isle = folder(f, s.tree)
-		local face = CFrame.lookAt(Vector3.new(c.X, top, c.Z), Vector3.new(MID.X, top, MID.Z))
-		local h = if s.big then 36 else 26
-		Models.placeForge(s.lm, isle, face, { height = h, width = h * 1.1, depth = h * 1.1 }, false)
+		local d = Vector3.new(MID.X - c.X, 0, MID.Z - c.Z)
+		VM.place(isle, s.lm, Vector3.new(c.X, top + (s.lift or 0), c.Z), { scale = s.k, yaw = math.atan2(-d.X, -d.Z) })
 		local out = (Vector3.new(c.X, 0, c.Z) - MID).Unit
 		local right = out:Cross(Vector3.yAxis)
 		for k = -1, 1 do
@@ -652,21 +646,20 @@ function SkyIsland.build()
 		Ground.flatten(0, 4, 136)
 	end
 	require(script.Parent.LobbyPaving).lay(world, walkAreas())
-	local kit = require(script.Parent.LandsBuilder).kit
 	setLayout()
-	local list = {}
-	for _, p in PADS do
-		table.insert(list, { pos = arc(p.a, PAD_R), toward = SPAWN, kind = p.kind })
+	-- (7 Nov) the pads, the windmill, the stations and the boards in the trees' voxel look (server/SkyVoxel)
+	local booths = PropKit.folder("PartyBooths", world)
+	local padDefs = {}
+	for i, p in PADS do
+		table.insert(padDefs, SV.pad(booths, i, arc(p.a, PAD_R), SPAWN, p.kind))
 	end
-	local padDefs = kit.pads(world, list)
-	kit.hero(world, HERO, SPAWN)
-	local stockLabel, dummy = kit.classes(world, CLASSES, Vector3.xAxis, SPAWN)
-	kit.garage(world, GARAGE, -Vector3.xAxis)
-	local B = require(script.Parent.LobbyBuilder).stations
-	B.rewards(world)
-	kit.goldBays(world)
-	local leaderLabel = B.leaderboard(world)
-	local bestLabel = B.bestTimes(world)
+	SV.windmill(world, HERO, SPAWN, 2.0)
+	local stockLabel, dummy = SV.classes(world, CLASSES, CLASSES + Vector3.xAxis)
+	SV.garage(world, GARAGE, GARAGE - Vector3.xAxis)
+	local rp = Layout.REWARDS.pos
+	SV.rewards(world, rp, Vector3.new(SPAWN.X, 0, rp.Z))
+	local leaderLabel = SV.board(world, "Leaderboard", Layout.GRASS_CUT.pos, SPAWN, "GRASS CUT", "cut", C(255, 214, 60))
+	local bestLabel = SV.board(world, "BestTimes", Layout.BEST_TIMES.pos, SPAWN, "BEST TIMES", "best", PropKit.TITLE, "best:BEST TIMES,bosses:BOSS SLAYERS")
 	dressing(world)
 	if not Ground.locked then
 		rimTrees(world)

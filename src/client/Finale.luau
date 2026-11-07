@@ -1759,9 +1759,13 @@ local function lesson(): boolean
 	end)
 	-- 30a. low beside it: him held up by the collar against the gold sky
 	if not shot(SLAM - 0.03, function(k)
+		-- (side on to the two of them, low: checked in Studio, from its front-left the two dark bodies were one shape)
 		local root = C.root
 		local grip = C:grip("Left").Position
-		local p = root.Position - root.RightVector * 6.5 + root.LookVector * 4.5 - UP * 1.8
+		local between = flat(R.root.Position - root.Position)
+		between = if between.Magnitude > 0.05 then between.Unit else flat(root.LookVector).Unit
+		local mid = root.Position:Lerp(R.root.Position, 0.5)
+		local p = mid + between:Cross(UP) * 7 - UP * 1.8 + between * 0.4
 		local aim = grip:Lerp(headOf(C), 0.4) - UP * (0.8 + k * 0.3)
 		return look(p, aim, -6), mm(22), grip
 	end, { cut = "smash", hand = 0.35 }) then

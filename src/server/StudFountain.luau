@@ -29,7 +29,7 @@ local BASIN = C(46, 70, 96)
 local WATER = C(56, 130, 206)
 local STREAM = C(160, 214, 250)
 local STONE = { C(150, 148, 140), C(128, 126, 120), C(166, 164, 156) }
-local MOSS = { C(92, 140, 60), C(110, 156, 70) }
+local MOSS = { C(84, 126, 58), C(98, 138, 64) }
 local TEAL = C(46, 128, 142)
 local TEAL_DARK = C(34, 104, 118)
 local BRASS = C(212, 170, 76)
@@ -126,9 +126,8 @@ local function stack(): number
 	for i, s in { { 2.7, 0.8, 2.5, 8 }, { 2.1, 0.7, 2.0, -14 }, { 1.6, 0.5, 1.5, 22 } } do
 		local cf = CFrame.new(0, y + s[2] / 2, 0) * CFrame.Angles(0, math.rad(s[4]), 0)
 		brick("StackStone", Vector3.new(s[1], s[2], s[3]), cf, STONE[i])
-		-- moss along two of its top edges
-		brick("Moss", Vector3.new(s[1] * 0.55, 0.2, 0.5), cf * CFrame.new(-s[1] * 0.18, s[2] / 2 + 0.05, -s[3] / 2 + 0.25), MOSS[i % 2 + 1])
-		brick("Moss", Vector3.new(0.5, 0.2, s[3] * 0.5), cf * CFrame.new(s[1] / 2 - 0.25, s[2] / 2 + 0.05, s[3] * 0.15), MOSS[(i + 1) % 2 + 1])
+		-- a thin patch of moss along one top edge
+		brick("Moss", Vector3.new(s[1] * 0.5, 0.12, 0.45), cf * CFrame.new(-s[1] * 0.2, s[2] / 2 + 0.06, -s[3] / 2 + 0.22), MOSS[i % 2 + 1], true)
 		y += s[2]
 		tops = y
 	end
@@ -137,23 +136,25 @@ end
 
 -- the watering can on top, tipped toward its spout, pouring
 local SPOUT_YAW = math.rad(36) -- (as on the mesh: the spout out over the basin's front-left)
-local TIP = math.rad(-22)
+local TIP = math.rad(-30) -- tipped forward, its spout down
 
 local function can(baseY: number)
-	local frame = CFrame.new(0, baseY, 0) * CFrame.Angles(0, SPOUT_YAW, 0) * CFrame.Angles(0, 0, TIP)
-	local body = frame * CFrame.new(0, 0.72, 0)
-	brick("CanBody", Vector3.new(1.6, 1.4, 1.3), body, TEAL)
-	brick("CanBand", Vector3.new(1.7, 0.24, 1.4), body * CFrame.new(0, -0.38, 0), BRASS, true)
-	brick("CanBand", Vector3.new(1.7, 0.24, 1.4), body * CFrame.new(0, 0.62, 0), BRASS, true)
-	brick("CanTop", Vector3.new(1.2, 0.25, 1), body * CFrame.new(-0.1, 0.82, 0), TEAL_DARK)
-	-- the handle: an arch over the back of the top
-	brick("CanHandle", Vector3.new(0.28, 1.1, 0.3), body * CFrame.new(-0.72, 1.15, 0), TEAL_DARK)
-	brick("CanHandle", Vector3.new(1.2, 0.28, 0.3), body * CFrame.new(-0.25, 1.62, 0), TEAL_DARK)
-	brick("CanHandle", Vector3.new(0.28, 0.6, 0.3), body * CFrame.new(0.28, 1.35, 0), TEAL_DARK)
-	-- the spout from low on the front, rising, a brass rose on its end
-	local spout = body * CFrame.new(0.8, -0.3, 0) * CFrame.Angles(0, 0, math.rad(28)) * CFrame.new(0.95, 0, 0)
-	brick("CanSpout", Vector3.new(1.9, 0.32, 0.32), spout, TEAL)
-	local rose = brick("CanRose", Vector3.new(0.3, 0.6, 0.6), spout * CFrame.new(1.05, 0, 0), BRASS, true)
+	-- (the can's own frame: X toward the spout, Y up; tipped about its front-bottom edge so it rests on the stones)
+	local frame = CFrame.new(0, baseY, 0) * CFrame.Angles(0, SPOUT_YAW, 0) * CFrame.new(0.5, 0, 0) * CFrame.Angles(0, 0, TIP) * CFrame.new(-0.5, 0, 0)
+	local body = frame * CFrame.new(0, 0.78, 0)
+	brick("CanBody", Vector3.new(1.7, 1.5, 1.4), body, TEAL)
+	brick("CanBand", Vector3.new(1.8, 0.24, 1.5), body * CFrame.new(0, -0.45, 0), BRASS, true)
+	brick("CanBand", Vector3.new(1.8, 0.24, 1.5), body * CFrame.new(0, 0.66, 0), BRASS, true)
+	brick("CanLid", Vector3.new(1.1, 0.22, 0.9), body * CFrame.new(0.1, 0.86, 0), TEAL_DARK)
+	-- the handle: up from the back and over to the middle of the top, open underneath (a C, not a box)
+	brick("CanHandle", Vector3.new(0.24, 1.25, 0.28), body * CFrame.new(-1.0, 0.45, 0), TEAL_DARK)
+	brick("CanHandle", Vector3.new(0.95, 0.24, 0.28), body * CFrame.new(-0.6, 1.2, 0), TEAL_DARK)
+	brick("CanHandle", Vector3.new(0.24, 0.42, 0.28), body * CFrame.new(-0.22, 0.98, 0), TEAL_DARK)
+	brick("CanHandle", Vector3.new(0.3, 0.24, 0.28), body * CFrame.new(-0.92, -0.18, 0), TEAL_DARK)
+	-- the spout from low on the front, rising steeply from the body (so with the tip it points a little down)
+	local spout = body * CFrame.new(0.85, -0.42, 0) * CFrame.Angles(0, 0, math.rad(38)) * CFrame.new(0.75, 0, 0)
+	brick("CanSpout", Vector3.new(1.5, 0.3, 0.3), spout, TEAL)
+	local rose = brick("CanRose", Vector3.new(0.28, 0.62, 0.62), spout * CFrame.new(0.82, 0, 0), BRASS, true)
 	-- the stream from the rose down to the water, drifting out a little as it falls, and the splash
 	local from = origin:PointToObjectSpace(rose.Position)
 	local to = Vector3.new(from.X * 1.12, WATER_Y + 0.1, from.Z * 1.12)

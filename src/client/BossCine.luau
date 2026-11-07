@@ -522,6 +522,11 @@ H.bossIntro = function(d)
 	end)
 	local cardAt = if d.first then 3.2 else 0.3
 	task.delay(math.max(0, cardAt - (len - left)), function()
+		-- (7 Nov, owner: "ik zie 2x de boss zijn naam ... 1x pop up is genoeg") the name already popped up when it woke
+		-- (client/BossOmen's BOSS AWAKE banner): no second name card here unless Config.BOSS_INTRO_CARD is true
+		if Config.BOSS_INTRO_CARD ~= true then
+			return
+		end
 		if cine.token == token or not token then
 			local card = BossFx.titleCard(d.title or "BOSS", d.name:upper(), "", 0.24, zoneColor(d.z))
 			BossFx.shakeCard(card, 6, 0.35)

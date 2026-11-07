@@ -567,6 +567,9 @@ Config.BOSS_NOHIT_GEMS = 1
 -- into the sky, hammer it back down, pound it and walk off as it bursts. deathTime: how long the server waits before
 -- the rewards (shared/BossMoves.DEATH_TIME; the old death took 3.2 s). on = false: the old death.
 Config.FINISHER = { on = true, deathTime = 7.4 }
+-- (7 Nov, owner: "ik zie 2x de boss zijn naam dandelion king ... 1x pop up is genoeg") the boss's name pops up once,
+-- in the BOSS AWAKE banner when it wakes; true brings back the second name card in the fight's intro (client/BossCine)
+Config.BOSS_INTRO_CARD = false
 -- (7 Nov, owner, with a TikTok of another Roblox game: "ik bedoel meer de style van de texturen", "Eerst 1 gebied als
 -- test") the classic studded toy-brick look (server/StudLook: plain plastic, studs on top and sides) in these areas
 -- of the run's world; {} or nil: the old look everywhere. trees = true also rebuilds the voxel trees, bushes and rocks

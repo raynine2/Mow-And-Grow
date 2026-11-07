@@ -387,6 +387,52 @@ end
 -- triangles per slice, studs on their faces): the same circle, size, height and colour, with studs. The disc itself
 -- stays, hidden.
 -------------------------------------------------------------------------------------------------------------
+-- (15:24, owner: "de boss arenas te bright vooral bij de eerste") an arena's floor in studded plastic reads far brighter
+-- than its old grass / stone material did (Sunny Meadow's was a 140-stud sheet of lime): an arena's discs come out
+-- calmer, a fifth less light and a little less colour
+local function calmer(c: Color3): Color3
+	local h, s, v = c:ToHSV()
+	return Color3.fromHSV(h, s * 0.85, v * 0.78)
+end
+
+-- A big disc (an arena's floor, 32+ across): its middle again in straight rows of studded plastic just over the fan,
+-- so its studs run in one grid like a baseplate (the fan turns each slice's studs, which swirled across the whole
+-- floor); every row stays inside the circle, the fan shows only in the slivers at the edge. Not for a see-through
+-- disc or one lying under another (an arena's Rim).
+local ROW = 4
+local function rows(cyl: Part, col: Color3, m: Model): number
+	local r = cyl.Size.Y / 2
+	if r < 16 or cyl.Transparency > 0 or cyl.Name == "Rim" then
+		return 0
+	end
+	local pos = cyl.Position
+	local top = pos.Y + cyl.Size.X / 2
+	local n = 0
+	for i = -math.floor(r / ROW), math.floor(r / ROW) - 1 do
+		local z0, z1 = i * ROW, (i + 1) * ROW
+		local far = math.max(math.abs(z0), math.abs(z1))
+		local half = if far < r then math.floor(math.sqrt(r * r - far * far)) else 0
+		if half >= 2 then
+			local p = Instance.new("Part")
+			p.Name = "Row"
+			p.Anchored = true
+			p.CanCollide = false -- (the fan under it carries the feet)
+			p.CanQuery = false
+			p.CanTouch = false
+			p.CastShadow = false
+			p.Size = Vector3.new(half * 2, 0.2, ROW)
+			p.CFrame = CFrame.new(pos.X, top + 0.02 - 0.1, pos.Z + (z0 + z1) / 2)
+			p.Color = col
+			p.Material = PLASTIC
+			p.TopSurface = STUDS
+			p.BottomSurface = INLET
+			p.Parent = m
+			n += 1
+		end
+	end
+	return n
+end
+
 studDisc = function(cyl: Part): number
 	local cf = cyl.CFrame
 	local A, B = cf.UpVector, cf.LookVector -- the disc's plane (its axis, RightVector, points up)
@@ -396,8 +442,10 @@ studDisc = function(cyl: Part): number
 	local th = math.pi * 2 / slices
 	local h, wid = r * math.cos(th / 2), r * math.sin(th / 2)
 	local c = cf.Position
+	local col = if cyl:FindFirstAncestor("Arenas") then calmer(cyl.Color) else cyl.Color
 	local m = Instance.new("Model")
 	m.Name = "StudRound"
+	local extra = rows(cyl, col, m)
 	for k = 0, slices - 1 do
 		local a = (k + 0.5) * th
 		local out = A * math.cos(a) + B * math.sin(a)
@@ -413,7 +461,7 @@ studDisc = function(cyl: Part): number
 			p.CanCollide = cyl.CanCollide
 			p.Size = Vector3.new(t, h, wid)
 			p.CFrame = CFrame.fromMatrix(mid + yv * (h / 2) + tdir * (wid / 2), yv:Cross(zv), yv, zv)
-			p.Color = cyl.Color
+			p.Color = col
 			p.Transparency = cyl.Transparency -- (an arena's faint ring line)
 			p.CastShadow = cyl.CastShadow
 			p.CanQuery = cyl.CanQuery
@@ -427,7 +475,7 @@ studDisc = function(cyl: Part): number
 	cyl.Transparency = 1
 	cyl.CanCollide = false
 	cyl.CastShadow = false
-	return slices * 2
+	return slices * 2 + extra
 end
 
 -- a flat round stone: a cylinder lying flat, 4 studs across or more, not glowing, see-through or carrying a picture

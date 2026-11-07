@@ -12,8 +12,8 @@ local C = Color3.fromRGB
 local PAL = {
 	stone = C(160, 154, 144),
 	stoneDark = C(128, 122, 114),
-	plaster = C(236, 231, 218),
-	plasterShade = C(222, 215, 200),
+	plaster = C(240, 230, 208),
+	plasterShade = C(228, 216, 192),
 	timber = C(82, 55, 40),
 	timberLight = C(124, 84, 56),
 	plank = C(150, 104, 68),
@@ -263,8 +263,8 @@ end
 -- the roof
 -------------------------------------------------------------------------------------------------------------
 local ROOF_Y = TOP
-local ROOF_STEPS = 15
-local ROOF_A = 18
+local ROOF_STEPS = 16
+local ROOF_A = 19.5
 
 local function roof()
 	-- the eave beam, then the cone in rows of tiles, each row a little in from the one under it
@@ -287,7 +287,7 @@ end
 -- the sails
 -------------------------------------------------------------------------------------------------------------
 local HUB_Y = 68
-local HUB_Z = -15.4 -- in front of the roof
+local HUB_Z = -18.6 -- well in front of the roof, so the lower sails clear the tower by ~3 studs
 local ARM = 33
 
 local function sails(): Model
@@ -295,12 +295,13 @@ local function sails(): Model
 	m.Name = "Sails"
 	m.Parent = model
 	-- the axle out of the roof and the hub on it
-	brick("Axle", Vector3.new(1.6, 1.6, 4), CFrame.new(0, HUB_Y, HUB_Z + 1.6), PAL.cap, m)
+	brick("Axle", Vector3.new(1.8, 1.8, 7), CFrame.new(0, HUB_Y, HUB_Z + 3.4), PAL.cap, m)
+	brick("AxleCollar", Vector3.new(2.6, 2.6, 0.8), CFrame.new(0, HUB_Y, HUB_Z + 3.4), PAL.timber, m) -- (where it leaves the roof)
 	local hub = CFrame.new(0, HUB_Y, HUB_Z - 0.6)
 	for k = 0, 1 do
-		brick("Hub", Vector3.new(3.4, 3.4, 1.4), hub * CFrame.Angles(0, 0, k * EIGHTH), PAL.cap, m)
+		brick("Hub", Vector3.new(4.4, 4.4, 1.6), hub * CFrame.Angles(0, 0, k * EIGHTH), PAL.cap, m)
 	end
-	local cap = brick("HubCap", Vector3.new(1.6, 1.6, 1.6), hub * CFrame.new(0, 0, -0.9), PAL.brass, m)
+	local cap = brick("HubCap", Vector3.new(2.2, 2.2, 2.2), hub * CFrame.new(0, 0, -1.1), PAL.brass, m)
 	cap.Shape = Enum.PartType.Ball
 	for s = 0, 3 do
 		-- an arm: X along the arm, Y across it, -Z out of the front

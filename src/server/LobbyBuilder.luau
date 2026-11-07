@@ -452,6 +452,12 @@ local function partyArea(world: Instance)
 end
 
 function LobbyBuilder.build()
+	-- (7 Nov remake) the lobby is a floating island (server/SkyIsland); SkyIsland.ON = false gives the 4 Nov windmill
+	-- square and its eight lands (server/LandsBuilder) again
+	local Sky = require(script.Parent.SkyIsland)
+	if Sky.ON then
+		return Sky.build()
+	end
 	-- (4 Nov remake) the lobby is the giant back garden now (server/YardBuilder); YardBuilder.ON = false gives this one
 	local Lands = require(script.Parent.LandsBuilder)
 	if Lands.ON then

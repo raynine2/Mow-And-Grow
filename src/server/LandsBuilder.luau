@@ -427,8 +427,9 @@ local function glowRing(parent: Instance, cf: CFrame, r: number): { BasePart }
 end
 
 local function pad(m: Instance, i: number, p: any): any
-	local pos = arc(p.a, PAD_R)
-	local cf = facing(pos, SPAWN)
+	-- (7 Nov) `p.pos` / `p.toward` place it anywhere (server/SkyIsland); else on this square's arc, facing the spawn
+	local pos = p.pos or arc(p.a, PAD_R)
+	local cf = facing(pos, p.toward or SPAWN)
 	local top = 0.6
 	local altar = Models.placeForge("fa_altar_meadow", m, cf * TURN, { depth = PAD_W, width = PAD_W }, true)
 	if altar then
@@ -496,11 +497,11 @@ local function pad(m: Instance, i: number, p: any): any
 	return def
 end
 
-local function pads(world: Instance): { any }
+local function pads(world: Instance, list: { any }?): { any }
 	local m = PropKit.folder("PartyBooths", world)
 	local defs = {}
 	-- (pad 1 is SOLO: the guide arrow shows "PadInfo1" to new players)
-	for i, p in PADS do
+	for i, p in list or PADS do
 		table.insert(defs, pad(m, i, p))
 	end
 	return defs
@@ -528,11 +529,12 @@ local function coreRadius(y: number): number
 	return CORE_TAPER[#CORE_TAPER][2]
 end
 
-local function windmillCore(m: Instance)
+local function windmillCore(m: Instance, at: Vector3?)
 	local core = Instance.new("Model")
 	core.Name = "Core"
+	local centre = at or HERO.pos
 	local function drum(y0: number, y1: number, r: number)
-		local cf = CFrame.new(HERO.pos + Vector3.new(0, (y0 + y1) / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		local cf = CFrame.new(centre + Vector3.new(0, (y0 + y1) / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
 		local p = block(core, "Core", Vector3.new(y1 - y0, r * 2, r * 2), cf, C(236, 228, 212), Enum.Material.Plaster)
 		p.Shape = Enum.PartType.Cylinder
 		p.CanCollide = false
@@ -550,14 +552,15 @@ local function windmillCore(m: Instance)
 	core.Parent = m
 end
 
-local function hero(world: Instance)
+local function hero(world: Instance, at: Vector3?, toward: Vector3?)
 	local m = PropKit.folder("Landmark", world)
-	local cf = facing(HERO.pos, SPAWN)
+	local pos = at or HERO.pos
+	local cf = facing(pos, toward or SPAWN)
 	if not Models.placeForge("windmill", m, cf, { height = HERO.height, width = HERO.width, depth = HERO.width }, false) then
-		VM.place(m, "Landmark_windmill", HERO.pos, { scale = 1.4, collide = true })
+		VM.place(m, "Landmark_windmill", pos, { scale = 1.4, collide = true })
 		return
 	end
-	windmillCore(m)
+	windmillCore(m, pos)
 end
 
 local function promptAt(parent: Instance, cf: CFrame, name: string): BasePart
@@ -571,9 +574,10 @@ local function title(parent: Instance, at: Vector3, text: string, color: Color3)
 	PropKit.billboard(p, text, color, Vector2.new(14, 3.4), Vector3.zero, 220)
 end
 
-local function classes(world: Instance): (TextLabel, Model?)
+local function classes(world: Instance, pos: Vector3?, front: Vector3?, toward: Vector3?): (TextLabel, Model?)
 	local m = PropKit.folder("Classes", world)
-	local at = facing(CLASSES, CLASSES + Vector3.xAxis) -- (its front looks east, across the square)
+	local p0 = pos or CLASSES
+	local at = facing(p0, p0 + (front or Vector3.xAxis)) -- (its front looks east, across the square)
 	local house = Models.placeForge("house_blue", m, at, { width = 22, depth = 19, height = 24 }, true)
 	if house then
 		PropKit.solidForge(house)
@@ -599,15 +603,16 @@ local function classes(world: Instance): (TextLabel, Model?)
 	PropKit.prompt(promptAt(m, at * CFrame.new(0, 3, -9), "ClassCounter"), "Browse", "Classes", "Classes", 12)
 	LobbyKit.tag(LobbyKit.spot(m, at * CFrame.new(0, 2, -13), Vector3.new(10, 3, 4), "ClassesFX"), "LobbyFX", { Kind = "sparkle", Color = C(200, 225, 255) })
 	-- the mannequin beside the porch, turned to the spawn
-	local dummy = require(script.Parent.AuraMannequin).build(m, facing((at * CFrame.new(-11, 0, -12)).Position, SPAWN))
+	local dummy = require(script.Parent.AuraMannequin).build(m, facing((at * CFrame.new(-11, 0, -12)).Position, toward or SPAWN))
 	local hidden = Instance.new("TextLabel") -- (server/Lobby writes the stock here; the Classes window shows it)
 	hidden.Name = "StockText"
 	return hidden, dummy
 end
 
-local function garage(world: Instance)
+local function garage(world: Instance, pos: Vector3?, front: Vector3?)
 	local m = PropKit.folder("Garage", world)
-	local at = facing(GARAGE, GARAGE - Vector3.xAxis) -- (its open front looks west, across the square)
+	local p0 = pos or GARAGE
+	local at = facing(p0, p0 + (front or -Vector3.xAxis)) -- (its open front looks west, across the square)
 	local shell = Models.placeForge("garage_shell", m, at * CFrame.new(0, -0.6, 2.92) * TURN, { depth = 23.5 }, true)
 	if shell then
 		for _, p in shell:GetDescendants() do
@@ -769,23 +774,10 @@ local function bounds(world: Instance)
 	end
 end
 
-function LandsBuilder.build()
-	local world = Environment.apply()
-	if not Ground.locked and not Ground.keepTerrain then
-		workspace.Terrain:Clear() -- (a saved map's terrain is already in place; a bake clears just the lobby's box)
-	end
-	require(script.Parent.WorldGen).lighting()
-	ground(world)
-	walks(world)
-	walkDirt()
-	local padDefs = pads(world)
-	hero(world)
-	local stockLabel, dummy = classes(world)
-	garage(world)
-	local B = require(script.Parent.LobbyBuilder).stations
-	B.rewards(world)
-	-- the two walk-on bays in gold, inlaid in the apron's paving (they were raised cyan frames on the grass): slim
-	-- gold strips (0.5 wide, the outer edge kept) lying just over the plaza's stones (server/LobbyPaving's DISC_LIFT)
+-- (4 Nov) the rewards stall's two walk-on bays in gold, inlaid in the apron's paving (they were raised cyan frames on
+-- the grass): slim gold strips (0.5 wide, the outer edge kept) lying just over the plaza's stones (server/LobbyPaving's
+-- DISC_LIFT). (7 Nov: a function of its own, for server/SkyIsland too)
+local function goldBays(world: Instance)
 	local gold = C(255, 196, 46)
 	local inlayTop = 0.53
 	for _, d in (world:FindFirstChild("FreeRewards") :: Instance):GetDescendants() do
@@ -819,6 +811,24 @@ function LandsBuilder.build()
 			d:SetAttribute("Color", gold)
 		end
 	end
+end
+
+function LandsBuilder.build()
+	local world = Environment.apply()
+	if not Ground.locked and not Ground.keepTerrain then
+		workspace.Terrain:Clear() -- (a saved map's terrain is already in place; a bake clears just the lobby's box)
+	end
+	require(script.Parent.WorldGen).lighting()
+	ground(world)
+	walks(world)
+	walkDirt()
+	local padDefs = pads(world)
+	hero(world)
+	local stockLabel, dummy = classes(world)
+	garage(world)
+	local B = require(script.Parent.LobbyBuilder).stations
+	B.rewards(world)
+	goldBays(world)
 	local leaderLabel = B.leaderboard(world)
 	local bestLabel = B.bestTimes(world)
 	dressing(world)
@@ -870,5 +880,8 @@ function LandsBuilder.build()
 	LobbyKit.tag(LobbyKit.spot(world, CFrame.new(0, 10, -30), Vector3.new(110, 14, 70), "Motes"), "LobbyFX", { Kind = "motes" })
 	return { world = world, stockLabel = stockLabel, leaderLabel = leaderLabel, bestLabel = bestLabel, pads = padDefs, mannequin = dummy }
 end
+
+-- (7 Nov) the pieces server/SkyIsland reuses, so the island's pads and stations are these same, tested ones
+LandsBuilder.kit = { pads = pads, hero = hero, classes = classes, garage = garage, goldBays = goldBays }
 
 return LandsBuilder

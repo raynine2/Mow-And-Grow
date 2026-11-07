@@ -131,6 +131,34 @@ function Guns.give(player: Player)
 	Net.send(player, "Fx", "gunGot", { gun = def.id })
 end
 
+-- (7 Nov, owner: "give the guns via devpanel") Dev panel GIVE GUNS: every gun into the backpack now, boss or no
+-- boss, the Robux ones too (only the tools: nothing is marked as bought). They go when a boss falls, like the crate's.
+function Guns.devGive(player: Player): string
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not backpack then
+		return "No backpack yet"
+	end
+	local have = {}
+	for _, c in { backpack, player.Character } do
+		if c then
+			for _, t in c:GetChildren() do
+				local id = t:IsA("Tool") and t:GetAttribute("GunId")
+				if id then
+					have[id] = true
+				end
+			end
+		end
+	end
+	local given = {}
+	for _, def in Config.GUNS do
+		if not have[def.id] then
+			buildTool(def).Parent = backpack
+			table.insert(given, def.name)
+		end
+	end
+	return if #given > 0 then "Guns: " .. table.concat(given, ", ") else "You have every gun already"
+end
+
 -- The crate: falls on a parachute in front of the boss, then opens with a prompt.
 function Guns.dropCrate(z: number)
 	Guns.clear()

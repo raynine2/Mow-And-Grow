@@ -24,6 +24,7 @@ local BUTTONS = {
 	{ "+100K GEMS", "gems", Color3.fromRGB(80, 160, 255) },
 	{ "ALL TOOLS", "tools", C.yellow },
 	{ "MAX EVERYTHING", "maxAll", C.yellow },
+	{ "GIVE GUNS", "guns", Color3.fromRGB(90, 95, 110) }, -- (7 Nov, owner) all three boss guns, in a run
 	{ "SPAWN BOSS", "boss", RED },
 	{ "KILL BOSS", "killBoss", RED },
 	{ "BOSSES ON/OFF", "bossesOn", RED },

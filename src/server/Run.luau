@@ -1270,6 +1270,8 @@ function Run.devAction(player: Player, data, action: string, _arg: any): string?
 	elseif action == "maxAll" then
 		devMaxAll(player, data)
 		return "Everything maxed"
+	elseif action == "guns" then
+		return Guns.devGive(player)
 	elseif action == "boss" then
 		if Boss.alive() then
 			return "A boss is already out"

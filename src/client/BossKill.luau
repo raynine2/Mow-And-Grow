@@ -26,6 +26,7 @@ local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local FilmVfx = require(script.Parent.FilmVfx)
 local Confetti = require(script.Parent.Confetti)
+local Finisher = require(script.Parent.Finisher) -- (7 Nov) the boss finisher times the pop
 
 local BossKill = {}
 
@@ -543,6 +544,16 @@ local function onDeath(d: any)
 	local size = math.clamp((if type(scale) == "number" then scale else 5) / 2.5, 1.2, 3)
 	local color = zoneColor(d.z)
 	local near = myDistance(pos) < 300
+	-- (7 Nov) while client/Finisher plays, the pop comes when the boss bursts in it (where it lies), and its own
+	-- impact frames replace the FINISH! frame and the heartbeat
+	local fin = Finisher.plan(d)
+	if fin then
+		fin.onPop(function(at: Vector3)
+			try("punch", colourPunch, color, 1.6)
+			try("finale", finale, at, color, size, near)
+		end)
+		return
+	end
 	if near then
 		task.spawn(try, "impact", impactFrame, color)
 		try("punch", colourPunch, color, left + 1.2)

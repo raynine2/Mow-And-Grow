@@ -559,6 +559,11 @@ Config.BOSS_HEAL = { every = 20, amount = 30, life = 16, radius = 5, onPunish = 
 Config.BOSS_PET_CHIP = { every = 1, perPet = 0.00025 }
 -- no-hit bonus (owner, round 2): extra gems for a fighter the boss never hit in that fight (x the area's boss gems)
 Config.BOSS_NOHIT_GEMS = 1
+-- (7 Nov, owner: a TikTok of a Roblox fight animation, "Kan je ook zo animated?" ... "Films en boss finish") The
+-- boss finisher (client/Finisher): when a boss dies, everyone near it sees their own avatar dash in, grab it, throw it
+-- into the sky, hammer it back down, pound it and walk off as it bursts. deathTime: how long the server waits before
+-- the rewards (shared/BossMoves.DEATH_TIME; the old death took 3.2 s). on = false: the old death.
+Config.FINISHER = { on = true, deathTime = 7.4 }
 -- Roblox badge per boss (0 = none yet: make them on the Creator Hub and put the ids here); the in-game trophy
 -- (PlayerData.bossTrophies) is given either way.
 Config.BOSS_BADGES = { 0, 0, 0, 0, 0, 0, 0, 0 }

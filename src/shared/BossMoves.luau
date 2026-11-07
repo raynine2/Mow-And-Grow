@@ -42,7 +42,12 @@ BossMoves.RAGE_AT = 0.5 -- phase 2 starts at this fraction of HP
 BossMoves.INTRO_FIRST = 8 -- the first intro of each boss on a server
 BossMoves.INTRO_AGAIN = 2.5 -- short version after that
 BossMoves.RAGE_TIME = 5.2 -- the phase-2 cutscene (the boss can't be hurt)
-BossMoves.DEATH_TIME = 3.2 -- the death cutscene, then the rewards
+-- the death cutscene, then the rewards. (7 Nov) Longer while the finisher is on (Config.FINISHER: your avatar grabs
+-- the boss, throws it up, slams it down and walks off as it bursts; client/Finisher); 3.2 without it.
+do
+	local fin = (require(script.Parent:WaitForChild("Config")) :: any).FINISHER
+	BossMoves.DEATH_TIME = if fin and fin.on then (fin.deathTime or 7.4) else 3.2
+end
 BossMoves.JOIN_WINDOW = 10 -- seconds after the summon before the arena gate closes
 BossMoves.SUMMON_HOLD = 1.2 -- stand on the summon pad this long to start the fight
 BossMoves.STUN = 1.2 -- a hit knocks you back and stuns you this long

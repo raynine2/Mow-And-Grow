@@ -62,9 +62,11 @@ local KEEP = {
 }
 local hiddenGuis: { [ScreenGui]: RBXScriptConnection } = {}
 local guiAdded: RBXScriptConnection? = nil
+local keepToo: { [string]: boolean } = {} -- (7 Nov) more screens let back in mid-film (IntroUi.keep), until it closes
 
 local function hideOthers(on: boolean)
 	if not on then
+		table.clear(keepToo)
 		if guiAdded then
 			guiAdded:Disconnect()
 			guiAdded = nil
@@ -83,7 +85,7 @@ local function hideOthers(on: boolean)
 		return
 	end
 	local function hide(g: Instance)
-		if g:IsA("ScreenGui") and not KEEP[g.Name] and g.Enabled and not hiddenGuis[g] then
+		if g:IsA("ScreenGui") and not KEEP[g.Name] and not keepToo[g.Name] and g.Enabled and not hiddenGuis[g] then
 			g.Enabled = false
 			-- (whatever turns it back on mid-film is turned off again)
 			hiddenGuis[g] = g:GetPropertyChangedSignal("Enabled"):Connect(function()
@@ -315,6 +317,23 @@ end
 
 function IntroUi.bar(): number
 	return BAR
+end
+
+-- (7 Nov) Let these screens back in while the film plays on (client/Finisher: the boss's defeated card, rays and
+-- flash at the burst, while the walk-away shot runs), and any of them made from now on; until the film closes.
+function IntroUi.keep(names: { string })
+	for _, n in names do
+		keepToo[n] = true
+	end
+	for g, conn in hiddenGuis do
+		if keepToo[g.Name] then
+			conn:Disconnect()
+			hiddenGuis[g] = nil
+			if g.Parent then
+				g.Enabled = true
+			end
+		end
+	end
 end
 
 function IntroUi.close()

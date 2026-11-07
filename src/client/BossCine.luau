@@ -31,6 +31,7 @@ local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack: win
 local BossVfx = require(script.Parent.BossVfx)
 local BossAdds = require(script.Parent.BossAdds) -- the minions
 local Omen = require(script.Parent.BossOmen) -- (30 Oct) the scary wake-up, the roar's impact frames
+local Finisher = require(script.Parent.Finisher) -- (7 Nov) your avatar finishes the boss
 require(script.Parent.BossPlayers) -- HP bars over every fighter's head, dizzy stars (round 2)
 
 local BossCine = {}
@@ -682,6 +683,23 @@ end
 
 H.bossDeath = function(d)
 	local left = d.len - (now() - d.at)
+	-- (7 Nov) the finisher (client/Finisher): your avatar finishes it in its own cutscene; the moment it bursts, what
+	-- this death did at its end happens there (the old death below plays when the finisher can't)
+	local fin = Finisher.boss(d, { arena = fight.arena, z = fight.z })
+	if fin then
+		BossVfx.stop()
+		BossFx.showBar(false)
+		fin.onPop(function(pos: Vector3)
+			BossVfx.impact(fight.z, { type = "ring", pos = pos, inner = 4, outer = 30 }, "ring", fight.floor)
+			pcall(PackFx.bossMoment, fight.z, "death", pos, fin.height or 10)
+			BossVfx.stop()
+			BossView.hide()
+			BossFx.defeatedCard(d.name or "")
+			music(false)
+			task.delay(1.5, BossFx.showBar, false)
+		end)
+		return
+	end
 	BossView.act("death", { len = left })
 	film(left + 0.6, {
 		{ t0 = 0, t1 = 0.6, from = { Vector3.new(0.4, 0.45, 1.3), Vector3.new(0, 0.6, 0) }, to = { Vector3.new(0.38, 0.45, 1.25), Vector3.new(0, 0.6, 0) }, shake = 0.4 },

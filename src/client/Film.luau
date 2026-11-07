@@ -105,6 +105,7 @@ export type ShotOpts = {
 }
 
 Film.playing = false
+Film.owner = nil :: string? -- (7 Nov) the name the playing film started with (client/Finisher stops only its own)
 local clock = 0
 local timeScale = 1
 local scaleFrom, scaleTo, scaleStart, scaleLen = 1, 1, 0, 0
@@ -701,6 +702,7 @@ end
 -- Take over the camera and the light. `name`: the render step's name.
 function Film.start(name: string)
 	Film.playing = true
+	Film.owner = name
 	clock = 0
 	timeScale, scaleLen = 1, 0
 	shot = nil
@@ -767,6 +769,7 @@ end
 -- Give everything back. `name`: the render step's name Film.start was given.
 function Film.stop(name: string)
 	Film.playing = false
+	Film.owner = nil
 	shot = nil
 	table.clear(frameFns)
 	table.clear(timed)

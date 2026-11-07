@@ -137,7 +137,7 @@ local function snapshot(player: Player, data)
 			end
 			return g
 		end)(),
-		peaceful = data.peaceful == true,
+		peaceful = false, -- (7 Nov: Peaceful Mode removed)
 		potato = data.potato == true,
 		alerts = data.alerts, -- SETTINGS: the Legendary / Mythic in-stock alerts (client/Settings)
 		dailyIn = require(script.Parent.Daily).view(data).wait,

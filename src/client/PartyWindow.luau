@@ -1,6 +1,6 @@
 -- The Create Party window (like Chop A Forest's), opened by the server when you step onto a free PARTY bay in
 -- the lobby. Left: CREATE PARTY with the map card (CHAPTER 1, THE LAWN), the difficulty (Normal; harder ones
--- unlock with wins), Peaceful Mode (no night), the party size, BACK and CREATE. Right: SAVED RUNS, with your
+-- unlock with wins), the party size, BACK and CREATE (Peaceful Mode removed 7 Nov). Right: SAVED RUNS, with your
 -- saved run and a LOAD GAME button. The server checks every choice (server/Lobby).
 -- SAVED RUNS is a garden journal: a ring-bound ruled page, your run as a taped-in instant photo with handwritten
 -- notes beside it and a stamped difficulty.
@@ -347,7 +347,7 @@ local function rescale()
 	end
 end
 
-local choice = { pad = 0, size = Config.PARTY_MAX, difficulty = "Normal", peaceful = false }
+local choice = { pad = 0, size = Config.PARTY_MAX, difficulty = "Normal" }
 local open = false
 local refs: { [string]: any } = {}
 
@@ -380,8 +380,6 @@ local function refresh()
 			end
 		end
 	end
-	setButtonColor(refs.off, if choice.peaceful then BROWN else RED)
-	setButtonColor(refs.on, if choice.peaceful then GREEN else BROWN)
 	refs.size.Text = tostring(choice.size)
 	refs.people.Text = string.rep("👤", choice.size)
 end
@@ -408,30 +406,9 @@ local function box(parent: Instance, size: UDim2, pos: UDim2): Frame
 	return card
 end
 
-local function peacefulRow(page: Frame)
-	local card = box(page, UDim2.new(1, -28, 0, 104), UDim2.fromOffset(14, 334))
-	text(card, "🕊️", UDim2.fromOffset(44, 44), UDim2.fromOffset(10, 10), WHITE, 0)
-	text(card, "PEACEFUL MODE", UDim2.fromOffset(190, 28), UDim2.fromOffset(60, 10), WHITE, 2, Enum.TextXAlignment.Left)
-	text(card, "A calm run - no night, just you and the grass", UDim2.fromOffset(220, 18), UDim2.fromOffset(60, 40), if GALAXY then DIM else Color3.fromRGB(240, 210, 170), 0, Enum.TextXAlignment.Left)
-	refs.off = button(card, "OFF", UDim2.fromOffset(52, 40), UDim2.new(1, -118, 0, 12), RED, function()
-		choice.peaceful = false
-		refresh()
-	end)
-	refs.on = button(card, "ON", UDim2.fromOffset(52, 40), UDim2.new(1, -62, 0, 12), BROWN, function()
-		choice.peaceful = true
-		refresh()
-	end)
-	for i, chip in { "🌙 No night", "🏆 Wins count" } do
-		local c = frame(card, UDim2.fromOffset(120, 24), UDim2.fromOffset(14 + (i - 1) * 130, 68), if GALAXY then NIGHT else Color3.fromRGB(70, 42, 24), if GALAXY then 12 else 8)
-		if GALAXY then
-			stroke(c, 1.5, LILAC)
-		end
-		text(c, chip, UDim2.new(1, -10, 0.8, 0), UDim2.new(0, 5, 0.1, 0), if GALAXY then STAR else Color3.fromRGB(230, 200, 160), 0)
-	end
-end
-
+-- (7 Nov, owner: "delete peacefull mode also") the PEACEFUL MODE row is gone; every run has its nights
 local function partyRow(page: Frame)
-	local card = box(page, UDim2.new(1, -28, 0, 62), UDim2.fromOffset(14, 450))
+	local card = box(page, UDim2.new(1, -28, 0, 62), UDim2.fromOffset(14, 392)) -- (7 Nov: centred in the space the PEACEFUL row left)
 	text(card, "PARTY", UDim2.fromOffset(80, 28), UDim2.fromOffset(14, 17), WHITE, 2, Enum.TextXAlignment.Left)
 	refs.people = text(card, "", UDim2.fromOffset(110, 30), UDim2.fromOffset(100, 16), Color3.fromRGB(255, 220, 160), 0)
 	button(card, "-", UDim2.fromOffset(42, 42), UDim2.new(1, -164, 0, 6), if GALAXY then LILAC else Color3.fromRGB(230, 200, 150), function()
@@ -453,14 +430,13 @@ local function buildLeft()
 	local page = board(holder, "CREATE PARTY", UDim2.fromOffset(470, 640), UDim2.fromOffset(0, 70))
 	mapCard(page)
 	difficultyRow(page)
-	peacefulRow(page)
 	partyRow(page)
 	button(page, "BACK", UDim2.fromOffset(150, 66), UDim2.fromOffset(14, 528), RED, function()
 		State.fire("Party", "cancel", choice.pad)
 		close()
 	end)
 	button(page, "CREATE", UDim2.new(1, -192, 0, 66), UDim2.fromOffset(178, 528), GREEN, function()
-		State.fire("Party", "create", choice.pad, choice.size, choice.difficulty, choice.peaceful)
+		State.fire("Party", "create", choice.pad, choice.size, choice.difficulty, false)
 		close()
 	end)
 end
@@ -880,7 +856,6 @@ function PartyWindow.open(d: { [string]: any })
 	choice.pad = d.pad
 	choice.size = math.clamp(tonumber(d.max) or Config.PARTY_MAX, 1, Config.PARTY_MAX)
 	choice.difficulty = "Normal"
-	choice.peaceful = false
 	refs.wins = tonumber(d.wins) or 0
 	fillRuns(d.run, tonumber(d.now) or os.time())
 	refresh()

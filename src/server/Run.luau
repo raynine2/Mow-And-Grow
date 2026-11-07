@@ -845,8 +845,8 @@ local function waitForHost(): number
 				local saved = hd and hd.run and hd.run.difficulty
 				local pick = (if type(saved) == "string" and Config.DIFFICULTY[saved] then saved else nil) or (type(tpData) == "table" and tpData.difficulty) or workspace:GetAttribute("Difficulty")
 				Run.setDifficulty(if type(pick) == "string" and Config.DIFFICULTY[pick] then pick else "Normal")
-				-- Peaceful Mode (picked in the Create Party window, sent with the teleport) decides for the whole party
-				Night.peaceful = (type(tpData) == "table" and tpData.peaceful == true) or (hd ~= nil and hd.peaceful == true)
+				-- (7 Nov, owner: "delete peacefull mode") no peaceful runs any more: every run has its night monsters
+				Night.peaceful = false
 				resumeCut = if hd and hd.run and type(hd.run.areaCut) == "table" then hd.run.areaCut else nil
 				return if hd and hd.run then math.clamp(hd.run.zone, 1, #Config.ZONES) else 1
 			end

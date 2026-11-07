@@ -505,7 +505,7 @@ local function onPartyAction(player: Player, action: any, padIndex: any, size: a
 	local diff = if type(difficulty) == "string" and DIFFICULTY_WINS[difficulty] and wins >= DIFFICULTY_WINS[difficulty] then difficulty else "Normal"
 	pad.limit = math.clamp(math.floor(tonumber(size) or Config.PARTY_MAX), 1, Config.PARTY_MAX)
 	pad.difficulty = diff
-	pad.peaceful = peaceful == true
+	pad.peaceful = false -- (7 Nov, owner: "delete peacefull mode") no peaceful runs any more
 	pad.host = player
 	table.insert(pad.members, player)
 	pad.startAt = os.clock() + (if pad.limit == 1 then Config.SOLO_COUNTDOWN else Config.PARTY_COUNTDOWN)
@@ -561,13 +561,12 @@ function Lobby.start()
 			Classes.equip(player, data, id)
 		end
 	end)
-	-- Peaceful Mode: runs this player hosts have no night monsters (and don't set a best time)
+	-- (7 Nov, owner: "delete peacefull mode") the old Peaceful Mode setting is switched off for good
 	Net.on("Setting", 3, function(player, key, value)
 		local data = PlayerData.get(player)
-		if data and key == "peaceful" and type(value) == "boolean" then
-			data.peaceful = value
+		if data and data.peaceful then
+			data.peaceful = false
 			PlayerData.changed(player)
-			Net.notify(player, if value then "Peaceful Mode ON: no night monsters, no best times" else "Peaceful Mode OFF", "green")
 		end
 		-- the SETTINGS panel's rare-stock alerts (client/Settings): the big IN STOCK banner for Legendary / Mythic;
 		-- and Reduce camera shake (calmCamera). Runs save them too (server/Run)

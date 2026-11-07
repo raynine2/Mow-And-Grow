@@ -115,19 +115,19 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- (sizes from the mesh: its filler Core, a stack of rings inside it, is 21 across at the foot and 19 at the tower's
 -- bottom, 17 under the balcony)
-local FOOT_A = 20.5 -- the stone footing
+local FOOT_A = 22 -- the stone footing
 local DB = 3 -- the footing's top: the tower and the door stand on it
-local LOW_A = 17.5 -- the tower's apothem at the bottom, kept up to the door's top
+local LOW_A = 19 -- the tower's apothem at the bottom, kept up to the door's top
 local DOOR_TOP = 15
-local TOP = 60 -- the tower's top, where the roof sits
+local TOP = 56 -- the tower's top, where the roof sits
 local DOOR_W, DOOR_H = 7, 11
 
--- the tower's apothem at height y (straight to the door's top, then narrowing to 13.5 at the top)
+-- the tower's apothem at height y (straight to the door's top, then narrowing to 14.5 at the top)
 local function towerA(y: number): number
 	if y <= DOOR_TOP then
 		return LOW_A
 	end
-	return LOW_A - (y - DOOR_TOP) / (TOP - DOOR_TOP) * 4
+	return LOW_A - (y - DOOR_TOP) / (TOP - DOOR_TOP) * 4.5
 end
 
 local function footing()
@@ -152,7 +152,7 @@ local function walls()
 		y += h
 	end
 	-- the timber beams round the tower: the sill, two belts and the top plate
-	for _, by in { DB, DOOR_TOP, 25, 47, TOP - 0.8 } do
+	for _, by in { DB, DOOR_TOP, 24, 44, TOP - 0.8 } do
 		ring("Beam", by - 0.4, 0.8, towerA(by) + 0.35, 1, PAL.timber)
 	end
 	-- the inside, so nothing shows through a gap
@@ -231,8 +231,8 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- the balcony
 -------------------------------------------------------------------------------------------------------------
-local DECK_Y = 34
-local DECK_A = 23
+local DECK_Y = 31
+local DECK_A = 24.5
 
 local function balcony()
 	local inner = towerA(DECK_Y)
@@ -263,8 +263,8 @@ end
 -- the roof
 -------------------------------------------------------------------------------------------------------------
 local ROOF_Y = TOP
-local ROOF_STEPS = 16
-local ROOF_A = 19.5
+local ROOF_STEPS = 17
+local ROOF_A = 21
 
 local function roof()
 	-- the eave beam, then the cone in rows of tiles, each row a little in from the one under it
@@ -278,16 +278,16 @@ local function roof()
 	local top = ROOF_Y + ROOF_STEPS * 2
 	ring("Cap", top, 1.2, 2.4, 2.4, PAL.cap)
 	ring("Cap", top + 1.2, 1, 1.5, 1.5, PAL.cap)
-	brick("Spire", Vector3.new(0.6, 9, 0.6), CFrame.new(0, top + 2.2 + 4.5, 0), PAL.cap)
-	local ball = brick("Finial", Vector3.new(1.4, 1.4, 1.4), CFrame.new(0, top + 11.6, 0), PAL.brass)
+	brick("Spire", Vector3.new(0.6, 10, 0.6), CFrame.new(0, top + 2.2 + 5, 0), PAL.cap)
+	local ball = brick("Finial", Vector3.new(1.4, 1.4, 1.4), CFrame.new(0, top + 12.6, 0), PAL.brass)
 	ball.Shape = Enum.PartType.Ball
 end
 
 -------------------------------------------------------------------------------------------------------------
 -- the sails
 -------------------------------------------------------------------------------------------------------------
-local HUB_Y = 68
-local HUB_Z = -18.6 -- well in front of the roof, so the lower sails clear the tower by ~3 studs
+local HUB_Y = 66
+local HUB_Z = -20 -- well in front of the roof, so the lower sails clear the tower by ~3 studs
 local ARM = 33
 
 local function sails(): Model
@@ -295,8 +295,8 @@ local function sails(): Model
 	m.Name = "Sails"
 	m.Parent = model
 	-- the axle out of the roof and the hub on it
-	brick("Axle", Vector3.new(1.8, 1.8, 7), CFrame.new(0, HUB_Y, HUB_Z + 3.4), PAL.cap, m)
-	brick("AxleCollar", Vector3.new(2.6, 2.6, 0.8), CFrame.new(0, HUB_Y, HUB_Z + 3.4), PAL.timber, m) -- (where it leaves the roof)
+	brick("Axle", Vector3.new(1.8, 1.8, 8), CFrame.new(0, HUB_Y, HUB_Z + 4), PAL.cap, m)
+	brick("AxleCollar", Vector3.new(2.6, 2.6, 0.8), CFrame.new(0, HUB_Y, HUB_Z + 4.6), PAL.timber, m) -- (where it leaves the roof)
 	local hub = CFrame.new(0, HUB_Y, HUB_Z - 0.6)
 	for k = 0, 1 do
 		brick("Hub", Vector3.new(4.4, 4.4, 1.6), hub * CFrame.Angles(0, 0, k * EIGHTH), PAL.cap, m)
@@ -338,13 +338,13 @@ function StudWindmill.build(parent: Instance, pivot: CFrame): Model
 	window(1, 10, 3, 4, true)
 	window(7, 10, 3, 4, true)
 	window(0, 21, 3.2, 4.2, false)
-	window(0, 43, 4.2, 5.2, true)
+	window(0, 39.5, 4.2, 5.2, true)
 	window(2, 21, 3, 4, false)
 	window(6, 21, 3, 4, false)
-	window(2, 50, 2.8, 3.6, false)
-	window(6, 50, 2.8, 3.6, false)
+	window(2, 46, 2.8, 3.6, false)
+	window(6, 46, 2.8, 3.6, false)
 	window(4, 21, 3.2, 4.2, true)
-	window(4, 50, 2.8, 3.6, false)
+	window(4, 46, 2.8, 3.6, false)
 	balcony()
 	roof()
 	sails()

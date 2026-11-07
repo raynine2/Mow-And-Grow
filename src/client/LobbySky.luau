@@ -86,12 +86,21 @@ local function part(parent: Instance, size: Vector3, color: Color3, mat: Enum.Ma
 	return p
 end
 
--- (Studio: the Workspace attribute SkyTest = true keeps the shows going under a scripted camera, to film them)
+-- (Studio: the Workspace attribute SkyTest = true plays the shows anywhere, a run too, and under a scripted camera,
+-- to film them)
+local function testing(): boolean
+	return game:GetService("RunService"):IsStudio() and workspace:GetAttribute("SkyTest") == true
+end
+
+local function on(): boolean
+	return State.mode == "Lobby" or testing()
+end
+
 local function free(): boolean
-	local cam = workspace.CurrentCamera
-	if workspace:GetAttribute("SkyTest") == true then
-		return State.mode == "Lobby"
+	if testing() then
+		return true
 	end
+	local cam = workspace.CurrentCamera
 	return State.mode == "Lobby" and cam ~= nil and cam.CameraType ~= Enum.CameraType.Scriptable
 end
 
@@ -115,7 +124,7 @@ local function play(dur: number, step: (number, number) -> ())
 	local t0 = os.clock()
 	while true do
 		local e = os.clock() - t0
-		if e >= dur or State.mode ~= "Lobby" then
+		if e >= dur or not on() then
 			break
 		end
 		step(e / dur, e)
@@ -696,7 +705,7 @@ end
 
 -- The patrol: one boss always circling high and far, in its glow; swapped through a rift every 30-45 s.
 local function patrol()
-	while State.mode == "Lobby" do
+	while on() do
 		if not free() then
 			task.wait(2)
 			continue
@@ -725,7 +734,7 @@ local function patrol()
 end
 
 local function sparkle()
-	while State.mode == "Lobby" do
+	while on() do
 		if free() then
 			if math.random() < 0.18 then
 				task.spawn(meteor)
@@ -750,12 +759,12 @@ local function shuffled(): { () -> () }
 end
 
 local function shows()
-	while State.mode == "Lobby" do
+	while on() do
 		for _, show in shuffled() do
-			if State.mode ~= "Lobby" then
+			if not on() then
 				break
 			end
-			while not free() and State.mode == "Lobby" do
+			while not free() and on() do
 				task.wait(1)
 			end
 			local ok, err = pcall(show)
@@ -791,7 +800,7 @@ task.spawn(function()
 	if not player.Character then
 		player.CharacterAdded:Wait()
 	end
-	if State.mode == "Lobby" then
+	if on() then
 		start()
 	end
 end)

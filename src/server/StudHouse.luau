@@ -481,17 +481,19 @@ local function porch()
 end
 
 local function chimney()
+	-- (as on the mesh: just behind the ridge, its stones standing a couple of studs clear of it, a pale cap)
 	local cx, cz = -5.6, 1.2
-	local y = mainY(cz + 1.3) - 1
+	local y = mainY(cz + 1.4) - 1
+	local top = RIDGE + 1.9
 	local k = 0
-	while y < 22.4 do
-		local h = math.min(1.2, 22.4 - y)
-		box("Chimney", cx - 1.3, y, cz - 1.3, cx + 1.3, y + h, cz + 1.3, CHIMNEY[k % 2 + 1])
+	while y < top - 0.01 do
+		local h = math.min(1.1, top - y)
+		box("Chimney", cx - 1.4, y, cz - 1.4, cx + 1.4, y + h, cz + 1.4, CHIMNEY[k % 2 + 1])
 		y += h
 		k += 1
 	end
-	box("ChimneyCap", cx - 1.6, 22.4, cz - 1.6, cx + 1.6, 23, cz + 1.6, CAP)
-	box("ChimneyTop", cx - 1.1, 23, cz - 1.1, cx + 1.1, 23.4, cz + 1.1, CHIMNEY[2])
+	box("ChimneyCap", cx - 1.7, top, cz - 1.7, cx + 1.7, top + 0.6, cz + 1.7, CAP)
+	box("ChimneyTop", cx - 1.15, top + 0.6, cz - 1.15, cx + 1.15, top + 1.1, cz + 1.15, CHIMNEY[2])
 end
 
 -------------------------------------------------------------------------------------------------------------

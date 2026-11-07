@@ -4,8 +4,7 @@
 -- rebuilt from studded bricks (server/StudKit) to their own layouts, from pictures of each from its front:
 --   wheat     the farm, in server/StudWheat (redone 7 Nov from measurements after the owner's "very very bad")
 --   swamp     the stilt hut, in server/StudSwamp (redone 7 Nov from measurements)
---   pine      a log lookout tower: four braced legs on stones, a railed platform, a cabin, a green roof with a little
---             pine on top, a ladder, a lantern, mushrooms
+--   pine      the lookout round a pine, in server/StudPine (redone 7 Nov from measurements)
 --   frost     a snowy chalet: a steep snowy roof, a timber gable with a big glowing window and blue gems, a porch,
 --             a chimney, ice crystals with skis leaning on them, snowy pines
 --   ember     a forge in a dark stepped volcano: lava cracks and a crater, smoke, an arched furnace mouth with fire,
@@ -89,105 +88,12 @@ local function swamp(K: Kit)
 end
 
 -------------------------------------------------------------------------------------------------------------
--- PINE: the lookout tower
+-- PINE: the lookout tower, in its own module (server/StudPine), measured off square-on pictures of the mesh
 -------------------------------------------------------------------------------------------------------------
-local PINE = { C(46, 104, 70), C(36, 88, 60), C(56, 118, 80) }
-local ROOF_G = { C(60, 98, 60), C(50, 84, 52) }
+local PINE = { C(46, 104, 70), C(36, 88, 60), C(56, 118, 80) } -- (the frost isle's snowy pines use it)
 
 local function pine(K: Kit)
-	local PY = 13 -- the platform
-	-- the legs: four splayed logs on stone footings, rope-bound, X-braced on every side
-	local feet = { { -3.8, -3.8 }, { 3.8, -3.8 }, { 3.8, 3.8 }, { -3.8, 3.8 } }
-	local tops = { { -3, -3 }, { 3, -3 }, { 3, 3 }, { -3, 3 } }
-	for i = 1, 4 do
-		local a = Vector3.new(feet[i][1], 0.8, feet[i][2])
-		local b = Vector3.new(tops[i][1], PY, tops[i][2])
-		local mid = (a + b) / 2
-		K:box("Footing", a.X - 0.9, 0, a.Z - 0.9, a.X + 0.9, 0.9, a.Z + 0.9, STONE[i % 2 + 1])
-		K:brick("Leg", Vector3.new(0.9, (b - a).Magnitude, 0.9), CFrame.lookAt(mid, mid + (b - a)) * CFrame.Angles(math.pi / 2, 0, 0), LOG[1], true)
-		for _, h in { 4.5, 9.5 } do
-			local p = a:Lerp(b, (h - 0.8) / (PY - 0.8))
-			K:cyl("Rope", 1.05, 0.45, p, ROPE)
-		end
-	end
-	for i = 1, 4 do
-		local j = i % 4 + 1
-		for _, band in { { 1.4, 7 }, { 7, PY - 0.4 } } do
-			local function at(k: number, h: number): Vector3
-				local f = (h - 0.8) / (PY - 0.8)
-				return Vector3.new(feet[k][1], 0.8, feet[k][2]):Lerp(Vector3.new(tops[k][1], PY, tops[k][2]), f)
-			end
-			for _, pair in { { at(i, band[1]), at(j, band[2]) }, { at(j, band[1]), at(i, band[2]) } } do
-				local mid = (pair[1] + pair[2]) / 2
-				local d = pair[2] - pair[1]
-				K:brick("Brace", Vector3.new(0.45, d.Magnitude, 0.45), CFrame.lookAt(mid, mid + d) * CFrame.Angles(math.pi / 2, 0, 0), LOG[2], true)
-			end
-		end
-	end
-	-- the platform, its log ends sticking out
-	for i = 0, 4 do
-		local z0 = -5 + i * 2
-		K:box("Platform", -5, PY, z0, 5, PY + 0.6, z0 + 2, PLANK[i % 2 + 1])
-	end
-	for _, s in { { -5.2, 0, Z }, { 5.2, 0, Z }, { 0, -5.2, X }, { 0, 5.2, X } } do
-		local along = s[3] :: Vector3
-		K:rod("BeamLog", 0.7, 11.4, CFrame.new(s[1], PY - 0.2, s[2]) * (if along == Z then CFrame.Angles(0, math.pi / 2, 0) else CFrame.identity), LOG[2])
-	end
-	-- the rail round its edge
-	for _, p in { { -4.7, -4.7 }, { 4.7, -4.7 }, { 4.7, 4.7 }, { -4.7, 4.7 }, { -1.6, -4.7 }, { 1.6, -4.7 } } do
-		K:rod("RailPost", 0.4, 1.8, CFrame.new(p[1], PY + 1.5, p[2]) * CFrame.Angles(0, 0, math.pi / 2), LOG[1])
-	end
-	for _, r in { { 0, -4.7, X, 9.4 }, { -4.7, 0, Z, 9.4 }, { 4.7, 0, Z, 9.4 } } do
-		local along = r[3] :: Vector3
-		K:rod("Rail", 0.32, r[4], CFrame.new(r[1], PY + 2.2, r[2]) * (if along == Z then CFrame.Angles(0, math.pi / 2, 0) else CFrame.identity), LOG[1])
-	end
-	-- the cabin: log walls (logs laid round it), two windows, its door at the back
-	local c0, c1, TOP = -3.2, 3.2, PY + 4.6
-	for k = 0, 7 do
-		local y = PY + 0.6 + k * 0.5 + 0.25
-		local col = LOG[k % 2 + 1]
-		for _, s in { -1, 1 } do
-			K:rod("WallLog", 0.55, 7.2, CFrame.new(0, y, s * c1) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.Angles(0, math.pi / 2, 0), col)
-			K:rod("WallLog", 0.55, 7.2, CFrame.new(s * c1, y, 0) * CFrame.Angles(0, math.pi / 2, 0), col)
-		end
-	end
-	K:box("CabinCore", c0 + 0.2, PY + 0.6, c0 + 0.2, c1 - 0.2, TOP, c1 - 0.2, LOG[2])
-	window(K, CFrame.new(-1.3, PY + 2.7, c0 - 0.3), 1.6, 1.4, C(40, 46, 56), LOG[2])
-	window(K, CFrame.new(1.3, PY + 2.7, c0 - 0.3), 1.6, 1.4, C(40, 46, 56), LOG[2])
-	window(K, CFrame.new(c0 - 0.3, PY + 2.7, 0) * CFrame.Angles(0, math.pi / 2, 0), 1.6, 1.4, C(40, 46, 56), LOG[2])
-	-- the lantern on its right corner
-	K:brick("LanternArm", Vector3.new(1.6, 0.35, 0.35), CFrame.new(-4.2, TOP - 0.6, -3.4), LOG[2])
-	lantern(K, Vector3.new(-4.8, TOP - 1.8, -3.4), C(236, 150, 70), TOP - 0.6)
-	-- the green roof: a low stepped pyramid with an overhang, a second tier
-	for k, half in { 6.4, 5.4, 4.4, 3.4, 2.3, 1.3 } do
-		K:box("Roof", -half, TOP + (k - 1) * 0.45, -half, half, TOP + k * 0.45, half, ROOF_G[k % 2 + 1])
-	end
-	-- the eave's log ends at the corners
-	for _, c in { { -6.2, -6.2 }, { 6.2, -6.2 }, { 6.2, 6.2 }, { -6.2, 6.2 } } do
-		K:ball("RoofKnot", 0.6, Vector3.new(c[1], TOP + 0.2, c[2]), LOG[2])
-	end
-	-- the little pine on top: a trunk, four tiers of boughs, a tip
-	local ty = TOP + 2.7
-	K:brick("PineTrunk", Vector3.new(0.7, 2, 0.7), CFrame.new(0, ty + 0.6, 0), LOG[2])
-	local tiers = { { 3.8, 1.4 }, { 3, 1.3 }, { 2.2, 1.2 }, { 1.4, 1.1 } }
-	local y = ty + 0.2
-	for i, t in tiers do
-		K:dome("Bough", Vector3.zero, 8, t[1], t[1] * 0.45, y, y + t[2], 2, { PINE[i % 3 + 1], PINE[(i + 1) % 3 + 1] })
-		y += t[2] * 0.75
-	end
-	K:brick("PineTip", Vector3.new(0.5, 1.2, 0.5), CFrame.new(0, y + 0.5, 0), PINE[3])
-	-- the ladder up the front, mushrooms at the foot
-	local lad = CFrame.new(0, PY / 2 + 0.3, -5.6) * CFrame.Angles(math.rad(-6), 0, 0)
-	for k = -1, 1, 2 do
-		K:brick("LadderRail", Vector3.new(0.3, PY + 1.2, 0.3), lad * CFrame.new(k * 0.8, 0, 0), LOG[1], true)
-	end
-	for yy = -PY / 2 + 0.8, PY / 2 - 0.2, 1 do
-		K:brick("LadderRung", Vector3.new(1.6, 0.22, 0.22), lad * CFrame.new(0, yy, 0), LOG[2], true)
-	end
-	for _, m in { { -1.4, -2.6, 1 }, { -2.2, -2.2, 0.7 }, { 1.2, -1.8, 0.8 } } do
-		K:cyl("MushroomStem", m[3] * 0.4, m[3] * 0.8, Vector3.new(m[1], m[3] * 0.4, m[2]), C(236, 226, 206))
-		K:cyl("MushroomCap", m[3] * 1.1, m[3] * 0.35, Vector3.new(m[1], m[3] * 0.95, m[2]), C(206, 96, 50))
-	end
+	require(script.Parent.StudPine).build(K)
 end
 
 -------------------------------------------------------------------------------------------------------------

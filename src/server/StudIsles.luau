@@ -222,7 +222,7 @@ local LANTERN = C(150, 255, 150)
 
 local function swamp(K: Kit)
 	-- the pond's ground: an uneven mat of studded greens, lily pads on it
-	local mats = { { -9, -6, 10, 12 }, { -6, -10, 9, -5 }, { 7, -4, 11, 8 }, { -11, 1, -8, 9 } }
+	local mats = { { -9, -6, 10, 12 }, { -6, -10, 9, -5 }, { 7, -4, 11, 8 }, { -11, 1, -8, 9 }, { -8, -8, -5, -5 }, { -10, -4, -8, 1 }, { 9, -7, 11, -4 }, { -6, 12, 7, 13.5 }, { 10, 8, 12, 11 } }
 	for i, r in mats do
 		K:box("Pond", r[1], 0, r[2], r[3], 1, r[4], POND[i % 2 + 1])
 	end
@@ -294,15 +294,21 @@ local function swamp(K: Kit)
 	for _, p in { { -1.6, -12.8 }, { 1.6, -12.8 } } do
 		K:rod("DockPost", 0.5, 2.2, CFrame.new(p[1], 1.6, p[2]) * CFrame.Angles(0, 0, math.pi / 2), LOG[2])
 	end
-	-- the rowboat at the front-left, an oar in it
-	local boat = CFrame.new(-6.4, 1.3, -9.4) * CFrame.Angles(0, math.rad(-30), 0)
-	K:brick("BoatHull", Vector3.new(2.2, 0.6, 4.6), boat, PLANK[2])
-	for k = -1, 1, 2 do
-		K:brick("BoatSide", Vector3.new(0.3, 0.9, 4.4), boat * CFrame.new(k * 1.05, 0.55, 0), PLANK[1])
-		K:wedge("BoatBow", Vector3.new(2.2, 1.2, 1.2), boat * CFrame.new(0, 0.3, k * 2.8) * CFrame.Angles(0, if k > 0 then 0 else math.pi, 0) * CFrame.Angles(0, 0, math.pi), PLANK[2])
+	-- the rowboat at the front-left: a hull pointed at both ends (two flat wedges each end, keel on the centre line),
+	-- dark inside under the gunwale, a seat, an oar across it
+	local boat = CFrame.new(-6.6, 1.45, -9.6) * CFrame.Angles(0, math.rad(-30), 0)
+	local BH, HALF, BOW = 0.9, 1.1, 1.5
+	K:brick("BoatHull", Vector3.new(HALF * 2, BH, 3), boat, PLANK[2])
+	for _, e in { 1, -1 } do
+		local endCf = boat * CFrame.Angles(0, if e > 0 then 0 else math.pi, 0) * CFrame.new(0, 0, -1.5 - BOW / 2)
+		K:wedge("BoatBow", Vector3.new(BH, HALF, BOW), endCf * CFrame.new(-HALF / 2, 0, 0) * CFrame.Angles(0, 0, math.pi / 2), PLANK[2])
+		K:wedge("BoatBow", Vector3.new(BH, HALF, BOW), endCf * CFrame.new(HALF / 2, 0, 0) * CFrame.Angles(0, 0, -math.pi / 2), PLANK[2])
 	end
-	K:brick("BoatSeat", Vector3.new(2, 0.25, 0.8), boat * CFrame.new(0, 0.6, 0), PLANK[1])
-	K:brick("Oar", Vector3.new(0.25, 0.25, 5), boat * CFrame.new(0.5, 1.2, 0.6) * CFrame.Angles(math.rad(20), math.rad(15), 0), LOG[1], true)
+	K:brick("BoatInside", Vector3.new(HALF * 2 - 0.5, 0.1, 2.8), boat * CFrame.new(0, BH / 2 + 0.01, 0), C(70, 46, 30), true)
+	K:brick("BoatGunwale", Vector3.new(HALF * 2 + 0.1, 0.18, 3.1), boat * CFrame.new(0, BH / 2 - 0.25, 0), PLANK[1], true)
+	K:brick("BoatSeat", Vector3.new(HALF * 2 - 0.2, 0.22, 0.7), boat * CFrame.new(0, BH / 2 + 0.05, 0.3), PLANK[1], true)
+	K:brick("Oar", Vector3.new(0.22, 0.22, 4.6), boat * CFrame.new(0.4, BH / 2 + 0.3, -0.2) * CFrame.Angles(math.rad(8), math.rad(18), 0), LOG[1], true)
+	K:brick("OarBlade", Vector3.new(0.6, 0.12, 1.1), boat * CFrame.new(0.4, BH / 2 + 0.3, -0.2) * CFrame.Angles(math.rad(8), math.rad(18), 0) * CFrame.new(0, 0, 2.6), LOG[1], true)
 	-- cattails and reeds
 	for _, c in { { 7, -2, 5 }, { 8, -1, 6.4 }, { 6.4, -0.4, 4.6 }, { -8.6, 6, 5.4 }, { -9.4, 5, 4.4 }, { 8.6, 7, 5 } } do
 		K:brick("Reed", Vector3.new(0.18, c[3], 0.18), CFrame.new(c[1], 1 + c[3] / 2, c[2]), C(80, 130, 60), true)
@@ -356,7 +362,7 @@ local function pine(K: Kit)
 		local z0 = -5 + i * 2
 		K:box("Platform", -5, PY, z0, 5, PY + 0.6, z0 + 2, PLANK[i % 2 + 1])
 	end
-	for _, s in { { -5.2, 0, X }, { 5.2, 0, X }, { 0, -5.2, Z }, { 0, 5.2, Z } } do
+	for _, s in { { -5.2, 0, Z }, { 5.2, 0, Z }, { 0, -5.2, X }, { 0, 5.2, X } } do
 		local along = s[3] :: Vector3
 		K:rod("BeamLog", 0.7, 11.4, CFrame.new(s[1], PY - 0.2, s[2]) * (if along == Z then CFrame.Angles(0, math.pi / 2, 0) else CFrame.identity), LOG[2])
 	end

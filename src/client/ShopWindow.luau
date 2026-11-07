@@ -183,7 +183,9 @@ local function classBanners(d, out: { Banner })
 			table.insert(out, {
 				title = p.name,
 				desc = if c then (c.rarity .. " class - yours forever") else "Yours forever",
-				icon = pic("class_" .. p.class, "clover"),
+				-- (7 Nov, owner: "make it blend in") a class picture cut out of its background where there is one, so it
+				-- floats on the row's glow like the other items instead of sitting there as a square
+				icon = pic("cut_" .. p.class, pic("class_" .. p.class, "clover")),
 				color = if c and Config.RARITY_COLORS[c.rarity] then Config.RARITY_COLORS[c.rarity] else Color3.fromRGB(230, 120, 40),
 				tags = { "EXCLUSIVE" },
 				prices = { robux(key) },

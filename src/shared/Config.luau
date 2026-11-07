@@ -1871,6 +1871,9 @@ end
 for name, id in {
 	cc_GoatMan = "rbxassetid://86744245523228", -- the tall card picture (the stock row's cards); was 130376940252425
 	cw_GoatMan = "rbxassetid://78340927444605", -- the wide one (the big card, the toast); was 83416260800203
+	-- (7 Nov, owner on the shop's Goat Man row: "make it blend in") the same head cut out of its purple square, for
+	-- places where it sits on a card of its own (ShopWindow's class rows); assets/icons/cut_GoatMan.png
+	cut_GoatMan = "rbxassetid://121365739647446",
 	-- (31 Oct, owner: "recreate the pictures for every classes, into this style in the theme of our game", then "the
 	-- grass titan looks too much like the example, i want it to still look unique and not literally copied") the same
 	-- ForgeGUI pass for the other classes: each class gets its own lawn idea, only the style comes from the reference.

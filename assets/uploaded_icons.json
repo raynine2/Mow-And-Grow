@@ -346,10 +346,10 @@
   "via": "forgegui"
  },
  "ui_grass": {
-  "id": 131283498236643,
-  "image": 131283498236643,
-  "sha": "0dee9589bc565e65c8e37ab77a8bfc9cc2fde7181ac43f5249b985b9d19d0669",
-  "via": "forgegui"
+  "id": 125518852619374,
+  "image": 125518852619374,
+  "sha": "6e6a6f0e5b574cf70509314e56f21eb4082441ffa8c1b6e82985467b5f3c8f99",
+  "via": "opencloud (7 Nov, clovers removed)"
  },
  "egg_garden": {
   "id": 78371966579025,
@@ -736,10 +736,10 @@
   "via": "forgegui"
  },
  "gg_card": {
-  "id": 116661174752297,
-  "image": 116661174752297,
-  "sha": "abdfdf9d417967a82d8e67e7239d14bdd3aeafb897c3c24121f4ce77e0057eb2",
-  "via": "forgegui"
+  "id": 112210848370038,
+  "image": 112210848370038,
+  "sha": "a1f8293209093e80315d5b1cbb09406a971399378057ecded471419b7ed7c2ed",
+  "via": "opencloud (7 Nov, clovers removed)"
  },
  "gg_button": {
   "id": 96028183123649,
@@ -766,22 +766,22 @@
   "via": "forgegui"
  },
  "gg_panel": {
-  "id": 132476287132779,
-  "image": 132476287132779,
-  "sha": "9e63fb9c8f8f24ec42a9b9fa65b728f38897ed158fc6fc79d07ac8ec84c4e1f3",
-  "via": "forgegui"
+  "id": 103735524140964,
+  "image": 103735524140964,
+  "sha": "9de65b1d536618b9852fd8b96883b6e5dd9f49114a6cf9c7e382ebdabe40e128",
+  "via": "opencloud (7 Nov, clovers removed)"
  },
  "gg_badge": {
-  "id": 79543216145859,
-  "image": 79543216145859,
-  "sha": "86ea2c01fd30e60d52abf106886ed909894bdbe0a44e6f25a13ae50668add3d0",
-  "via": "forgegui"
+  "id": 95872220606081,
+  "image": 95872220606081,
+  "sha": "98615ec5ab6d66ed9efbe46d1e09ffa06ca0f39353c73a68465d406cafeb1e76",
+  "via": "opencloud (7 Nov, clovers removed)"
  },
  "gg_ribbon": {
-  "id": 120027284700711,
-  "image": 120027284700711,
-  "sha": "9aa6aab9f65a64c2f247784bd7b2ec4e956aba3c18c5c5a84c8fd6647cc1901a",
-  "via": "forgegui"
+  "id": 135437178733312,
+  "image": 135437178733312,
+  "sha": "c5a3bbd1b42536b2bed37698c50abe47e419f3441c4bf1fa5e305b130150ea0c",
+  "via": "opencloud (7 Nov, clovers removed)"
  },
  "gg_inset": {
   "id": 107128954403371,

@@ -51,17 +51,18 @@ local PADS = { -- (degrees from the axis, + to the left as you face the windmill
 	{ a = 48, kind = "continue" },
 }
 -- the island: overlapping round lobes, each with its own stepped underside (depth below the 8-stud grass slab; the
--- saved map keeps terrain down to y = -64: server/MapStore)
+-- saved map keeps terrain down to y = -120: server/MapStore). Seen in Studio: shallower, the union of the cones read
+-- as a flat pancake with lumps; deep ones make the inverted cone of a floating island, the plaza's the deepest point.
 local LOBES = {
-	{ x = 0, z = 0, r = 72, depth = 47 }, -- the plaza
-	{ x = 0, z = -60, r = 46, depth = 40 }, -- the spawn, the rewards and the fountain
-	{ x = 0, z = 64, r = 50, depth = 45 }, -- the windmill and the pads
-	{ x = -62, z = 26, r = 32, depth = 36 }, -- classes
-	{ x = 62, z = 26, r = 32, depth = 36 }, -- the garage
-	{ x = -50, z = -18, r = 26, depth = 30 }, -- BEST TIMES
-	{ x = 50, z = -18, r = 26, depth = 30 }, -- GRASS CUT
-	{ x = -38, z = 94, r = 26, depth = 32 }, -- the back corners, the waterfalls
-	{ x = 38, z = 94, r = 26, depth = 32 },
+	{ x = 0, z = 0, r = 72, depth = 92 }, -- the plaza
+	{ x = 0, z = -60, r = 46, depth = 58 }, -- the spawn, the rewards and the fountain
+	{ x = 0, z = 64, r = 50, depth = 74 }, -- the windmill and the pads
+	{ x = -62, z = 26, r = 32, depth = 46 }, -- classes
+	{ x = 62, z = 26, r = 32, depth = 46 }, -- the garage
+	{ x = -50, z = -18, r = 26, depth = 36 }, -- the sides by the spawn
+	{ x = 50, z = -18, r = 26, depth = 36 },
+	{ x = -38, z = 94, r = 26, depth = 40 }, -- the back corners, the waterfalls
+	{ x = 38, z = 94, r = 26, depth = 40 },
 }
 -- the run areas round the horizon (angle from north, + to the left), and the observatory behind the spawn
 local ISLES = {
@@ -71,15 +72,17 @@ local ISLES = {
 	{ lm = "lm_swamp", tree = "swamp", a = -74, d = 205, y = 2, r = 24, mat = Enum.Material.Mud },
 	{ lm = "lm_frost", tree = "frost", a = 112, d = 210, y = 26, r = 22, mat = Enum.Material.Snow },
 	{ lm = "lm_ember", tree = "ember", a = -112, d = 210, y = 20, r = 22, mat = Enum.Material.CrackedLava },
-	{ lm = "lm_starlight", tree = "isles", a = 180, d = 185, y = 30, r = 28, mat = Enum.Material.Pavement, big = true },
+	{ lm = "lm_starlight", tree = "isles", a = 180, d = 215, y = 42, r = 26, mat = Enum.Material.Pavement, big = true },
 }
 
 -- where server/LobbyBuilder's stations stand (set at build time: server/LandsBuilder sets its own when it loads)
 local function setLayout()
 	Layout.SPAWN = SPAWN
 	Layout.REWARDS = { pos = Vector3.new(-FOUNTAIN.X + 6.6, 0, FOUNTAIN.Z) }
-	Layout.GRASS_CUT = { pos = Vector3.new(48, 0, -16) }
-	Layout.BEST_TIMES = { pos = Vector3.new(-48, 0, -16) }
+	-- (seen in Studio at (48, -16): from the spawn they stood right in front of the garage and classes) out to the
+	-- spawn's sides
+	Layout.GRASS_CUT = { pos = Vector3.new(40, 0, -30) }
+	Layout.BEST_TIMES = { pos = Vector3.new(-40, 0, -30) }
 end
 
 local count = 0
@@ -165,8 +168,8 @@ local function terrainLook()
 		end)
 	end
 	local colours = {
-		[Enum.Material.Grass] = C(92, 178, 54), -- the lawn
-		[Enum.Material.LeafyGrass] = C(118, 196, 66), -- its lighter mown stripes
+		[Enum.Material.Grass] = C(80, 164, 48), -- the lawn
+		[Enum.Material.LeafyGrass] = C(132, 204, 72), -- its lighter mown stripes (seen in Studio: closer, they didn't show)
 		[Enum.Material.Ground] = C(132, 94, 60), -- dirt under the grass lip, under the walks
 		[Enum.Material.Sandstone] = C(168, 124, 82), -- the first band of rock
 		[Enum.Material.Rock] = C(122, 112, 104), -- grey stone
@@ -203,7 +206,7 @@ local function underside(x: number, z: number, r: number, top: number, depth: nu
 	local ox, oz = 0, 0
 	for k = 1, n do
 		local f = k / n
-		local rk = r * (1 - f ^ 1.35) - 1.2
+		local rk = r * (1 - f) ^ 0.85 - 1.2
 		if rk < 2 then
 			break
 		end
@@ -318,8 +321,8 @@ local KEEP = {
 	{ p = HERO, r = 30 },
 	{ p = CLASSES, r = 20 },
 	{ p = GARAGE, r = 20 },
-	{ p = Vector3.new(48, 0, -16), r = 12 },
-	{ p = Vector3.new(-48, 0, -16), r = 12 },
+	{ p = Vector3.new(40, 0, -30), r = 12 },
+	{ p = Vector3.new(-40, 0, -30), r = 12 },
 	{ p = Vector3.new(-FOUNTAIN.X + 6.6, 0, FOUNTAIN.Z), r = 15 },
 	{ p = FOUNTAIN, r = 13 },
 	{ p = LOOKOUT, r = 14 },
@@ -360,7 +363,7 @@ local function rimTrees(world: Instance)
 				local t = math.rad(a)
 				local dir = Vector3.new(math.sin(t), 0, math.cos(t))
 				local c = MID + dir * (r - 13)
-				local south = deg > 140
+				local south = deg > 112 -- (seen in Studio: a big tree by the fountain crowded the spawn; low there)
 				if not kept(c, 6) then
 					if south then
 						local bush = if (deg // step) % 2 == 0 then "Bush_meadow" else "Bush_blossom"
@@ -370,7 +373,7 @@ local function rimTrees(world: Instance)
 						local kind = if deg <= 30 then "pine" elseif (deg == 45 or deg == 105) then "blossom" else "meadow"
 						local local_rng = Random.new(deg * 31 + 7) -- (the same cluster on both sides)
 						local right = dir:Cross(Vector3.yAxis)
-						tree(f, kind, c, 1.55, local_rng)
+						tree(f, kind, c, 1.35, local_rng)
 						tree(f, kind, c + right * 5.5 - dir * 3, 1.0, local_rng)
 						tree(f, if kind == "pine" then "meadow" else kind, c - right * 5 - dir * 2.5, 0.8, local_rng)
 					end
@@ -465,22 +468,22 @@ local function waterfall(world: Instance, lobe: any, deg: number)
 	Ground.water(pond.X, pond.Z, 11, 11, 3)
 	local look = CFrame.lookAt(pond, rim)
 	local len = (rim - pond).Magnitude - 5
-	local run = block(f, "Stream", Vector3.new(5, 0.4, len), look * CFrame.new(0, 0.15, -5.5 - len / 2), WATER, Enum.Material.Glass)
+	local run = block(f, "Stream", Vector3.new(6.5, 0.4, len), look * CFrame.new(0, 0.15, -5.5 - len / 2), WATER, Enum.Material.Glass)
 	run.Transparency = 0.25
 	ghost(run)
 	local edge = CFrame.lookAt(rim + dir * 2.6, rim + dir * 4)
 	local y = 0
 	local k = 0
-	while y > -74 do
+	while y > -104 do
 		local h = 6
-		local w = 5 + k * 0.35
+		local w = 6.5 + k * 0.3
 		local s = block(f, "Fall", Vector3.new(w, h, 1.4), edge * CFrame.new(math.sin(k * 1.7) * 0.4, y - h / 2, -k * 0.12), WATER, Enum.Material.Glass)
 		s.Transparency = 0.18 + (k % 2) * 0.08
 		ghost(s)
 		y -= h
 		k += 1
 	end
-	local lip = block(f, "Foam", Vector3.new(5.6, 0.8, 1.8), edge * CFrame.new(0, 0.1, 0), C(240, 250, 255))
+	local lip = block(f, "Foam", Vector3.new(7.2, 0.8, 1.8), edge * CFrame.new(0, 0.1, 0), C(240, 250, 255))
 	ghost(lip)
 	local spray = block(f, "Spray", Vector3.new(5, 1, 1), edge * CFrame.new(0, -1, -0.8), Color3.new(1, 1, 1))
 	spray.Transparency = 1
@@ -496,7 +499,7 @@ local function waterfall(world: Instance, lobe: any, deg: number)
 		Color = ColorSequence.new(C(235, 248, 255)),
 		EmissionDirection = Enum.NormalId.Bottom,
 	})
-	local mist = block(f, "Mist", Vector3.new(10, 2, 6), edge * CFrame.new(0, -70, -6), Color3.new(1, 1, 1))
+	local mist = block(f, "Mist", Vector3.new(12, 2, 8), edge * CFrame.new(0, -100, -8), Color3.new(1, 1, 1))
 	mist.Transparency = 1
 	ghost(mist)
 	emitter(mist, {
@@ -510,36 +513,66 @@ local function waterfall(world: Instance, lobe: any, deg: number)
 	})
 end
 
--- A voxel cloud: a long flat slab with a few blocks heaped on it, white.
+-- A cloud: a cluster of soft white balls on a flatter base, the skybox's painted clouds in 3D. (Seen in Studio: the
+-- first try, white boxes stacked like voxels, read as foam blocks floating about.)
 local function cloud(parent: Instance, at: Vector3, size: number, rng: Random)
 	local m = Instance.new("Model")
 	m.Name = "Cloud"
-	local white = C(250, 252, 255)
-	local base = block(m, "Cloud", Vector3.new(size, size * 0.18, size * 0.55), CFrame.new(at) * CFrame.Angles(0, rng:NextNumber(0, math.pi), 0), white)
-	ghost(base)
-	for _ = 1, rng:NextInteger(2, 4) do
-		local s = size * rng:NextNumber(0.25, 0.45)
-		local off = Vector3.new(rng:NextNumber(-size * 0.3, size * 0.3), size * 0.09 + s * 0.3, rng:NextNumber(-size * 0.12, size * 0.12))
-		local p = block(m, "Cloud", Vector3.new(s, s * 0.6, s * 0.8), base.CFrame * CFrame.new(off), white)
+	local n = rng:NextInteger(5, 8)
+	for i = 1, n do
+		local t = (i - 1) / math.max(1, n - 1)
+		local x = (t - 0.5) * size * 1.1 + rng:NextNumber(-size * 0.08, size * 0.08)
+		local r = size * (0.22 + 0.2 * math.sin(t * math.pi)) * rng:NextNumber(0.85, 1.15)
+		local p = block(m, "Puff", Vector3.new(r * 2, r * 1.5, r * 2), CFrame.new(at + Vector3.new(x, r * 0.3, rng:NextNumber(-size * 0.15, size * 0.15))), C(255, 255, 255))
+		p.Shape = Enum.PartType.Ball
+		p.Material = Enum.Material.SmoothPlastic
+		p.Transparency = 0.06
 		ghost(p)
 	end
+	-- the flat underside, a touch greyer
+	local base = block(m, "Puff", Vector3.new(size * 1.3, size * 0.18, size * 0.6), CFrame.new(at - Vector3.new(0, size * 0.02, 0)), C(232, 238, 250))
+	base.Shape = Enum.PartType.Cylinder
+	base.CFrame = CFrame.new(base.Position) * CFrame.Angles(0, 0, math.rad(90))
+	base.Size = Vector3.new(size * 0.16, size * 1.25, size * 1.25)
+	base.Transparency = 0.1
+	ghost(base)
 	m.Parent = parent
 end
 
 local function clouds(world: Instance)
 	local f = folder(world, "Clouds")
 	local rng = Random.new(919)
-	-- under the island and round it, below the rim
-	for i = 1, 10 do
-		local a = i / 10 * math.pi * 2 + rng:NextNumber(-0.2, 0.2)
-		local d = rng:NextNumber(60, 170)
-		cloud(f, Vector3.new(math.sin(a) * d, rng:NextNumber(-96, -74), math.cos(a) * d), rng:NextNumber(26, 46), rng)
+	-- a sea of clouds far under the island (the void below reads as sky high above the ground, not as nothing)
+	for i = 1, 26 do
+		local a = i / 26 * math.pi * 2 + rng:NextNumber(-0.12, 0.12)
+		local d = rng:NextNumber(40, 300)
+		cloud(f, Vector3.new(math.sin(a) * d, rng:NextNumber(-150, -122), math.cos(a) * d), rng:NextNumber(46, 80), rng)
 	end
-	-- far off at the horizon, behind the isles
-	for i = 1, 9 do
-		local a = i / 9 * math.pi * 2 + rng:NextNumber(-0.25, 0.25)
-		local d = rng:NextNumber(270, 330)
-		cloud(f, Vector3.new(math.sin(a) * d, rng:NextNumber(-30, 24), math.cos(a) * d), rng:NextNumber(40, 70), rng)
+	-- a few drifting between the isles, below the rim
+	for i = 1, 6 do
+		local a = i / 6 * math.pi * 2 + 0.4 + rng:NextNumber(-0.2, 0.2)
+		local d = rng:NextNumber(130, 250)
+		cloud(f, Vector3.new(math.sin(a) * d, rng:NextNumber(-60, -30), math.cos(a) * d), rng:NextNumber(26, 40), rng)
+	end
+end
+
+-- Roots and vines hanging from under the grass lip all round (dirt-brown and leafy green, voxel-thin).
+local function roots(world: Instance)
+	local f = folder(world, "Roots")
+	local rng = Random.new(4040)
+	for deg = 0, 356, 6 do
+		local r = rimAt(deg) - 1.5
+		local t = math.rad(deg + rng:NextNumber(-2, 2))
+		local p = MID + Vector3.new(math.sin(t) * r, 0, math.cos(t) * r)
+		local len = rng:NextNumber(5, 15)
+		local green = rng:NextNumber() < 0.45
+		local col = if green then C(70, 132, 52) else C(104, 74, 48)
+		local root = block(f, "Root", Vector3.new(0.8, len, 0.8), CFrame.new(p.X, -8 - len / 2 + 1, p.Z), col, Enum.Material.Grass)
+		ghost(root)
+		if green and len > 9 then
+			local tip = block(f, "Root", Vector3.new(1.4, 1.4, 1.4), CFrame.new(p.X, -8 - len + 1, p.Z), C(96, 168, 70), Enum.Material.Grass)
+			ghost(tip)
+		end
 	end
 end
 
@@ -557,7 +590,7 @@ local function isles(world: Instance)
 		local top = groundY(c.X, c.Z, c.Y + 20)
 		local isle = folder(f, s.tree)
 		local face = CFrame.lookAt(Vector3.new(c.X, top, c.Z), Vector3.new(MID.X, top, MID.Z))
-		local h = if s.big then 46 else 26
+		local h = if s.big then 36 else 26
 		Models.placeForge(s.lm, isle, face, { height = h, width = h * 1.1, depth = h * 1.1 }, false)
 		local out = (Vector3.new(c.X, 0, c.Z) - MID).Unit
 		local right = out:Cross(Vector3.yAxis)
@@ -630,6 +663,9 @@ function SkyIsland.build()
 		isles(world)
 	end
 	clouds(world)
+	if not Ground.locked then
+		roots(world)
+	end
 	bounds(world)
 	local sp = SPAWN + Vector3.new(0, 0.8, 0)
 	Environment.spawn(world, CFrame.lookAt(sp, sp + Vector3.zAxis)) -- looking north at the pads and the windmill

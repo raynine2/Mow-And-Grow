@@ -27,7 +27,8 @@ local MapStore = {}
 MapStore.LOBBY_OFFSET = Vector3.new(3000, 0, 0)
 -- the lobby's ground (its terrain fill is 440 wide, hills ring it at 245 +- 70), in studs
 local LOBBY_HALF = 344
-local TERRAIN_LOW, TERRAIN_HIGH = -64, 96
+-- (7 Nov) down to -120: the floating-island lobby's underside (server/SkyIsland) hangs about 100 studs under its top
+local TERRAIN_LOW, TERRAIN_HIGH = -120, 96
 
 -- World folders whose children are separate pieces (each shop, gate, pump, tree...); in the others the whole
 -- folder is one piece.

@@ -1495,7 +1495,8 @@ function UI.toast(text: string, colorName: string?)
 	local t = UI.text(toastHolder, UI.words(text), UDim2.fromOffset(700, 38), { color = color, stroke = 3 })
 	t.ZIndex = 50
 	bounce(t)
-	fadeOut(t, 3)
+	-- (9 Nov, owner: calmer) a red one (something went wrong) stays 3 s, the rest ("Equipped ...", "+5 fuel") 1.5 s
+	fadeOut(t, if colorName == "red" then 3 else 1.5)
 end
 
 local currentNotice: Frame? = nil

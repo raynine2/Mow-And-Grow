@@ -53,7 +53,7 @@ local function gateInfo(parent: Instance, pos: Vector3, area: string, need: stri
 	bb.Name = "GateInfo"
 	bb.Size = UDim2.fromScale(16, 4.2) -- (studs)
 	bb.LightInfluence = 0
-	bb.MaxDistance = 110
+	bb.MaxDistance = 45 -- (9 Nov, owner: only when you're close; from 110 studs it floated over the HUD)
 	bb.ResetOnSpawn = false
 	bb.Parent = holder
 	local pill = Instance.new("Frame")
@@ -358,6 +358,11 @@ function ForgeDress.world(w: Instance): number
 	for _, g in (if gates then gates:GetChildren() else {}) do
 		if ForgeDress.gate(g) then
 			n += 1
+		end
+		-- (9 Nov) a gate that kept its stored label (ServerStorage.GenWorld) gets the near-only distance too
+		local info = g:FindFirstChild("GateInfoSpot") and g.GateInfoSpot:FindFirstChild("GateInfo")
+		if info and info:IsA("BillboardGui") then
+			info.MaxDistance = 45
 		end
 		task.wait() -- (each gate casts rays at the walls: a pause between them, so the run's start never times out)
 	end

@@ -430,6 +430,11 @@ Config.EMOTES = {
 -- tools of their areas instead of far past them (a gem mower speeds up the first 4-5 areas; the last three
 -- need tools) and three class gimmicks were trimmed (server/ClassPerks). The model now: a first run ~36 min,
 -- on a gem mower ~26, Goat Man ~23.
+-- (9 Nov, balance 4, owner: "the late game is a bit too hard, you have to punch/cut it way too much") the last
+-- four areas' grass was far past balance 3's "about 3 hits with the area's tool": the Prairie took ~6-8 Mega Scythe
+-- swings and the Jungle ~12-17 Laser Mower ticks. Grass HP now Blossom 1000 -> 800, Swamp 7000 -> 5000, Prairie
+-- 30000 -> 15000, Jungle 100000 -> 40000 (coins per clump unchanged; Elder clumps follow, they're x the area's HP).
+-- The model: a fresh run 34 -> ~31 min.
 Config.BOSSES = true -- clearing an area wakes its boss, and beating the boss opens the next area (false: areas open straight away)
 
 Config.ZONES = {
@@ -462,28 +467,28 @@ Config.ZONES = {
 		boss = { name = "Bramble Brute", hp = 44000, color = Color3.fromRGB(40, 140, 60), every = 3.6, radius = 9, gems = 35, coins = 12000 }, -- (29 Oct) boss moved here to fit the biome; was Harvest Maw
 	},
 	{
-		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 1000, value = 300, drops = 2, height = 2.5, -- (29 Oct) was hp 480, value 300; (29 Oct, balance 2) hp 750 -> 1000
+		name = "Blossom Garden", grassName = "Blossom Grass", style = "blossom", model = "tuft_lawn", hp = 800, value = 300, drops = 2, height = 2.5, -- (29 Oct) was hp 480, value 300; (29 Oct, balance 2) hp 750 -> 1000
 		spacing = 13.5, fill = 1.4, scale = 5.1, tint = Color3.fromRGB(255, 160, 205),
 		grass = { Color3.fromRGB(255, 160, 205), Color3.fromRGB(240, 130, 185) },
 		ground = Color3.fromRGB(120, 170, 80),
 		boss = { name = "Bog Strangler", hp = 61000, color = Color3.fromRGB(125, 212, 90), every = 3.5, radius = 12, gems = 45, coins = 40000 }, -- (29 Oct) boss moved here to fit the biome; was Sakura Snapjaw
 	},
 	{
-		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 7000, value = 1100, drops = 2, height = 6.5, -- (29 Oct) was hp 2000, value 1100; (29 Oct, balance 2) hp 2300 -> 7000
+		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 5000, value = 1100, drops = 2, height = 6.5, -- (29 Oct) was hp 2000, value 1100; (29 Oct, balance 2) hp 2300 -> 7000
 		spacing = 12, fill = 1.4, scale = 4.6,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
 		boss = { name = "Frost Thornback", hp = 400000, color = Color3.fromRGB(160, 220, 255), every = 3.3, radius = 10, gems = 55, coins = 150000 }, -- (29 Oct) boss moved here to fit the biome; was Bog Strangler
 	},
 	{
-		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 30000, value = 2400, drops = 2, height = 6, -- (29 Oct) was hp 4800, value 2400; (29 Oct, balance 2) hp 12000 -> 30000
+		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 15000, value = 2400, drops = 2, height = 6, -- (29 Oct) was hp 4800, value 2400; (29 Oct, balance 2) hp 12000 -> 30000
 		spacing = 11.5, fill = 1.4, scale = 5.1, tint = Color3.fromRGB(235, 120, 45),
 		grass = { Color3.fromRGB(235, 120, 45), Color3.fromRGB(215, 95, 40) },
 		ground = Color3.fromRGB(150, 110, 60),
 		boss = { name = "Hollow Harvest", hp = 1600000, color = Color3.fromRGB(255, 140, 40), every = 3.1, radius = 13, gems = 65, coins = 500000 },
 	},
 	{
-		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 100000, value = 12000, drops = 4, height = 8, -- (29 Oct) was hp 60000, value 12000; (29 Oct, balance 2) hp 50000 -> 100000
+		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 40000, value = 12000, drops = 4, height = 8, -- (29 Oct) was hp 60000, value 12000; (29 Oct, balance 2) hp 50000 -> 100000
 		spacing = 21, fill = 1.5, scale = 6.0,
 		grass = { Color3.fromRGB(30, 160, 60), Color3.fromRGB(20, 130, 50) },
 		ground = Color3.fromRGB(90, 70, 45),

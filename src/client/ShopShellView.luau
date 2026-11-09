@@ -32,7 +32,10 @@ local ShopShellView = {}
 local UNITS = {
 	-- (jamb: the cabin's door tunnel is only x -2.2..1.9 wide in the lodge's 12-wide door, server/ShopShell; the cabin
 	-- has no collisions, so without these you walked in through its wall beside the door)
-	{ unit = "TOOL SHOP", building = "ShopBuilding", keep = { FloorBoard = true, FloorFill = true }, jamb = { -2.2, 1.9 } },
+	-- (9 Nov, owner: "THE HOUSE CHANGES FROM INSIDE WHEN WALKING IN") the cabin's door tunnel starts ~3 studs before the
+	-- shell's DoorMin: walking through it you saw the cabin's own smooth orange insides, then the lodge's room. `doorOut`
+	-- grows the door box out to the tunnel's mouth, so you're "in" (the lodge's room) from the first step through the door.
+	{ unit = "TOOL SHOP", building = "ShopBuilding", keep = { FloorBoard = true, FloorFill = true }, jamb = { -2.2, 1.9 }, doorOut = 3.0 },
 	{
 		unit = "Garage",
 		building = "GarageBuilding",
@@ -54,13 +57,14 @@ type View = {
 	conns: { RBXScriptConnection },
 	walls: Folder?, -- (this screen's invisible walls while the lodge is out)
 	jamb: { number }?,
+	doorOut: number?,
 	ceiling: number?, -- (lodge parts reaching above this, in the anchor's frame, count as outside)
 	jambs: Folder?, -- (invisible blocks either side of the cabin's narrow door)
 	builtAt: CFrame?, -- (where the anchor was when the walls and jambs were made)
 }
 local views: { View } = {}
 for i, u in UNITS do
-	views[i] = { keep = u.keep, shell = nil, lodge = nil, anchor = nil, inside = nil, near = nil, out = {}, conns = {}, jamb = (u :: any).jamb, ceiling = (u :: any).ceiling }
+	views[i] = { keep = u.keep, shell = nil, lodge = nil, anchor = nil, inside = nil, near = nil, out = {}, conns = {}, jamb = (u :: any).jamb, ceiling = (u :: any).ceiling, doorOut = (u :: any).doorOut }
 end
 
 -- Invisible walls round the room box (the lodge's walls stand just outside it), the doorway left open.
@@ -318,6 +322,14 @@ local function within(p: Vector3, mn: any, mx: any, grow: number): boolean
 		and p.Z < mx.Z + grow
 end
 
+local function doorMin(s: Model, v: any): any
+	local mn = s:GetAttribute("DoorMin")
+	if typeof(mn) == "Vector3" and v.doorOut then
+		return mn - Vector3.new(0, 0, v.doorOut)
+	end
+	return mn
+end
+
 RunService:BindToRenderStep("ShopShellView", Enum.RenderPriority.Camera.Value + 1, function()
 	local cam = workspace.CurrentCamera.CFrame.Position
 	for _, v in views do
@@ -349,7 +361,7 @@ RunService:BindToRenderStep("ShopShellView", Enum.RenderPriority.Camera.Value + 
 		local p = a.CFrame:PointToObjectSpace(cam)
 		local grow = if v.inside then MARGIN else -MARGIN
 		local now = within(p, s:GetAttribute("RoomMin"), s:GetAttribute("RoomMax"), grow)
-			or within(p, s:GetAttribute("DoorMin"), s:GetAttribute("DoorMax"), grow)
+			or within(p, doorMin(s, v), s:GetAttribute("DoorMax"), grow)
 		-- near the door side (in front of the room's back wall, within NEAR of its middle; a bit of give both ways)
 		local mx = s:GetAttribute("RoomMax")
 		local reach = NEAR + (if v.near then NEAR_GIVE else 0)

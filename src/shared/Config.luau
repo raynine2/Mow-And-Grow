@@ -1637,7 +1637,7 @@ Config.SOUNDS = {
 	warn = { id = "rbxassetid://83223205201023", volume = 0.24 }, -- ForgeGUI 29 Oct. old: rbxassetid://15675028888, volume 0.35 (Roblox_UI_Whoosh_02)
 	slam = { id = "rbxassetid://72015768584169", volume = 0.41 }, -- ForgeGUI 29 Oct. old: rbxassetid://12221984, volume 0.6, pitch 0.7 (collide.wav)
 	hit = { id = "rbxassetid://121737293033994", volume = 0.67, gap = 0.08 }, -- ForgeGUI 29 Oct. old: rbxassetid://12222046, volume 0.35 (hit.wav)
-	hurt = { id = "rbxassetid://135736854715556", volume = 0.61 }, -- ForgeGUI 29 Oct. old: rbxasset://sounds/ouch.ogg, volume 0.5 (engine built-in)
+	hurt = { id = "rbxassetid://104766632081909", volume = 0.7 }, -- (9 Nov, owner: the boss-hit sound was bad) a ForgeGUI punch thump, no voice; others made then: 111426741286559, 95049358199738. ForgeGUI 29 Oct: rbxassetid://135736854715556, volume 0.61. old: rbxasset://sounds/ouch.ogg, volume 0.5 (engine built-in)
 	-- Chopping feel (client/HitFx, Fx, LootFx). Pro Sound Effects library sounds (licensed to every Roblox
 	-- experience, creator "ProSoundEffects"), checked loading in Studio on 21 Oct 2026, plus engine built-ins.
 	punch = { id = "rbxassetid://103685548650230", volume = 1.91, gap = 0.05 }, -- ForgeGUI 29 Oct. old: rbxassetid://9113535176, volume 0.45, pitch 1.35 (Body Slam Low End Thump 1)

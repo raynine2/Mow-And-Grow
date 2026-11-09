@@ -768,6 +768,12 @@ handlers.reward = function(d)
 	if BossFx.reward(d) then
 		return
 	end
+	if type(d.title) == "string" and string.find(d.title, "DEFEATED!", 1, true) then
+		-- (owner, 10 Nov: "er is 2x defeated haal de groene text erboven weg") a boss's reward never gets its own
+		-- banner: the BOSS DEFEATED! card already says it; the coins and gems fly to the counters
+		State.emit("flyCoins", 10)
+		return
+	end
 	Fx.banner(d.title, C.green, 3, ("+%s coins   +%d gems"):format(Format.short(d.coins), d.gems))
 	State.emit("flyCoins", 10)
 end

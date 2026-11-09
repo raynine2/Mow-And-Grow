@@ -570,7 +570,8 @@ task.spawn(function()
 		task.wait(0.3)
 		local ok, res = pcall(pick)
 		local s = if ok then res else nil
-		if s and cutsceneOn() then
+		-- (10 Nov) not during a boss fight either: the tutorial card sat in the middle of the fight and the victory
+		if s and (cutsceneOn() or (State.world and State.world.boss)) then
 			s = nil
 		end
 		if s then

@@ -683,7 +683,7 @@ function BossArena.setPad(z: number, mode: string, text: string?)
 	end
 	if label then
 		label.Text = text
-			or (if mode == "ready" then "STAND HERE TO FIGHT!" elseif mode == "done" then "BEATEN!" elseif mode == "busy" then "" else "MOW THE AREA TO WAKE THE BOSS")
+			or (if mode == "ready" then "STAND HERE TO FIGHT!" elseif mode == "done" then "" elseif mode == "busy" then "" else "MOW THE AREA TO WAKE THE BOSS")
 	end
 end
 

@@ -29,6 +29,7 @@ local PHONE = require(script.Parent.PhonePerf).on -- phones: lighter hits (owner
 local BossView = require(script.Parent.BossView)
 local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack: each boss's signature attacks
 local Sound = require(script.Parent.Sound)
+local BossImpact = require(script.Parent.BossImpact) -- (10 Nov) the weight under every hit: core, rings, blocks, rage
 local SoundConfig = require(Shared:WaitForChild("Config")) -- (29 Oct) boss move cues
 
 local VFXLib = ReplicatedStorage:WaitForChild("VFXLib", 10)
@@ -608,7 +609,7 @@ local STYLE: { [string]: { tex: string, accent: string, fx: string, warn: string
 	dandelion = { tex = "seed", accent = "FFE46A", fx = "fluff", warn = "FF5A3C" },
 	bramble = { tex = "leaf", accent = "FF4D6D", fx = "thorns", warn = "E0284A" },
 	bunker = { tex = "sand", accent = "FFE14D", fx = "geyser", warn = "FF7A1A" },
-	frost = { tex = "sand", accent = "9FE8FF", fx = "geyser", warn = "3FA0FF" }, -- (29 Oct) the Frost Thornback
+	frost = { tex = "dot", accent = "9FE8FF", fx = "ice", warn = "3FA0FF" }, -- (29 Oct) the Frost Thornback; (10 Nov) its own ice hit, not the sand geyser
 	harvest = { tex = "strand", accent = "F0C850", fx = "chaff", warn = "E8501E" },
 	sakura = { tex = "petal", accent = "FF9FCD", fx = "bloom", warn = "FF3D8B" },
 	bog = { tex = "bubble", accent = "9DFF5A", fx = "splash", warn = "C8E62A" },
@@ -710,6 +711,7 @@ end
 
 type Warn = { part: Part, start: number, land: number, spin: Frame?, spin2: Frame?, fill: Frame?, fillStroke: UIStroke?, fade: { Frame } }
 local warns: { Warn } = {}
+local HOT = Color3.fromRGB(255, 246, 220) -- (10 Nov) a warning's colour the instant before it lands
 
 local function circleWarn(s: any, start: number): Warn
 	local d = s.r * 2
@@ -722,7 +724,16 @@ local function circleWarn(s: any, start: number): Warn
 	m.Size = UDim2.fromOffset(px, px)
 	m.AnchorPoint = Vector2.new(0.5, 0.5)
 	m.Position = UDim2.fromScale(0.5, 0.5)
-	return { part = p, start = start, land = s.land, spin = spin, fill = fill, fade = { base, spin } }
+	-- (10 Nov) a glowing rim round the edge and a bright edge on the growing fill (client loop: they pulse)
+	local rim = Instance.new("UIStroke")
+	rim.Color = RING_RED
+	rim.Thickness = 4
+	rim.Parent = base
+	local edge = Instance.new("UIStroke")
+	edge.Color = RING_RED:Lerp(Color3.new(1, 1, 1), 0.55)
+	edge.Thickness = 3
+	edge.Parent = fill
+	return { part = p, start = start, land = s.land, spin = spin, fill = fill, fade = { base, spin }, rim = rim, edge = edge, hotFill = fill, fillColor = RED, rimColor = RING_RED } :: any
 end
 
 local function ringWarn(s: any, start: number): Warn
@@ -744,7 +755,7 @@ local function ringWarn(s: any, start: number): Warn
 	st2.Parent = f2
 	local spin = dashes(g, s.outer * 2 * PX, RING_RED)
 	local spin2 = dashes(g, s.inner * 2 * PX, RING_RED)
-	return { part = p, start = start, land = s.land, spin = spin, spin2 = spin2, fillStroke = st2, band = band, fade = { spin, spin2 } } :: any
+	return { part = p, start = start, land = s.land, spin = spin, spin2 = spin2, fillStroke = st2, band = band, fade = { spin, spin2 }, rim = st, rimColor = RED } :: any
 end
 
 local function stripWarn(s: any, start: number): Warn
@@ -772,7 +783,15 @@ local function stripWarn(s: any, start: number): Warn
 	fill.BorderSizePixel = 0
 	fill.Parent = g
 	motif(g)
-	return { part = p, start = start, land = s.land, fill = fill, strip = true, fade = { f } } :: any
+	-- (10 Nov) a bright line on the fill's leading edge
+	local lead = Instance.new("Frame")
+	lead.AnchorPoint = Vector2.new(0.5, 0)
+	lead.Position = UDim2.fromScale(0.5, 0)
+	lead.Size = UDim2.new(1, 0, 0, 4)
+	lead.BackgroundColor3 = RING_RED:Lerp(Color3.new(1, 1, 1), 0.55)
+	lead.BorderSizePixel = 0
+	lead.Parent = fill
+	return { part = p, start = start, land = s.land, fill = fill, strip = true, fade = { f }, rim = st, rimColor = RING_RED, hotFill = fill, fillColor = RED } :: any
 end
 
 -- a flat coloured panel on the floor, turned so its length runs along world `dir` (each piece its own part, so the
@@ -924,6 +943,21 @@ RunService.RenderStepped:Connect(function(dt)
 			end
 			if w.update then
 				w.update(u, a)
+			end
+			-- (10 Nov, owner: "more climatic") the rim pulses, faster and faster as the hit comes; the last moment
+			-- before it lands the rim and the fill go white-hot
+			if w.rim then
+				w.phase = (w.phase or 0) + dt * (1.5 + 9 * u * u) * math.pi * 2
+				local pulse = 0.5 + 0.5 * math.sin(w.phase)
+				local hot = math.clamp((u - 0.8) / 0.2, 0, 1)
+				w.rim.Transparency = 1 - a * (0.5 + 0.5 * math.max(pulse, hot))
+				w.rim.Color = w.rimColor:Lerp(HOT, hot * 0.85)
+				if w.edge then
+					w.edge.Transparency = 1 - a * (0.55 + 0.45 * pulse)
+				end
+				if w.hotFill and hot > 0 then
+					w.hotFill.BackgroundColor3 = w.fillColor:Lerp(HOT, hot * 0.45)
+				end
 			end
 			for _, o in w.fade do
 				local full = o:GetAttribute("Full")
@@ -1181,7 +1215,8 @@ local function burst(pos: Vector3, r: number, light: boolean?)
 	if fx == "fluff" then
 		-- dandelion seeds blown up and drifting down, a puff of yellow pollen
 		spray(pos, r, { tex = "seed", colors = { "FFFFFF", "FFF6D0" }, n = 22 * k, size = 1.4 * SEED_SIZE, life = { 1.4, 2.4 }, speed = { 8, 18 }, grav = -3, drag = 2, spread = 50 })
-		spray(pos, r, { tex = "smoke", colors = { "FFE46A", "FFF2A8" }, n = 10 * k, size = r * 0.45, endSize = 1.8, life = { 0.5, 0.9 }, speed = { 3, 8 }, grav = 0, drag = 3, spread = 80 })
+		-- (10 Nov: the pollen puff read as a big cream blob: smaller, fewer, and glowing instead of flat)
+		spray(pos, r, { tex = "glow", colors = { "FFE46A", "FFF2A8" }, n = 6 * k, size = r * 0.28, endSize = 1.6, life = { 0.4, 0.7 }, speed = { 3, 8 }, grav = 0, drag = 3, spread = 80, add = true })
 	elseif fx == "thorns" then
 		-- bramble thorns stab out of the floor, leaves fly
 		if not light then
@@ -1210,6 +1245,10 @@ local function burst(pos: Vector3, r: number, light: boolean?)
 		spray(pos, r * 0.6, { tex = "flame", colors = { "FFE080", "FF8A20", "C83000" }, n = 18 * k, size = r * 0.3, endSize = 1.6, life = { 0.35, 0.7 }, speed = { 6, 14 }, grav = 10, add = true, spread = 50 })
 		spray(pos, r, { tex = "smoke", colors = { "2A2420", "4A3A30" }, n = 8 * k, size = r * 0.4, endSize = 1.8, life = { 0.8, 1.3 }, speed = { 4, 9 }, grav = 4, drag = 2, spread = 70 })
 		spray(pos, r, { tex = "spark", colors = { "FFB060", "FF6A20" }, n = 14 * k, size = 0.6, life = { 1, 1.8 }, speed = { 4, 10 }, grav = 6, add = true, spread = 80, drag = 1 })
+	elseif fx == "ice" then
+		-- (10 Nov) ice shards stab up, a cold flash, frost mist rolling out (client/BossImpact)
+		BossImpact.ice(pos, r, light)
+		spray(pos, r, { tex = "dot", colors = { "FFFFFF", "D8F4FF" }, n = 14 * k, size = 0.5, life = { 0.9, 1.6 }, speed = { 6, 14 }, grav = -6, drag = 1.5, spread = 70, add = true })
 	elseif fx == "runes" then
 		-- stone shards burst up, cyan runes rise and fade
 		if not light then
@@ -1228,10 +1267,15 @@ function BossVfx.impact(z: number, s: any, kind: string, floorColor: Color3?)
 	if PackFx.on() then
 		pcall(PackFx.boss, z, kind, s, ring)
 	end
+	-- (10 Nov, owner: "more fitting and more climatic and pretty") the weight under each hit: client/BossImpact
+	if live and floorColor then
+		live.floor = floorColor -- (for the rage burst)
+	end
+	local fl = floorColor or Color3.fromRGB(110, 170, 80)
 	if s.type == "circle" then
 		burst(s.pos, s.r)
-		dust(s.pos, s.r, def.dust, 10)
-		shockwave(s.pos, s.r, ring)
+		dust(s.pos, s.r, def.dust, 6)
+		BossImpact.slam(s.pos, s.r, ring, fl, s.r >= 5)
 		if (kind == "slam" or kind == "leap" or kind == "burrow") and Forge and Forge.Ring then
 			pcall(Forge.Ring, s.pos, { Radius = s.r * 0.75, Segments = 10, Color = floorColor or Color3.fromRGB(120, 100, 80), MinSize = Vector3.new(1.6, 1, 1.6), MaxSize = Vector3.new(2.8, 2, 2.8), Duration = 0.9 })
 		end
@@ -1246,6 +1290,7 @@ function BossVfx.impact(z: number, s: any, kind: string, floorColor: Color3?)
 			burst(s.pos + s.dir * (s.r * i / 4), s.r * 0.3, i ~= 2)
 		end
 		shockwave(s.pos + s.dir * s.r * 0.5, s.r * 0.6, ring)
+		BossImpact.slam(s.pos + s.dir * s.r * 0.5, s.r * 0.35, ring, fl, true)
 		shakeFor(s.pos, 8)
 	elseif s.type == "safe" then
 		shockwave(s.pos, s.r * 0.6, ring)
@@ -1255,12 +1300,16 @@ function BossVfx.impact(z: number, s: any, kind: string, floorColor: Color3?)
 			burst(s.pos + Vector3.new(math.cos(a) * d, 0, math.sin(a) * d), 8, true)
 		end
 		burst(s.pos, 12)
+		BossImpact.slam(s.pos, 12, ring, fl, true)
 		shakeFor(s.pos, 9)
 	elseif s.type == "ring" then
 		local r = (s.inner + s.outer) / 2
 		for i = 1, 8 do
 			local a = i / 8 * math.pi * 2
 			burst(s.pos + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), (s.outer - s.inner) * 0.5, i % 2 == 0)
+			if i % 2 == 1 then
+				BossImpact.slam(s.pos + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r), (s.outer - s.inner) * 0.5, ring, fl, false)
+			end
 		end
 		shockwave(s.pos, s.outer, ring)
 		shockwave(s.pos, r, ring)
@@ -1270,6 +1319,7 @@ function BossVfx.impact(z: number, s: any, kind: string, floorColor: Color3?)
 		local n = math.clamp(math.floor(s.length / 12), 2, 6)
 		for i = 0, n - 1 do
 			burst(s.pos + dir * (s.length * (i + 0.5) / n), s.width * 0.55, i % 2 == 1)
+			BossImpact.slam(s.pos + dir * (s.length * (i + 0.5) / n), s.width * 0.55, ring, fl, i == 0)
 		end
 		shockwave(s.pos + dir * s.length * 0.5, s.width, ring)
 		shakeFor(s.pos + dir * s.length * 0.3, 8)
@@ -1463,6 +1513,8 @@ function BossVfx.rageBurst()
 	end
 	shockwave(v.base.Position, 30 * L.k, hex(Spec.shared.rageMote))
 	dust(v.base.Position, 14 * L.k, BossMoves.get(L.z).dust)
+	-- (10 Nov, owner: "more climatic") the picture flushes in its colour, a pillar of light, blocks erupting
+	BossImpact.rage(v.base.Position, 10 * L.k, warnColor(), L.floor)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -1741,15 +1793,30 @@ local function look(name: string, r: number): Look
 		table.insert(out.parts, { part = p, off = off or CFrame.identity, wing = wing })
 	end
 	if name == "puff" then
-		-- a dandelion seed puff: a fluffy white ball, a seed in the middle, drifting fluff
-		local b = solid("Puff", Enum.PartType.Ball, Vector3.one * r * 2, Color3.fromRGB(255, 255, 250), Enum.Material.SmoothPlastic)
-		b.Transparency = 0.45
-		add(b)
-		local core = solid("PuffCore", Enum.PartType.Ball, Vector3.one * r * 1.3, Color3.fromRGB(255, 255, 255), Enum.Material.Neon)
-		core.Transparency = 0.55
-		add(core)
+		-- a dandelion seed puff in blocks, like the seed puffs on the King himself (10 Nov, owner: "more fitting
+		-- and pretty": it was a see-through smooth ball, grey eggs rolling over a block world): a studded white
+		-- core, an arm of fluff each way, smaller tufts on the corners, a brown seed under it, a soft glow inside
+		local function cube(nm: string, s: number, c: Color3, off: CFrame)
+			local p = solid(nm, Enum.PartType.Block, Vector3.one * s, c, Enum.Material.Plastic)
+			p.TopSurface = Enum.SurfaceType.Studs
+			p.BottomSurface = Enum.SurfaceType.Inlet
+			add(p, off)
+			return p
+		end
+		local white, cream = Color3.fromRGB(255, 255, 250), Color3.fromRGB(246, 240, 214)
+		local b = cube("Puff", r * 0.95, white, CFrame.identity)
+		for _, v in { Vector3.xAxis, -Vector3.xAxis, Vector3.yAxis, -Vector3.yAxis, Vector3.zAxis, -Vector3.zAxis } do
+			cube("PuffArm", r * 0.55, white, CFrame.new(v * r * 0.72))
+		end
+		for _, x in { -1, 1 } do
+			for _, y in { -1, 1 } do
+				for _, z in { -1, 1 } do
+					cube("PuffTuft", r * 0.32, cream, CFrame.new(Vector3.new(x, y, z) * r * 0.55))
+				end
+			end
+		end
+		cube("Seed", r * 0.3, Color3.fromRGB(150, 110, 60), CFrame.new(0, -r * 1.05, 0))
 		glowOn(b, Color3.fromRGB(255, 250, 210), r * 3.2)
-		add(solid("Seed", Enum.PartType.Ball, Vector3.one * r * 0.45, Color3.fromRGB(150, 110, 60)), CFrame.new(0, -r * 0.5, 0))
 		trailOn(b, "seed", Color3.fromRGB(255, 255, 240), 1.2 * SEED_SIZE, 10)
 		out.lift = r + 1.2
 	elseif name == "golfball" then
@@ -1758,9 +1825,11 @@ local function look(name: string, r: number): Look
 		trailOn(b, "sand", Color3.fromRGB(235, 215, 150), 2.2, 22)
 		out.lift = r
 	elseif name == "crow" then
-		local body = solid("Crow", Enum.PartType.Ball, Vector3.new(r * 0.9, r * 0.8, r * 1.4), Color3.fromRGB(30, 30, 38))
+		-- (10 Nov) in blocks, like the world (they were smooth balls)
+		local body = solid("Crow", Enum.PartType.Block, Vector3.new(r * 0.9, r * 0.75, r * 1.4), Color3.fromRGB(30, 30, 38))
 		add(body)
-		add(solid("Head", Enum.PartType.Ball, Vector3.one * r * 0.6, Color3.fromRGB(36, 36, 44)), CFrame.new(0, r * 0.25, -r * 0.7))
+		add(solid("Head", Enum.PartType.Block, Vector3.one * r * 0.6, Color3.fromRGB(36, 36, 44)), CFrame.new(0, r * 0.25, -r * 0.7))
+		add(solid("Eye", Enum.PartType.Block, Vector3.new(r * 0.62, r * 0.12, r * 0.12), Color3.fromRGB(255, 70, 40), Enum.Material.Neon), CFrame.new(0, r * 0.32, -r * 0.92))
 		add(solid("Beak", Enum.PartType.Block, Vector3.new(r * 0.15, r * 0.15, r * 0.45), Color3.fromRGB(240, 180, 40)), CFrame.new(0, r * 0.2, -r * 1.1))
 		for _, x in { -1, 1 } do
 			add(solid("Wing", Enum.PartType.Block, Vector3.new(r * 1.3, r * 0.08, r * 0.7), Color3.fromRGB(24, 24, 30)), CFrame.new(x * r * 0.9, r * 0.1, 0), x)

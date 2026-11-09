@@ -1095,13 +1095,24 @@ end
 -- The personal reward. Shown under "BOSS DEFEATED!" when that card is (about to be) up; returns false otherwise
 -- so Fx shows its usual banner.
 function BossFx.reward(d): boolean
-	if os.clock() - death.at > 2.5 then
+	-- (10 Nov, owner: "more climatic and pretty") the finisher film holds the defeated card back for several
+	-- seconds, so the reward came after the 2.5 s window and got its own banner on top of the card. Now it waits for
+	-- the card (up to 20 s after the kill), and only a card that has already come and gone means a banner.
+	if os.clock() - death.at > 20 then
 		return false
 	end
-	death.reward = d
-	if death.card and death.card.root.Parent then
-		rewardLine(death.card, d)
+	if death.card then
+		if death.card.root.Parent then
+			rewardLine(death.card, d)
+		else
+			-- (owner, 10 Nov: "er is 2x defeated haal de groene text erboven weg") the card has been and gone: no
+			-- second "DEFEATED!" banner, the coins and gems just fly to the counters
+			Sound.play("purchase")
+			State.emit("flyCoins", 10)
+		end
+		return true
 	end
+	death.reward = d
 	return true
 end
 

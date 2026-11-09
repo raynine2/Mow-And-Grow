@@ -30,6 +30,7 @@ local BossView = require(script.Parent.BossView)
 local PackFx = require(script.Parent.PackFx) -- (4 Nov) the SoulShroud pack: each boss's signature attacks
 local Sound = require(script.Parent.Sound)
 local BossImpact = require(script.Parent.BossImpact) -- (10 Nov) the weight under every hit: core, rings, blocks, rage
+local BossMoveFx = require(script.Parent.BossMoveFx) -- (10 Nov) each attack's own touch on top
 local SoundConfig = require(Shared:WaitForChild("Config")) -- (29 Oct) boss move cues
 
 local VFXLib = ReplicatedStorage:WaitForChild("VFXLib", 10)
@@ -1272,6 +1273,8 @@ function BossVfx.impact(z: number, s: any, kind: string, floorColor: Color3?)
 		live.floor = floorColor -- (for the rage burst)
 	end
 	local fl = floorColor or Color3.fromRGB(110, 170, 80)
+	-- (10 Nov, owner: "verdiep je meer met elke attack") what this attack is: client/BossMoveFx
+	BossMoveFx.play(kind, s, ring, fl)
 	if s.type == "circle" then
 		burst(s.pos, s.r)
 		dust(s.pos, s.r, def.dust, 6)

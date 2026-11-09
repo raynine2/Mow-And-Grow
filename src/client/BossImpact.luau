@@ -305,4 +305,17 @@ function BossImpact.rage(feet: Vector3, size: number, warn: Color3, floor: Color
 	end
 end
 
+-- (10 Nov) the pieces, for client/BossMoveFx (each attack's own touch)
+BossImpact.kit = {
+	part = part,
+	tween = tween,
+	slow = slow,
+	core = core,
+	floorRing = floorRing,
+	scorch = scorch,
+	kick = kick,
+	RING_THIN = RING_THIN,
+	RING_SHOCK = RING_SHOCK,
+}
+
 return BossImpact

@@ -43,9 +43,16 @@ local function block(m: Model, name: string, size: Vector3, at: Vector3, col: Co
 	p.CanTouch = false
 	p.CastShadow = false
 	p.Massless = true
-	p.Material = if glow then Enum.Material.Neon else Enum.Material.SmoothPlastic
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
+	-- (9 Nov, owner: "the ones u pick up and go on ur back" more stud like) studded plastic like the stud look
+	-- (server/StudLook), the glowing tips stay neon
+	p.Material = if glow then Enum.Material.Neon else Enum.Material.Plastic
+	local s = if glow then Enum.SurfaceType.Smooth else Enum.SurfaceType.Studs
+	p.TopSurface = s
+	p.FrontSurface = s
+	p.BackSurface = s
+	p.LeftSurface = s
+	p.RightSurface = s
+	p.BottomSurface = if glow then Enum.SurfaceType.Smooth else Enum.SurfaceType.Inlet
 	p.Size = size
 	p.CFrame = CFrame.new(at)
 	p.Color = col

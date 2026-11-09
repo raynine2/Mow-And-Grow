@@ -316,7 +316,8 @@ local function offerSetup(pad: Pad, p: Player, data)
 	Net.send(p, "Fx", "partySetup", {
 		pad = pad.index,
 		wins = data.stats and data.stats.runs or 0,
-		max = Config.PARTY_MAX,
+		max = if pad.kind == "solo" then 1 else Config.PARTY_MAX,
+		solo = pad.kind == "solo", -- (9 Nov, owner: "when going in solo u dont have the menu and just a timer") the same window, size fixed at 1
 		run = savedRun(data),
 		now = os.time(),
 	})
@@ -337,7 +338,7 @@ local function arrive(pad: Pad, p: Player)
 	if not data or inOtherParty(pad, p) then
 		return
 	end
-	if pad.kind == "party" and not pad.host then
+	if (pad.kind == "party" or pad.kind == "solo") and not pad.host then
 		if pad.pending == nil and not pad.declined[p] then
 			offerSetup(pad, p, data)
 		elseif pad.pending and pad.pending ~= p then
@@ -503,7 +504,7 @@ local function onPartyAction(player: Player, action: any, padIndex: any, size: a
 	local data = PlayerData.get(player)
 	local wins = data and data.stats and data.stats.runs or 0
 	local diff = if type(difficulty) == "string" and DIFFICULTY_WINS[difficulty] and wins >= DIFFICULTY_WINS[difficulty] then difficulty else "Normal"
-	pad.limit = math.clamp(math.floor(tonumber(size) or Config.PARTY_MAX), 1, Config.PARTY_MAX)
+	pad.limit = if pad.kind == "solo" then 1 else math.clamp(math.floor(tonumber(size) or Config.PARTY_MAX), 1, Config.PARTY_MAX)
 	pad.difficulty = diff
 	pad.peaceful = false -- (7 Nov, owner: "delete peacefull mode") no peaceful runs any more
 	pad.host = player

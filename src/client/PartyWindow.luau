@@ -409,6 +409,7 @@ end
 -- (7 Nov, owner: "delete peacefull mode also") the PEACEFUL MODE row is gone; every run has its nights
 local function partyRow(page: Frame)
 	local card = box(page, UDim2.new(1, -28, 0, 62), UDim2.fromOffset(14, 392)) -- (7 Nov: centred in the space the PEACEFUL row left)
+	refs.partyRow = card
 	text(card, "PARTY", UDim2.fromOffset(80, 28), UDim2.fromOffset(14, 17), WHITE, 2, Enum.TextXAlignment.Left)
 	refs.people = text(card, "", UDim2.fromOffset(110, 30), UDim2.fromOffset(100, 16), Color3.fromRGB(255, 220, 160), 0)
 	button(card, "-", UDim2.fromOffset(42, 42), UDim2.new(1, -164, 0, 6), if GALAXY then LILAC else Color3.fromRGB(230, 200, 150), function()
@@ -855,6 +856,10 @@ buildRight()
 function PartyWindow.open(d: { [string]: any })
 	choice.pad = d.pad
 	choice.size = math.clamp(tonumber(d.max) or Config.PARTY_MAX, 1, Config.PARTY_MAX)
+	-- (9 Nov) from the SOLO pad: the same window without the party size (it's 1)
+	if refs.partyRow then
+		refs.partyRow.Visible = d.solo ~= true
+	end
 	choice.difficulty = "Normal"
 	refs.wins = tonumber(d.wins) or 0
 	fillRuns(d.run, tonumber(d.now) or os.time())

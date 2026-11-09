@@ -796,7 +796,8 @@ function IntroCast.overgrow(at: Vector3, radius: number, height: number, count: 
 	if grass then
 		for _, d in grass:GetDescendants() do
 			-- (a standing clump's mesh, not a cut patch's stubble)
-			if d:IsA("MeshPart") and d.Transparency < 1 and d.Size.Y > 0.5 and d.Parent and d.Parent.Name == "Clump" then
+			-- (9 Nov: a studded clump's mesh is hidden but still the right shape: prop() below shows the copy)
+			if d:IsA("MeshPart") and (d.Transparency < 1 or d.Parent and d.Parent:GetAttribute("Studded")) and d.Size.Y > 0.5 and d.Parent and d.Parent.Name == "Clump" then
 				template = d
 				break
 			end
@@ -824,6 +825,7 @@ function IntroCast.overgrow(at: Vector3, radius: number, height: number, count: 
 		local r = r0 + (radius - r0) * math.sqrt(math.random())
 		local spot = IntroCast.ground(at + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r))
 		local c = prop(template)
+		c.Transparency = 0
 		local size = full * (0.8 + math.random() * 0.4)
 		local cf = CFrame.new(spot) * CFrame.Angles(0, math.random() * math.pi * 2, 0) * CFrame.new(0, size.Y / 2, 0)
 		c.Size = Vector3.new(size.X * 0.3, 0.05, size.Z * 0.3)

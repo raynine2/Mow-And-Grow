@@ -582,6 +582,9 @@ Config.BOSS_INTRO_CARD = false
 -- too (owner, 14:37: "also change the main hub with the things"). (14:59, owner: "doe dit voor elke area nu") every
 -- area, and village = true the Spawn Village too
 Config.STUD_LOOK = { areas = { 1, 2, 3, 4, 5, 6, 7, 8 }, trees = false, lobby = true, village = true }
+-- (9 Nov, owner: "make the grass thing also more stud like like u did") the grass clumps in chunky studded blocks
+-- (server/Field, shared/StudClumpShapes from tools/stud_clumps.py); false = the smooth voxel meshes again
+Config.STUD_CLUMPS = true
 -- (7 Nov, owner: "Probeer de forgegui dingen in stud style" ... "Top, zet hem erin en doe de rest") ForgeGUI models
 -- rebuilt in studded bricks, each on its own switch: windmill = the lobby's windmill (server/StudWindmill, built by
 -- server/Lobby over the mesh, which it hides with the filler Core inside it). false: the ForgeGUI mesh again.

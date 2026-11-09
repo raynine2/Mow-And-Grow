@@ -229,6 +229,45 @@ local function stubble(p: Patch)
 	end
 end
 
+-- (9 Nov, owner: "make the grass thing also more stud like like u did") a voxel clump in chunky studded blocks
+-- (shared/StudClumpShapes, made by tools/stud_clumps.py from the same voxels as the mesh, 3 x 3 x 3 voxels a block),
+-- laid over the mesh's own box; the mesh stays (hidden) for everything that looks for it. Config.STUD_CLUMPS.
+local studShapes: any = nil
+local function studClump(holder: Model, mesh: BasePart)
+	if studShapes == nil then
+		local ok, s = pcall(require, ReplicatedStorage.MowALawn:FindFirstChild("StudClumpShapes") :: any)
+		studShapes = if ok then s else false
+	end
+	local shape = studShapes and studShapes[mesh.Name]
+	if not shape then
+		return
+	end
+	local lo, hi = shape.lo, shape.hi
+	local sx, sy, sz = mesh.Size.X / (hi[1] - lo[1]), mesh.Size.Y / (hi[2] - lo[2]), mesh.Size.Z / (hi[3] - lo[3])
+	local cx, cy, cz = (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2, (lo[3] + hi[3]) / 2
+	for _, b in shape.boxes do
+		local p = Instance.new("Part")
+		p.Name = "StudBlade"
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Material = Enum.Material.Plastic
+		p.TopSurface = Enum.SurfaceType.Studs
+		p.FrontSurface = Enum.SurfaceType.Studs
+		p.BackSurface = Enum.SurfaceType.Studs
+		p.LeftSurface = Enum.SurfaceType.Studs
+		p.RightSurface = Enum.SurfaceType.Studs
+		p.BottomSurface = Enum.SurfaceType.Inlet
+		p.Color = shape.pal[b[7]]
+		p.Size = Vector3.new((b[4] - b[1]) * sx, (b[5] - b[2]) * sy, (b[6] - b[3]) * sz)
+		p.CFrame = mesh.CFrame * CFrame.new(((b[1] + b[4]) / 2 - cx) * sx, ((b[2] + b[5]) / 2 - cy) * sy, ((b[3] + b[6]) / 2 - cz) * sz)
+		p.Parent = holder
+	end
+	mesh.Transparency = 1
+	holder:SetAttribute("Studded", true) -- (client/ClumpCarve leaves these to the overlay cut: its pieces are the mesh's)
+end
+
 local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: number, alreadyCut: boolean, at: CFrame, size: number): Patch
 	local def = Config.ZONES[z]
 	local style = STYLES[def.style] or STYLES.lawn
@@ -285,6 +324,9 @@ local function spawnPatch(zoneFolder: Instance, z: number, col: number, row: num
 			p.model = holder
 			p.voxel = true
 			p.height = mesh.Size.Y
+			if Config.STUD_CLUMPS then
+				studClump(holder, mesh)
+			end
 			-- you chop it at its stalk, like a tree trunk (tools/blender/voxel stalk_clump: a 3 x 3 voxel stalk,
 			-- 6 voxels tall, at 0.4 studs a voxel). A collider keeps you at the stalk; the reach is measured from
 			-- its surface, so you have to walk right up to it.

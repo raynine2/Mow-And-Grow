@@ -821,6 +821,9 @@ function ClumpCarve.hit(d): boolean
 	if falling[m] then
 		return true -- (30 Oct) it's going over: a blow that lands late doesn't start a new stalk on it
 	end
+	if m:GetAttribute("Studded") then
+		return false -- (9 Nov) a studded clump (server/Field studClump): its mesh is hidden, so the overlay cut (ClumpWound)
+	end
 	local cv = carves[m]
 	if cv and (cv.src.Parent ~= m or not cv.base.Parent or not cv.top.Parent) then
 		-- (30 Oct) its mesh was swapped under it (streamed out and back in) or a piece went: put it back and start

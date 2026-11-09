@@ -306,17 +306,17 @@ end
 -------------------------------------------------------------------------------------------------------------
 State.on("fx", function(kind: string, d: any)
 	if kind == "goldenHour" then
-		UI.notice("GOLDEN HOUR!", ("%dx mutation luck for %d seconds: cut all you can!"):format(d.luck or 3, d.length or 45), "star")
+		UI.notice("GOLDEN HOUR!", ("%dx mutation luck · %ds"):format(d.luck or 3, d.length or 45), "star") -- (9 Nov: shorter)
 		Sound.play("rareChime", 0.02, 1)
 	elseif kind == "elderUp" then
-		UI.notice("AN ELDER CLUMP GROWS!", ("Somewhere in the %s: follow the gold beam and chop it down together"):format(d.name or "new area"), "star")
+		UI.notice("ELDER CLUMP!", ("Follow the gold beam in the %s"):format(d.name or "new area"), "star")
 		Sound.play("reveal", 0.03, 0.8)
 	elseif kind == "elderDown" then
 		local who = if d.mine then "You felled it!" else ("%s felled it!"):format(d.by or "Someone")
 		UI.notice("ELDER CLUMP DOWN!", ("%s +%s coins, +%d gems"):format(who, Format.short(d.coins or 0), d.gems or 0), "coin")
 		Sound.play("victory", 0, 0.8)
 	elseif kind == "challenge" and d.won then
-		UI.notice("SPEED CHALLENGE BEATEN!", ("You cleared it in time: +%d gems"):format(d.gems or 0), "star")
+		UI.notice("CHALLENGE BEATEN!", ("+%d gems"):format(d.gems or 0), "star")
 		Sound.play("rareChime", 0.02, 1)
 	end
 end)

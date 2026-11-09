@@ -157,6 +157,9 @@ local shownLift = 7
 RunService.RenderStepped:Connect(function(dt)
 	outline.Enabled = target ~= nil
 	if not target then
+		if shown == nil then
+			return -- (9 Nov: already hidden, nothing to do this frame)
+		end
 		shown = nil
 		for _, p in arrow:GetChildren() do
 			if p:IsA("BasePart") then
@@ -174,7 +177,7 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	local at = shown :: Vector3
 	local t = os.clock()
-	local bob = math.abs(math.sin(t * 3.2)) * 1.6
+	local bob = (math.sin(t * 1.8) + 1) * 0.35 -- (9 Nov, owner: calmer; it bounced 1.6 studs three times a second)
 	-- turned to face the camera instead of spinning (side-on, the spinning arrow read as a flat yellow bar)
 	local cam = workspace.CurrentCamera
 	local look = if cam then (cam.CFrame.Position - at) * Vector3.new(1, 0, 1) else Vector3.zero
@@ -191,10 +194,10 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 		local part = p :: BasePart
 		if part == ring then
-			local s = 7 + math.sin(t * 4) * 1
+			local s = 7 + math.sin(t * 1.5) * 0.25
 			part.Size = Vector3.new(0.2, s, s)
 			part.CFrame = CFrame.new(at + Vector3.new(0, 0.45, 0)) * CFrame.Angles(0, 0, math.rad(90))
-			part.Transparency = 1 - 0.45 * fade
+			part.Transparency = 1 - 0.3 * fade
 		else
 			part.CFrame = base * CFrame.new(part:GetAttribute("Offset") :: Vector3)
 			part.Transparency = 1 - fade

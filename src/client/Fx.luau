@@ -151,20 +151,20 @@ function Fx.banner(text: string, color: Color3, time: number, sub: string?)
 	local holder = Instance.new("Frame")
 	holder.Name = "Banner"
 	holder.BackgroundTransparency = 1
-	holder.Size = UDim2.fromOffset(900, 150)
-	holder.Position = UDim2.fromScale(0.5, 0.27)
+	holder.Size = UDim2.fromOffset(640, 104) -- (9 Nov, owner: calmer; it was 900 x 150 with a 92-high title)
+	holder.Position = UDim2.fromScale(0.5, 0.22)
 	holder.AnchorPoint = Vector2.new(0.5, 0.5)
 	holder.ZIndex = 40
 	holder.Parent = UI.gui
 	currentBanner = holder
-	local t = UI.text(holder, text, UDim2.new(1, 0, 0, 92), { color = Color3.new(1, 1, 1), stroke = 5 })
+	local t = UI.text(holder, text, UDim2.new(1, 0, 0, 60), { color = Color3.new(1, 1, 1), stroke = 4 })
 	t.ZIndex = 40
 	local g = Instance.new("UIGradient")
 	g.Color = ColorSequence.new(UI.shade(color, 1.35), UI.shade(color, 0.9))
 	g.Rotation = 90
 	g.Parent = t
 	if sub then
-		local s = UI.text(holder, sub, UDim2.new(1, 0, 0, 40), { pos = UDim2.fromOffset(0, 98), stroke = 3 })
+		local s = UI.text(holder, sub, UDim2.new(1, 0, 0, 30), { pos = UDim2.fromOffset(0, 64), stroke = 2.5 })
 		s.ZIndex = 40
 	end
 	UI.bounce(holder)
@@ -327,11 +327,10 @@ handlers.cut = function(d)
 		Sound.play("fellLand", 0.08)
 		Sound.play("burst", 0.1);
 		(Fx :: any).hideHp()
+		-- (9 Nov, owner: "the game needs to be very very clean ... no clutter": the weapon's word per clump is gone,
+		-- only a mutation still names itself)
 		if m.color and (d.mut or "None") ~= "None" then
 			Fx.popWord(d.pos, (m.id or d.mut):upper() .. "!", m.color)
-		elseif not d.timber then
-			local word, wordColor = WeaponFx.word(heldToolId()) -- (owner, 28 Oct: a word per weapon)
-			Fx.popWord(d.pos, word, wordColor) -- (a felled clump already got its word)
 		end
 		State.emit("bundleGained", d.pos, d.mut)
 		local now = os.clock()
@@ -381,8 +380,8 @@ handlers.fell = function(d)
 		local h = (m and m:IsA("Model") and m:GetAttribute("Height") :: number?) or d.height or 6
 		-- (owner, 28 Oct: "MOWED!" instead of TIMBER!, then "it should be different per weapon": PUNCHED!, SNIPPED!,
 		-- SLICED!, REAPED!, MOWED!, WHACKED!, ZAPPED!, in the tool's colour: client/WeaponFx.word)
-		local word, wordColor = WeaponFx.word(heldToolId())
-		Fx.popWord((d.pos :: Vector3) + Vector3.new(0, math.min(h * 0.55, 8), 0), word, wordColor)
+		-- (9 Nov, owner: clean, no clutter: no word any more)
+		local _ = h
 	end
 	if not (m and m.Parent and m:IsA("Model")) then
 		task.delay(T, impact)

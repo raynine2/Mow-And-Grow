@@ -1103,6 +1103,9 @@ Config.AURAS_V2 = true
 -- SoulShroud pack's effects (client/PackFx, client/PackAmbience: hits, the bosses' attacks, the lobby / areas, the
 -- films), played on top of the old ones. false = exactly the old look. (No auras: "my friend is doing that".)
 Config.SOULSHROUD_VFX = true
+-- (9 Nov, owner: "the game needs to be very very clean", picked the dust / leaves / fog layer to go) client/PackAmbience
+-- off; true = back on. The pack's hit and boss effects stay.
+Config.PACK_AMBIENCE = false
 
 Config.CLASS_VFX = {
 	WeedPuller = { main = Color3.fromRGB(150, 98, 52), second = Color3.fromRGB(255, 214, 60), glow = Color3.fromRGB(255, 240, 190), dark = Color3.fromRGB(60, 38, 20), corner = "rbxassetid://120045138286252" },

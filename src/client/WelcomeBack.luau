@@ -131,7 +131,19 @@ State.on("fx", function(kind, d)
 				end
 				task.wait(0.5)
 			end
-			showPopup(d)
+			-- (9 Nov, owner: "maak dit rustiger") a calm card over the hotbar for a few seconds, nothing to click
+			-- away (the lobby's CONTINUE RUN card below already takes you to the run); showPopup stays for later
+			local _ = showPopup
+			local parts = {}
+			if (d.coins or 0) > 0 then
+				table.insert(parts, "+" .. Format.short(d.coins) .. " coins")
+			end
+			if (d.gems or 0) > 0 then
+				table.insert(parts, "+" .. Format.commas(d.gems) .. " gems")
+			end
+			if #parts > 0 then
+				UI.notice("WELCOME BACK!", table.concat(parts, "  ·  ") .. " while you were away", "coin", 5)
+			end
 		end)
 	end
 end)

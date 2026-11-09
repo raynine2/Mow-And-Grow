@@ -53,7 +53,7 @@ end
 
 -- `amount`: roughly how many bits (default 120). Two cannons fire from the bottom corners.
 function Confetti.burst(amount: number?)
-	local n = amount or 120
+	local n = math.ceil((amount or 120) * 0.5) -- (9 Nov, owner: "less clutter", then "overal de helft")
 	local size = layer.AbsoluteSize
 	for i = 1, n do
 		local left = i % 2 == 0

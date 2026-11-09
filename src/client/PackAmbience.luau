@@ -38,7 +38,7 @@ local current = ""
 local loops: { { h: PackFx.Loop, ahead: number } } = {}
 
 local function where(): string
-	if workspace:GetAttribute("FilmPlaying") or Potato.on or not PackFx.on() then
+	if workspace:GetAttribute("FilmPlaying") or Potato.on or not PackFx.on() or (Config :: any).PACK_AMBIENCE == false then
 		return ""
 	end
 	if not State.isRun() then

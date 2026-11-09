@@ -95,8 +95,9 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	local t = os.clock()
 	local dir = Vector3.new(-math.sin(yaw), 0, -math.cos(yaw))
-	local nudge = math.abs(math.sin(t * 4)) * 0.8 -- a little forward push, like it's tugging you along
-	local pos = root.Position + dir * (RADIUS + nudge) + Vector3.new(0, HEIGHT + math.sin(t * 3) * 0.2, 0)
+	-- (9 Nov, owner: calmer) a slow, small tug (it pushed 0.8 studs four times a second)
+	local nudge = (math.sin(t * 1.8) + 1) * 0.15
+	local pos = root.Position + dir * (RADIUS + nudge) + Vector3.new(0, HEIGHT, 0)
 	local base = CFrame.new(pos) * CFrame.Angles(0, yaw, 0)
 	for _, p in arrow:GetChildren() do
 		if p:IsA("BasePart") then

@@ -1500,11 +1500,13 @@ end
 
 local currentNotice: Frame? = nil
 -- Dark rounded notice at the bottom centre with an icon, an orange title and a white line under it.
-function UI.notice(title: string, sub: string?, icon: string?)
+-- (9 Nov, owner: "maak dit rustiger") smaller (it was 520 wide, 92 high), fades in instead of bouncing; `life` in
+-- seconds (default 2.6)
+function UI.notice(title: string, sub: string?, icon: string?, life: number?)
 	if currentNotice then
 		currentNotice:Destroy()
 	end
-	local f = UI.frame({ size = UDim2.fromOffset(520, if sub then 92 else 60), pos = UDim2.new(0.5, 0, 1, -180), anchor = Vector2.new(0.5, 1), color = Color3.fromRGB(58, 38, 24), parent = gui, radius = 14, outline = 3, name = "Notice" })
+	local f = UI.frame({ size = UDim2.fromOffset(440, if sub then 76 else 50), pos = UDim2.new(0.5, 0, 1, -180), anchor = Vector2.new(0.5, 1), color = Color3.fromRGB(58, 38, 24), parent = gui, radius = 14, outline = 3, name = "Notice" })
 	f.BackgroundTransparency = 0.06
 	;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = Color3.fromRGB(150, 100, 56)
 	f.ZIndex = 45
@@ -1513,7 +1515,7 @@ function UI.notice(title: string, sub: string?, icon: string?)
 		-- the sunken wood box, dark
 		f.BackgroundTransparency = 1
 		;(f:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
-		local art = S.frame(f, "ui_inset", Vector2.new(520, if sub then 92 else 60), { name = "Art", maxScale = 0.15 })
+		local art = S.frame(f, "ui_inset", Vector2.new(440, if sub then 76 else 50), { name = "Art", maxScale = 0.15 })
 		art.Size = UDim2.fromScale(1, 1)
 		art.ZIndex = 45
 		;(art :: ImageLabel).ImageColor3 = Color3.fromRGB(150, 130, 120)
@@ -1521,17 +1523,28 @@ function UI.notice(title: string, sub: string?, icon: string?)
 	currentNotice = f
 	local x = 16
 	if icon then
-		UI.icon(f, icon, 34, UDim2.fromOffset(14, if sub then 8 else 10)).ZIndex = 46
-		x = 56
+		UI.icon(f, icon, 28, UDim2.fromOffset(12, if sub then 7 else 11)).ZIndex = 46
+		x = 46
 	end
-	local t = UI.text(f, UI.words(title), UDim2.new(1, -x - 14, 0, 40), { pos = UDim2.fromOffset(x, 6), align = Enum.TextXAlignment.Center, color = Color3.fromRGB(255, 186, 60), stroke = 2.5 })
+	local t = UI.text(f, UI.words(title), UDim2.new(1, -x - 12, 0, 32), { pos = UDim2.fromOffset(x, 5), align = Enum.TextXAlignment.Center, color = Color3.fromRGB(255, 186, 60), stroke = 2 })
 	t.ZIndex = 46
 	if sub then
-		local s = UI.text(f, UI.words(sub), UDim2.new(1, -28, 0, 30), { pos = UDim2.fromOffset(14, 52), color = WOOD.cream, stroke = 2 })
+		local s = UI.text(f, UI.words(sub), UDim2.new(1, -24, 0, 24), { pos = UDim2.fromOffset(12, 42), color = WOOD.cream, stroke = 1.5 })
 		s.ZIndex = 46
 	end
-	bounce(f)
-	fadeOut(f, 2.6)
+	-- a soft fade in (it bounced in)
+	for _, d in f:GetDescendants() do
+		if d:IsA("TextLabel") then
+			local to = d.TextTransparency
+			d.TextTransparency = 1
+			TweenService:Create(d, TweenInfo.new(0.25), { TextTransparency = to }):Play()
+		elseif d:IsA("ImageLabel") then
+			local to = d.ImageTransparency
+			d.ImageTransparency = 1
+			TweenService:Create(d, TweenInfo.new(0.25), { ImageTransparency = to }):Play()
+		end
+	end
+	fadeOut(f, life or 2.6)
 end
 
 -- The bottom-centre pop-ups (the first-run coach card, the combo counter, the dark notice) all want the spot

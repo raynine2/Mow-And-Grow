@@ -269,7 +269,7 @@ local rollNow = 0
 -- and Potato Mode turn them down.
 local KICK = Config.CAMERA_KICK
 local function shakeScale(): number
-	local k = 1
+	local k = 0.5 -- (9 Nov, owner: every shake softer, "overal zachter")
 	if player:GetAttribute("CalmCamera") == true then
 		k *= KICK.reduced
 	end

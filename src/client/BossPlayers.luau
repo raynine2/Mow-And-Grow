@@ -60,6 +60,8 @@ local function make(p: Player): Entry?
 	st.Color = C(10, 8, 14)
 	st.Parent = track
 	track.Parent = gui
+	-- (10 Nov) your own HP is the bar at the bottom of your screen (client/BossCine); over your head it's for the others
+	track.Visible = p ~= Players.LocalPlayer
 	local chunk = Instance.new("Frame")
 	chunk.Size = UDim2.fromScale(1, 1)
 	chunk.BackgroundColor3 = C(255, 255, 255)

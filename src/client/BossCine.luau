@@ -120,10 +120,13 @@ hpRoot.Size = UDim2.fromOffset(300, 34)
 hpRoot.BackgroundTransparency = 1
 hpRoot.Visible = false
 hpRoot.Parent = gui
-local hpTrack = UI.frame({ size = UDim2.fromScale(1, 1), color = Color3.fromRGB(28, 22, 36), parent = hpRoot, radius = 10, outline = 3 })
-local hpFill = UI.frame({ size = UDim2.new(1, -6, 1, -6), pos = UDim2.fromOffset(3, 3), color = Color3.fromRGB(90, 220, 90), parent = hpTrack, radius = 8, outline = 0 })
-local hpLabel = UI.text(hpTrack, "", UDim2.new(1, -12, 1, -6), { pos = UDim2.fromOffset(6, 3), stroke = 2.5 })
-hpLabel.ZIndex = 3
+-- (10 Nov, owner: "make my own health bar when fighting bosses, use the current ui, no screen clutter, a simple
+-- one") the HUD's own bar (client/Skin: the area card's cleared bar), bottom middle over the hotbar, in fights only
+hpRoot.Size = UDim2.fromOffset(320, 40)
+local Skin = require(script.Parent.Skin)
+local _, hpFill, hpLabel = Skin.bar(hpRoot, Vector2.new(320, 40), Color3.fromRGB(90, 220, 90), { name = "Bar" })
+local HP_GREEN, HP_YELLOW, HP_RED = Color3.fromRGB(90, 220, 90), Color3.fromRGB(255, 190, 60), Color3.fromRGB(240, 60, 60)
+local hpColor = HP_GREEN
 
 local downRoot = Instance.new("Frame")
 downRoot.Name = "Downed"
@@ -145,11 +148,21 @@ local function updateMyHp()
 		downRoot.Visible = false
 		return
 	end
-	hpRoot.Visible = false -- round 2: the bar is over your head (client/BossPlayers)
+	-- (10 Nov) yours on the screen again (the one over your head is for your teammates: client/BossPlayers), not in
+	-- a cutscene and not while you're knocked out
+	hpRoot.Visible = not BossFx.cinematic and type(player:GetAttribute("Downed")) ~= "number"
 	local k = math.clamp(hp / math.max(1, max), 0, 1)
-	tween(hpFill, 0.15, { Size = UDim2.new(k, -6 * k, 1, -6) })
-	hpFill.BackgroundColor3 = if k > 0.5 then Color3.fromRGB(90, 220, 90) elseif k > 0.25 then Color3.fromRGB(255, 190, 60) else Color3.fromRGB(240, 60, 60)
-	hpLabel.Text = ("HP  %d / %d"):format(hp, max)
+	tween(hpFill, 0.15, { Size = UDim2.fromScale(k, 1) })
+	local col = if k > 0.5 then HP_GREEN elseif k > 0.25 then HP_YELLOW else HP_RED
+	if col ~= hpColor then
+		hpColor = col
+		hpFill.BackgroundColor3 = col
+		local g = hpFill:FindFirstChildOfClass("UIGradient")
+		if g then
+			g.Color = ColorSequence.new(UI.shade(col, 1.15), UI.shade(col, 0.85))
+		end
+	end
+	hpLabel.Text = ("HP  %d / %d"):format(math.ceil(hp), max)
 	local downed = player:GetAttribute("Downed")
 	if type(downed) == "number" then
 		downRoot.Visible = true

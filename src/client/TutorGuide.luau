@@ -13,6 +13,10 @@
 -- home (the card doesn't come back: the arrow keeps pointing). If the avatars can't be built, the old card shows.
 -- (A module required by Client.client, so it shares client/Coach with the game: as a LocalScript of its own it got
 -- a second Coach, with a second card, arrow and trail.)
+-- v2 (owner: "maak het veel mooier", after a look at how other games do it): bubbles that fit their line and pop
+-- in and out, key words in gold, a soft talking blip in each guide's own pitch (Animal Crossing), an emote by the
+-- head ("!" new step, "?" stuck, hearts and stars), hints that get shorter while you're stuck, a hop and sparkles
+-- in their colour when they cheer, a thin outline in their colour, and a skip pill with both their faces.
 local TutorGuide = {}
 task.spawn(function()
 	local Players = game:GetService("Players")
@@ -65,8 +69,11 @@ task.spawn(function()
 		yaw: number,
 		bubble: BillboardGui,
 		text: TextLabel,
+		emote: BillboardGui,
 		sayUntil: number,
 		busyUntil: number,
+		hopAt: number,
+		voice: number, -- the pitch of their talking blips
 	}
 
 	local folder = Instance.new("Folder")
@@ -75,86 +82,142 @@ task.spawn(function()
 	local lead: Guide? = nil
 	local side: Guide? = nil
 
+	-- (v2, owner: "maak het veel mooier") the bubble: sized to its line, pops in and out with a bounce, a soft
+	-- shadow, the guide's name tag in their colour, key words in gold; next to the head an emote pops for a moment
+	-- ("!" new step, "?" when you're stuck, a heart or a star when they cheer)
+	local FONT = (UI.colors and UI.colors.font) or Enum.Font.FredokaOne
+	local MAXW = if Device.touch then 230 else 290
+	local TEXT = if Device.touch then 17 else 20
+	local PAPER = Color3.fromRGB(255, 251, 240)
+	local function corner(p: Instance, r: number)
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0, r)
+		c.Parent = p
+	end
+	local function stroke(p: Instance, th: number, border: boolean?)
+		local s = Instance.new("UIStroke")
+		s.Color = INK
+		s.Thickness = th
+		if border then
+			s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		end
+		s.Parent = p
+	end
+
 	local function bubbleFor(def: any, head: BasePart): (BillboardGui, TextLabel)
 		local bb = Instance.new("BillboardGui")
 		bb.Name = "Speech"
 		bb.Adornee = head
-		bb.Size = UDim2.fromOffset(if Device.touch then 230 else 280, 96)
-		bb.StudsOffset = Vector3.new(0, 2.2, 0) -- (low enough to stay on screen from close by)
+		bb.Size = UDim2.fromOffset(MAXW + 30, 170)
+		bb.StudsOffset = Vector3.new(0, 2.4, 0) -- (low enough to stay on screen from close by)
 		bb.AlwaysOnTop = false -- (seen in Studio: an AlwaysOnTop bubble on these client-made avatars never drew)
-		bb.MaxDistance = 70
+		bb.MaxDistance = 80
 		bb.LightInfluence = 0
 		bb.ResetOnSpawn = false
+		bb.ZIndexBehavior = Enum.ZIndexBehavior.Global
 		bb.Enabled = false
 		local box = Instance.new("Frame")
 		box.Name = "Box"
 		box.AnchorPoint = Vector2.new(0.5, 1)
-		box.Position = UDim2.fromScale(0.5, 1)
-		box.Size = UDim2.new(1, 0, 0, 60)
-		box.AutomaticSize = Enum.AutomaticSize.Y
-		box.BackgroundColor3 = WHITE
+		box.Position = UDim2.new(0.5, 0, 1, -14)
+		box.Size = UDim2.fromOffset(200, 56)
+		box.BackgroundColor3 = PAPER
+		box.ZIndex = 3
 		box.Parent = bb
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 14)
-		corner.Parent = box
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = INK
-		stroke.Thickness = 3
-		stroke.Parent = box
-		local pad = Instance.new("UIPadding")
-		pad.PaddingTop = UDim.new(0, 16)
-		pad.PaddingBottom = UDim.new(0, 8)
-		pad.PaddingLeft = UDim.new(0, 12)
-		pad.PaddingRight = UDim.new(0, 12)
-		pad.Parent = box
+		corner(box, 16)
+		stroke(box, 3)
+		local pop = Instance.new("UIScale")
+		pop.Name = "Pop"
+		pop.Parent = box
+		-- a soft shadow under it
+		local shadow = Instance.new("Frame")
+		shadow.Name = "Shadow"
+		shadow.Position = UDim2.fromOffset(0, 6)
+		shadow.Size = UDim2.fromScale(1, 1)
+		shadow.BackgroundColor3 = INK
+		shadow.BackgroundTransparency = 0.7
+		shadow.ZIndex = 1
+		shadow.Parent = box
+		corner(shadow, 16)
+		-- the tail (behind the box, so only its point shows)
+		local tail = Instance.new("Frame")
+		tail.Name = "Tail"
+		tail.AnchorPoint = Vector2.new(0.5, 0.5)
+		tail.Position = UDim2.new(0.5, 0, 1, 1)
+		tail.Size = UDim2.fromOffset(16, 16)
+		tail.Rotation = 45
+		tail.BackgroundColor3 = PAPER
+		tail.BorderSizePixel = 0
+		tail.ZIndex = 2
+		tail.Parent = box
+		stroke(tail, 3)
+		-- the name tag on the top edge, in the guide's colour
 		local name = Instance.new("TextLabel")
 		name.Name = "Name"
 		name.AnchorPoint = Vector2.new(0, 0.5)
-		name.Position = UDim2.new(0, 0, 0, -16)
-		name.Size = UDim2.fromOffset(0, 22)
+		name.Position = UDim2.fromOffset(12, 0)
+		name.Size = UDim2.fromOffset(0, 24)
 		name.AutomaticSize = Enum.AutomaticSize.X
 		name.BackgroundColor3 = def.color or Color3.fromRGB(255, 196, 60)
-		name.Font = (UI.colors and UI.colors.font) or Enum.Font.FredokaOne
+		name.Font = FONT
 		name.Text = "  " .. tostring(def.label or def.key) .. "  "
 		name.TextColor3 = INK
 		name.TextSize = 16
+		name.ZIndex = 5
 		name.Parent = box
-		local nc = Instance.new("UICorner")
-		nc.CornerRadius = UDim.new(0, 8)
-		nc.Parent = name
-		local ns = Instance.new("UIStroke")
-		ns.Color = INK
-		ns.Thickness = 2
-		ns.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		ns.Parent = name
+		corner(name, 9)
+		stroke(name, 2, true)
+		local sheen = Instance.new("UIGradient")
+		sheen.Rotation = 90
+		sheen.Color = ColorSequence.new(WHITE, Color3.fromRGB(205, 205, 205))
+		sheen.Parent = name
 		local t = Instance.new("TextLabel")
 		t.Name = "Line"
 		t.BackgroundTransparency = 1
-		t.Size = UDim2.new(1, 0, 0, 0)
-		t.AutomaticSize = Enum.AutomaticSize.Y
-		t.Font = (UI.colors and UI.colors.font) or Enum.Font.FredokaOne
+		t.Position = UDim2.fromOffset(15, 16)
+		t.Size = UDim2.new(1, -30, 1, -24)
+		t.Font = FONT
+		t.RichText = true
 		t.TextColor3 = INK
-		t.TextSize = if Device.touch then 17 else 19
+		t.TextSize = TEXT
 		t.TextWrapped = true
 		t.TextXAlignment = Enum.TextXAlignment.Left
+		t.TextYAlignment = Enum.TextYAlignment.Top
 		t.Text = ""
+		t.ZIndex = 4
 		t.Parent = box
-		-- the little tail under the bubble
-		local tail = Instance.new("Frame")
-		tail.AnchorPoint = Vector2.new(0.5, 0.5)
-		tail.Position = UDim2.new(0.5, 0, 1, 8)
-		tail.Size = UDim2.fromOffset(14, 14)
-		tail.Rotation = 45
-		tail.BackgroundColor3 = WHITE
-		tail.BorderSizePixel = 0
-		tail.ZIndex = 0
-		tail.Parent = box
-		local ts = Instance.new("UIStroke")
-		ts.Color = INK
-		ts.Thickness = 3
-		ts.Parent = tail
 		bb.Parent = head
 		return bb, t
+	end
+
+	local EMOTE = { ["!"] = "!", ["?"] = "?", heart = "♥", star = "★" }
+	local function emoteFor(def: any, head: BasePart): BillboardGui
+		local bb = Instance.new("BillboardGui")
+		bb.Name = "Emote"
+		bb.Adornee = head
+		bb.Size = UDim2.fromOffset(60, 60)
+		bb.StudsOffset = Vector3.new(1.7, 0.9, 0)
+		bb.AlwaysOnTop = false
+		bb.MaxDistance = 80
+		bb.LightInfluence = 0
+		bb.Enabled = false
+		local dot = Instance.new("TextLabel")
+		dot.Name = "Dot"
+		dot.AnchorPoint = Vector2.new(0.5, 0.5)
+		dot.Position = UDim2.fromScale(0.5, 0.5)
+		dot.Size = UDim2.fromOffset(40, 40)
+		dot.BackgroundColor3 = def.color or Color3.fromRGB(255, 196, 60)
+		dot.Font = FONT
+		dot.TextColor3 = INK
+		dot.TextSize = 28
+		dot.Text = "!"
+		dot.Parent = bb
+		corner(dot, 20)
+		stroke(dot, 3, true)
+		local s = Instance.new("UIScale")
+		s.Parent = dot
+		bb.Parent = head
+		return bb
 	end
 
 	local function build(def: any, template: Model): Guide?
@@ -182,6 +245,14 @@ task.spawn(function()
 		local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator")
 		animator.Parent = hum
 		local bb, t = bubbleFor(def, head)
+		-- a thin outline in their colour: they read as "the guides", not as other players
+		local hl = Instance.new("Highlight")
+		hl.Name = "GuideOutline"
+		hl.FillTransparency = 1
+		hl.OutlineColor = (def.color or WHITE):Lerp(WHITE, 0.25)
+		hl.OutlineTransparency = 0.35
+		hl.DepthMode = Enum.HighlightDepthMode.Occluded
+		hl.Parent = m
 		local g: Guide = {
 			def = def,
 			model = m,
@@ -193,8 +264,11 @@ task.spawn(function()
 			yaw = 0,
 			bubble = bb,
 			text = t,
+			emote = emoteFor(def, head),
 			sayUntil = 0,
 			busyUntil = 0,
+			hopAt = -10,
+			voice = if def.lead then 1.45 else 1.85,
 		}
 		for k, id in ANIM do
 			local a = Instance.new("Animation")
@@ -265,37 +339,71 @@ task.spawn(function()
 	-------------------------------------------------------------------------------------------------------------
 	-- talking
 	-------------------------------------------------------------------------------------------------------------
+	local TextService = game:GetService("TextService")
 	local talkToken: { [Guide]: number } = {}
+	local function popOf(g: Guide): UIScale?
+		local box = g.bubble:FindFirstChild("Box")
+		return box and box:FindFirstChild("Pop") :: UIScale?
+	end
+
+	-- key words in gold: write them as {TAB} in a line
+	local function richOf(line: string): (string, string)
+		local plain = line:gsub("[{}]", "")
+		local rich = line:gsub("{(.-)}", '<font color="#D98A00">%1</font>')
+		return rich, plain
+	end
+
 	local function say(g: Guide?, line: string, hold: number?)
 		if not g then
 			return
 		end
 		talkToken[g] = (talkToken[g] or 0) + 1
 		local token = talkToken[g]
-		g.bubble.Enabled = true
-		g.text.Text = line
-		g.text.MaxVisibleGraphemes = 0
+		local rich, plain = richOf(line)
+		-- the box fits the line (one short line = a small bubble)
+		local ok, size = pcall(TextService.GetTextSize, TextService, plain, TEXT, FONT, Vector2.new(MAXW - 30, 400))
+		local w = if ok then math.clamp(size.X + 32, 130, MAXW) else MAXW
+		local h = if ok then size.Y + 28 else 70
 		local box = g.bubble:FindFirstChild("Box") :: Frame?
 		if box then
-			box.Size = UDim2.new(0.85, 0, 0, 60)
-			TweenService:Create(box, TweenInfo.new(0.18, Enum.EasingStyle.Back), { Size = UDim2.new(1, 0, 0, 60) }):Play()
+			box.Size = UDim2.fromOffset(w, h)
 		end
-		pcall(Sound.play, "click", 0.1, 0.6)
-		local life = (hold or 2.6) + #line * 0.045
+		local pop = popOf(g)
+		if pop then
+			pop.Scale = if g.bubble.Enabled then 0.88 else 0.35
+			TweenService:Create(pop, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		end
+		g.bubble.Enabled = true
+		g.text.Text = rich
+		g.text.MaxVisibleGraphemes = 0
+		local life = (hold or 2.6) + #plain * 0.045
 		g.sayUntil = os.clock() + life
 		task.spawn(function()
-			local n = utf8.len(line) or #line
-			for i = 1, n, 2 do
+			local n = utf8.len(plain) or #plain
+			local i = 0
+			while i < n do
 				if talkToken[g] ~= token then
 					return
 				end
-				g.text.MaxVisibleGraphemes = i + 1
-				task.wait(1 / 55)
+				i += 2
+				g.text.MaxVisibleGraphemes = i
+				-- (Animal Crossing's way) a soft blip every few letters in their own voice
+				if i % 4 == 0 and plain:sub(i, i) ~= " " then
+					pcall(Sound.playAt, "click", g.voice + (math.random() - 0.5) * 0.25, 0.32)
+				end
+				task.wait(1 / 48)
 			end
 			g.text.MaxVisibleGraphemes = -1
 			task.wait(life)
 			if talkToken[g] == token then
-				g.bubble.Enabled = false
+				local p = popOf(g)
+				if p then
+					TweenService:Create(p, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
+					task.wait(0.17)
+				end
+				if talkToken[g] == token then
+					g.bubble.Enabled = false
+				end
 			end
 		end)
 	end
@@ -304,29 +412,81 @@ task.spawn(function()
 		for _, g in guides do
 			talkToken[g] = (talkToken[g] or 0) + 1
 			g.bubble.Enabled = false
+			g.emote.Enabled = false
 		end
+	end
+
+	-- a little icon pops next to the head for a moment
+	local emoteToken: { [Guide]: number } = {}
+	local function emote(g: Guide?, kind: string)
+		if not g then
+			return
+		end
+		emoteToken[g] = (emoteToken[g] or 0) + 1
+		local token = emoteToken[g]
+		local dot = g.emote:FindFirstChild("Dot") :: TextLabel?
+		local s = dot and dot:FindFirstChildOfClass("UIScale")
+		if not dot or not s then
+			return
+		end
+		dot.Text = EMOTE[kind] or kind
+		dot.Rotation = -18
+		dot.Position = UDim2.fromScale(0.5, 0.5)
+		dot.BackgroundTransparency = 0
+		dot.TextTransparency = 0
+		local st0 = dot:FindFirstChildOfClass("UIStroke")
+		if st0 then
+			st0.Transparency = 0
+		end
+		s.Scale = 0.2
+		g.emote.Enabled = true
+		TweenService:Create(s, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		TweenService:Create(dot, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Rotation = 0 }):Play()
+		task.delay(1.4, function()
+			if emoteToken[g] ~= token then
+				return
+			end
+			local info = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			TweenService:Create(dot, info, { Position = UDim2.fromScale(0.5, 0.15), BackgroundTransparency = 1, TextTransparency = 1 }):Play()
+			local st = dot:FindFirstChildOfClass("UIStroke")
+			if st then
+				TweenService:Create(st, info, { Transparency = 1 }):Play()
+			end
+			task.wait(0.36)
+			if emoteToken[g] == token then
+				g.emote.Enabled = false
+			end
+		end)
 	end
 
 	local function click(): string
 		return if Device.touch then "Tap" else "Click"
 	end
 
-	-- what the lead says when a step starts, and what the other one adds (nil = nothing)
-	local function stepLines(id: string): (string?, string?)
-		if id == "mow" then
-			return "Yo! Walk into that glowing grass to mow it.", "Grass = coins. Easy money."
-		elseif id == "punch" then
-			return "Yo! " .. click() .. " that glowing clump to cut it.", "Grass = coins. Easy money."
-		elseif id == "collect" then
-			return "Nice! Now walk over your bundles to grab them.", nil
-		elseif id == "fill" then
-			return "Keep cutting till your bag is full.", nil
-		elseif id == "sell" then
-			return "Bag's full! Follow me to the shredder.", "Cha-ching time!"
-		elseif id == "upgrade" then
-			return if Device.touch then "Tap UPGRADES and buy Swing Speed. Trust me." else "Press TAB and buy Swing Speed. Trust me.", "You'll cut way faster."
+	-- what the lead says when a step starts (n = 0), and what the other one adds (nil = nothing); stuck on a step,
+	-- the reminders get shorter each time (n = 1, then 2+), like a good hint system does
+	local function stepLines(id: string, n: number?): (string?, string?)
+		local k = math.min(n or 0, 2)
+		local tab = if Device.touch then "{UPGRADES}" else "{TAB}"
+		local L: { [string]: { string } } = {
+			mow = { "Yo! Walk into that {glowing grass} to mow it.", "Just walk right through the {glowing grass}.", "Walk into the {grass}!" },
+			punch = { "Yo! " .. click() .. " that {glowing clump} to cut it.", "Go on, " .. click():lower() .. " the {glowing clump}.", click() .. " it!" },
+			collect = { "Nice! Walk over your {bundles} to grab them.", "Your {bundles} are on the ground. Grab 'em!", "Grab the {bundles}!" },
+			fill = { "Keep cutting till your {bag} is full.", "More grass! Fill that {bag} up.", "Keep mowing!" },
+			sell = { "Bag's full! Follow me to the {shredder}.", "This way! Step on {SELL}.", "Over here!" },
+			upgrade = { (if Device.touch then "Tap " else "Press ") .. tab .. " and buy {Swing Speed}. Trust me.", "Open " .. tab .. ", grab {Swing Speed}.", tab .. ", {Swing Speed}!" },
+		}
+		local B: { [string]: string } = {
+			mow = "Grass = {coins}. Easy money.",
+			punch = "Grass = {coins}. Easy money.",
+			sell = "Cha-ching time!",
+			upgrade = "You'll cut way faster.",
+		}
+		local list = L[id]
+		if not list then
+			return nil, nil
 		end
-		return nil, nil
+		return list[k + 1], if k == 0 then B[id] else nil
 	end
 
 	-------------------------------------------------------------------------------------------------------------
@@ -337,25 +497,58 @@ task.spawn(function()
 	skipBtn.Name = "SkipGuide"
 	skipBtn.AnchorPoint = Vector2.new(1, 1)
 	skipBtn.Position = UDim2.new(1, -16, 1, -150)
-	skipBtn.Size = UDim2.fromOffset(128, 34)
+	skipBtn.Size = UDim2.fromOffset(176, 42)
 	skipBtn.BackgroundColor3 = Color3.fromRGB(40, 34, 52)
-	skipBtn.BackgroundTransparency = 0.15
-	skipBtn.Font = (UI.colors and UI.colors.font) or Enum.Font.FredokaOne
-	skipBtn.Text = if Device.touch then "SKIP GUIDE  ✕" else "SKIP GUIDE [H]" -- (in first person the mouse is locked: H)
-	skipBtn.TextColor3 = WHITE
-	skipBtn.TextSize = 16
+	skipBtn.BackgroundTransparency = 0.1
+	skipBtn.Font = FONT
+	skipBtn.Text = ""
 	skipBtn.Visible = false
 	skipBtn.AutoButtonColor = true
 	do
-		local c = Instance.new("UICorner")
-		c.CornerRadius = UDim.new(0, 10)
-		c.Parent = skipBtn
+		-- (v2) a pill with both guides' faces: "these two are your guide; skip them"
+		corner(skipBtn, 21)
 		local s = Instance.new("UIStroke")
 		s.Color = WHITE
-		s.Transparency = 0.6
-		s.Thickness = 1.5
+		s.Transparency = 0.55
+		s.Thickness = 2
 		s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		s.Parent = skipBtn
+		for i, def in GUIDES do
+			if i > 2 then
+				break
+			end
+			local face = Instance.new("ImageLabel")
+			face.Name = "Face" .. i
+			face.AnchorPoint = Vector2.new(0, 0.5)
+			face.Position = UDim2.new(0, 5 + (i - 1) * 22, 0.5, 0)
+			face.Size = UDim2.fromOffset(32, 32)
+			face.BackgroundColor3 = def.color or WHITE
+			face.ZIndex = 3 - i
+			face.Parent = skipBtn
+			corner(face, 16)
+			local fs = Instance.new("UIStroke")
+			fs.Color = Color3.fromRGB(40, 34, 52)
+			fs.Thickness = 2
+			fs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			fs.Parent = face
+			task.spawn(function()
+				local ok, img = pcall(Players.GetUserThumbnailAsync, Players, def.userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+				if ok and img then
+					face.Image = img
+				end
+			end)
+		end
+		local label = Instance.new("TextLabel")
+		label.Name = "Label"
+		label.BackgroundTransparency = 1
+		label.Position = UDim2.fromOffset(62, 0)
+		label.Size = UDim2.new(1, -70, 1, 0)
+		label.Font = FONT
+		label.Text = if Device.touch then "SKIP GUIDE ✕" else "SKIP GUIDE [H]" -- (in first person the mouse is locked: H)
+		label.TextColor3 = WHITE
+		label.TextSize = 16
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = skipBtn
 	end
 	skipBtn.Parent = UI.gui
 
@@ -371,27 +564,56 @@ task.spawn(function()
 		return hit and hit.Position.Y
 	end
 
-	local function poof(at: Vector3)
+	-- (v2) a puff of smoke with sparkles in the guide's colour (arriving, leaving), or just the sparkles (cheering)
+	local function burst(at: Vector3, color: Color3, smoke: boolean)
 		local p = Instance.new("Part")
 		p.Anchored = true
 		p.CanCollide = false
 		p.CanQuery = false
+		p.CanTouch = false
 		p.Transparency = 1
-		p.Size = Vector3.new(4, 0.2, 4)
+		p.Size = Vector3.new(3, 0.2, 3)
 		p.CFrame = CFrame.new(at)
 		p.Parent = workspace
-		local e = Instance.new("ParticleEmitter")
-		e.Enabled = false
-		e.Texture = "rbxasset://textures/particles/smoke_main.dds"
-		e.Lifetime = NumberRange.new(0.4, 0.7)
-		e.Speed = NumberRange.new(4, 8)
-		e.SpreadAngle = Vector2.new(180, 180)
-		e.Size = NumberSequence.new(1.6, 3)
-		e.Transparency = NumberSequence.new(0.3, 1)
-		e.Color = ColorSequence.new(WHITE)
-		e.Parent = p
-		e:Emit(12)
-		Debris:AddItem(p, 1)
+		if smoke then
+			local e = Instance.new("ParticleEmitter")
+			e.Enabled = false
+			e.Texture = "rbxasset://textures/particles/smoke_main.dds"
+			e.Lifetime = NumberRange.new(0.45, 0.75)
+			e.Speed = NumberRange.new(5, 9)
+			e.SpreadAngle = Vector2.new(180, 15)
+			e.Acceleration = Vector3.new(0, 4, 0)
+			e.Drag = 5
+			e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.4), NumberSequenceKeypoint.new(1, 3.2) })
+			e.Transparency = NumberSequence.new(0.2, 1)
+			e.Color = ColorSequence.new(WHITE, color:Lerp(WHITE, 0.6))
+			e.Parent = p
+			e:Emit(14)
+		end
+		local s = Instance.new("ParticleEmitter")
+		s.Enabled = false
+		s.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+		s.LightEmission = 0.8
+		s.Lifetime = NumberRange.new(0.5, 0.9)
+		s.Speed = NumberRange.new(7, 12)
+		s.SpreadAngle = Vector2.new(70, 70)
+		s.EmissionDirection = Enum.NormalId.Top
+		s.Acceleration = Vector3.new(0, -14, 0)
+		s.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.7), NumberSequenceKeypoint.new(1, 0) })
+		s.Color = ColorSequence.new(color:Lerp(WHITE, 0.3))
+		s.Parent = p
+		s:Emit(if smoke then 10 else 16)
+		Debris:AddItem(p, 1.2)
+	end
+	local function poof(at: Vector3, color: Color3?)
+		burst(at + Vector3.new(0, 1, 0), color or WHITE, true)
+	end
+
+	-- (v2) a little hop (arriving, a new step, cheering): the body goes up and down once
+	local HOP = 0.42
+	local function hopY(g: Guide): number
+		local t = os.clock() - g.hopAt
+		return if t >= 0 and t < HOP then math.sin(math.pi * t / HOP) * 1.3 else 0
 	end
 
 	local function place(g: Guide, at: Vector3, yaw: number)
@@ -399,7 +621,7 @@ task.spawn(function()
 		local up = g.hum.HipHeight + g.root.Size.Y / 2
 		g.pos = Vector3.new(at.X, y, at.Z)
 		g.yaw = yaw
-		g.model:PivotTo(CFrame.new(g.pos + Vector3.new(0, up, 0)) * CFrame.Angles(0, yaw, 0))
+		g.model:PivotTo(CFrame.new(g.pos + Vector3.new(0, up + hopY(g), 0)) * CFrame.Angles(0, yaw, 0))
 	end
 
 	local function yawOf(v: Vector3): number
@@ -413,9 +635,9 @@ task.spawn(function()
 		local dist = d.Magnitude
 		if dist > 60 then
 			-- left far behind (a teleport, the mower): pop over to you
-			poof(g.pos)
+			poof(g.pos, g.def.color)
 			place(g, want, g.yaw)
-			poof(g.pos)
+			poof(g.pos, g.def.color)
 			return
 		end
 		local step = math.min(dist, SPEED * dt * math.clamp(dist / 4, 0.25, 1))
@@ -437,7 +659,11 @@ task.spawn(function()
 		g.pos = Vector3.new(nextAt.X, g.pos.Y + (y - g.pos.Y) * math.min(1, dt * 14), nextAt.Z)
 		g.yaw = yaw
 		local up = g.hum.HipHeight + g.root.Size.Y / 2
-		g.model:PivotTo(CFrame.new(g.pos + Vector3.new(0, up, 0)) * CFrame.Angles(0, yaw, 0))
+		g.model:PivotTo(CFrame.new(g.pos + Vector3.new(0, up + hopY(g), 0)) * CFrame.Angles(0, yaw, 0))
+		-- the bubble bobs a touch while it's up (alive, not pasted on)
+		if g.bubble.Enabled then
+			g.bubble.StudsOffset = Vector3.new(0, 2.4 + math.sin(os.clock() * 2.4) * 0.07, 0)
+		end
 		if os.clock() > g.busyUntil then
 			if speed > 2 then
 				play(g, "walk")
@@ -457,6 +683,7 @@ task.spawn(function()
 	local out = false -- are the guides in the world
 	local lastStep: string? = nil
 	local stepSaidAt = 0
+	local nagged = 0 -- reminders said for this step
 	local seenCut = false
 	local seenFull = false
 	local seenSale = false
@@ -480,14 +707,30 @@ task.spawn(function()
 		local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 		look = if look.Magnitude > 0.1 then look.Unit else Vector3.zAxis
 		local right = Vector3.new(-look.Z, 0, look.X)
+		-- (v2) they pop in with a hop, the lead waves hello
+		local now = os.clock()
 		if lead then
+			lead.hopAt = now
 			place(lead, root.Position + look * 10 + right * 3, yawOf(-look))
-			poof(lead.pos)
+			poof(lead.pos, lead.def.color)
+			gesture(lead, "wave")
 		end
 		if side then
+			side.hopAt = now + 0.15
 			place(side, root.Position + look * 3 - right * 4, yawOf(-look))
-			poof(side.pos)
+			poof(side.pos, side.def.color)
 		end
+	end
+
+	-- (v2) a cheer: the dance, a hop, sparkles in their colour and a heart or a star by the head
+	local function cheer(g: Guide?, icon: string)
+		if not g then
+			return
+		end
+		gesture(g, "cheer")
+		g.hopAt = os.clock()
+		burst(g.pos + Vector3.new(0, 3.5, 0), g.def.color or WHITE, false)
+		emote(g, icon)
 	end
 
 	local function putAway()
@@ -497,7 +740,7 @@ task.spawn(function()
 		out = false
 		quiet()
 		for _, g in guides do
-			poof(g.pos)
+			poof(g.pos, g.def.color)
 		end
 		folder.Parent = nil
 	end
@@ -526,14 +769,17 @@ task.spawn(function()
 		end
 		leaving = true
 		skipBtn.Visible = false
-		say(lead, "You're a natural! We'll see you around.", 1.5)
+		say(lead, "You're a {natural}! We'll see you around.", 1.5)
 		if lead then
 			gesture(lead, "wave")
+			lead.hopAt = os.clock()
+			emote(lead, "heart")
 		end
 		task.delay(1.2, function()
 			say(side, "Bye bye!", 0.8)
 			if side then
 				gesture(side, "wave")
+				emote(side, "heart")
 			end
 		end)
 		task.delay(4.2, function()
@@ -625,11 +871,16 @@ task.spawn(function()
 		if id and id ~= lastStep then
 			lastStep = id
 			stepSaidAt = now
-			local a, b = stepLines(id)
+			nagged = 0
+			local a, b = stepLines(id, 0)
 			if a then
 				say(lead, a)
-				if lead and id == "sell" then
-					gesture(lead, "point")
+				emote(lead, "!")
+				if lead then
+					lead.hopAt = now
+					if target and (target - p).Magnitude > 14 then
+						gesture(lead, "point") -- "over there"
+					end
 				end
 			end
 			if b and side then
@@ -639,12 +890,14 @@ task.spawn(function()
 					end
 				end)
 			end
-		elseif id and now - stepSaidAt > 22 then
-			-- stuck on a step a while: say it again
+		elseif id and now - stepSaidAt > (if nagged == 0 then 18 else 14) then
+			-- stuck on a step a while: a "?" and the hint again, shorter each time
 			stepSaidAt = now
-			local a = stepLines(id)
+			nagged += 1
+			local a = stepLines(id, nagged)
 			if a then
 				say(lead, a)
+				emote(lead, "?")
 			end
 		end
 
@@ -654,23 +907,25 @@ task.spawn(function()
 		local stats = d and d.stats
 		if stats and not seenCut and (stats.cut or 0) > 0 then
 			seenCut = true
-			say(side, "LET'S GO! First cut!", 1.2)
-			if side then
-				gesture(side, "cheer")
-			end
+			say(side, "LET'S GO! {First cut!}", 1.2)
+			cheer(side, "star")
 		end
 		if run then
 			local max = d.carryMax or Config.BASE_CARRY
 			if not seenFull and run.carry >= max then
 				seenFull = true
-				say(side, "Bag's FULL. Look at that!", 1.2)
+				say(side, "Bag's {FULL}. Look at that!", 1.2)
+				emote(side, "!")
 			end
 			if lastCoins and run.coins > lastCoins and seenFull and not seenSale then
 				seenSale = true
-				say(side, "Look at that money!", 1.2)
-				if side then
-					gesture(side, "cheer")
-				end
+				say(side, "Look at that {money}!", 1.2)
+				cheer(side, "heart")
+				task.delay(0.5, function()
+					if out then
+						cheer(lead, "star")
+					end
+				end)
 			end
 			lastCoins = run.coins
 		end

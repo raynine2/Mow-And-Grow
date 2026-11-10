@@ -409,16 +409,72 @@ local function lineRoom(shop: Instance, at: CFrame)
 	piece("DoorPost", L.door[1] - 1.6, L.door[1] - 0.1, L.floor, L.door[3], L.front - 0.5, L.front + 0.35, POST_IN, Enum.Material.Wood, true)
 	piece("DoorPost", L.door[2] + 0.1, L.door[2] + 1.0, L.floor, L.door[3], L.front - 0.5, L.front + 0.35, POST_IN, Enum.Material.Wood, true)
 	piece("DoorLintel", L.door[1] - 1.6, L.door[2] + 1.0, L.door[3], L.door[3] + 0.8, L.front - 0.1, L.front + 0.35, POST_IN, Enum.Material.Wood, false)
-	for _, c in { { L.left, L.front }, { L.right, L.front }, { L.left, L.back }, { L.right, L.back } } do
-		piece("CornerPost", c[1] - 0.5, c[1] + 0.5, L.floor, L.top, c[2] - 0.5, c[2] + 0.5, POST_IN, Enum.Material.Wood, true)
+	-- (17:45, "better quality") the corners notched like a log cabin's: the log ends cross, every other one sticking
+	-- out a little, a lighter cut face on each end
+	for _, c in { { L.left, L.front, 1, 1 }, { L.right, L.front, -1, 1 }, { L.left, L.back, 1, -1 }, { L.right, L.back, -1, -1 } } do
+		local y = L.floor + D / 2
+		local n = 0
+		while y < L.top do
+			local alongX = n % 2 == 0
+			local len = D * 1.6
+			local e = Instance.new("Part")
+			e.Name = "LogEnd"
+			e.Shape = Enum.PartType.Cylinder
+			e.Anchored = true
+			e.CanCollide = false
+			e.CanQuery = false
+			e.CanTouch = false
+			e.Size = Vector3.new(len, D * 1.04, D * 1.04)
+			local cx = c[1] + (if alongX then c[3] * len * 0.3 else -c[3] * 0.1)
+			local cz = c[2] + (if alongX then -c[4] * 0.1 else c[4] * len * 0.3)
+			local cf = at * CFrame.new(cx, y, cz)
+			e.CFrame = if alongX then cf else cf * CFrame.Angles(0, math.pi / 2, 0)
+			local j = rng:NextNumber(-0.05, 0.04)
+			e.Color = Color3.new(LOG_IN.R + j, LOG_IN.G + j * 0.8, LOG_IN.B + j * 0.5)
+			e.Material = Enum.Material.Wood
+			e.Parent = f
+			y += D * 0.92
+			n += 1
+		end
 	end
 	for _, side in { L.left, L.right } do
 		local x0 = if side < 0 then side else side - 0.6
 		piece("WallPlate", x0, x0 + 0.6, L.top - 0.7, L.top, L.front, L.back, POST_IN, Enum.Material.Wood, false)
 	end
 	-- a stone plinth along the sides' feet, like the cabin's outside: it covers where the cabin's bottom logs bulge in
-	piece("Plinth", L.right - 2.3 * S, L.right, L.floor, grow(0, 3.75, 0).Y, L.front, L.back, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
-	piece("Plinth", L.left, L.left + 0.7 * S, L.floor, grow(0, 2.9, 0).Y, L.front, L.back, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
+	-- (17:45, x1.15: the bulge measured in Play reaches y 3.7 at x 17, 3.3 at x -18) in blocks of stone, each its own
+	-- grey, with a capstone on top
+	local function plinth(x0: number, x1: number, top: number)
+		local z = L.front
+		while z < L.back - 0.01 do
+			local w = math.min(rng:NextNumber(1.6, 2.6), L.back - z)
+			piece("PlinthStone", x0, x1, L.floor, top - 0.25, z, z + w - 0.08, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
+			z += w
+		end
+		piece("PlinthCap", x0 - 0.1, x1 + 0.1, top - 0.3, top, L.front, L.back, Color3.fromRGB(132, 134, 140), Enum.Material.Slate, true)
+	end
+	plinth(L.right - 1.6 * S, L.right, 5.2)
+	plinth(L.left, L.left + 0.8 * S, 3.4)
+	-- iron lanterns on the side walls, lit
+	for _, x in { L.left, L.right } do
+		local inward = if x < 0 then 1 else -1
+		for _, zz in { L.front + (L.back - L.front) * 0.3, L.front + (L.back - L.front) * 0.62 } do
+			local wx = x + inward * 0.35
+			piece("SconceBack", wx - 0.15, wx + 0.15, 8.6, 10.2, zz - 0.45, zz + 0.45, POST_IN, Enum.Material.Wood, false)
+			local ax = wx + inward * 0.55
+			piece("SconceArm", math.min(wx, ax), math.max(wx, ax), 9.7, 9.9, zz - 0.08, zz + 0.08, Color3.fromRGB(46, 42, 40), Enum.Material.Metal, false)
+			local lx = wx + inward * 0.9
+			piece("SconceCap", lx - 0.45, lx + 0.45, 9.6, 9.85, zz - 0.45, zz + 0.45, Color3.fromRGB(46, 42, 40), Enum.Material.Metal, false)
+			local glass = piece("SconceGlass", lx - 0.33, lx + 0.33, 8.5, 9.6, zz - 0.33, zz + 0.33, Color3.fromRGB(255, 196, 110), Enum.Material.Neon, false)
+			glass.CastShadow = false
+			piece("SconceBase", lx - 0.42, lx + 0.42, 8.35, 8.5, zz - 0.42, zz + 0.42, Color3.fromRGB(46, 42, 40), Enum.Material.Metal, false)
+			local light = Instance.new("PointLight")
+			light.Color = Color3.fromRGB(255, 186, 110)
+			light.Brightness = 0.6
+			light.Range = 12
+			light.Parent = glass
+		end
+	end
 	-- the ceiling: boards across, on joists
 	local z = L.front - L.t
 	while z < L.back + L.t - 0.01 do

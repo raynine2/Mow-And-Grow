@@ -350,6 +350,7 @@ end
 
 -- A patch was cut: its bundle drops on the ground (two with Bigger Bundle luck, sometimes a gem too) for the
 -- cutter to pick up (server/Loot). Returns false when there's no room for it, so the patch stays standing.
+local endLoan: (Player, any) -> () -- (10 Nov) defined with the selling, below; onCut calls it
 local function onCut(player: Player, patch): boolean
 	local data = PlayerData.get(player)
 	if not data or not data.run then
@@ -566,7 +567,7 @@ end
 -- a moment later, once the coins have flown, the intro film plays (client/Intro waits for run.tutorial to go).
 -- (10 Nov, Config.FIRST_TIMER.loanCuts) BRRBRR wants his scythe back after a few clumps: the loan ends (client/TutorGuide
 -- flies it back to him on "loanBack"; client/FirstLawn's "was on loan" note still comes after the intro film)
-local function endLoan(player: Player, data)
+function endLoan(player: Player, data)
 	local lent = data.run.loaner
 	if not lent then
 		return

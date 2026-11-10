@@ -793,7 +793,7 @@ task.spawn(function()
 	local everOn = false
 	local leaving = false
 	-- (10 Nov, Config.FIRST_TIMER.loanCuts) BRRBRR's scythe: handing = flying to you, given = you have it, back = returned
-	local loan = { handing = false, given = false, back = false, outAt = 0 }
+	local loan: { handing: boolean, given: boolean, back: boolean, outAt: number, askedAt: number? } = { handing = false, given = false, back = false, outAt = 0, askedAt = nil }
 
 	local function myRoot(): BasePart?
 		local char = player.Character
@@ -953,7 +953,15 @@ task.spawn(function()
 			end
 			return
 		end
-		if loan.given or loan.handing then
+		if loan.given then
+			-- (the "Seen" remote takes one a second: ask again until the server's scythe is really in your hands)
+			if now - (loan.askedAt or 0) > 1.5 then
+				loan.askedAt = now
+				State.fire("Seen", "loanTaken")
+			end
+			return
+		end
+		if loan.handing then
 			return
 		end
 		if not Scythe.held(gm) then
@@ -976,6 +984,7 @@ task.spawn(function()
 			Scythe.give(gm, player, function()
 				loan.given = true
 				loan.handing = false
+				loan.askedAt = os.clock()
 				State.fire("Seen", "loanTaken")
 				local r = myRoot()
 				if r then

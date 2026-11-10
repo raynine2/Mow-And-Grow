@@ -216,7 +216,7 @@ task.spawn(function()
 		bb.Name = "Emote"
 		bb.Adornee = head
 		bb.Size = UDim2.fromOffset(60, 60)
-		bb.StudsOffset = Vector3.new(1.7, 0.9, 0)
+		bb.StudsOffset = Vector3.new(1.6, -0.1, 0) -- (beside the head: higher up, the bubble covered it)
 		bb.AlwaysOnTop = false
 		bb.MaxDistance = 80
 		bb.LightInfluence = 0

@@ -22,6 +22,10 @@
 --   pop      a soft glow on the floor that flares and fades, and one thin ring rolling out
 --   puff     one themed particle burst (pollen, petals, straw, embers, water ...)
 --   pack     one SoulShroud effect, fitted to the size of the hit
+-- v5 (owner: "Meer umph bij alles"): every landing punches the camera in (a short FOV kick, more the heavier the
+-- hit and the closer you are) and the heavy ones add a deep sub-thud under their own sound; the floor cracks
+-- open taller and steeper, more blocks fly harder, the pops, lights, smoke and slashes are all bigger and
+-- brighter, and the impact frame bites harder.
 -- v4 (owner: "bij elke boss"): every boss's heavy hit gets the smoke ring and the impact frame, and slashes and
 -- sweeps light the arena too.
 -- v3 (10 Nov, owner: "Make it even better"): every pop lights up the arena round it (a real light, the boss's
@@ -40,6 +44,8 @@ local BossImpact = require(script.Parent.BossImpact)
 local PackFx = require(script.Parent.PackFx)
 local PHONE = require(script.Parent.PhonePerf).on
 local Potato = require(script.Parent.Potato)
+local CameraView = require(script.Parent.CameraView)
+local Sound = require(script.Parent.Sound)
 
 local VFXLib = ReplicatedStorage:FindFirstChild("VFXLib")
 local Assets = VFXLib and VFXLib:FindFirstChild("Assets") and (require(VFXLib:FindFirstChild("Assets") :: ModuleScript) :: any)
@@ -47,8 +53,13 @@ local RUNE = (Assets and Assets.Tex and Assets.Tex.RuneCircle) or Tex.glyph
 local TOON_SMOKE = (Assets and Assets.Tex and (Assets.Tex.VS_ToonSmoke4x4 or Assets.Tex.SmokePuff4x4)) or Tex.smoke
 local SMOKE_FLIP = Assets and Assets.Tex and (Assets.Tex.VS_ToonSmoke4x4 or Assets.Tex.SmokePuff4x4) and true or false
 
-local K = BossImpact.kit
-local part, tween, slow = K.part, K.tween, K.slow
+local K0 = BossImpact.kit
+local part, tween, slow = K0.part, K0.tween, K0.slow
+-- (v5) the same kit, but every throw of blocks is a bigger, harder one
+local K = table.clone(K0)
+K.kick = function(pos: Vector3, r: number, n: number, color: Color3, power: number)
+	K0.kick(pos, r, math.ceil(n * 1.4), color, power * 1.2)
+end
 
 local BossMoveFx = {}
 
@@ -92,18 +103,18 @@ end
 
 -- a soft glow that flares on the floor and fades, and one thin ring rolling out from it
 local function pop(pos: Vector3, r: number, color: Color3, ring: boolean?)
-	local disc = part("Pop", Vector3.new(0.06, r * 0.5, r * 0.5), CFrame.new(pos + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, 0, math.rad(90)), color:Lerp(WHITE, 0.55), Enum.Material.Neon, Enum.PartType.Cylinder)
+	local disc = part("Pop", Vector3.new(0.06, r * 0.6, r * 0.6), CFrame.new(pos + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, 0, math.rad(90)), color:Lerp(WHITE, 0.55), Enum.Material.Neon, Enum.PartType.Cylinder)
 	disc.Transparency = 0.15
-	tween(disc, 0.28, { Size = Vector3.new(0.06, r * 1.7, r * 1.7), Transparency = 1, Color = color }, Enum.EasingStyle.Quart)
+	tween(disc, 0.3, { Size = Vector3.new(0.06, r * 2.1, r * 2.1), Transparency = 1, Color = color }, Enum.EasingStyle.Quart)
 	Debris:AddItem(disc, 0.35 * slow())
 	-- (v3) a real light: the arena round the hit lights up in its colour for a moment
 	local l = Instance.new("PointLight")
 	l.Color = color:Lerp(WHITE, 0.25)
-	l.Range = math.clamp(r * 2.6, 10, 55)
+	l.Range = math.clamp(r * 3, 12, 60)
 	l.Brightness = 0
 	l.Shadows = false
 	l.Parent = disc
-	tween(l, 0.05, { Brightness = 6 }, Enum.EasingStyle.Linear)
+	tween(l, 0.04, { Brightness = 10 }, Enum.EasingStyle.Linear)
 	task.delay(0.05 * slow(), function()
 		tween(l, 0.3, { Brightness = 0 }, Enum.EasingStyle.Quad)
 	end)
@@ -122,7 +133,7 @@ local function lightAt(pos: Vector3, r: number, color: Color3)
 	l.Brightness = 0
 	l.Shadows = false
 	l.Parent = h
-	tween(l, 0.05, { Brightness = 5 }, Enum.EasingStyle.Linear)
+	tween(l, 0.04, { Brightness = 8 }, Enum.EasingStyle.Linear)
 	task.delay(0.05 * slow(), function()
 		tween(l, 0.35, { Brightness = 0 }, Enum.EasingStyle.Quad)
 	end)
@@ -161,10 +172,10 @@ local function smokeRing(pos: Vector3, r: number, tint: Color3, n: number?)
 		e.EmissionDirection = Enum.NormalId.Front
 		e.SpreadAngle = Vector2.new(14, 4)
 		e.Lifetime = NumberRange.new(0.75, 1.1)
-		e.Speed = NumberRange.new(r * 2.5, r * 3.4)
+		e.Speed = NumberRange.new(r * 2.9, r * 3.9)
 		e.Drag = 3
 		e.Acceleration = Vector3.new(0, 1.5, 0)
-		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 0.22), NumberSequenceKeypoint.new(0.4, r * 0.42), NumberSequenceKeypoint.new(1, r * 0.52) })
+		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 0.26), NumberSequenceKeypoint.new(0.4, r * 0.52), NumberSequenceKeypoint.new(1, r * 0.64) })
 		e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.6, 0.3), NumberSequenceKeypoint.new(1, 1) })
 		e.Color = ColorSequence.new(tint:Lerp(WHITE, 0.35), tint)
 		e.LightInfluence = 0.7
@@ -203,12 +214,12 @@ local function impactFrame(pos: Vector3)
 	lastFrame = os.clock()
 	local cc = Instance.new("ColorCorrectionEffect")
 	cc.Name = "BossImpactFrame"
-	cc.Contrast = 0.45
-	cc.Saturation = -0.75
-	cc.Brightness = 0.08
+	cc.Contrast = 0.65
+	cc.Saturation = -0.9
+	cc.Brightness = 0.14
 	cc.Parent = Lighting
-	task.delay(0.05 * slow(), function()
-		tween(cc, 0.18, { Contrast = 0, Saturation = 0, Brightness = 0 }, Enum.EasingStyle.Quad)
+	task.delay(0.06 * slow(), function()
+		tween(cc, 0.22, { Contrast = 0, Saturation = 0, Brightness = 0 }, Enum.EasingStyle.Quad)
 	end)
 	Debris:AddItem(cc, 0.3 * slow())
 end
@@ -310,7 +321,7 @@ local function heave(pos: Vector3, len: number, arms: number, glow: Color3, floo
 			local fwd = Vector3.new(math.sin(a), 0, math.cos(a))
 			local side = Vector3.new(fwd.Z, 0, -fwd.X)
 			local mid = at + fwd * step / 2
-			local w = math.clamp(len * 0.2, 1.5, 3.2) * (1 - (k - 1) / segs * 0.5)
+			local w = math.clamp(len * 0.23, 1.7, 3.6) * (1 - (k - 1) / segs * 0.5)
 			local delay = (k - 1) * 0.035 + (i - 1) * 0.008
 			-- the seam: hot, then cooling to a dark crack
 			local seamCf = CFrame.lookAt(mid + Vector3.new(0, 0.06, 0), mid + Vector3.new(0, 0.06, 0) + fwd)
@@ -318,8 +329,8 @@ local function heave(pos: Vector3, len: number, arms: number, glow: Color3, floo
 			-- the slabs: rise out of the floor tilted away from the crack, then settle back
 			local slabs = {}
 			for _, sgn in { -1, 1 } do
-				local tilt = math.rad(14 + math.random() * 16) * sgn
-				local h = 0.55
+				local tilt = math.rad(22 + math.random() * 20) * sgn
+				local h = 0.85
 				local p = mid + side * sgn * (w * 0.42) + Vector3.new(0, 0.1, 0)
 				local up = CFrame.lookAt(p, p + fwd) * CFrame.Angles(0, 0, -tilt)
 				local down = up - Vector3.new(0, h + 0.1, 0)
@@ -408,6 +419,7 @@ end
 -- a glowing slash along a line: thickest a little way in, tapering to points at both ends (an anime slash), it
 -- flares in and thins away; optionally a mark left on the floor
 local function streak(from: Vector3, dir: Vector3, len: number, w: number, color: Color3, markColor: Color3?)
+	w *= 1.3 -- (v5: more umph)
 	local f = flat(dir)
 	local y = Vector3.new(0, 0.25, 0)
 	local host = beamHost(from + y)
@@ -430,6 +442,7 @@ end
 -- the same glow swept round a slice: centre `pos`, aimed `dir`, radius `r`, `half` radians either side; a crescent
 -- (thick in the middle, pointed at both ends) drawn from one end to the other over `sweep` seconds
 local function arc(pos: Vector3, dir: Vector3, r: number, half: number, w: number, color: Color3, sweep: number)
+	w *= 1.3 -- (v5: more umph)
 	local base = math.atan2(flat(dir).X, flat(dir).Z)
 	local n = math.clamp(math.floor(math.deg(half * 2) / 4), 12, 40)
 	local host = beamHost(pos + Vector3.new(0, 0.25, 0))
@@ -820,6 +833,30 @@ R.gaze = function(s)
 	return 8
 end
 
+-- (v5) the umph you feel: the camera punches in (an FOV kick, client/CameraView: more for heavier hits and the
+-- closer you are; "Reduce camera shake" softens it there) and a heavy hit drops a deep sub-thud under its sound
+local lastPunch = 0
+local function punch(s: any, power: number)
+	if power <= 0 or os.clock() - lastPunch < 0.12 then
+		return
+	end
+	local root = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return
+	end
+	local at = if s.type == "strip" and s.dir and s.length then s.pos + flat(s.dir) * s.length * 0.4 else s.pos
+	local d = (root.Position - at).Magnitude
+	if d > 90 then
+		return
+	end
+	lastPunch = os.clock()
+	local k = 1 - d / 90
+	pcall(CameraView.kick, power * 0.75 * k)
+	if power >= 7 then
+		pcall(Sound.playAt, "bossThud", 0.55 + math.random() * 0.08, 0.9 * k)
+	end
+end
+
 -- Play attack `kind`'s landing for shape `s` (client/BossVfx.impact). Returns how hard to shake the camera, or nil
 -- when this attack has no recipe here (BossVfx then plays its old layers).
 function BossMoveFx.play(kind: string, s: any, accent: Color3, floor: Color3): number?
@@ -833,6 +870,7 @@ function BossMoveFx.play(kind: string, s: any, accent: Color3, floor: Color3): n
 		warn("[BossMoveFx] " .. kind .. ": " .. tostring(shake))
 		return 0
 	end
+	punch(s, shake)
 	return shake
 end
 

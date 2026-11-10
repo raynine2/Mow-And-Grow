@@ -66,7 +66,10 @@ local DOOR_MIN, DOOR_MAX = Vector3.new(-6.5, 0, -15.5), Vector3.new(6.5, 14, -9.
 local OUTER = { left = -29.3, right = 26.3, back = 25.2, front = -15, frontY = 20 }
 -- (10 Nov) the shop inside the cabin: x0.88 (the room 39.2 -> 34.5 wide in the cabin's 35.7), its floor up on the
 -- cabin's (0.75 -> 2.0), its front wall against the cabin's inside front (z -7.2)
-local FIT_IN = { on = true, k = 0.88, dy = 1.34, dz = 0.37 }
+-- (10 Nov 17:27, owner: "house ground is buggy") the cabin's own floor inside is uneven (y 1.93..2.23, measured in
+-- Play) and its bottom logs bulge in at the floor (to x 13.8 / -15.5): the shop is x0.78 now (was 0.88) with its floor
+-- at 2.35, clear over the cabin's floor, and its walls clear of the bulge (the fireplace and the bench were in it)
+local FIT_IN = { on = true, k = 0.78, dy = 1.765, dz = -0.38 }
 
 local function strip(shop: Instance, at: CFrame)
 	local building = shop:FindFirstChild("ShopBuilding")
@@ -295,7 +298,8 @@ end
 -- beams, dark posts in the corners, a skirting board, the beams and the chandelier in the cabin's wood, and warm
 -- lamps. Shop frame after FIT_IN (measured in Play): the boards reach x -17.5..18.1 and z 14.3, the floor -5.9..12.9
 -- at y 2, the beams' tops at 14.7; the cabin's inside x -17.7..18, z -7.2..18.5; its door tunnel x -2.2..1.8.
-local LINE = { left = -17.6, right = 17.8, back = 14.3, front = -6.2, floor = 1.6, top = 16, t = 0.4, door = { -2.2, 1.8, 11.4 } }
+-- (17:30, at FIT_IN.k 0.78: the boards reach x -15.5..15.9 and z 12, the floor from z -5.9, the beams' tops 13.6)
+local LINE = { left = -15.55, right = 15.9, back = 12.0, front = -6.0, floor = 1.6, top = 14.2, t = 0.4, door = { -2.2, 1.8, 11.4 } }
 local LOG_IN = Color3.fromRGB(198, 116, 50) -- the cabin's orange logs
 local CHINK_IN = Color3.fromRGB(70, 42, 26)
 local POST_IN = Color3.fromRGB(96, 58, 32)
@@ -401,6 +405,9 @@ local function lineRoom(shop: Instance, at: CFrame)
 		local x0 = if side < 0 then side else side - 0.6
 		piece("WallPlate", x0, x0 + 0.6, L.top - 0.7, L.top, L.front, L.back, POST_IN, Enum.Material.Wood, false)
 	end
+	-- a stone plinth along the sides' feet, like the cabin's outside: it covers where the cabin's bottom logs bulge in
+	piece("Plinth", L.right - 2.3, L.right, L.floor, 3.75, L.front, L.back, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
+	piece("Plinth", L.left, L.left + 0.7, L.floor, 2.9, L.front, L.back, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
 	-- the ceiling: boards across, on joists
 	local z = L.front - L.t
 	while z < L.back + L.t - 0.01 do
@@ -413,8 +420,8 @@ local function lineRoom(shop: Instance, at: CFrame)
 		piece("Joist", L.left, L.right, L.top - 0.6, L.top, zz - 0.35, zz + 0.35, POST_IN, Enum.Material.Wood, false)
 	end
 	-- warm lamps under the ceiling (the room was lit by the fire alone: dark red)
-	for _, x in { -9, 9 } do
-		for _, zz in { -0.5, 8.5 } do
+	for _, x in { -7.5, 7.5 } do
+		for _, zz in { 0, 7 } do
 			local holder = piece("CeilingLamp", x - 0.6, x + 0.6, L.top - 0.9, L.top - 0.6, zz - 0.6, zz + 0.6, Color3.fromRGB(255, 186, 104), Enum.Material.Neon, false)
 			holder.CastShadow = false
 			local light = Instance.new("PointLight")
@@ -521,8 +528,8 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		ramp.CFrame = at * CFrame.new(-0.2, floorY / 2, -16.5) -- (a wedge is low at its -Z end, out of the door, high at +Z)
 		local deck = Instance.new("Part")
 		deck.Name = "DoorFloor"
-		deck.Size = Vector3.new(4.4, 1, 14.5 - 7.2 + 0.4)
-		deck.CFrame = at * CFrame.new(-0.2, floorY - 0.5, (-14.5 - 7.2) / 2)
+		deck.Size = Vector3.new(4.4, 1, 14.5 - 5.9)
+		deck.CFrame = at * CFrame.new(-0.2, floorY - 0.5, (-14.5 - 5.9) / 2)
 		for _, q in { ramp, deck } :: { BasePart } do
 			q.Anchored = true
 			q.Transparency = 1

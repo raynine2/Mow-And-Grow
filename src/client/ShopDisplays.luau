@@ -190,6 +190,11 @@ RunService.RenderStepped:Connect(function(dt)
 	if root then
 		for _, s in displays do
 			if s.item and s.base then
+				-- (10 Nov) the server moves the shop after you've seen it (server/ShopShell fits it into the cabin):
+				-- a tool that isn't swaying rests where it is now, not where it first turned up
+				if s ~= current and s.item.Parent then
+					s.base = s.item:GetPivot()
+				end
 				local p = s.base.Position
 				local d = Vector3.new(p.X - root.Position.X, 0, p.Z - root.Position.Z).Magnitude
 				if d < bestD then

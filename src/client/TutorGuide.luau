@@ -793,7 +793,7 @@ task.spawn(function()
 	local everOn = false
 	local leaving = false
 	-- (10 Nov, Config.FIRST_TIMER.loanCuts) BRRBRR's scythe: handing = flying to you, given = you have it, back = returned
-	local loan: { handing: boolean, given: boolean, back: boolean, outAt: number, askedAt: number? } = { handing = false, given = false, back = false, outAt = 0, askedAt = nil }
+	local loan: { handing: boolean, given: boolean, back: boolean, returning: boolean, outAt: number, askedAt: number? } = { handing = false, given = false, back = false, returning = false, outAt = 0, askedAt = nil }
 
 	local function myRoot(): BasePart?
 		local char = player.Character
@@ -941,7 +941,17 @@ task.spawn(function()
 	local function loanTick(now: number)
 		local run = State.data and State.data.run
 		local g = side
-		if not g or not out or leaving or not run or not run.loaner or loan.back then
+		if not g or not out or leaving or not run then
+			return
+		end
+		-- (10 Nov) it came back while he was away (a cutscene): it's in his hands again when he's back
+		if loan.back then
+			if not loan.returning and not Scythe.held(g.model) then
+				Scythe.attach(g.model)
+			end
+			return
+		end
+		if not run.loaner then
 			return
 		end
 		local gm = g.model
@@ -993,7 +1003,7 @@ task.spawn(function()
 				pcall(Sound.playAt, "purchase", 1.2, 0.5)
 				task.delay(0.7, function()
 					if out then
-						say(g, "Take down {3 clumps}, then it's mine again!", 1)
+						say(g, ("Take down {%d clumps}, then it's mine again!"):format((Config :: any).FIRST_TIMER.loanCuts or 10), 1) -- (10 Nov: was "3 clumps", now Config)
 					end
 				end)
 			end)
@@ -1011,7 +1021,9 @@ task.spawn(function()
 		say(g, "Okay, my turn! {Thanks!}", 1)
 		gesture(g, "wave")
 		pcall(Sound.playAt, "whoosh", 0.9, 0.6)
+		loan.returning = true
 		Scythe.takeBack(g.model, player, function()
+			loan.returning = false
 			cheer(g, "heart")
 			task.delay(1.4, function()
 				if out and not leaving then

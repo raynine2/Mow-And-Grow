@@ -601,6 +601,10 @@ local function endTutorial(player: Player, data)
 	data.run.loaner = nil
 	if lent then
 		data.run.loanDone = true -- (10 Nov) once per run
+		-- (10 Nov, loanCuts 10 = the starting bag: a sale can come first) BRRBRR still takes his scythe back
+		if Config.FIRST_TIMER.loanCuts then
+			Net.send(player, "Fx", "loanBack", { name = lent })
+		end
 	end
 	if lent then
 		local name = lent

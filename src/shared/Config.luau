@@ -305,7 +305,7 @@ Config.CAMERA_KICK = {
 --   loaner:    the tool lent to a first-timer for their first run until their first sale ("walk into the grass to
 --              mow it"); then they're back to Bare Hands and buy their own. "" = off.
 --   introAfterSale: the intro film waits for that first sale instead of playing before you've cut anything.
-Config.FIRST_TIMER = { autoStart = 3, loaner = "MegaScythe", introAfterSale = true, loanCuts = 3, loanTargets = 1, handoverWait = 30 } -- (5 Nov, less waiting: autoStart was 6)
+Config.FIRST_TIMER = { autoStart = 3, loaner = "MegaScythe", introAfterSale = true, loanCuts = 10, loanTargets = 1, handoverWait = 30 } -- (5 Nov, less waiting: autoStart was 6; 10 Nov 22:36, owner: "extend it to 10 or something instead of 3": loanCuts was 3)
 -- (10 Nov, owner: "let brrbrr lend the scythe ... only for the tutorial ... give it back when the player has taken down
 -- 2-3 grasses and animated it") The first-timer's loan is BRRBRR's Mega Scythe (was the Push Mower until the first
 -- sale): he carries it and hands it over (client/TutorGuide + client/GuideScythe: "Seen" "loanTaken"; the server hands

@@ -1265,16 +1265,23 @@ function BossVfx.impact(z: number, s: any, kind: string, floorColor: Color3?)
 	local def = BossMoves.get(z)
 	local ring = accentColor()
 	cue(kind, s.pos)
-	if PackFx.on() then
-		pcall(PackFx.boss, z, kind, s, ring)
-	end
-	-- (10 Nov, owner: "more fitting and more climatic and pretty") the weight under each hit: client/BossImpact
 	if live and floorColor then
 		live.floor = floorColor -- (for the rage burst)
 	end
 	local fl = floorColor or Color3.fromRGB(110, 170, 80)
-	-- (10 Nov, owner: "verdiep je meer met elke attack") what this attack is: client/BossMoveFx
-	BossMoveFx.play(kind, s, ring, fl)
+	-- (10 Nov, owner: "revamp it better", "maak het echt echt pro") an attack with its own designed landing
+	-- (client/BossMoveFx) plays only that: none of the layers below stacked on top of it
+	local power = BossMoveFx.play(kind, s, ring, fl)
+	if power then
+		if power > 0 then
+			local at = if s.type == "strip" and s.dir and s.length then s.pos + s.dir * s.length * 0.3 else s.pos
+			shakeFor(at, power)
+		end
+		return
+	end
+	if PackFx.on() then
+		pcall(PackFx.boss, z, kind, s, ring)
+	end
 	if s.type == "circle" then
 		burst(s.pos, s.r)
 		dust(s.pos, s.r, def.dust, 6)

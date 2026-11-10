@@ -70,6 +70,14 @@ local OUTER = { left = -29.3, right = 26.3, back = 25.2, front = -15, frontY = 2
 -- Play) and its bottom logs bulge in at the floor (to x 13.8 / -15.5): the shop is x0.78 now (was 0.88) with its floor
 -- at 2.35, clear over the cabin's floor, and its walls clear of the bulge (the fireplace and the bench were in it)
 local FIT_IN = { on = true, k = 0.78, dy = 1.765, dz = -0.38 }
+-- (10 Nov 17:40, owner: "make the house overall bigger") the whole house x SIZE: the cabin, the shop in it, its walls,
+-- its door, round the cabin's middle on the ground (FIT x, y, z); every measurement here is for SIZE 1 and goes
+-- through grow(). The yard's props in front move out with the porch.
+ShopShell.SIZE = 1.15
+local GROW_C = Vector3.new(-1, -0.6, 4.5)
+local function grow(x: number, y: number, z: number): Vector3
+	return GROW_C + (Vector3.new(x, y, z) - GROW_C) * ShopShell.SIZE
+end
 
 local function strip(shop: Instance, at: CFrame)
 	local building = shop:FindFirstChild("ShopBuilding")
@@ -306,7 +314,10 @@ local POST_IN = Color3.fromRGB(96, 58, 32)
 local CEIL_IN = Color3.fromRGB(122, 74, 40)
 
 local function lineRoom(shop: Instance, at: CFrame)
-	local L = LINE
+	local S = ShopShell.SIZE
+	local lo, hi = grow(LINE.left, LINE.floor, LINE.front), grow(LINE.right, LINE.top, LINE.back)
+	local dl, dh = grow(LINE.door[1], LINE.door[3], 0), grow(LINE.door[2], 0, 0)
+	local L = { left = lo.X, right = hi.X, front = lo.Z, back = hi.Z, floor = lo.Y, top = hi.Y, t = LINE.t, door = { dl.X, dh.X, dl.Y } }
 	local f = Instance.new("Folder")
 	f.Name = "CabinInside"
 	local rng = Random.new(1110)
@@ -330,7 +341,7 @@ local function lineRoom(shop: Instance, at: CFrame)
 	-- a plank wall along x (z fixed) or along z (x fixed), skipping the door's gap
 	-- (10 Nov 17:15, owner picked "binnen als de buitenkant") the walls are round logs like the cabin's outside: a
 	-- dark backing (the gaps between the logs, and what you bump into), the logs stacked on it, each its own shade
-	local D = 1.3 -- a log's thickness
+	local D = 1.3 * S -- a log's thickness
 	local function log(x0: number, x1: number, y: number, z0: number, z1: number, alongX: boolean)
 		local len = if alongX then x1 - x0 else z1 - z0
 		local p = Instance.new("Part")
@@ -406,8 +417,8 @@ local function lineRoom(shop: Instance, at: CFrame)
 		piece("WallPlate", x0, x0 + 0.6, L.top - 0.7, L.top, L.front, L.back, POST_IN, Enum.Material.Wood, false)
 	end
 	-- a stone plinth along the sides' feet, like the cabin's outside: it covers where the cabin's bottom logs bulge in
-	piece("Plinth", L.right - 2.3, L.right, L.floor, 3.75, L.front, L.back, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
-	piece("Plinth", L.left, L.left + 0.7, L.floor, 2.9, L.front, L.back, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
+	piece("Plinth", L.right - 2.3 * S, L.right, L.floor, grow(0, 3.75, 0).Y, L.front, L.back, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
+	piece("Plinth", L.left, L.left + 0.7 * S, L.floor, grow(0, 2.9, 0).Y, L.front, L.back, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
 	-- the ceiling: boards across, on joists
 	local z = L.front - L.t
 	while z < L.back + L.t - 0.01 do
@@ -420,8 +431,8 @@ local function lineRoom(shop: Instance, at: CFrame)
 		piece("Joist", L.left, L.right, L.top - 0.6, L.top, zz - 0.35, zz + 0.35, POST_IN, Enum.Material.Wood, false)
 	end
 	-- warm lamps under the ceiling (the room was lit by the fire alone: dark red)
-	for _, x in { -7.5, 7.5 } do
-		for _, zz in { 0, 7 } do
+	for _, x in { grow(-7.5, 0, 0).X, grow(7.5, 0, 0).X } do
+		for _, zz in { grow(0, 0, 0).Z, grow(0, 0, 7).Z } do
 			local holder = piece("CeilingLamp", x - 0.6, x + 0.6, L.top - 0.9, L.top - 0.6, zz - 0.6, zz + 0.6, Color3.fromRGB(255, 186, 104), Enum.Material.Neon, false)
 			holder.CastShadow = false
 			local light = Instance.new("PointLight")
@@ -443,6 +454,31 @@ local function lineRoom(shop: Instance, at: CFrame)
 	end
 end
 
+-- the yard's props round the porch (server/ShopRoom outside: the two picket fences, the gnome, the watering can, the
+-- mailbox, the wheelbarrow, the bundles) move out with the bigger cabin, each group by its own spot
+local YARD_SPOTS = { { 9.6, -17.7 }, { -9.6, -17.7 }, { -7.4, -19.2 }, { -8.9, -19.5 }, { 7.6, -19.4 }, { 18.6, -13.4 }, { -16.8, -10.6 } }
+local function moveYard(shop: Instance, at: CFrame)
+	local yard = shop:FindFirstChild("ShopYard")
+	if ShopShell.SIZE == 1 or not yard then
+		return
+	end
+	local inv = at:Inverse()
+	for _, p in yard:GetDescendants() do
+		if p:IsA("BasePart") then
+			local l = inv * p.Position
+			local best, bd = YARD_SPOTS[1], math.huge
+			for _, sp in YARD_SPOTS do
+				local dd = (l.X - sp[1]) ^ 2 + (l.Z - sp[2]) ^ 2
+				if dd < bd then
+					best, bd = sp, dd
+				end
+			end
+			local g = grow(best[1], 0, best[2])
+			p.CFrame = at * CFrame.new(g.X - best[1], 0, g.Z - best[2]) * (inv * p.CFrame)
+		end
+	end
+end
+
 function ShopShell.dress(shop: Instance, at: CFrame): boolean
 	if not ShopShell.MODEL then
 		if not studCabin(shop, at) then
@@ -450,11 +486,13 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		end
 		return true
 	end
-	local m = shell(shop, at, NAME, FIT, { ROOM_MIN, ROOM_MAX }, { DOOR_MIN, DOOR_MAX })
+	local fit = { x = FIT.x, y = FIT.y, z = FIT.z, width = FIT.width * ShopShell.SIZE }
+	local m = shell(shop, at, NAME, fit, { ROOM_MIN, ROOM_MAX }, { DOOR_MIN, DOOR_MAX })
 	if not m then
 		return false
 	end
 	strip(shop, at)
+	moveYard(shop, at)
 	-- (10 Nov 17:01, owner: "remove the house inside the house") the lodge's log walls, roof and windows go: inside
 	-- you see the cabin's own walls round the shop's room (tool boards, counter, fireplace, rugs)
 	if FIT_IN.on then
@@ -473,8 +511,9 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		p.CanTouch = false
 		p.CastShadow = false
 		p.Transparency = 1
-		p.Size = Vector3.new(x1 - x0, OUTER.frontY, z1 - z0)
-		p.CFrame = at * CFrame.new((x0 + x1) / 2, OUTER.frontY / 2, (z0 + z1) / 2)
+		local a0, a1 = grow(x0, 0, z0), grow(x1, OUTER.frontY, z1)
+		p.Size = Vector3.new(a1.X - a0.X, OUTER.frontY * ShopShell.SIZE, a1.Z - a0.Z)
+		p.CFrame = at * CFrame.new((a0.X + a1.X) / 2, OUTER.frontY * ShopShell.SIZE / 2, (a0.Z + a1.Z) / 2)
 		p.Parent = walls
 	end
 	wall(OUTER.left, -22.2, -8.6, OUTER.back) -- left (the chimney side)
@@ -505,8 +544,11 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		end
 		box.WorldPivot = at
 		box.Parent = shop
-		box:ScaleTo(FIT_IN.k)
-		box:PivotTo(at * CFrame.new(0, FIT_IN.dy, FIT_IN.dz))
+		local S = ShopShell.SIZE
+		local k = FIT_IN.k * S
+		local d = Vector3.new(0, FIT_IN.dy, FIT_IN.dz) * S + GROW_C * (1 - S)
+		box:ScaleTo(k)
+		box:PivotTo(at * CFrame.new(d))
 		for _, c in moved do
 			c.Parent = shop
 		end
@@ -521,15 +563,17 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 				p:Destroy()
 			end
 		end
-		local floorY = 0.75 * FIT_IN.k + FIT_IN.dy
+		local floorY = 0.75 * k + d.Y
 		local ramp = Instance.new("WedgePart")
 		ramp.Name = "DoorRamp"
-		ramp.Size = Vector3.new(4.4, floorY, 4)
-		ramp.CFrame = at * CFrame.new(-0.2, floorY / 2, -16.5) -- (a wedge is low at its -Z end, out of the door, high at +Z)
+		local rz = grow(-0.2, 0, -16.5)
+		ramp.Size = Vector3.new(4.4 * S, floorY, 4 * S)
+		ramp.CFrame = at * CFrame.new(rz.X, floorY / 2, rz.Z) -- (a wedge is low at its -Z end, out of the door, high at +Z)
 		local deck = Instance.new("Part")
 		deck.Name = "DoorFloor"
-		deck.Size = Vector3.new(4.4, 1, 14.5 - 5.9)
-		deck.CFrame = at * CFrame.new(-0.2, floorY - 0.5, (-14.5 - 5.9) / 2)
+		local z0, z1 = grow(-0.2, 0, -14.5), grow(0, 0, -5.9)
+		deck.Size = Vector3.new(4.4 * S, 1, z1.Z - z0.Z)
+		deck.CFrame = at * CFrame.new(z0.X, floorY - 0.5, (z0.Z + z1.Z) / 2)
 		for _, q in { ramp, deck } :: { BasePart } do
 			q.Anchored = true
 			q.Transparency = 1

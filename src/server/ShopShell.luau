@@ -81,7 +81,9 @@ ShopShell.SIZE = 1.15
 -- coats, notice board and barrel moved up against its front wall (`front`, lodge studs), floor and the runner on to
 -- the door, warm lamps under the roof. `k` and `d` are absolute (the shop's scale and where its anchor goes).
 ShopShell.OPEN = true
-local OPEN_FIT = { k = 0.95, d = Vector3.new(0, 2.0, 5.0), front = -6.9, inside = { -20.2, 20.85, -8.96, 20.6 } }
+-- (18:30, measured in Play at y 9: the cabin's inside x -21.4..23.1, z -10..21.9) the boards against its back wall,
+-- what hangs on the side walls (shears, painting, the Laser Mower's board) moved out to them (`sides`, lodge studs)
+local OPEN_FIT = { k = 0.95, d = Vector3.new(0, 2.0, 8.3), front = -11.6, sides = { -2.68, 4.47 }, inside = { -21.4, 23.1, -10.0, 21.9 } }
 local FRONT_SET: { [string]: boolean } = {}
 for _, n in { "Barrel", "Hoop", "Handle", "RakeHead", "RakeTine", "BroomBind", "BroomStraw", "ShovelBlade" } do
 	FRONT_SET[n] = true -- (the barrel of rakes in the front corner)
@@ -654,14 +656,14 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 	end
 	wall(OUTER.left, -22.2, -8.6, OUTER.back) -- left (the chimney side)
 	wall(22.2, OUTER.right, -8.6, OUTER.back) -- right
-	wall(-22.2, 22.2, 16.9, OUTER.back) -- back
+	wall(-22.2, 22.2, if FIT_IN.on and ShopShell.OPEN then 18.85 else 16.9, OUTER.back) -- back (open: just before the boards)
 	wall(OUTER.left + 5, DOOR_MIN.X - 1.4, OUTER.front, -7.3) -- front, left of the porch
 	wall(DOOR_MAX.X + 1.4, OUTER.right, OUTER.front, -7.3) -- front, right of the porch
 	wall(DOOR_MIN.X - 1.4, -2.2, OUTER.front - 1, -7.3) -- either side of the door tunnel (x -2.2..1.8)
 	wall(1.8, DOOR_MAX.X + 1.4, OUTER.front - 1, -7.3)
 	if FIT_IN.on and ShopShell.OPEN then -- (open: in front of the cabin's bulging bottom logs: x -18 / 17 at x1.15)
-		wall(-22.2, -15.8, -8.6, 16.9)
-		wall(14.65, 22.2, -8.6, 16.9)
+		wall(-22.2, -15.8, -8.6, 18.9)
+		wall(14.65, 22.2, -8.6, 18.9)
 	elseif FIT_IN.on then -- the lodge's side walls are gone: the cabin's inside walls (x -17.7..18; back and front above)
 		wall(-22.2, -17.7, -8.6, 16.9)
 		wall(18, 22.2, -8.6, 16.9)
@@ -690,10 +692,23 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 			k, d = OPEN_FIT.k, OPEN_FIT.d
 			-- the things on the front wall and the barrel in the front corner go to the cabin's front wall
 			local inv = at:Inverse()
-			local room = shop:FindFirstChild("ShopRoom")
-			for _, p in (if room then room:GetDescendants() else {}) do
-				if p:IsA("BasePart") and p.Name ~= "Runner" and p.Name ~= "RunnerBorder" and ((inv * p.Position).Z < -5.2 or FRONT_SET[p.Name]) then
-					p.CFrame = at * CFrame.new(0, 0, OPEN_FIT.front) * (inv * p.CFrame)
+			-- (everything is in the box now)
+			for _, c in box:GetChildren() do
+				local isRoom = c.Name == "ShopRoom"
+				if not (isRoom or c.Name == "ToolDisplay") then
+					continue
+				end
+				for _, p in c:GetDescendants() do
+					if not p:IsA("BasePart") then
+						continue
+					end
+					local l = inv * p.Position
+					if isRoom and p.Name ~= "Runner" and p.Name ~= "RunnerBorder" and (l.Z < -5.2 or FRONT_SET[p.Name]) then
+						p.CFrame = at * CFrame.new(0, 0, OPEN_FIT.front) * (inv * p.CFrame)
+					elseif math.abs(l.X) > 17 and l.Y > (if isRoom then 4.8 else 6) and not (l.X < 0 and l.Z > 5.5 and l.Z < 14.3) then
+						-- on a side wall, over the cabin's bottom logs (not the fireplace and its chimney)
+						p.CFrame = at * CFrame.new(if l.X < 0 then OPEN_FIT.sides[1] else OPEN_FIT.sides[2], 0, 0) * (inv * p.CFrame)
+					end
 				end
 			end
 		end

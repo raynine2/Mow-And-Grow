@@ -43,13 +43,20 @@ end
 -- where a spot is: the owner's HubSpot_<name> part in the map, else Config's position, on the ground
 local function spotFrame(world: Instance, name: string, def: any): CFrame
 	local override = world:FindFirstChild("HubSpot_" .. name, true)
-	if override and override:IsA("BasePart") then
-		override.Transparency = 1
-		override.CanCollide = false
-		override.CanQuery = false
-		local look = override.CFrame.LookVector
+	if override and (override:IsA("BasePart") or override:IsA("Model")) then
+		-- (10 Nov, owner: "Import het") a part, or the imported model itself (Maps.Lobby.HubExtras: the owner drags it
+		-- where he wants it in Studio); the model is only there to see and move, the game builds the working one
+		local cf = if override:IsA("Model") then override:GetPivot() else (override :: BasePart).CFrame
+		if override:IsA("BasePart") then
+			override.Transparency = 1
+			override.CanCollide = false
+			override.CanQuery = false
+		else
+			override:Destroy()
+		end
+		local look = cf.LookVector
 		local flat = Vector3.new(look.X, 0, look.Z)
-		local p = override.Position
+		local p = cf.Position
 		return CFrame.lookAt(p, p + (if flat.Magnitude > 0.1 then flat else Vector3.zAxis))
 	end
 	local pos = def.pos :: Vector3

@@ -827,7 +827,12 @@ local function setupPlayer(player: Player, data)
 		data.run.earnedBase = data.stats.coinsEarned or 0 -- (10 Nov) the end screen's "coins this run"
 		-- (report #1, Config.FIRST_TIMER) a first-timer's first run: a starter tool on loan until the first sale (walk
 		-- into the grass to mow it), and the intro film after that sale instead of before the first cut
-		if PlayerData.isNew(data) then
+		-- (10 Nov 22:15, owner in a Studio test: "brr brr doesn't give me the scythe and I don't see it in the tuto")
+		-- Studio profiles are always empty, so client/Coach's first-run tutorial (BRRBRR walking beside you) always
+		-- runs there, but isNew needs the TestFirstTimer attribute in Studio: the loan follows the tutorial's rule there
+		local s0 = data.stats or {}
+		local studioFirst = RunService:IsStudio() and (s0.cut or 0) == 0 and (s0.sold or 0) == 0 and (s0.runs or 0) == 0
+		if PlayerData.isNew(data) or studioFirst then
 			Analytics.startOnboarding(player, 2) -- (10 Nov) onboarding funnel: joined, in their first run
 			local F = Config.FIRST_TIMER
 			if F.introAfterSale then

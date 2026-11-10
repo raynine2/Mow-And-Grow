@@ -85,10 +85,6 @@ local function buildStage(f: Folder, at: CFrame)
 		part(f, "Post", Vector3.new(0.8, 17.4, 0.8), at * CFrame.new(x, 8.7, 3.4), C(96, 62, 38), Enum.Material.WoodPlanks)
 	end
 	faceText(board, "TOP MOWERS", C(255, 214, 80), 92)
-	local sub = part(f, "BoardSub", Vector3.new(15, 1, 0.1), at * CFrame.new(0, 15.5, 2.86), CREAM)
-	sub.Transparency = 1
-	sub.CanCollide = false
-	faceText(sub, "most grass cut  ·  all servers", C(255, 255, 255), 30)
 	-- sparkles over #1
 	local sp = part(f, "Sparkles", Vector3.new(4, 1, 4), at * CFrame.new(0, PLACES[1].h + 4, 0), CREAM)
 	sp.Transparency = 1
@@ -250,6 +246,7 @@ local function refresh(t: number)
 			local bb = slot.tag.Parent
 			if bb and bb:IsA("BillboardGui") then
 				bb.StudsOffset = Vector3.new(0, if row then 8.8 else 1.6, 0)
+				bb.Size = if row then UDim2.fromOffset(220, 64) else UDim2.fromOffset(140, 44) -- (two empty ones overlapped)
 			end
 		end
 	end

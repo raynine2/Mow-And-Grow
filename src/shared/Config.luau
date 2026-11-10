@@ -306,7 +306,7 @@ Config.FIRST_TIMER = { autoStart = 3, loaner = "PushMower", introAfterSale = tru
 -- next goal and explains; the other walks beside you and cheers. Empty list = the old step card.
 Config.TUTOR_GUIDES = {
 	{ key = "Rayan", label = "RAYAN", userId = 1994267229, lead = true, color = Color3.fromRGB(255, 196, 60) },
-	{ key = "Brrbrr", label = "BRRBRR", userId = 57894883, color = Color3.fromRGB(120, 210, 255) },
+	{ key = "Brrbrr", label = "BRRBRR", userId = 9924995589, color = Color3.fromRGB(120, 210, 255) }, -- (10 Nov) Maxime's account "bbrrbrrbrbrb" (57894883 was someone else's "brrbrr")
 }
 -- (10 Nov, owner: "the main hub is so boring", picked "2 5 8" + "make the pets walk here and a hatch place") the
 -- hub's extras (server/HubFun, server/HubStatues, client/HubGuides, client/HubWheel, client/HubGarden). Spots are

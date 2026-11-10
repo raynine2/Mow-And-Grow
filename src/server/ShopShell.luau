@@ -46,6 +46,8 @@ for _, n in {
 	"SignChain", "Lantern", "LanternBar", "LanternBase", "LanternCap", "LanternCore", "LanternGlass", "Post", "PostFoot",
 	"Chimney", "ChimneyCap", "ChimneySmoke", "BadgeBlade", "BadgeGrip", "BadgeHandle", "Planter", "Soil", "Flower",
 	"Leaves", "Shutter", "ShutterBatten", "ShutterBrace", "SillBracket", "Firewood",
+	-- (10 Nov) the lodge's door: the cabin's door tunnel leads straight in (its swing tween would also undo FIT_IN)
+	"DoorPlank", "DoorBatten", "DoorStrap", "DoorHandle", "DoorSensor",
 } do
 	GONE[n] = true
 end
@@ -62,6 +64,9 @@ local ROOM_MIN, ROOM_MAX = Vector3.new(-21.4, 0, -9.3), Vector3.new(21.4, 25, 16
 local DOOR_MIN, DOOR_MAX = Vector3.new(-6.5, 0, -15.5), Vector3.new(6.5, 14, -9.3) -- (10 Nov: z was -12.6)
 -- (10 Nov) the cabin's outside walls at 57 wide (measured in Studio, lodge frame): invisible walls there (ShellWalls)
 local OUTER = { left = -29.3, right = 26.3, back = 25.2, front = -15, frontY = 20 }
+-- (10 Nov) the shop inside the cabin: x0.88 (the room 39.2 -> 34.5 wide in the cabin's 35.7), its floor up on the
+-- cabin's (0.75 -> 2.0), its front wall against the cabin's inside front (z -7.2)
+local FIT_IN = { on = true, k = 0.88, dy = 1.34, dz = 0.37 }
 
 local function strip(shop: Instance, at: CFrame)
 	local building = shop:FindFirstChild("ShopBuilding")
@@ -285,7 +290,8 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		end
 		return true
 	end
-	if not shell(shop, at, NAME, FIT, { ROOM_MIN, ROOM_MAX }, { DOOR_MIN, DOOR_MAX }) then
+	local m = shell(shop, at, NAME, FIT, { ROOM_MIN, ROOM_MAX }, { DOOR_MIN, DOOR_MAX })
+	if not m then
 		return false
 	end
 	strip(shop, at)
@@ -309,9 +315,35 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 	wall(OUTER.left, -22.2, -8.6, OUTER.back) -- left (the chimney side)
 	wall(22.2, OUTER.right, -8.6, OUTER.back) -- right
 	wall(-22.2, 22.2, 16.9, OUTER.back) -- back
-	wall(OUTER.left + 5, DOOR_MIN.X - 1.4, OUTER.front, -8.6) -- front, left of the porch
-	wall(DOOR_MAX.X + 1.4, OUTER.right, OUTER.front, -8.6) -- front, right of the porch
+	wall(OUTER.left + 5, DOOR_MIN.X - 1.4, OUTER.front, -7.3) -- front, left of the porch
+	wall(DOOR_MAX.X + 1.4, OUTER.right, OUTER.front, -7.3) -- front, right of the porch
+	wall(DOOR_MIN.X - 1.4, -2.2, OUTER.front - 1, -7.3) -- either side of the door tunnel (x -2.2..1.8)
+	wall(1.8, DOOR_MAX.X + 1.4, OUTER.front - 1, -7.3)
 	walls.Parent = shop
+	-- (10 Nov 16:42, owner: "de huis is weer bugged er zijn 2 huizen in 1") ONE HOUSE, inside and out: the whole shop
+	-- (the lodge, its room, the tool boards, the counter spot) is scaled by FIT_IN.k round the anchor and moved into the
+	-- cabin's own hollow inside (measured in Studio, lodge frame: x -17.7..18, z -7.2..18.5, floor 1.9, ceiling 31), so
+	-- the cabin always shows and nothing swaps at the door (client/ShopShellView leaves the Tool Shop alone now).
+	if FIT_IN.on then
+		local box = Instance.new("Model")
+		box.Name = "FitIn"
+		local moved = {}
+		for _, c in shop:GetChildren() do
+			if c ~= m and c ~= walls and c.Name ~= "0Anchor" and c.Name ~= "ShopYard" then
+				table.insert(moved, c)
+				c.Parent = box
+			end
+		end
+		box.WorldPivot = at
+		box.Parent = shop
+		box:ScaleTo(FIT_IN.k)
+		box:PivotTo(at * CFrame.new(0, FIT_IN.dy, FIT_IN.dz))
+		for _, c in moved do
+			c.Parent = shop
+		end
+		box:Destroy()
+		shop:SetAttribute("FitIn", true)
+	end
 	return true
 end
 

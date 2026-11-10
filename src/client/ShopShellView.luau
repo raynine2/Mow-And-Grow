@@ -255,7 +255,8 @@ local function find(v: View, u: { unit: string, building: string })
 	local world = workspace:FindFirstChild("World")
 	local hub = world and world:FindFirstChild("Hub")
 	local unit = hub and hub:FindFirstChild(u.unit)
-	local s = unit and unit:FindFirstChild("ShopShell") :: Model?
+	-- (10 Nov) a unit fitted inside its cabin (server/ShopShell FIT_IN: attribute FitIn) is one house: nothing to swap
+	local s = if unit and not unit:GetAttribute("FitIn") then unit:FindFirstChild("ShopShell") :: Model? else nil
 	v.anchor = unit and unit:FindFirstChild("0Anchor") :: BasePart?
 	if s == v.shell then
 		return

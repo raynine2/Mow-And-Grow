@@ -312,13 +312,18 @@ Config.TUTOR_GUIDES = {
 -- hub's extras (server/HubFun, server/HubStatues, client/HubGuides, client/HubWheel, client/HubGarden). Spots are
 -- lobby positions (y = 0 the island's top, the spawn at 0, 0, -50); a part named "HubSpot_<Statues|Guides|Wheel|
 -- Garden>" anywhere in the lobby map moves that one (put it in Maps.Lobby in Studio, no re-bake needed).
+-- (10 Nov, owner: "delete the signs") the lobby's GRASS CUT and BEST TIMES / BOSS SLAYERS boards (server/LobbyBuilder)
+-- aren't built: the Top Mowers stage (server/HubStatues) shows the top grass cutters. The all-time stores still fill
+-- (server/LobbyBoards). true brings them back where the code puts them (the saved map's copies went to
+-- ServerStorage.MowALawnBackups).
+Config.LOBBY_BOARDS = false
 Config.HUB_FUN = {
 	on = true,
 	spots = {
 		Statues = { pos = Vector3.new(34, 0, -6), face = Vector3.new(0, 0, -30) }, -- the top 3 of GRASS CUT
 		Guides = { pos = Vector3.new(-9, 0, -38), face = Vector3.new(0, 0, -50) }, -- RAYAN and BRRBRR, by the spawn
 		Wheel = { pos = Vector3.new(-34, 0, -6), face = Vector3.new(0, 0, -30) }, -- the free daily wheel
-		Garden = { pos = Vector3.new(58, 0, 22), face = Vector3.new(0, 0, -20) }, -- the eggs and the critters
+		Garden = { pos = Vector3.new(0, 0, -75), face = Vector3.new(0, 0, -50) }, -- the eggs and the critters; (10 Nov, owner: "why is it not in the middle") on the path south of the spawn, its gate to the spawn (was 58, 0, 22 behind the stage)
 	},
 	statueBoard = "cut", -- which leaderboard the statues show (server/LobbyBoards)
 	gift = 25, -- gems from the guides once a day (UTC)

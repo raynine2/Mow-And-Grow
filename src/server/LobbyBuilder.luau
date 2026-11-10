@@ -358,7 +358,10 @@ end
 
 -- The leaderboard's text label (the Lobby system fills it with this server's top mowers). It stands to the right
 -- of the party pads, turned toward the plaza (Chop A Forest's CASH EARNED board).
-local function leaderboard(world: Instance): TextLabel
+local function leaderboard(world: Instance): TextLabel?
+	if Config.LOBBY_BOARDS == false then
+		return nil -- (10 Nov, owner: "delete the signs")
+	end
 	local m = PropKit.folder("Leaderboard", world)
 	local pos = Layout.GRASS_CUT.pos
 	local at = Layout.facing(pos, Layout.SPAWN) -- framing the launch gate, turned to the spawn
@@ -383,6 +386,9 @@ end
 
 -- The BEST TIMES board (trophy_board model): the Lobby system fills its face with the fastest runs.
 local function bestTimesBoard(world: Instance): TextLabel?
+	if Config.LOBBY_BOARDS == false then
+		return nil -- (10 Nov, owner: "delete the signs")
+	end
 	local m = PropKit.folder("BestTimes", world)
 	-- to the left of the party pads, turned toward the plaza (like Chop A Forest's BEST TIMES board)
 	local pos = Layout.BEST_TIMES.pos

@@ -370,17 +370,20 @@ def podium_stage():
 
 # --- 4. the Pet Garden ----------------------------------------------------------------------------------------------
 def pet_garden():
+    # (10 Nov, owner: "proportion the garden to make it fit ... why is it not in the middle") a compact garden that
+    # sits ON the path south of the spawn, its gate to the spawn and a back gate on to the lookout, so the path runs
+    # through it: hedge ring r 9-11 (was 11.5-13.6), the eggs just outside the front gate. 27.5 studs front to back.
     m = M()
     rnd = random.Random(7)
-    R_IN, R_OUT = 11.5, 13.6
-    pond = (4.5, 4.5, 3.4)
-    beds = [(-6.5, -3.5), (-5.5, 6.5), (7.5, -5.5)]
-    tree = (-1.5, 8.5)
-    for x in range(-14, 14):
-        for z in range(-14, 14):
+    R_IN, R_OUT = 9.0, 11.0
+    pond = (5.0, 2.0, 2.4)
+    beds = [(-5.5, -3.5), (5.0, -4.5)]
+    tree = (-6.5, 2.5)
+    for x in range(-11, 11):
+        for z in range(-11, 11):
             cx, cz = x + 0.5, z + 0.5
             r = math.hypot(cx, cz)
-            gate = cz < 0 and abs(cx) < 2.6
+            gate = abs(cx) < 2.6  # the way through, front and back
             if R_IN <= r < R_OUT and not gate:
                 hgt = 3 if h3(x, 0, z, 9) > 0.7 else 2
                 m.brick(x, 0, z, x + 1, hgt, z + 1, "hedge", "voxel", 5)
@@ -401,20 +404,21 @@ def pet_garden():
                     if h3(x, 3, z, 2) > 0.9:
                         m.dot(x + 0.25, 1, z + 0.25, "leaf_d")
                         m.dot(x + 0.25, 1.5, z + 0.25, "leaf")
-    # the pond: lily pads with a flower, reeds, a little plank bridge over its narrow side
-    for (lx, lz, fl) in [(3.5, 3, True), (5.5, 5.5, False), (4, 6, True)]:
-        m.fine(lx, 1, lz, lx + 1.5, 1.25 + 0.25, lz + 1, "green")
+    # the pond: lily pads with a flower, reeds, a little plank bridge over its near side
+    px, pz = pond[0], pond[1]
+    for (lx, lz, fl) in [(-0.5, -1, True), (1, 1, False), (-0.5, 1.5, True)]:
+        m.fine(px + lx, 1, pz + lz, px + lx + 1.5, 1.25 + 0.25, pz + lz + 1, "green")
         if fl:
-            m.dot(lx + 0.5, 1.5, lz + 0.25, "pink")
-    for (rx, rz) in [(7, 6.5), (7.5, 3), (2, 7)]:
-        m.fine(rx, 1, rz, rx + 0.5, 3, rz + 0.5, "leaf_d")
-        m.fine(rx, 3, rz, rx + 0.5, 4, rz + 0.5, "trunk")
-    for i in range(7):
-        m.fine(1.5 + i * 0.5 + 0.0, 1.5, 1.5, 2 + i * 0.5, 2, 4.5, "wood" if i % 2 else "wood_d")
-    m.fine(1.5, 2, 1.5, 5, 2.5, 2, "woodDark")
-    m.fine(1.5, 2, 4, 5, 2.5, 4.5, "woodDark")
-    # stepping stones from the gate in
-    for i, z in enumerate(range(-11, -1, 2)):
+            m.dot(px + lx + 0.5, 1.5, pz + lz + 0.25, "pink")
+    for (rx, rz) in [(2.5, 2), (3, -1.5), (-2.5, 2.5)]:
+        m.fine(px + rx, 1, pz + rz, px + rx + 0.5, 3, pz + rz + 0.5, "leaf_d")
+        m.fine(px + rx, 3, pz + rz, px + rx + 0.5, 4, pz + rz + 0.5, "trunk")
+    for i in range(6):
+        m.fine(px - 2.5 + i * 0.5, 1.5, pz - 1.5, px - 2 + i * 0.5, 2, pz + 1.5, "wood" if i % 2 else "wood_d")
+    m.fine(px - 2.5, 2, pz - 1.5, px + 0.5, 2.5, pz - 1, "woodDark")
+    m.fine(px - 2.5, 2, pz + 1, px + 0.5, 2.5, pz + 1.5, "woodDark")
+    # stepping stones from the front gate to the back gate
+    for i, z in enumerate(range(-9, 9, 2)):
         x0 = -1 + (1 if i % 2 else -1)
         for x in range(x0, x0 + 2):
             m.b[(x, 0, z)] = var("stone", x, 0, z, 8)
@@ -422,65 +426,69 @@ def pet_garden():
     # flower beds: a plank border, soil, flowers on stems
     flowers = ["pink", "yellow", "violet", "white", "orange"]
     for bx, bz in beds:
-        for x in range(int(bx) - 3, int(bx) + 3):
-            for z in range(int(bz) - 2, int(bz) + 3):
+        for x in range(int(math.floor(bx)) - 3, int(math.floor(bx)) + 3):
+            for z in range(int(math.floor(bz)) - 2, int(math.floor(bz)) + 3):
                 d = math.hypot(x + 0.5 - bx, z + 0.5 - bz)
                 if d < 2.4:
                     m.b[(x, 1, z)] = "wood_d" if d > 1.6 else var("soil", x, 1, z, 3)
                     if d <= 1.6 and rnd.random() < 0.7:
                         flower(m, x, 2, z, rnd.choice(flowers))
-    # a tree at the back: a trunk, a lumpy round crown with fruit, its shade on the grass
-    tx, tz = tree
-    m.brick(int(tx), 1, int(tz), int(tx) + 2, 7, int(tz) + 2, "trunk", "y", 2)
-    m.brick(int(tx) - 1, 1, int(tz), int(tx), 2, int(tz) + 1, "trunk_d")
-    m.brick(int(tx) + 2, 1, int(tz) + 1, int(tx) + 3, 2, int(tz) + 2, "trunk_d")
-    for x in range(int(tx) - 4, int(tx) + 6):
+    # a tree at the side: a trunk, a lumpy round crown with fruit
+    tx, tz = int(tree[0]), int(tree[1])
+    m.brick(tx, 1, tz, tx + 2, 7, tz + 2, "trunk", "y", 2)
+    m.brick(tx - 1, 1, tz, tx, 2, tz + 1, "trunk_d")
+    m.brick(tx + 2, 1, tz + 1, tx + 3, 2, tz + 2, "trunk_d")
+    for x in range(tx - 4, tx + 6):
         for y in range(6, 12):
-            for z in range(int(tz) - 4, int(tz) + 6):
+            for z in range(tz - 4, tz + 6):
                 d = math.hypot(x + 0.5 - (tx + 1), (y + 0.5 - 8.8) * 1.25, z + 0.5 - (tz + 1))
                 if d < 4.2 + (h3(x, y, z, 12) - 0.5) * 0.9:
                     m.b[(x, y, z)] = var("leaf", x, y, z, 11)
                     if d > 3.4 and h3(x, y, z, 13) > 0.93:
                         m.dot(x + 0.25, y + 0.25, z - 0.25, "red")
-    # mushrooms, a bench, a birdhouse
-    for (mx, mz) in [(-8.5, 1.5), (-8, 2.5), (8.5, 1)]:
+    # mushrooms by the tree, a bench by the back gate, a birdhouse on the right
+    for (mx, mz) in [(-7.5, -0.5), (-7, 0.5), (-3.5, 6)]:
         m.fine(mx, 1, mz, mx + 0.5, 1.5, mz + 0.5, "white")
         m.fine(mx - 0.25, 1.5, mz - 0.25, mx + 0.75, 2, mz + 0.75, "red")
         m.dot(mx, 2, mz, "white")
-    m.fine(-9, 1, -8, -6, 1.5, -7, "wood")
-    m.fine(-9, 1.5, -8, -6, 2, -7, "wood_l")
-    m.fine(-9, 2, -7, -6, 3, -6.5, "wood")
-    for lx in (-9, -6.5):
-        m.fine(lx, 1, -8, lx + 0.5, 1.5, -6.5, "woodDark")
-    m.fine(9, 1, 3, 9.5, 5, 3.5, "woodDark")
-    m.fine(8.5, 5, 2.5, 10, 6.5, 4, "red")
-    m.fine(8.25, 6.5, 2.25, 10.25, 7, 4.25, "woodDark")
-    m.dot(9, 5.5, 2.25, "iron")
+    m.fine(2.5, 1, 5.5, 5.5, 1.5, 6.5, "wood")
+    m.fine(2.5, 1.5, 5.5, 5.5, 2, 6.5, "wood_l")
+    m.fine(2.5, 2, 6.5, 5.5, 3, 7, "wood")
+    for lx in (2.5, 5):
+        m.fine(lx, 1, 5.5, lx + 0.5, 1.5, 7, "woodDark")
+    m.fine(7.5, 1, -1.5, 8, 5, -1, "woodDark")
+    m.fine(7, 5, -2, 8.5, 6.5, -0.5, "red")
+    m.fine(6.75, 6.5, -2.25, 8.75, 7, -0.25, "woodDark")
+    m.dot(7.5, 5.5, -2.25, "iron")
     # the gate arch: stone-footed posts, a curved plank top, flowers climbing, lanterns, the sign
-    for px in (-4, 3):
-        m.brick(px, 0, -14, px + 1, 1, -12, "stone")
-        m.brick(px, 1, -14, px + 1, 8, -12, "woodDark", "y", 7)
+    for px2 in (-4, 3):
+        m.brick(px2, 0, -11, px2 + 1, 1, -9, "stone")
+        m.brick(px2, 1, -11, px2 + 1, 8, -9, "woodDark", "y", 7)
         for y in range(2, 8, 2):
-            flower(m, px + (0.75 if px > 0 else -0.75), y, -14.5, flowers[y % len(flowers)])
-        lantern(m, px + (1.25 if px > 0 else -1.25), 7.5, -13.5)
-    m.brick(-5, 8, -14, 5, 9, -12, "wood", "x", 9)
-    m.brick(-4, 9, -14, 4, 10, -12, "wood", "x", 10)
-    m.brick(-2, 10, -14, 2, 11, -12, "wood", "x", 11)
+            flower(m, px2 + (0.75 if px2 > 0 else -0.75), y, -11.5, flowers[y % len(flowers)])
+        lantern(m, px2 + (1.25 if px2 > 0 else -1.25), 7.5, -10.5)
+    m.brick(-5, 8, -11, 5, 9, -9, "wood", "x", 9)
+    m.brick(-4, 9, -11, 4, 10, -9, "wood", "x", 10)
+    m.brick(-2, 10, -11, 2, 11, -9, "wood", "x", 11)
     for x in range(-5, 5, 2):
-        flower(m, x, 9, -14.5, flowers[(x // 2) % len(flowers)])
-    m.fine(-3, 6.5, -14.5, 3, 8, -14, "wood_l")
-    m.a["sign"] = (0, 7.25, -14.5)
+        flower(m, x, 9, -11.5, flowers[(x // 2) % len(flowers)])
+    m.fine(-3, 6.5, -11.5, 3, 8, -11, "wood_l")
+    m.a["sign"] = (0, 7.25, -11.5)
+    # the back gate: two low stone posts with a lantern each
+    for px2 in (-4, 3):
+        m.brick(px2, 0, 9, px2 + 1, 3, 11, "stone", "y", 12)
+        lantern(m, px2 + 0.25, 3, 9.75)
     # the egg nests outside, either side of the way in: a stone pedestal with a plank trim, a straw nest
     for name, nx in (("nestA", 5), ("nestB", -8)):
-        m.brick(nx, 0, -19, nx + 3, 2, -16, "stone", "voxel", 14 + nx)
-        m.fine(nx - 0.5, 2, -19.5, nx + 3.5, 2.5, -15.5, "wood")
+        m.brick(nx, 0, -16, nx + 3, 2, -13, "stone", "voxel", 14 + nx)
+        m.fine(nx - 0.5, 2, -16.5, nx + 3.5, 2.5, -12.5, "wood")
         for i in range(12):
             a = i / 12 * 2 * math.pi
-            m.dot(nx + 1.25 + math.cos(a) * 1.25, 2.5, -17.75 + math.sin(a) * 1.25, "straw" if i % 2 else "straw_d")
-            m.dot(nx + 1.25 + math.cos(a) * 1.0, 3.0, -17.75 + math.sin(a) * 1.0, "straw_l")
-        m.fine(nx + 0.5, 2.5, -18.5, nx + 2.5, 3, -16.5, "straw_d")
-        m.a[name] = (nx + 1.5, 3, -17.5)
-        m.a[name + "Sign"] = (nx + 1.5, 1, -19.5)
+            m.dot(nx + 1.25 + math.cos(a) * 1.25, 2.5, -14.75 + math.sin(a) * 1.25, "straw" if i % 2 else "straw_d")
+            m.dot(nx + 1.25 + math.cos(a) * 1.0, 3.0, -14.75 + math.sin(a) * 1.0, "straw_l")
+        m.fine(nx + 0.5, 2.5, -15.5, nx + 2.5, 3, -13.5, "straw_d")
+        m.a[name] = (nx + 1.5, 3, -14.5)
+        m.a[name + "Sign"] = (nx + 1.5, 1, -16.5)
     m.a["pond"] = pond
     m.a["beds"] = beds
     m.a["tree"] = (tree[0] + 1, tree[1] + 1, 3)

@@ -2036,7 +2036,8 @@ local function endScreen(d: any)
 		end
 	end
 	local time = if (d.time or 0) > 0 then "Run time " .. Format.clock(d.time) .. (if d.best then "   NEW BEST!" else "") .. medal .. "   ·   " else ""
-	local stats = UI.text(face, time .. "+" .. Format.short(d.gems or 0) .. " gems", UDim2.new(1, -40, 0, 28), { pos = UDim2.fromOffset(20, 78), stroke = 0, color = Color3.fromRGB(120, 80, 40) })
+	local earned = if type(d.coins) == "number" then Format.short(d.coins) .. " coins earned   ·   " else "" -- (10 Nov) the run's total
+	local stats = UI.text(face, time .. earned .. "+" .. Format.short(d.gems or 0) .. " gems", UDim2.new(1, -40, 0, 28), { pos = UDim2.fromOffset(20, 78), stroke = 0, color = Color3.fromRGB(120, 80, 40) })
 	local _ = stats
 	local blurb = UI.text(face, "The valley is mowed... then the glitch came for it. To be continued in world 2!", UDim2.new(1, -40, 0, 26), { pos = UDim2.fromOffset(20, 114), stroke = 0, color = Color3.fromRGB(140, 96, 60) })
 	blurb.TextWrapped = true

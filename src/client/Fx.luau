@@ -875,7 +875,8 @@ handlers.runComplete = function(d)
 		return
 	end
 	local time = if (d.time or 0) > 0 then "  Time " .. Format.clock(d.time) .. (if d.best then "  NEW BEST!" else "") else ""
-	Fx.banner("RUN COMPLETE!", C.yellow, 10, ("+%d gems.%s Back to the lobby soon..."):format(d.gems or 0, time))
+	local coins = if type(d.coins) == "number" then Format.short(d.coins) .. " coins earned  " else "" -- (10 Nov) the run's total
+	Fx.banner("RUN COMPLETE!", C.yellow, 10, ("%s+%d gems.%s Back to the lobby soon..."):format(coins, d.gems or 0, time))
 	Sound.play("victory")
 	Confetti.burst(160)
 	task.delay(0.8, Confetti.burst, 120)

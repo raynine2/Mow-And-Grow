@@ -35,13 +35,16 @@ Config.TICK = 0.25 -- seconds between auto-cut ticks
 -- (5 Nov, balance 3, owner: "2-3 hits early") areas 2-4's grass takes 2-3 hits with the tool you'd have there (it was
 -- one: the chop, its wound and its notes never happened early); these three tools got cheaper and that grass pays
 -- more, so a first run stays ~34 min (tools/balance_model.py). Was: Sickle 600, Push Mower 2500, Weed Whacker 14000.
+-- (10 Nov, the gameplay-loop audit; owner picked "faster opening" and "Mega Scythe 120K") Sickle 450 -> 250 (a new tool
+-- every 2-3 minutes early on) and Mega Scythe 300,000 -> 120,000 (it was 30x the Weed Whacker, every other step 4-9x:
+-- ~9.6 minutes on the Whacker).
 Config.TOOLS = {
 	{ id = "Hands", name = "Bare Hands", cost = 0, kind = "swing", damage = 1, cooldown = 0.45, radius = 5, targets = 1, color = Color3.fromRGB(255, 205, 160) },
 	{ id = "Scissors", name = "Garden Scissors", cost = 50, kind = "swing", damage = 3, cooldown = 0.4, radius = 6, targets = 2, color = Color3.fromRGB(255, 80, 80) },
-	{ id = "Sickle", name = "Sickle", cost = 450, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
+	{ id = "Sickle", name = "Sickle", cost = 250, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
 	{ id = "PushMower", name = "Push Mower", cost = 1900, kind = "auto", damage = 38, radius = 6, color = Color3.fromRGB(255, 140, 30) },
 	{ id = "WeedWhacker", name = "Weed Whacker", cost = 10000, kind = "auto", damage = 220, radius = 9, color = Color3.fromRGB(60, 200, 80) },
-	{ id = "MegaScythe", name = "Mega Scythe", cost = 300000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
+	{ id = "MegaScythe", name = "Mega Scythe", cost = 120000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
 	{ id = "LaserMower", name = "Laser Mower", cost = 1600000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
 }
 Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
@@ -479,7 +482,7 @@ Config.BOSSES = true -- clearing an area wakes its boss, and beating the boss op
 Config.ZONES = {
 	{
 		name = "Backyard Lawn", grassName = "Lawn Grass", style = "lawn", hp = 2, value = 3, drops = 1, height = 2, -- (29 Oct) was hp 3, value 2
-		spacing = 11, fill = 1.25, scale = 4.0,
+		spacing = 11, fill = 0.7, scale = 4.0, -- (10 Nov, audit: "the opening is slow") fill 1.25 -> 0.7: ~126 -> ~70 clumps
 		grass = { Color3.fromRGB(110, 210, 70), Color3.fromRGB(90, 195, 60) },
 		ground = Color3.fromRGB(150, 110, 70),
 		boss = { name = "Dandelion King", hp = 150, color = Color3.fromRGB(255, 220, 40), every = 4.5, radius = 9, gems = 10, coins = 150 },
@@ -664,6 +667,11 @@ Config.BOSS_ARENAS = {
 	{ x = 130, z = 650 },
 }
 Config.RUN_COMPLETE_GEMS = 150
+-- (10 Nov, the gameplay-loop audit: "4 million coins are paid when the run is already over"; owner picked "area 8
+-- rewards count") The last area's clear reward and its boss's coins (2M + 2M) came after the last thing you could buy:
+-- they're paid as gems instead, 1 gem per this many coins (x the difficulty's reward and your gem perks): +80 gems each
+-- on MEDIUM. The end screen shows the coins you earned in the run.
+Config.FINAL_COINS_PER_GEM = 25000
 
 -- (old straight-road layout; only the unused Blender ground sheets in server/GroundMesh still read these)
 Config.ZONE_SPACING = 120

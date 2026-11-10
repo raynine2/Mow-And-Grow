@@ -300,7 +300,8 @@ function Moments.areaCleared(d: any)
 	title.ZIndex = 58
 	UI.gradient(title, gold)
 	local rows = {}
-	for i, row in { { "coin", d.coins or 0 }, { "gem", d.gems or 0 } } do
+	-- (10 Nov) the last area pays gems only (Config.FINAL_COINS_PER_GEM): no "+0" coin row
+	for i, row in (if (d.coins or 0) > 0 then { { "coin", d.coins or 0 }, { "gem", d.gems or 0 } } else { { "gem", d.gems or 0 } }) do
 		local y = 22 + (i - 1) * 52
 		local icon = UI.icon(panel, row[1], 40, UDim2.fromOffset(70, y))
 		icon.ZIndex = 57

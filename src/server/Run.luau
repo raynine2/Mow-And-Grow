@@ -182,6 +182,15 @@ local function sendToLobby(players: { Player })
 end
 
 -- `ending`: the last area's boss fell, so every client plays the ending (client/Ending) first.
+-- (10 Nov, Config.FINAL_COINS_PER_GEM) the last area's coin rewards come when nothing is left to buy: as gems
+local function finalGems(p: Player, data: any, coins: number): number
+	local per = Config.FINAL_COINS_PER_GEM or 0
+	if per <= 0 then
+		return 0
+	end
+	return math.floor(coins * Stats.reward / per * Stats.compute(p, data).gems)
+end
+
 local function completeRun(ending: boolean?)
 	if completing then
 		return
@@ -206,6 +215,8 @@ local function completeRun(ending: boolean?)
 				warn("[Run] rebirth stars: " .. tostring(errR))
 			end
 			local time = if data.run then data.run.time or 0 else 0
+			local earnedBase = data.run and data.run.earnedBase
+			local earned = if type(earnedBase) == "number" then math.max(0, (data.stats.coinsEarned or 0) - earnedBase) else nil
 			if ending then
 				Analytics.complete(p, time)
 			end
@@ -225,7 +236,7 @@ local function completeRun(ending: boolean?)
 			end
 			data.run = nil -- coins, tools and coin mowers end with the run
 			PlayerData.changed(p)
-			Net.send(p, "Fx", "runComplete", { gems = gems, time = time, best = best, medal = medal and medal.id, ending = endingOpen, wait = if endingOpen then ENDING_WAIT else 12 })
+			Net.send(p, "Fx", "runComplete", { gems = gems, time = time, best = best, medal = medal and medal.id, ending = endingOpen, wait = if endingOpen then ENDING_WAIT else 12, coins = earned })
 			task.spawn(PlayerData.save, p)
 		end
 	end
@@ -241,10 +252,15 @@ local function onAreaCleared(z: number)
 		local data = PlayerData.get(p)
 		if data and data.run then
 			local gems = math.floor(def.gems * Stats.compute(p, data).gems)
+			local coins = def.coins
+			if z >= #Config.ZONES then
+				gems += finalGems(p, data, coins) -- (10 Nov) the last area: its coins as gems
+				coins = 0
+			end
 			data.gems += gems
-			data.run.coins += math.floor(def.coins * Stats.reward) -- (29 Oct) x the difficulty reward
+			data.run.coins += math.floor(coins * Stats.reward) -- (29 Oct) x the difficulty reward
 			PlayerData.changed(p)
-			Net.send(p, "Fx", "reward", { kind = "area", coins = def.coins, gems = gems, title = Config.ZONES[z].name:upper() .. " CLEARED!" })
+			Net.send(p, "Fx", "reward", { kind = "area", coins = coins, gems = gems, title = Config.ZONES[z].name:upper() .. " CLEARED!" })
 		end
 	end
 	Field.clearStubble(z)
@@ -272,8 +288,13 @@ local function onBossDefeated(z: number, _damageBy: { [Player]: number }, noHit:
 			if flawless then
 				gems += math.floor(def.gems * (Config.BOSS_NOHIT_GEMS or 0))
 			end
+			local coins = def.coins
+			if z >= #Config.ZONES then
+				gems += finalGems(p, data, coins) -- (10 Nov) the last boss: its coins as gems
+				coins = 0
+			end
 			data.gems += gems
-			data.run.coins += math.floor(def.coins * Stats.reward) -- (29 Oct) x the difficulty reward
+			data.run.coins += math.floor(coins * Stats.reward) -- (29 Oct) x the difficulty reward
 			data.stats.bosses += 1
 			-- the in-game trophy, and the boss's Roblox badge once the owner has made it (Config.BOSS_BADGES)
 			local rig = require(ReplicatedStorage.MowALawn.BossMoves).get(z).rig
@@ -286,7 +307,7 @@ local function onBossDefeated(z: number, _damageBy: { [Player]: number }, noHit:
 				end)
 			end
 			PlayerData.changed(p)
-			Net.send(p, "Fx", "reward", { coins = def.coins, gems = gems, title = def.name:upper() .. " DEFEATED!" })
+			Net.send(p, "Fx", "reward", { coins = coins, gems = gems, title = def.name:upper() .. " DEFEATED!" })
 			if flawless then
 				Net.notify(p, "NO-HIT BONUS! The boss never touched you: extra gems!", "yellow")
 			end
@@ -622,6 +643,15 @@ local function buyTool(player: Player, data, id: string)
 	-- (report #13) `ring`: the reach grows on the ground from the old tool's to the new one's (client/FirstLawn)
 	Net.send(player, "Fx", "purchase", { big = true, item = def.name, ring = { from = before and before.radius or 0, to = def.radius, color = def.color } })
 	Analytics.event("ShopBuy", def.cost, def.id, player)
+	-- (10 Nov, the gameplay-loop audit: Swing Speed is the Scythe's biggest boost, x2.5, and it sits in the Hands
+	-- section where nobody looks late in a run) a hint once the purchase banner is gone
+	if def.kind == "swing" and nextIndex >= 5 then
+		task.delay(3, function()
+			if player.Parent then
+				Net.notify(player, "Tip: SWING SPEED (Upgrades, Hands) makes your " .. def.name .. " swing up to 2.5x faster!", "gold")
+			end
+		end)
+	end
 end
 
 local function buyUpgrade(player: Player, data, id: string)
@@ -753,6 +783,7 @@ local function setupPlayer(player: Player, data)
 	if not data.run then
 		data.run = PlayerData.newRun()
 		data.run.difficulty = Run.difficulty
+		data.run.earnedBase = data.stats.coinsEarned or 0 -- (10 Nov) the end screen's "coins this run"
 		-- (report #1, Config.FIRST_TIMER) a first-timer's first run: a starter tool on loan until the first sale (walk
 		-- into the grass to mow it), and the intro film after that sale instead of before the first cut
 		if PlayerData.isNew(data) then

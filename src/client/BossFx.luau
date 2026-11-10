@@ -962,7 +962,9 @@ local function rewardLine(card: Card, d)
 		UI.text(f, text, UDim2.fromOffset(170, 40), { pos = UDim2.fromOffset(50, 4), align = Enum.TextXAlignment.Left, color = color, stroke = 3 })
 		UI.bounce(f)
 	end
-	chip(1, UI.coinIcon, "+" .. Format.short(d.coins or 0), C.yellow or GOLD)
+	if (d.coins or 0) > 0 then -- (10 Nov) the last boss pays gems only (Config.FINAL_COINS_PER_GEM)
+		chip(1, UI.coinIcon, "+" .. Format.short(d.coins or 0), C.yellow or GOLD)
+	end
 	chip(2, UI.gemIcon, "+" .. tostring(d.gems or 0), C.purple or Color3.fromRGB(190, 120, 255))
 	Sound.play("purchase")
 	State.emit("flyCoins", 10)

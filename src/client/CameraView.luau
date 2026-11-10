@@ -259,6 +259,9 @@ end)
 -- screen); cutscenes still set their own and hand back to this
 local FOV_LOBBY, FOV_FIRST, FOV_THIRD = 80, 80, 80
 local SPEED_FOV = 5 -- extra degrees at full speed
+-- (10 Nov, owner: "je kan de boss niet echt goed zien, moeten we de spelers iets meer fov geven wnr een boss fight
+-- begint?", picked "only more FOV") during a boss fight the view widens by this much (80 -> 95), easing in and out
+local BOSS_FOV = 15
 local kickAmount = 0
 local bobPhase = 0
 local landDip = 0
@@ -492,6 +495,9 @@ RunService:BindToRenderStep("MowALawnCameraFeel", Enum.RenderPriority.Camera.Val
 	local base = if not State.isRun() then FOV_LOBBY elseif first then FOV_FIRST else FOV_THIRD
 	-- (only past a run: walking and stopping no longer make the view breathe in and out)
 	local target = base + SPEED_FOV * math.clamp((speed - 22) / 30, 0, 1)
+	if State.isRun() and State.world and State.world.boss then
+		target += BOSS_FOV
+	end
 	fovNow += (target - fovNow) * math.min(1, dt * 6)
 	kickAmount *= math.exp(-dt * 11)
 	cam.FieldOfView = fovNow - kickAmount - focusNow()

@@ -29,6 +29,13 @@ ShopShell.ON = true
 -- chimney, window boxes and sign, and is dressed in the cabin's look inside AND out (restyle: round orange-tan logs,
 -- red beams, green frames, a red roof). true brings the cabins back.
 ShopShell.MODEL = false
+-- (10 Nov 15:43, owner on the stud cabin: "de huis is echt kk lelijk", picked "the ForgeGUI house from my photo") the
+-- ForgeGUI cabin is back (MODEL true below), and the reasons it read as "2 houses" are fixed: at 54 wide the lodge's
+-- roof, barge boards and stone plinth poked out through it, so it's 57 wide and 1.8 further forward now (checked in
+-- Studio by casting rays at every lodge part from outside: none is seen), the lodge's roof is cut back inside the
+-- cabin's walls anyway, the door box starts at the cabin's door tunnel's mouth (measured: x -2.2..1.8, z -16..-7.5)
+-- and invisible walls stand on the cabin's outside so you can't walk into its logs up to the lodge's.
+ShopShell.MODEL = true
 local ROOF_RED = Color3.fromRGB(176, 58, 42)
 local NAME = "toolshop_shell"
 
@@ -46,13 +53,15 @@ local WALK_ON: { [string]: boolean } = { Deck = true, DeckFascia = true, Step = 
 
 -- How the cabin sits on the lodge (lodge coordinates; checked in Studio, 31 Oct): its middle (its porch steps in
 -- front of the lodge's door, its back 10 studs behind the lodge's) and its width (the shape follows, never stretched).
-local FIT = { x = -1, y = -0.6, z = 6.3, width = 54 }
+local FIT = { x = -1, y = -0.6, z = 4.5, width = 57 } -- (10 Nov: was z 6.3, width 54)
 -- the lodge's room (lodge coordinates): a camera in here sees the lodge, outside it the cabin (client/ShopShellView)
 local ROOM_MIN, ROOM_MAX = Vector3.new(-21.4, 0, -9.3), Vector3.new(21.4, 25, 16.4)
 -- (31 Oct, owner: "its bugged still when i walk in i see like glitching both") and the doorway in front of the lodge's
 -- door, from the cabin's front on: the cabin's door is a tunnel only ~4 studs wide (x -2.2..1.9, roof 12.1, from
 -- z -12.4 to -6; measured in Studio) in the lodge's 12-wide door, its insides solid, so a camera in it saw both
-local DOOR_MIN, DOOR_MAX = Vector3.new(-6.5, 0, -12.6), Vector3.new(6.5, 14, -9.3)
+local DOOR_MIN, DOOR_MAX = Vector3.new(-6.5, 0, -15.5), Vector3.new(6.5, 14, -9.3) -- (10 Nov: z was -12.6)
+-- (10 Nov) the cabin's outside walls at 57 wide (measured in Studio, lodge frame): invisible walls there (ShellWalls)
+local OUTER = { left = -29.3, right = 26.3, back = 25.2, front = -15, frontY = 20 }
 
 local function strip(shop: Instance, at: CFrame)
 	local building = shop:FindFirstChild("ShopBuilding")
@@ -69,6 +78,30 @@ local function strip(shop: Instance, at: CFrame)
 		elseif WALK_ON[p.Name] then
 			p.Transparency = 1
 			p.CastShadow = false
+		end
+	end
+	-- (10 Nov) the lodge's roof stays inside the cabin's walls: its eaves past the walls go, long boards are cut back
+	local LIM = 21.7
+	for _, p in (if building then building:GetDescendants() else {}) do
+		if p:IsA("BasePart") and p.Parent and (p.Name == "Roof" or p.Name == "RoofEdge" or p.Name == "Barge" or p.Name == "RidgeCap" or p.Name == "GableBoard") then
+			local rel = inv * p.Position
+			local ax = inv:VectorToWorldSpace(p.CFrame.XVector)
+			if p.Name ~= "GableBoard" and (rel.Z < -8.6 or rel.Z > 16.9) then
+				p:Destroy()
+			elseif p.Name == "Barge" or math.abs(ax.X) < 0.9 then
+				if math.abs(rel.X) > LIM then
+					p:Destroy()
+				end
+			else
+				local half = p.Size.X / 2
+				local lo, hi = math.max(rel.X - half, -LIM), math.min(rel.X + half, LIM)
+				if hi <= lo + 0.05 then
+					p:Destroy()
+				elseif lo > rel.X - half + 0.01 or hi < rel.X + half - 0.01 then
+					p.Size = Vector3.new(hi - lo, p.Size.Y, p.Size.Z)
+					p.CFrame = p.CFrame + at:VectorToWorldSpace(Vector3.new((lo + hi) / 2 - rel.X, 0, 0))
+				end
+			end
 		end
 	end
 	-- the medallion on the roof (the yard's highest pieces)
@@ -139,6 +172,10 @@ local function restyle(building: Instance?, outside: boolean?)
 			wood(p, BEAM, Enum.Material.Wood)
 		elseif FRAMES[n] then
 			wood(p, FRAME, Enum.Material.Wood)
+		elseif n == "DoorPlank" then -- (10 Nov) seen down the cabin's door tunnel: its warm wood, not grey
+			wood(p, Color3.fromRGB(158, 96, 52), Enum.Material.WoodPlanks)
+		elseif n == "DoorBatten" or n == "DoorStrap" then
+			wood(p, Color3.fromRGB(96, 56, 34), Enum.Material.Wood)
 		elseif CEILING[n] then
 			-- (10 Nov) with no cabin over it the roof is seen from outside too: the cabin's red
 			wood(p, if outside then ROOF_RED else PLANK, Enum.Material.WoodPlanks)
@@ -164,6 +201,14 @@ local function shell(unit: Instance, at: CFrame, forgeName: string, fit: Fit, ro
 		return nil
 	end
 	m.Name = "ShopShell"
+	-- (10 Nov) its middle exactly on the fit, whatever the mesh's own pivot (as checked in Studio)
+	do
+		local bcf, bs = m:GetBoundingBox()
+		local c = cf:PointToObjectSpace(bcf.Position)
+		m:PivotTo(m:GetPivot() + cf:VectorToWorldSpace(Vector3.new(-c.X, 0, -c.Z)))
+		bcf, bs = m:GetBoundingBox()
+		m:PivotTo(m:GetPivot() + Vector3.new(0, cf.Position.Y - (bcf.Position.Y - bs.Y / 2), 0))
+	end
 	-- (in the building's frame: the unit's "0Anchor", which moves with it when the saved map places it)
 	m:SetAttribute("RoomMin", room[1])
 	m:SetAttribute("RoomMax", room[2])
@@ -185,7 +230,7 @@ end
 -- after the ForgeGUI cabin in the owner's photo. Of the voxel lodge only what's inside the room stays (its floor, the
 -- tie beams, the chandelier, whatever hangs inside): its walls, roof, porch, windows, door, chimney and lantern posts
 -- go, and the yard's medallion on the roof (the cabin has its own). The room (server/ShopRoom) is untouched.
-ShopShell.STUD_CABIN = true
+ShopShell.STUD_CABIN = false -- (10 Nov 15:43, owner: "lelijk": back to the ForgeGUI cabin)
 local CABIN = "tool_shop"
 local LODGE_WALLS: { [string]: boolean } = {}
 for _, n in {
@@ -245,6 +290,28 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 	end
 	strip(shop, at)
 	restyle(shop:FindFirstChild("ShopBuilding"))
+	-- (10 Nov) invisible walls on the cabin's outside (it has no collisions; the lodge's walls are 4-7 studs inside it)
+	local walls = Instance.new("Folder")
+	walls.Name = "ShellWalls"
+	local function wall(x0: number, x1: number, z0: number, z1: number)
+		local p = Instance.new("Part")
+		p.Name = "ShellWall"
+		p.Anchored = true
+		p.CanCollide = true
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Transparency = 1
+		p.Size = Vector3.new(x1 - x0, OUTER.frontY, z1 - z0)
+		p.CFrame = at * CFrame.new((x0 + x1) / 2, OUTER.frontY / 2, (z0 + z1) / 2)
+		p.Parent = walls
+	end
+	wall(OUTER.left, -22.2, -8.6, OUTER.back) -- left (the chimney side)
+	wall(22.2, OUTER.right, -8.6, OUTER.back) -- right
+	wall(-22.2, 22.2, 16.9, OUTER.back) -- back
+	wall(OUTER.left + 5, DOOR_MIN.X - 1.4, OUTER.front, -8.6) -- front, left of the porch
+	wall(DOOR_MAX.X + 1.4, OUTER.right, OUTER.front, -8.6) -- front, right of the porch
+	walls.Parent = shop
 	return true
 end
 

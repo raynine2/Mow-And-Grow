@@ -35,7 +35,7 @@ local UNITS = {
 	-- (9 Nov, owner: "THE HOUSE CHANGES FROM INSIDE WHEN WALKING IN") the cabin's door tunnel starts ~3 studs before the
 	-- shell's DoorMin: walking through it you saw the cabin's own smooth orange insides, then the lodge's room. `doorOut`
 	-- grows the door box out to the tunnel's mouth, so you're "in" (the lodge's room) from the first step through the door.
-	{ unit = "TOOL SHOP", building = "ShopBuilding", keep = { FloorBoard = true, FloorFill = true }, jamb = { -2.2, 1.9 }, doorOut = 3.0 },
+	{ unit = "TOOL SHOP", building = "ShopBuilding", keep = { FloorBoard = true, FloorFill = true }, jamb = { -2.2, 1.8 }, doorOut = 0.6 }, -- (10 Nov: the cabin at 57 wide; its tunnel x -2.2..1.8 from z -16, server/ShopShell)
 	{
 		unit = "Garage",
 		building = "GarageBuilding",

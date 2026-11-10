@@ -54,6 +54,8 @@ local DEFAULT = {
 	lastDailyDay = 0, -- the UTC day number of the last daily claim (server/Daily)
 	dailyStreak = 0, -- daily claims in a row
 	lastFreeGems = 0, -- os.time() of the last 6-hourly free gems (server/Daily)
+	hubSpinDay = 0, -- (10 Nov) the UTC day of the last free wheel spin in the hub (server/HubFun)
+	hubGiftDay = 0, -- (10 Nov) the UTC day of the guides' last gift in the hub (server/HubFun)
 	groupClaimed = false,
 	-- lifetime stats (the STATS window): clumps cut, bundles sold, coins earned, mutated ("rare") clumps cut,
 	-- seconds played; newsSeen = the newest Config.NEWS id the player has seen

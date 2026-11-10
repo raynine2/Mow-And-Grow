@@ -130,7 +130,8 @@ local function eggCard(list: Instance, order: number, egg, d)
 		nest.ZIndex = pic.ZIndex + 1
 	end
 	UI.text(face, string.upper(egg.name), UDim2.fromOffset(300, 32), { pos = UDim2.fromOffset(16, 2), align = Enum.TextXAlignment.Left, stroke = 3 })
-	UI.text(face, egg.desc or ("Hatch a garden critter - %s gems"):format(Format.commas(egg.price or 0)), UDim2.fromOffset(400, 20), { pos = UDim2.fromOffset(250, 10), align = Enum.TextXAlignment.Left, stroke = 1.5, textSize = 15 })
+	local vipPrice = Config.eggPrice(egg, game:GetService("Players").LocalPlayer)
+	UI.text(face, egg.desc or (if vipPrice < (egg.price or 0) then ("Hatch a garden critter - %s gems (VIP -%d)"):format(Format.commas(vipPrice), Config.VIP_EGG_DISCOUNT) else ("Hatch a garden critter - %s gems"):format(Format.commas(egg.price or 0))), UDim2.fromOffset(400, 20), { pos = UDim2.fromOffset(250, 10), align = Enum.TextXAlignment.Left, stroke = 1.5, textSize = 15 })
 
 	-- critters + odds (with your hatch luck)
 	local luck = d.hatchLuck or 1
@@ -183,7 +184,7 @@ local function eggCard(list: Instance, order: number, egg, d)
 	rl.Parent = row
 	if egg.currency == "gems" then
 		for i, n in { 1, 3 } do
-			local cost = egg.price * n
+			local cost = Config.eggPrice(egg, game:GetService("Players").LocalPlayer) * n -- (10 Nov) VIP pays a little less
 			local b = UI.button(row, ("OPEN %d  -  %s"):format(n, Format.commas(cost)), if d.gems >= cost then C.purple else W.grey, UDim2.fromOffset(230, 46), function()
 				State.fire("Hatch", egg.id, n)
 			end, { name = "Open" .. n })

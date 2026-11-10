@@ -962,7 +962,7 @@ end
 local function againInfo(eggDef, n: number): (string, boolean, string?)
 	-- the price line under HATCH AGAIN, whether you can afford it, and the product to prompt (Robux eggs)
 	if eggDef.currency == "gems" then
-		local cost = (eggDef.price or 0) * n
+		local cost = Config.eggPrice(eggDef, Players.LocalPlayer) * n -- (10 Nov) VIP pays a little less
 		local gems = (State.data and State.data.gems) or 0
 		return tostring(cost), gems >= cost, nil
 	end

@@ -308,6 +308,32 @@ Config.TUTOR_GUIDES = {
 	{ key = "Rayan", label = "RAYAN", userId = 1994267229, lead = true, color = Color3.fromRGB(255, 196, 60) },
 	{ key = "Brrbrr", label = "BRRBRR", userId = 57894883, color = Color3.fromRGB(120, 210, 255) },
 }
+-- (10 Nov, owner: "the main hub is so boring", picked "2 5 8" + "make the pets walk here and a hatch place") the
+-- hub's extras (server/HubFun, server/HubStatues, client/HubGuides, client/HubWheel, client/HubGarden). Spots are
+-- lobby positions (y = 0 the island's top, the spawn at 0, 0, -50); a part named "HubSpot_<Statues|Guides|Wheel|
+-- Garden>" anywhere in the lobby map moves that one (put it in Maps.Lobby in Studio, no re-bake needed).
+Config.HUB_FUN = {
+	on = true,
+	spots = {
+		Statues = { pos = Vector3.new(34, 0, -6), face = Vector3.new(0, 0, -30) }, -- the top 3 of GRASS CUT
+		Guides = { pos = Vector3.new(-9, 0, -38), face = Vector3.new(0, 0, -50) }, -- RAYAN and BRRBRR, by the spawn
+		Wheel = { pos = Vector3.new(-34, 0, -6), face = Vector3.new(0, 0, -30) }, -- the free daily wheel
+		Garden = { pos = Vector3.new(54, 0, 18), face = Vector3.new(0, 0, -20) }, -- the eggs and the critters
+	},
+	statueBoard = "cut", -- which leaderboard the statues show (server/LobbyBoards)
+	gift = 25, -- gems from the guides once a day (UTC)
+	-- the wheel (free, once a day UTC): the weights ARE the odds in %, shown on the wheel's sign
+	prizes = {
+		{ gems = 10, weight = 25, color = Color3.fromRGB(120, 200, 90) },
+		{ gems = 15, weight = 20, color = Color3.fromRGB(90, 170, 240) },
+		{ gems = 25, weight = 18, color = Color3.fromRGB(250, 200, 60) },
+		{ gems = 40, weight = 14, color = Color3.fromRGB(240, 120, 170) },
+		{ gems = 60, weight = 10, color = Color3.fromRGB(150, 110, 230) },
+		{ gems = 100, weight = 8, color = Color3.fromRGB(255, 150, 60) },
+		{ gems = 250, weight = 4, color = Color3.fromRGB(80, 220, 210) },
+		{ gems = 500, weight = 1, color = Color3.fromRGB(255, 80, 80) },
+	},
+}
 -- #2 COINS ON EVERY CUT (Chop A Forest pays a few coins per hit): this share of a clump's bundle value is paid the
 -- moment you cut it (at least 1 coin); the bundles still sell in full. 0 = off.
 Config.CUT_COINS = 0.25
@@ -1280,6 +1306,17 @@ Config.EGGS = {
 Config.HATCH_SCENE = "space"
 Config.HATCH_LUCK = { pass = 1.5, super = 2 } -- HatchLuck / SuperHatchLuck (they stack: x3)
 Config.HATCH_LUCK_RARITIES = { Epic = true, Legendary = true, Mythic = true, Secret = true }
+
+-- (10 Nov, owner: "vip 10 less gems to hatch eggs") a gem egg's price for this player: VIP pays VIP_EGG_DISCOUNT
+-- fewer gems per egg (server/Pets charges it, client/PetsWindow and client/HatchFx show it)
+Config.VIP_EGG_DISCOUNT = 10
+function Config.eggPrice(egg, player: Player?): number
+	local price = egg.price or 0
+	if player and player:GetAttribute("Pass_VIP") == true then
+		price = math.max(0, price - Config.VIP_EGG_DISCOUNT)
+	end
+	return price
+end
 
 function Config.egg(id: string)
 	for _, e in Config.EGGS do

@@ -190,7 +190,7 @@ function Pets.start()
 		if not data or not egg or egg.currency ~= "gems" or (n ~= 1 and n ~= 3) then
 			return
 		end
-		local cost = egg.price * n
+		local cost = Config.eggPrice(egg, player) * n -- (10 Nov) VIP pays a little less
 		if data.gems < cost then
 			Net.notify(player, "Not enough gems!", "red")
 			return

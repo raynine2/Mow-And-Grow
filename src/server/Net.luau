@@ -41,6 +41,8 @@ local OUTBOUND = {
 --   client -> server: (emoteId)         play one of Config.EMOTES.list (the server checks the id + cooldown)
 --   server -> every client: (player, emoteId, serverStart)   each client poses that character
 table.insert(INBOUND, "Emote")
+-- (10 Nov) the hub's extras (server/HubFun): (action) "spin" the free daily wheel | "gift" the guides' daily gift
+table.insert(INBOUND, "HubFun")
 
 local folder = Instance.new("Folder")
 folder.Name = "MowALawnRemotes"

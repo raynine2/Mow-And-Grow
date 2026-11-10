@@ -68,5 +68,8 @@ require(modules:WaitForChild("SkillTreeWindow")) -- (30 Oct) weapon skill trees:
 require(modules:WaitForChild("UpgradesWindow")) -- (30 Oct) takes over "Upgrades": grass-galaxy boxes, the weapons' skills a page each
 require(modules:WaitForChild("QuestsWindow")) -- (5 Nov) QUESTS (Q): daily + weekly quests, Rebirth Stars and their cards
 require(modules:WaitForChild("TutorGuide")) -- (10 Nov) the first-run tutorial as two walking guides (Config.TUTOR_GUIDES)
+require(modules:WaitForChild("HubGuides")) -- (10 Nov) the hub's extras (Config.HUB_FUN): the guides standing in the hub,
+require(modules:WaitForChild("HubWheel")) -- the free daily wheel,
+require(modules:WaitForChild("HubGarden")) -- the pet garden with the eggs
 
 State.fire("Ready")

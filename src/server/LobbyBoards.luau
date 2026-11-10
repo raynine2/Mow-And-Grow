@@ -189,6 +189,17 @@ local function show(def: Def)
 	end
 end
 
+-- (10 Nov) a board's rows, best first: the all-time top, or this server's players (server/HubStatues)
+function LobbyBoards.rows(key: string): { Row }
+	for _, def in DEFS do
+		if def.key == key then
+			local rows = top[key]
+			return if rows and #rows > 0 then rows else local_(def)
+		end
+	end
+	return {}
+end
+
 local started = false
 function LobbyBoards.start()
 	if started then

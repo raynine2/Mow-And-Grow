@@ -709,6 +709,21 @@ task.spawn(function()
 		return CFrame.new(0, bob, 0) * CFrame.Angles(lean, spin, roll)
 	end
 
+	-- (10 Nov) the same bodies, bubbles, emotes and moves for the guides standing in the hub (client/HubGuides)
+	TutorGuide.kit = {
+		build = build,
+		loadTracks = loadTracks,
+		play = play,
+		gesture = gesture,
+		stopGesture = stopGesture,
+		say = say,
+		emote = emote,
+		burst = burst,
+		poof = poof,
+		hopY = hopY,
+		goofyPose = goofyPose,
+	}
+
 	local function walkTo(g: Guide, want: Vector3, face: Vector3?, dt: number)
 		local flatPos = Vector3.new(g.pos.X, 0, g.pos.Z)
 		local flatWant = Vector3.new(want.X, 0, want.Z)

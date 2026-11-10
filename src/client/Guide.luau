@@ -28,6 +28,7 @@ local function brick(size: Vector3, offset: Vector3, color: Color3)
 	p.Material = Enum.Material.SmoothPlastic -- not neon: the bloom blew it up into a yellow blob
 	p.Color = color
 	p.Size = size
+	p.Transparency = 1 -- (10 Nov, owner's screenshot: before its first target it stood half in the plaza's middle)
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p:SetAttribute("Offset", offset)
 	p.Parent = arrow
@@ -47,7 +48,7 @@ ring.CastShadow = false
 ring.Shape = Enum.PartType.Cylinder
 ring.Material = Enum.Material.SmoothPlastic
 ring.Color = C.yellow
-ring.Transparency = 0.5
+ring.Transparency = 1 -- (shown by the loop below once there's a target)
 ring.Size = Vector3.new(0.2, 8, 8)
 ring.Parent = arrow
 -- a dark cartoon outline keeps the plain yellow arrow readable against the grass and the sky

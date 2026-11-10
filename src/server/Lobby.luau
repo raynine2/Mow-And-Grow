@@ -550,6 +550,13 @@ function Lobby.start()
 		warn("[Lobby] the stud look: " .. tostring(studErr))
 	end
 	require(script.Parent.LobbyBoards).start() -- the all-time leaderboards
+	-- (10 Nov) the hub's extras: the top 3 statues, the guides, the free wheel, the pet garden (server/HubFun)
+	local okFun, funErr = pcall(function()
+		require(script.Parent.HubFun).start(built.world)
+	end)
+	if not okFun then
+		warn("[Lobby] hub extras: " .. tostring(funErr))
+	end
 	for i, def in built.pads do
 		table.insert(pads, {
 			index = i,
@@ -686,6 +693,9 @@ end
 
 function Lobby.stop()
 	running = false
+	pcall(function()
+		require(script.Parent.HubFun).stop()
+	end)
 	for _, p in Players:GetPlayers() do
 		p:SetAttribute("PartyHost", nil)
 	end

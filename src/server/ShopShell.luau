@@ -296,9 +296,10 @@ end
 -- lamps. Shop frame after FIT_IN (measured in Play): the boards reach x -17.5..18.1 and z 14.3, the floor -5.9..12.9
 -- at y 2, the beams' tops at 14.7; the cabin's inside x -17.7..18, z -7.2..18.5; its door tunnel x -2.2..1.8.
 local LINE = { left = -17.6, right = 17.8, back = 14.3, front = -6.2, floor = 1.6, top = 16, t = 0.4, door = { -2.2, 1.8, 11.4 } }
-local PLANK_IN = Color3.fromRGB(206, 142, 82)
-local POST_IN = Color3.fromRGB(112, 70, 40)
-local CEIL_IN = Color3.fromRGB(168, 108, 60)
+local LOG_IN = Color3.fromRGB(198, 116, 50) -- the cabin's orange logs
+local CHINK_IN = Color3.fromRGB(70, 42, 26)
+local POST_IN = Color3.fromRGB(96, 58, 32)
+local CEIL_IN = Color3.fromRGB(122, 74, 40)
 
 local function lineRoom(shop: Instance, at: CFrame)
 	local L = LINE
@@ -323,35 +324,72 @@ local function lineRoom(shop: Instance, at: CFrame)
 		return p
 	end
 	-- a plank wall along x (z fixed) or along z (x fixed), skipping the door's gap
-	local function wallX(z0: number, z1: number, gap: { number }?)
-		local x = L.left
-		while x < L.right - 0.01 do
-			local w = math.min(1.6, L.right - x)
-			local cx = x + w / 2
-			if gap and cx > gap[1] and cx < gap[2] then
-				piece("Plank", x, x + w, gap[3], L.top, z0, z1, PLANK_IN, Enum.Material.WoodPlanks, true)
+	-- (10 Nov 17:15, owner picked "binnen als de buitenkant") the walls are round logs like the cabin's outside: a
+	-- dark backing (the gaps between the logs, and what you bump into), the logs stacked on it, each its own shade
+	local D = 1.3 -- a log's thickness
+	local function log(x0: number, x1: number, y: number, z0: number, z1: number, alongX: boolean)
+		local len = if alongX then x1 - x0 else z1 - z0
+		local p = Instance.new("Part")
+		p.Name = "Log"
+		p.Shape = Enum.PartType.Cylinder
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Size = Vector3.new(len, D, D)
+		local c = at * CFrame.new((x0 + x1) / 2, y, (z0 + z1) / 2)
+		p.CFrame = if alongX then c else c * CFrame.Angles(0, math.pi / 2, 0)
+		local j = rng:NextNumber(-0.07, 0.05)
+		p.Color = Color3.new(math.clamp(LOG_IN.R + j, 0, 1), math.clamp(LOG_IN.G + j * 0.8, 0, 1), math.clamp(LOG_IN.B + j * 0.5, 0, 1))
+		p.Material = Enum.Material.Wood
+		p.Parent = f
+	end
+	-- a log wall along x at the wall face z (the logs bulge into the room by `inward`), with the door's gap
+	local function wallX(z: number, inward: number, gap: { number }?)
+		local zc = z - inward * 0.35 -- (the logs stand 0.3 into the room: the boards in front stay clear)
+		piece("LogBacking", L.left, L.right, L.floor, L.top, zc - 0.3, zc + 0.3, CHINK_IN, Enum.Material.Wood, true)
+		local y = L.floor + D / 2
+		while y < L.top do
+			if gap and y < gap[3] then
+				log(L.left, gap[1], y, zc, zc, true)
+				log(gap[2], L.right, y, zc, zc, true)
 			else
-				local dz = if rng:NextNumber() < 0.5 then 0.08 else 0
-				piece("Plank", x, x + w - 0.06, L.floor, L.top, z0 - dz, z1 - dz, PLANK_IN, Enum.Material.WoodPlanks, true)
+				log(L.left, L.right, y, zc, zc, true)
 			end
-			x += w
+			y += D * 0.92
 		end
 	end
-	local function wallZ(x0: number, x1: number, inward: number)
-		local z = L.front
-		while z < L.back - 0.01 do
-			local w = math.min(1.6, L.back - z)
-			local d = if rng:NextNumber() < 0.5 then 0.08 * inward else 0
-			piece("Plank", x0 + d, x1 + d, L.floor, L.top, z, z + w - 0.06, PLANK_IN, Enum.Material.WoodPlanks, true)
-			z += w
+	local function wallZ(x: number, inward: number)
+		local xc = x - inward * 0.35
+		piece("LogBacking", xc - 0.3, xc + 0.3, L.floor, L.top, L.front, L.back, CHINK_IN, Enum.Material.Wood, true)
+		local y = L.floor + D / 2 + D * 0.46 -- (half a log up from the walls along x, like a real cabin's corners)
+		while y < L.top do
+			log(xc, xc, y, L.front, L.back, false)
+			y += D * 0.92
 		end
 	end
-	-- the door's gap in the front wall is cut to the cabin's door tunnel (snapped to whole planks round it)
-	local gap = { L.door[1] - 0.8, L.door[2] + 0.8, L.door[3] }
-	wallX(L.back, L.back + L.t, nil)
-	wallX(L.front - L.t, L.front, gap)
-	wallZ(L.left - L.t, L.left, 1)
-	wallZ(L.right, L.right + L.t, -1)
+	-- the backing behind the front logs has the door's hole: two slabs and one over the top
+	local gap = { L.door[1] - 1.6, L.door[2] + 1.0, L.door[3] }
+	wallX(L.back, -1, nil) -- (inward: -1 the room is at -z, +1 at +z / +x)
+	local fz = L.front - 0.35
+	piece("LogBacking", L.left, gap[1], L.floor, L.top, fz - 0.3, fz + 0.3, CHINK_IN, Enum.Material.Wood, true)
+	piece("LogBacking", gap[2], L.right, L.floor, L.top, fz - 0.3, fz + 0.3, CHINK_IN, Enum.Material.Wood, true)
+	piece("LogBacking", gap[1], gap[2], gap[3], L.top, fz - 0.3, fz + 0.3, CHINK_IN, Enum.Material.Wood, true)
+	do
+		local zc = fz
+		local y = L.floor + D / 2
+		while y < L.top do
+			if y < gap[3] + D / 2 then
+				log(L.left, gap[1], y, zc, zc, true)
+				log(gap[2], L.right, y, zc, zc, true)
+			else
+				log(L.left, L.right, y, zc, zc, true)
+			end
+			y += D * 0.92
+		end
+	end
+	wallZ(L.left, 1)
+	wallZ(L.right, -1)
 	-- the door's frame, posts in the corners, the skirting and the top rail
 	piece("DoorPost", L.door[1] - 1.6, L.door[1] - 0.1, L.floor, L.door[3], L.front - 0.5, L.front + 0.35, POST_IN, Enum.Material.Wood, true)
 	piece("DoorPost", L.door[2] + 0.1, L.door[2] + 1.0, L.floor, L.door[3], L.front - 0.5, L.front + 0.35, POST_IN, Enum.Material.Wood, true)
@@ -359,10 +397,6 @@ local function lineRoom(shop: Instance, at: CFrame)
 	for _, c in { { L.left, L.front }, { L.right, L.front }, { L.left, L.back }, { L.right, L.back } } do
 		piece("CornerPost", c[1] - 0.5, c[1] + 0.5, L.floor, L.top, c[2] - 0.5, c[2] + 0.5, POST_IN, Enum.Material.Wood, true)
 	end
-	piece("Skirting", L.left, L.right, 1.9, 2.5, L.back - 0.15, L.back, POST_IN, Enum.Material.Wood, false)
-	piece("Skirting", L.left, L.right, 1.9, 2.5, L.front, L.front + 0.15, POST_IN, Enum.Material.Wood, false)
-	piece("Skirting", L.left, L.left + 0.15, 1.9, 2.5, L.front, L.back, POST_IN, Enum.Material.Wood, false)
-	piece("Skirting", L.right - 0.15, L.right, 1.9, 2.5, L.front, L.back, POST_IN, Enum.Material.Wood, false)
 	for _, side in { L.left, L.right } do
 		local x0 = if side < 0 then side else side - 0.6
 		piece("WallPlate", x0, x0 + 0.6, L.top - 0.7, L.top, L.front, L.back, POST_IN, Enum.Material.Wood, false)
@@ -381,12 +415,12 @@ local function lineRoom(shop: Instance, at: CFrame)
 	-- warm lamps under the ceiling (the room was lit by the fire alone: dark red)
 	for _, x in { -9, 9 } do
 		for _, zz in { -0.5, 8.5 } do
-			local holder = piece("CeilingLamp", x - 0.6, x + 0.6, L.top - 0.9, L.top - 0.6, zz - 0.6, zz + 0.6, Color3.fromRGB(255, 226, 170), Enum.Material.Neon, false)
+			local holder = piece("CeilingLamp", x - 0.6, x + 0.6, L.top - 0.9, L.top - 0.6, zz - 0.6, zz + 0.6, Color3.fromRGB(255, 186, 104), Enum.Material.Neon, false)
 			holder.CastShadow = false
 			local light = Instance.new("PointLight")
-			light.Color = Color3.fromRGB(255, 226, 180)
-			light.Brightness = 1.3
-			light.Range = 20
+			light.Color = Color3.fromRGB(255, 196, 130)
+			light.Brightness = 0.8
+			light.Range = 18
 			light.Shadows = false
 			light.Parent = holder
 		end

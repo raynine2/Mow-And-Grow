@@ -44,6 +44,7 @@ require(modules:WaitForChild("CampLife")) -- (29 Oct) the area camps: villagers,
 require(modules:WaitForChild("Combo"))
 require(modules:WaitForChild("FirstLawn")) -- a first-timer's trip to their first lawn, the loan note, reach rings
 require(modules:WaitForChild("AreaGoals")) -- area dings, the last clumps glowing, run medals by the timer
+require(modules:WaitForChild("BlackFlash")) -- (10 Nov) a fist punch's 10% Black Flash (server/Run rolls it)
 require(modules:WaitForChild("RunEvents")) -- (29 Oct) Golden Hour, the speed challenge, the party bonus, Elder Clumps
 require(modules:WaitForChild("RarityFx")) -- rarer = cooler: class auras, pet glow-ups, the rare-restock banner
 require(modules:WaitForChild("ClassVfx")) -- (31 Oct) the class auras from the owner's VFX packs: body, first-person hands and screen, equip burst

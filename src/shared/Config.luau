@@ -2213,4 +2213,7 @@ if Config.MOWERS_LOCKED then
 end
 
 Config.ICONS.invite = "rbxassetid://131845589341017" -- (1 Nov) the INVITE button: two friends waving, a plus and a gift (ForgeGUI)
+-- (10 Nov, owner: "a 10% chance for a black flash every time you punch a clump with fist and only fist") server/Run
+-- rolls it on a Bare Hands punch that lands on a clump: that punch does `mult` x damage, client/BlackFlash shows it
+Config.BLACK_FLASH = { chance = 0.1, mult = 2.5 }
 return Config

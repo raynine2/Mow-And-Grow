@@ -495,10 +495,22 @@ local function onSwing(player: Player, look: any)
 		aim = look.Unit
 	end
 	local hit = false
+	-- (10 Nov, owner: "a 10% chance for a black flash every time you punch a clump with fist and only fist") rolled
+	-- here, Bare Hands only: the punch does Config.BLACK_FLASH.mult x damage to the clump; shown only if it landed
+	local BF = Config.BLACK_FLASH
+	local blackFlash = BF ~= nil and def.id == "Hands" and math.random() < BF.chance
+	if blackFlash then
+		cutDamage *= BF.mult
+	end
 	if groundFull(player) then
 		warnBagFull(player)
 	else
+		(Field :: any).lastAimAt = nil
 		hit = Field.hitAim(player, root.Position, aim, def.radius, cutDamage, def.targets, stats.luck) > 0
+		local at0 = (Field :: any).lastAimAt
+		if blackFlash and hit and at0 then
+			Net.all("Fx", "blackFlash", { pos = at0, by = player.UserId, mult = BF.mult })
+		end
 	end
 	if Boss.inReach(root.Position, def.radius) then
 		Boss.damage(player, damage * Config.BOSS_TOOL_MULT)

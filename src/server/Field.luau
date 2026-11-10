@@ -846,6 +846,8 @@ function Field.hitAim(player: Player, rootPos: Vector3, look: Vector3, reach: nu
 	if not damagePatch(player, best, damage, luck, rootPos) then
 		return 0
 	end
+	-- (10 Nov) where the aimed hit landed (server/Run: a Black Flash bursts from there)
+	Field.lastAimAt = (best.stalkAt or best.spot.Position) + Vector3.new(0, math.min(best.height * 0.4, 5), 0)
 	local n = 1
 	local limit = maxTargets or 1
 	if limit > 1 then

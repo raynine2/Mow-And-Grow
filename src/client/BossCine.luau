@@ -167,7 +167,10 @@ local function updateMyHp()
 	if type(downed) == "number" then
 		downRoot.Visible = true
 		downRoot.BackgroundTransparency = 0.72
-		downSub.Text = ("A teammate can pick you up... getting up at the gate in %d"):format(math.max(0, math.ceil(downed)))
+		-- (10 Nov) -1 = you won't get up alone any more this fight (server/BossFighters BOSS_SELF_UPS)
+		downSub.Text = if downed < 0
+			then "Only a teammate can pick you up now!"
+			else ("A teammate can pick you up... getting up at the gate in %d"):format(math.max(0, math.ceil(downed)))
 		reviveFill.Size = UDim2.fromScale(math.clamp(player:GetAttribute("ReviveProgress") or 0, 0, 1), 1)
 	else
 		downRoot.Visible = false

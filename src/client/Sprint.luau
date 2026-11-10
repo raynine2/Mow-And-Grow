@@ -23,6 +23,7 @@ Sprint.on = false -- sprinting right now (others may read it)
 
 local hum: Humanoid? = nil
 local base = 16 -- the server's walk speed
+local writtenAt = 0 -- (10 Nov) when
 local written = -1 -- the WalkSpeed we last wrote ourselves (its Changed signal is deferred: a flag set around the write
 -- missed it, and our own sprint speed came back as the new base and compounded every frame)
 local trail: ParticleEmitter? = nil
@@ -41,6 +42,7 @@ local function apply()
 	local want = if go then base * (S.mult or 1.6) else base
 	if math.abs(h.WalkSpeed - want) > 0.01 then
 		written = want
+		writtenAt = os.clock()
 		h.WalkSpeed = want
 	end
 end
@@ -76,8 +78,11 @@ local function onCharacter(char: Model)
 	base = h.WalkSpeed
 	written = -1
 	h:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-		if math.abs(h.WalkSpeed - written) < 0.01 then
-			return -- our own write
+		if math.abs(h.WalkSpeed - written) < 0.01 and os.clock() - writtenAt < 1 then
+			-- our own write (its signal comes a frame later). (10 Nov, owner: "sometimes I just can't walk" in boss
+			-- fights) only a fresh one: getting up after a knockout, the server put back the very speed we had written
+			-- long before, that was taken for ours, so the base stayed 0 and you couldn't walk
+			return
 		end
 		-- the server (or a fight) set a new speed: that's the base; sprint on top of it again
 		base = math.min(h.WalkSpeed, 120) -- (a guard: the game's top speed is ~40)

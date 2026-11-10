@@ -619,6 +619,13 @@ Config.DIFFICULTY_ORDER = { "Normal", "Hard", "Expert" }
 -- standing next to you for BOSS_REVIVE_TIME s picks you up, else you get up at the arena entrance.
 Config.BOSS_PLAYER_HP = 100
 Config.BOSS_DOWN_TIME = 6 -- (5 Nov, less waiting: was 10)
+-- (10 Nov, owner: "respawning with friends needs a change because you can just cheese it by waiting for the respawn
+-- timer": getting up alone gave FULL HP, better than a revive's half) each knockout in the same fight waits
+-- BOSS_DOWN_GROW s longer; you get up alone only BOSS_SELF_UPS times (after that only a teammate can pick you up), and
+-- then with BOSS_SELF_UP_HP of your HP at the gate. A revive stays the best: half HP, on the spot.
+Config.BOSS_DOWN_GROW = 6
+Config.BOSS_SELF_UPS = 2
+Config.BOSS_SELF_UP_HP = 0.35
 Config.BOSS_REVIVE_TIME = 2.5
 Config.BOSS_REVIVE_RADIUS = 9
 -- juice boxes (owner, 26 Oct round 2): +30 HP, one every ~20 s and one each time the boss is stunned open

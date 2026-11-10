@@ -198,7 +198,7 @@ local function update(p: Player)
 	local downed = p:GetAttribute("Downed")
 	entry.stars.Visible = type(downed) == "number"
 	if type(downed) == "number" then
-		entry.timer.Text = tostring(math.max(0, math.ceil(downed)))
+		entry.timer.Text = if downed < 0 then "HELP!" else tostring(math.max(0, math.ceil(downed))) -- (10 Nov) -1: only a revive
 		if not entry.ring then
 			entry.ring = disc(5, C(255, 255, 255), 0.6)
 			entry.ringFill = disc(0.1, C(120, 255, 140), 0.25)

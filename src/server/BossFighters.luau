@@ -4,7 +4,8 @@
 --   * at 0 HP you're downed (sitting dizzy, stars over your head, can't move) for Config.BOSS_DOWN_TIME s: a
 --     teammate standing next to you for
 --     Config.BOSS_REVIVE_TIME s picks you up with half HP (attribute ReviveProgress 0..1); otherwise you get up at
---     the arena entrance with full HP
+--     the arena entrance with Config.BOSS_SELF_UP_HP of your HP (10 Nov: was full), each knockout waiting longer, and
+--     only Config.BOSS_SELF_UPS times a fight (then only a revive)
 --   * juice boxes the boss sheds (Config.BOSS_HEAL, +30): walk over one to heal
 --   * the phase-2 cutscene freezes everyone (BossFighters.freeze); who never got hit wins the no-hit bonus
 --   * when every fighter is down (or gone), server/Boss resets the fight
@@ -26,6 +27,8 @@ type Fighter = {
 	jump: number?,
 	hits: number, -- boss hits taken this fight (0 = the no-hit bonus)
 	frozen: { speed: number, jump: number }?,
+	downs: number?, -- (10 Nov) knockouts this fight
+	downFor: number?, -- seconds until you get up alone this time; nil = only a teammate can pick you up
 }
 
 local fighters: { [Player]: Fighter } = {}
@@ -47,7 +50,8 @@ local function publish(p: Player, f: Fighter?)
 	if f then
 		p:SetAttribute("BossHP", math.ceil(f.hp))
 		p:SetAttribute("BossMaxHP", Config.BOSS_PLAYER_HP)
-		p:SetAttribute("Downed", if f.downAt then f.downAt + Config.BOSS_DOWN_TIME - os.clock() else nil)
+		-- (10 Nov) -1 = no getting up alone this time: only a revive (client/BossCine, BossPlayers)
+		p:SetAttribute("Downed", if f.downAt then (if f.downFor then math.max(0, f.downAt + f.downFor - os.clock()) else -1) else nil)
 		p:SetAttribute("ReviveProgress", if f.downAt then f.revive / Config.BOSS_REVIVE_TIME else nil)
 	else
 		p:SetAttribute("BossHP", nil)
@@ -175,6 +179,11 @@ function BossFighters.hit(p: Player, amount: number, from: Vector3, soft: boolea
 	if f.hp <= 0 then
 		f.downAt = os.clock()
 		f.revive = 0
+		-- (10 Nov) no cheesing the timer: each knockout waits longer, and after BOSS_SELF_UPS only a revive helps
+		f.downs = (f.downs or 0) + 1
+		f.downFor = if f.downs <= (Config.BOSS_SELF_UPS or math.huge)
+			then Config.BOSS_DOWN_TIME + (Config.BOSS_DOWN_GROW or 0) * (f.downs - 1)
+			else nil
 		layDown(p, f)
 		Net.all("Fx", "fighterDown", { userId = p.UserId, name = p.DisplayName })
 	elseif not soft then
@@ -290,8 +299,8 @@ local function step(dt: number)
 			if f.revive >= Config.BOSS_REVIVE_TIME then
 				standUp(p, f, nil, Config.BOSS_PLAYER_HP * 0.5)
 				Net.all("Fx", "fighterUp", { userId = p.UserId, revived = true })
-			elseif now - f.downAt >= Config.BOSS_DOWN_TIME then
-				standUp(p, f, arena.entry, Config.BOSS_PLAYER_HP)
+			elseif f.downFor and now - f.downAt >= f.downFor then
+				standUp(p, f, arena.entry, Config.BOSS_PLAYER_HP * (Config.BOSS_SELF_UP_HP or 1))
 				Net.all("Fx", "fighterUp", { userId = p.UserId, revived = false })
 			else
 				publish(p, f)

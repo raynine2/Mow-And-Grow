@@ -71,7 +71,7 @@ check(string.find(fs.readFile("src/server/Tools.luau"), "SkillTrees).boost(playe
 -------------------------------------------------------------------------------------------------------------
 local P = Tree.PIPS
 check(P == 5, "5 pips a skill")
-check(Tree.MAX_FULL_PER_RUN == 1, "one full tree a run")
+check(Tree.MAX_FULL_PER_RUN == 1 or not Tree.ONLY_BEST, "one full tree a run (10 Nov: any number, every weapon learns)")
 
 -- the header's totals: 2x the coins a fresh run earns in each weapon's areas (the Laser 1x)
 local TOTAL = { Hands = 1530, Scissors = 1530, Sickle = 6765, PushMower = 28230, WeedWhacker = 489900, MegaScythe = 7101000, LaserMower = 13008000 }
@@ -183,7 +183,7 @@ check(not ok and why == "lobby", "in the lobby: nothing")
 ok, why = Tree.check("Scissors", "power", state({}, 10 ^ 9, { owned = false }))
 check(not ok and why == "locked", "not owned in this run: locked")
 ok, why = Tree.check("Scissors", "power", state({}, 10 ^ 9, { best = false }))
-check(not ok and why == "past", "owned, not the best: an old weapon takes no pips")
+check(if Tree.ONLY_BEST then (not ok and why == "past") else why ~= "past", "owned, not the best: an old weapon takes no pips (10 Nov: it does)")
 ok, why, price = Tree.check("Scissors", "power", state({ power = 5 }, 10 ^ 9, { best = false }))
 check(not ok and why == "max" and price == nil, "a full skill: max (before past)")
 ok, why = Tree.check("Scissors", "width", state({}, 10 ^ 9))
@@ -197,7 +197,7 @@ local almost = { power = 5, speed = 5, harvest = 4 }
 ok, why = Tree.check("Sickle", "speed", state({ power = 5, speed = 4, harvest = 4 }, 10 ^ 9, { runSkills = { Scissors = fullHands } }))
 check(ok, "13 -> 14 pips with another tree full: fine")
 ok, why, price = Tree.check("Sickle", "harvest", state(almost, 10 ^ 9, { runSkills = { Scissors = fullHands, Sickle = almost } }))
-check(not ok and why == "oneARun" and price == 1500, "the last pip with another tree full: one a run")
+check((not ok and why == "oneARun" and price == 1500) or Tree.MAX_FULL_PER_RUN > 1, "the last pip with another tree full: one a run")
 ok = Tree.check("Sickle", "harvest", state(almost, 10 ^ 9, { runSkills = { Scissors = { power = 5 }, Sickle = almost } }))
 check(ok, "the last pip with no other tree full: fine")
 
@@ -412,7 +412,7 @@ buy("Sickle", "power")
 check(string.find(last(notes) or "", "Buy the Sickle in this run", 1, true) ~= nil, "server: not owned this run: locked")
 data.run.coins = 10 ^ 6
 buy("Hands", "power")
-check(string.find(last(notes) or "", "Only your best weapon", 1, true) ~= nil and next(data.run.skills.Hands or {}) == nil, "server: an old weapon (the Hands) takes no pips")
+check(not Tree.ONLY_BEST or (string.find(last(notes) or "", "Only your best weapon", 1, true) ~= nil and next(data.run.skills.Hands or {}) == nil), "server: an old weapon (the Hands) takes no pips")
 data.run.coins = 4
 buy("Scissors", "power")
 check(string.find(last(notes) or "", "Not enough coins", 1, true) ~= nil and (data.run.skills.Scissors.power or 0) == 0, "server: 4 < 5 coins")
@@ -518,7 +518,7 @@ check(Server.view(data).best == "Sickle", "server: the Sickle is the best weapon
 data.run.skills.Sickle = { power = 5, speed = 5, harvest = 4 }
 local coinsBefore = data.run.coins
 buy("Sickle", "harvest")
-check(data.run.skills.Sickle.harvest == 4 and data.run.coins == coinsBefore and string.find(last(notes) or "", "One weapon can be maxed a run", 1, true) ~= nil, "server: one full tree a run")
+check(Tree.MAX_FULL_PER_RUN > 1 or (data.run.skills.Sickle.harvest == 4 and data.run.coins == coinsBefore and string.find(last(notes) or "", "One weapon can be maxed a run", 1, true) ~= nil), "server: one full tree a run")
 
 -- a new run (PlayerData.newRun): no pips, MASTERED stays, the tool hits like new again
 data.run = { tool = 2, coins = 0, upgrades = { power = 0, speed = 0, sell = 0, swing = 0, grasp = 0 }, skills = {} }
@@ -529,6 +529,7 @@ check(near(b4.damage, sDef.damage) and b4.cooldown == sDef.cooldown, "server: a 
 check(held.attrs.Mastered == true and held.attrs.SkillCooldown == nil, "server: ... but still says Mastered")
 -- filling it again: no second celebration
 data.run.coins = 10 ^ 6
+local hookedBefore, allBefore, fxBefore = hooked, #all, #fx
 for _, sk in Tree.tree("Scissors").skills do
 	for _ = 1, P do
 		buy("Scissors", sk.id)
@@ -536,10 +537,10 @@ for _, sk in Tree.tree("Scissors").skills do
 end
 local fx2 = #fx
 check(Tree.isFull("Scissors", data.run.skills.Scissors), "server: the Scissors maxed again")
-check(hooked == 1 and #all == 1, "server: no second MASTERED message or hook")
+check(hooked == hookedBefore and #all == allBefore, "server: no second MASTERED message or hook")
 local again = false
 for i = 1, fx2 do
-	if fx[i].kind == "skillMastered" and i > fx1 + 2 then
+	if fx[i].kind == "skillMastered" and i > fxBefore then
 		again = true
 	end
 end

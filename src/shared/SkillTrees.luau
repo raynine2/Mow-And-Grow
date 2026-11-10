@@ -49,7 +49,12 @@
 local SkillTrees = {}
 
 SkillTrees.PIPS = 5
-SkillTrees.MAX_FULL_PER_RUN = 1 -- trees that may be filled (every pip) in one run; raise it to allow more
+-- (10 Nov 20:04, owner: "I can't upgrade other weapons anymore so they're useless"; picked "upgrade every weapon")
+-- every weapon you own this run learns, not only your best one, and any number of trees may be filled (was 1 a run:
+-- an old weapon's cheap tree would have used up the run's one). The old weapons stay worth it: their Power pips give
+-- them a floor against the area's grass (server/SkillTrees cutFloor).
+SkillTrees.ONLY_BEST = false
+SkillTrees.MAX_FULL_PER_RUN = 99 -- trees that may be filled (every pip) in one run
 
 export type Stat = { per: number, what: string, icon: string, sign: number }
 SkillTrees.STATS = {
@@ -266,7 +271,7 @@ function SkillTrees.check(toolId: string, skillId: string, state: any): (boolean
 		return false, "locked", price
 	elseif not price then
 		return false, "max", nil
-	elseif state.best ~= true then
+	elseif SkillTrees.ONLY_BEST and state.best ~= true then
 		return false, "past", price
 	end
 	-- the pip that would fill this tree: only if fewer than MAX_FULL_PER_RUN trees are full this run already

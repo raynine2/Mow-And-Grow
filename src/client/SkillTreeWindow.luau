@@ -287,7 +287,7 @@ local function pageNote(d, def, v): (string, string, Color3)
 		return "LOCKED", ("Buy the %s in this run to train it."):format(def.name), W.cream
 	elseif have >= total then
 		return "MAXED!", "Every skill maxed this run. ★ Mastered for good!", GOLD
-	elseif not isBest(d, def.id) then
+	elseif Tree.ONLY_BEST and not isBest(d, def.id) then -- (10 Nov: every weapon you own learns now)
 		return "OLD WEAPON", "Only your best weapon learns: this tree is done for this run.", W.cream
 	elseif Tree.fullCount(runSkills(d)) >= Tree.MAX_FULL_PER_RUN then
 		return "ONE MAXED A RUN", "You've maxed a weapon this run: all but this tree's last pip.", W.cream

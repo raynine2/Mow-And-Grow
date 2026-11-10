@@ -543,6 +543,7 @@ local function query(pos: Vector3, radius: number): { Patch }
 	return out
 end
 
+Field.cutFloor = nil :: ((Player, any) -> number)? -- set by server/SkillTrees
 Field.devMutation = nil :: string? -- (30 Oct) Studio tests: every uncovered clump gets this mutation (DevHook "mutate")
 local function reveal(p: Patch, luck: number, by: Player?)
 	local mut = Field.devMutation or Config.rollMutation(rng, luck)
@@ -716,6 +717,10 @@ end
 
 -- `from`: where the hit comes from (the cutter); the notch faces it and the clump falls away from it.
 local function damagePatch(player: Player, p: Patch, amount: number, luck: number, from: Vector3): boolean
+	-- (10 Nov) the weapon's Power pips set a floor against this area's grass (server/SkillTrees cutFloor)
+	if Field.cutFloor then
+		amount = math.max(amount, Field.cutFloor(player, p))
+	end
 	if p.mut == nil then
 		reveal(p, luck, player)
 	end

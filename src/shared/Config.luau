@@ -35,6 +35,9 @@ Config.TICK = 0.25 -- seconds between auto-cut ticks
 -- (5 Nov, balance 3, owner: "2-3 hits early") areas 2-4's grass takes 2-3 hits with the tool you'd have there (it was
 -- one: the chop, its wound and its notes never happened early); these three tools got cheaper and that grass pays
 -- more, so a first run stays ~34 min (tools/balance_model.py). Was: Sickle 600, Push Mower 2500, Weed Whacker 14000.
+-- (10 Nov 20:04, owner: "late game balancing is a bit dumb, weapons are very hard to get"; picked "late weapons cheaper"
+-- and "late grass softer") Mega Scythe 120K -> 60K, Laser Mower 1.6M -> 700K; Swamp 5000 -> 3500, Prairie 15000 -> 9000,
+-- Jungle 40000 -> 25000 HP (coins a clump unchanged).
 -- (10 Nov, the gameplay-loop audit; owner picked "faster opening" and "Mega Scythe 120K") Sickle 450 -> 250 (a new tool
 -- every 2-3 minutes early on) and Mega Scythe 300,000 -> 120,000 (it was 30x the Weed Whacker, every other step 4-9x:
 -- ~9.6 minutes on the Whacker).
@@ -44,8 +47,8 @@ Config.TOOLS = {
 	{ id = "Sickle", name = "Sickle", cost = 250, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
 	{ id = "PushMower", name = "Push Mower", cost = 1900, kind = "auto", damage = 38, radius = 6, color = Color3.fromRGB(255, 140, 30) },
 	{ id = "WeedWhacker", name = "Weed Whacker", cost = 10000, kind = "auto", damage = 220, radius = 9, color = Color3.fromRGB(60, 200, 80) },
-	{ id = "MegaScythe", name = "Mega Scythe", cost = 120000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
-	{ id = "LaserMower", name = "Laser Mower", cost = 1600000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
+	{ id = "MegaScythe", name = "Mega Scythe", cost = 60000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
+	{ id = "LaserMower", name = "Laser Mower", cost = 700000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
 }
 Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
 Config.SKILL_TREES = require(script.Parent:WaitForChild("SkillTrees")) -- (30 Oct) weapon skill trees: every number in shared/SkillTrees
@@ -521,21 +524,21 @@ Config.ZONES = {
 		boss = { name = "Bog Strangler", hp = 61000, color = Color3.fromRGB(125, 212, 90), every = 3.5, radius = 12, gems = 45, coins = 40000 }, -- (29 Oct) boss moved here to fit the biome; was Sakura Snapjaw
 	},
 	{
-		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 5000, value = 1100, drops = 2, height = 6.5, -- (29 Oct) was hp 2000, value 1100; (29 Oct, balance 2) hp 2300 -> 7000
+		name = "Swamp Reeds", grassName = "Reeds", style = "reeds", hp = 3500, value = 1100, drops = 2, height = 6.5, -- (29 Oct) was hp 2000, value 1100; (29 Oct, balance 2) hp 2300 -> 7000
 		spacing = 12, fill = 1.4, scale = 4.6,
 		grass = { Color3.fromRGB(80, 150, 100), Color3.fromRGB(60, 130, 90) },
 		ground = Color3.fromRGB(70, 100, 85),
 		boss = { name = "Frost Thornback", hp = 400000, color = Color3.fromRGB(160, 220, 255), every = 3.3, radius = 10, gems = 55, coins = 150000 }, -- (29 Oct) boss moved here to fit the biome; was Bog Strangler
 	},
 	{
-		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 15000, value = 2400, drops = 2, height = 6, -- (29 Oct) was hp 4800, value 2400; (29 Oct, balance 2) hp 12000 -> 30000
+		name = "Autumn Prairie", grassName = "Prairie Grass", style = "prairie", model = "tuft_wheat", hp = 9000, value = 2400, drops = 2, height = 6, -- (29 Oct) was hp 4800, value 2400; (29 Oct, balance 2) hp 12000 -> 30000
 		spacing = 11.5, fill = 1.4, scale = 5.1, tint = Color3.fromRGB(235, 120, 45),
 		grass = { Color3.fromRGB(235, 120, 45), Color3.fromRGB(215, 95, 40) },
 		ground = Color3.fromRGB(150, 110, 60),
 		boss = { name = "Hollow Harvest", hp = 1600000, color = Color3.fromRGB(255, 140, 40), every = 3.1, radius = 13, gems = 65, coins = 500000 },
 	},
 	{
-		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 40000, value = 12000, drops = 4, height = 8, -- (29 Oct) was hp 60000, value 12000; (29 Oct, balance 2) hp 50000 -> 100000
+		name = "Mega Jungle", grassName = "Jungle Bush", style = "jungle", hp = 25000, value = 12000, drops = 4, height = 8, -- (29 Oct) was hp 60000, value 12000; (29 Oct, balance 2) hp 50000 -> 100000
 		spacing = 21, fill = 1.5, scale = 6.0,
 		grass = { Color3.fromRGB(30, 160, 60), Color3.fromRGB(20, 130, 50) },
 		ground = Color3.fromRGB(90, 70, 45),

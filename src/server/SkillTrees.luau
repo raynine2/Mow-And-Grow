@@ -241,6 +241,36 @@ local function cuttingWith(player: Player, data): string?
 	return id
 end
 
+-- (10 Nov 20:04, owner: "hands are basically useless and all other low weapons"; picked "old weapons stay useful")
+-- THE CUT FLOOR: each Power pip of the weapon in your hand guarantees it cuts the grass of whatever area you're in at
+-- FLOOR_RATE clumps a second (5 pips: 0.5 a second), whatever its own damage: a hit takes at least that share of the
+-- clump's HP (a swing tool's share is split over its targets and timed by its cooldown; an auto tool ticks every
+-- Config.TICK and catches ~1.5 clumps). Your newest weapon still cuts far faster there (the Laser in the Jungle
+-- ~1.2 a second before pips, the Mega Scythe in the Swamp ~3), so the old ones are a slower choice, not dead weight.
+-- Not on Elder Clumps or bosses (server/Field calls this for the area's clumps only), not from a ride-on mower.
+SkillTrees.FLOOR_RATE = 0.1
+local function cutFloor(player: Player, p: any): number
+	if not ON or type(p) ~= "table" or p.elder or type(p.maxHp) ~= "number" then
+		return 0
+	end
+	local data = PlayerData.get(player)
+	if not data or type(data.run) ~= "table" then
+		return 0
+	end
+	local id = cuttingWith(player, data)
+	local pips = if id then Tree.level(levelsOf(data.run, id), "power") else 0
+	if pips <= 0 then
+		return 0
+	end
+	local def = toolDef(id :: string)
+	if not def then
+		return 0
+	end
+	local rate = SkillTrees.FLOOR_RATE * pips
+	local share = if def.kind == "swing" then rate * (def.cooldown or 0.45) / math.max(1, def.targets or 1) else rate * Config.TICK / 1.5
+	return p.maxHp * math.min(share, 1)
+end
+
 -- server/Run's onCut: a clump was chopped down and its bundles dropped. The Harvest skill of the weapon in hand may
 -- drop one more.
 function SkillTrees.onCut(player: Player, patch)
@@ -368,6 +398,7 @@ local function devHook()
 end
 
 function SkillTrees.start()
+	require(script.Parent.Field).cutFloor = cutFloor
 	if started or not ON then
 		return
 	end

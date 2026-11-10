@@ -720,7 +720,7 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 						continue
 					end
 					local l = inv * p.Position
-					if isRoom and p.Name ~= "Runner" and p.Name ~= "RunnerBorder" and (l.Z < -5.2 or FRONT_SET[p.Name]) then
+					if isRoom and p.Name ~= "Runner" and p.Name ~= "RunnerBorder" and ((l.Z < -5.2 and math.abs(l.X) < 16) or FRONT_SET[p.Name]) then
 						p.CFrame = at * CFrame.new(0, 0, OPEN_FIT.front) * (inv * p.CFrame)
 					elseif math.abs(l.X) > 17 and l.Y > (if isRoom then 4.8 else 6) and not (l.X < 0 and l.Z > 5.5 and l.Z < 14.3) then
 						-- on a side wall, over the cabin's bottom logs (not the fireplace and its chimney)

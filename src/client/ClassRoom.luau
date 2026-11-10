@@ -650,7 +650,8 @@ local function build()
 	-- (6 Nov, owner: "it's a bit messy": the planets and the moon went; the vortex is the one big thing in the sky)
 
 	-- asteroids drifting through, near and far
-	for _ = 1, 6 do
+	-- (10 Nov, owner: "there is a black thing right and left": the rocks read as dark blobs either side; gone)
+	for _ = 1, 0 do
 		local far = true
 		local pos = Vector3.new(rng:NextNumber(-70, 70), rng:NextNumber(-25, 35), rng:NextNumber(if far then 40 else 12, if far then 140 else 40))
 		if math.abs(pos.X) < 12 and math.abs(pos.Y - 4) < 9 then

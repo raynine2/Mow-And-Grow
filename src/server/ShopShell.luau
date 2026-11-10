@@ -289,6 +289,119 @@ local function studCabin(shop: Instance, at: CFrame): boolean
 	return true
 end
 
+-- (10 Nov 17:06, owner: "remake je het helemaal ook de binnen kant, niet 2 huizen in 1") THE CABIN'S INSIDE: with
+-- the lodge gone the shop's room stands in the cabin's bare, dark hollow, so the cabin gets its own inside: warm
+-- plank walls right behind the tool boards (the cabin's own logs are just behind them), a plank ceiling over the
+-- beams, dark posts in the corners, a skirting board, the beams and the chandelier in the cabin's wood, and warm
+-- lamps. Shop frame after FIT_IN (measured in Play): the boards reach x -17.5..18.1 and z 14.3, the floor -5.9..12.9
+-- at y 2, the beams' tops at 14.7; the cabin's inside x -17.7..18, z -7.2..18.5; its door tunnel x -2.2..1.8.
+local LINE = { left = -17.6, right = 17.8, back = 14.3, front = -6.2, floor = 1.6, top = 16, t = 0.4, door = { -2.2, 1.8, 11.4 } }
+local PLANK_IN = Color3.fromRGB(206, 142, 82)
+local POST_IN = Color3.fromRGB(112, 70, 40)
+local CEIL_IN = Color3.fromRGB(168, 108, 60)
+
+local function lineRoom(shop: Instance, at: CFrame)
+	local L = LINE
+	local f = Instance.new("Folder")
+	f.Name = "CabinInside"
+	local rng = Random.new(1110)
+	local function piece(name: string, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, color: Color3, mat: Enum.Material, solid: boolean)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.Size = Vector3.new(x1 - x0, y1 - y0, z1 - z0)
+		p.CFrame = at * CFrame.new((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+		local j = rng:NextNumber(-0.06, 0.06)
+		p.Color = Color3.new(math.clamp(color.R + j, 0, 1), math.clamp(color.G + j * 0.8, 0, 1), math.clamp(color.B + j * 0.6, 0, 1))
+		p.Material = mat
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.CanCollide = solid
+		p.CanQuery = solid
+		p.CanTouch = false
+		p.Parent = f
+		return p
+	end
+	-- a plank wall along x (z fixed) or along z (x fixed), skipping the door's gap
+	local function wallX(z0: number, z1: number, gap: { number }?)
+		local x = L.left
+		while x < L.right - 0.01 do
+			local w = math.min(1.6, L.right - x)
+			local cx = x + w / 2
+			if gap and cx > gap[1] and cx < gap[2] then
+				piece("Plank", x, x + w, gap[3], L.top, z0, z1, PLANK_IN, Enum.Material.WoodPlanks, true)
+			else
+				local dz = if rng:NextNumber() < 0.5 then 0.08 else 0
+				piece("Plank", x, x + w - 0.06, L.floor, L.top, z0 - dz, z1 - dz, PLANK_IN, Enum.Material.WoodPlanks, true)
+			end
+			x += w
+		end
+	end
+	local function wallZ(x0: number, x1: number, inward: number)
+		local z = L.front
+		while z < L.back - 0.01 do
+			local w = math.min(1.6, L.back - z)
+			local d = if rng:NextNumber() < 0.5 then 0.08 * inward else 0
+			piece("Plank", x0 + d, x1 + d, L.floor, L.top, z, z + w - 0.06, PLANK_IN, Enum.Material.WoodPlanks, true)
+			z += w
+		end
+	end
+	-- the door's gap in the front wall is cut to the cabin's door tunnel (snapped to whole planks round it)
+	local gap = { L.door[1] - 0.8, L.door[2] + 0.8, L.door[3] }
+	wallX(L.back, L.back + L.t, nil)
+	wallX(L.front - L.t, L.front, gap)
+	wallZ(L.left - L.t, L.left, 1)
+	wallZ(L.right, L.right + L.t, -1)
+	-- the door's frame, posts in the corners, the skirting and the top rail
+	piece("DoorPost", L.door[1] - 1.6, L.door[1] - 0.1, L.floor, L.door[3], L.front - 0.5, L.front + 0.35, POST_IN, Enum.Material.Wood, true)
+	piece("DoorPost", L.door[2] + 0.1, L.door[2] + 1.0, L.floor, L.door[3], L.front - 0.5, L.front + 0.35, POST_IN, Enum.Material.Wood, true)
+	piece("DoorLintel", L.door[1] - 1.6, L.door[2] + 1.0, L.door[3], L.door[3] + 0.8, L.front - 0.1, L.front + 0.35, POST_IN, Enum.Material.Wood, false)
+	for _, c in { { L.left, L.front }, { L.right, L.front }, { L.left, L.back }, { L.right, L.back } } do
+		piece("CornerPost", c[1] - 0.5, c[1] + 0.5, L.floor, L.top, c[2] - 0.5, c[2] + 0.5, POST_IN, Enum.Material.Wood, true)
+	end
+	piece("Skirting", L.left, L.right, 1.9, 2.5, L.back - 0.15, L.back, POST_IN, Enum.Material.Wood, false)
+	piece("Skirting", L.left, L.right, 1.9, 2.5, L.front, L.front + 0.15, POST_IN, Enum.Material.Wood, false)
+	piece("Skirting", L.left, L.left + 0.15, 1.9, 2.5, L.front, L.back, POST_IN, Enum.Material.Wood, false)
+	piece("Skirting", L.right - 0.15, L.right, 1.9, 2.5, L.front, L.back, POST_IN, Enum.Material.Wood, false)
+	for _, side in { L.left, L.right } do
+		local x0 = if side < 0 then side else side - 0.6
+		piece("WallPlate", x0, x0 + 0.6, L.top - 0.7, L.top, L.front, L.back, POST_IN, Enum.Material.Wood, false)
+	end
+	-- the ceiling: boards across, on joists
+	local z = L.front - L.t
+	while z < L.back + L.t - 0.01 do
+		local w = math.min(1.8, L.back + L.t - z)
+		piece("CeilingBoard", L.left - L.t, L.right + L.t, L.top, L.top + 0.3, z, z + w - 0.05, CEIL_IN, Enum.Material.WoodPlanks, false)
+		z += w
+	end
+	for i = 0, 3 do
+		local zz = L.front + 1.5 + i * (L.back - L.front - 3) / 3
+		piece("Joist", L.left, L.right, L.top - 0.6, L.top, zz - 0.35, zz + 0.35, POST_IN, Enum.Material.Wood, false)
+	end
+	-- warm lamps under the ceiling (the room was lit by the fire alone: dark red)
+	for _, x in { -9, 9 } do
+		for _, zz in { -0.5, 8.5 } do
+			local holder = piece("CeilingLamp", x - 0.6, x + 0.6, L.top - 0.9, L.top - 0.6, zz - 0.6, zz + 0.6, Color3.fromRGB(255, 226, 170), Enum.Material.Neon, false)
+			holder.CastShadow = false
+			local light = Instance.new("PointLight")
+			light.Color = Color3.fromRGB(255, 226, 180)
+			light.Brightness = 1.3
+			light.Range = 20
+			light.Shadows = false
+			light.Parent = holder
+		end
+	end
+	f.Parent = shop
+	-- the lodge's leftovers in the cabin's wood (its beams came out roof-red)
+	local lodge = shop:FindFirstChild("ShopBuilding")
+	for _, p in (if lodge then lodge:GetDescendants() else {}) do
+		if p:IsA("BasePart") and (p.Name == "TieBeam" or p.Name == "ChandelierBar") then
+			p.Color = POST_IN
+			p.Material = Enum.Material.Wood
+		end
+	end
+end
+
 function ShopShell.dress(shop: Instance, at: CFrame): boolean
 	if not ShopShell.MODEL then
 		if not studCabin(shop, at) then
@@ -358,6 +471,7 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		end
 		box:Destroy()
 		shop:SetAttribute("FitIn", true)
+		lineRoom(shop, at)
 		-- the lodge's invisible porch (deck, steps) came out of the scaling too high to step on (a 2.9-stud step):
 		-- instead an invisible ramp up the cabin's porch steps and a floor through its door tunnel to the shop's floor
 		local lodge = shop:FindFirstChild("ShopBuilding")

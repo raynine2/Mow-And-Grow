@@ -259,7 +259,8 @@ end
 -- The tool lent to a first-timer until their first sale (data.run.loaner, Config.FIRST_TIMER), as its index, or nil
 -- (none, or they own it by now).
 local function loanIndex(data): number?
-	local i = data.run.loaner and toolIndex(data.run.loaner)
+	-- (10 Nov) not before BRRBRR has handed it over (run.loanHanded false: client/TutorGuide, server/Run)
+	local i = data.run.loaner and data.run.loanHanded ~= false and toolIndex(data.run.loaner)
 	return if i and not Config.ownsTool(data.run, data.tools, i) then i else nil
 end
 
@@ -355,7 +356,14 @@ function Tools.equipped(player: Player)
 	if not Config.ownsTool(data.run, data.tools, i) and not (tool:GetAttribute("Loaner") and i == loanIndex(data)) then
 		return nil
 	end
-	return require(script.Parent.SkillTrees).boost(player, Config.TOOLS[i], tool), tool -- (30 Oct) with its skill tree
+	local def = require(script.Parent.SkillTrees).boost(player, Config.TOOLS[i], tool) -- (30 Oct) with its skill tree
+	-- (10 Nov) BRRBRR's lent scythe cuts one clump a swing (Config.FIRST_TIMER.loanTargets): 2-3 swings, not a field
+	local lt = Config.FIRST_TIMER and Config.FIRST_TIMER.loanTargets
+	if lt and tool:GetAttribute("Loaner") and def.targets and def.targets > lt then
+		def = table.clone(def)
+		def.targets = lt
+	end
+	return def, tool
 end
 
 -- Play the default "slash" arm swing (the stock Animate script listens for this).

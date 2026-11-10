@@ -388,6 +388,14 @@ local function onCut(player: Player, patch): boolean
 	ClassPerks.cut(player, pos) -- Tidy Up, Hot Streak
 	require(script.Parent.SkillTrees).onCut(player, patch) -- (30 Oct) weapon skill trees: Harvest
 	data.stats.cut += 1
+	-- (10 Nov) BRRBRR's scythe goes back after a few clumps (Config.FIRST_TIMER.loanCuts)
+	local loanCuts = Config.FIRST_TIMER and Config.FIRST_TIMER.loanCuts
+	if loanCuts and data.run.loaner and data.run.loanHanded then
+		data.run.loanCuts = (data.run.loanCuts or 0) + 1
+		if data.run.loanCuts >= loanCuts then
+			endLoan(player, data)
+		end
+	end
 	local m = Config.mutation(patch.mut or "None")
 	-- (report #2) a few coins on the spot for every clump (Chop A Forest pays per hit): the HUD counter ticks up
 	if Config.CUT_COINS > 0 then
@@ -556,6 +564,35 @@ end
 -------------------------------------------------------------------------------------------------------------
 -- (report #1) A first-timer's first sale: the loaned starter tool goes back (they hold their own best one) and,
 -- a moment later, once the coins have flown, the intro film plays (client/Intro waits for run.tutorial to go).
+-- (10 Nov, Config.FIRST_TIMER.loanCuts) BRRBRR wants his scythe back after a few clumps: the loan ends (client/TutorGuide
+-- flies it back to him on "loanBack"; client/FirstLawn's "was on loan" note still comes after the intro film)
+local function endLoan(player: Player, data)
+	local lent = data.run.loaner
+	if not lent then
+		return
+	end
+	data.run.loaner = nil
+	data.run.loanHanded = nil
+	local name = lent
+	for _, t in Config.TOOLS do
+		if t.id == lent then
+			name = t.name
+		end
+	end
+	local ni = Config.nextToolIndex(data.run, data.tools)
+	local nextTool = ni and Config.TOOLS[ni]
+	Net.send(player, "Fx", "loanBack", { name = name, next = nextTool and nextTool.name, cost = nextTool and nextTool.cost })
+	task.delay(0.6, function()
+		Tools.give(player)
+		PlayerData.changed(player)
+	end)
+	task.delay(2.5, function()
+		if player.Parent then
+			Net.send(player, "Fx", "loanOver", { name = name, next = nextTool and nextTool.name, cost = nextTool and nextTool.cost })
+		end
+	end)
+end
+
 local function endTutorial(player: Player, data)
 	local lent = data.run.loaner
 	data.run.loaner = nil
@@ -793,6 +830,19 @@ local function setupPlayer(player: Player, data)
 			end
 			if F.loaner ~= "" then
 				data.run.loaner = F.loaner
+				-- (10 Nov) BRRBRR hands it over (client/TutorGuide: "Seen" "loanTaken"); after handoverWait s it comes anyway
+				if F.loanCuts then
+					data.run.loanHanded = false
+					data.run.loanCuts = 0
+					task.delay(F.handoverWait or 30, function()
+						local d2 = PlayerData.get(player)
+						if player.Parent and d2 and d2.run and d2.run.loaner and d2.run.loanHanded == false then
+							d2.run.loanHanded = true
+							Tools.give(player)
+							PlayerData.changed(player)
+						end
+					end)
+				end
 			end
 		end
 	end
@@ -1066,6 +1116,11 @@ function Run.start()
 				data.run.introSeen = true
 				PlayerData.changed(player) -- (client/FirstLawn's loan note waits for this: it shows right after the film)
 			end
+		elseif what == "loanTaken" and data and data.run and data.run.loaner and data.run.loanHanded == false then
+			-- (10 Nov) BRRBRR has handed his scythe over (client/TutorGuide): now it's in your hands
+			data.run.loanHanded = true
+			Tools.give(player)
+			PlayerData.changed(player)
 		elseif what == "news" and data and type(id) == "number" and id == id then -- (id == id: not NaN)
 			data.stats.newsSeen = math.clamp(math.floor(id), 0, #Config.NEWS)
 		end

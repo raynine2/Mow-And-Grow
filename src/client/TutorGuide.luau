@@ -43,6 +43,7 @@ task.spawn(function()
 	local Device = require(here:WaitForChild("Device")) :: any
 	local Sound = require(here:WaitForChild("Sound")) :: any
 	local UI = require(here:WaitForChild("UI")) :: any
+	local Scythe = require(here:WaitForChild("GuideScythe")) :: any -- (10 Nov) BRRBRR's scythe on loan
 
 	-- (v3, owner: "make him have walking animations, very goofy so kids like it") each guide walks in one of
 	-- Roblox's own animation packs (made by Roblox, free for every game): RAYAN the Cartoony pack, BRRBRR the Bubbly
@@ -791,6 +792,8 @@ task.spawn(function()
 	local lastCoins: number? = nil
 	local everOn = false
 	local leaving = false
+	-- (10 Nov, Config.FIRST_TIMER.loanCuts) BRRBRR's scythe: handing = flying to you, given = you have it, back = returned
+	local loan = { handing = false, given = false, back = false, outAt = 0 }
 
 	local function myRoot(): BasePart?
 		local char = player.Character
@@ -811,6 +814,7 @@ task.spawn(function()
 
 	local function bringOut(root: BasePart)
 		out = true
+		loan.outAt = os.clock()
 		folder.Parent = workspace
 		refY = root.Position.Y - 1
 		for _, g in guides do
@@ -893,6 +897,7 @@ task.spawn(function()
 		end
 		skipped = true
 		skipBtn.Visible = false
+		State.fire("Seen", "loanTaken") -- (10 Nov) no hand-over then: the scythe straight away
 		putAway()
 		-- the card stays away too: the arrow, the glow and the trail keep showing the way
 		Coach.cardHidden = true
@@ -929,6 +934,84 @@ task.spawn(function()
 			Coach.cardHidden = false
 		end)
 	end
+
+	-- (10 Nov, owner: "let brrbrr lend the scythe ... only give it back when the player has taken down 2-3 grasses and
+	-- animated it") BRRBRR carries his scythe (client/GuideScythe), says "borrow it", and it flies into your hand; the
+	-- server hands you the real one on "Seen" "loanTaken". After Config.FIRST_TIMER.loanCuts clumps it flies back.
+	local function loanTick(now: number)
+		local run = State.data and State.data.run
+		local g = side
+		if not g or not out or leaving or not run or not run.loaner or loan.back then
+			return
+		end
+		local gm = g.model
+		if Scythe.playerHasLoan(player) then
+			loan.given = true
+			local s = if loan.handing then nil else gm:FindFirstChild("GuideScythe")
+			if s then
+				s:Destroy() -- (the server's fallback handed it over: it's not in his hands any more)
+			end
+			return
+		end
+		if loan.given or loan.handing then
+			return
+		end
+		if not Scythe.held(gm) then
+			Scythe.attach(gm)
+		end
+		if now - loan.outAt < 2.5 then
+			return
+		end
+		loan.handing = true
+		say(g, "Here, borrow my {scythe}! Swing it at the grass.", 1.2)
+		emote(g, "!")
+		gesture(g, "point")
+		g.hopAt = now
+		task.delay(1.3, function()
+			if not out then
+				loan.handing = false
+				return
+			end
+			pcall(Sound.playAt, "whoosh", 1.1, 0.6)
+			Scythe.give(gm, player, function()
+				loan.given = true
+				loan.handing = false
+				State.fire("Seen", "loanTaken")
+				local r = myRoot()
+				if r then
+					burst(r.Position + Vector3.new(0, 2, 0), g.def.color or WHITE, false)
+				end
+				pcall(Sound.playAt, "purchase", 1.2, 0.5)
+				task.delay(0.7, function()
+					if out then
+						say(g, "Take down {3 clumps}, then it's mine again!", 1)
+					end
+				end)
+			end)
+		end)
+	end
+	State.on("fx", function(kind: string, d: any)
+		if kind ~= "loanBack" then
+			return
+		end
+		loan.back = true
+		local g = side
+		if not out or not g then
+			return
+		end
+		say(g, "Okay, my turn! {Thanks!}", 1)
+		gesture(g, "wave")
+		pcall(Sound.playAt, "whoosh", 0.9, 0.6)
+		Scythe.takeBack(g.model, player, function()
+			cheer(g, "heart")
+			task.delay(1.4, function()
+				if out and not leaving then
+					local nxt = if type(d) == "table" and type(d.next) == "string" then d.next else nil
+					say(lead, if nxt then "Now get your own: {" .. nxt .. "} at the {Tool Shop}!" else "Now get your own at the {Tool Shop}!", 1)
+				end
+			end)
+		end)
+	end)
 
 	RunService.Heartbeat:Connect(function(dt: number)
 		if not ready or skipped then
@@ -1010,6 +1093,7 @@ task.spawn(function()
 		for _, g in guides do
 			goof(g, now)
 		end
+		loanTick(now)
 
 		-- what to say
 		local s = Coach.step

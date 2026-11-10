@@ -302,7 +302,12 @@ Config.CAMERA_KICK = {
 --   loaner:    the tool lent to a first-timer for their first run until their first sale ("walk into the grass to
 --              mow it"); then they're back to Bare Hands and buy their own. "" = off.
 --   introAfterSale: the intro film waits for that first sale instead of playing before you've cut anything.
-Config.FIRST_TIMER = { autoStart = 3, loaner = "PushMower", introAfterSale = true } -- (5 Nov, less waiting: autoStart was 6)
+Config.FIRST_TIMER = { autoStart = 3, loaner = "MegaScythe", introAfterSale = true, loanCuts = 3, loanTargets = 1, handoverWait = 30 } -- (5 Nov, less waiting: autoStart was 6)
+-- (10 Nov, owner: "let brrbrr lend the scythe ... only for the tutorial ... give it back when the player has taken down
+-- 2-3 grasses and animated it") The first-timer's loan is BRRBRR's Mega Scythe (was the Push Mower until the first
+-- sale): he carries it and hands it over (client/TutorGuide + client/GuideScythe: "Seen" "loanTaken"; the server hands
+-- it over anyway after handoverWait s), on loan it cuts loanTargets clump(s) a swing, and after loanCuts clumps it goes
+-- back to him (Fx "loanBack"). loanCuts = nil: the old way, a loan until the first sale.
 -- (10 Nov, owner, after a "replace text tutorials with NPC avatars that guide players" video: "use mine and brrbrr")
 -- the first-run tutorial is two walking guides wearing these Roblox avatars (server/GuideAvatars.server builds them,
 -- client/TutorGuide walks them beside you, talking, instead of the step card). `lead` walks ahead toward the

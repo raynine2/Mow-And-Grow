@@ -181,7 +181,14 @@ local function pick(): Step?
 		end
 		return { id = id, title = title, sub = sub, target = at, lift = h + 2, clump = m, trail = far }
 	end
-	local auto = heldKind() == "auto" or run.loaner ~= nil
+	-- (10 Nov) a loaned auto tool (the old Push Mower loan) counts as held; BRRBRR's lent scythe is a swing tool
+	local lentDef = nil
+	for _, t in Config.TOOLS do
+		if t.id == run.loaner then
+			lentDef = t
+		end
+	end
+	local auto = heldKind() == "auto" or (lentDef ~= nil and lentDef.kind == "auto")
 	if (stats.cut or 0) == 0 and run.carry == 0 and (run.ground or 0) == 0 then
 		if auto then
 			return clumpStep("mow", "MOW THE GRASS", "Walk into the grass to mow it: grass sells for coins!")

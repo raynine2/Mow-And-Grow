@@ -36,6 +36,9 @@ BASE = {
     "blue": (90, 170, 240), "teal": (80, 210, 200), "green": (110, 200, 90), "carpet": (196, 40, 52),
     "s1": (120, 200, 90), "s2": (90, 170, 240), "s3": (250, 200, 60), "s4": (240, 120, 170),
     "s5": (150, 110, 230), "s6": (255, 150, 60), "s7": (80, 220, 210), "s8": (255, 80, 80), "hubCap": (255, 248, 236),
+    # (10 Nov) the Tool Shop cabin, after the ForgeGUI cabin the owner liked (orange-tan logs, red shingles, green trim)
+    "log": (238, 156, 84), "logEnd": (250, 206, 140), "shingle": (206, 62, 48), "trim": (86, 172, 66),
+    "glass": (176, 222, 240), "plank": (200, 124, 66), "chimney": (150, 150, 158),
 }
 PAL = {}
 for _k, (_r, _g, _b) in BASE.items():
@@ -43,7 +46,7 @@ for _k, (_r, _g, _b) in BASE.items():
     PAL[_k + "_d"] = tuple(max(0, int(c * 0.86)) for c in (_r, _g, _b))
     PAL[_k + "_l"] = tuple(min(255, int(c * 1.09 + 6)) for c in (_r, _g, _b))
 # smooth even as bricks: metal, glass, light, the wheel's face
-SMOOTH_BASE = {"gold", "silver", "bronze", "water", "lamp", "hubCap", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"}
+SMOOTH_BASE = {"gold", "silver", "bronze", "water", "lamp", "hubCap", "glass", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"}
 SMOOTH = {k for k in PAL if k.split("_")[0] in SMOOTH_BASE}
 
 
@@ -496,7 +499,193 @@ def pet_garden():
     return m
 
 
-MODELS = {"wheel_booth": wheel_booth, "wheel": wheel, "podium_stage": podium_stage, "pet_garden": pet_garden}
+def tool_shop():
+    """(10 Nov, owner: "remake de huis helemaal beter naar de foto ... voxel stud style hoge kwaliteit") The Tool Shop
+    in area 1's camp, after the ForgeGUI cabin in the owner's photo: a log cabin with crossed log ends at the corners,
+    a tall red shingle roof that flares out at the eaves, a gabled porch on two posts with lanterns, green windows with
+    shutters and flower boxes, the round wooden medallion with the garden shears on the roof, a stone chimney.
+    Lodge coordinates (server/CampBuildings, server/ShopRoom): y 0 the ground, -Z out of the door; the room inside
+    (x -19.6..19.6, z -7.2..14.3, floor top 0.75: the lodge's floor stays) is left clear for server/ShopRoom."""
+    m = M()
+    X0, X1, Z0, Z1, TOP = -21, 21, -9, 16, 16  # outer walls (1 stud thick), wall top
+    RIDGE, RZ, HALF = 28, 3.5, 15.5  # ridge height, ridge line (z), half the roof's depth
+    DOOR = (-4, 4, 12)
+
+    def roof_y(zc):
+        d = min(abs(zc - RZ), HALF)
+        return int(round(RIDGE - (RIDGE - 15) * (1 - (1 - d / HALF) ** 1.4)))
+
+    def hole(wall, u, y):
+        if wall == "front":
+            if DOOR[0] <= u < DOOR[1] and y < DOOR[2]:
+                return True
+            if (-16 <= u < -10 or 10 <= u < 16) and 5 <= y < 10:
+                return True
+        if wall == "side" and 2 <= u < 7 and 5 <= y < 10:
+            return True
+        return False
+
+    # stone plinth, then the log walls, a row a shade, crossing log ends at the corners
+    for x in range(X0, X1):
+        for z in range(Z0, Z1):
+            if x in (X0, X1 - 1) or z in (Z0, Z1 - 1):
+                m.b[(x, 0, z)] = var("stone", x, 0, z, 21)
+    for y in range(1, TOP):
+        row = "log" if y % 2 else "log_d"
+        for x in range(X0, X1):
+            for z in (Z0, Z1 - 1):
+                if not hole("front" if z == Z0 else "back", x, y):
+                    m.b[(x, y, z)] = row if h3(x, y, z, 3) > 0.12 else "log_l"
+        for z in range(Z0, Z1):
+            for x in (X0, X1 - 1):
+                if not hole("side", z, y):
+                    m.b[(x, y, z)] = row if h3(x, y, z, 4) > 0.12 else "log_l"
+        # log ends: front/back logs stick out on odd rows, the side logs on even rows
+        if y % 2:
+            for z in (Z0, Z1 - 1):
+                m.b[(X0 - 1, y, z)] = "logEnd"
+                m.b[(X1, y, z)] = "logEnd"
+                m.dot(X0 - 1, y + 0.25, z + 0.25, "log_d")
+                m.dot(X1 + 0.5, y + 0.25, z + 0.25, "log_d")
+        else:
+            for x in (X0, X1 - 1):
+                m.b[(x, y, Z0 - 1)] = "logEnd"
+                m.b[(x, y, Z1)] = "logEnd"
+                m.dot(x + 0.25, y + 0.25, Z0 - 1, "log_d")
+                m.dot(x + 0.25, y + 0.25, Z1 + 0.5, "log_d")
+    # the gables: logs up under the roof on both side walls
+    for z in range(Z0, Z1):
+        for y in range(TOP, roof_y(z + 0.5) - 1):
+            for x in (X0, X1 - 1):
+                m.b[(x, y, z)] = "log" if y % 2 else "log_d"
+    # a plank ceiling over the room (the stepped roof stays outside)
+    for x in range(X0 + 1, X1 - 1):
+        for z in range(Z0 + 1, Z1 - 1):
+            m.b[(x, TOP, z)] = "plank" if (x // 2) % 2 else "plank_d"
+    # the roof: shingle rows that flare out at the eaves, filled down to the next row so there are no holes
+    zs = list(range(-12, 19))
+    for z in zs:
+        top = roof_y(z + 0.5)
+        nb = roof_y(z + 0.5 + (1 if z + 0.5 < RZ else -1)) if -12 < z < 18 else top - 1
+        low = min(top - 1, nb)
+        for x in range(-24, 24):
+            for y in range(low, top):
+                if y == top - 1:
+                    c = "shingle" if (z % 2 == 0) else "shingle_d"
+                    if h3(x, y, z, 9) > 0.9:
+                        c = "shingle_l"
+                else:
+                    c = "shingle_d"
+                m.b[(x, y, z)] = c
+        # the barge boards along both gable ends
+        for x0 in (-24.5, 24):
+            m.fine(x0, top - 1.5, z, x0 + 0.5, top - 0.5, z + 1, "wood_l")
+    m.brick(-25, RIDGE, 3, 25, RIDGE + 1, 4, "wood", "x", 31)  # the ridge cap
+    # the chimney (the fireplace side, -X), up through the roof's overhang
+    m.brick(-25, 0, 4, -21, 31, 8, "chimney", "voxel", 41)
+    m.brick(-26, 31, 3, -20, 32, 9, "chimney_d")
+    m.brick(-24, 31, 5, -22, 32, 7, "iron")
+    # windows: glass, a green frame and cross, shutters, and a flower box under the front ones
+    def window_front(xa, xb, zf):
+        m.fine(xa, 5, zf + 0.25, xb, 10, zf + 0.75, "glass")
+        for (fx0, fy0, fx1, fy1) in [(xa - 0.5, 4.5, xb + 0.5, 5), (xa - 0.5, 10, xb + 0.5, 10.5),
+                                     (xa - 0.5, 5, xa, 10), (xb, 5, xb + 0.5, 10),
+                                     ((xa + xb) / 2 - 0.25, 5, (xa + xb) / 2 + 0.25, 10), (xa, 7.25, xb, 7.75)]:
+            m.fine(fx0, fy0, zf - 0.5, fx1, fy1, zf + 0.25, "trim")
+        for sx0 in (xa - 2.5, xb + 0.5):
+            m.fine(sx0, 5, zf - 0.5, sx0 + 2, 10, zf, "trim_d")
+            m.fine(sx0 + 0.5, 6, zf - 1, sx0 + 1.5, 6.5, zf - 0.5, "trim")
+            m.fine(sx0 + 0.5, 8.5, zf - 1, sx0 + 1.5, 9, zf - 0.5, "trim")
+    for xa in (-16, 10):
+        window_front(xa, xa + 6, Z0)
+        m.fine(xa - 0.5, 3.5, Z0 - 1.5, xa + 6.5, 4.5, Z0, "woodDark")
+        m.fine(xa, 4.5, Z0 - 1.5, xa + 6, 5, Z0 - 0.5, "soil")
+        rnd = random.Random(xa)
+        for fx in range(xa, xa + 6):
+            flower(m, fx, 4.5, Z0 - 1.5, rnd.choice(["pink", "yellow", "white", "orange", "violet"]))
+    # side windows (glass and a green frame on both sides)
+    for xw, out in ((X0, -1), (X1 - 1, 1)):
+        xf = xw + (0 if out < 0 else 1)
+        m.fine(xw + 0.25, 5, 2, xw + 0.75, 10, 7, "glass")
+        for (z0, y0, z1, y1) in [(1.5, 4.5, 7.5, 5), (1.5, 10, 7.5, 10.5), (1.5, 5, 2, 10), (7, 5, 7.5, 10), (4.25, 5, 4.75, 10)]:
+            xa = xf - 0.5 if out < 0 else xf
+            m.fine(xa, y0, z0, xa + 0.5, y1, z1, "trim")
+    # the doorway: a timber frame, a green trim, both door leaves swung in
+    m.fine(DOOR[0] - 1, 1, Z0 - 0.5, DOOR[0], DOOR[2] + 1, Z0 + 1, "woodDark")
+    m.fine(DOOR[1], 1, Z0 - 0.5, DOOR[1] + 1, DOOR[2] + 1, Z0 + 1, "woodDark")
+    m.fine(DOOR[0] - 1, DOOR[2], Z0 - 0.5, DOOR[1] + 1, DOOR[2] + 1, Z0 + 1, "woodDark")
+    m.fine(DOOR[0] - 1.5, 1, Z0 - 0.5, DOOR[0] - 1, DOOR[2] + 1.5, Z0, "trim")
+    m.fine(DOOR[1] + 1, 1, Z0 - 0.5, DOOR[1] + 1.5, DOOR[2] + 1.5, Z0, "trim")
+    m.fine(DOOR[0] - 1.5, DOOR[2] + 1, Z0 - 0.5, DOOR[1] + 1.5, DOOR[2] + 1.5, Z0, "trim")
+    for lx in (DOOR[0], DOOR[1] - 0.5):
+        m.fine(lx, 1, Z0 + 1, lx + 0.5, DOOR[2] - 0.5, Z0 + 4.5, "wood")
+        for by in (3, 9):
+            m.fine(lx - (0 if lx < 0 else 0), by, Z0 + 1, lx + 0.5, by + 0.5, Z0 + 4.5, "iron")
+    # the porch: a plank deck with steps, two posts, rails, a gabled roof with a board front and two lanterns
+    PZ0, PX = -16, 9
+    for x in range(-PX, PX):
+        for z in range(PZ0, Z0):
+            m.b[(x, 0, z)] = "wood" if (x % 2) else "wood_d"
+    m.fine(-6, 0, PZ0 - 1, 6, 0.5, PZ0, "wood_d")
+    for px in (-PX, PX - 1):
+        m.brick(px, 1, PZ0, px + 1, 12, PZ0 + 1, "woodDark")
+        m.fine(px - 0.25, 1, PZ0 - 0.25, px + 1.25, 1.5, PZ0 + 1.25, "stone")
+    for side in (-1, 1):
+        xa, xb = (-PX + 1, -5) if side < 0 else (5, PX - 1)
+        for ry in (3, 5):
+            m.fine(xa, ry, PZ0 + 0.25, xb, ry + 0.5, PZ0 + 0.75, "wood_l")
+        for bx in range(xa, xb):
+            m.fine(bx + 0.25, 1, PZ0 + 0.25, bx + 0.75, 5, PZ0 + 0.75, "wood")
+    def porch_y(xc):
+        return int(round(19 - 7 * min(abs(xc), 11) / 11))
+    for x in range(-11, 11):
+        top = porch_y(x + 0.5)
+        nb = porch_y(x + 0.5 + (1 if x + 0.5 < 0 else -1)) if -11 < x < 10 else top - 1
+        low = min(top - 1, nb)
+        for z in range(-17, Z0):
+            for y in range(low, top):
+                m.b[(x, y, z)] = ("shingle" if (x % 2 == 0) else "shingle_d") if y == top - 1 else "shingle_d"
+        # where the porch roof stands above the main roof behind the wall, close it up to the main roof
+        for z in range(Z0, Z0 + 4):
+            for y in range(roof_y(z + 0.5) - 1, top):
+                m.b[(x, y, z)] = "shingle" if (x % 2 == 0) else "shingle_d"
+        m.fine(x, top - 1.5, -17.5, x + 1, top - 0.5, -17, "wood_l")  # the front edge board
+    # the porch gable's front: vertical boards, a beam and a king post
+    for x in range(-PX, PX):
+        for y in range(12, porch_y(x + 0.5) - 1):
+            m.fine(x, y, -16.5, x + 1, y + 1, -16, "plank" if x % 2 else "plank_l")
+    m.fine(-10, 11.5, -16.75, 10, 12.5, -15.75, "woodDark")
+    m.fine(-0.5, 12.5, -16.75, 0.5, 18, -16.5, "woodDark")
+    for lx in (-8, 7):
+        lantern(m, lx, 11.5, -15.5)
+    # the medallion with the garden shears on the roof's front, left of the porch
+    cx, cy, mz = 11, 22, -7.5  # (seen from the front, +X is the left: the medallion left of the porch, as in the photo)
+    for ix in range(-8, 8):
+        for iy in range(-8, 8):
+            px, py = cx + ix * 0.5 + 0.25, cy + iy * 0.5 + 0.25
+            r = math.hypot(px - cx, py - cy)
+            if r < 3.75:
+                m.dot(px - 0.25, py - 0.25, mz, "woodDark" if r > 3.0 else "wood_l")
+                if 3.1 < r < 3.6 and (ix + iy) % 3 == 0:
+                    m.dot(px - 0.25, py - 0.25, mz - 0.5, "gold")
+    for t in range(0, 6):
+        d = t * 0.5
+        m.dot(cx - 2.5 + d, cy + 2.0 - d, mz - 0.5, "silver")
+        m.dot(cx + 2.0 - d, cy + 2.0 - d, mz - 0.5, "silver")
+    for t in range(0, 4):
+        d = t * 0.5
+        m.dot(cx + 0.5 + d, cy - 0.5 - d, mz - 0.5, "green")
+        m.dot(cx - 1.0 - d, cy - 0.5 - d, mz - 0.5, "green")
+    m.fine(cx + 1.5, cy - 3.0, mz - 0.5, cx + 2.5, cy - 2.0, mz, "green_d")
+    m.fine(cx - 3.0, cy - 3.0, mz - 0.5, cx - 2.0, cy - 2.0, mz, "green_d")
+    m.dot(cx - 0.25, cy - 0.25, mz - 1.0, "iron")
+    m.fine(cx - 0.5, roof_y(mz) - 1, mz + 0.5, cx + 0.5, cy - 3.5, mz + 1, "woodDark")  # its post on the roof
+    m.a["door"] = (0, 0, Z0)
+    m.a["medallion"] = (cx, cy, mz)
+    return m
+
+
+MODELS = {"wheel_booth": wheel_booth, "wheel": wheel, "podium_stage": podium_stage, "pet_garden": pet_garden, "tool_shop": tool_shop}
 
 
 # --- greedy merge ---------------------------------------------------------------------------------------------------

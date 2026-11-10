@@ -16,6 +16,8 @@
 -- unseen, for its collisions), dark chinking, red beams, green window and door frames, a warm plank ceiling (restyle).
 -- (31 Oct, owner: "also use this house for the garage model alike") The Garage the same way: a ForgeGUI log garage
 -- in the cabin's style ("garage_shell") round the voxel garage (server/CampBuildings), its inside restyled.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Models = require(script.Parent.Models)
 
 local ShopShell = {}
@@ -178,9 +180,64 @@ end
 
 -- The cabin round the lodge at `at` (server/RunBuilder's tool shop). Returns false (and changes nothing) when the
 -- model isn't loaded.
+-- (10 Nov, owner: "remake de huis helemaal beter naar de foto ... voxel stud style hoge kwaliteit") THE STUD CABIN: the
+-- Blender stud-voxel model tool_shop (tools/blender/hub/hub_models.py -> shared/HubBrickData, built by shared/HubBricks)
+-- after the ForgeGUI cabin in the owner's photo. Of the voxel lodge only what's inside the room stays (its floor, the
+-- tie beams, the chandelier, whatever hangs inside): its walls, roof, porch, windows, door, chimney and lantern posts
+-- go, and the yard's medallion on the roof (the cabin has its own). The room (server/ShopRoom) is untouched.
+ShopShell.STUD_CABIN = true
+local CABIN = "tool_shop"
+local LODGE_WALLS: { [string]: boolean } = {}
+for _, n in {
+	"Log", "RoundLog", "LogEnd", "LogHeart", "LogRing", "Chink", "Plinth", "Roof", "RoofEdge", "RidgeCap", "RidgeBeam",
+	"Barge", "GableBoard", "Vent", "VentFrame", "VentSlat", "WindowGlass", "WindowPost", "Mullion", "Sill", "SillBracket",
+	"Lintel", "DoorPlank", "DoorBatten", "DoorStrap", "DoorHandle", "DoorPost", "DoorLintel", "Threshold", "Doormat",
+} do
+	LODGE_WALLS[n] = true
+end
+local ROOM_IN_MIN, ROOM_IN_MAX = Vector3.new(-19.9, 0.3, -7.7), Vector3.new(19.9, 15.6, 14.9)
+
+local function studCabin(shop: Instance, at: CFrame): boolean
+	local HubBricks = require(ReplicatedStorage.MowALawn.HubBricks) :: any
+	if not ShopShell.STUD_CABIN or not HubBricks.has(CABIN) then
+		return false
+	end
+	local inv = at:Inverse()
+	local lodge = shop:FindFirstChild("ShopBuilding")
+	if lodge then
+		for _, d in lodge:GetChildren() do
+			if d:IsA("Model") and d.Name == "lantern_post" then
+				d:Destroy()
+			end
+		end
+		for _, p in lodge:GetDescendants() do
+			if p:IsA("BasePart") and p.Parent then
+				local l = inv * p.Position
+				local inside = l.X > ROOM_IN_MIN.X and l.X < ROOM_IN_MAX.X and l.Y > ROOM_IN_MIN.Y and l.Y < ROOM_IN_MAX.Y
+					and l.Z > ROOM_IN_MIN.Z and l.Z < ROOM_IN_MAX.Z
+				local keep = p.Name == "FloorBoard" or p.Name == "FloorFill" -- (its DoorSensor goes too: no door to swing)
+				if not keep and (LODGE_WALLS[p.Name] or not inside) then
+					p:Destroy()
+				end
+			end
+		end
+	end
+	local yard = shop:FindFirstChild("ShopYard")
+	for _, p in (if yard then yard:GetDescendants() else {}) do
+		if p:IsA("BasePart") and p.Parent and (inv * p.Position).Y > 12 then
+			p:Destroy() -- the medallion and its shears on the roof
+		end
+	end
+	local m = HubBricks.build(CABIN, at, shop)
+	m.Name = "ShopCabin"
+	return true
+end
+
 function ShopShell.dress(shop: Instance, at: CFrame): boolean
 	if not ShopShell.MODEL then
-		restyle(shop:FindFirstChild("ShopBuilding"), true)
+		if not studCabin(shop, at) then
+			restyle(shop:FindFirstChild("ShopBuilding"), true)
+		end
 		return true
 	end
 	if not shell(shop, at, NAME, FIT, { ROOM_MIN, ROOM_MAX }, { DOOR_MIN, DOOR_MAX }) then

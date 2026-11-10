@@ -51,6 +51,11 @@ local function dress(p: Part, colour: string, detail: boolean)
 	elseif base == "lamp" then
 		p.Material = Enum.Material.Neon
 		p.Color = c
+	elseif base == "glass" then -- (10 Nov) the Tool Shop's windows
+		p.Material = Enum.Material.Glass
+		p.Transparency = 0.45
+		p.Color = c
+		p.CastShadow = false
 	end
 end
 

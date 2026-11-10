@@ -25,8 +25,8 @@ task.spawn(function()
 	if not Config.HUB_FUN or not Config.HUB_FUN.on then
 		return
 	end
-	local RADIUS = 10 -- the lawn inside the fence
-	local PET_SCALE = 1.7
+	local RADIUS = 12 -- the lawn inside the fence
+	local PET_SCALE = 1.05 -- (seen in Studio: at 1.7 they were 4-7 studs and stood in a heap)
 	local FONT = Config.UI and Config.UI.font or Enum.Font.FredokaOne
 	local INK = Color3.fromRGB(30, 26, 40)
 	local WHITE = Color3.new(1, 1, 1)

@@ -112,29 +112,29 @@ task.spawn(function()
 		for _, p in PRIZES do
 			total += p.weight
 		end
-		local board = part(f, Vector3.new(5.4, 7.6, 0.5), spot * CFrame.new(R + 4.6, 4.6, 0), WOOD, nil, Enum.Material.WoodPlanks)
-		part(f, Vector3.new(0.6, 4.6, 0.6), spot * CFrame.new(R + 4.6, 0.6, 0.3), WOOD, nil, Enum.Material.WoodPlanks)
+		-- (big: seen in Studio, the first one was too small to read)
+		local board = part(f, Vector3.new(8, 10, 0.5), spot * CFrame.new(R + 5.4, 5.6, 0), WOOD, nil, Enum.Material.WoodPlanks)
 		local g = Instance.new("SurfaceGui")
 		g.Face = Enum.NormalId.Front
 		g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		g.PixelsPerStud = 50
+		g.PixelsPerStud = 32
 		g.LightInfluence = 0
 		g.Parent = board
 		local list = Instance.new("UIListLayout")
-		list.Padding = UDim.new(0, 4)
+		list.Padding = UDim.new(0, 3)
 		list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		list.SortOrder = Enum.SortOrder.LayoutOrder
 		list.Parent = g
 		local pad = Instance.new("UIPadding")
-		pad.PaddingTop = UDim.new(0, 12)
+		pad.PaddingTop = UDim.new(0, 6)
 		pad.Parent = g
 		local head = Instance.new("TextLabel")
 		head.BackgroundTransparency = 1
-		head.Size = UDim2.new(1, 0, 0, 46)
+		head.Size = UDim2.new(1, 0, 0, 38)
 		head.Font = FONT
 		head.Text = "PRIZES & ODDS"
 		head.TextColor3 = Color3.fromRGB(255, 214, 80)
-		head.TextSize = 38
+		head.TextSize = 32
 		head.Parent = g
 		local hs = Instance.new("UIStroke")
 		hs.Color = INK
@@ -145,12 +145,12 @@ task.spawn(function()
 			local p = PRIZES[i]
 			local row = Instance.new("TextLabel")
 			row.LayoutOrder = N - i + 1
-			row.Size = UDim2.new(0.86, 0, 0, 36)
+			row.Size = UDim2.new(0.9, 0, 0, 30)
 			row.BackgroundColor3 = p.color
 			row.Font = FONT
 			row.Text = ("%s gems   ·   %s%%"):format(Format.commas(p.gems), (math.floor(p.weight / total * 1000 + 0.5) / 10))
 			row.TextColor3 = WHITE
-			row.TextSize = 28
+			row.TextSize = 23
 			row.Parent = g
 			local c = Instance.new("UICorner")
 			c.CornerRadius = UDim.new(0, 10)

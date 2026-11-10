@@ -79,12 +79,13 @@ local function buildStage(f: Folder, at: CFrame)
 		block:SetAttribute("Place", i)
 	end
 	-- the board behind: TOP MOWERS
-	local board = part(f, "Board", Vector3.new(15, 3.2, 0.6), at * CFrame.new(0, 13.2, 3.2), C(120, 78, 46), Enum.Material.WoodPlanks)
+	-- (high: seen in Studio, lower it was covered by the name tags)
+	local board = part(f, "Board", Vector3.new(15, 3.2, 0.6), at * CFrame.new(0, 17.6, 3.2), C(120, 78, 46), Enum.Material.WoodPlanks)
 	for _, x in { -6.2, 6.2 } do
-		part(f, "Post", Vector3.new(0.8, 13, 0.8), at * CFrame.new(x, 6.5, 3.4), C(96, 62, 38), Enum.Material.WoodPlanks)
+		part(f, "Post", Vector3.new(0.8, 17.4, 0.8), at * CFrame.new(x, 8.7, 3.4), C(96, 62, 38), Enum.Material.WoodPlanks)
 	end
 	faceText(board, "TOP MOWERS", C(255, 214, 80), 92)
-	local sub = part(f, "BoardSub", Vector3.new(15, 1, 0.1), at * CFrame.new(0, 11.1, 2.86), CREAM)
+	local sub = part(f, "BoardSub", Vector3.new(15, 1, 0.1), at * CFrame.new(0, 15.5, 2.86), CREAM)
 	sub.Transparency = 1
 	sub.CanCollide = false
 	faceText(sub, "most grass cut  ·  all servers", C(255, 255, 255), 30)
@@ -245,6 +246,11 @@ local function refresh(t: number)
 		if slot.tag and slot.sub then
 			slot.tag.Text = if row then ("#%d  %s"):format(i, row.name) else ""
 			slot.sub.Text = if row then scoreText(row.value) else "This could be YOU!"
+			-- over the statue's head, or just over an empty block
+			local bb = slot.tag.Parent
+			if bb and bb:IsA("BillboardGui") then
+				bb.StudsOffset = Vector3.new(0, if row then 8.8 else 1.6, 0)
+			end
 		end
 	end
 end

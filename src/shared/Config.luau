@@ -624,7 +624,7 @@ Config.BOSS_DOWN_TIME = 6 -- (5 Nov, less waiting: was 10)
 -- BOSS_DOWN_GROW s longer; you get up alone only BOSS_SELF_UPS times (after that only a teammate can pick you up), and
 -- then with BOSS_SELF_UP_HP of your HP at the gate. A revive stays the best: half HP, on the spot.
 Config.BOSS_DOWN_GROW = 6
-Config.BOSS_SELF_UPS = 2
+Config.BOSS_SELF_UPS = 1 -- (10 Nov 23:19, owner: "just add 1 revive, after that only a Robux revive": was 2; PRODUCTS.BossRevive)
 Config.BOSS_SELF_UP_HP = 0.35
 Config.BOSS_REVIVE_TIME = 2.5
 Config.BOSS_REVIVE_RADIUS = 9
@@ -1593,6 +1593,10 @@ Config.PRODUCTS = {
 	GoldenEgg10 = { id = 3720129285, robux = 680, egg = "GoldenEgg", count = 10, paidRandom = true, name = "10 Golden Eggs" },
 	ClassRestock = { id = 3720129296, robux = 29, restock = "normal", paidRandom = true, name = "Restock" },
 	ClassLuckyRestock = { id = 3720129304, robux = 99, restock = "lucky", paidRandom = true, name = "Lucky Restock" },
+	-- (10 Nov, owner: "1 revive, after that only a Robux revive") knocked out in a boss fight after your one free
+	-- get-up: back on your feet on the spot with full HP (server/BossFighters.paidRevive). Bought when the fight is
+	-- already over, it waits for your next knockout. id 0 = the owner still has to make it (the button says Coming soon)
+	BossRevive = { id = 0, robux = 25, revive = true, name = "Boss Revive" },
 }
 Config.PRODUCT_ORDER = { "Gems150", "Gems500", "Gems1500", "Gems5000", "TrialMower", "RocketMower", "ClassLawnLegend", "ClassGoatMan" }
 

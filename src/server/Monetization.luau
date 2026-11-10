@@ -104,6 +104,15 @@ local function grant(player: Player, data, key: string, product): boolean
 			Tools.give(player)
 			Quests.event(player, "tool", Config.bestTool(data.run, data.tools))
 		end
+	elseif product.revive then
+		-- (10 Nov) the boss-fight Robux revive: up now, or (the fight ended while paying) kept for the next knockout
+		local BossFighters = require(script.Parent.BossFighters) :: any
+		if BossFighters.paidRevive(player) then
+			Net.notify(player, "Revived! Back in the fight!", "purple")
+		else
+			data.bossRevives = (data.bossRevives or 0) + 1
+			Net.notify(player, "Revive saved: your next boss knockout gets you straight back up!", "purple")
+		end
 	elseif product.class then
 		data.classes[product.class] = true
 		data.class = product.class
@@ -248,6 +257,10 @@ function Monetization.start()
 			local data = PlayerData.get(player)
 			if data and alreadyOwned(data, p) then
 				Net.notify(player, "You already have that!", "yellow")
+				return
+			end
+			if p.revive and not (require(script.Parent.BossFighters) :: any).isDown(player) then
+				Net.notify(player, "You can only buy a revive while you're knocked out in a boss fight.", "yellow")
 				return
 			end
 			if p.id == 0 then

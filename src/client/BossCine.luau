@@ -139,6 +139,13 @@ local downTitle = UI.text(downRoot, "KNOCKED OUT!", UDim2.fromOffset(700, 80), {
 local downSub = UI.text(downRoot, "", UDim2.fromOffset(700, 40), { pos = UDim2.fromScale(0.5, 0.45), anchor = Vector2.new(0.5, 0.5), stroke = 3 })
 local reviveBar = UI.frame({ size = UDim2.fromOffset(320, 18), pos = UDim2.fromScale(0.5, 0.51), anchor = Vector2.new(0.5, 0.5), color = Color3.fromRGB(28, 22, 36), parent = downRoot, radius = 9, outline = 3 })
 local reviveFill = UI.frame({ size = UDim2.fromScale(0, 1), color = Color3.fromRGB(120, 255, 140), parent = reviveBar, radius = 9, outline = 0 })
+-- (10 Nov, owner: "1 revive, after that only a Robux revive") after your one free get-up: REVIVE for Robux
+-- (Config.PRODUCTS.BossRevive, server/BossFighters.paidRevive), up on the spot with full HP
+local reviveProduct = (Config :: any).PRODUCTS and (Config :: any).PRODUCTS.BossRevive
+local reviveBtn = UI.button(downRoot, ("REVIVE  R$ %d"):format(reviveProduct and reviveProduct.robux or 25), Color3.fromRGB(90, 200, 90), UDim2.fromOffset(240, 64), function()
+	State.fire("Prompt", "product", "BossRevive")
+end, { pos = UDim2.fromScale(0.5, 0.6), anchor = Vector2.new(0.5, 0.5), name = "RobuxRevive" })
+reviveBtn.Visible = false
 
 local function updateMyHp()
 	local hp = player:GetAttribute("BossHP")
@@ -168,8 +175,9 @@ local function updateMyHp()
 		downRoot.Visible = true
 		downRoot.BackgroundTransparency = 0.72
 		-- (10 Nov) -1 = you won't get up alone any more this fight (server/BossFighters BOSS_SELF_UPS)
+		reviveBtn.Visible = downed < 0
 		downSub.Text = if downed < 0
-			then "Only a teammate can pick you up now!"
+			then "Revive now, or a teammate can pick you up!"
 			else ("A teammate can pick you up... getting up at the gate in %d"):format(math.max(0, math.ceil(downed)))
 		reviveFill.Size = UDim2.fromScale(math.clamp(player:GetAttribute("ReviveProgress") or 0, 0, 1), 1)
 	else

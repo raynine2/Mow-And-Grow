@@ -118,6 +118,23 @@ local function standUp(p: Player, f: Fighter, at: Vector3?, hp: number)
 	publish(p, f)
 end
 
+-- (10 Nov, owner: "1 revive, after that only a Robux revive") the Robux revive (Config.PRODUCTS.BossRevive, server/
+-- Monetization): a downed fighter is back up on the spot with full HP. false = not downed in a fight right now.
+function BossFighters.paidRevive(p: Player): boolean
+	local f = fighters[p]
+	if not running or not f or not f.downAt or not p.Parent then
+		return false
+	end
+	standUp(p, f, nil, Config.BOSS_PLAYER_HP)
+	Net.all("Fx", "fighterUp", { userId = p.UserId, revived = true })
+	return true
+end
+
+function BossFighters.isDown(p: Player): boolean
+	local f = fighters[p]
+	return running and f ~= nil and f.downAt ~= nil
+end
+
 -- Start a fight in `a` (server/BossArena) with these players.
 function BossFighters.begin(a: any, players: { Player })
 	BossFighters.stop()
@@ -186,6 +203,19 @@ function BossFighters.hit(p: Player, amount: number, from: Vector3, soft: boolea
 			else nil
 		layDown(p, f)
 		Net.all("Fx", "fighterDown", { userId = p.UserId, name = p.DisplayName })
+		-- (10 Nov) a Robux revive bought after a fight had already ended waits for this moment (PlayerData bossRevives)
+		if not f.downFor then
+			local PlayerData = require(script.Parent.PlayerData) :: any
+			local data = PlayerData.get(p)
+			if data and (data.bossRevives or 0) > 0 then
+				data.bossRevives -= 1
+				task.delay(1.5, function()
+					if not BossFighters.paidRevive(p) and data then
+						data.bossRevives = (data.bossRevives or 0) + 1 -- (the fight ended meanwhile: keep it)
+					end
+				end)
+			end
+		end
 	elseif not soft then
 		BossFighters.stun(p, from)
 	end

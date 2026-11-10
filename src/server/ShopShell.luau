@@ -74,6 +74,18 @@ local FIT_IN = { on = true, k = 0.78, dy = 1.765, dz = -0.38 }
 -- its door, round the cabin's middle on the ground (FIT x, y, z); every measurement here is for SIZE 1 and goes
 -- through grow(). The yard's props in front move out with the porch.
 ShopShell.SIZE = 1.15
+-- (10 Nov 17:58, owner: "there is a house inside a house, also make the inside bigger") OPEN: no walls or ceiling of
+-- our own inside (lineRoom); the cabin's own logs and its roof are the room, and the shop is fitted big into the
+-- cabin's whole hollow at SIZE 1.15 (measured in Play, shop frame: its inside x -20.2..20.85, z -9..20.6, its floor
+-- up to 2.6, its bottom logs bulging in to y 2.8 at x 16 / y 3.3 at x -18): the boards against its back wall, the
+-- coats, notice board and barrel moved up against its front wall (`front`, lodge studs), floor and the runner on to
+-- the door, warm lamps under the roof. `k` and `d` are absolute (the shop's scale and where its anchor goes).
+ShopShell.OPEN = true
+local OPEN_FIT = { k = 0.95, d = Vector3.new(0, 2.0, 5.0), front = -6.9, inside = { -20.2, 20.85, -8.96, 20.6 } }
+local FRONT_SET: { [string]: boolean } = {}
+for _, n in { "Barrel", "Hoop", "Handle", "RakeHead", "RakeTine", "BroomBind", "BroomStraw", "ShovelBlade" } do
+	FRONT_SET[n] = true -- (the barrel of rakes in the front corner)
+end
 local GROW_C = Vector3.new(-1, -0.6, 4.5)
 local function grow(x: number, y: number, z: number): Vector3
 	return GROW_C + (Vector3.new(x, y, z) - GROW_C) * ShopShell.SIZE
@@ -510,6 +522,74 @@ local function lineRoom(shop: Instance, at: CFrame)
 	end
 end
 
+local function openRoom(shop: Instance, at: CFrame, floorY: number, k: number, d: Vector3)
+	local f = Instance.new("Folder")
+	f.Name = "CabinInside"
+	local I = OPEN_FIT.inside
+	local function piece(name: string, cf: CFrame, size: Vector3, like: BasePart?, color: Color3, mat: Enum.Material, solid: boolean): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.Size = size
+		p.CFrame = at * cf
+		p.Color = if like then like.Color else color
+		p.Material = if like then like.Material else mat
+		if like then
+			p.MaterialVariant = like.MaterialVariant
+		end
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.CanCollide = solid
+		p.CanQuery = solid
+		p.CanTouch = false
+		p.Parent = f
+		return p
+	end
+	-- the floor on to the door and to the back wall, in the lodge's own floor boards' look
+	local lodge = shop:FindFirstChild("ShopBuilding")
+	local like = lodge and lodge:FindFirstChild("FloorBoard", true) :: BasePart?
+	local front, back = -7.125 * k + d.Z, 14.24 * k + d.Z
+	local rng = Random.new(1758)
+	for _, span in { { I[3], front }, { back, I[4] } } do
+		local z = span[1]
+		while z < span[2] - 0.01 do
+			local w = math.min(1.5, span[2] - z)
+			local b = piece("FloorBoard", CFrame.new(0, floorY - 0.2, z + w / 2), Vector3.new(37, 0.4, w - 0.05), like, Color3.fromRGB(153, 117, 85), Enum.Material.WoodPlanks, true)
+			local j = rng:NextNumber(-0.03, 0.03)
+			b.Color = Color3.new(math.clamp(b.Color.R + j, 0, 1), math.clamp(b.Color.G + j, 0, 1), math.clamp(b.Color.B + j, 0, 1))
+			z += w
+		end
+	end
+	-- the runner on from the door to where it starts
+	local runStart = -6.6 * k + d.Z
+	local runLen = runStart - I[3]
+	piece("Runner", CFrame.new(0, floorY + 0.03, I[3] + runLen / 2), Vector3.new(4.6 * k, 0.06, runLen), nil, Color3.fromRGB(150, 44, 40), Enum.Material.Fabric, false)
+	for _, sx in { -1, 1 } do
+		piece("RunnerBorder", CFrame.new(sx * 1.95 * k, floorY + 0.05, I[3] + runLen / 2 + 0.2), Vector3.new(0.3 * k, 0.06, runLen - 0.4), nil, Color3.fromRGB(234, 182, 58), Enum.Material.Fabric, false)
+	end
+	-- warm lamps under the roof (unseen: the light falls on the cabin's own logs)
+	for _, x in { -9, 9 } do
+		for _, z in { 0, 8, 16 } do
+			local h = piece("RoomLight", CFrame.new(x, 13.5, z), Vector3.new(0.4, 0.4, 0.4), nil, Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, false)
+			h.Transparency = 1
+			h.CastShadow = false
+			local light = Instance.new("PointLight")
+			light.Color = Color3.fromRGB(255, 212, 158)
+			light.Brightness = 0.9
+			light.Range = 22
+			light.Shadows = false
+			light.Parent = h
+		end
+	end
+	f.Parent = shop
+	for _, p in (if lodge then lodge:GetDescendants() else {}) do
+		if p:IsA("BasePart") and (p.Name == "TieBeam" or p.Name == "ChandelierBar") then
+			p.Color = POST_IN
+			p.Material = Enum.Material.Wood
+		end
+	end
+end
+
 -- the yard's props round the porch (server/ShopRoom outside: the two picket fences, the gnome, the watering can, the
 -- mailbox, the wheelbarrow, the bundles) move out with the bigger cabin, each group by its own spot
 local YARD_SPOTS = { { 9.6, -17.7 }, { -9.6, -17.7 }, { -7.4, -19.2 }, { -8.9, -19.5 }, { 7.6, -19.4 }, { 18.6, -13.4 }, { -16.8, -10.6 } }
@@ -579,7 +659,10 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 	wall(DOOR_MAX.X + 1.4, OUTER.right, OUTER.front, -7.3) -- front, right of the porch
 	wall(DOOR_MIN.X - 1.4, -2.2, OUTER.front - 1, -7.3) -- either side of the door tunnel (x -2.2..1.8)
 	wall(1.8, DOOR_MAX.X + 1.4, OUTER.front - 1, -7.3)
-	if FIT_IN.on then -- the lodge's side walls are gone: the cabin's inside walls (x -17.7..18; back and front above)
+	if FIT_IN.on and ShopShell.OPEN then -- (open: in front of the cabin's bulging bottom logs: x -18 / 17 at x1.15)
+		wall(-22.2, -15.8, -8.6, 16.9)
+		wall(14.65, 22.2, -8.6, 16.9)
+	elseif FIT_IN.on then -- the lodge's side walls are gone: the cabin's inside walls (x -17.7..18; back and front above)
 		wall(-22.2, -17.7, -8.6, 16.9)
 		wall(18, 22.2, -8.6, 16.9)
 	end
@@ -603,6 +686,17 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		local S = ShopShell.SIZE
 		local k = FIT_IN.k * S
 		local d = Vector3.new(0, FIT_IN.dy, FIT_IN.dz) * S + GROW_C * (1 - S)
+		if ShopShell.OPEN then
+			k, d = OPEN_FIT.k, OPEN_FIT.d
+			-- the things on the front wall and the barrel in the front corner go to the cabin's front wall
+			local inv = at:Inverse()
+			local room = shop:FindFirstChild("ShopRoom")
+			for _, p in (if room then room:GetDescendants() else {}) do
+				if p:IsA("BasePart") and p.Name ~= "Runner" and p.Name ~= "RunnerBorder" and ((inv * p.Position).Z < -5.2 or FRONT_SET[p.Name]) then
+					p.CFrame = at * CFrame.new(0, 0, OPEN_FIT.front) * (inv * p.CFrame)
+				end
+			end
+		end
 		box:ScaleTo(k)
 		box:PivotTo(at * CFrame.new(d))
 		for _, c in moved do
@@ -610,7 +704,12 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		end
 		box:Destroy()
 		shop:SetAttribute("FitIn", true)
-		lineRoom(shop, at)
+		local floorY = 0.75 * k + d.Y
+		if ShopShell.OPEN then
+			openRoom(shop, at, floorY, k, d)
+		else
+			lineRoom(shop, at)
+		end
 		-- the lodge's invisible porch (deck, steps) came out of the scaling too high to step on (a 2.9-stud step):
 		-- instead an invisible ramp up the cabin's porch steps and a floor through its door tunnel to the shop's floor
 		local lodge = shop:FindFirstChild("ShopBuilding")
@@ -619,7 +718,6 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 				p:Destroy()
 			end
 		end
-		local floorY = 0.75 * k + d.Y
 		local ramp = Instance.new("WedgePart")
 		ramp.Name = "DoorRamp"
 		local rz = grow(-0.2, 0, -16.5)
@@ -628,6 +726,9 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		local deck = Instance.new("Part")
 		deck.Name = "DoorFloor"
 		local z0, z1 = grow(-0.2, 0, -14.5), grow(0, 0, -5.9)
+		if ShopShell.OPEN then
+			z1 = Vector3.new(0, 0, -7.125 * k + d.Z + 0.5)
+		end
 		deck.Size = Vector3.new(4.4 * S, 1, z1.Z - z0.Z)
 		deck.CFrame = at * CFrame.new(z0.X, floorY - 0.5, (z0.Z + z1.Z) / 2)
 		for _, q in { ramp, deck } :: { BasePart } do

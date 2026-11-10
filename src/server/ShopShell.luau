@@ -83,7 +83,18 @@ ShopShell.SIZE = 1.15
 ShopShell.OPEN = true
 -- (18:30, measured in Play at y 9: the cabin's inside x -21.4..23.1, z -10..21.9) the boards against its back wall,
 -- what hangs on the side walls (shears, painting, the Laser Mower's board) moved out to them (`sides`, lodge studs)
-local OPEN_FIT = { k = 0.95, d = Vector3.new(0, 2.0, 8.3), front = -11.6, sides = { -2.68, 4.47 }, inside = { -21.4, 23.1, -10.0, 21.9 } }
+-- (18:40, seen in Play: the cabin's own inside is a flat red hollow with a white patch over the door, its walls
+-- leaning out going up: x -18.4 / 17.3 at y 4, -22.9 / 25.6 at y 12; back 18.7 at y 4, 23 at y 12; front -9.2; a flat
+-- top at y 36) the room gets its log walls back, but as far out as the cabin allows and flush with its front wall
+-- (no corridor behind it to get stuck in, the owner's 17:58 screenshot), with a ceiling at 17.5: `box`, shop frame
+local OPEN_FIT = {
+	k = 0.95,
+	d = Vector3.new(0, 2.0, 5.1),
+	front = -6.95,
+	sides = { 0, 0 },
+	inside = { -18.2, 18.6, -8.9, 18.6 },
+	box = { left = -18.2, right = 18.6, front = -8.9, back = 18.6, floor = 1.9, top = 17.5, t = 0.4, door = { -2.4, 2.0, 13.8 }, plinthR = 2.6, plinthTop = 5.3, plinthSkip = { -5.4, 3.0 } },
+}
 local FRONT_SET: { [string]: boolean } = {}
 for _, n in { "Barrel", "Hoop", "Handle", "RakeHead", "RakeTine", "BroomBind", "BroomStraw", "ShovelBlade" } do
 	FRONT_SET[n] = true -- (the barrel of rakes in the front corner)
@@ -327,11 +338,11 @@ local CHINK_IN = Color3.fromRGB(70, 42, 26)
 local POST_IN = Color3.fromRGB(96, 58, 32)
 local CEIL_IN = Color3.fromRGB(122, 74, 40)
 
-local function lineRoom(shop: Instance, at: CFrame)
+local function lineRoom(shop: Instance, at: CFrame, box: any?)
 	local S = ShopShell.SIZE
 	local lo, hi = grow(LINE.left, LINE.floor, LINE.front), grow(LINE.right, LINE.top, LINE.back)
 	local dl, dh = grow(LINE.door[1], LINE.door[3], 0), grow(LINE.door[2], 0, 0)
-	local L = { left = lo.X, right = hi.X, front = lo.Z, back = hi.Z, floor = lo.Y, top = hi.Y, t = LINE.t, door = { dl.X, dh.X, dl.Y } }
+	local L = box or { left = lo.X, right = hi.X, front = lo.Z, back = hi.Z, floor = lo.Y, top = hi.Y, t = LINE.t, door = { dl.X, dh.X, dl.Y } }
 	local f = Instance.new("Folder")
 	f.Name = "CabinInside"
 	local rng = Random.new(1110)
@@ -458,16 +469,22 @@ local function lineRoom(shop: Instance, at: CFrame)
 	-- a stone plinth along the sides' feet, like the cabin's outside: it covers where the cabin's bottom logs bulge in
 	-- (17:45, x1.15: the bulge measured in Play reaches y 3.7 at x 17, 3.3 at x -18) in blocks of stone, each its own
 	-- grey, with a capstone on top
-	local function plinth(x0: number, x1: number, top: number)
-		local z = L.front
-		while z < L.back - 0.01 do
-			local w = math.min(rng:NextNumber(1.6, 2.6), L.back - z)
+	local function plinth(x0: number, x1: number, top: number, z0: number?, z1: number?)
+		local za, zb = z0 or L.front, z1 or L.back
+		local z = za
+		while z < zb - 0.01 do
+			local w = math.min(rng:NextNumber(1.6, 2.6), zb - z)
 			piece("PlinthStone", x0, x1, L.floor, top - 0.25, z, z + w - 0.08, Color3.fromRGB(104, 108, 118), Enum.Material.Slate, true)
 			z += w
 		end
-		piece("PlinthCap", x0 - 0.1, x1 + 0.1, top - 0.3, top, L.front, L.back, Color3.fromRGB(132, 134, 140), Enum.Material.Slate, true)
+		piece("PlinthCap", x0 - 0.1, x1 + 0.1, top - 0.3, top, za, zb, Color3.fromRGB(132, 134, 140), Enum.Material.Slate, true)
 	end
-	plinth(L.right - 1.6 * S, L.right, 5.2)
+	if L.plinthSkip then -- (not under the Laser Mower's bench)
+		plinth(L.right - L.plinthR, L.right, L.plinthTop, L.front, L.plinthSkip[1])
+		plinth(L.right - L.plinthR, L.right, L.plinthTop, L.plinthSkip[2], L.back)
+	else
+		plinth(L.right - (L.plinthR or 1.6 * S), L.right, L.plinthTop or 5.2)
+	end
 	plinth(L.left, L.left + 0.8 * S, 3.4)
 	-- iron lanterns on the side walls, lit
 	for _, x in { L.left, L.right } do
@@ -524,7 +541,7 @@ local function lineRoom(shop: Instance, at: CFrame)
 	end
 end
 
-local function openRoom(shop: Instance, at: CFrame, floorY: number, k: number, d: Vector3)
+local function openRoom(shop: Instance, at: CFrame, floorY: number, k: number, d: Vector3, lit: boolean)
 	local f = Instance.new("Folder")
 	f.Name = "CabinInside"
 	local I = OPEN_FIT.inside
@@ -570,7 +587,7 @@ local function openRoom(shop: Instance, at: CFrame, floorY: number, k: number, d
 		piece("RunnerBorder", CFrame.new(sx * 1.95 * k, floorY + 0.05, I[3] + runLen / 2 + 0.2), Vector3.new(0.3 * k, 0.06, runLen - 0.4), nil, Color3.fromRGB(234, 182, 58), Enum.Material.Fabric, false)
 	end
 	-- warm lamps under the roof (unseen: the light falls on the cabin's own logs)
-	for _, x in { -9, 9 } do
+	for _, x in (if lit then { -9, 9 } else {}) do
 		for _, z in { 0, 8, 16 } do
 			local h = piece("RoomLight", CFrame.new(x, 13.5, z), Vector3.new(0.4, 0.4, 0.4), nil, Color3.new(1, 1, 1), Enum.Material.SmoothPlastic, false)
 			h.Transparency = 1
@@ -721,7 +738,9 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		shop:SetAttribute("FitIn", true)
 		local floorY = 0.75 * k + d.Y
 		if ShopShell.OPEN then
-			openRoom(shop, at, floorY, k, d)
+			-- (18:40) the log room as far out as the cabin allows (lineRoom with OPEN_FIT.box) round the open fit
+			openRoom(shop, at, floorY, k, d, false)
+			lineRoom(shop, at, OPEN_FIT.box)
 		else
 			lineRoom(shop, at)
 		end

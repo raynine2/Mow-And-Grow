@@ -991,6 +991,13 @@ local function waitForHost(): number
 				-- (7 Nov, owner: "delete peacefull mode") no peaceful runs any more: every run has its night monsters
 				Night.peaceful = false
 				resumeCut = if hd and hd.run and type(hd.run.areaCut) == "table" then hd.run.areaCut else nil
+				-- (11 Nov) Studio tests: the Workspace attribute StudioStartZone builds a fresh world from that area (the
+				-- profile Studio loads may hold a run far along, with the first areas already mowed)
+				local forced = RunService:IsStudio() and tonumber(workspace:GetAttribute("StudioStartZone"))
+				if forced then
+					resumeCut = nil
+					return math.clamp(math.floor(forced), 1, #Config.ZONES)
+				end
 				return if hd and hd.run then math.clamp(hd.run.zone, 1, #Config.ZONES) else 1
 			end
 		end

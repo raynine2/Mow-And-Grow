@@ -67,5 +67,6 @@ require(modules:WaitForChild("GemUpgrades")) -- takes over the "Perks" window (G
 require(modules:WaitForChild("SkillTreeWindow")) -- (30 Oct) weapon skill trees: the SKILLS button, K, gold MASTERED trees
 require(modules:WaitForChild("UpgradesWindow")) -- (30 Oct) takes over "Upgrades": grass-galaxy boxes, the weapons' skills a page each
 require(modules:WaitForChild("QuestsWindow")) -- (5 Nov) QUESTS (Q): daily + weekly quests, Rebirth Stars and their cards
+require(modules:WaitForChild("TutorGuide")) -- (10 Nov) the first-run tutorial as two walking guides (Config.TUTOR_GUIDES)
 
 State.fire("Ready")

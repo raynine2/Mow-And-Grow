@@ -300,6 +300,14 @@ Config.CAMERA_KICK = {
 --              mow it"); then they're back to Bare Hands and buy their own. "" = off.
 --   introAfterSale: the intro film waits for that first sale instead of playing before you've cut anything.
 Config.FIRST_TIMER = { autoStart = 3, loaner = "PushMower", introAfterSale = true } -- (5 Nov, less waiting: autoStart was 6)
+-- (10 Nov, owner, after a "replace text tutorials with NPC avatars that guide players" video: "use mine and brrbrr")
+-- the first-run tutorial is two walking guides wearing these Roblox avatars (server/GuideAvatars.server builds them,
+-- client/TutorGuide walks them beside you, talking, instead of the step card). `lead` walks ahead toward the
+-- next goal and explains; the other walks beside you and cheers. Empty list = the old step card.
+Config.TUTOR_GUIDES = {
+	{ key = "Rayan", label = "RAYAN", userId = 1994267229, lead = true, color = Color3.fromRGB(255, 196, 60) },
+	{ key = "Brrbrr", label = "BRRBRR", userId = 57894883, color = Color3.fromRGB(120, 210, 255) },
+}
 -- #2 COINS ON EVERY CUT (Chop A Forest pays a few coins per hit): this share of a clump's bundle value is paid the
 -- moment you cut it (at least 1 coin); the bundles still sell in full. 0 = off.
 Config.CUT_COINS = 0.25

@@ -340,6 +340,9 @@ local ORDER = { punch = 1, mow = 1, collect = 2, fill = 3, sell = 4, upgrade = 5
 local shownId: string? = nil
 
 local function showCard(step: Step?)
+	if (Coach :: any).cardHidden then
+		step = nil -- (10 Nov) the walking guides (client/TutorGuide) say it instead
+	end
 	if not step then
 		if card.Visible then
 			TweenService:Create(card, TweenInfo.new(0.25), { GroupTransparency = 1 }):Play()

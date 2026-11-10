@@ -37,7 +37,11 @@ require(script.Parent.BossPlayers) -- HP bars over every fighter's head, dizzy s
 local BossCine = {}
 
 local player = Players.LocalPlayer
-local mirror = ReplicatedStorage:WaitForChild("MowALawnBoss", 30)
+-- (10 Nov, owner: "loading in the main hub takes too long") never wait for it: the lobby has no boss mirror (server/Boss
+-- makes it in runs), and this used to be WaitForChild(.., 30) here, which held up every client script loaded after
+-- this one by 30 s in the hub (the HUD's late parts, the wheel, the garden, the guides...). It's hooked up when it
+-- comes (hookMirror below).
+local mirror: Instance? = ReplicatedStorage:FindFirstChild("MowALawnBoss")
 local C = UI.colors
 
 local function now(): number
@@ -796,25 +800,39 @@ State.on("fx", function(kind: string, payload: any)
 end)
 
 -- the server turned or moved it
-if mirror then
-	mirror:GetAttributeChangedSignal("Cf"):Connect(function()
-		local cf = mirror:GetAttribute("Cf")
+local function hookMirror(m: Instance)
+	mirror = m
+	m:GetAttributeChangedSignal("Cf"):Connect(function()
+		local cf = m:GetAttribute("Cf")
 		if typeof(cf) == "CFrame" then
 			BossView.setTarget(cf)
 		end
 	end)
 	-- joining while a boss is out
 	task.defer(function()
-		if mirror:GetAttribute("Active") and mirror:GetAttribute("State") ~= "dying" and mirror:GetAttribute("Rig") then
+		if m:GetAttribute("Active") and m:GetAttribute("State") ~= "dying" and m:GetAttribute("Rig") then
 			try("late", function()
-				startView(mirror:GetAttribute("Rig"), mirror:GetAttribute("Cf"), mirror:GetAttribute("Scale") or 5, mirror:GetAttribute("Z") or 1, nil)
-				if (mirror:GetAttribute("Phase") or 1) >= 2 then
+				startView(m:GetAttribute("Rig"), m:GetAttribute("Cf"), m:GetAttribute("Scale") or 5, m:GetAttribute("Z") or 1, nil)
+				if (m:GetAttribute("Phase") or 1) >= 2 then
 					BossView.rageNow()
 					BossVfx.setRage(true)
 					BossFx.setPhase(2)
 				end
-				music(true, (mirror:GetAttribute("Phase") or 1) >= 2)
+				music(true, (m:GetAttribute("Phase") or 1) >= 2)
 			end)
+		end
+	end)
+end
+if mirror then
+	hookMirror(mirror)
+else
+	local conn: RBXScriptConnection? = nil
+	conn = ReplicatedStorage.ChildAdded:Connect(function(c)
+		if c.Name == "MowALawnBoss" and not mirror then
+			if conn then
+				conn:Disconnect()
+			end
+			hookMirror(c)
 		end
 	end)
 end

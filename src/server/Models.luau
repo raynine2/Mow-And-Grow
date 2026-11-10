@@ -819,9 +819,14 @@ local function voxelMower(name: string, Shapes: any): Model?
 		m:Destroy()
 		return nil
 	end
+	local seen = 0
 	for _, g in Shapes.GROUPS do
 		local part = if g.parent == name then string.match(g.name, "%.(%w+)$") else nil
 		if part then
+			seen += 1
+			if seen % 4 == 0 then
+				task.wait() -- (10 Nov) no script timeout at the server's start
+			end
 			local at = CFrame.new(g.pivot)
 			if string.match(part, "^Wheel") then
 				-- the hub: unseen, on the axle, as tall as the tyre (client/MowerFx rolls it by its height)
@@ -875,6 +880,7 @@ local function swapItems(): number
 	end
 	local n = 0
 	for name, group in VOXEL_PROPS do
+		task.wait() -- (10 Nov) see the mowers below: no script timeout at the server's start
 		local m = Instance.new("Model")
 		m.Name = name
 		if voxelTool(group, m, true) then
@@ -893,6 +899,9 @@ local function swapItems(): number
 		end
 	end
 	for _, name in VOXEL_MOWERS do
+		-- (10 Nov, a play test: "Script timeout: exhausted allowed execution time" here killed the server's start, so
+		-- the game never spawned anyone) a breath between the big builds
+		task.wait()
 		local m = voxelMower(name, Shapes)
 		if m then
 			voxelTemplate(name, templates[name], m, true)

@@ -1474,6 +1474,25 @@ end
 
 -- Studio test helpers (DevHook).
 function Run.dev(cmd: string, ...)
+	if cmd == "fresh" then
+		-- (10 Nov) Studio only: play as a brand-new player (the owner: "play it like a 12-year-old"). A Studio profile is
+		-- never saved (_dryRun): this empties its tools, run and counts in memory and starts a new run
+		local player = Players:GetPlayers()[1]
+		local data = player and PlayerData.get(player)
+		if RunService:IsStudio() and data and data._dryRun then
+			data.tools = {}
+			data.run = nil
+			for k, v in data.stats do
+				if type(v) == "number" then
+					data.stats[k] = 0
+				end
+			end
+			setupPlayer(player, data)
+			Tools.give(player)
+			PlayerData.changed(player)
+		end
+		return
+	end
 	if cmd == "clearZone" then
 		-- cut everything left in the area instantly
 		local player = Players:GetPlayers()[1]

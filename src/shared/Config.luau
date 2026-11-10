@@ -54,7 +54,7 @@ Config.TOOLS = {
 	{ id = "LaserMower", name = "Laser Mower", cost = 1000000, kind = "auto", damage = 2400, radius = 11, targets = 6, color = Color3.fromRGB(60, 230, 255) },
 }
 Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
-Config.BOSS_AUTO_MULT = 0.25 -- (10 Nov) auto tools against a boss (they hit it 4 times a second: a Whacker did 33x a Sickle)
+Config.BOSS_AUTO_MULT = 0.4 -- (00:10 play test: 0.25 made a Whacker fight ~8 min) (10 Nov) auto tools against a boss (they hit it 4 times a second: a Whacker did 33x a Sickle)
 Config.SKILL_TREES = require(script.Parent:WaitForChild("SkillTrees")) -- (30 Oct) weapon skill trees: every number in shared/SkillTrees
 
 -------------------------------------------------------------------------------------------------------------
@@ -2237,7 +2237,12 @@ Config.BLACK_FLASH = { chance = 0.01, mult = 2.5, coins = 50, bossMult = 10 }
 -- too fast, the run too short) ONE place to tune it: every area's grass HP, boss HP and coins a clump are scaled here
 -- as Config loads (1 = as written above). Also: Mega Scythe 60K -> 90K, Laser Mower 700K -> 1M, the cut floor
 -- (server/SkillTrees FLOOR_RATE) 0.1 -> 0.06.
-Config.TUNE = { grassHp = 1.4, bossHp = 1.5, coins = 0.85 }
+-- (00:10, the play test: the boss HP lives in Config.BOSS_HP, so bossHp scales that table; 1.25 with BOSS_AUTO_MULT 0.4
+-- keeps a solo fight with the area's weapon around 2-3 minutes, server/BossHp caps it at BOSS_FIT.maxTime)
+Config.TUNE = { grassHp = 1.4, bossHp = 1.25, coins = 0.85 }
+for i, hp in Config.BOSS_HP do
+	Config.BOSS_HP[i] = math.floor(hp * Config.TUNE.bossHp + 0.5)
+end
 for _, z in Config.ZONES do
 	z.hp = math.max(1, math.floor(z.hp * Config.TUNE.grassHp + 0.5))
 	z.value = math.max(1, math.floor(z.value * Config.TUNE.coins + 0.5))

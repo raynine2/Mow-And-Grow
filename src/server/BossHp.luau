@@ -35,7 +35,7 @@ function BossHp.dps(player: Player): number
 		if def.kind == "swing" then
 			return hit / math.max(0.05, (def.cooldown or 0.45) * (stats.swing or 1) * 0.85)
 		end
-		return hit / Config.TICK
+		return hit * (Config.BOSS_AUTO_MULT or 1) / Config.TICK -- (10 Nov) auto tools hit a boss for less (server/Run)
 	end)
 	return if ok and type(v) == "number" and v == v then v else 0
 end

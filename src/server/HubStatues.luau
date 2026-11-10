@@ -130,7 +130,8 @@ local function plaque(slot: Slot, i: number)
 	if not p then
 		return
 	end
-	local g = textPart(folder :: Folder, Vector2.new(3.8, 1.4), CFrame.new(p) * rot * CFrame.new(0, 0, -0.06), 70)
+	-- (the plaque's wood is on the half-stud grid, so its face is 0.25 in front of the anchor: the words go just past it)
+	local g = textPart(folder :: Folder, Vector2.new(3.8, 1.4), CFrame.new(p) * rot * CFrame.new(0, 0, -0.32), 70)
 	slot.name = label(g, "", UDim2.new(0.94, 0, 0.56, 0), UDim2.fromScale(0.03, 0.02), Color3.new(1, 1, 1), 2)
 	slot.score = label(g, "", UDim2.new(0.94, 0, 0.38, 0), UDim2.fromScale(0.03, 0.6), C(255, 214, 80), 2)
 end

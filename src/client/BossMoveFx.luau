@@ -22,6 +22,8 @@
 --   pop      a soft glow on the floor that flares and fades, and one thin ring rolling out
 --   puff     one themed particle burst (pollen, petals, straw, embers, water ...)
 --   pack     one SoulShroud effect, fitted to the size of the hit
+-- v4 (owner: "bij elke boss"): every boss's heavy hit gets the smoke ring and the impact frame, and slashes and
+-- sweeps light the arena too.
 -- v3 (10 Nov, owner: "Make it even better"): every pop lights up the arena round it (a real light, the boss's
 -- colour), the heavy ones roll a ring of toon smoke out over the floor and give one impact frame (the picture
 -- flattens for a blink; never with "Reduce camera shake"), slashes throw sparks off their length, and the slabs of
@@ -110,6 +112,23 @@ local function pop(pos: Vector3, r: number, color: Color3, ring: boolean?)
 	end
 end
 
+-- (v4) the same light on its own (slashes and sweeps, which have no pop)
+local function lightAt(pos: Vector3, r: number, color: Color3)
+	local h = part("Light", Vector3.one * 0.2, CFrame.new(pos + Vector3.new(0, 1.5, 0)), WHITE, Enum.Material.SmoothPlastic)
+	h.Transparency = 1
+	local l = Instance.new("PointLight")
+	l.Color = color:Lerp(WHITE, 0.25)
+	l.Range = math.clamp(r, 10, 55)
+	l.Brightness = 0
+	l.Shadows = false
+	l.Parent = h
+	tween(l, 0.05, { Brightness = 5 }, Enum.EasingStyle.Linear)
+	task.delay(0.05 * slow(), function()
+		tween(l, 0.35, { Brightness = 0 }, Enum.EasingStyle.Quad)
+	end)
+	Debris:AddItem(h, 0.5 * slow())
+end
+
 -- a fading mark left on the floor
 local function mark(cf: CFrame, w: number, l: number, color: Color3, alpha: number, life: number)
 	local _, d = plate(cf + Vector3.new(0, 0.07, 0), w, l, color, alpha)
@@ -156,6 +175,17 @@ local function smokeRing(pos: Vector3, r: number, tint: Color3, n: number?)
 		e:Emit(1)
 		Debris:AddItem(h, 1.3 * slow())
 	end
+end
+
+-- (v4) one smoke ring for a move whose shapes all land together (a fan of tines, the arms of a star)
+local lastRingAt: Vector3? = nil
+local lastRingT = 0
+local function smokeRingOnce(pos: Vector3, r: number, tint: Color3, n: number?)
+	if lastRingAt and os.clock() - lastRingT < 0.3 and (lastRingAt - pos).Magnitude < 4 then
+		return
+	end
+	lastRingAt, lastRingT = pos, os.clock()
+	smokeRing(pos, r, tint, n)
 end
 
 -- (v3) one impact frame for the heaviest hits near you: the picture flattens (contrast up, colour out) for a blink
@@ -391,6 +421,7 @@ local function streak(from: Vector3, dir: Vector3, len: number, w: number, color
 	flare(beams, 0.06, 0.06, 0.32)
 	Debris:AddItem(host, 0.6 * slow())
 	sparksAlong(from, f, len, color, math.clamp(len * 0.4, 6, 20))
+	lightAt(from + f * len * 0.5, len * 0.9, color)
 	if markColor then
 		mark(CFrame.lookAt(from + f * len / 2, from + f * len), w * 1.1, len, markColor, 0.35, 2)
 	end
@@ -417,6 +448,7 @@ local function arc(pos: Vector3, dir: Vector3, r: number, half: number, w: numbe
 		end
 		flare(beams, 0.05, 0.05, 0.3, u0 * sweep)
 	end
+	lightAt(pos + flat(dir) * r, r * 1.6, color)
 	Debris:AddItem(host, (sweep + 0.5) * slow())
 end
 
@@ -564,6 +596,9 @@ R.fan = function(s, _, floor)
 	local tipAt = s.pos + flat(s.dir) * s.length * 0.92
 	heave(tipAt, 5, 3, FIRE, floor, s.dir, 0.6)
 	K.kick(tipAt, 3, 3, dirt(floor), 0.8)
+	-- (v4, owner: "bij elke boss") the Harvest Maw's heavy hit: the thrust kicks smoke off its feet, one impact frame
+	smokeRingOnce(s.pos, 10, C(210, 180, 120), 14)
+	impactFrame(s.pos + flat(s.dir) * s.length * 0.5)
 	return 6
 end
 -- Chaff Storm: each bundle of straw lands with a soft puff
@@ -633,6 +668,7 @@ R.combo = function(s, _, floor)
 	pop(s.pos, s.r, C(255, 130, 90))
 	heave(s.pos, s.r * 0.9, 4, C(255, 120, 70), floor)
 	smokeRing(s.pos, s.r * 0.8, dirt(floor):Lerp(WHITE, 0.35), 8)
+	impactFrame(s.pos) -- (v4: the Bramble Brute's punches; at most one a 0.7 s, so the first and the last)
 	K.kick(s.pos, s.r * 0.5, 4, dirt(floor), 0.9)
 	return 7
 end
@@ -640,6 +676,9 @@ end
 R.safe = function(s)
 	K.floorRing(s.pos, K.RING_SHOCK, POLLEN, s.r * 0.3, s.r * 2.2, 0.6, 0.1, 0.2)
 	pack("Explosion", s.pos, s.r * 1.6, 131, POLLEN)
+	lightAt(s.pos, s.r * 2, POLLEN)
+	smokeRing(s.pos, math.min(s.r * 0.7, 18), C(250, 230, 150), 18)
+	impactFrame(s.pos)
 	puff(s.pos, { tex = Tex.glow, colors = { POLLEN, C(255, 246, 180) }, n = 18, size = 3, endSize = 1.5, life = { 1, 1.5 }, speed = { s.r * 0.6, s.r * 1.1 }, spread = 85, grav = 2, drag = 2.2, add = true, area = s.r * 0.3 })
 	return 7
 end
@@ -669,6 +708,9 @@ R.turrets = slime
 R.stalk = function(s)
 	pop(s.pos, s.r, SLIME, false)
 	columns(s.pos, s.r, 5, C(60, 120, 50), C(160, 255, 110), 5)
+	-- (v4) the Bog Strangler's heavy hit: bog muck rolling out, one impact frame
+	smokeRing(s.pos, s.r * 1.2, C(120, 140, 80), 12)
+	impactFrame(s.pos)
 	return 5
 end
 
@@ -678,6 +720,8 @@ R.cone = function(s, _, floor)
 	arc(s.pos, s.dir, s.r * 0.65, s.half, math.max(3, s.r * 0.12), ICE, 0.16)
 	heave(s.pos + flat(s.dir) * 4, s.r * 0.6, 3, ICE, floor, s.dir, s.half * 0.7)
 	BossImpact.ice(s.pos + flat(s.dir) * s.r * 0.55, 8, true)
+	smokeRing(s.pos, 10, C(225, 242, 255), 14)
+	impactFrame(s.pos + flat(s.dir) * s.r * 0.4)
 	return 7
 end
 -- Frost Traps: the ice forms where it lands
@@ -732,6 +776,10 @@ R.mark = function(s, _, floor)
 	rune(s.pos, s.r, EMBER, 0.9)
 	stab(s.pos, 20, C(255, 160, 70))
 	heave(s.pos, s.r * 0.7, 4, EMBER, floor)
+	-- (v4) the Hollow Harvest's heavy hit: ash rolling out from the blade, one impact frame
+	pop(s.pos, s.r, EMBER, false)
+	smokeRing(s.pos, s.r * 1.1, C(70, 50, 45), 14)
+	impactFrame(s.pos)
 	return 7
 end
 
@@ -740,6 +788,10 @@ end
 R.star = function(s, _, floor)
 	heave(s.pos, s.length * 0.55, 1, RUNE_C, floor, s.dir, 0)
 	K.kick(s.pos + flat(s.dir) * s.length * 0.45, 3, 3, STONE, 0.9)
+	-- (v4) the Jungle Titan's heavy hit: stone dust rolling out from its feet (once for all the arms), one impact frame
+	smokeRingOnce(s.pos, 14, C(170, 175, 160), 18)
+	lightAt(s.pos, 40, RUNE_C)
+	impactFrame(s.pos)
 	return 7
 end
 -- Rune Meteors: a rune flares where each lands, stone thrown up

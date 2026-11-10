@@ -696,9 +696,16 @@ task.spawn(function()
 		return char and char:FindFirstChild("HumanoidRootPart") :: BasePart?
 	end
 
+	-- (v2) only a real cutscene (the camera away from the player for half a second) sends them off, not a blip
+	local camAwaySince: number? = nil
 	local function cutsceneOn(): boolean
 		local cam = workspace.CurrentCamera
-		return cam ~= nil and cam.CameraType ~= Enum.CameraType.Custom
+		if cam ~= nil and cam.CameraType ~= Enum.CameraType.Custom then
+			camAwaySince = camAwaySince or os.clock()
+			return os.clock() - (camAwaySince :: number) > 0.5
+		end
+		camAwaySince = nil
+		return false
 	end
 
 	local function bringOut(root: BasePart)

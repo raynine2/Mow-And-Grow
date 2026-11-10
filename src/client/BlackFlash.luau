@@ -79,19 +79,20 @@ local function bolt(from: Vector3, dir: Vector3, len: number, width: number, lif
 	local up = dir:Cross(side).Unit
 	local parts: { Part } = {}
 	local a = from
-	local n = 5
+	-- (looked at in Studio: a thick red glow drowned the black, so the glow is a faint halo now)
+	local n = 7
 	for i = 1, n do
 		local t = i / n
-		local jitter = (side * (math.random() - 0.5) + up * (math.random() - 0.5)) * len * 0.28
+		local jitter = (side * (math.random() - 0.5) + up * (math.random() - 0.5)) * len * 0.18
 		local b = from + dir * len * t + jitter * (if i == n then 0.5 else 1)
-		local w = width * (1 - t * 0.65)
+		local w = width * (1 - t * 0.7)
 		table.insert(parts, seg(a, b, w, INK, false, 0))
-		table.insert(parts, seg(a, b, w * 2.1, RED, true, 0.3))
-		if i > 1 and i < n and math.random() < 0.5 then
+		table.insert(parts, seg(a, b, w * 1.2, RED, true, 0.9))
+		if i > 1 and i < n and math.random() < 0.4 then
 			local fd = (dir + side * (math.random() - 0.5) * 1.8 + up * (math.random() - 0.5)).Unit
-			local fb = b + fd * len * (0.2 + math.random() * 0.15)
+			local fb = b + fd * len * 0.22
 			table.insert(parts, seg(b, fb, w * 0.6, INK, false, 0))
-			table.insert(parts, seg(b, fb, w * 1.3, RED, true, 0.4))
+			table.insert(parts, seg(b, fb, w * 0.75, RED, true, 0.9))
 		end
 		a = b
 	end
@@ -104,9 +105,9 @@ end
 
 -- A thin red ray shooting out of the hit and fading.
 local function ray(from: Vector3, dir: Vector3, len: number, life: number)
-	local p = seg(from, from + dir * 0.1, 0.12, RED, true, 0.1)
+	local p = seg(from, from + dir * 0.1, 0.1, RED, true, 0.15)
 	local goal = from + dir * len
-	tween(p, life * 0.35, { Size = Vector3.new(0.12, 0.12, len), CFrame = CFrame.lookAt((from + goal) / 2, goal) }, Enum.EasingStyle.Quart)
+	tween(p, life * 0.35, { Size = Vector3.new(0.1, 0.1, len), CFrame = CFrame.lookAt((from + goal) / 2, goal) }, Enum.EasingStyle.Quart)
 	tween(p, life * 0.65, { Transparency = 1, Size = Vector3.new(0.02, 0.02, len * 1.15) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In, life * 0.35)
 	Debris:AddItem(p, life + 0.15)
 end
@@ -122,7 +123,7 @@ local function world(pos: Vector3, mine: boolean)
 	local bolts = if potato then 3 elseif mine then 9 else 5
 	local size = if mine then 1 else 0.7
 	for _ = 1, bolts do
-		bolt(pos, outward(), (6 + math.random() * 5) * size, 0.45 * size, 0.55)
+		bolt(pos, outward(), (7 + math.random() * 6) * size, 0.43 * size, 0.55)
 	end
 	if not potato then
 		for _ = 1, (if mine then 10 else 5) do

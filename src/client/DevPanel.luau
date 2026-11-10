@@ -35,6 +35,7 @@ local BUTTONS = {
 	{ "FIND A GNOME", "gnome", Color3.fromRGB(230, 180, 40) },
 	{ "ALMOST CLEAR", "almost", Color3.fromRGB(150, 90, 220) },
 	{ "CUT ONE CLUMP", "cutOne", Color3.fromRGB(150, 90, 220) },
+	{ "BLACK FLASH 100%", "blackFlash100", Color3.fromRGB(40, 30, 45) }, -- (10 Nov, owner) on/off, for you only
 	-- (5 Nov, owner: "maak in dev panel weer iets aan intro 2 en ending 2") the films, on this client only
 	-- (client/Intro.preview, client/Ending.preview): 2 = the new ones (Films v2), 1 = the old ones, whatever
 	-- Config.FILMS_V2.on says

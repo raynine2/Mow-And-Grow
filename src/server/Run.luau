@@ -467,6 +467,22 @@ Loot.onFull = function(player: Player)
 	warnBagFull(player)
 end
 
+-- (10 Nov, owner: "let the black flash give you 50x more gold from the clump you hit") paid on the spot: the clump's
+-- own coin value (its area, mutation and your sell boost, like an auto-finished clump) x Config.BLACK_FLASH.coins
+local function blackFlashCoins(player: Player, data, p: any): number
+	local BF = Config.BLACK_FLASH
+	local zdef = p and Config.ZONES[p.z]
+	if not zdef or not data.run then
+		return 0
+	end
+	local m = Config.mutation(p.mut or "None")
+	local coins = math.floor(zdef.value * (m.mult or 1) * (zdef.drops or 1) * Stats.compute(player, data).sell * (BF.coins or 50) + 0.5)
+	data.run.coins += coins
+	data.stats.coinsEarned = (data.stats.coinsEarned or 0) + coins
+	PlayerData.changed(player)
+	return coins
+end
+
 local function onSwing(player: Player, look: any)
 	local data = PlayerData.get(player)
 	if not data or not data.run or completing then
@@ -498,10 +514,13 @@ local function onSwing(player: Player, look: any)
 	-- (10 Nov, owner: "a 10% chance for a black flash every time you punch a clump with fist and only fist") rolled
 	-- here, Bare Hands only: the punch does Config.BLACK_FLASH.mult x damage to the clump; shown only if it landed
 	local BF = Config.BLACK_FLASH
-	local blackFlash = BF ~= nil and def.id == "Hands" and math.random() < BF.chance
+	-- (DEV panel BLACK FLASH 100%: always, for a dev who turned it on: server/Main sets the attribute)
+	local bfChance = if BF and player:GetAttribute("IsDev") == true and player:GetAttribute("BlackFlash100") == true then 1 elseif BF then BF.chance else 0
+	local blackFlash = BF ~= nil and def.id == "Hands" and math.random() < bfChance
 	if blackFlash then
 		cutDamage *= BF.mult
 	end
+	local flashed = false
 	if groundFull(player) then
 		warnBagFull(player)
 	else
@@ -509,12 +528,18 @@ local function onSwing(player: Player, look: any)
 		hit = Field.hitAim(player, root.Position, aim, def.radius, cutDamage, def.targets, stats.luck) > 0
 		local at0 = (Field :: any).lastAimAt
 		if blackFlash and hit and at0 then
-			Net.all("Fx", "blackFlash", { pos = at0, by = player.UserId, mult = BF.mult })
+			flashed = true
+			Net.all("Fx", "blackFlash", { pos = at0, by = player.UserId, coins = blackFlashCoins(player, data, (Field :: any).lastAimPatch) })
 		end
 	end
 	if Boss.inReach(root.Position, def.radius) then
-		Boss.damage(player, damage * Config.BOSS_TOOL_MULT)
+		-- (10 Nov) a Black Flash on a boss: Config.BLACK_FLASH.bossMult x damage
+		Boss.damage(player, damage * Config.BOSS_TOOL_MULT * (if blackFlash then BF.bossMult or 1 else 1))
 		hit = true
+		if blackFlash and not flashed then
+			flashed = true
+			Net.all("Fx", "blackFlash", { pos = root.Position + aim * 4 + Vector3.new(0, 1.5, 0), by = player.UserId, boss = BF.bossMult })
+		end
 	end
 	if Boss.hitAdds(player, root.Position, def.radius) then -- the boss's minions pop
 		hit = true

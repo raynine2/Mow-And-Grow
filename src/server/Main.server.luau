@@ -322,7 +322,12 @@ Net.on("Dev", 8, function(player, action, arg)
 		return
 	end
 	local msg: string?
-	if action == "gems" then
+	if action == "blackFlash100" then
+		-- (10 Nov, owner: "a thing in the dev panel I can turn on and off for a 100% black flash for myself")
+		local on = player:GetAttribute("BlackFlash100") ~= true
+		player:SetAttribute("BlackFlash100", if on then true else nil)
+		msg = if on then "Black Flash 100%: ON" else "Black Flash 100%: OFF"
+	elseif action == "gems" then
 		data.gems += 100000
 		msg = "+100K gems"
 	elseif action == "egg" then

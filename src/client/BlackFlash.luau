@@ -1,23 +1,20 @@
--- BLACK FLASH (10 Nov 2026, owner: "make a 10% chance for a black flash every time you punch a clump with fist and
--- only fist, make a cool animation with some of the audio that we added, use fx and vfx from the new pack if it fits",
--- with a clip from another Roblox game as the feel he wants: a white pop, then the picture goes red with black
--- lightning bursting out). Our own take on that feel, our own shapes, colours and sounds.
--- The server rolls it (server/Run onSwing, Config.BLACK_FLASH: Bare Hands only, the punch must land on a clump, its
--- damage x mult) and sends Fx "blackFlash" { pos, by, mult } to everyone in the run.
---   yours:   a hit-stop, a white pop, an impact frame (the picture tinted red, contrast crushed) for a beat, black
---            lightning cracks with a red glow bursting out of the clump, red rays and sparks (the SoulShroud pack's
---            RedRift / InkCrack / Sparks when it's in the place), a camera punch and shake, BLACK FLASH! slammed on
---            screen, three of our sounds layered (punch, zapStrike, bossThud, pitched down)
+-- BLACK FLASH (10 Nov 2026, owner: "make a chance for a black flash every time you punch a clump with fist and only
+-- fist, make a cool animation with some of the audio that we added, use fx and vfx from the new pack if it fits").
+-- Our own look: black lightning with a faint red halo bursting out of what you punched.
+-- (10 Nov 23:20, owner: "the black flash feels like an epileptic attack, change it to a calmer thing and not a visual
+-- block") CALM: no white pop, no full-screen colour, no tint of the picture, no shake, nothing flickering; only a
+-- soft red glow creeping in at the screen's edges and out again, and a small title at the top.
+-- The server rolls it (server/Run onSwing, Config.BLACK_FLASH: Bare Hands only) and sends Fx "blackFlash"
+-- { pos, by, coins? (a clump: its coins x50, paid), boss? (a boss: the damage multiplier) } to everyone in the run.
+--   yours:   a short hit-stop, the lightning, red rays, the pack's Sparks and a ground crack (InkCrack) when the pack
+--            is in the place, a small camera kick, the edge glow, "BLACK FLASH! +N coins" / "x10 BOSS DAMAGE",
+--            three of our sounds layered (punch, bossThud, zapStrike, pitched down)
 --   others': the lightning and the sounds, smaller and quieter (within earshot)
--- "Reduce camera shake" (CalmCamera) gets a softer tint, no white pop and no shake; Potato Mode fewer bolts and no
--- pack effects.
+-- Potato Mode: fewer bolts, no pack effects.
 local Debris = game:GetService("Debris")
-local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config")) :: any
 local State = require(script.Parent.State)
 local Sound = require(script.Parent.Sound)
 local CameraView = require(script.Parent.CameraView)
@@ -27,13 +24,8 @@ local Potato = require(script.Parent.Potato) :: any
 local player = Players.LocalPlayer
 
 local RED = Color3.fromRGB(255, 28, 48)
-local DEEP = Color3.fromRGB(150, 0, 20)
 local INK = Color3.fromRGB(6, 2, 8)
 local HEAVY = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Heavy)
-
-local function calm(): boolean
-	return player:GetAttribute("CalmCamera") == true
-end
 
 local function tween(o: Instance, t: number, props: { [string]: any }, style: Enum.EasingStyle?, dir: Enum.EasingDirection?, delay: number?): Tween
 	local tw = TweenService:Create(o, TweenInfo.new(t, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out, 0, false, delay or 0), props)
@@ -69,7 +61,8 @@ local function seg(a: Vector3, b: Vector3, w: number, color: Color3, neon: boole
 	return p
 end
 
--- One jagged crack of black lightning from `from` along `dir`, glowing red round its core, with a fork or two.
+-- One jagged crack of black lightning from `from` along `dir` with a faint red halo and a fork or two (looked at in
+-- Studio: a thick red glow drowned the black, so the halo is faint). It holds, then thins out and fades smoothly.
 local function bolt(from: Vector3, dir: Vector3, len: number, width: number, life: number)
 	local side = dir:Cross(Vector3.yAxis)
 	if side.Magnitude < 0.1 then
@@ -79,7 +72,6 @@ local function bolt(from: Vector3, dir: Vector3, len: number, width: number, lif
 	local up = dir:Cross(side).Unit
 	local parts: { Part } = {}
 	local a = from
-	-- (looked at in Studio: a thick red glow drowned the black, so the glow is a faint halo now)
 	local n = 7
 	for i = 1, n do
 		local t = i / n
@@ -97,18 +89,17 @@ local function bolt(from: Vector3, dir: Vector3, len: number, width: number, lif
 		a = b
 	end
 	for _, p in parts do
-		-- they hold for a beat, then thin out and fade
-		tween(p, life * 0.6, { Transparency = 1, Size = Vector3.new(p.Size.X * 0.15, p.Size.Y * 0.15, p.Size.Z) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In, life * 0.4)
+		tween(p, life * 0.6, { Transparency = 1, Size = Vector3.new(p.Size.X * 0.2, p.Size.Y * 0.2, p.Size.Z) }, Enum.EasingStyle.Sine, Enum.EasingDirection.In, life * 0.4)
 		Debris:AddItem(p, life + 0.15)
 	end
 end
 
--- A thin red ray shooting out of the hit and fading.
+-- A thin red ray growing out of the hit and fading.
 local function ray(from: Vector3, dir: Vector3, len: number, life: number)
-	local p = seg(from, from + dir * 0.1, 0.1, RED, true, 0.15)
+	local p = seg(from, from + dir * 0.1, 0.08, RED, true, 0.35)
 	local goal = from + dir * len
-	tween(p, life * 0.35, { Size = Vector3.new(0.1, 0.1, len), CFrame = CFrame.lookAt((from + goal) / 2, goal) }, Enum.EasingStyle.Quart)
-	tween(p, life * 0.65, { Transparency = 1, Size = Vector3.new(0.02, 0.02, len * 1.15) }, Enum.EasingStyle.Quad, Enum.EasingDirection.In, life * 0.35)
+	tween(p, life * 0.4, { Size = Vector3.new(0.08, 0.08, len), CFrame = CFrame.lookAt((from + goal) / 2, goal) }, Enum.EasingStyle.Quart)
+	tween(p, life * 0.6, { Transparency = 1 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In, life * 0.4)
 	Debris:AddItem(p, life + 0.15)
 end
 
@@ -120,35 +111,25 @@ end
 
 local function world(pos: Vector3, mine: boolean)
 	local potato = Potato.on == true
-	local bolts = if potato then 3 elseif mine then 9 else 5
 	local size = if mine then 1 else 0.7
-	for _ = 1, bolts do
-		bolt(pos, outward(), (7 + math.random() * 6) * size, 0.43 * size, 0.55)
+	for _ = 1, (if potato then 3 elseif mine then 7 else 4) do
+		bolt(pos, outward(), (7 + math.random() * 5) * size, 0.43 * size, 0.8)
 	end
 	if not potato then
-		for _ = 1, (if mine then 10 else 5) do
-			ray(pos, outward(), (10 + math.random() * 8) * size, 0.45)
+		for _ = 1, (if mine then 6 else 3) do
+			ray(pos, outward(), (8 + math.random() * 6) * size, 0.7)
 		end
-		-- a second, smaller crackle a moment later (the lightning keeps biting)
-		task.delay(0.12, function()
-			for _ = 1, math.ceil(bolts / 2) do
-				bolt(pos, outward(), (4 + math.random() * 3) * size, 0.3 * size, 0.4)
-			end
-		end)
 		-- the pack's pieces, when it's in the place (each call is a no-op otherwise)
-		pcall(PackFx.play, "RedRift", pos, { scale = 0.9 * size })
-		pcall(PackFx.play, "Sparks", pos, { scale = 1.1 * size, color = RED })
-		local hit = workspace:Raycast(pos + Vector3.new(0, 2, 0), Vector3.new(0, -14, 0), (function()
-			local rp = RaycastParams.new()
-			rp.FilterType = Enum.RaycastFilterType.Exclude
-			rp.FilterDescendantsInstances = { folder(), player.Character :: any }
-			return rp
-		end)())
+		pcall(PackFx.play, "Sparks", pos, { scale = 0.9 * size, color = RED })
+		local rp = RaycastParams.new()
+		rp.FilterType = Enum.RaycastFilterType.Exclude
+		rp.FilterDescendantsInstances = { folder(), player.Character :: any }
+		local hit = workspace:Raycast(pos + Vector3.new(0, 2, 0), Vector3.new(0, -14, 0), rp)
 		if hit then
-			pcall(PackFx.play, "InkCrack", CFrame.new(hit.Position + Vector3.new(0, 0.05, 0)), { scale = 1.2 * size })
+			pcall(PackFx.play, "InkCrack", CFrame.new(hit.Position + Vector3.new(0, 0.05, 0)), { scale = 1.1 * size })
 		end
 	end
-	-- a red light that pops and dies
+	-- a soft red light that swells and dies (no pop)
 	local holder = Instance.new("Part")
 	holder.Anchored = true
 	holder.CanCollide = false
@@ -160,11 +141,12 @@ local function world(pos: Vector3, mine: boolean)
 	holder.Parent = folder()
 	local light = Instance.new("PointLight")
 	light.Color = RED
-	light.Range = 22 * size
-	light.Brightness = 6
+	light.Range = 16 * size
+	light.Brightness = 0
 	light.Parent = holder
-	tween(light, 0.45, { Brightness = 0 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0.1)
-	Debris:AddItem(holder, 0.7)
+	tween(light, 0.15, { Brightness = 2 })
+	tween(light, 0.6, { Brightness = 0 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0.2)
+	Debris:AddItem(holder, 1)
 end
 
 local gui: ScreenGui? = nil
@@ -182,95 +164,90 @@ local function screenGui(): ScreenGui
 	return g :: ScreenGui
 end
 
-local function cover(color: Color3, alpha: number, life: number, z: number)
-	local f = Instance.new("Frame")
-	f.Size = UDim2.fromScale(1, 1)
-	f.BackgroundColor3 = color
-	f.BackgroundTransparency = alpha
-	f.BorderSizePixel = 0
-	f.ZIndex = z
-	f.Parent = screenGui()
-	tween(f, life, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-	Debris:AddItem(f, life + 0.1)
+-- A soft red glow at the screen's four edges, in and out (the middle stays clear).
+local function edgeGlow()
+	local root = Instance.new("Frame")
+	root.BackgroundTransparency = 1
+	root.Size = UDim2.fromScale(1, 1)
+	root.Parent = screenGui()
+	local edges: { Frame } = {}
+	for _, e in { { 0, 0, 1, 0.14, 90 }, { 0, 0.86, 1, 0.14, -90 }, { 0, 0, 0.1, 1, 0 }, { 0.9, 0, 0.1, 1, 180 } } do
+		local f = Instance.new("Frame")
+		f.BorderSizePixel = 0
+		f.BackgroundColor3 = RED
+		f.BackgroundTransparency = 1
+		f.Position = UDim2.fromScale(e[1], e[2])
+		f.Size = UDim2.fromScale(e[3], e[4])
+		f.Parent = root
+		local g = Instance.new("UIGradient")
+		g.Rotation = e[5]
+		g.Transparency = NumberSequence.new(0.35, 1)
+		g.Parent = f
+		table.insert(edges, f)
+	end
+	for _, f in edges do
+		tween(f, 0.18, { BackgroundTransparency = 0.45 }, Enum.EasingStyle.Sine)
+		tween(f, 0.7, { BackgroundTransparency = 1 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 0.35)
+	end
+	Debris:AddItem(root, 1.2)
 end
 
-local function title(mult: number)
+-- "BLACK FLASH!" small at the top, with what it gave you under it; fades in and out.
+local function title(sub: string)
 	local root = Instance.new("Frame")
 	root.BackgroundTransparency = 1
 	root.AnchorPoint = Vector2.new(0.5, 0.5)
-	root.Position = UDim2.fromScale(0.5, 0.3)
-	root.Size = UDim2.fromOffset(700, 140)
-	root.Rotation = -7
-	root.ZIndex = 5
+	root.Position = UDim2.fromScale(0.5, 0.17)
+	root.Size = UDim2.fromOffset(340, 64)
 	root.Parent = screenGui()
 	local scale = Instance.new("UIScale")
-	scale.Scale = 1.9
+	scale.Scale = 0.85
 	scale.Parent = root
 	local t = Instance.new("TextLabel")
 	t.BackgroundTransparency = 1
-	t.Size = UDim2.new(1, 0, 0.72, 0)
+	t.Size = UDim2.new(1, 0, 0.62, 0)
 	t.FontFace = HEAVY
 	t.Text = "BLACK FLASH!"
 	t.TextScaled = true
 	t.TextColor3 = INK
-	t.ZIndex = 6
+	t.TextTransparency = 1
 	t.Parent = root
 	local s = Instance.new("UIStroke")
 	s.Color = RED
-	s.Thickness = 5
+	s.Thickness = 3
+	s.Transparency = 1
 	s.Parent = t
 	local m = Instance.new("TextLabel")
 	m.BackgroundTransparency = 1
-	m.Position = UDim2.fromScale(0, 0.7)
-	m.Size = UDim2.new(1, 0, 0.3, 0)
+	m.Position = UDim2.fromScale(0, 0.62)
+	m.Size = UDim2.new(1, 0, 0.38, 0)
 	m.FontFace = HEAVY
-	m.Text = ("x%s DAMAGE"):format(tostring(mult))
+	m.Text = sub
 	m.TextScaled = true
-	m.TextColor3 = Color3.new(1, 1, 1)
-	m.ZIndex = 6
+	m.TextColor3 = Color3.fromRGB(255, 225, 120)
+	m.TextTransparency = 1
 	m.Parent = root
 	local s2 = Instance.new("UIStroke")
 	s2.Color = INK
-	s2.Thickness = 3
+	s2.Thickness = 2
+	s2.Transparency = 1
 	s2.Parent = m
-	-- slammed in, a little shudder, then gone
-	tween(scale, 0.16, { Scale = 1 }, Enum.EasingStyle.Back)
-	task.delay(0.16, function()
-		for i = 1, 4 do
-			root.Position = UDim2.new(0.5, math.random(-6, 6), 0.3, math.random(-5, 5))
-			task.wait(0.03)
-		end
-		root.Position = UDim2.fromScale(0.5, 0.3)
-	end)
+	tween(scale, 0.22, { Scale = 1 }, Enum.EasingStyle.Back)
 	for _, l in { t, m } do
-		tween(l, 0.35, { TextTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0.85)
+		tween(l, 0.15, { TextTransparency = 0 })
+		tween(l, 0.4, { TextTransparency = 1 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 1.2)
 	end
-	tween(s, 0.35, { Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0.85)
-	tween(s2, 0.35, { Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0.85)
-	tween(scale, 0.35, { Scale = 1.15 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In, 0.85)
-	Debris:AddItem(root, 1.3)
+	for _, st in { s, s2 } do
+		tween(st, 0.15, { Transparency = 0 })
+		tween(st, 0.4, { Transparency = 1 }, Enum.EasingStyle.Sine, Enum.EasingDirection.In, 1.2)
+	end
+	Debris:AddItem(root, 1.8)
 end
 
--- The impact frame: the whole picture tinted red with the contrast crushed for a beat, then back.
-local function impactFrame()
-	local soft = calm()
-	local cc = Instance.new("ColorCorrectionEffect")
-	cc.Name = "BlackFlashGrade"
-	cc.TintColor = if soft then Color3.fromRGB(255, 170, 175) else Color3.fromRGB(255, 70, 80)
-	cc.Contrast = if soft then 0.25 else 0.85
-	cc.Saturation = if soft then -0.2 else -0.65
-	cc.Brightness = if soft then 0 else -0.06
-	cc.Parent = Lighting
-	tween(cc, 0.4, { TintColor = Color3.new(1, 1, 1), Contrast = 0, Saturation = 0, Brightness = 0 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0.2)
-	Debris:AddItem(cc, 0.7)
-	if not soft then
-		cover(Color3.new(1, 1, 1), 0.1, 0.09, 1) -- the white pop
-		task.delay(0.05, function()
-			cover(DEEP, 0.55, 0.45, 2)
-		end)
-	else
-		cover(DEEP, 0.8, 0.35, 2)
-	end
+local function comma(n: number): string
+	local s = tostring(math.floor(n))
+	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (out:gsub("^,", ""))
 end
 
 local function sounds(mine: boolean, pos: Vector3)
@@ -284,13 +261,10 @@ local function sounds(mine: boolean, pos: Vector3)
 		end
 		vol = 0.45 * (1 - d / 160)
 	end
-	pcall(Sound.playAt, "punch", 0.72, 1.25 * vol)
-	pcall(Sound.playAt, "bossThud", 1.2, 0.8 * vol)
+	pcall(Sound.playAt, "punch", 0.72, 1.2 * vol)
+	pcall(Sound.playAt, "bossThud", 1.2, 0.7 * vol)
 	task.delay(0.03, function()
-		pcall(Sound.playAt, "zapStrike", 0.78, 1.5 * vol)
-	end)
-	task.delay(0.1, function()
-		pcall(Sound.playAt, "zapStrike", 1.15, 0.7 * vol)
+		pcall(Sound.playAt, "zapStrike", 0.78, 1.3 * vol)
 	end)
 end
 
@@ -302,12 +276,13 @@ local function play(d: any)
 	sounds(mine, d.pos)
 	world(d.pos, mine)
 	if mine then
-		State.emit("hitstop", 0.1) -- the hand sticks in the clump for a beat
-		impactFrame()
-		title(tonumber(d.mult) or 2.5)
-		pcall(CameraView.kick, 7)
-		pcall(CameraView.shake, 6, 0.35)
-		pcall(CameraView.buzz, 0.7, 0.2)
+		State.emit("hitstop", 0.08) -- the hand sticks for a beat
+		edgeGlow()
+		local sub = if tonumber(d.boss) then ("x%d BOSS DAMAGE"):format(tonumber(d.boss) :: number)
+			elseif tonumber(d.coins) and (tonumber(d.coins) :: number) > 0 then "+" .. comma(tonumber(d.coins) :: number) .. " COINS"
+			else ""
+		title(sub)
+		pcall(CameraView.kick, 3)
 	end
 end
 

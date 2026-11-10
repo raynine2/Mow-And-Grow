@@ -2221,6 +2221,8 @@ end
 
 Config.ICONS.invite = "rbxassetid://131845589341017" -- (1 Nov) the INVITE button: two friends waving, a plus and a gift (ForgeGUI)
 -- (10 Nov, owner: "a 10% chance for a black flash every time you punch a clump with fist and only fist") server/Run
--- rolls it on a Bare Hands punch that lands on a clump: that punch does `mult` x damage, client/BlackFlash shows it
-Config.BLACK_FLASH = { chance = 0.1, mult = 2.5 }
+-- rolls it on a Bare Hands punch that lands on a clump: that punch does `mult` x damage, client/BlackFlash shows it.
+-- (10 Nov 23:20, owner: "make it 1% chance ... let the black flash give you 50x more gold from the clump you hit and
+-- when you attack a boss and get black flash it does 10x dmg"; DEV panel BLACK FLASH 100% = always, for you)
+Config.BLACK_FLASH = { chance = 0.01, mult = 2.5, coins = 50, bossMult = 10 }
 return Config

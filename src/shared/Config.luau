@@ -1676,7 +1676,9 @@ Config.SOUNDS = {
 	introMusic = { id = "rbxassetid://75981022182996", volume = 0.55 }, -- Epic Trailer Music with Powerful Drums
 	-- boss fights (client/BossCine): Roblox's licensed music library (verified creator DistrokidOfficial); phase 2
 	-- plays it 12% faster
-	bossMusic = { id = "rbxassetid://91195316450390", volume = 0.5 }, -- ForgeGUI 29 Oct. old: rbxassetid://132347366936691, volume 0.45 (Boss Fight!)
+	-- (10 Nov, owner: "where is the boss music the dmc music we had") the opening film's DMC cue (dmcOpen1, the owner's upload),
+	-- looped through every boss fight. Before: rbxassetid://91195316450390, volume 0.5 (ForgeGUI 29 Oct)
+	bossMusic = { id = "rbxassetid://98091666860547", volume = 0.55 },
 	-- the CLASSES black hole (server/BlackHole, client/BlackHole): Pro Sound Effects library sounds (licensed to every
 	-- Roblox experience, creator "ProSoundEffects", checked on the Creator Store on 26 Oct 2026)
 	bhHum = { id = "rbxassetid://97496655327485", volume = 0.05 }, -- ForgeGUI 29 Oct. old: rbxassetid://9125898973, volume 0.45 (Sci Fi Transformation Synth Tones Slow Swirling 1 (loop))

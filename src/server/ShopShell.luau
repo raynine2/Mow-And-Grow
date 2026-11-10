@@ -21,6 +21,13 @@ local Models = require(script.Parent.Models)
 local ShopShell = {}
 
 ShopShell.ON = true
+-- (10 Nov, owner: "in the main area of zone 1 the house is still bugged ... there are 2 houses in 1 please fix it") ONE
+-- house: the ForgeGUI cabin (and garage) round the voxel lodge is no longer built, so nothing swaps when your camera
+-- goes in or out (client/ShopShellView finds no shell and leaves the lodge alone). The lodge keeps its own porch,
+-- chimney, window boxes and sign, and is dressed in the cabin's look inside AND out (restyle: round orange-tan logs,
+-- red beams, green frames, a red roof). true brings the cabins back.
+ShopShell.MODEL = false
+local ROOF_RED = Color3.fromRGB(176, 58, 42)
 local NAME = "toolshop_shell"
 
 -- what of the lodge's outside goes (part names in ShopBuilding)
@@ -114,7 +121,7 @@ local function roundLog(p: BasePart)
 	p.Transparency = 1
 end
 
-local function restyle(building: Instance?)
+local function restyle(building: Instance?, outside: boolean?)
 	for _, p in (if building then building:GetDescendants() else {}) do
 		if not p:IsA("BasePart") then
 			continue
@@ -131,7 +138,8 @@ local function restyle(building: Instance?)
 		elseif FRAMES[n] then
 			wood(p, FRAME, Enum.Material.Wood)
 		elseif CEILING[n] then
-			wood(p, PLANK, Enum.Material.WoodPlanks)
+			-- (10 Nov) with no cabin over it the roof is seen from outside too: the cabin's red
+			wood(p, if outside then ROOF_RED else PLANK, Enum.Material.WoodPlanks)
 		end
 	end
 end
@@ -171,6 +179,10 @@ end
 -- The cabin round the lodge at `at` (server/RunBuilder's tool shop). Returns false (and changes nothing) when the
 -- model isn't loaded.
 function ShopShell.dress(shop: Instance, at: CFrame): boolean
+	if not ShopShell.MODEL then
+		restyle(shop:FindFirstChild("ShopBuilding"), true)
+		return true
+	end
 	if not shell(shop, at, NAME, FIT, { ROOM_MIN, ROOM_MAX }, { DOOR_MIN, DOOR_MAX }) then
 		return false
 	end
@@ -203,6 +215,10 @@ end
 
 -- The ForgeGUI garage round the voxel garage at `at` (server/RunBuilder's garageShed).
 function ShopShell.dressGarage(garage: Instance, at: CFrame): boolean
+	if not ShopShell.MODEL then
+		restyle(garage:FindFirstChild("GarageBuilding"), true)
+		return true
+	end
 	if not shell(garage, at, GARAGE_NAME, GARAGE_FIT, GARAGE_ROOM, GARAGE_DOOR) then
 		return false
 	end

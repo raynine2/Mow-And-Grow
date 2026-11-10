@@ -268,6 +268,10 @@ function Monetization.start()
 				Net.notify(player, Config.MOWERS_LOCKED_TEXT, "yellow")
 				return
 			end
+			if p.gun and Config.GUNS_ON == false then -- (10 Nov: the guns are out of the game, never take Robux for one)
+				Net.notify(player, "That isn't in the game right now.", "yellow")
+				return
+			end
 			MarketplaceService:PromptProductPurchase(player, p.id)
 		elseif kind == "pass" then
 			local p = Config.PASSES[key]

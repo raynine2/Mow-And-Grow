@@ -1190,7 +1190,9 @@ Config.STOCK_WINDOW = 300 -- seconds between booth restocks
 -- Shown odds come out about Uncommon 90% / Rare 59% / Epic 33% / Legendary 12% / Mythic 3.4% / Secret 1% (Lucky
 -- Restock: Legendary 28% / Mythic 7.7% / Secret 1.5%); Config.CLASS_CHANCE works them out from these weights.
 Config.STOCK_SLOTS = 3
-Config.STOCK_WEIGHTS = { Uncommon = 130, Rare = 46, Epic = 22, Legendary = 7.5, Mythic = 1.55, Secret = 0.29 } -- (owner, 27 Oct: Lawn Legend 2.5%, Goat Man 0.5%)
+-- (10 Nov 20:38, owner, from the gameplay audit: Goat Man was in stock about once every 15 hours online) Secret
+-- 0.29 -> 0.8: about once every 5 hours (Lucky Restock more often).
+Config.STOCK_WEIGHTS = { Uncommon = 130, Rare = 46, Epic = 22, Legendary = 7.5, Mythic = 1.55, Secret = 0.8 } -- (owner, 27 Oct: Lawn Legend 2.5%, Goat Man 0.5%)
 
 function Config.class(id: string)
 	for _, c in Config.CLASSES do
@@ -2065,7 +2067,7 @@ Config.NEWS = {
 		bullets = {
 			"Cut grass, carry the bundles and shred them for coins",
 			"Tools from Bare Hands to the Laser Mower",
-			"Ride-on mowers, bags, the Leaf Vacuum and upgrades",
+			"Bags, the Leaf Vacuum and upgrades (ride-on mowers come in a later update)", -- (10 Nov: the mowers are locked)
 			"Hidden mutations: Golden, Rainbow, Diamond, Toxic and Galaxy",
 			"Classes and gem perks that you keep forever",
 		},

@@ -122,9 +122,9 @@ hpRoot.Visible = false
 hpRoot.Parent = gui
 -- (10 Nov, owner: "make my own health bar when fighting bosses, use the current ui, no screen clutter, a simple
 -- one") the HUD's own bar (client/Skin: the area card's cleared bar), bottom middle over the hotbar, in fights only
-hpRoot.Size = UDim2.fromOffset(320, 40)
+hpRoot.Size = UDim2.fromOffset(230, 28) -- (19:33, owner: "make it a bit smaller": was 320 x 40)
 local Skin = require(script.Parent.Skin)
-local _, hpFill, hpLabel = Skin.bar(hpRoot, Vector2.new(320, 40), Color3.fromRGB(90, 220, 90), { name = "Bar" })
+local _, hpFill, hpLabel = Skin.bar(hpRoot, Vector2.new(230, 28), Color3.fromRGB(90, 220, 90), { name = "Bar" })
 local HP_GREEN, HP_YELLOW, HP_RED = Color3.fromRGB(90, 220, 90), Color3.fromRGB(255, 190, 60), Color3.fromRGB(240, 60, 60)
 local hpColor = HP_GREEN
 

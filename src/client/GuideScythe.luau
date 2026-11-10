@@ -79,8 +79,20 @@ local function handOf(model: Instance?): BasePart?
 	return (model:FindFirstChild("RightHand") or model:FindFirstChild("Right Arm")) :: BasePart?
 end
 
+-- (10 Nov, seen in Play: with his arm down the tool grip held it out like a spear) BRRBRR carries it upright like a
+-- staff: the shaft up from his fist, leaning a little forward and out, the blade at the top
+local function carryFrame(hand: BasePart): CFrame
+	local model = hand.Parent
+	local root = model and model:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local att = hand:FindFirstChild("RightGripAttachment") :: Attachment?
+	local gp = (hand.CFrame * (if att then att.CFrame else CFrame.new())).Position
+	local base = if root then root.CFrame else hand.CFrame
+	local up = (base.UpVector * 0.96 + base.LookVector * 0.18 + base.RightVector * 0.12).Unit
+	return CFrame.lookAt(gp, gp + up, base.LookVector)
+end
+
 local function weldTo(m: Model, hand: BasePart)
-	m:PivotTo(gripFrame(hand))
+	m:PivotTo(carryFrame(hand))
 	for _, p in m:GetDescendants() do
 		if p:IsA("BasePart") then
 			p.Anchored = false
@@ -190,7 +202,7 @@ function GuideScythe.takeBack(guide: Model, player: Player, done: () -> ())
 	local m = newProp()
 	local from = if ph then gripFrame(ph) else gripFrame(hand)
 	fly(m, from, function(): CFrame
-		return gripFrame(hand)
+		return carryFrame(hand)
 	end, function(prop: Model)
 		if hand.Parent then
 			for _, p in prop:GetDescendants() do

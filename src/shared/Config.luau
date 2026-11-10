@@ -45,12 +45,16 @@ Config.TOOLS = {
 	{ id = "Hands", name = "Bare Hands", cost = 0, kind = "swing", damage = 1, cooldown = 0.45, radius = 5, targets = 1, color = Color3.fromRGB(255, 205, 160) },
 	{ id = "Scissors", name = "Garden Scissors", cost = 50, kind = "swing", damage = 3, cooldown = 0.4, radius = 6, targets = 2, color = Color3.fromRGB(255, 80, 80) },
 	{ id = "Sickle", name = "Sickle", cost = 250, kind = "swing", damage = 12, cooldown = 0.45, radius = 8, targets = 4, color = Color3.fromRGB(190, 190, 205) },
-	{ id = "PushMower", name = "Push Mower", cost = 1900, kind = "auto", damage = 38, radius = 6, color = Color3.fromRGB(255, 140, 30) },
-	{ id = "WeedWhacker", name = "Weed Whacker", cost = 10000, kind = "auto", damage = 220, radius = 9, color = Color3.fromRGB(60, 200, 80) },
+	-- (10 Nov 23:20, owner: "weed whacker and the mowers are way too OP and broken, they one tap the boss and one tap
+	-- every grass") the auto tools cut every clump in reach 4 times a second with no limit: now `targets` clumps a tick,
+	-- damage -40% (Push Mower 38, Whacker 220, Laser 4000 before), and BOSS_AUTO_MULT against bosses
+	{ id = "PushMower", name = "Push Mower", cost = 1900, kind = "auto", damage = 23, radius = 6, targets = 3, color = Color3.fromRGB(255, 140, 30) },
+	{ id = "WeedWhacker", name = "Weed Whacker", cost = 10000, kind = "auto", damage = 130, radius = 9, targets = 4, color = Color3.fromRGB(60, 200, 80) },
 	{ id = "MegaScythe", name = "Mega Scythe", cost = 60000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
-	{ id = "LaserMower", name = "Laser Mower", cost = 700000, kind = "auto", damage = 4000, radius = 11, color = Color3.fromRGB(60, 230, 255) },
+	{ id = "LaserMower", name = "Laser Mower", cost = 700000, kind = "auto", damage = 2400, radius = 11, targets = 6, color = Color3.fromRGB(60, 230, 255) },
 }
 Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
+Config.BOSS_AUTO_MULT = 0.25 -- (10 Nov) auto tools against a boss (they hit it 4 times a second: a Whacker did 33x a Sickle)
 Config.SKILL_TREES = require(script.Parent:WaitForChild("SkillTrees")) -- (30 Oct) weapon skill trees: every number in shared/SkillTrees
 
 -------------------------------------------------------------------------------------------------------------

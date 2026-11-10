@@ -585,10 +585,10 @@ local function autoTick()
 					if groundFull(player) then
 						warnBagFull(player)
 					else
-						Field.hit(player, root.Position, def.radius, dmg, nil, stats.luck)
+						Field.hit(player, root.Position, def.radius, dmg, def.targets, stats.luck) -- (10 Nov) at most `targets` a tick
 					end
 					if Boss.inReach(root.Position, def.radius) then
-						Boss.damage(player, dmg)
+						Boss.damage(player, dmg * (Config.BOSS_AUTO_MULT or 1)) -- (10 Nov, owner: "they one tap the boss")
 					end
 					Boss.hitAdds(player, root.Position, def.radius)
 					Night.hit(player, root.Position, def.radius, dmg)

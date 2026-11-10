@@ -284,7 +284,7 @@ CONTENT.Tools = function(d)
 		end
 		local owned = Config.ownsTool(run, d.tools, i)
 		local isNext = i == nextUp
-		local what = if t.kind == "auto" then "cuts all around you" else ("hits %d clump%s a swing"):format(t.targets or 1, if (t.targets or 1) == 1 then "" else "s")
+		local what = if t.kind == "auto" then ("cuts %d clumps around you"):format(t.targets or 1) else ("hits %d clump%s a swing"):format(t.targets or 1, if (t.targets or 1) == 1 then "" else "s")
 		table.insert(out, {
 			title = t.name,
 			desc = ("Power %s  -  %s"):format(Format.short(t.damage), what),

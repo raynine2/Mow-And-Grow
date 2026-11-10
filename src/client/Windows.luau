@@ -514,7 +514,7 @@ toolView.refresh = function()
 	Skin.bob(toolIc, 3, 1.5)
 	local desc = UI.text(toolView.list, TOOL_DESC[def.id] or "", UDim2.new(1, -20, 0, 60), { color = Color3.new(1, 1, 1), stroke = 2, textSize = 24 })
 	desc.LayoutOrder = 2
-	local kind = if def.kind == "auto" then "Cuts around you" else ("Cuts %d patch%s per swing"):format(def.targets, if def.targets > 1 then "es" else "")
+	local kind = if def.kind == "auto" then ("Cuts %d patches around you"):format(def.targets or 1) else ("Cuts %d patch%s per swing"):format(def.targets, if def.targets > 1 then "es" else "")
 	UI.popupRow(toolView.list, 3, "upgrade", "Damage " .. Format.short(def.damage), kind, Color3.new(1, 1, 1))
 	moneyLine(toolView.list, 4, "Your money: $" .. Format.commas(d.run.coins))
 	-- (29 Oct) owned: up the coin ladder, or bought with Robux on its own; next: the next coin buy (Config.nextToolIndex)

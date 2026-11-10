@@ -1675,6 +1675,8 @@ function Boss.spawn(z: number)
 		local n = math.clamp(#BossFighters.list(), 1, #Config.BOSS_PARTY_HP)
 		local done = f.maxHp - f.hp
 		f.maxHp = math.floor(base * Config.BOSS_PARTY_HP[n])
+		-- (10 Nov) never a ten-minute fight: capped at what this party's weapons can do (server/BossHp)
+		f.maxHp = require(script.Parent.BossHp).fit(f.maxHp, BossFighters.list(), Boss.difficulty.hp)
 		f.hp = math.max(1, f.maxHp - done)
 		publish(f)
 		changed()

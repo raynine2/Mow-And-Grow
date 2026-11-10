@@ -578,7 +578,18 @@ Config.BOSS_PARTY_HP = { 1, 1.7, 2.4, 3.0 }
 -- x2.5 punish windows. Guesses from Config.TOOLS (26 Oct): retune after real playtests.
 -- (29 Oct balance) about a minute with the weapon you should have by then, 4-5 min with the one before; was
 -- { 1400, 5000, 25000, 120000, 200000, 1200000, 1500000, 4800000 }. x Config.DIFFICULTY[...].hp
-Config.BOSS_HP = { 150, 900, 5800, 44000, 61000, 400000, 1600000, 2200000 }
+-- (10 Nov, owner: "boss can take up to 10 min ... fix every hp with every boss ... chapter 1 shoudnt be that hard
+-- but also not too easy") Those numbers counted on the free gun doing most of the damage; the guns went on 7 Nov, so
+-- this is for tools only. Solo, MEDIUM, the weapon you'd have by then (Scissors, Sickle, Push Mower, Weed Whacker x2,
+-- Mega Scythe x2, Laser Mower) with NO skill pips, hitting half the time: about 0:30, 1:10, 1:10, 1:35, 1:50,
+-- 1:55, 2:15 and 2:35 (the last boss of the chapter longest), plus the intro and the rage scene; a typical run with its
+-- pips about 0:10-1:00 each (the Harvest Maw 0:50 with a Sickle, 0:10 if you already have the Push Mower). Was { 150, 900, 5800, 44000, 61000, 400000, 1600000, 2200000 }: the Hollow Harvest took
+-- ~8-9 min with a Mega Scythe. Whoever comes in a tool behind is capped by Config.BOSS_FIT (server/BossHp).
+Config.BOSS_HP = { 150, 1200, 5800, 44000, 52000, 360000, 420000, 1300000 }
+-- (10 Nov) the HP cap (server/BossHp): a fight's HP is at most what the fighters' own best weapons (x power, skills)
+-- take off in maxTime seconds hitting `share` of the time (x the difficulty's HP: Hard and Expert may run longer), and
+-- never less than `floor` x the HP above (a tool behind: ~3:00-3:50 instead of 3-58 min). on = false: just the HP above.
+Config.BOSS_FIT = { on = true, maxTime = 180, share = 0.5, floor = 0.25 }
 -- (owner, 29 Oct) DIFFICULTY, picked in the Create Party window (id "Normal" is shown as MEDIUM; the ids stay so
 -- saved runs keep working): boss HP and damage multipliers, `speed` scales the boss's warnings and rests (lower =
 -- faster attacks), `reward` multiplies coins and gems from grass and bosses, `wins` = runs won to unlock.

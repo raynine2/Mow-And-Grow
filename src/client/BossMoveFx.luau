@@ -22,9 +22,15 @@
 --   pop      a soft glow on the floor that flares and fades, and one thin ring rolling out
 --   puff     one themed particle burst (pollen, petals, straw, embers, water ...)
 --   pack     one SoulShroud effect, fitted to the size of the hit
+-- v3 (10 Nov, owner: "Make it even better"): every pop lights up the arena round it (a real light, the boss's
+-- colour), the heavy ones roll a ring of toon smoke out over the floor and give one impact frame (the picture
+-- flattens for a blink; never with "Reduce camera shake"), slashes throw sparks off their length, and the slabs of
+-- a crack kick up dust as they break.
 -- Budget: phones get fewer slabs / blocks / particles; Potato Mode no particles and no pack effects (the shapes stay,
 -- they're cheap). Studio: the Workspace attribute FxSlow slows it all down (client/BossImpact).
 local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Tex = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("BossFxIds")) :: { [string]: string }
@@ -36,6 +42,8 @@ local Potato = require(script.Parent.Potato)
 local VFXLib = ReplicatedStorage:FindFirstChild("VFXLib")
 local Assets = VFXLib and VFXLib:FindFirstChild("Assets") and (require(VFXLib:FindFirstChild("Assets") :: ModuleScript) :: any)
 local RUNE = (Assets and Assets.Tex and Assets.Tex.RuneCircle) or Tex.glyph
+local TOON_SMOKE = (Assets and Assets.Tex and (Assets.Tex.VS_ToonSmoke4x4 or Assets.Tex.SmokePuff4x4)) or Tex.smoke
+local SMOKE_FLIP = Assets and Assets.Tex and (Assets.Tex.VS_ToonSmoke4x4 or Assets.Tex.SmokePuff4x4) and true or false
 
 local K = BossImpact.kit
 local part, tween, slow = K.part, K.tween, K.slow
@@ -86,6 +94,17 @@ local function pop(pos: Vector3, r: number, color: Color3, ring: boolean?)
 	disc.Transparency = 0.15
 	tween(disc, 0.28, { Size = Vector3.new(0.06, r * 1.7, r * 1.7), Transparency = 1, Color = color }, Enum.EasingStyle.Quart)
 	Debris:AddItem(disc, 0.35 * slow())
+	-- (v3) a real light: the arena round the hit lights up in its colour for a moment
+	local l = Instance.new("PointLight")
+	l.Color = color:Lerp(WHITE, 0.25)
+	l.Range = math.clamp(r * 2.6, 10, 55)
+	l.Brightness = 0
+	l.Shadows = false
+	l.Parent = disc
+	tween(l, 0.05, { Brightness = 6 }, Enum.EasingStyle.Linear)
+	task.delay(0.05 * slow(), function()
+		tween(l, 0.3, { Brightness = 0 }, Enum.EasingStyle.Quad)
+	end)
 	if ring ~= false then
 		K.floorRing(pos, K.RING_THIN, color:Lerp(WHITE, 0.5), r * 0.6, r * 2.8, 0.4, 0.1, 0.22)
 	end
@@ -100,8 +119,101 @@ local function mark(cf: CFrame, w: number, l: number, color: Color3, alpha: numb
 	Debris:AddItem(d.Parent :: Instance, life * slow() + 0.1)
 end
 
+-- (v3) a ring of toon smoke rolling out low over the floor from `pos` (`r` = how far it rolls), in `tint`: a puff
+-- thrown outward from each of `n` points round the hit
+local function smokeRing(pos: Vector3, r: number, tint: Color3, n: number?)
+	if Potato.on then
+		return
+	end
+	local count = math.max(6, math.floor((n or 14) * Q))
+	for i = 1, count do
+		local a = i / count * math.pi * 2 + math.random() * 0.3
+		local d = Vector3.new(math.sin(a), 0, math.cos(a))
+		local at = pos + d * r * 0.2 + Vector3.new(0, 0.7, 0)
+		local h = part("SmokeRing", Vector3.one * 0.2, CFrame.lookAt(at, at + d), WHITE, Enum.Material.SmoothPlastic)
+		h.Transparency = 1
+		local e = Instance.new("ParticleEmitter")
+		e.Enabled = false
+		e.Texture = TOON_SMOKE
+		if SMOKE_FLIP then
+			e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+			e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+		end
+		e.EmissionDirection = Enum.NormalId.Front
+		e.SpreadAngle = Vector2.new(14, 4)
+		e.Lifetime = NumberRange.new(0.75, 1.1)
+		e.Speed = NumberRange.new(r * 2.5, r * 3.4)
+		e.Drag = 3
+		e.Acceleration = Vector3.new(0, 1.5, 0)
+		e.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * 0.22), NumberSequenceKeypoint.new(0.4, r * 0.42), NumberSequenceKeypoint.new(1, r * 0.52) })
+		e.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(0.6, 0.3), NumberSequenceKeypoint.new(1, 1) })
+		e.Color = ColorSequence.new(tint:Lerp(WHITE, 0.35), tint)
+		e.LightInfluence = 0.7
+		e.Rotation = NumberRange.new(0, 360)
+		e.RotSpeed = NumberRange.new(-40, 40)
+		e.TimeScale = 1 / slow()
+		e.Parent = h
+		e:Emit(1)
+		Debris:AddItem(h, 1.3 * slow())
+	end
+end
+
+-- (v3) one impact frame for the heaviest hits near you: the picture flattens (contrast up, colour out) for a blink
+-- and eases back. Never with "Reduce camera shake", at most one every 0.7 s.
+local lastFrame = 0
+local function impactFrame(pos: Vector3)
+	local player = Players.LocalPlayer
+	if Potato.on or player:GetAttribute("CalmCamera") == true or os.clock() - lastFrame < 0.7 then
+		return
+	end
+	local cam = workspace.CurrentCamera
+	if not cam or (cam.CFrame.Position - pos).Magnitude > 60 then
+		return
+	end
+	lastFrame = os.clock()
+	local cc = Instance.new("ColorCorrectionEffect")
+	cc.Name = "BossImpactFrame"
+	cc.Contrast = 0.45
+	cc.Saturation = -0.75
+	cc.Brightness = 0.08
+	cc.Parent = Lighting
+	task.delay(0.05 * slow(), function()
+		tween(cc, 0.18, { Contrast = 0, Saturation = 0, Brightness = 0 }, Enum.EasingStyle.Quad)
+	end)
+	Debris:AddItem(cc, 0.3 * slow())
+end
+
+-- (v3) sparks thrown off along a line (a slash's length), out to the sides and up
+local function sparksAlong(from: Vector3, f: Vector3, len: number, color: Color3, n: number)
+	if Potato.on then
+		return
+	end
+	local mid = from + f * len * 0.5 + Vector3.new(0, 0.4, 0)
+	local h = part("Sparks", Vector3.new(0.6, 0.6, len * 0.8), CFrame.lookAt(mid, mid + f), WHITE, Enum.Material.SmoothPlastic)
+	h.Transparency = 1
+	local e = Instance.new("ParticleEmitter")
+	e.Enabled = false
+	e.Texture = Tex.spark
+	e.Shape = Enum.ParticleEmitterShape.Box
+	e.EmissionDirection = Enum.NormalId.Top
+	e.SpreadAngle = Vector2.new(70, 70)
+	e.Lifetime = NumberRange.new(0.35, 0.7)
+	e.Speed = NumberRange.new(8, 18)
+	e.Acceleration = Vector3.new(0, -30, 0)
+	e.Drag = 2
+	e.Size = NumberSequence.new(0.45, 0.05)
+	e.Transparency = NumberSequence.new(0, 1)
+	e.Color = ColorSequence.new(WHITE, color)
+	e.LightEmission = 1
+	e.LightInfluence = 0
+	e.TimeScale = 1 / slow()
+	e.Parent = h
+	e:Emit(math.max(3, math.floor(n * Q)))
+	Debris:AddItem(h, 0.9 * slow())
+end
+
 -- one themed particle burst; `up` 0 = straight up in a cone of `spread` degrees
-type Puff = { tex: string, colors: { Color3 }, n: number, size: number, endSize: number?, life: { number }, speed: { number }, spread: number?, grav: number?, drag: number?, add: boolean?, spin: number?, area: number?, y: number? }
+type Puff = { tex: string, colors: { Color3 }, n: number, size: number, endSize: number?, life: { number }, speed: { number }, spread: number?, grav: number?, drag: number?, add: boolean?, spin: number?, area: number?, y: number?, flip: boolean? }
 local function puff(pos: Vector3, o: Puff)
 	if Potato.on then
 		return
@@ -112,6 +224,10 @@ local function puff(pos: Vector3, o: Puff)
 	local e = Instance.new("ParticleEmitter")
 	e.Enabled = false
 	e.Texture = o.tex
+	if o.flip then
+		e.FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4
+		e.FlipbookMode = Enum.ParticleFlipbookMode.OneShot
+	end
 	e.Shape = Enum.ParticleEmitterShape.Disc
 	e.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
 	e.EmissionDirection = Enum.NormalId.Right -- (the host is turned: Right points up)
@@ -180,6 +296,10 @@ local function heave(pos: Vector3, len: number, arms: number, glow: Color3, floo
 				local s = part("Slab", Vector3.new(w * 0.56, h, step * 0.96), down, shade(floor, 0.82 + math.random() * 0.22), Enum.Material.Plastic)
 				s.TopSurface = Enum.SurfaceType.Studs
 				table.insert(slabs, { p = s, up = up, down = down })
+			end
+			if k == 2 then
+				-- (v3) dust kicked up where the floor breaks
+				puff(mid, { tex = TOON_SMOKE, colors = { floor:Lerp(WHITE, 0.45), floor:Lerp(EARTH, 0.4) }, n = 2, size = w * 1.3, endSize = 1.6, life = { 0.6, 0.9 }, speed = { 2, 5 }, spread = 40, grav = 1, drag = 3, flip = SMOKE_FLIP })
 			end
 			task.delay(delay * slow(), function()
 				tween(seam, 0.07, { Size = Vector3.new(w * 0.38, 0.06, step + 0.15) }, Enum.EasingStyle.Linear)
@@ -270,6 +390,7 @@ local function streak(from: Vector3, dir: Vector3, len: number, w: number, color
 	end
 	flare(beams, 0.06, 0.06, 0.32)
 	Debris:AddItem(host, 0.6 * slow())
+	sparksAlong(from, f, len, color, math.clamp(len * 0.4, 6, 20))
 	if markColor then
 		mark(CFrame.lookAt(from + f * len / 2, from + f * len), w * 1.1, len, markColor, 0.35, 2)
 	end
@@ -411,6 +532,8 @@ local R: { [string]: Recipe } = {}
 R.intro = function(s, accent, floor)
 	pop(s.pos, s.r, accent)
 	heave(s.pos, s.r * 1.1, 8, accent, floor)
+	smokeRing(s.pos, s.r * 1.2, dirt(floor):Lerp(WHITE, 0.3), 20)
+	impactFrame(s.pos)
 	K.kick(s.pos, s.r * 0.8, 12, dirt(floor), 1.2)
 	pack("DustKick", s.pos, s.r * 2, 10)
 	return 9
@@ -421,6 +544,8 @@ end
 R.slam = function(s, _, floor)
 	pop(s.pos, s.r, GOLD)
 	heave(s.pos, s.r * 1.05, 6, GOLD, floor)
+	smokeRing(s.pos, s.r, C(235, 220, 170), 16)
+	impactFrame(s.pos)
 	pack("FlameRing", s.pos, s.r * 1.6, 10, C(255, 225, 90))
 	K.kick(s.pos, s.r * 0.6, 7, dirt(floor), 1)
 	puff(s.pos, { tex = Tex.glow, colors = { WHITE, C(255, 248, 210) }, n = 14, size = 0.8, endSize = 0.5, life = { 1.6, 2.4 }, speed = { 18, 30 }, spread = 25, grav = -8, drag = 1.6, add = true })
@@ -489,6 +614,8 @@ end
 R.leap = function(s, _, floor)
 	pop(s.pos, s.r, PINK)
 	heave(s.pos, s.r, 6, PINK, floor)
+	smokeRing(s.pos, s.r, C(255, 220, 235), 16)
+	impactFrame(s.pos)
 	pack("Petals", s.pos, s.r * 2, 8, PINK)
 	K.kick(s.pos, s.r * 0.6, 7, dirt(floor), 1.1)
 	return 9
@@ -505,6 +632,7 @@ end
 R.combo = function(s, _, floor)
 	pop(s.pos, s.r, C(255, 130, 90))
 	heave(s.pos, s.r * 0.9, 4, C(255, 120, 70), floor)
+	smokeRing(s.pos, s.r * 0.8, dirt(floor):Lerp(WHITE, 0.35), 8)
 	K.kick(s.pos, s.r * 0.5, 4, dirt(floor), 0.9)
 	return 7
 end
@@ -562,6 +690,8 @@ end
 R.burrow = function(s, _, floor)
 	pop(s.pos, s.r, ICE)
 	heave(s.pos, s.r, 7, ICE, floor)
+	smokeRing(s.pos, s.r, C(225, 242, 255), 18)
+	impactFrame(s.pos)
 	BossImpact.ice(s.pos, s.r * 0.8, false)
 	K.kick(s.pos, s.r * 0.5, 8, C(230, 245, 255), 1.2)
 	return 9
@@ -578,6 +708,7 @@ end
 local function blast(s: any, floor: Color3): number
 	pop(s.pos, s.r, FIRE)
 	pack("FireBurst", s.pos, s.r * 1.4, 23.5, FIRE)
+	smokeRing(s.pos, s.r * 0.9, C(70, 50, 45), 10)
 	mark(CFrame.new(s.pos), s.r * 1.6, s.r * 1.6, C(40, 22, 16), 0.3, 2.4)
 	K.kick(s.pos, s.r * 0.5, 4, dirt(floor), 1)
 	return 6
@@ -621,6 +752,7 @@ end
 -- Stone Pillars: they punch up out of the floor
 R.pillars = function(s)
 	pop(s.pos, s.r, RUNE_C, false)
+	smokeRing(s.pos, s.r * 1.4, C(170, 175, 160), 10)
 	K.kick(s.pos, s.r * 1.4, 6, STONE, 1.1)
 	return 5
 end

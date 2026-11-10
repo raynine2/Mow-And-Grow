@@ -44,13 +44,24 @@ task.spawn(function()
 	local Sound = require(here:WaitForChild("Sound")) :: any
 	local UI = require(here:WaitForChild("UI")) :: any
 
-	local ANIM = {
-		walk = "rbxassetid://507777826",
-		idle = "rbxassetid://507766388",
-		wave = "rbxassetid://507770239",
-		cheer = "rbxassetid://507770677",
-		point = "rbxassetid://507770453",
+	-- (v3, owner: "make him have walking animations, very goofy so kids like it") each guide walks in one of
+	-- Roblox's own animation packs (made by Roblox, free for every game): RAYAN the Cartoony pack, BRRBRR the Bubbly
+	-- one; on top of that a waddle (a side-to-side sway and a bounce in step), and when you stand still they goof
+	-- around now and then (a dance, a laugh, a spin, a look around)
+	local PACKS = {
+		cartoony = { walk = 742640026, run = 742638842, idle = 742637544, look = 742638445 },
+		bubbly = { walk = 910034870, run = 910025107, idle = 910004836 },
 	}
+	local SHARED = {
+		wave = 507770239,
+		cheer = 507770677,
+		point = 507770453,
+		dance1 = 507771019,
+		dance2 = 507776043,
+		dance3 = 507777268,
+		laugh = 507770818,
+	}
+	local LOOPED = { walk = true, run = true, idle = true, dance1 = true, dance2 = true, dance3 = true }
 	local SPEED = 24 -- studs a second at most (you run ~16-24)
 	local WHITE = Color3.new(1, 1, 1)
 	local INK = Color3.fromRGB(30, 26, 40)
@@ -74,6 +85,15 @@ task.spawn(function()
 		busyUntil: number,
 		hopAt: number,
 		voice: number, -- the pitch of their talking blips
+		pack: string,
+		animator: Animator,
+		loaded: boolean,
+		speed: number, -- how fast they moved last frame
+		phase: number, -- the waddle's step
+		spinAt: number,
+		nextGoof: number,
+		gestureToken: number,
+		goofing: boolean, -- the gesture playing is a goof (a dance), stopped when they walk off
 	}
 
 	local folder = Instance.new("Folder")
@@ -269,21 +289,44 @@ task.spawn(function()
 			busyUntil = 0,
 			hopAt = -10,
 			voice = if def.lead then 1.45 else 1.85,
+			pack = def.pack or (if def.lead then "cartoony" else "bubbly"),
+			animator = animator,
+			loaded = false,
+			speed = 0,
+			phase = 0,
+			spinAt = -10,
+			nextGoof = os.clock() + 8,
+			gestureToken = 0,
+			goofing = false,
 		}
-		for k, id in ANIM do
+		m.Parent = folder
+		return g
+	end
+
+	-- (v3) the tracks load once the body is in the world: loaded while it wasn't, they never played (seen in
+	-- Studio: length 0, weight 0, the guides stood stiff)
+	local function loadTracks(g: Guide)
+		if g.loaded then
+			return
+		end
+		g.loaded = true
+		local list = table.clone(SHARED)
+		for k, id in PACKS[g.pack] or PACKS.cartoony do
+			list[k] = id
+		end
+		for k, id in list do
 			local a = Instance.new("Animation")
-			a.AnimationId = id
+			a.AnimationId = "rbxassetid://" .. id
 			local ok, track = pcall(function()
-				return animator:LoadAnimation(a)
+				return g.animator:LoadAnimation(a)
 			end)
 			if ok and track then
-				track.Looped = k == "walk" or k == "idle"
-				track.Priority = if k == "walk" or k == "idle" then Enum.AnimationPriority.Movement else Enum.AnimationPriority.Action
+				track.Looped = LOOPED[k] == true
+				track.Priority = if k == "walk" or k == "run" or k == "idle" then Enum.AnimationPriority.Movement else Enum.AnimationPriority.Action
 				g.tracks[k] = track
 			end
 		end
-		m.Parent = folder
-		return g
+		g.playing = nil
 	end
 
 	local function play(g: Guide, k: string)
@@ -301,12 +344,34 @@ task.spawn(function()
 		g.playing = k
 	end
 
-	local function gesture(g: Guide, k: string)
+	local function gesture(g: Guide, k: string, dur: number?, goof: boolean?)
 		local t = g.tracks[k]
-		if t then
-			t:Play(0.1)
-			g.busyUntil = os.clock() + math.min(t.Length > 0 and t.Length or 1.5, 2.2)
+		if not t then
+			return
 		end
+		g.goofing = goof == true
+		g.gestureToken += 1
+		local token = g.gestureToken
+		t:Play(0.1)
+		local len = dur or math.min(if t.Length > 0 then t.Length else 1.5, 2.2)
+		g.busyUntil = os.clock() + len
+		task.delay(len, function()
+			if g.gestureToken == token and t.IsPlaying then
+				t:Stop(0.25)
+			end
+		end)
+	end
+
+	-- stop a gesture early (they set off walking)
+	local function stopGesture(g: Guide)
+		g.gestureToken += 1
+		for k, t in g.tracks do
+			if not (k == "walk" or k == "run" or k == "idle") and t.IsPlaying then
+				t:Stop(0.2)
+			end
+		end
+		g.busyUntil = 0
+		g.goofing = false
 	end
 
 	-- the guides' bodies, once the server has built them (up to ~15 s; none = the old card stays)
@@ -628,6 +693,19 @@ task.spawn(function()
 		return math.atan2(-v.X, -v.Z)
 	end
 
+	-- (v3) the waddle on top of the walk: a side-to-side sway and a bounce in step (more the faster they go), a lean
+	-- when they run, and a spin when they goof around
+	local function goofyPose(g: Guide, dt: number): CFrame
+		local k = math.clamp(g.speed / 12, 0, 1)
+		g.phase += dt * (3 + g.speed * 0.5)
+		local roll = math.sin(g.phase) * 0.14 * k
+		local bob = math.abs(math.sin(g.phase)) * 0.45 * k
+		local lean = -0.1 * math.clamp((g.speed - 10) / 10, 0, 1)
+		local t = (os.clock() - g.spinAt) / 0.6
+		local spin = if t >= 0 and t < 1 then (1 - math.cos(math.pi * t)) * math.pi else 0
+		return CFrame.new(0, bob, 0) * CFrame.Angles(lean, spin, roll)
+	end
+
 	local function walkTo(g: Guide, want: Vector3, face: Vector3?, dt: number)
 		local flatPos = Vector3.new(g.pos.X, 0, g.pos.Z)
 		local flatWant = Vector3.new(want.X, 0, want.Z)
@@ -658,18 +736,23 @@ task.spawn(function()
 		local y = ground(nextAt) or g.pos.Y
 		g.pos = Vector3.new(nextAt.X, g.pos.Y + (y - g.pos.Y) * math.min(1, dt * 14), nextAt.Z)
 		g.yaw = yaw
+		g.speed += (speed - g.speed) * math.min(1, dt * 8)
 		local up = g.hum.HipHeight + g.root.Size.Y / 2
-		g.model:PivotTo(CFrame.new(g.pos + Vector3.new(0, up + hopY(g), 0)) * CFrame.Angles(0, yaw, 0))
+		g.model:PivotTo(CFrame.new(g.pos + Vector3.new(0, up + hopY(g), 0)) * CFrame.Angles(0, yaw, 0) * goofyPose(g, dt))
 		-- the bubble bobs a touch while it's up (alive, not pasted on)
 		if g.bubble.Enabled then
 			g.bubble.StudsOffset = Vector3.new(0, 2.4 + math.sin(os.clock() * 2.4) * 0.07, 0)
 		end
+		if g.goofing and g.speed > 4 and os.clock() < g.busyUntil then
+			stopGesture(g) -- off they go: no dancing on the move
+		end
 		if os.clock() > g.busyUntil then
-			if speed > 2 then
-				play(g, "walk")
-				local t = g.tracks.walk
+			if g.speed > 2 then
+				local run = g.speed > 16
+				play(g, if run then "run" else "walk")
+				local t = g.tracks[if run then "run" else "walk"]
 				if t then
-					t:AdjustSpeed(math.clamp(speed / 14, 0.6, 1.8))
+					t:AdjustSpeed(if run then math.clamp(g.speed / 20, 0.8, 1.4) else math.clamp(g.speed / 9, 0.7, 1.7))
 				end
 			else
 				play(g, "idle")
@@ -711,6 +794,9 @@ task.spawn(function()
 	local function bringOut(root: BasePart)
 		out = true
 		folder.Parent = workspace
+		for _, g in guides do
+			loadTracks(g)
+		end
 		local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 		look = if look.Magnitude > 0.1 then look.Unit else Vector3.zAxis
 		local right = Vector3.new(-look.Z, 0, look.X)
@@ -726,6 +812,36 @@ task.spawn(function()
 			side.hopAt = now + 0.15
 			place(side, root.Position + look * 3 - right * 4, yawOf(-look))
 			poof(side.pos, side.def.color)
+		end
+	end
+
+	-- (v3) goofing around while you stand still: now and then a dance, a laugh, a spin or a look around
+	local GOOFS = { "dance1", "dance2", "dance3", "laugh", "spin", "spin", "look" }
+	local LAUGHS = { "Hehehe!", "Hahaha!", "Hehe." }
+	local function goof(g: Guide, now: number)
+		if now < g.nextGoof or g.speed > 1.5 or g.bubble.Enabled or now < g.busyUntil then
+			return
+		end
+		g.nextGoof = now + 7 + math.random() * 6
+		local k = GOOFS[math.random(1, #GOOFS)]
+		if k == "look" and not g.tracks.look then
+			k = "spin"
+		end
+		if k == "spin" then
+			g.spinAt = now
+			g.hopAt = now
+			pcall(Sound.playAt, "whoosh", 1.3 + math.random() * 0.2, 0.5)
+		elseif k == "laugh" then
+			gesture(g, "laugh", 1.6, true)
+			if math.random() < 0.6 then
+				say(g, LAUGHS[math.random(1, #LAUGHS)], 0.3)
+			end
+		elseif k == "look" then
+			gesture(g, "look", 2.4, true)
+			emote(g, "?")
+		else
+			gesture(g, k, 2.8, true)
+			emote(g, "♪")
 		end
 	end
 
@@ -870,6 +986,9 @@ task.spawn(function()
 		-- the other: at your side, a little behind
 		if side then
 			walkTo(side, p - look * 1.5 - right * 4.5, p + look * 10, dt)
+		end
+		for _, g in guides do
+			goof(g, now)
 		end
 
 		-- what to say

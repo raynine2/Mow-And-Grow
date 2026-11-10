@@ -622,10 +622,13 @@ task.spawn(function()
 	-------------------------------------------------------------------------------------------------------------
 	local rayParams = RaycastParams.new()
 	rayParams.FilterType = Enum.RaycastFilterType.Exclude
+	-- (v3) the ground near your own height: from 25 studs up they landed on roofs and stall tops (seen in Studio)
+	local refY: number? = nil
 	local function ground(at: Vector3): number?
 		local char = player.Character
 		rayParams.FilterDescendantsInstances = { folder, char :: any }
-		local hit = workspace:Raycast(at + Vector3.new(0, 25, 0), Vector3.new(0, -80, 0), rayParams)
+		local from = (refY or at.Y) + 4
+		local hit = workspace:Raycast(Vector3.new(at.X, from, at.Z), Vector3.new(0, -40, 0), rayParams)
 		return hit and hit.Position.Y
 	end
 
@@ -794,6 +797,7 @@ task.spawn(function()
 	local function bringOut(root: BasePart)
 		out = true
 		folder.Parent = workspace
+		refY = root.Position.Y - 1
 		for _, g in guides do
 			loadTracks(g)
 		end
@@ -963,6 +967,7 @@ task.spawn(function()
 		skipBtn.Visible = true
 
 		local p = root.Position
+		refY = p.Y - 1
 		local look = Vector3.new(root.CFrame.LookVector.X, 0, root.CFrame.LookVector.Z)
 		look = if look.Magnitude > 0.1 then look.Unit else Vector3.zAxis
 		local right = Vector3.new(-look.Z, 0, look.X)

@@ -575,6 +575,7 @@ function endLoan(player: Player, data)
 	end
 	data.run.loaner = nil
 	data.run.loanHanded = nil
+	data.run.loanDone = true -- (10 Nov) once per run
 	local name = lent
 	for _, t in Config.TOOLS do
 		if t.id == lent then
@@ -598,6 +599,9 @@ end
 local function endTutorial(player: Player, data)
 	local lent = data.run.loaner
 	data.run.loaner = nil
+	if lent then
+		data.run.loanDone = true -- (10 Nov) once per run
+	end
 	if lent then
 		local name = lent
 		for _, t in Config.TOOLS do
@@ -827,33 +831,14 @@ local function setupPlayer(player: Player, data)
 		data.run.earnedBase = data.stats.coinsEarned or 0 -- (10 Nov) the end screen's "coins this run"
 		-- (report #1, Config.FIRST_TIMER) a first-timer's first run: a starter tool on loan until the first sale (walk
 		-- into the grass to mow it), and the intro film after that sale instead of before the first cut
-		-- (10 Nov 22:15, owner in a Studio test: "brr brr doesn't give me the scythe and I don't see it in the tuto")
-		-- Studio profiles are always empty, so client/Coach's first-run tutorial (BRRBRR walking beside you) always
-		-- runs there, but isNew needs the TestFirstTimer attribute in Studio: the loan follows the tutorial's rule there
-		local s0 = data.stats or {}
-		local studioFirst = RunService:IsStudio() and (s0.cut or 0) == 0 and (s0.sold or 0) == 0 and (s0.runs or 0) == 0
-		if PlayerData.isNew(data) or studioFirst then
+		if PlayerData.isNew(data) then
 			Analytics.startOnboarding(player, 2) -- (10 Nov) onboarding funnel: joined, in their first run
 			local F = Config.FIRST_TIMER
 			if F.introAfterSale then
 				data.run.tutorial = true
 			end
-			if F.loaner ~= "" then
-				data.run.loaner = F.loaner
-				-- (10 Nov) BRRBRR hands it over (client/TutorGuide: "Seen" "loanTaken"); after handoverWait s it comes anyway
-				if F.loanCuts then
-					data.run.loanHanded = false
-					data.run.loanCuts = 0
-					task.delay(F.handoverWait or 30, function()
-						local d2 = PlayerData.get(player)
-						if player.Parent and d2 and d2.run and d2.run.loaner and d2.run.loanHanded == false then
-							d2.run.loanHanded = true
-							Analytics.onboard(player, 3) -- (10 Nov) onboarding funnel: got the scythe
-							Tools.give(player)
-							PlayerData.changed(player)
-						end
-					end)
-				end
+			if F.loaner ~= "" and not F.loanCuts then
+				data.run.loaner = F.loaner -- (the old way: a loan until the first sale)
 			end
 		end
 	end
@@ -868,6 +853,31 @@ local function setupPlayer(player: Player, data)
 			data.run.bag = math.max(data.run.bag or 0, up.bag or 0)
 			data.run.loaner = nil
 		end
+	end
+	-- (10 Nov 22:30, owner: "brr brr doesn't give me the scythe and I don't see it in the tuto") BRRBRR lends his
+	-- scythe whenever client/Coach's first-run tutorial runs (no finished run, under 400 clumps, Swing Speed not
+	-- bought: the same test), once per run (run.loanDone). It only came with PlayerData.isNew before, so a player
+	-- who had cut a little and came back (and every Studio test: Studio loads your real profile) saw him walk along
+	-- empty-handed.
+	local F = Config.FIRST_TIMER
+	local s0 = data.stats or {}
+	local holdLv = (data.run.upgrades and data.run.upgrades.swing) or 0
+	if F.loaner ~= "" and F.loanCuts and not data.run.loaner and not data.run.loanDone and (s0.runs or 0) == 0
+		and (s0.cut or 0) < 400 and holdLv < 1
+	then
+		data.run.loaner = F.loaner
+		-- (10 Nov) BRRBRR hands it over (client/TutorGuide: "Seen" "loanTaken"); after handoverWait s it comes anyway
+		data.run.loanHanded = false
+		data.run.loanCuts = 0
+		task.delay(F.handoverWait or 30, function()
+			local d2 = PlayerData.get(player)
+			if player.Parent and d2 and d2.run and d2.run.loaner and d2.run.loanHanded == false then
+				d2.run.loanHanded = true
+				Analytics.onboard(player, 3) -- (10 Nov) onboarding funnel: got the scythe
+				Tools.give(player)
+				PlayerData.changed(player)
+			end
+		end)
 	end
 	-- runs start in first person like the Chop A Forest trailer, but aren't locked there: the client
 	-- (CameraView) lets you press V or scroll out to free the mouse, and Shift toggles shift lock

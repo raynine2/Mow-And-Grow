@@ -1,10 +1,13 @@
 --!strict
--- THE FREE DAILY WHEEL (10 Nov 2026; owner picked "8"). A big brick wheel at the hub's WheelSpot (server/HubFun):
--- eight coloured slices (Config.HUB_FUN.prizes, gems), a red pointer on top, lights round the rim, the odds on a
--- board beside it, and over it FREE SPIN! or the time to the next one. SPIN asks the server (it picks the prize and
--- adds the gems; Fx "hubSpin" { index, gems }), then the wheel spins ~5 s, ticking past each slice, and stops on that
--- prize: the lights flash, confetti, a notice. Free, once a UTC day (player attribute HubSpinNext). Only in the
--- lobby; each player sees their own wheel spin.
+-- THE FREE DAILY WHEEL (10 Nov 2026; owner picked "8"; remodelled the same day: "make the models with blender ... the
+-- stud voxel style", design: the Claude Design canvas "Mow And Grow Hub Remodel"). A little fair stall at the hub's
+-- WheelSpot (server/HubFun), built from studded bricks (shared/HubBricks, the Blender models wheel_booth + wheel):
+-- candy-stripe posts, a striped scalloped canopy, a purple marquee in a gold frame (FREE SPIN!, or the countdown after
+-- a spin), the odds on a chalkboard on the right, a red pointer over the wheel. The wheel: eight smooth slices in half
+-- studs (Config.HUB_FUN.prizes, gems) in a studded wooden rim, bulbs round it that chase while it waits.
+-- SPIN asks the server (it picks the prize and adds the gems; Fx "hubSpin" { index, gems }), then the wheel spins ~5 s,
+-- ticking past each slice, and stops on that prize: the bulbs flash in its colour, confetti, a notice. Free, once a
+-- UTC day (player attribute HubSpinNext). Only in the lobby; each player sees their own wheel spin.
 local HubWheel = {}
 task.spawn(function()
 	local Players = game:GetService("Players")
@@ -13,8 +16,10 @@ task.spawn(function()
 
 	local player = Players.LocalPlayer
 	local here = script.Parent
-	local Config = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config"))
-	local Format = require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Format"))
+	local Shared = ReplicatedStorage:WaitForChild("MowALawn")
+	local Config = require(Shared:WaitForChild("Config"))
+	local Format = require(Shared:WaitForChild("Format"))
+	local HubBricks = require(Shared:WaitForChild("HubBricks")) :: any
 	local State = require(here:WaitForChild("State"))
 	local UI = require(here:WaitForChild("UI")) :: any
 	local Sound = require(here:WaitForChild("Sound")) :: any
@@ -24,15 +29,16 @@ task.spawn(function()
 	local PRIZES = Config.HUB_FUN.prizes
 	local N = #PRIZES
 	local SLICE = 2 * math.pi / N
-	local R = 6 -- the wheel's radius
-	local HIGH = 8.5 -- its middle above the ground
+	local R = 6.8 -- the wheel's radius (the Blender model: 13.6 half studs)
 	local FONT = Config.UI and Config.UI.font or Enum.Font.FredokaOne
 	local INK = Color3.fromRGB(30, 26, 40)
-	local WOOD = Color3.fromRGB(120, 78, 46)
 	local WHITE = Color3.new(1, 1, 1)
+	local GOLD = Color3.fromRGB(255, 214, 80)
+	local WARM = Color3.fromRGB(255, 240, 180)
+	local HOT = Color3.fromRGB(255, 120, 80)
 
-	local function part(parent: Instance, size: Vector3, cf: CFrame, color: Color3, cls: string?, mat: Enum.Material?): BasePart
-		local p = Instance.new((cls or "Part") :: any) :: BasePart
+	local function part(parent: Instance, size: Vector3, cf: CFrame, color: Color3, mat: Enum.Material?): Part
+		local p = Instance.new("Part")
 		p.Anchored = true
 		p.CanCollide = false
 		p.CanQuery = false
@@ -47,43 +53,32 @@ task.spawn(function()
 		return p
 	end
 
-	-- a flat triangle a, b, c (world points), `w` thick: two wedges
-	local function triangle(parent: Instance, a: Vector3, b: Vector3, c: Vector3, w: number, color: Color3): { BasePart }
-		local ab, ac, bc = b - a, c - a, c - b
-		local abd, acd, bcd = ab:Dot(ab), ac:Dot(ac), bc:Dot(bc)
-		if abd > acd and abd > bcd then
-			c, a = a, c
-		elseif acd > bcd and acd > abd then
-			a, b = b, a
-		end
-		ab, ac, bc = b - a, c - a, c - b
-		local right = ac:Cross(ab).Unit
-		local up = bc:Cross(right).Unit
-		local back = bc.Unit
-		local height = math.abs(ab:Dot(up))
-		local w1 = part(parent, Vector3.new(w, height, math.abs(ab:Dot(back))), CFrame.fromMatrix((a + b) / 2, right, up, back), color, "WedgePart")
-		local w2 = part(parent, Vector3.new(w, height, math.abs(ac:Dot(back))), CFrame.fromMatrix((a + c) / 2, -right, up, -back), color, "WedgePart")
-		return { w1, w2 }
-	end
-
-	local function label(p: BasePart, text: string, size: number, color: Color3?, face: Enum.NormalId?): TextLabel
+	-- a flat, see-through part with a SurfaceGui on its front: text on a model's face
+	local function face(parent: Instance, size: Vector2, cf: CFrame, ppS: number?): SurfaceGui
+		local p = part(parent, Vector3.new(size.X, size.Y, 0.05), cf, WHITE)
+		p.Transparency = 1
 		local g = Instance.new("SurfaceGui")
-		g.Face = face or Enum.NormalId.Front
+		g.Face = Enum.NormalId.Front
 		g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		g.PixelsPerStud = 50
+		g.PixelsPerStud = ppS or 50
 		g.LightInfluence = 0
 		g.Parent = p
+		return g
+	end
+
+	local function label(parent: Instance, text: string, size: UDim2, pos: UDim2, color: Color3, stroke: number?): TextLabel
 		local t = Instance.new("TextLabel")
 		t.BackgroundTransparency = 1
-		t.Size = UDim2.fromScale(1, 1)
+		t.Size = size
+		t.Position = pos
 		t.Font = FONT
+		t.TextScaled = true
 		t.Text = text
-		t.TextColor3 = color or WHITE
-		t.TextSize = size
-		t.Parent = g
+		t.TextColor3 = color
+		t.Parent = parent
 		local s = Instance.new("UIStroke")
 		s.Color = INK
-		s.Thickness = 4
+		s.Thickness = stroke or 3
 		s.Parent = t
 		return t
 	end
@@ -103,62 +98,36 @@ task.spawn(function()
 	local waiting = false
 
 	-- a point on the wheel's face: angle from the top, counter-clockwise as you look at it
-	local function rim(center: CFrame, a: number, r: number, z: number?): Vector3
-		return center * Vector3.new(-math.sin(a) * r, math.cos(a) * r, z or 0)
+	local function rim(center: CFrame, a: number, r: number, z: number?): CFrame
+		return center * CFrame.new(-math.sin(a) * r, math.cos(a) * r, z or 0)
 	end
 
-	local function oddsBoard(f: Folder, spot: CFrame)
+	-- the odds on the chalkboard
+	local function odds(f: Folder, at: Vector3, rot: CFrame)
 		local total = 0
 		for _, p in PRIZES do
 			total += p.weight
 		end
-		-- (big: seen in Studio, the first one was too small to read)
-		local board = part(f, Vector3.new(8, 10, 0.5), spot * CFrame.new(R + 5.4, 5.6, 0), WOOD, nil, Enum.Material.WoodPlanks)
-		local g = Instance.new("SurfaceGui")
-		g.Face = Enum.NormalId.Front
-		g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		g.PixelsPerStud = 32
-		g.LightInfluence = 0
-		g.Parent = board
+		local g = face(f, Vector2.new(7.6, 9.6), CFrame.new(at) * rot * CFrame.new(0, 0, -0.06), 32)
 		local list = Instance.new("UIListLayout")
-		list.Padding = UDim.new(0, 3)
+		list.Padding = UDim.new(0, 2)
 		list.HorizontalAlignment = Enum.HorizontalAlignment.Center
 		list.SortOrder = Enum.SortOrder.LayoutOrder
 		list.Parent = g
 		local pad = Instance.new("UIPadding")
 		pad.PaddingTop = UDim.new(0, 6)
 		pad.Parent = g
-		local head = Instance.new("TextLabel")
-		head.BackgroundTransparency = 1
-		head.Size = UDim2.new(1, 0, 0, 38)
-		head.Font = FONT
-		head.Text = "PRIZES & ODDS"
-		head.TextColor3 = Color3.fromRGB(255, 214, 80)
-		head.TextSize = 32
-		head.Parent = g
-		local hs = Instance.new("UIStroke")
-		hs.Color = INK
-		hs.Thickness = 3
-		hs.Parent = head
-		-- the best prize first
+		local head = label(g, "PRIZES & ODDS", UDim2.new(1, 0, 0, 34), UDim2.new(), GOLD)
+		head.LayoutOrder = 0
 		for i = N, 1, -1 do
 			local p = PRIZES[i]
-			local row = Instance.new("TextLabel")
+			local row = Instance.new("Frame")
 			row.LayoutOrder = N - i + 1
-			row.Size = UDim2.new(0.9, 0, 0, 30)
-			row.BackgroundColor3 = p.color
-			row.Font = FONT
-			row.Text = ("%s gems   ·   %s%%"):format(Format.commas(p.gems), (math.floor(p.weight / total * 1000 + 0.5) / 10))
-			row.TextColor3 = WHITE
-			row.TextSize = 23
+			row.Size = UDim2.new(0.88, 0, 0, 30)
+			row.BackgroundTransparency = 1
 			row.Parent = g
-			local c = Instance.new("UICorner")
-			c.CornerRadius = UDim.new(0, 10)
-			c.Parent = row
-			local s = Instance.new("UIStroke")
-			s.Color = INK
-			s.Thickness = 2.5
-			s.Parent = row
+			label(row, Format.commas(p.gems) .. " 💎", UDim2.fromScale(0.62, 1), UDim2.new(), p.color, 2).TextXAlignment = Enum.TextXAlignment.Left
+			label(row, (math.floor(p.weight / total * 1000 + 0.5) / 10) .. "%", UDim2.fromScale(0.38, 1), UDim2.fromScale(0.62, 0), Color3.fromRGB(245, 236, 214), 2).TextXAlignment = Enum.TextXAlignment.Right
 		end
 	end
 
@@ -167,74 +136,65 @@ task.spawn(function()
 		f.Name = "HubWheel"
 		f.Parent = workspace
 		local at = spot.CFrame
-		local center = at * CFrame.new(0, HIGH, 0)
+		local rot = at.Rotation
+		local _, anchors = HubBricks.build("wheel_booth", at, f)
+		-- the wheel: its own model, half a stud in front of the crossbar, turning round its middle
+		local center = CFrame.new(anchors.wheel :: Vector3) * rot
+		local wheelModel = HubBricks.build("wheel", center * CFrame.new(0, 0, -0.5), f, { collide = false })
 		local turning = {}
-		-- the stand: a base, two posts, the round back
-		part(f, Vector3.new(9, 1.2, 4), at * CFrame.new(0, 0.6, 0.6), Color3.fromRGB(245, 236, 214))
-		for _, x in { -R + 0.4, R - 0.4 } do
-			part(f, Vector3.new(0.9, HIGH, 0.9), at * CFrame.new(x * 0.55, HIGH / 2, 0.9), WOOD, nil, Enum.Material.WoodPlanks)
+		for _, p in wheelModel:GetChildren() do
+			if p:IsA("BasePart") then
+				p.CanQuery = false
+				table.insert(turning, p)
+			end
 		end
-		part(f, Vector3.new(0.6, (R + 0.9) * 2, (R + 0.9) * 2), center * CFrame.new(0, 0, 0.55) * CFrame.Angles(0, math.rad(90), 0), WOOD, nil, Enum.Material.WoodPlanks).Shape = Enum.PartType.Cylinder
-		-- the slices and their prizes
+		-- the prizes on the slices, reading out from the middle
 		for i, p in PRIZES do
 			local mid = (i - 1) * SLICE
-			local a0, a1 = mid - SLICE / 2, mid + SLICE / 2
-			for _, w in triangle(f, center.Position, rim(center, a0, R), rim(center, a1, R), 0.5, p.color) do
-				table.insert(turning, w)
-			end
-			local tag = part(f, Vector3.new(R * 0.62, 1.1, 0.05), center * CFrame.Angles(0, 0, mid) * CFrame.new(0, R * 0.6, -0.3) * CFrame.Angles(0, 0, math.rad(90)), WHITE)
-			tag.Transparency = 1
-			label(tag, Format.commas(p.gems) .. " 💎", 40)
-			table.insert(turning, tag)
-			-- a thin white line between slices
-			local line = part(f, Vector3.new(0.12, R, 0.56), center * CFrame.Angles(0, 0, a0) * CFrame.new(0, R / 2, 0), WHITE)
-			table.insert(turning, line)
+			local g = face(f, Vector2.new(R * 0.56, 1.2), center * CFrame.Angles(0, 0, mid) * CFrame.new(0, R * 0.6, -0.56) * CFrame.Angles(0, 0, math.rad(90)), 50)
+			label(g, Format.commas(p.gems) .. " 💎", UDim2.fromScale(1, 1), UDim2.new(), WHITE, 3)
+			table.insert(turning, g.Parent :: BasePart)
 		end
-		-- the hub: FREE in the middle
-		local cap = part(f, Vector3.new(0.7, 2.6, 2.6), center * CFrame.new(0, 0, -0.3) * CFrame.Angles(0, math.rad(90), 0), WHITE)
-		;(cap :: Part).Shape = Enum.PartType.Cylinder
-		local capText = part(f, Vector3.new(2.4, 1, 0.05), center * CFrame.new(0, 0, -0.68), WHITE)
-		capText.Transparency = 1
-		label(capText, "FREE", 34, Color3.fromRGB(255, 90, 90))
-		-- lights round the rim (they turn too)
+		local capText = face(f, Vector2.new(2.2, 1), center * CFrame.new(0, 0, -0.56), 50)
+		label(capText, "FREE", UDim2.fromScale(1, 1), UDim2.new(), Color3.fromRGB(232, 68, 58), 2)
+		-- bulbs on the rim (they turn too)
 		local lights = {}
 		for k = 1, N * 2 do
-			local b = part(f, Vector3.new(0.55, 0.55, 0.55), CFrame.new(rim(center, (k - 0.5) * SLICE / 2, R + 0.45, -0.1)), Color3.fromRGB(255, 240, 180), nil, Enum.Material.Neon)
-			;(b :: Part).Shape = Enum.PartType.Ball
+			local b = part(f, Vector3.new(0.5, 0.5, 0.5), rim(center, (k - 0.5) * SLICE / 2, R - 0.45, -0.62), WARM, Enum.Material.Neon)
+			b.Shape = Enum.PartType.Ball
 			table.insert(lights, b)
 			table.insert(turning, b)
 		end
-		-- the pointer on top (still)
-		triangle(f, rim(center, 0.12, R + 1.7, -0.45), rim(center, -0.12, R + 1.7, -0.45), rim(center, 0, R - 0.7, -0.45), 0.4, Color3.fromRGB(235, 50, 50))
-		oddsBoard(f, at)
-		-- FREE SPIN! / the countdown, over it
-		local bbPart = part(f, Vector3.new(1, 1, 1), center * CFrame.new(0, R + 3.4, 0), WHITE)
-		bbPart.Transparency = 1
-		local bb = Instance.new("BillboardGui")
-		bb.Size = UDim2.fromOffset(300, 74)
-		bb.MaxDistance = 110
-		bb.LightInfluence = 0
-		bb.Parent = bbPart
-		local title = Instance.new("TextLabel")
-		title.BackgroundTransparency = 1
-		title.Size = UDim2.new(1, 0, 0.6, 0)
-		title.Font = FONT
-		title.TextScaled = true
-		title.TextColor3 = Color3.fromRGB(255, 214, 80)
-		title.Text = "FREE SPIN!"
-		title.Parent = bb
-		local ts = Instance.new("UIStroke")
-		ts.Color = INK
-		ts.Thickness = 3
-		ts.Parent = title
-		local sub = title:Clone()
-		sub.Position = UDim2.fromScale(0, 0.6)
-		sub.Size = UDim2.new(1, 0, 0.4, 0)
-		sub.TextColor3 = WHITE
-		sub.Text = "once a day"
-		sub.Parent = bb
+		-- the marquee: FREE SPIN! / the countdown
+		local marquee = anchors.marquee :: Vector3
+		local mg = face(f, Vector2.new(13, 4.4), CFrame.new(marquee) * rot * CFrame.new(0, 0, -0.06), 50)
+		local title = label(mg, "FREE SPIN!", UDim2.fromScale(1, 0.64), UDim2.fromScale(0, 0.02), GOLD, 4)
+		local sub = label(mg, "once a day", UDim2.fromScale(1, 0.32), UDim2.fromScale(0, 0.66), WHITE, 3)
+		-- bulbs round the marquee: along its top and down its sides
+		local spots = {}
+		for k = 0, 14 do
+			table.insert(spots, Vector3.new(-7 + k, 26.8, -3.3))
+		end
+		for y = 21.5, 25.5 do
+			table.insert(spots, Vector3.new(-7.8, y, -3.3))
+			table.insert(spots, Vector3.new(7.8, y, -3.3))
+		end
+		for k, s in spots do
+			local b = part(f, Vector3.new(0.45, 0.45, 0.45), at * CFrame.new(s), if k % 2 == 0 then HOT else WARM, Enum.Material.Neon)
+			b.Shape = Enum.PartType.Ball
+			table.insert(lights, b)
+		end
+		odds(f, anchors.odds :: Vector3, rot)
+		-- a warm light in the booth
+		local lightPart = part(f, Vector3.new(0.2, 0.2, 0.2), at * CFrame.new(0, 15, -3), WHITE)
+		lightPart.Transparency = 1
+		local pl = Instance.new("PointLight")
+		pl.Color = Color3.fromRGB(255, 220, 160)
+		pl.Range = 16
+		pl.Brightness = 1.2
+		pl.Parent = lightPart
 		-- SPIN
-		local promptPart = part(f, Vector3.new(1, 1, 1), at * CFrame.new(0, 3, -1.5), WHITE)
+		local promptPart = part(f, Vector3.new(1, 1, 1), CFrame.new(anchors.prompt :: Vector3), WHITE)
 		promptPart.Transparency = 1
 		local pp = Instance.new("ProximityPrompt")
 		pp.ActionText = "Spin!"
@@ -266,9 +226,9 @@ task.spawn(function()
 	end
 
 	local function pose(w: Wheel)
-		local rot = w.center * CFrame.Angles(0, 0, ang)
+		local rotNow = w.center * CFrame.Angles(0, 0, ang)
 		for _, t in w.turning do
-			t.p.CFrame = rot * t.off
+			t.p.CFrame = rotNow * t.off
 		end
 	end
 
@@ -295,7 +255,7 @@ task.spawn(function()
 				pcall(Sound.playAt, "click", 1.6 + math.random() * 0.2, 0.5)
 			end
 			for k, b in w.lights do
-				b.Color = if (k + math.floor(os.clock() * 10)) % 2 == 0 then Color3.fromRGB(255, 240, 180) else Color3.fromRGB(255, 120, 80)
+				b.Color = if (k + math.floor(os.clock() * 10)) % 2 == 0 then WARM else HOT
 			end
 			pose(w)
 			RunService.Heartbeat:Wait()
@@ -317,7 +277,7 @@ task.spawn(function()
 				end
 				task.wait(0.15)
 				for _, b in w.lights do
-					b.Color = Color3.fromRGB(255, 240, 180)
+					b.Color = WARM
 				end
 				task.wait(0.15)
 			end
@@ -360,7 +320,7 @@ task.spawn(function()
 			local nxt = player:GetAttribute("HubSpinNext")
 			local left = if type(nxt) == "number" then nxt - workspace:GetServerTimeNow() else 0
 			if left > 0 then
-				w.title.Text = "NEXT FREE SPIN"
+				w.title.Text = "NEXT SPIN"
 				w.sub.Text = Format.clock(left)
 				w.prompt.ActionText = "Come back later"
 			else
@@ -369,10 +329,10 @@ task.spawn(function()
 				w.prompt.ActionText = "Spin!"
 			end
 		end
-		-- idle: the lights chase round
+		-- idle: the bulbs chase round
 		if not spinning then
 			for k, b in w.lights do
-				b.Color = if (k + math.floor(now * 3)) % 4 == 0 then Color3.fromRGB(255, 120, 80) else Color3.fromRGB(255, 240, 180)
+				b.Color = if (k + math.floor(now * 3)) % 4 == 0 then HOT else WARM
 			end
 		end
 	end)

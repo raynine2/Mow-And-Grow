@@ -1,11 +1,15 @@
 --!strict
 -- THE PET GARDEN (10 Nov 2026; owner: "make the pets from eggs walk here and make a hatch place to interact ... make
--- the hub more interactable"). At the hub's GardenSpot (server/HubFun): a round fenced lawn where every critter you
--- can hatch (Config.PETS) wanders, hops and looks around, with PET GARDEN over its gate; in front of it the eggs on
--- pedestals, turning slowly, their price over them (the VIP price for VIPs: Config.eggPrice). OPEN on an egg opens
--- the EGGS window (client/PetsWindow: the odds, the buttons). The Golden Egg (Robux, random) only stands there where
--- Roblox's policy allows paid random items (shared/Policy), like in the window. Only in the lobby; drawn by each
--- client (the critters run on their own on every screen).
+-- the hub more interactable"; remodelled the same day: "make the models with blender ... the stud voxel style", "make
+-- it more detailed"; design: the Claude Design canvas "Mow And Grow Hub Remodel"). At the hub's GardenSpot
+-- (server/HubFun), built by shared/HubBricks from the Blender model pet_garden: a studded hedge ring with flowers, a
+-- mown-stripe lawn, a pond with lily pads, reeds and a plank bridge, flower beds, a fruit tree, mushrooms, a bench, a
+-- birdhouse, stepping stones from a flowered gate arch with lanterns and PET GARDEN on it. Every critter you can hatch
+-- (Config.PETS) wanders the lawn, hopping round the pond, the beds and the tree. Outside the gate the eggs sit in straw
+-- nests on stone pedestals, turning slowly over a glow ring in their colour, the price over them (the VIP price for
+-- VIPs: Config.eggPrice). OPEN on an egg opens the EGGS window (client/PetsWindow: the odds, the buttons). The Golden
+-- Egg (Robux, random) only stands there where Roblox's policy allows paid random items (shared/Policy), like in the
+-- window. Only in the lobby; drawn by each client.
 local HubGarden = {}
 task.spawn(function()
 	local Players = game:GetService("Players")
@@ -19,21 +23,20 @@ task.spawn(function()
 	local Format = require(Shared:WaitForChild("Format"))
 	local PartBuild = require(Shared:WaitForChild("PartBuild"))
 	local Policy = require(Shared:WaitForChild("Policy"))
+	local HubBricks = require(Shared:WaitForChild("HubBricks")) :: any
 	local State = require(here:WaitForChild("State"))
 	local UI = require(here:WaitForChild("UI")) :: any
 	local PetFollow = require(here:WaitForChild("PetFollow")) :: any
 	if not Config.HUB_FUN or not Config.HUB_FUN.on then
 		return
 	end
-	local RADIUS = 12 -- the lawn inside the fence
-	local PET_SCALE = 1.05 -- (seen in Studio: at 1.7 they were 4-7 studs and stood in a heap)
+	local PET_SCALE = 1.05
+	local LAWN_Y = 1 -- the lawn's top, over the spot
 	local FONT = Config.UI and Config.UI.font or Enum.Font.FredokaOne
 	local INK = Color3.fromRGB(30, 26, 40)
 	local WHITE = Color3.new(1, 1, 1)
-	local CREAM = Color3.fromRGB(245, 236, 214)
-	local WOOD = Color3.fromRGB(120, 78, 46)
 
-	local function part(parent: Instance, size: Vector3, cf: CFrame, color: Color3, mat: Enum.Material?, shape: Enum.PartType?): Part
+	local function part(parent: Instance, size: Vector3, cf: CFrame, color: Color3): Part
 		local p = Instance.new("Part")
 		p.Anchored = true
 		p.CanCollide = false
@@ -42,12 +45,7 @@ task.spawn(function()
 		p.Size = size
 		p.CFrame = cf
 		p.Color = color
-		p.Material = mat or Enum.Material.SmoothPlastic
-		p.TopSurface = Enum.SurfaceType.Smooth
-		p.BottomSurface = Enum.SurfaceType.Smooth
-		if shape then
-			p.Shape = shape
-		end
+		p.Material = Enum.Material.SmoothPlastic
 		p.Parent = parent
 		return p
 	end
@@ -71,66 +69,59 @@ task.spawn(function()
 
 	type Critter = { model: Model, pos: Vector3, yaw: number, goal: Vector3, waitUntil: number, hop: number, speed: number }
 	type Egg = { model: Model, base: CFrame, price: TextLabel?, egg: any }
-	type Garden = { folder: Folder, center: CFrame, critters: { Critter }, eggs: { Egg } }
+	type Garden = { folder: Folder, center: CFrame, critters: { Critter }, eggs: { Egg }, free: (Vector3) -> boolean, radius: number }
 	local garden: Garden? = nil
 	local rng = Random.new()
 
-	-- the fence: short posts and two rails round the lawn, open at the front (the gate)
-	local function fence(f: Folder, center: CFrame)
-		part(f, Vector3.new(0.4, RADIUS * 2 + 2, RADIUS * 2 + 2), center * CFrame.new(0, 0.18, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(110, 200, 90), Enum.Material.Grass, Enum.PartType.Cylinder)
-		local n = 28
-		local function open(a: number): boolean -- the gate: the posts straight in front are left out
-			return math.abs(((a + math.pi) % (2 * math.pi)) - math.pi) < 0.32
+	-- is this lawn spot free for a critter (not the pond, a bed, the tree)?
+	local function freeTest(center: CFrame, anchors: any): ((Vector3) -> boolean, number)
+		local radius = tonumber(anchors.lawnR) or 10
+		local blocks = {}
+		local pond = anchors.pond
+		if type(pond) == "table" then
+			table.insert(blocks, { x = pond[1], z = pond[2], r = pond[3] + 1.4 })
 		end
-		for k = 0, n - 1 do
-			local a = k / n * 2 * math.pi
-			local a2 = (k + 1) / n * 2 * math.pi
-			if not open(a) then
-				local at = center * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -(RADIUS + 0.6))
-				part(f, Vector3.new(0.5, 2, 0.5), at * CFrame.new(0, 1, 0), WHITE)
-				if not open(a2) then
-					local next = center * CFrame.Angles(0, a2, 0) * CFrame.new(0, 0, -(RADIUS + 0.6))
-					local len = (next.Position - at.Position).Magnitude
-					local mid = (at.Position + next.Position) / 2
-					for _, y in { 0.8, 1.6 } do
-						part(f, Vector3.new(0.25, 0.3, len), CFrame.lookAt(mid, next.Position) + Vector3.new(0, y, 0), WHITE)
-					end
+		for _, b in (anchors.beds or {}) :: { any } do
+			table.insert(blocks, { x = b[1], z = b[2], r = 2.9 })
+		end
+		local tree = anchors.tree
+		if type(tree) == "table" then
+			table.insert(blocks, { x = tree[1], z = tree[2], r = tree[3] })
+		end
+		return function(p: Vector3): boolean
+			local l = center:PointToObjectSpace(p)
+			if Vector2.new(l.X, l.Z).Magnitude > radius - 0.8 then
+				return false
+			end
+			for _, b in blocks do
+				if Vector2.new(l.X - b.x, l.Z - b.z).Magnitude < b.r then
+					return false
 				end
 			end
-		end
-		-- PET GARDEN over the gate
-		local front = center * CFrame.new(0, 0, -(RADIUS + 0.6))
-		for _, x in { -3.3, 3.3 } do
-			part(f, Vector3.new(0.8, 8, 0.8), front * CFrame.new(x, 4, 0), WOOD, Enum.Material.WoodPlanks)
-		end
-		local sign = part(f, Vector3.new(8.4, 1.9, 0.5), front * CFrame.new(0, 8.4, 0), WOOD, Enum.Material.WoodPlanks)
-		local g = Instance.new("SurfaceGui")
-		g.Face = Enum.NormalId.Front
-		g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-		g.PixelsPerStud = 50
-		g.LightInfluence = 0
-		g.Parent = sign
-		text(g, "PET GARDEN", UDim2.fromScale(0.94, 0.8), UDim2.fromScale(0.03, 0.1), Color3.fromRGB(255, 214, 80))
-		-- a few flowers on the lawn
-		for _ = 1, 14 do
-			local a, r = rng:NextNumber(0, 2 * math.pi), rng:NextNumber(2, RADIUS - 0.8)
-			local at = center * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -r)
-			part(f, Vector3.new(0.15, 0.7, 0.15), at * CFrame.new(0, 0.6, 0), Color3.fromRGB(70, 150, 60))
-			local colors = { Color3.fromRGB(255, 120, 170), Color3.fromRGB(255, 220, 80), WHITE, Color3.fromRGB(150, 130, 255) }
-			part(f, Vector3.new(0.6, 0.35, 0.6), at * CFrame.new(0, 1, 0), colors[rng:NextInteger(1, #colors)])
-		end
+			return true
+		end, radius
 	end
 
-	local function critters(f: Folder, center: CFrame): { Critter }
+	local function randomSpot(g: { center: CFrame, free: (Vector3) -> boolean, radius: number }): Vector3
+		for _ = 1, 30 do
+			local a, r = rng:NextNumber(0, 2 * math.pi), rng:NextNumber(1, g.radius - 1)
+			local p = (g.center * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -r)).Position
+			if g.free(p) then
+				return p
+			end
+		end
+		return (g.center * CFrame.new(-4, 0, 3)).Position
+	end
+
+	local function critters(f: Folder, g: any): { Critter }
 		local list = {}
-		for i, def in Config.PETS do
+		for _, def in Config.PETS do
 			local ok, m = pcall(PetFollow.build, def.look)
 			if ok and m then
 				pcall(function()
 					(m :: Model):ScaleTo(PET_SCALE)
 				end)
-				local a, r = (i / #Config.PETS) * 2 * math.pi, rng:NextNumber(2, RADIUS - 2)
-				local pos = (center * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -r)).Position
+				local pos = randomSpot(g)
 				m.Parent = f
 				table.insert(list, { model = m, pos = pos, yaw = rng:NextNumber(0, 2 * math.pi), goal = pos, waitUntil = os.clock() + rng:NextNumber(0, 3), hop = 0, speed = rng:NextNumber(3, 5.5) })
 			end
@@ -138,14 +129,12 @@ task.spawn(function()
 		return list
 	end
 
-	local function eggStand(f: Folder, at: CFrame, egg: any): Egg
-		part(f, Vector3.new(3.4, 2.6, 3.4), at * CFrame.new(0, 1.3, 0), CREAM)
-		part(f, Vector3.new(3.7, 0.5, 3.7), at * CFrame.new(0, 2.7, 0), egg.color)
+	local function eggStand(f: Folder, at: Vector3, rot: CFrame, egg: any): Egg
 		local m = PartBuild.get(if egg.id == "GoldenEgg" then "egg_golden" else "egg_garden")
 		if not m then
 			m = Instance.new("Model")
-			local p = part(m :: Model, Vector3.new(2.4, 3, 2.4), CFrame.new(0, 1.5, 0), egg.color, nil, Enum.PartType.Ball)
-			p.Size = Vector3.new(2.4, 3, 2.4)
+			local p = part(m :: Model, Vector3.new(2.4, 3, 2.4), CFrame.new(0, 1.5, 0), egg.color)
+			p.Shape = Enum.PartType.Ball
 		end
 		local em = m :: Model
 		for _, d in em:GetDescendants() do
@@ -156,14 +145,25 @@ task.spawn(function()
 			end
 		end
 		pcall(function()
-			em:ScaleTo(1.7)
+			em:ScaleTo(1.25)
 		end)
 		em.Parent = f
+		-- a glow ring on the pedestal's top in the egg's colour, a soft light
+		local ring = part(f, Vector3.new(0.12, 3.6, 3.6), CFrame.new(at + Vector3.new(0, -0.45, 0)) * CFrame.Angles(0, 0, math.rad(90)), egg.color)
+		ring.Shape = Enum.PartType.Cylinder
+		ring.Material = Enum.Material.Neon
+		ring.Transparency = 0.55
+		local light = Instance.new("PointLight")
+		light.Color = egg.color
+		light.Range = 9
+		light.Brightness = 1.4
+		light.Parent = ring
 		-- the name and price over it
-		local tagPart = part(f, Vector3.new(1, 1, 1), at * CFrame.new(0, 8.4, 0), WHITE)
+		local tagPart = part(f, Vector3.new(1, 1, 1), CFrame.new(at + Vector3.new(0, 1, 0)), WHITE)
 		tagPart.Transparency = 1
 		local bb = Instance.new("BillboardGui")
 		bb.Size = UDim2.fromOffset(220, 70)
+		bb.StudsOffset = Vector3.new(0, 4.6, 0)
 		bb.MaxDistance = 70
 		bb.LightInfluence = 0
 		bb.Parent = tagPart
@@ -177,14 +177,12 @@ task.spawn(function()
 		pp.MaxActivationDistance = 10
 		pp.RequiresLineOfSight = false
 		pp.Parent = tagPart
-		tagPart.CFrame = at * CFrame.new(0, 3.5, 0)
-		bb.StudsOffset = Vector3.new(0, 4.9, 0)
 		pp.Triggered:Connect(function()
 			if not UI.isOpen("Eggs") then
 				UI.open("Eggs")
 			end
 		end)
-		return { model = em, base = at * CFrame.new(0, 2.95, 0), price = price, egg = egg }
+		return { model = em, base = CFrame.new(at) * rot, price = price, egg = egg }
 	end
 
 	local function priceText(egg: any): string
@@ -202,48 +200,63 @@ task.spawn(function()
 		local f = Instance.new("Folder")
 		f.Name = "HubGarden"
 		f.Parent = workspace
-		local center = spot.CFrame
-		fence(f, center)
-		local g: Garden = { folder = f, center = center, critters = critters(f, center), eggs = {} }
-		-- the eggs in front of the gate, either side of the way in
-		local front = center * CFrame.new(0, 0, -(RADIUS + 4.5))
+		local at = spot.CFrame
+		local rot = at.Rotation
+		local _, anchors = HubBricks.build("pet_garden", at, f)
+		-- PET GARDEN on the arch's plank
+		local sign = part(f, Vector3.new(5.8, 1.4, 0.05), CFrame.new(anchors.sign :: Vector3) * rot * CFrame.new(0, 0, -0.06), WHITE)
+		sign.Transparency = 1
+		local sg = Instance.new("SurfaceGui")
+		sg.Face = Enum.NormalId.Front
+		sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		sg.PixelsPerStud = 50
+		sg.LightInfluence = 0
+		sg.Parent = sign
+		text(sg, "PET GARDEN", UDim2.fromScale(1, 1), UDim2.new(), Color3.fromRGB(255, 214, 80))
+		local free, radius = freeTest(at * CFrame.new(0, LAWN_Y, 0), anchors)
+		local g: Garden = { folder = f, center = at * CFrame.new(0, LAWN_Y, 0), critters = {}, eggs = {}, free = free, radius = radius }
+		g.critters = critters(f, g)
+		-- the eggs in their nests: the gem egg on one, the Robux egg on the other where it's allowed
 		local gems, robux = {}, {}
 		for _, egg in Config.EGGS do
 			table.insert(if egg.currency == "robux" then robux else gems, egg)
 		end
-		for _, egg in gems do
-			table.insert(g.eggs, eggStand(f, front * CFrame.new(5.2, 0, 0), egg))
-			break
+		if gems[1] and anchors.nestA then
+			table.insert(g.eggs, eggStand(f, anchors.nestA :: Vector3, rot, gems[1]))
 		end
-		-- a Robux egg is a paid random item: only where Roblox's policy allows it
 		task.spawn(function()
-			if robux[1] and Policy.paidRandomOk() and garden == g then
-				table.insert(g.eggs, eggStand(f, front * CFrame.new(-5.2, 0, 0), robux[1]))
+			-- a Robux egg is a paid random item: only where Roblox's policy allows it
+			if robux[1] and anchors.nestB and Policy.paidRandomOk() and garden == g then
+				table.insert(g.eggs, eggStand(f, anchors.nestB :: Vector3, rot, robux[1]))
 			end
 		end)
 		return g
 	end
 
-	-- a critter: wait a moment, pick a spot on the lawn, hop over to it, look around
-	local function wander(c: Critter, center: CFrame, dt: number, now: number)
+	-- a critter: wait a moment, pick a free spot on the lawn, hop over to it, look around
+	local function wander(c: Critter, g: Garden, dt: number, now: number)
 		local d = Vector3.new(c.goal.X - c.pos.X, 0, c.goal.Z - c.pos.Z)
 		if d.Magnitude < 0.2 then
 			if now > c.waitUntil then
-				local a, r = rng:NextNumber(0, 2 * math.pi), rng:NextNumber(1, RADIUS - 1.6)
-				c.goal = (center * CFrame.Angles(0, a, 0) * CFrame.new(0, 0, -r)).Position
+				c.goal = randomSpot(g)
 				c.waitUntil = now + rng:NextNumber(1.5, 4.5)
 			end
 			c.hop = math.max(0, c.hop - dt * 3)
 		else
 			local step = math.min(d.Magnitude, c.speed * dt)
-			c.pos += d.Unit * step
+			local nextPos = c.pos + d.Unit * step
+			if not g.free(nextPos) and g.free(c.pos) then
+				c.goal = randomSpot(g) -- (something in the way: somewhere else)
+			else
+				c.pos = nextPos
+			end
 			local want = math.atan2(-d.X, -d.Z)
 			local dy = (want - c.yaw + math.pi) % (2 * math.pi) - math.pi
 			c.yaw += dy * math.min(1, dt * 8)
 			c.hop += dt * c.speed * 1.3
 		end
 		local lift = math.abs(math.sin(c.hop * math.pi)) * 0.9
-		c.model:PivotTo(CFrame.new(c.pos + Vector3.new(0, 0.6 * PET_SCALE + 0.4 + lift, 0)) * CFrame.Angles(0, c.yaw, 0))
+		c.model:PivotTo(CFrame.new(c.pos + Vector3.new(0, 0.6 * PET_SCALE + lift, 0)) * CFrame.Angles(0, c.yaw, 0))
 	end
 
 	local lastPrice = 0
@@ -268,11 +281,11 @@ task.spawn(function()
 		end
 		local now = os.clock()
 		for _, c in g.critters do
-			wander(c, g.center, dt, now)
+			wander(c, g, dt, now)
 		end
 		for k, e in g.eggs do
-			local bob = math.sin(now * 2 + k) * 0.25
-			e.model:PivotTo(e.base * CFrame.new(0, 0.3 + bob, 0) * CFrame.Angles(0, now * 0.8 + k, 0))
+			local bob = math.sin(now * 2 + k) * 0.2
+			e.model:PivotTo(e.base * CFrame.new(0, 0.1 + bob, 0) * CFrame.Angles(0, now * 0.8 + k, 0))
 		end
 		if now - lastPrice > 1 then
 			lastPrice = now

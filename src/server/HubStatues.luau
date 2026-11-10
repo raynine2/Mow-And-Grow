@@ -1,95 +1,117 @@
 --!strict
--- THE TOP 3 AS STATUES (10 Nov 2026; owner picked "2": "a statue of the top 3 players"). On a podium at the hub's
--- StatuesSpot (server/HubFun): #1 in the middle and highest in gold, #2 on its left in silver, #3 on its right in
--- bronze, each the player's own Roblox avatar turned into a metal statue in a frozen pose, with their name and score
--- over it; TOP MOWERS on a board behind. The players come from Config.HUB_FUN.statueBoard's leaderboard
--- (server/LobbyBoards: all servers, or this server's players in Studio); every 20 s a changed place is rebuilt. An
--- empty place shows "This could be YOU!".
+-- THE TOP 3 AS STATUES (10 Nov 2026; owner picked "2": "a statue of the top 3 players"; remodelled the same day: "make
+-- the models with blender ... the stud voxel style", "make it more detailed"; design: the Claude Design canvas "Mow
+-- And Grow Hub Remodel"). The Top Mowers stage at the hub's StatuesSpot (server/HubFun), built by shared/HubBricks from
+-- the Blender model podium_stage: a stone base and plank stage with a red carpet up to #1, three cream pedestals with
+-- gold / silver / bronze tops and stars (#1 in the middle and highest, #2 on its left, #3 on its right), a purple arch
+-- on columns with gold bands, pennants, tassels, laurels and a crown, two lamp posts, trophies and flower pots. Each
+-- player is their own Roblox avatar turned into a metal statue in a frozen pose; name and score are on the wooden
+-- plaque on their pedestal ("This could be YOU!" on an empty one). The players come from Config.HUB_FUN.statueBoard's
+-- leaderboard (server/LobbyBoards: all servers, or this server's players in Studio); every 20 s a changed place is
+-- rebuilt.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.MowALawn.Config)
 local Format = require(ReplicatedStorage.MowALawn.Format)
+local HubBricks = require(ReplicatedStorage.MowALawn.HubBricks) :: any
 
 local HubStatues = {}
 
 local C = Color3.fromRGB
 local INK = C(30, 26, 40)
-local CREAM = C(245, 236, 214)
--- place: offset from the spot (x = to the viewer's left), podium height, metal colour, the pose (an R15 emote frozen
--- part way through)
+local FONT = Config.UI and Config.UI.font or Enum.Font.FredokaOne
+-- each place: its metal, the pose (an R15 emote frozen part way through) and the statue's size
 local PLACES = {
-	{ x = 0, h = 5, color = C(255, 196, 40), label = "1", anim = 507770677, at = 0.55, scale = 1.35 }, -- cheer
-	{ x = 6.6, h = 3.6, color = C(206, 214, 226), label = "2", anim = 507770239, at = 0.7, scale = 1.25 }, -- wave
-	{ x = -6.6, h = 2.6, color = C(214, 132, 70), label = "3", anim = 507770453, at = 0.6, scale = 1.25 }, -- point
+	{ color = C(255, 196, 40), anim = 507770677, at = 0.55, scale = 1.35 }, -- cheer
+	{ color = C(206, 214, 226), anim = 507770239, at = 0.7, scale = 1.25 }, -- wave
+	{ color = C(214, 132, 70), anim = 507770453, at = 0.6, scale = 1.25 }, -- point
 }
-local W, D = 5.6, 5.4 -- each block's width and depth
 
-type Slot = { userId: number?, model: Model?, tag: TextLabel?, sub: TextLabel?, empty: BillboardGui? }
+type Slot = { userId: number?, model: Model?, name: TextLabel?, score: TextLabel? }
 local slots: { Slot } = {}
 local folder: Folder? = nil
-local spot: BasePart? = nil
+local anchors: { [string]: any } = {}
+local rot = CFrame.identity
 local token = 0
 
-local function part(parent: Instance, name: string, size: Vector3, cf: CFrame, color: Color3, material: Enum.Material?): Part
+local function textPart(parent: Instance, size: Vector2, cf: CFrame, ppS: number): SurfaceGui
 	local p = Instance.new("Part")
-	p.Name = name
 	p.Anchored = true
-	p.Size = size
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Transparency = 1
+	p.Size = Vector3.new(size.X, size.Y, 0.05)
 	p.CFrame = cf
-	p.Color = color
-	p.Material = material or Enum.Material.SmoothPlastic
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
 	p.Parent = parent
-	return p
-end
-
-local function faceText(p: BasePart, text: string, color: Color3, size: number)
 	local g = Instance.new("SurfaceGui")
 	g.Face = Enum.NormalId.Front
 	g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	g.PixelsPerStud = 40
+	g.PixelsPerStud = ppS
 	g.LightInfluence = 0
 	g.Parent = p
-	local t = Instance.new("TextLabel")
-	t.BackgroundTransparency = 1
-	t.Size = UDim2.fromScale(1, 1)
-	t.Font = Config.UI and Config.UI.font or Enum.Font.FredokaOne
-	t.Text = text
-	t.TextColor3 = color
-	t.TextSize = size
-	t.Parent = g
-	local s = Instance.new("UIStroke")
-	s.Color = INK
-	s.Thickness = 4
-	s.Parent = t
+	return g
 end
 
--- the podium, the board and the "could be you" tags
+local function label(parent: Instance, text: string, size: UDim2, pos: UDim2, color: Color3, stroke: number): TextLabel
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.Size = size
+	t.Position = pos
+	t.Font = FONT
+	t.TextScaled = true
+	t.Text = text
+	t.TextColor3 = color
+	t.Parent = parent
+	local s = Instance.new("UIStroke")
+	s.Color = INK
+	s.Thickness = stroke
+	s.Parent = t
+	return t
+end
+
+local function lightAt(parent: Instance, p: Vector3, target: Vector3)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.2, 0.2, 0.2)
+	holder.CFrame = CFrame.lookAt(p, target)
+	holder.Parent = parent
+	local s = Instance.new("SpotLight")
+	s.Face = Enum.NormalId.Front
+	s.Angle = 55
+	s.Range = 26
+	s.Brightness = 2.2
+	s.Color = C(255, 228, 170)
+	s.Parent = holder
+end
+
+-- the stage: the Blender model, the banner's words, the lamps' light, sparkles over #1
 local function buildStage(f: Folder, at: CFrame)
-	for i, pl in PLACES do
-		local base = at * CFrame.new(pl.x, pl.h / 2, 0)
-		local block = part(f, "Podium" .. i, Vector3.new(W, pl.h, D), base, CREAM)
-		part(f, "Band" .. i, Vector3.new(W + 0.3, 0.7, D + 0.3), at * CFrame.new(pl.x, pl.h - 0.35, 0), pl.color, Enum.Material.SmoothPlastic)
-		local num = part(f, "Number" .. i, Vector3.new(W - 1, pl.h - 1, 0.1), at * CFrame.new(pl.x, (pl.h - 0.7) / 2, -D / 2 - 0.06), CREAM)
-		num.Transparency = 1
-		num.CanCollide = false
-		faceText(num, pl.label, pl.color, math.floor((pl.h - 1) * 30))
-		block:SetAttribute("Place", i)
+	local _, a = HubBricks.build("podium_stage", at, f)
+	anchors = a
+	rot = at.Rotation
+	local banner = textPart(f, Vector2.new(27, 2.8), CFrame.new(a.banner :: Vector3) * rot * CFrame.new(0, 0, -0.06), 40)
+	label(banner, "TOP MOWERS", UDim2.fromScale(1, 1), UDim2.new(), C(255, 214, 80), 4)
+	local target = (at * CFrame.new(0, 10, 0)).Position
+	for _, key in { "lampL", "lampR" } do
+		local p = a[key] :: Vector3?
+		if p then
+			lightAt(f, p, target)
+		end
 	end
-	-- the board behind: TOP MOWERS
-	-- (high: seen in Studio, lower it was covered by the name tags)
-	local board = part(f, "Board", Vector3.new(15, 3.2, 0.6), at * CFrame.new(0, 17.6, 3.2), C(120, 78, 46), Enum.Material.WoodPlanks)
-	for _, x in { -6.2, 6.2 } do
-		part(f, "Post", Vector3.new(0.8, 17.4, 0.8), at * CFrame.new(x, 8.7, 3.4), C(96, 62, 38), Enum.Material.WoodPlanks)
-	end
-	faceText(board, "TOP MOWERS", C(255, 214, 80), 92)
-	-- sparkles over #1
-	local sp = part(f, "Sparkles", Vector3.new(4, 1, 4), at * CFrame.new(0, PLACES[1].h + 4, 0), CREAM)
-	sp.Transparency = 1
+	local top1 = a.top1 :: Vector3
+	local sp = Instance.new("Part")
+	sp.Anchored = true
 	sp.CanCollide = false
 	sp.CanQuery = false
+	sp.Transparency = 1
+	sp.Size = Vector3.new(4, 1, 4)
+	sp.CFrame = CFrame.new(top1 + Vector3.new(0, 8, 0))
+	sp.Parent = f
 	local e = Instance.new("ParticleEmitter")
 	e.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	e.Color = ColorSequence.new(C(255, 230, 120))
@@ -102,41 +124,19 @@ local function buildStage(f: Folder, at: CFrame)
 	e.Parent = sp
 end
 
--- a name tag over a place: the name, and the score under it
-local function tagFor(slot: Slot, i: number, at: CFrame)
-	local pl = PLACES[i]
-	local anchor = part(folder :: Folder, "Tag" .. i, Vector3.new(1, 1, 1), at * CFrame.new(pl.x, pl.h, 0), CREAM)
-	anchor.Transparency = 1
-	anchor.CanCollide = false
-	anchor.CanQuery = false
-	local bb = Instance.new("BillboardGui")
-	bb.Size = UDim2.fromOffset(220, 64)
-	bb.StudsOffset = Vector3.new(0, 9.4, 0)
-	bb.MaxDistance = 90
-	bb.LightInfluence = 0
-	bb.Parent = anchor
-	local name = Instance.new("TextLabel")
-	name.BackgroundTransparency = 1
-	name.Size = UDim2.new(1, 0, 0.58, 0)
-	name.Font = Config.UI and Config.UI.font or Enum.Font.FredokaOne
-	name.TextScaled = true
-	name.TextColor3 = pl.color
-	name.Text = ""
-	name.Parent = bb
-	local ns = Instance.new("UIStroke")
-	ns.Color = INK
-	ns.Thickness = 3
-	ns.Parent = name
-	local sub = name:Clone()
-	sub.Position = UDim2.fromScale(0, 0.58)
-	sub.Size = UDim2.new(1, 0, 0.42, 0)
-	sub.TextColor3 = C(255, 255, 255)
-	sub.Parent = bb
-	slot.tag, slot.sub = name, sub
+-- the plaque on a pedestal: the name over the score
+local function plaque(slot: Slot, i: number)
+	local p = anchors["plaque" .. i] :: Vector3?
+	if not p then
+		return
+	end
+	local g = textPart(folder :: Folder, Vector2.new(3.8, 1.4), CFrame.new(p) * rot * CFrame.new(0, 0, -0.06), 70)
+	slot.name = label(g, "", UDim2.new(0.94, 0, 0.56, 0), UDim2.fromScale(0.03, 0.02), Color3.new(1, 1, 1), 2)
+	slot.score = label(g, "", UDim2.new(0.94, 0, 0.38, 0), UDim2.fromScale(0.03, 0.6), C(255, 214, 80), 2)
 end
 
 -- a player's avatar as a metal statue in a frozen pose, standing on its place
-local function statue(userId: number, i: number, at: CFrame): Model?
+local function statue(userId: number, i: number): Model?
 	local pl = PLACES[i]
 	local ok, model = pcall(function()
 		local desc = Players:GetHumanoidDescriptionFromUserId(userId)
@@ -182,11 +182,10 @@ local function statue(userId: number, i: number, at: CFrame): Model?
 		root.Anchored = true
 		root.Transparency = 1
 	end
-	-- feet on the block's top, facing out
+	-- feet on the pedestal's top, facing out
+	local top = anchors["top" .. i] :: Vector3
 	local cf, size = m:GetBoundingBox()
-	local top = (at * CFrame.new(pl.x, pl.h, 0)).Position
-	local base = at * CFrame.new(pl.x, 0, 0)
-	m:PivotTo(CFrame.new(top + Vector3.new(0, m:GetPivot().Position.Y - (cf.Position.Y - size.Y / 2), 0)) * base.Rotation)
+	m:PivotTo(CFrame.new(top + Vector3.new(0, m:GetPivot().Position.Y - (cf.Position.Y - size.Y / 2), 0)) * rot)
 	m.Name = "Statue" .. i
 	m.Parent = folder
 	-- the pose: the emote played on the server (it replicates) and frozen part way through
@@ -211,13 +210,8 @@ local function statue(userId: number, i: number, at: CFrame): Model?
 	return m
 end
 
-local function scoreText(v: number): string
-	return Format.short(v) .. " grass cut"
-end
-
 local function refresh(t: number)
-	local f, s = folder, spot
-	if not f or not s or t ~= token then
+	if not folder or t ~= token then
 		return
 	end
 	local LobbyBoards = require(script.Parent.LobbyBoards)
@@ -233,21 +227,15 @@ local function refresh(t: number)
 			end
 			slot.userId = uid
 			if uid then
-				slot.model = statue(uid, i, s.CFrame)
+				slot.model = statue(uid, i)
 			end
 			if t ~= token then
 				return
 			end
 		end
-		if slot.tag and slot.sub then
-			slot.tag.Text = if row then ("#%d  %s"):format(i, row.name) else ""
-			slot.sub.Text = if row then scoreText(row.value) else "This could be YOU!"
-			-- over the statue's head, or just over an empty block
-			local bb = slot.tag.Parent
-			if bb and bb:IsA("BillboardGui") then
-				bb.StudsOffset = Vector3.new(0, if row then 8.8 else 1.6, 0)
-				bb.Size = if row then UDim2.fromOffset(220, 64) else UDim2.fromOffset(140, 44) -- (two empty ones overlapped)
-			end
+		if slot.name and slot.score then
+			slot.name.Text = if row then ("#%d %s"):format(i, row.name) else ("#%d"):format(i)
+			slot.score.Text = if row then Format.short(row.value) .. " grass cut" else "This could be YOU!"
 		end
 	end
 end
@@ -262,13 +250,13 @@ function HubStatues.start(f: Folder, at: BasePart?)
 	local sf = Instance.new("Folder")
 	sf.Name = "TopStatues"
 	sf.Parent = f
-	folder, spot = sf, at
+	folder = sf
 	buildStage(sf, at.CFrame)
 	slots = {}
 	for i = 1, 3 do
 		local slot: Slot = {}
 		slots[i] = slot
-		tagFor(slot, i, at.CFrame)
+		plaque(slot, i)
 	end
 	task.spawn(function()
 		task.wait(3) -- the boards read their first rows
@@ -287,7 +275,7 @@ function HubStatues.stop()
 	if folder then
 		folder:Destroy()
 	end
-	folder, spot = nil, nil
+	folder = nil
 	slots = {}
 end
 

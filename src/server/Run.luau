@@ -389,6 +389,7 @@ local function onCut(player: Player, patch): boolean
 	ClassPerks.cut(player, pos) -- Tidy Up, Hot Streak
 	require(script.Parent.SkillTrees).onCut(player, patch) -- (30 Oct) weapon skill trees: Harvest
 	data.stats.cut += 1
+	Analytics.onboard(player, 4) -- (10 Nov) onboarding funnel: first cut
 	-- (10 Nov) BRRBRR's scythe goes back after a few clumps (Config.FIRST_TIMER.loanCuts)
 	local loanCuts = Config.FIRST_TIMER and Config.FIRST_TIMER.loanCuts
 	if loanCuts and data.run.loaner and data.run.loanHanded then
@@ -627,6 +628,7 @@ local function sell(player: Player, pad, cut: number?): number
 	local coins = math.floor(Carry.value(data) * Stats.compute(player, data).sell * (cut or 1))
 	data.run.coins += coins
 	data.stats.sold = (data.stats.sold or 0) + count
+	Analytics.onboard(player, 5) -- (10 Nov) onboarding funnel: first sale
 	data.stats.coinsEarned = (data.stats.coinsEarned or 0) + coins
 	Carry.clear(player)
 	Net.send(player, "Fx", "sell", { coins = coins, count = count, from = pad.mouth, out = pad.out })
@@ -681,6 +683,7 @@ local function buyTool(player: Player, data, id: string)
 	-- (report #13) `ring`: the reach grows on the ground from the old tool's to the new one's (client/FirstLawn)
 	Net.send(player, "Fx", "purchase", { big = true, item = def.name, ring = { from = before and before.radius or 0, to = def.radius, color = def.color } })
 	Analytics.event("ShopBuy", def.cost, def.id, player)
+	Analytics.onboard(player, 6) -- (10 Nov) onboarding funnel: first tool
 	-- (10 Nov, the gameplay-loop audit: Swing Speed is the Scythe's biggest boost, x2.5, and it sits in the Hands
 	-- section where nobody looks late in a run) a hint once the purchase banner is gone
 	if def.kind == "swing" and nextIndex >= 5 then
@@ -825,6 +828,7 @@ local function setupPlayer(player: Player, data)
 		-- (report #1, Config.FIRST_TIMER) a first-timer's first run: a starter tool on loan until the first sale (walk
 		-- into the grass to mow it), and the intro film after that sale instead of before the first cut
 		if PlayerData.isNew(data) then
+			Analytics.startOnboarding(player, 2) -- (10 Nov) onboarding funnel: joined, in their first run
 			local F = Config.FIRST_TIMER
 			if F.introAfterSale then
 				data.run.tutorial = true
@@ -839,6 +843,7 @@ local function setupPlayer(player: Player, data)
 						local d2 = PlayerData.get(player)
 						if player.Parent and d2 and d2.run and d2.run.loaner and d2.run.loanHanded == false then
 							d2.run.loanHanded = true
+							Analytics.onboard(player, 3) -- (10 Nov) onboarding funnel: got the scythe
 							Tools.give(player)
 							PlayerData.changed(player)
 						end
@@ -1032,6 +1037,7 @@ function Run.start()
 		local coins = math.max(1, math.floor(def.value * (m.mult or 1) * (def.drops or 1) * Stats.compute(player, data).sell + 0.5))
 		data.run.coins += coins
 		data.stats.cut += 1
+		Analytics.onboard(player, 4) -- (10 Nov) onboarding funnel: first cut
 		data.stats.coinsEarned = (data.stats.coinsEarned or 0) + coins
 		Quests.event(player, "cut", 1) -- (6 Nov) the auto-finished clumps count for "Cut N grass" too
 		local f = finished[player]
@@ -1120,6 +1126,7 @@ function Run.start()
 		elseif what == "loanTaken" and data and data.run and data.run.loaner and data.run.loanHanded == false then
 			-- (10 Nov) BRRBRR has handed his scythe over (client/TutorGuide): now it's in your hands
 			data.run.loanHanded = true
+			Analytics.onboard(player, 3) -- (10 Nov) onboarding funnel: got the scythe
 			Tools.give(player)
 			PlayerData.changed(player)
 		elseif what == "news" and data and type(id) == "number" and id == id then -- (id == id: not NaN)

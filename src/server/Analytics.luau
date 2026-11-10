@@ -20,12 +20,41 @@ local function fields(extra: string?): { [string]: string }
 end
 
 local reached: { [Player]: number } = {}
+-- (10 Nov, owner OK'd after a Tizzy RBLX video: "track every step of your onboarding") Roblox's onboarding funnel
+-- (Creator Dashboard > Analytics > Funnels > Onboarding), only for brand-new players: Roblox keeps each step once per
+-- player. Steps: see ONBOARD. onboard[p] = the last step this server logged; nil = not a first-timer here.
+local ONBOARD = { "Joined", "In first run", "Got the scythe", "First cut", "First sale", "First tool", "Reached area 2" }
+local onboard: { [Player]: number } = {}
 Players.PlayerRemoving:Connect(function(p)
 	reached[p] = nil
+	onboard[p] = nil
 end)
+
+-- A first-timer (PlayerData.isNew) is here: log steps 1..upTo (the lobby: 1, their first run: 1 and 2, the first
+-- one again is ignored by Roblox) and follow their next steps on this server.
+function Analytics.startOnboarding(player: Player, upTo: number)
+	for step = 1, upTo do
+		pcall(AnalyticsService.LogOnboardingFunnelStepEvent, AnalyticsService, player, step, ONBOARD[step])
+	end
+	onboard[player] = math.max(onboard[player] or 0, upTo)
+end
+
+-- A first-timer did onboarding step `step` (only forward; anyone else: nothing).
+function Analytics.onboard(player: Player, step: number)
+	local last = onboard[player]
+	if last and step > last and ONBOARD[step] then
+		onboard[player] = step
+		pcall(AnalyticsService.LogOnboardingFunnelStepEvent, AnalyticsService, player, step, ONBOARD[step])
+	end
+end
 
 -- The run reached area z (each player's funnel only moves forward).
 function Analytics.area(z: number)
+	if z >= 2 then
+		for p in onboard do
+			Analytics.onboard(p, 7)
+		end
+	end
 	for _, p in Players:GetPlayers() do
 		if (reached[p] or 0) < z then
 			for step = (reached[p] or 0) + 1, z do

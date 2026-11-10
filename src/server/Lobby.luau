@@ -629,6 +629,9 @@ function Lobby.start()
 		if wait > 0 and PlayerData.isNew(data) then
 			task.spawn(firstLawn, player, wait)
 		end
+		if PlayerData.isNew(data) then
+			require(script.Parent.Analytics).startOnboarding(player, 1) -- (10 Nov) onboarding funnel: joined
+		end
 		local function onCharacter()
 			task.wait(0.2)
 			Stats.applyCharacter(player, data)

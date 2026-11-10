@@ -27,6 +27,9 @@ task.spawn(function()
 	local State = require(here:WaitForChild("State"))
 	local UI = require(here:WaitForChild("UI")) :: any
 	local PetFollow = require(here:WaitForChild("PetFollow")) :: any
+	-- (10 Nov, owner: "make pet garden bigger and 100x prettier with high quality") the lush garden from the game's own
+	-- models (client/GardenBuild); the stud-voxel one only if those aren't there
+	local GardenBuild = require(here:WaitForChild("GardenBuild")) :: any
 	if not Config.HUB_FUN or not Config.HUB_FUN.on then
 		return
 	end
@@ -87,6 +90,16 @@ task.spawn(function()
 		local tree = anchors.tree
 		if type(tree) == "table" then
 			table.insert(blocks, { x = tree[1], z = tree[2], r = tree[3] })
+		end
+		for _, t in (anchors.trees or {}) :: { any } do
+			table.insert(blocks, { x = t[1], z = t[2], r = t[3] })
+		end
+		for _, key in { "nestA", "nestB" } do -- (the lush garden's egg pedestals stand on the lawn)
+			local n = anchors[key]
+			if anchors.lush and typeof(n) == "Vector3" then
+				local l = center:PointToObjectSpace(n)
+				table.insert(blocks, { x = l.X, z = l.Z, r = 2.6 })
+			end
 		end
 		return function(p: Vector3): boolean
 			local l = center:PointToObjectSpace(p)
@@ -202,8 +215,12 @@ task.spawn(function()
 		f.Parent = workspace
 		local at = spot.CFrame
 		local rot = at.Rotation
-		local _, anchors = HubBricks.build("pet_garden", at, f)
-		-- PET GARDEN on the arch's plank
+		local anchors = GardenBuild.build(at, f)
+		if not anchors then
+			local _, a = HubBricks.build("pet_garden", at, f)
+			anchors = a
+		end
+		-- PET GARDEN on the arch's plank (the lush garden writes its own)
 		local sign = part(f, Vector3.new(5.8, 1.4, 0.05), CFrame.new(anchors.sign :: Vector3) * rot * CFrame.new(0, 0, -0.06), WHITE)
 		sign.Transparency = 1
 		local sg = Instance.new("SurfaceGui")
@@ -213,8 +230,12 @@ task.spawn(function()
 		sg.LightInfluence = 0
 		sg.Parent = sign
 		text(sg, "PET GARDEN", UDim2.fromScale(1, 1), UDim2.new(), Color3.fromRGB(255, 214, 80))
-		local free, radius = freeTest(at * CFrame.new(0, LAWN_Y, 0), anchors)
-		local g: Garden = { folder = f, center = at * CFrame.new(0, LAWN_Y, 0), critters = {}, eggs = {}, free = free, radius = radius }
+		if anchors.lush then
+			sign:Destroy()
+		end
+		local lawnY = if anchors.lush then 0.77 else LAWN_Y
+		local free, radius = freeTest(at * CFrame.new(0, lawnY, 0), anchors)
+		local g: Garden = { folder = f, center = at * CFrame.new(0, lawnY, 0), critters = {}, eggs = {}, free = free, radius = radius }
 		g.critters = critters(f, g)
 		-- the eggs in their nests: the gem egg on one, the Robux egg on the other where it's allowed
 		local gems, robux = {}, {}

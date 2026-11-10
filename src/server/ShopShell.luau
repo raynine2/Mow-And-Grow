@@ -343,6 +343,32 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		end
 		box:Destroy()
 		shop:SetAttribute("FitIn", true)
+		-- the lodge's invisible porch (deck, steps) came out of the scaling too high to step on (a 2.9-stud step):
+		-- instead an invisible ramp up the cabin's porch steps and a floor through its door tunnel to the shop's floor
+		local lodge = shop:FindFirstChild("ShopBuilding")
+		for _, p in (if lodge then lodge:GetDescendants() else {}) do
+			if p:IsA("BasePart") and WALK_ON[p.Name] then
+				p:Destroy()
+			end
+		end
+		local floorY = 0.75 * FIT_IN.k + FIT_IN.dy
+		local ramp = Instance.new("WedgePart")
+		ramp.Name = "DoorRamp"
+		ramp.Size = Vector3.new(4.4, floorY, 4)
+		ramp.CFrame = at * CFrame.new(-0.2, floorY / 2, -16.5) -- (a wedge is low at its -Z end, out of the door, high at +Z)
+		local deck = Instance.new("Part")
+		deck.Name = "DoorFloor"
+		deck.Size = Vector3.new(4.4, 1, 14.5 - 7.2 + 0.4)
+		deck.CFrame = at * CFrame.new(-0.2, floorY - 0.5, (-14.5 - 7.2) / 2)
+		for _, q in { ramp, deck } :: { BasePart } do
+			q.Anchored = true
+			q.Transparency = 1
+			q.CanCollide = true
+			q.CanQuery = false
+			q.CanTouch = false
+			q.CastShadow = false
+			q.Parent = walls
+		end
 	end
 	return true
 end

@@ -24,6 +24,8 @@ local PropKit = require(script.Parent.PropKit)
 local Models = require(script.Parent.Models)
 
 local Outposts = {}
+-- (10 Nov 20:06, owner: "the shops in each zone don't work"): the SHOP stalls opened a window called "Shop", which
+-- became "Store" (client/ShopWindow): they open the Store on its Tools page now, every weapon for coins.
 
 local R = 24 -- the plaza's radius (20 until 29 Oct)
 local DRESS_CAMPS = false -- server/CampDress's arch, lamp posts, house, landmark, animals, villagers (off: see above)
@@ -231,7 +233,10 @@ local function genStall(m: Model, cf: CFrame, title: string, window: string, are
 		st.Parent = t
 		t.Parent = gui
 	end
-	PropKit.prompt(counter, "Open", title, window, 10)
+	local prompt = PropKit.prompt(counter, "Open", title, window, 10)
+	if window == "Store" then
+		prompt:SetAttribute("Item", "Tools") -- (10 Nov) opens the Store on the weapons (client/ShopWindow)
+	end
 	return true
 end
 
@@ -274,7 +279,10 @@ local function stall(f: Instance, cf: CFrame, title: string, window: string, th:
 	for k = -1, 1 do
 		VoxelKit.crate(m, cf * CFrame.new(k * 2.6, 4.15, -0.2), 0.8, rng)
 	end
-	PropKit.prompt(counter, "Open", title, window, 10)
+	local prompt = PropKit.prompt(counter, "Open", title, window, 10)
+	if window == "Store" then
+		prompt:SetAttribute("Item", "Tools") -- (10 Nov) opens the Store on the weapons (client/ShopWindow)
+	end
 end
 
 local function lanternPost(f: Instance, at: Vector3, out: Vector3, th: Theme)
@@ -530,7 +538,7 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 			local p = at(x, zz).Position
 			return CFrame.lookAt(p, Vector3.new(base.X, p.Y, base.Z))
 		end
-		stall(f, facing(PIECES[1][1], PIECES[1][2]), "SHOP", "Shop", th, rng, def.id)
+		stall(f, facing(PIECES[1][1], PIECES[1][2]), "SHOP", "Store", th, rng, def.id)
 		stall(f, facing(PIECES[2][1], PIECES[2][2]), "UPGRADES", "Upgrades", th, rng, def.id)
 		if gasPump then
 			local p = at(PIECES[7][1], PIECES[7][2]).Position
@@ -541,7 +549,7 @@ local function build(w: Instance, pad: BasePart, z: number, info: any, gasPump: 
 		end
 		require(script.Parent.HubPlaza).frame(f, look, Rp, at, base)
 	else
-		stall(f, at(-7.5, -16), "SHOP", "Shop", th, rng, def.id)
+		stall(f, at(-7.5, -16), "SHOP", "Store", th, rng, def.id)
 		stall(f, at(7.5, -16), "UPGRADES", "Upgrades", th, rng, def.id)
 		if gasPump then
 			gasPump(f, at(16, -4).Position, info, turned(-right))

@@ -29,6 +29,7 @@ local CATEGORIES = {
 local PASS_ICON = { BigBag = "sack", DoubleCoins = "x2coins", DoubleClippings = "x2clip", DoubleGems = "x2gems", VIP = "crown", HatchLuck = "hatchluck", SuperHatchLuck = "superhatch" }
 local MOWER_ICON = { RustyRider = "mower_rusty", TurboTractor = "mower_tractor", GoldenZeroTurn = "mower_zeroturn", MonsterMulcher = "mower_mulcher", TrialMower = "mower_trial", RocketMower = "mower_rocket" }
 local GEM_ICON = { "gempile", "gempouch", "gemchest", "gemmountain" }
+local TOOL_ICON = { Scissors = "scissors", Sickle = "sickle", PushMower = "pushmower", WeedWhacker = "whacker", MegaScythe = "scythe", LaserMower = "lasermower" }
 local GREEN = Color3.fromRGB(70, 200, 80)
 local BLUE = Color3.fromRGB(60, 150, 240)
 local TAG_COLOR = {
@@ -261,13 +262,55 @@ CONTENT.Tools = function(d)
 	if trial and State.isRun() and not Config.MOWERS_LOCKED then
 		table.insert(out, mowerBanner(d, trial) :: Banner)
 	end
-	table.insert(out, {
-		title = "The Tool Shop",
-		desc = "Scissors, sickles and mowers are sold for coins at the Tool Shop cabin in every run.",
-		icon = "scissors",
-		color = Color3.fromRGB(150, 100, 60),
-		prices = {},
-	})
+	-- (10 Nov 20:06, owner: "the shops in each zone don't work, make it be where you can buy the weapons we have")
+	-- in a run every weapon is sold here for coins, like the Tool Shop's boards: your next one can be bought, the
+	-- ones after it wait for it; MORE opens its popup (Robux for this run / forever, its stats)
+	local run = d.run
+	if not (State.isRun() and run) then
+		table.insert(out, {
+			title = "The Tool Shop",
+			desc = "Scissors, sickles and mowers are sold for coins at the Tool Shop cabin in every run.",
+			icon = "scissors",
+			color = Color3.fromRGB(150, 100, 60),
+			prices = {},
+		})
+		return out
+	end
+	local nextUp = Config.nextToolIndex(run, d.tools)
+	local coins = tonumber(run.coins) or 0
+	for i, t in Config.TOOLS do
+		if i == 1 then
+			continue -- (Bare Hands: everyone has them)
+		end
+		local owned = Config.ownsTool(run, d.tools, i)
+		local isNext = i == nextUp
+		local what = if t.kind == "auto" then "cuts all around you" else ("hits %d clump%s a swing"):format(t.targets or 1, if (t.targets or 1) == 1 then "" else "s")
+		table.insert(out, {
+			title = t.name,
+			desc = ("Power %s  -  %s"):format(Format.short(t.damage), what),
+			icon = pic(TOOL_ICON[t.id], "scissors"),
+			color = t.color,
+			tags = if owned then { "OWNED" } elseif isNext then { "NEW" } else nil,
+			prices = {
+				{
+					text = if owned then "OWNED" elseif isNext then Format.commas(t.cost) else "🔒 " .. Format.short(t.cost),
+					icon = if owned or not isNext then nil else "coin",
+					enabled = isNext and coins >= t.cost,
+					onClick = function()
+						State.fire("Buy", "tool", t.id)
+					end,
+				},
+				{
+					text = "MORE",
+					enabled = true,
+					onClick = function()
+						State.emit("openFor", "ToolView", t.id)
+						UI.open("ToolView")
+					end,
+				},
+			},
+		})
+	end
 	return out
 end
 CONTENT.Mowers = function(d)
@@ -393,6 +436,12 @@ function ShopWindow.build()
 	w.list.Visible = false
 	local panel = w.panel :: Frame
 	local current = "Featured"
+	-- (10 Nov) an area's SHOP stall opens the Store on its weapons (server/Outposts: the prompt's Item is "Tools")
+	State.on("openFor", function(window, item)
+		if window == "Store" and type(item) == "string" and CONTENT[item] then
+			current = item
+		end
+	end)
 
 	local signs = Instance.new("Frame")
 	signs.Name = "Signs"

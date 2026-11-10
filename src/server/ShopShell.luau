@@ -247,11 +247,8 @@ for _, n in {
 end
 local ROOM_IN_MIN, ROOM_IN_MAX = Vector3.new(-19.9, 0.3, -7.7), Vector3.new(19.9, 15.6, 14.9)
 
-local function studCabin(shop: Instance, at: CFrame): boolean
-	local HubBricks = require(ReplicatedStorage.MowALawn.HubBricks) :: any
-	if not ShopShell.STUD_CABIN or not HubBricks.has(CABIN) then
-		return false
-	end
+-- the voxel lodge gutted: only what's inside its room stays (floor, tie beams, chandelier, what hangs inside)
+local function gutLodge(shop: Instance, at: CFrame)
 	local inv = at:Inverse()
 	local lodge = shop:FindFirstChild("ShopBuilding")
 	if lodge then
@@ -266,12 +263,21 @@ local function studCabin(shop: Instance, at: CFrame): boolean
 				local inside = l.X > ROOM_IN_MIN.X and l.X < ROOM_IN_MAX.X and l.Y > ROOM_IN_MIN.Y and l.Y < ROOM_IN_MAX.Y
 					and l.Z > ROOM_IN_MIN.Z and l.Z < ROOM_IN_MAX.Z
 				local keep = p.Name == "FloorBoard" or p.Name == "FloorFill" -- (its DoorSensor goes too: no door to swing)
-				if not keep and (LODGE_WALLS[p.Name] or not inside) then
+				if not keep and (LODGE_WALLS[p.Name] or p.Name == "Purlin" or not inside) then
 					p:Destroy()
 				end
 			end
 		end
 	end
+end
+
+local function studCabin(shop: Instance, at: CFrame): boolean
+	local HubBricks = require(ReplicatedStorage.MowALawn.HubBricks) :: any
+	if not ShopShell.STUD_CABIN or not HubBricks.has(CABIN) then
+		return false
+	end
+	local inv = at:Inverse()
+	gutLodge(shop, at)
 	local yard = shop:FindFirstChild("ShopYard")
 	for _, p in (if yard then yard:GetDescendants() else {}) do
 		if p:IsA("BasePart") and p.Parent and (inv * p.Position).Y > 12 then
@@ -295,6 +301,11 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 		return false
 	end
 	strip(shop, at)
+	-- (10 Nov 17:01, owner: "remove the house inside the house") the lodge's log walls, roof and windows go: inside
+	-- you see the cabin's own walls round the shop's room (tool boards, counter, fireplace, rugs)
+	if FIT_IN.on then
+		gutLodge(shop, at)
+	end
 	restyle(shop:FindFirstChild("ShopBuilding"))
 	-- (10 Nov) invisible walls on the cabin's outside (it has no collisions; the lodge's walls are 4-7 studs inside it)
 	local walls = Instance.new("Folder")
@@ -319,6 +330,10 @@ function ShopShell.dress(shop: Instance, at: CFrame): boolean
 	wall(DOOR_MAX.X + 1.4, OUTER.right, OUTER.front, -7.3) -- front, right of the porch
 	wall(DOOR_MIN.X - 1.4, -2.2, OUTER.front - 1, -7.3) -- either side of the door tunnel (x -2.2..1.8)
 	wall(1.8, DOOR_MAX.X + 1.4, OUTER.front - 1, -7.3)
+	if FIT_IN.on then -- the lodge's side walls are gone: the cabin's inside walls (x -17.7..18; back and front above)
+		wall(-22.2, -17.7, -8.6, 16.9)
+		wall(18, 22.2, -8.6, 16.9)
+	end
 	walls.Parent = shop
 	-- (10 Nov 16:42, owner: "de huis is weer bugged er zijn 2 huizen in 1") ONE HOUSE, inside and out: the whole shop
 	-- (the lodge, its room, the tool boards, the counter spot) is scaled by FIT_IN.k round the anchor and moved into the

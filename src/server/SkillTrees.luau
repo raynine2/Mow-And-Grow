@@ -248,7 +248,7 @@ end
 -- Config.TICK and catches ~1.5 clumps). Your newest weapon still cuts far faster there (the Laser in the Jungle
 -- ~1.2 a second before pips, the Mega Scythe in the Swamp ~3), so the old ones are a slower choice, not dead weight.
 -- Not on Elder Clumps or bosses (server/Field calls this for the area's clumps only), not from a ride-on mower.
-SkillTrees.FLOOR_RATE = 0.1
+SkillTrees.FLOOR_RATE = 0.06 -- (10 Nov 23:38, owner: "the game is a bit too easy now": was 0.1)
 local function cutFloor(player: Player, p: any): number
 	if not ON or type(p) ~= "table" or p.elder or type(p.maxHp) ~= "number" then
 		return 0

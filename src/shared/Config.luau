@@ -50,8 +50,8 @@ Config.TOOLS = {
 	-- damage -40% (Push Mower 38, Whacker 220, Laser 4000 before), and BOSS_AUTO_MULT against bosses
 	{ id = "PushMower", name = "Push Mower", cost = 1900, kind = "auto", damage = 23, radius = 6, targets = 3, color = Color3.fromRGB(255, 140, 30) },
 	{ id = "WeedWhacker", name = "Weed Whacker", cost = 10000, kind = "auto", damage = 130, radius = 9, targets = 4, color = Color3.fromRGB(60, 200, 80) },
-	{ id = "MegaScythe", name = "Mega Scythe", cost = 60000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
-	{ id = "LaserMower", name = "Laser Mower", cost = 700000, kind = "auto", damage = 2400, radius = 11, targets = 6, color = Color3.fromRGB(60, 230, 255) },
+	{ id = "MegaScythe", name = "Mega Scythe", cost = 90000, kind = "swing", damage = 2500, cooldown = 0.5, radius = 13, targets = 12, color = Color3.fromRGB(150, 90, 255) },
+	{ id = "LaserMower", name = "Laser Mower", cost = 1000000, kind = "auto", damage = 2400, radius = 11, targets = 6, color = Color3.fromRGB(60, 230, 255) },
 }
 Config.BOSS_TOOL_MULT = 1 -- tool damage multiplier against bosses
 Config.BOSS_AUTO_MULT = 0.25 -- (10 Nov) auto tools against a boss (they hit it 4 times a second: a Whacker did 33x a Sickle)
@@ -2233,4 +2233,16 @@ Config.ICONS.invite = "rbxassetid://131845589341017" -- (1 Nov) the INVITE butto
 -- (10 Nov 23:20, owner: "make it 1% chance ... let the black flash give you 50x more gold from the clump you hit and
 -- when you attack a boss and get black flash it does 10x dmg"; DEV panel BLACK FLASH 100% = always, for you)
 Config.BLACK_FLASH = { chance = 0.01, mult = 2.5, coins = 50, bossMult = 10 }
+-- (10 Nov 23:38, owner: "the game is a bit too easy now", picked all four: grass goes too fast, bosses too easy, rich
+-- too fast, the run too short) ONE place to tune it: every area's grass HP, boss HP and coins a clump are scaled here
+-- as Config loads (1 = as written above). Also: Mega Scythe 60K -> 90K, Laser Mower 700K -> 1M, the cut floor
+-- (server/SkillTrees FLOOR_RATE) 0.1 -> 0.06.
+Config.TUNE = { grassHp = 1.4, bossHp = 1.5, coins = 0.85 }
+for _, z in Config.ZONES do
+	z.hp = math.max(1, math.floor(z.hp * Config.TUNE.grassHp + 0.5))
+	z.value = math.max(1, math.floor(z.value * Config.TUNE.coins + 0.5))
+	if z.boss and z.boss.hp then
+		z.boss.hp = math.floor(z.boss.hp * Config.TUNE.bossHp + 0.5)
+	end
+end
 return Config

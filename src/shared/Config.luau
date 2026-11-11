@@ -342,16 +342,19 @@ Config.HUB_FUN = {
 	},
 	statueBoard = "cut", -- which leaderboard the statues show (server/LobbyBoards)
 	gift = 25, -- gems from the guides once a day (UTC)
-	-- the wheel (free, once a day UTC): the weights ARE the odds in %, shown on the wheel's sign
+	-- the wheel (free, once a day UTC): the weights ARE the odds in %, shown on the wheel's sign. (11 Nov, owner: "make
+	-- the prizes different, like an egg or 5 min extra gold") a prize is `gems`, a free `egg` (hatched when the wheel
+	-- stops, server/HubFun) or `gold` seconds of 2x coins (saved up; they start the first time you earn in a run,
+	-- server/Stats). `slice` is the short text on the wheel, `board` the line on the odds board.
 	prizes = {
-		{ gems = 10, weight = 25, color = Color3.fromRGB(120, 200, 90) },
-		{ gems = 15, weight = 20, color = Color3.fromRGB(90, 170, 240) },
-		{ gems = 25, weight = 18, color = Color3.fromRGB(250, 200, 60) },
-		{ gems = 40, weight = 14, color = Color3.fromRGB(240, 120, 170) },
-		{ gems = 60, weight = 10, color = Color3.fromRGB(150, 110, 230) },
-		{ gems = 100, weight = 8, color = Color3.fromRGB(255, 150, 60) },
-		{ gems = 250, weight = 4, color = Color3.fromRGB(80, 220, 210) },
-		{ gems = 500, weight = 1, color = Color3.fromRGB(255, 80, 80) },
+		{ gems = 15, weight = 24, color = Color3.fromRGB(90, 170, 240), slice = "15 💎", board = "15 💎" },
+		{ gold = 300, weight = 20, color = Color3.fromRGB(250, 200, 60), slice = "2X GOLD 5m", board = "2x gold 5 min" },
+		{ gems = 40, weight = 16, color = Color3.fromRGB(240, 120, 170), slice = "40 💎", board = "40 💎" },
+		{ egg = "GardenEgg", weight = 12, color = Color3.fromRGB(120, 200, 90), slice = "FREE EGG", board = "Garden Egg" },
+		{ gems = 100, weight = 10, color = Color3.fromRGB(150, 110, 230), slice = "100 💎", board = "100 💎" },
+		{ gold = 600, weight = 10, color = Color3.fromRGB(255, 150, 60), slice = "2X GOLD 10m", board = "2x gold 10 min" },
+		{ gems = 250, weight = 6, color = Color3.fromRGB(80, 220, 210), slice = "250 💎", board = "250 💎" },
+		{ egg = "GoldenEgg", weight = 2, color = Color3.fromRGB(255, 80, 80), slice = "GOLDEN EGG", board = "Golden Egg" },
 	},
 }
 -- #2 COINS ON EVERY CUT (Chop A Forest pays a few coins per hit): this share of a clump's bundle value is paid the

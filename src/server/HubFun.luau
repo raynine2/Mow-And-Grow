@@ -102,12 +102,22 @@ local function spin(player: Player, data: any)
 	end
 	local i, prize = pick()
 	data.hubSpinDay = today()
-	data.gems += prize.gems
+	-- (11 Nov) gems, 2x gold seconds (saved up for the next run: server/Stats) or a free egg
+	data.gems += prize.gems or 0
+	if prize.gold then
+		data.goldBoost = (data.goldBoost or 0) + prize.gold
+	end
 	refresh(player, data)
-	Net.send(player, "Fx", "hubSpin", { index = i, gems = prize.gems })
-	-- the gem counter goes up when the wheel stops (client/HubWheel spins ~5 s), not before
+	Net.send(player, "Fx", "hubSpin", { index = i, gems = prize.gems or 0 })
+	-- the gem counter goes up when the wheel stops (client/HubWheel spins ~5 s), not before; the egg hatches then too
 	task.delay(5.5, function()
 		if player.Parent then
+			if prize.egg then
+				local now = PlayerData.get(player)
+				if now then
+					require(script.Parent.Pets).hatch(player, now, prize.egg, 1, true)
+				end
+			end
 			PlayerData.changed(player)
 		end
 	end)

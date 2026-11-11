@@ -126,7 +126,7 @@ task.spawn(function()
 			row.Size = UDim2.new(0.88, 0, 0, 30)
 			row.BackgroundTransparency = 1
 			row.Parent = g
-			label(row, Format.commas(p.gems) .. " 💎", UDim2.fromScale(0.62, 1), UDim2.new(), p.color, 2).TextXAlignment = Enum.TextXAlignment.Left
+			label(row, p.board or (Format.commas(p.gems or 0) .. " 💎"), UDim2.fromScale(0.62, 1), UDim2.new(), p.color, 2).TextXAlignment = Enum.TextXAlignment.Left
 			label(row, (math.floor(p.weight / total * 1000 + 0.5) / 10) .. "%", UDim2.fromScale(0.38, 1), UDim2.fromScale(0.62, 0), Color3.fromRGB(245, 236, 214), 2).TextXAlignment = Enum.TextXAlignment.Right
 		end
 	end
@@ -152,7 +152,7 @@ task.spawn(function()
 		for i, p in PRIZES do
 			local mid = (i - 1) * SLICE
 			local g = face(f, Vector2.new(R * 0.56, 1.2), center * CFrame.Angles(0, 0, mid) * CFrame.new(0, R * 0.6, -0.56) * CFrame.Angles(0, 0, math.rad(90)), 50)
-			label(g, Format.commas(p.gems) .. " 💎", UDim2.fromScale(1, 1), UDim2.new(), WHITE, 3)
+			label(g, p.slice or (Format.commas(p.gems or 0) .. " 💎"), UDim2.fromScale(1, 1), UDim2.new(), WHITE, 3)
 			table.insert(turning, g.Parent :: BasePart)
 		end
 		local capText = face(f, Vector2.new(2.2, 1), center * CFrame.new(0, 0, -0.56), 50)
@@ -264,12 +264,17 @@ task.spawn(function()
 		pose(w)
 		spinning = false
 		-- the prize
-		local big = gems >= 100
+		local prize = PRIZES[i]
+		local big = gems >= 100 or prize.egg ~= nil or (prize.gold or 0) >= 600
 		pcall(Sound.play, if big then "rareChime" else "purchase", 0.05)
 		pcall(function()
 			require(here:WaitForChild("Confetti")).burst(if big then 80 else 30)
 		end)
-		pcall(UI.notice, "YOU WON!", ("+%s gems from the Free Wheel"):format(Format.commas(gems)), nil, 3)
+		-- (11 Nov) the prize can be gems, a free egg (it hatches now) or 2x gold for your next run
+		local what = if prize.egg then ("a free %s!"):format(prize.board or "egg")
+			elseif prize.gold then ("2x gold for %d minutes in your next run!"):format(math.floor(prize.gold / 60))
+			else ("+%s gems from the Free Wheel"):format(Format.commas(gems))
+		pcall(UI.notice, "YOU WON!", what, nil, 3)
 		task.spawn(function()
 			for _ = 1, 8 do
 				for _, b in w.lights do

@@ -70,6 +70,7 @@ end
 local goldenChip = makeChip("GoldenHour", 1, 270)
 local challengeChip = makeChip("SpeedChallenge", 2, 290)
 local partyChip = makeChip("PartyBonus", 3, 240)
+local goldChip = makeChip("GoldBoost", 4, 230) -- (11 Nov) 2x gold from the Free Wheel
 
 -- the chip's gold shimmer while Golden Hour is on
 local shimmer = Instance.new("UIGradient")
@@ -182,6 +183,14 @@ local function update()
 	local here = if inRun and w then w.zone else nil
 	for _, e in elders do
 		e.beam.LocalTransparencyModifier = if UI.gui.Enabled and e.zone == here then 0 else 1
+	end
+	-- 2x gold from the Free Wheel (server/Stats sets GoldBoostUntil when it starts)
+	local gb = Players.LocalPlayer:GetAttribute("GoldBoostUntil")
+	local goldLeft = if type(gb) == "number" then gb - serverNow() else 0
+	goldChip.frame.Visible = inRun and not fight and goldLeft > 0
+	if goldChip.frame.Visible then
+		goldChip.label.Text = ("2X GOLD %s"):format(clock(goldLeft))
+		goldChip.label.TextColor3 = GOLD
 	end
 	-- the party bonus
 	local P = Config.PARTY_BONUS

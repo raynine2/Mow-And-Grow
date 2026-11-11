@@ -82,6 +82,24 @@ function Stats.compute(player: Player, data)
 			s.luck *= gh.luck
 		end
 	end
+	-- (11 Nov) 2x gold from the Free Wheel: the saved-up seconds start the first time you earn in a run (not in the
+	-- lobby, where the profile keeps its saved run too); the client's chip reads GoldBoostUntil (client/RunEvents)
+	local d = data :: any
+	if run and ReplicatedStorage:GetAttribute("MowALawnMode") == "Run" then
+		if (d.goldBoost or 0) > 0 then
+			d.goldBoostUntil = math.max(os.time(), d.goldBoostUntil or 0) + d.goldBoost
+			d.goldBoost = 0
+		end
+		local left = (d.goldBoostUntil or 0) - os.time()
+		if left > 0 then
+			s.sell *= 2
+			local at = workspace:GetServerTimeNow() + left
+			local was = player:GetAttribute("GoldBoostUntil")
+			if type(was) ~= "number" or math.abs(was - at) > 2 then
+				player:SetAttribute("GoldBoostUntil", at)
+			end
+		end
+	end
 	-- (29 Oct) Hard pays +50%, Expert +100% (in a run only)
 	if run then
 		s.sell *= Stats.reward

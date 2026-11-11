@@ -76,7 +76,7 @@ local GREEN = Color3.fromRGB(110, 220, 70)
 local GOLD = Color3.fromRGB(255, 214, 60)
 local MYSTERY = Color3.fromRGB(170, 110, 255)
 local MAYOR = "Mayor Thistlewick"
-local MAKERS_FALLBACK = "The Mow And Grow team" -- the credits name the game's owner (group or user) when they can
+local MAKERS_FALLBACK = "The Mow A Lawn team" -- the credits name the game's owner (group or user) when they can
 local STEP = "MowEnding"
 
 local played = false
@@ -1303,7 +1303,7 @@ local function creditPages(m: IntroCast.Mayor?, cr: FilmPanels.Credits): { () ->
 	-- (the Mayor is thousands of blocks: copied once, now, while the title page is up)
 	local mayorStill = if m then FilmPanels.copy(m.model, m.face(), 6) else nil
 	table.insert(pages, function()
-		cr.title(string.upper(Config.GAME_NAME or "Mow And Grow"), "YOU MOWED THE WHOLE VALLEY!")
+		cr.title(string.upper(Config.GAME_NAME or "Mow A Lawn"), "YOU MOWED THE WHOLE VALLEY!")
 	end)
 	-- STARRING: the party, four to a page
 	local list = Players:GetPlayers()

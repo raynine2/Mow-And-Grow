@@ -2074,8 +2074,8 @@ Config.UI = {
 Config.NEWS = {
 	{
 		id = 1,
-		title = "Mow And Grow",
-		update = "LAUNCH",
+		title = "Mow A Lawn",
+		update = "RELEASE", -- (11 Nov, owner) only the release gets a label; the later entries show just their date
 		time = 1792324800, -- 18 Oct 2026
 		icon = "clover",
 		desc = "The lawn has gone wild. Grab your hands and start mowing!",
@@ -2090,7 +2090,6 @@ Config.NEWS = {
 	{
 		id = 2,
 		title = "The Big Rebuild",
-		update = "UPDATE 1",
 		time = 1792504800, -- 20 Oct 2026
 		icon = "star",
 		desc = "A whole new map, tree-sized grass and a brand new lobby.",
@@ -2107,7 +2106,6 @@ Config.NEWS = {
 	{
 		id = 3,
 		title = "Rebirth & Quests",
-		update = "UPDATE 2",
 		time = 1793966400, -- 6 Nov 2026
 		icon = "quest",
 		desc = "Rebirth Stars, daily quests, emotes and a whole lot of new fun.",

@@ -150,9 +150,15 @@ local function bannerArea(panel: Frame)
 	pills.Parent = b
 	return function(n)
 		UI.clear(pills)
-		local updWidth = 30 + #n.update * 14
-		pill(pills, n.update, Color3.fromRGB(255, 140, 30), UDim2.new(), updWidth)
-		pill(pills, dateText(n.time), Color3.fromRGB(70, 60, 50), UDim2.fromOffset(updWidth + 10, 0), 150)
+		-- (11 Nov, owner: "change it from UPDATE ... or remove it", "keep release") no "UPDATE 2" pill any more: only
+		-- the release entry has a label (Config.NEWS `update`), the rest show just their date
+		local x = 0
+		if n.update then
+			x = 30 + #n.update * 14
+			pill(pills, n.update, Color3.fromRGB(255, 140, 30), UDim2.new(), x)
+			x += 10
+		end
+		pill(pills, dateText(n.time), Color3.fromRGB(70, 60, 50), UDim2.fromOffset(x, 0), 150)
 		title.Text = string.upper(n.title)
 		desc.Text = n.desc or ""
 		UI.clear(art)

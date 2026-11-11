@@ -74,7 +74,9 @@ local function counter(y: number, icon: string, plus: boolean?)
 	t.ZIndex = plate.ZIndex + 2
 	local ic = UI.icon(f, icon, 78, UDim2.fromOffset(0, 0))
 	ic.ZIndex = plate.ZIndex + 3
-	if plus then
+	-- (11 Nov, phone check: the "+" sat in the thumbstick's corner, a thumb starting a walk there opened the shop; the
+	-- SHOP button has the gems) not on a phone
+	if plus and not Device.phone then
 		-- (bigger on a touch screen: 40 was about 22 points on a phone)
 		local ps = if Device.touch then 54 else 40
 		local p = UI.button(f, "+", C.green, UDim2.fromOffset(ps, ps), function()
@@ -111,11 +113,14 @@ bagIcon.ZIndex = 3
 local quest = Instance.new("Frame")
 quest.Name = "Quest"
 quest.BackgroundTransparency = 1
-quest.Size = UDim2.fromOffset(330, 136)
+-- (11 Nov, owner: "test mobile fully so it doesn't have a lot of screen clutter") on a phone the cards drop their
+-- hint lines and are 30 shorter: the quest's hint, the run card's "Mow it all to open ..." (and the medal chip)
+local PHONE_CARD = if Device.phone then 30 else 0
+quest.Size = UDim2.fromOffset(330, 136 - PHONE_CARD)
 quest.Position = UDim2.fromOffset(14, 66)
 quest.Parent = root
 -- a cream card in a wooden frame: scroll icon, "QUEST 2/8", the goal, a candy progress bar and a hint
-local questFace = select(2, Skin.frame(quest, "ui_card", Vector2.new(330, 136), { name = "Card" }))
+local questFace = select(2, Skin.frame(quest, "ui_card", Vector2.new(330, 136 - PHONE_CARD), { name = "Card" }))
 local BROWN = Color3.fromRGB(110, 62, 30)
 local questIcon = UI.icon(quest, "quest", 58, UDim2.fromOffset(-6, -14))
 questIcon.ZIndex = 4
@@ -131,6 +136,7 @@ if Device.phone then
 	-- (the small lines a little taller on a phone: at 16-18 they were 9 points, too small to read)
 	questNum.Size = UDim2.new(1, -40, 0, 20)
 	questHint.Size = UDim2.new(1, -18, 0, 20)
+	questHint.Visible = false -- (11 Nov: less on a phone's small screen)
 end
 
 -------------------------------------------------------------------------------------------------------------
@@ -166,7 +172,7 @@ Potato.changed(showPotato)
 local info = Instance.new("Frame")
 info.Name = "RunInfo"
 info.BackgroundTransparency = 1
-info.Size = UDim2.fromOffset(320, 176)
+info.Size = UDim2.fromOffset(320, 176 - PHONE_CARD)
 info.Position = UDim2.new(1, -14, 0, 54)
 info.AnchorPoint = Vector2.new(1, 0)
 info.Parent = root
@@ -174,7 +180,7 @@ info.Parent = root
 local timerText = UI.text(info, "0:00", UDim2.fromOffset(150, 42), { pos = UDim2.new(1, -6, 0, 0), anchor = Vector2.new(1, 0), align = Enum.TextXAlignment.Right, stroke = 3.5 })
 local watch = UI.icon(info, "stopwatch", 46, UDim2.new(1, -156, 0, -2))
 local _ = watch
-local infoFace = select(2, Skin.frame(info, "ui_card", Vector2.new(320, 132), { pos = UDim2.fromOffset(0, 44), name = "Card" }))
+local infoFace = select(2, Skin.frame(info, "ui_card", Vector2.new(320, 132 - PHONE_CARD), { pos = UDim2.fromOffset(0, 44), name = "Card" }))
 local pin = UI.icon(infoFace, "pin", 34, UDim2.fromOffset(-2, -4))
 local zoneText = UI.text(infoFace, "", UDim2.new(1, -150, 0, 26), { pos = UDim2.fromOffset(36, 0), align = Enum.TextXAlignment.Left, color = BROWN, stroke = 0 })
 ;(zoneText:FindFirstChildOfClass("UIStroke") :: UIStroke).Enabled = false
@@ -186,6 +192,7 @@ local nextText = UI.text(infoFace, "", UDim2.new(1, -4, 0, 18), { pos = UDim2.fr
 if Device.phone then
 	areaText.Size = UDim2.fromOffset(120, 21)
 	nextText.Size = UDim2.new(1, -4, 0, 21)
+	nextText.Visible = false -- (11 Nov: less on a phone's small screen)
 end
 
 -- Keep clear of Roblox's own screen bits, which don't shrink with our UIScale: the quest scroll sits just below the
@@ -295,9 +302,10 @@ sideScale.Parent = side
 local function placeSide()
 	if Device.touch then
 		-- (5 Nov: the lobby's column has six buttons since QUESTS, so a little smaller there to stay on the screen)
-		sideScale.Scale = 0.7
+		-- (11 Nov, phone check: at 0.7 the buttons were 36 points, under the 44 a thumb needs) 0.86 on a phone
+		sideScale.Scale = if Device.phone then 0.86 else 0.7
 		side.AnchorPoint = Vector2.new(1, 0)
-		side.Position = UDim2.new(1, -12, 0, if sideMode == "Run" then 240 else 118)
+		side.Position = UDim2.new(1, -12, 0, if sideMode == "Run" then 240 - PHONE_CARD else 118)
 		return
 	end
 	sideScale.Scale = 1
@@ -591,6 +599,32 @@ task.spawn(function()
 		end
 	end
 end)
+
+-- (11 Nov, owner: "test mobile fully so it doesn't have a lot of screen clutter ... and smooth boss fights") on a
+-- phone, while you fight a boss (the player attribute BossHP, server/BossFighters), the quest card, the coins, the gems
+-- and the backpack step aside: the fight gets the left half of the screen. Back when the fight is over.
+if Device.phone then
+	task.spawn(function()
+		local was = false
+		while true do
+			task.wait(0.4)
+			local fighting = currentMode == "Run" and type(player:GetAttribute("BossHP")) == "number"
+			if fighting then
+				for _, h in { quest, coinBox, gemBox, bag } do
+					if h.Visible then
+						show(h, false)
+					end
+				end
+			elseif was then
+				show(coinBox, true)
+				show(gemBox, true)
+				show(bag, true)
+				show(quest, questOn and not Coach.active())
+			end
+			was = fighting
+		end
+	end)
+end
 
 State.on("data", function(d)
 	applyMode(d.mode)

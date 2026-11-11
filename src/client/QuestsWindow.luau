@@ -107,7 +107,8 @@ local function questRow(parent: Instance, i: number, period: string, q)
 	end
 	local label = if q.claimed then "DONE ✓" else "CLAIM"
 	local color = if ready then GREEN elseif q.claimed then Color3.fromRGB(80, 120, 90) else GREY
-	local b = UI.button(row, label, color, UDim2.fromOffset(116, 46), function()
+	-- (11 Nov, phone check: 46 high was 21 points on a phone, small for a thumb) as tall as the row on a phone
+	local b = UI.button(row, label, color, UDim2.fromOffset(116, if require(script.Parent.Device).phone then 56 else 46), function()
 		if ready then
 			State.fire("Progress", "claim", period, q.slot)
 		elseif not q.claimed then

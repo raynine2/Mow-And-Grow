@@ -117,7 +117,14 @@ local function banner(list: Instance, order: number, o: Banner)
 	Skin.shine(inner, 5, 0.4 + order * 0.35, 12)
 	-- words and buttons sit on the face (not clipped, so a hovered button can grow past the edge)
 	UI.text(face, string.upper(o.title), UDim2.new(1, -270, 0, 44), { pos = UDim2.fromOffset(18, 8), align = Enum.TextXAlignment.Left, stroke = 4 })
-	UI.text(face, o.desc, UDim2.new(1, -270, 0, 24), { pos = UDim2.fromOffset(20, 54), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 2 })
+	-- (11 Nov, phone check: one 24-high line squeezed a long line to 5 points on a phone) up to three lines now, in the
+	-- room above the price buttons
+	local descText = UI.text(face, o.desc, UDim2.new(1, -270, 0, 66), { pos = UDim2.fromOffset(20, 54), align = Enum.TextXAlignment.Left, color = W.cream, stroke = 2 })
+	descText.TextWrapped = true
+	descText.TextYAlignment = Enum.TextYAlignment.Top
+	local cap = descText:FindFirstChildOfClass("UITextSizeConstraint") or Instance.new("UITextSizeConstraint")
+	cap.MaxTextSize = 24 -- (a short line stays one line high, not 66)
+	cap.Parent = descText
 	local x = 18
 	for _, p in o.prices do
 		priceButton(face, p, UDim2.new(0, x, 1, -62))

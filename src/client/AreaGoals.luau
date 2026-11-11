@@ -232,7 +232,9 @@ local function updateChip()
 		return
 	end
 	local peaceful = w and w.night and w.night.peaceful
-	if not State.isRun() or not d or not d.run or runTime < 0 or peaceful then
+	-- (11 Nov, phone check: less clutter on a phone's small screen) no medal chip on a phone (the end screen still
+	-- shows the medal)
+	if not State.isRun() or not d or not d.run or runTime < 0 or peaceful or require(script.Parent.Device).phone then
 		label.Visible = false
 		return
 	end

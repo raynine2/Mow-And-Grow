@@ -340,7 +340,8 @@ local countChip = UI.frame({ size = UDim2.fromOffset(120, 32), pos = UDim2.fromO
 UI.icon(countChip, "egg", 28, UDim2.fromOffset(4, 2))
 local countText = UI.text(countChip, "0/60", UDim2.new(1, -40, 1, -8), { pos = UDim2.fromOffset(36, 4), align = Enum.TextXAlignment.Left, stroke = 1.5 })
 UI.raise(countChip, 5)
-local bestBtn = UI.button(P, "EQUIP BEST", C.green, UDim2.fromOffset(160, 38), function()
+-- (11 Nov, phone check: 38 high was 20 points on a phone) taller on a phone
+local bestBtn = UI.button(P, "EQUIP BEST", C.green, UDim2.fromOffset(160, if require(script.Parent.Device).phone then 50 else 38), function()
 	State.fire("Pet", "best")
 end, { pos = UDim2.new(1, -54, 0, 218), anchor = Vector2.new(1, 0), name = "Best" })
 UI.raise(bestBtn, 5)

@@ -565,6 +565,13 @@ function Coach.target(): (Vector3?, number?)
 	return nil, nil
 end
 
+-- (11 Nov, owner: "help dumb people a bit more, kids tend to not think a lot") one big word for the guide arrow
+-- (client/Guide) to say what its step is
+local WORDS = { mow = "MOW!", punch = "MOW!", fill = "MOW!", collect = "PICK UP!", sell = "SELL!", upgrade = "UPGRADE!" }
+function Coach.word(): string?
+	return if step then WORDS[step.id] else nil
+end
+
 -- Is the coach running (so other hints stay out of the way)?
 function Coach.active(): boolean
 	return step ~= nil

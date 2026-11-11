@@ -589,14 +589,21 @@ function RunWorld.build()
 	local old = workspace:FindFirstChild("World")
 	if old then
 		old:Destroy()
+		task.wait()
 	end
 	workspace.Terrain:Clear() -- the lobby's Terrain ground; this world is all parts
+	-- (11 Nov: the server's start script timed out again, here: "Script timeout: exhausted allowed execution time" at
+	-- the pause below, and nobody could play. Measured in Studio: the old world's Destroy 1.5 s, the copy 1.8 s, putting
+	-- it in Workspace 0.65 s, all in one go after the models' loading. A frame's pause between each big step)
+	task.wait()
 	local saved = ServerStorage:FindFirstChild(STASH)
 	local w: Instance
 	if saved then
 		w = saved:Clone()
+		task.wait()
 		w.Name = "World"
 		tidyGround(w) -- (before it's parented: nothing gets sent to players for the sticks)
+		task.wait()
 		w.Parent = workspace
 	else
 		w = require(script.Parent.WorldGen).build()

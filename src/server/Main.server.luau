@@ -26,6 +26,7 @@ require(script.Parent.RunWorld).stash()
 
 -- Blender models first (uploaded ones only), so the world builders can use them
 require(script.Parent.Models).loadAll()
+task.wait() -- (11 Nov: the start timed out with the models' last swaps and the world's copy in one go)
 
 local system: any = if Mode.isRun then require(script.Parent.Run) else require(script.Parent.Lobby)
 system.start()

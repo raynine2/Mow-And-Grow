@@ -358,6 +358,7 @@ local BOSS_GLOW: { [string]: Color3 } = {
 type Boss = { model: Model, size: Vector3, lift: number, glow: Color3, core: Part, orb: any }
 
 local recent: { string } = {}
+local live: { [Boss]: boolean } = {} -- the bosses out right now (a show that errors drops its own, see shows())
 local function pickBoss(scale: number): Boss?
 	local src = ReplicatedStorage:FindFirstChild("VoxelBosses")
 	if not src then
@@ -391,6 +392,10 @@ local function pickBoss(scale: number): Boss?
 		end
 	end
 	m:ScaleTo(m:GetScale() * scale)
+	-- (11 Nov, owner: "sometimes a boss spawns here, a bug", at the party pads) the bosses sit at 0,0,0 in VoxelBosses,
+	-- the middle of the lobby, and the black hole show waited 0.8 s before moving its boss: the copy now waits far
+	-- under the map until a show places it
+	m:PivotTo(CFrame.new(0, -2000, 0))
 	local box, size = m:GetBoundingBox()
 	local lift = m:GetPivot().Position.Y - box.Position.Y
 	m.Parent = folder
@@ -427,11 +432,14 @@ local function pickBoss(scale: number): Boss?
 		em.LightEmission = 1
 		em.Parent = core
 	end
-	return { model = m, size = size, lift = lift, glow = glow, core = core, orb = orb }
+	local b: Boss = { model = m, size = size, lift = lift, glow = glow, core = core, orb = orb }
+	live[b] = true
+	return b
 end
 
 local function dropBoss(b: Boss)
-	b.orb.stop(0.5)
+	live[b] = nil
+	pcall(b.orb.stop, 0.5)
 	b.model:Destroy()
 end
 
@@ -777,9 +785,16 @@ local function shows()
 			while not free() and on() do
 				task.wait(1)
 			end
+			local before = table.clone(live)
 			local ok, err = pcall(show)
 			if not ok then
 				warn("[LobbySky] " .. tostring(err))
+				-- a show that broke halfway doesn't leave its boss hanging in the sky (or in the lobby)
+				for b in live do
+					if not before[b] then
+						dropBoss(b)
+					end
+				end
 			end
 			if saucer then
 				hideSaucer(saucer)

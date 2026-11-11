@@ -17,6 +17,7 @@
 --     over the avatar: the avatar is being beamed up, so it hovers in the beam instead of flying at the camera
 --   * the picked card's class aura (client/RarityFx) plays on the avatar; picking a card flashes the crop circle and
 --     the beam and fires a VFX Forge burst
+local CollectionService = game:GetService("CollectionService")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -153,12 +154,17 @@ local FACES = {
 	-- behind the avatar (the main view). The class camera sways enough to see the side walls too, so the four upright
 	-- walls share one look (same top-to-bottom glow, same nebula density): a sparser, darker side wall read as a hard
 	-- dark band down both screen edges (the room's "lighting" bug, owner 27 Oct)
-	{ CFrame.new(0, 0, 459), Vector3.new(2800, 1500, 2), Enum.NormalId.Front },
-	{ CFrame.new(0, 0, -460), Vector3.new(1000, 1000, 2), Enum.NormalId.Back },
-	{ CFrame.new(460, 0, 0), Vector3.new(2, 1000, 1000), Enum.NormalId.Left },
-	{ CFrame.new(-460, 0, 0), Vector3.new(2, 1000, 1000), Enum.NormalId.Right },
-	{ CFrame.new(0, 460, 0), Vector3.new(1000, 2, 1000), Enum.NormalId.Bottom },
-	{ CFrame.new(0, -460, 0), Vector3.new(1000, 2, 1000), Enum.NormalId.Top },
+	-- (11 Nov, owner: "black borders bug in classes ... on left and right") the side walls stood at 460 while the
+	-- camera (16 back, FOV 59-61) sees 490 to the side at the main wall on a 16:9 screen and 540+ on a wider one: a
+	-- strip of side wall, seen edge-on (so nearly black), down both edges. They stand at the main wall's own ends now
+	-- (a part is at most 2048 wide, so it ends at 1024; a 32:9 screen still only sees ~1000), so the view only ever
+	-- meets the main wall; the floor and ceiling are widened to meet them.
+	{ CFrame.new(0, 0, 459), Vector3.new(2048, 1500, 2), Enum.NormalId.Front },
+	{ CFrame.new(0, 0, -460), Vector3.new(2048, 1000, 2), Enum.NormalId.Back },
+	{ CFrame.new(1020, 0, 0), Vector3.new(2, 1000, 1000), Enum.NormalId.Left },
+	{ CFrame.new(-1020, 0, 0), Vector3.new(2, 1000, 1000), Enum.NormalId.Right },
+	{ CFrame.new(0, 460, 0), Vector3.new(2048, 2, 1000), Enum.NormalId.Bottom },
+	{ CFrame.new(0, -460, 0), Vector3.new(2048, 2, 1000), Enum.NormalId.Top },
 }
 local NEBULA = { rgb(130, 60, 255), rgb(40, 190, 255), rgb(255, 80, 200), rgb(90, 80, 255), rgb(60, 230, 200) }
 
@@ -1180,12 +1186,34 @@ local function updateAbduction(t: number)
 	end
 end
 
+-- (11 Nov, owner: "when I click a class I don't see the class on my character as a preview") every class in the
+-- stock is drawn by the hand-off's voxel effects now (Config.CLASS_FX_V3, StarterPlayerScripts.ClassFXController),
+-- which client/Auras leaves alone, so RarityFx.preview put nothing on the clone. The clone is handed to that
+-- controller as a showcase dummy instead (tag ClassFXShowcase + attribute ShowClass, like Workspace.Showcase's): it
+-- wears the picked class and plays its reveal. The controller drops it when the clone goes (hide / a new clone).
+local function wearClassFx()
+	local m = avatar
+	if not m then
+		return
+	end
+	local v3 = (require(ReplicatedStorage:WaitForChild("MowALawn"):WaitForChild("Config")) :: any).CLASS_FX_V3
+	local id = if shown and type(classAura) == "string" and type(v3) == "table" and v3[classAura] then classAura else nil
+	if m:GetAttribute("ShowClass") == id then
+		return
+	end
+	m:SetAttribute("ShowClass", id) -- (set before the tag: the controller only watches a dummy that has it)
+	if id and not CollectionService:HasTag(m, "ClassFXShowcase") then
+		CollectionService:AddTag(m, "ClassFXShowcase")
+	end
+end
+
 -- the picked card's class aura (client/RarityFx) on the avatar clone
 local function wearClassAura()
 	if auraOff then
 		auraOff()
 		auraOff = nil
 	end
+	pcall(wearClassFx)
 	if not (shown and avatar and classAura) then
 		return
 	end

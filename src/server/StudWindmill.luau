@@ -370,7 +370,10 @@ end
 -- the sails
 -------------------------------------------------------------------------------------------------------------
 local HUB_Y = 70
-local HUB_Z = -20 -- well in front of the roof, so the lower sails clear the tower by ~3 studs
+-- (11 Nov, owner: "windmill also a bit broken": at -20 the sails sat inside the roof's flared bottom row and eave,
+-- which reach 21.2 out, so every sail sliced through the red roof as it turned past the bottom) the sail plane
+-- (-1.35 to -0.35 round the hub) now clears the eave by about 1.6 studs
+local HUB_Z = -22.6
 local ARM = 30 -- (turning, its lowest tip stays clear over the balcony rail: 70 - 30 = 40 > 36)
 
 local function sails(): Model
